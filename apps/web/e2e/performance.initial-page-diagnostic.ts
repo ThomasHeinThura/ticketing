@@ -6,6 +6,16 @@ import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { summarizeProfileCoverage } from "../src/lib/performance-profile-intervals";
 import {
+  anchorTraceProfile,
+  type TraceProfileClock,
+  timeTraceProfileChunk,
+  traceProfileKey,
+} from "../src/lib/performance-trace-profile-clock";
+import {
+  aggregateCpuProfileFrames,
+  sanitizeCpuProfileNodes,
+} from "./helpers/aggregate-cpu-profile";
+import {
   installPerformanceApiFixture,
   PERFORMANCE_BASE_URL,
   PROJECT_ID,
@@ -14,6 +24,11 @@ import {
 } from "./helpers/g11-performance-fixture";
 import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
 import { attachPerformanceNetworkCapture } from "./helpers/performance-network-summary";
+import {
+  aggregateDiagnosticCapturesWithFailureReceipt,
+  type DiagnosticCaptureArtifact,
+  persistDiagnosticCapturesBestEffort,
+} from "./helpers/persist-diagnostic-capture-artifact.mjs";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -24,9 +39,11 @@ const RESULT_DIR = path.join(
   ROOT,
   "apps/web/test-results/g11-initial-page-diagnostic",
 );
+const RAW_CAPTURE_DIR = path.join(RESULT_DIR, "raw-captures");
 
 type TraceCpuNode = {
   id: number;
+  parent?: number;
   children?: number[];
   callFrame: {
     functionName: string;
@@ -263,46 +280,12 @@ function safeAssetName(value: string) {
   }
 }
 
-function sampledTraceFrames(
+function inclusiveTraceFrames(
   profiles: ReturnType<typeof sanitizeTraceCpuProfile>[],
-  modulesByAsset: Record<string, string[]>,
 ) {
-  const totals = new Map<
-    string,
-    {
-      asset: string;
-      functionName: string;
-      line: number;
-      column: number;
-      sampledMicroseconds: number;
-    }
-  >();
-  for (const profile of profiles) {
-    if (!profile) continue;
-    const nodes = new Map(profile.nodes.map((node) => [node.id, node]));
-    for (const sample of profile.samples) {
-      const frame = nodes.get(sample.nodeId);
-      if (!frame || frame.asset === "runtime" || frame.asset === "non-asset")
-        continue;
-      const key = `${frame.asset}:${frame.functionName}:${frame.line}:${frame.column}`;
-      const total = totals.get(key) ?? {
-        asset: frame.asset,
-        functionName: frame.functionName,
-        line: frame.line,
-        column: frame.column,
-        sampledMicroseconds: 0,
-      };
-      total.sampledMicroseconds += sample.durationMicroseconds;
-      totals.set(key, total);
-    }
-  }
-  return [...totals.values()]
-    .map((frame) => ({
-      ...frame,
-      sourceModuleCount: modulesByAsset[frame.asset]?.length ?? 0,
-    }))
-    .sort((left, right) => right.sampledMicroseconds - left.sampledMicroseconds)
-    .slice(0, 60);
+  return aggregateCpuProfileFrames(
+    profiles.filter((profile) => profile !== undefined),
+  );
 }
 
 function alignBoundaryToTrace(capture: DiagnosticCapture) {
@@ -494,29 +477,7 @@ function sanitizeTraceCpuProfile(
   });
   if (samples.length === 0) return undefined;
   return {
-    nodes: [...profile.nodes.values()].map((node) => {
-      let asset = "runtime";
-      try {
-        const frameUrl = new URL(node.callFrame?.url ?? "", ORIGIN);
-        asset =
-          frameUrl.origin === ORIGIN && frameUrl.pathname.startsWith("/assets/")
-            ? path.posix.basename(frameUrl.pathname)
-            : "non-asset";
-      } catch {
-        asset = "non-asset";
-      }
-      return {
-        id: node.id,
-        children: node.children ?? [],
-        functionName: (node.callFrame?.functionName ?? "(unknown)").slice(
-          0,
-          160,
-        ),
-        asset,
-        line: (node.callFrame?.lineNumber ?? -1) + 1,
-        column: (node.callFrame?.columnNumber ?? -1) + 1,
-      };
-    }),
+    nodes: sanitizeCpuProfileNodes([...profile.nodes.values()], ORIGIN),
     samples,
   };
 }
@@ -742,6 +703,44 @@ type DiagnosticBoundary = {
   source: string;
 } | null;
 
+function createRawCaptureArtifact(
+  capture: DiagnosticCapture,
+  captureIndex: number,
+  sourceAndBuild: Awaited<ReturnType<typeof getBuildIdentity>>,
+): DiagnosticCaptureArtifact {
+  return {
+    schemaVersion: 1,
+    diagnosticOnly: true,
+    captureIndex,
+    sourceAndBuild,
+    capturedWindow: {
+      name: capture.name,
+      metrics: {
+        ...capture.metrics,
+        lcp: capture.metrics.lcp
+          ? {
+              startTime: capture.metrics.lcp.startTime,
+              element: capture.metrics.lcp.element,
+              textLength: capture.metrics.lcp.textLength,
+            }
+          : null,
+      },
+      network: capture.network,
+      browserPerformance: capture.browserPerformance,
+      clockMarks: capture.clockMarks,
+      boundary: capture.boundary,
+      traceCpuProfiles: capture.traceCpuProfiles.map((profile) => ({
+        nodes: sanitizeCpuProfileNodes([...profile.nodes.values()], ORIGIN),
+        samples: profile.samples.map((sample) => ({
+          nodeId: sample.nodeId,
+          startMicroseconds: sample.start,
+          durationMicroseconds: sample.duration,
+        })),
+      })),
+    },
+  };
+}
+
 async function withDiagnosticProfile(
   browser: import("@playwright/test").Browser,
   name: string,
@@ -764,23 +763,47 @@ async function withDiagnosticProfile(
   let browserPerformance: DiagnosticCapture["browserPerformance"] | undefined;
   const timelineEvents: BrowserTimelineEvent[] = [];
   const traceCpuProfilesByThread = new Map<string, TraceCpuProfile>();
+  const traceProfileClocks = new Map<string, TraceProfileClock>();
+  const invalidTraceProfileKeys = new Set<string>();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
   let timelineOverflow = false;
   cdp.on("Tracing.dataCollected", ({ value }) => {
     for (const event of value ?? []) {
-      if (event.name === "ProfileChunk") {
+      if (event.name === "Profile" || event.name === "ProfileChunk") {
         const data = (
           event.args as { data?: Record<string, unknown> } | undefined
         )?.data;
-        const cpuProfile = data?.cpuProfile as
-          | { nodes?: TraceCpuNode[]; samples?: number[] }
-          | undefined;
-        const timeDeltas = data?.timeDeltas as number[] | undefined;
         const source = String(data?.source ?? "unknown");
         const pid = Number(event.pid) || 0;
         const tid = Number(event.tid) || 0;
         const id = String(event.id ?? "profile");
-        const key = `${pid}:${tid}:${source}:${id}`;
+        const key = traceProfileKey(pid, tid, source, id);
+        if (invalidTraceProfileKeys.has(key)) continue;
+        if (event.name === "Profile") {
+          if (!anchorTraceProfile(traceProfileClocks, key, Number(event.ts))) {
+            invalidTraceProfileKeys.add(key);
+            traceCpuProfilesByThread.delete(key);
+          }
+          continue;
+        }
+        const cpuProfile = data?.cpuProfile as
+          | { nodes?: TraceCpuNode[]; samples?: number[] }
+          | undefined;
+        const timeDeltas = data?.timeDeltas as number[] | undefined;
+        const samples = Array.isArray(cpuProfile?.samples)
+          ? cpuProfile.samples
+          : [];
+        const deltas = Array.isArray(timeDeltas) ? timeDeltas : [];
+        const timedSamples = timeTraceProfileChunk(
+          traceProfileClocks.get(key),
+          samples,
+          deltas,
+        );
+        if (samples.length > 0 && !timedSamples) {
+          invalidTraceProfileKeys.add(key);
+          traceCpuProfilesByThread.delete(key);
+          continue;
+        }
         let traceProfile = traceCpuProfilesByThread.get(key);
         if (!traceProfile) {
           traceProfile = {
@@ -795,20 +818,7 @@ async function withDiagnosticProfile(
         }
         for (const node of cpuProfile?.nodes ?? [])
           traceProfile.nodes.set(node.id, node);
-        const samples = cpuProfile?.samples ?? [];
-        if (
-          Array.isArray(timeDeltas) &&
-          samples.length === timeDeltas.length &&
-          Number.isFinite(event.ts)
-        ) {
-          let sampleTime =
-            (event.ts as number) - timeDeltas.reduce((a, b) => a + b, 0);
-          for (const [index, nodeId] of samples.entries()) {
-            const duration = timeDeltas[index] ?? 0;
-            traceProfile.samples.push({ nodeId, start: sampleTime, duration });
-            sampleTime += duration;
-          }
-        }
+        traceProfile.samples.push(...(timedSamples ?? []));
       }
       const sanitized = sanitizeTimelineEvent(event);
       if (!sanitized) continue;
@@ -1053,6 +1063,16 @@ async function visitTaskState(page: Page) {
       hasText: "In progress",
     }),
   ).toBeVisible();
+  await page.waitForFunction(
+    () => {
+      const metrics = (
+        window as Window & { __g11Metrics?: { statePaint: number } }
+      ).__g11Metrics;
+      return metrics !== undefined && metrics.statePaint > 0;
+    },
+    undefined,
+    { timeout: 15_000 },
+  );
   return page.evaluate(() => {
     const metrics = (
       window as Window & {
@@ -1092,6 +1112,16 @@ async function visitTaskAssignment(page: Page) {
       hasText: "G11 Agent",
     }),
   ).toBeVisible();
+  await page.waitForFunction(
+    () => {
+      const metrics = (
+        window as Window & { __g11Metrics?: { assignmentPaint: number } }
+      ).__g11Metrics;
+      return metrics !== undefined && metrics.assignmentPaint > 0;
+    },
+    undefined,
+    { timeout: 15_000 },
+  );
   return page.evaluate(() => {
     const metrics = (
       window as Window & {
@@ -1242,96 +1272,104 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     ]),
   );
   const build = await getBuildIdentity(profileAssetNames);
-  const profileWindows = captures.map((capture) => {
-    const { name, browserPerformance } = capture;
-    const alignment = alignBoundaryToTrace(capture);
-    if (!alignment)
-      return {
-        name,
-        scope: "supplementary full-window context; no canonical G11 metric",
-        recorderBoundary: null,
-        clockAlignment: null,
-        topCpuFrames: sampledTraceFrames(
-          capture.traceCpuProfiles
+  await persistDiagnosticCapturesBestEffort(
+    RAW_CAPTURE_DIR,
+    captures.map((capture, index) =>
+      createRawCaptureArtifact(capture, index + 1, build),
+    ),
+  );
+  const profileWindows = await aggregateDiagnosticCapturesWithFailureReceipt(
+    RAW_CAPTURE_DIR,
+    captures,
+    build,
+    (capture) => {
+      const { name, browserPerformance } = capture;
+      const alignment = alignBoundaryToTrace(capture);
+      if (!alignment)
+        return {
+          name,
+          scope: "supplementary full-window context; no canonical G11 metric",
+          recorderBoundary: null,
+          clockAlignment: null,
+          topInclusiveCpuFrames: inclusiveTraceFrames(
+            capture.traceCpuProfiles
+              .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
+              .filter((value) => value !== undefined),
+          ),
+          traceCpuProfiles: capture.traceCpuProfiles
             .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
             .filter((value) => value !== undefined),
-          build.modulesByAsset,
-        ),
-        traceCpuProfiles: capture.traceCpuProfiles
-          .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
-          .filter((value) => value !== undefined),
-        timelineEvents: browserPerformance.timelineEvents,
+          timelineEvents: browserPerformance.timelineEvents,
+          wholeWindowPerformanceMetrics: {
+            scope:
+              "context-only cumulative deltas; not a click-to-paint interval",
+            values: browserPerformance.metrics,
+          },
+        };
+
+      const clippedTraceCpuProfiles = capture.traceCpuProfiles
+        .map((traceProfile) =>
+          sanitizeTraceCpuProfile(
+            traceProfile,
+            alignment.startTraceMicroseconds,
+            alignment.endTraceMicroseconds,
+          ),
+        )
+        .filter((value) => value !== undefined);
+      const clippedTimeline = clipTimelineEvents(
+        browserPerformance.timelineEvents,
+        alignment.startTraceMicroseconds,
+        alignment.endTraceMicroseconds,
+      );
+      const clippedSamples = clippedTraceCpuProfiles.flatMap((traceProfile) =>
+        traceProfile.samples.map((sample) => ({
+          start: sample.startMicroseconds,
+          end: sample.startMicroseconds + sample.durationMicroseconds,
+        })),
+      );
+      const cpuCoverage = summarizeProfileCoverage(
+        clippedSamples,
+        alignment.startTraceMicroseconds,
+        alignment.endTraceMicroseconds,
+      );
+      return {
+        name,
+        documentId: alignment.documentId,
+        scope: "canonical recorder boundary",
+        recorderBoundary: alignment.boundary,
+        clockAlignment: {
+          ...alignment.transform,
+          calibratedStartTraceMicroseconds: alignment.startTraceMicroseconds,
+          calibratedEndTraceMicroseconds: alignment.endTraceMicroseconds,
+          v8TraceProfileCount: capture.traceCpuProfiles.length,
+        },
+        cpuSampleCoverage: {
+          scope:
+            "observed trace ProfileChunk samples; not a completeness guarantee",
+          intervalStartMicroseconds: alignment.startTraceMicroseconds,
+          intervalEndMicroseconds: alignment.endTraceMicroseconds,
+          observedStartMicroseconds: cpuCoverage.observedStart,
+          observedEndMicroseconds: cpuCoverage.observedEnd,
+          uncoveredPrefixMicroseconds: cpuCoverage.uncoveredPrefix,
+          uncoveredSuffixMicroseconds: cpuCoverage.uncoveredSuffix,
+          unionCoverageMicroseconds: cpuCoverage.unionCoverage,
+          clockAlignmentUncertaintyMicroseconds:
+            alignment.transform.uncertaintyMicroseconds,
+        },
+        topInclusiveCpuFrames: inclusiveTraceFrames(clippedTraceCpuProfiles),
+        traceCpuProfiles: clippedTraceCpuProfiles,
+        timelineEvents: clippedTimeline,
         wholeWindowPerformanceMetrics: {
           scope:
             "context-only cumulative deltas; not a click-to-paint interval",
           values: browserPerformance.metrics,
         },
       };
-
-    const clippedTraceCpuProfiles = capture.traceCpuProfiles
-      .map((traceProfile) =>
-        sanitizeTraceCpuProfile(
-          traceProfile,
-          alignment.startTraceMicroseconds,
-          alignment.endTraceMicroseconds,
-        ),
-      )
-      .filter((value) => value !== undefined);
-    const clippedTimeline = clipTimelineEvents(
-      browserPerformance.timelineEvents,
-      alignment.startTraceMicroseconds,
-      alignment.endTraceMicroseconds,
-    );
-    const clippedSamples = clippedTraceCpuProfiles.flatMap((traceProfile) =>
-      traceProfile.samples.map((sample) => ({
-        start: sample.startMicroseconds,
-        end: sample.startMicroseconds + sample.durationMicroseconds,
-      })),
-    );
-    const cpuCoverage = summarizeProfileCoverage(
-      clippedSamples,
-      alignment.startTraceMicroseconds,
-      alignment.endTraceMicroseconds,
-    );
-    return {
-      name,
-      documentId: alignment.documentId,
-      scope: "canonical recorder boundary",
-      recorderBoundary: alignment.boundary,
-      clockAlignment: {
-        ...alignment.transform,
-        calibratedStartTraceMicroseconds: alignment.startTraceMicroseconds,
-        calibratedEndTraceMicroseconds: alignment.endTraceMicroseconds,
-        v8TraceProfileCount: capture.traceCpuProfiles.length,
-      },
-      cpuSampleCoverage: {
-        scope:
-          "observed trace ProfileChunk samples; not a completeness guarantee",
-        intervalStartMicroseconds: alignment.startTraceMicroseconds,
-        intervalEndMicroseconds: alignment.endTraceMicroseconds,
-        observedStartMicroseconds: cpuCoverage.observedStart,
-        observedEndMicroseconds: cpuCoverage.observedEnd,
-        uncoveredPrefixMicroseconds: cpuCoverage.uncoveredPrefix,
-        uncoveredSuffixMicroseconds: cpuCoverage.uncoveredSuffix,
-        unionCoverageMicroseconds: cpuCoverage.unionCoverage,
-        clockAlignmentUncertaintyMicroseconds:
-          alignment.transform.uncertaintyMicroseconds,
-      },
-      topCpuFrames: sampledTraceFrames(
-        clippedTraceCpuProfiles,
-        build.modulesByAsset,
-      ),
-      traceCpuProfiles: clippedTraceCpuProfiles,
-      timelineEvents: clippedTimeline,
-      wholeWindowPerformanceMetrics: {
-        scope: "context-only cumulative deltas; not a click-to-paint interval",
-        values: browserPerformance.metrics,
-      },
-    };
-  });
+    },
+  );
   const initial = captures[0];
   const result = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     diagnosticOnly: true,
     fixture:
       "canonical G11 installPerformanceApiFixture (500 work items, 200 board cards)",
@@ -1347,7 +1385,9 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
       transform:
         "Two diagnostic CDP TimeStamp markers on the same document, measured around window.performance.now(); affine scale and offset map canonical recorder values to trace time. Uncertainty includes marker-call brackets plus measured slope uncertainty propagated across extrapolated distance.",
       cpuProfileClock:
-        "Sanitized V8 ProfileChunk sample intervals are derived from each chunk's CDP trace timestamp and timeDeltas, then clipped to the aligned recorder span. Coverage reports observed sample bounds and uncovered prefixes/suffixes.",
+        "Sanitized V8 ProfileChunk sample intervals start at the initial Profile event timestamp and accumulate ordered timeDeltas across chunks for the same process, thread, source, and profile id. Chunk emission timestamps are not used as sample anchors. Profiles without a valid initial Profile anchor are omitted; intervals are clipped to the aligned recorder span.",
+      cpuFrameAttribution:
+        "Self time is sampled time at the node; inclusive time sums each clipped sample once into that node and every reachable caller from retained child links. This is sampled CPU attribution, not wall time or a completeness guarantee. Coordinates remain compiled asset/function/line/column; source maps are inspected only for asset source lists and do not resolve individual functions.",
       contextMetrics:
         "Performance.getMetrics is cumulative over each entire profiler window and is reported as context only; it is not clipped or described as interval data.",
       sensitiveData:
@@ -1379,7 +1419,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   ).toBe(true);
   expect(profileWindows).toHaveLength(5);
   expect(
-    profileWindows.every((window) => window.topCpuFrames.length > 0),
+    profileWindows.every((window) => window.topInclusiveCpuFrames.length > 0),
     "Each hosted failure class must include sampled app JavaScript frames.",
   ).toBe(true);
   expect(
