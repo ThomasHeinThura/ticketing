@@ -13,3 +13,8 @@ dc63e859546223ac9c11abc3c1d36a5c79ef445e:tests/api-integration/audit-log.test.ts
 # Same non-secret status-prose token in two earlier conserved commits (full-range scan).
 65420b183cd4e8f5b0df69af586bbee8d5d54422:docs/07-planning/status.md:generic-api-key:14
 4f3ac412b67978468ee105efbe51c4ce41667203:docs/07-planning/status.md:generic-api-key:14
+
+# Public reviewer-report filenames in the immutable #661 publication commit.
+# Exact findings only; authentic reports unchanged. Technical record: 2026-10-12.
+347142043050587d76076c09c6b8589252f5de3c:docs/07-planning/security-reviews/661-accepted-native-records-composition.md:generic-api-key:7
+347142043050587d76076c09c6b8589252f5de3c:docs/07-planning/security-reviews/661-accepted-native-records-composition.md:generic-api-key:39
