@@ -4,6 +4,9 @@ import {
   buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
   parseGeneratedRouteUrl,
+  parseGodModeUsersSearch,
+  parsePendingActionsSearch,
+  parsePendingActionsSearchFromQueryString,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   routes,
@@ -148,6 +151,39 @@ describe("routes.workItemDetail", () => {
   it("encodes a key that needs escaping", () => {
     expect(routes.workItemDetail.build({ key: "a/b" })).toBe(
       "/agent/work-items/a%2Fb",
+    );
+  });
+});
+
+describe("God Mode Users and requester pending-action URLs", () => {
+  it("round-trips user filters and selected account through the URL", () => {
+    const search = {
+      q: "  Ada Lovelace  ",
+      side: "staff" as const,
+      active: "false" as const,
+      organisationId: "org/one",
+      cursor: "cursor/a+b",
+      user: "user/one",
+    };
+    const url = routes.godModeUsers.build(search);
+    const params = new URLSearchParams(url.split("?")[1]);
+    expect(parseGodModeUsersSearch(Object.fromEntries(params))).toEqual({
+      ...search,
+      q: "Ada Lovelace",
+    });
+    expect(url).toContain("organisationId=org%2Fone");
+  });
+
+  it("round-trips requester pagination and encodes the detail id", () => {
+    const url = routes.pendingActions.build({ cursor: "cursor/a+b" });
+    expect(parsePendingActionsSearchFromQueryString(url.split("?")[1])).toEqual(
+      parsePendingActionsSearch({ cursor: "cursor/a+b" }),
+    );
+    expect(url).toBe(
+      "/agent/settings/profile/pending-actions?cursor=cursor%2Fa%2Bb",
+    );
+    expect(routes.pendingAction.build({ id: "action/one" })).toBe(
+      "/agent/settings/profile/pending-actions/action%2Fone",
     );
   });
 });

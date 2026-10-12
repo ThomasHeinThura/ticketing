@@ -4,6 +4,8 @@ export const generatedRouteMetadata = {
   agent: [
     "/",
     "/agent/projects/$projectKey/work",
+    "/agent/settings/profile/pending-actions",
+    "/agent/settings/profile/pending-actions/$id",
     "/agent/work-items/$key",
     "/auth",
     "/auth/check-email",
@@ -40,6 +42,7 @@ export const generatedRouteMetadata = {
     "/dashboard/workspace/$workspaceId/search",
     "/dashboard/workspace/create",
     "/god-mode/observability",
+    "/god-mode/users",
     "/invitation/accept/$inviteId",
     "/invitations",
     "/onboarding",
