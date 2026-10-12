@@ -22,3 +22,8 @@ dc63e859546223ac9c11abc3c1d36a5c79ef445e:tests/api-integration/audit-log.test.ts
 # Verbatim #677 security-review prose ("shorthand/computed keys"), not a credential.
 # Exact immutable finding only; authentic report unchanged. Technical record: 2026-10-12.
 2bf94401517ca8a232dfdf18b3364741e7a584c8:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:56
+
+# Same verbatim review prose quoted inside the two #677 gitleaks-disposition rebind reports.
+# Exact immutable findings only; authentic reports unchanged. Technical record: 2026-10-12.
+9e89f35410266df75827627a30ff84610e2d775f:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:243
+9e89f35410266df75827627a30ff84610e2d775f:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:248
