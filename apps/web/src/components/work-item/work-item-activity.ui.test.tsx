@@ -248,29 +248,6 @@ function editable(root: HTMLElement) {
 
 describe("work item comment editor lifecycle and CA-16 drafts", () => {
   beforeEach(() => {
-    // jsdom has no layout: ProseMirror's scrollToSelection (run when the editor
-    // takes focus) measures ranges and text nodes.
-    const zeroRect = {
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      width: 0,
-      height: 0,
-      toJSON: () => ({}),
-    };
-    for (const proto of [Range.prototype, Text.prototype, Element.prototype]) {
-      Object.defineProperty(proto, "getClientRects", {
-        configurable: true,
-        value: () => [],
-      });
-      Object.defineProperty(proto, "getBoundingClientRect", {
-        configurable: true,
-        value: () => zeroRect,
-      });
-    }
     window.localStorage.clear();
     mocks.createComment.mockReset().mockResolvedValue({});
     mocks.updateComment.mockReset().mockResolvedValue({});
