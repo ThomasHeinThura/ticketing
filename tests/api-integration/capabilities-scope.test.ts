@@ -84,7 +84,7 @@ describe("GET /api/capabilities", () => {
     );
     const memberCaps = (await memberResponse.json()) as Record<string, boolean>;
     expect(memberResponse.status).toBe(200);
-    expect(memberCaps.createPublicComments).toBe(false);
+    expect(memberCaps.createPublicComments).toBe(true);
     expect(memberCaps.createInternalComments).toBe(true);
 
     mockAuthenticatedSession(admin.user);

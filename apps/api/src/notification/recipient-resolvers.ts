@@ -69,7 +69,8 @@ export async function resolveMentionEventRecipient(
       projectId: resource.projectId,
       workspaceId: resource.workspaceId,
       organisationId: resource.organisationId,
-      visibleToPersonIds: resource.visibleToPersonIds,
+      visibleToPersonIds:
+        identity.side === "customer" ? resource.visibleToPersonIds : null,
     })
   )
     return [];
