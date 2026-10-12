@@ -503,7 +503,9 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
 
     await test.step("edit through the UI and page bounded history", async () => {
       for (let revision = 1; revision <= 6; revision += 1) {
-        await commentRow.getByRole("button", { name: "Edit" }).click();
+        await commentRow
+          .getByRole("button", { name: "Edit", exact: true })
+          .click();
         const editor = commentRow.locator(
           ".taskdesk-comment-editor-content [contenteditable='true']",
         );
