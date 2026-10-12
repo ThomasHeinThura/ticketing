@@ -147,7 +147,7 @@ function WorkItemActivity({
     canCreatePublicComments,
     canCreateInternalComments,
     isCheckingPermissions,
-  } = useWorkspacePermission();
+  } = useWorkspacePermission(workspaceId);
   const { data: people } = useGetActiveWorkspaceUsers(workspaceId);
   const activity = useGetWorkItemActivity({ key: workItemKey });
   const cannedResponses = useQuery({

@@ -19,6 +19,7 @@ const { mocks, translate } = vi.hoisted(() => ({
     rows: [] as Array<Record<string, unknown>>,
     cannedResponses: [] as Array<Record<string, unknown>>,
     permissions: { public: true, internal: true, checking: false },
+    permissionWorkspaces: [] as Array<string | undefined>,
   },
   translate: (key: string, values?: Record<string, unknown>) => {
     if (key === "activity:timeline.deleted") {
@@ -208,11 +209,14 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "workspace-1" } }),
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
-  useWorkspacePermission: () => ({
-    canCreatePublicComments: () => mocks.permissions.public,
-    canCreateInternalComments: () => mocks.permissions.internal,
-    isCheckingPermissions: mocks.permissions.checking,
-  }),
+  useWorkspacePermission: (workspaceId?: string) => {
+    mocks.permissionWorkspaces.push(workspaceId);
+    return {
+      canCreatePublicComments: () => mocks.permissions.public,
+      canCreateInternalComments: () => mocks.permissions.internal,
+      isCheckingPermissions: mocks.permissions.checking,
+    };
+  },
 }));
 vi.mock("@/hooks/use-shiki-highlighter-for-code", () => ({
   useShikiHighlighterForCode: () => null,
@@ -220,11 +224,11 @@ vi.mock("@/hooks/use-shiki-highlighter-for-code", () => ({
 
 import WorkItemActivity from "./work-item-activity";
 
-function renderActivity() {
+function renderActivity(workspaceId = "workspace-1") {
   return render(
     <WorkItemActivity
       workItemKey="OPS-17"
-      workspaceId="workspace-1"
+      workspaceId={workspaceId}
       defaultVisibility="internal"
       filter="everything"
       onFilterChange={() => undefined}
@@ -253,6 +257,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     mocks.cannedResponses = [];
     mocks.mentionCandidates = [];
     mocks.permissions = { public: true, internal: true, checking: false };
+    mocks.permissionWorkspaces = [];
   });
 
   afterEach(() => {
@@ -262,7 +267,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
 
   it("maps selected Select values to translated labels and filters visibility by capability", () => {
     mocks.permissions = { public: true, internal: false, checking: false };
-    const view = renderActivity();
+    const view = renderActivity("item-workspace-B");
     const [filter, visibility] = within(view.container).getAllByRole(
       "combobox",
     );
@@ -270,6 +275,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     expect(filter).toHaveValue("everything");
     expect(filter).toHaveAttribute("data-selected-label", "Everything");
     expect(visibility).toHaveValue("public");
+    expect(mocks.permissionWorkspaces).toContain("item-workspace-B");
     expect(visibility).toHaveAttribute("data-selected-label", "Public");
     expect(
       within(visibility as HTMLElement).getAllByRole("option"),
