@@ -182,7 +182,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | MCP usage | `/agent/god-mode/mcp` | route | P4 | ⬜ |
 | Audit log | `/agent/god-mode/audit` | route | P2 | ⬜ |
 | Import runs | `/agent/god-mode/import` | route | P6 | ⬜ |
-| Users | `/agent/god-mode/users` | route | P4 | ⬜ |
+| Users | `/agent/god-mode/users` | route | P4 | 🟡 |
 
 ## Portal
 

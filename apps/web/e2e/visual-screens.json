@@ -51,6 +51,13 @@
 		"screenshot": "observability-settings.png"
 	},
 	{
+		"name": "instance-users-directory",
+		"inventoryRoute": "/agent/god-mode/users",
+		"applicationRoute": "/agent/god-mode/users",
+		"test": "instance users directory screen @visual",
+		"screenshot": "instance-users-directory.png"
+	},
+	{
 		"name": "pending-actions-list",
 		"inventoryRoute": "/agent/settings/profile/pending-actions",
 		"applicationRoute": "/agent/settings/profile/pending-actions",

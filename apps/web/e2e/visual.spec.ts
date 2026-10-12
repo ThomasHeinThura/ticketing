@@ -9,6 +9,7 @@ const session = {
     token: "visual-token",
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
+    role: "admin",
   },
   user: {
     id: "visual-user",
@@ -179,6 +180,32 @@ async function installAuthenticatedFixture(page: Page) {
           active: true,
           isPlaceholder: false,
         },
+      };
+    } else if (path === "/api/instance/users") {
+      body = {
+        data: [
+          {
+            id: "visual-directory-user",
+            name: "Taylor Staff",
+            email: "taylor@example.test",
+            emailVerified: true,
+            createdAt: "2026-10-01T12:00:00.000Z",
+            locale: "en-GB",
+            isInstanceAdmin: false,
+            isSuspended: false,
+            suspensionExpiresAt: null,
+            twoFactorEnabled: true,
+            person: {
+              id: "visual-directory-person",
+              side: "staff",
+              organisationId: null,
+              organisationName: null,
+              active: true,
+              isPlaceholder: false,
+            },
+          },
+        ],
+        page: { nextCursor: null, hasMore: false },
       };
     } else if (path.endsWith("/api/instance/observability")) {
       body = {
@@ -359,6 +386,27 @@ test("observability settings screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("No token is configured.")).toBeVisible();
   await expect(page).toHaveScreenshot("observability-settings.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("instance users directory screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/god-mode/users");
+  await expect(
+    page.getByRole("heading", { name: "Instance users", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Taylor Staff", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("taylor@example.test", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("instance-users-directory.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,
