@@ -6491,6 +6491,7 @@
       "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/ul[0]/li[0]/Button[0]/span[3]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/header[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#1",
@@ -8260,6 +8261,19 @@
       },
       {
         "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
         "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
         "surfaceContext": "route-layout-body",
         "category": "body",
@@ -8526,6 +8540,7 @@
       "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/ul[0]/li[0]/Button[0]/span[3]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/header[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#1",
@@ -10295,6 +10310,19 @@
       },
       {
         "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
         "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
         "surfaceContext": "route-layout-body",
         "category": "body",

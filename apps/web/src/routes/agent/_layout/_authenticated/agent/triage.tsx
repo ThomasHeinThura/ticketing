@@ -15,7 +15,7 @@ import {
   SelectValue,
   Textarea,
 } from "@taskdesk/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
@@ -55,6 +55,12 @@ function IntakeRoute() {
   const [workItemTypeId, setWorkItemTypeId] = useState("");
   const [declineReason, setDeclineReason] = useState("");
   const [message, setMessage] = useState("");
+  // Claim/Accept disable or unmount the focused button; hand focus to the status block.
+  const statusRef = useRef<HTMLDivElement>(null);
+  const [acceptedItem, setAcceptedItem] = useState<{
+    ref: string;
+    label: string;
+  } | null>(null);
   const queue = useQuery({
     queryKey: ["intake", workspace.data?.id, state, cursor],
     queryFn: () => getSubmissions(workspace.data?.id ?? "", state, cursor),
@@ -80,7 +86,10 @@ function IntakeRoute() {
   };
   const claim = useMutation({
     mutationFn: () => claimSubmission(ref ?? ""),
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await invalidate();
+      statusRef.current?.focus();
+    },
   });
   const accept = useMutation({
     mutationFn: () => {
@@ -100,7 +109,14 @@ function IntakeRoute() {
         workItemTypeId: type,
       });
     },
-    onSuccess: invalidate,
+    onSuccess: async (data) => {
+      const item = (data as { workItem?: { key?: string; title?: string } })
+        .workItem;
+      const label = [item?.key, item?.title].filter(Boolean).join(" · ");
+      if (label) setAcceptedItem({ ref: ref ?? "", label });
+      await invalidate();
+      statusRef.current?.focus();
+    },
   });
   const decline = useMutation({
     mutationFn: () =>
@@ -130,6 +146,7 @@ function IntakeRoute() {
           formData?: Record<string, unknown>;
           requesterId?: string;
           organisationId?: string;
+          claimedAt?: string | null;
           workItemId?: string;
         };
         requestType?: { name?: string };
@@ -168,7 +185,7 @@ function IntakeRoute() {
     organisation: { name: string };
   }>;
   return (
-    <main className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+    <main className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
       <PageTitle title={t("title")} />
       <header>
         <h1 className="font-semibold text-2xl">{t("title")}</h1>
@@ -199,6 +216,7 @@ function IntakeRoute() {
           <Button
             key={value}
             variant={state === value ? "default" : "outline"}
+            aria-pressed={state === value}
             onClick={() =>
               void navigate({
                 search: {
@@ -230,12 +248,13 @@ function IntakeRoute() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex min-w-0 flex-col gap-2">
           {rows.map((row) => (
-            <li key={row.ref}>
+            <li key={row.ref} className="min-w-0">
               <Button
                 variant={ref === row.ref ? "secondary" : "outline"}
-                className="h-auto w-full justify-start gap-4 p-3"
+                aria-current={ref === row.ref ? "true" : undefined}
+                className="h-auto w-full min-w-0 flex-wrap justify-start gap-x-4 gap-y-1 whitespace-normal p-3 text-left"
                 onClick={() =>
                   void navigate({ search: { state, ref: row.ref } })
                 }
@@ -246,7 +265,7 @@ function IntakeRoute() {
                   {row.requester.displayName ?? t("customer")} ·{" "}
                   {row.organisation.name}
                 </span>
-                <span className="truncate text-muted-foreground">
+                <span className="min-w-0 max-w-full truncate text-muted-foreground">
                   {row.summary}
                 </span>
                 <span className="ml-auto whitespace-nowrap">
@@ -271,7 +290,7 @@ function IntakeRoute() {
       )}
       {ref && (
         <section
-          className="flex flex-col gap-4 rounded-md border p-4"
+          className="flex min-w-0 flex-col gap-4 rounded-md border p-4"
           aria-label={`Submission ${ref}`}
         >
           <h2 className="font-semibold text-xl">
@@ -282,20 +301,38 @@ function IntakeRoute() {
           ) : (
             current && (
               <>
-                <p>
-                  Status: <strong>{current.submission?.state}</strong>
-                </p>
+                <div
+                  ref={statusRef}
+                  role="status"
+                  tabIndex={-1}
+                  className="outline-none"
+                >
+                  <p>
+                    {t("status", { defaultValue: "Status" })}:{" "}
+                    <strong>{current.submission?.state}</strong>
+                  </p>
+                  {current.submission?.claimedAt ? (
+                    <p className="text-muted-foreground text-sm">
+                      {t("claimedAt", {
+                        defaultValue: "Claimed {{date}}",
+                        date: new Date(
+                          current.submission.claimedAt,
+                        ).toLocaleString(),
+                      })}
+                    </p>
+                  ) : null}
+                </div>
                 <h3 className="font-medium">{t("submittedAnswers")}</h3>
                 <dl className="grid gap-2 sm:grid-cols-2">
                   {submissionAnswerRows(
                     current.version?.formSchema?.fields,
                     current.submission?.formData,
                   ).map((answer) => (
-                    <div key={answer.key}>
+                    <div key={answer.key} className="min-w-0">
                       <dt className="text-muted-foreground text-sm">
                         {answer.label}
                       </dt>
-                      <dd>{answer.value}</dd>
+                      <dd className="wrap-anywhere">{answer.value}</dd>
                     </div>
                   ))}
                 </dl>
@@ -307,7 +344,7 @@ function IntakeRoute() {
                         {entry.actorType} ·{" "}
                         {new Date(entry.createdAt).toLocaleString()}
                       </p>
-                      <p>{entry.body}</p>
+                      <p className="wrap-anywhere">{entry.body}</p>
                     </li>
                   ))}
                 </ol>
@@ -317,7 +354,7 @@ function IntakeRoute() {
                     className="flex items-center justify-between gap-3 rounded border p-3"
                     key={file.id}
                   >
-                    <span>
+                    <span className="min-w-0 wrap-anywhere">
                       {file.filename} · {file.state}
                     </span>
                     <Button
@@ -389,10 +426,15 @@ function IntakeRoute() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <p className="text-sm">
-                        Prefilled from request type:{" "}
-                        <code>{current.version?.workItemTypeId}</code>
-                      </p>
+                      {selectedWorkItemType?.name ? (
+                        <p className="text-sm">
+                          {t("prefilledFromType", {
+                            defaultValue:
+                              "Prefilled from request type: {{name}}",
+                            name: selectedWorkItemType.name,
+                          })}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -473,7 +515,15 @@ function IntakeRoute() {
                     </Button>
                   </>
                 ) : current.submission?.workItemId ? (
-                  <p>Converted work item: {current.submission.workItemId}</p>
+                  <p>
+                    {t("convertedWorkItem", {
+                      defaultValue: "Converted work item: {{label}}",
+                      label:
+                        acceptedItem && acceptedItem.ref === ref
+                          ? acceptedItem.label
+                          : current.submission.workItemId,
+                    })}
+                  </p>
                 ) : null}
               </>
             )
