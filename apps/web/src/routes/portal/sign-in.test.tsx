@@ -116,15 +116,34 @@ describe("portal sign-in", () => {
     mocks.search = { stage: "password", factor: "totp" };
     renderSignIn();
 
-    expect(screen.getByLabelText("auth:forms.email")).toHaveProperty(
-      "value",
-      "customer@example.test",
-    );
-    expect(screen.getByLabelText("auth:forms.email")).toHaveProperty(
-      "readOnly",
-      true,
-    );
+    // The confirmed address is wrapping text (never a clipped input) with the label.
+    const confirmed = screen.getByLabelText("auth:forms.email");
+    expect(confirmed.tagName).toBe("OUTPUT");
+    expect(confirmed).toHaveTextContent("customer@example.test");
+    expect(confirmed.className).toContain("break-all");
     expect(window.location.search).toBe("");
+  });
+
+  it("moves focus to the password field when the stage changes, and back on Change email", () => {
+    renderSignIn();
+    fireEvent.change(screen.getByLabelText("auth:forms.email"), {
+      target: { value: "customer@example.test" },
+    });
+    fireEvent.submit(
+      screen
+        .getByRole("button", { name: "auth:signInForm.signIn" })
+        .closest("form") as HTMLFormElement,
+    );
+    expect(document.activeElement).toBe(
+      document.getElementById("portal-password"),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:verifyOtp.changeEmail" }),
+    );
+    expect(document.activeElement).toBe(
+      document.getElementById("portal-email"),
+    );
   });
 
   it("sends an admitted password session to the catalogue", async () => {

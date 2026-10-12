@@ -116,6 +116,13 @@ function PortalSubmissionPage() {
   const state = record?.submission?.state;
   const canWithdraw = record?.canWithdraw === true;
   const canUpload = state === "new" || state === "clarifying";
+  // Nothing to show until the record loads: no dangling separator while loading.
+  const subtitle = [
+    record?.requestType?.name,
+    state === "accepted" ? record?.workItem?.state : state,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-6">
       <header>
@@ -125,10 +132,7 @@ function PortalSubmissionPage() {
             ref,
           })}
         </h1>
-        <p className="text-muted-foreground">
-          {record?.requestType?.name} ·{" "}
-          {state === "accepted" ? record?.workItem?.state : state}
-        </p>
+        {subtitle ? <p className="text-muted-foreground">{subtitle}</p> : null}
       </header>
       {page.isLoading && (
         <p role="status">

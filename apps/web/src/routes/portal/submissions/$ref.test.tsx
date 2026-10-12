@@ -107,4 +107,11 @@ describe("portal submission route", () => {
     ).toBeVisible();
     expect(screen.getByRole("button", { name: "Send reply" })).toBeDisabled();
   });
+
+  it("shows no dangling separator in the header while loading, then the joined subtitle", async () => {
+    mocks.getSubmission.mockReset().mockResolvedValue(submission);
+    const { container } = renderSubmission();
+    expect(container.querySelector("header p")).toBeNull();
+    expect(await screen.findByText("Access request · new")).toBeVisible();
+  });
 });

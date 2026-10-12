@@ -228,4 +228,48 @@ describe("portal catalogue route", () => {
     ).toBeVisible();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
+
+  it("tells a no-match search apart from an organisation with no request types", async () => {
+    mocks.search = { q: "zzz", key: undefined };
+    mocks.getCatalogue.mockResolvedValue(emptyCatalogue);
+    const view = renderCatalogue();
+    expect(
+      await screen.findByText("No request types match your search."),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(
+        "No request types are available for your organisation.",
+      ),
+    ).not.toBeInTheDocument();
+
+    mocks.search = { q: "", key: undefined };
+    view.rerender(
+      <QueryClientProvider client={view.queryClient}>
+        <PortalCatalogue />
+      </QueryClientProvider>,
+    );
+    expect(
+      await screen.findByText(
+        "No request types are available for your organisation.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("moves focus to the form heading when a card is opened", async () => {
+    mocks.search = { q: "", key: undefined };
+    const view = renderCatalogue();
+    const card = await screen.findByRole("button", { name: /Access request/u });
+    card.focus();
+    fireEvent.click(card);
+    mocks.search = { q: "", key: "access" };
+    view.rerender(
+      <QueryClientProvider client={view.queryClient}>
+        <PortalCatalogue />
+      </QueryClientProvider>,
+    );
+    const heading = await screen.findByRole("heading", {
+      name: "Access request",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
 });

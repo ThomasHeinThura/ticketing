@@ -11,7 +11,7 @@ import {
   Input,
 } from "@taskdesk/ui";
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { portalAuthClient } from "@/lib/portal-auth-client";
 import { type PortalSignInStage, parsePortalSignInSearch } from "@/lib/routes";
@@ -51,6 +51,9 @@ function PortalSignIn() {
   const [code, setCode] = useState("");
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Stage changes replace the whole form, so the focused control unmounts and focus
+  // would fall back to <body>. Move it to the first control of the new stage.
+  const moveFocus = useRef(false);
 
   useEffect(() => {
     setStage(search.stage);
@@ -68,7 +71,20 @@ function PortalSignIn() {
     }
   }, [email, navigate, stage]);
 
+  useEffect(() => {
+    if (!moveFocus.current) return;
+    moveFocus.current = false;
+    const id =
+      stage === "email"
+        ? "portal-email"
+        : stage === "password"
+          ? "portal-password"
+          : "portal-factor-code";
+    document.getElementById(id)?.focus();
+  }, [stage]);
+
   function updateStage(next: PortalSignInStage, nextFactor = factor) {
+    moveFocus.current = true;
     setFailed(false);
     setCode("");
     setStage(next);
@@ -193,18 +209,17 @@ function PortalSignIn() {
           ) : null}
           {stage === "password" ? (
             <form className="space-y-4" onSubmit={submitPassword}>
-              <label
-                className="block space-y-2 text-sm font-medium"
-                htmlFor="portal-email-readonly"
-              >
-                {t("auth:forms.email")}
-                <Input
+              {/* Shown as wrapping text, not a read-only input, so a long address is never cut off. */}
+              <div className="space-y-2 text-sm font-medium">
+                <span id="portal-email-label">{t("auth:forms.email")}</span>
+                <output
                   id="portal-email-readonly"
-                  type="email"
-                  value={email}
-                  readOnly
-                />
-              </label>
+                  aria-labelledby="portal-email-label"
+                  className="block break-all font-normal"
+                >
+                  {email}
+                </output>
+              </div>
               <label
                 className="block space-y-2 text-sm font-medium"
                 htmlFor="portal-password"
@@ -230,7 +245,7 @@ function PortalSignIn() {
                 className="w-full"
                 onClick={() => updateStage("email")}
               >
-                {t("auth:checkEmail.changeEmail")}
+                {t("auth:verifyOtp.changeEmail")}
               </Button>
             </form>
           ) : null}

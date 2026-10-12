@@ -13,7 +13,7 @@ import {
   SelectValue,
   Textarea,
 } from "@taskdesk/ui";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   getPortalCatalogue,
@@ -67,6 +67,11 @@ function PortalCatalogue() {
     enabled: Boolean(key),
   });
   const entries = filteredEntries;
+  // Opening a card (or going back) unmounts the control that was focused, which
+  // would drop focus to <body>: hand it to the new heading instead.
+  const focusTarget = useRef<"form" | "list" | null>(null);
+  const formHeadingRef = useRef<HTMLHeadingElement>(null);
+  const listHeadingRef = useRef<HTMLHeadingElement>(null);
   const metadataEntries = (selectionMetadata.data?.requestTypes ??
     []) as unknown as Entry[];
   const selectedSummary =
@@ -146,6 +151,16 @@ function PortalCatalogue() {
     if (storageKey && Object.keys(answers).length)
       localStorage.setItem(storageKey, JSON.stringify(answers));
   }, [storageKey, answers]);
+  const formReady = Boolean(selected);
+  useEffect(() => {
+    if (focusTarget.current === "form" && formReady) {
+      focusTarget.current = null;
+      formHeadingRef.current?.focus();
+    } else if (focusTarget.current === "list" && !key) {
+      focusTarget.current = null;
+      listHeadingRef.current?.focus();
+    }
+  }, [formReady, key]);
   const fields = selected?.formSchema.fields ?? [];
   const selectedSchema = selected?.formSchema;
   const fieldVisibility = useMemo(
@@ -164,7 +179,11 @@ function PortalCatalogue() {
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-6">
       <header>
-        <h1 className="font-semibold text-2xl">
+        <h1
+          className="font-semibold text-2xl outline-none"
+          ref={listHeadingRef}
+          tabIndex={-1}
+        >
           {t("portal:intake.catalogueTitle", {
             defaultValue: "Request catalogue",
           })}
@@ -229,14 +248,23 @@ function PortalCatalogue() {
           <Button
             variant="ghost"
             className="w-fit"
-            onClick={() => void navigate({ search: { q } })}
+            onClick={() => {
+              focusTarget.current = "list";
+              void navigate({ search: { q } });
+            }}
           >
             ←{" "}
             {t("portal:intake.backToCatalogue", {
               defaultValue: "Back to catalogue",
             })}
           </Button>
-          <h2 className="font-semibold text-xl">{selected.name}</h2>
+          <h2
+            className="font-semibold text-xl outline-none"
+            ref={formHeadingRef}
+            tabIndex={-1}
+          >
+            {selected.name}
+          </h2>
           {selected.description && <p>{selected.description}</p>}
           <form
             className="flex flex-col gap-4"
@@ -480,10 +508,14 @@ function PortalCatalogue() {
         <div className="flex flex-col gap-6">
           {entries.length === 0 ? (
             <p>
-              {t("portal:intake.emptyCatalogue", {
-                defaultValue:
-                  "No request types are available for your organisation.",
-              })}
+              {q
+                ? t("portal:intake.noMatch", {
+                    defaultValue: "No request types match your search.",
+                  })
+                : t("portal:intake.emptyCatalogue", {
+                    defaultValue:
+                      "No request types are available for your organisation.",
+                  })}
             </p>
           ) : (
             groups.map((group) => (
@@ -497,9 +529,10 @@ function PortalCatalogue() {
                         <Button
                           variant="outline"
                           className="h-auto w-full justify-start p-4 text-left"
-                          onClick={() =>
-                            void navigate({ search: { q, key: entry.key } })
-                          }
+                          onClick={() => {
+                            focusTarget.current = "form";
+                            void navigate({ search: { q, key: entry.key } });
+                          }}
                         >
                           <span>
                             <strong className="block">{entry.name}</strong>
