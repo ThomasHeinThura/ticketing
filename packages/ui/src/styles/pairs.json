@@ -10544,6 +10544,7 @@
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]/span[1]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[0]::text-muted-foreground#0",
@@ -10871,6 +10872,18 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
           "jsx:main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]/span[1]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
+          "jsx:main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]",
           "Card->packages/ui/src/components/card.tsx:Card>bg-card"
         ],
         "backdropLayers": []
@@ -12588,6 +12601,7 @@
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]/span[1]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[0]::text-muted-foreground#0",
@@ -12915,6 +12929,18 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
           "jsx:main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]/span[1]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:InstanceUsersPage",
+          "jsx:main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]",
           "Card->packages/ui/src/components/card.tsx:Card>bg-card"
         ],
         "backdropLayers": []
