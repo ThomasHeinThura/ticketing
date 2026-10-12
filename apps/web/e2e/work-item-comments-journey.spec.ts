@@ -160,13 +160,24 @@ async function seedReachableMentionRecipient(
   projectId: string,
   authorEmail: string,
 ) {
+  // This raw SQL bypasses Drizzle's JavaScript-only `$defaultFn` values. Supply
+  // every inserted text primary key for user/person/workspace_member/role/membership;
+  // workspace_member.joined_at is also explicit because migration 0007 removed its
+  // database default. Database-defaulted timestamps and role flags remain omitted.
   const userId = `comments-e2e-${randomUUID()}`;
   const personId = `comments-person-${randomUUID()}`;
+  const workspaceMemberId = `comments-workspace-member-${randomUUID()}`;
   const roleId = `comments-role-${randomUUID()}`;
+  const recipientMembershipId = `comments-recipient-membership-${randomUUID()}`;
+  const authorRoleId = `comments-author-role-${randomUUID()}`;
+  const authorMembershipId = `comments-author-membership-${randomUUID()}`;
   const recipientName = "Comments Mention Recipient";
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
+  let transactionOpen = false;
   try {
+    await client.query("BEGIN");
+    transactionOpen = true;
     const organisation = await client.query<{ organisation_id: string }>(
       "SELECT organisation_id FROM workspace WHERE id = $1",
       [workspaceId],
@@ -191,8 +202,8 @@ async function seedReachableMentionRecipient(
       [personId, userId, organisationId, recipientName],
     );
     await client.query(
-      "INSERT INTO workspace_member (workspace_id, user_id, role, joined_at) VALUES ($1, $2, 'member', now())",
-      [workspaceId, userId],
+      "INSERT INTO workspace_member (id, workspace_id, user_id, role, joined_at) VALUES ($1, $2, $3, 'member', now())",
+      [workspaceMemberId, workspaceId, userId],
     );
     await client.query(
       "INSERT INTO role (id, scope, workspace_id, key, name, rank, capabilities) VALUES ($1, 'project', $2, $3, $4, 1, $5::jsonb)",
@@ -205,10 +216,9 @@ async function seedReachableMentionRecipient(
       ],
     );
     await client.query(
-      "INSERT INTO membership (person_id, scope, scope_id, role_id) VALUES ($1, 'project', $2, $3)",
-      [personId, projectId, roleId],
+      "INSERT INTO membership (id, person_id, scope, scope_id, role_id) VALUES ($1, $2, 'project', $3, $4)",
+      [recipientMembershipId, personId, projectId, roleId],
     );
-    const authorRoleId = `comments-author-role-${randomUUID()}`;
     await client.query(
       "INSERT INTO role (id, scope, workspace_id, key, name, rank, capabilities) VALUES ($1, 'project', $2, $3, $4, 1, $5::jsonb)",
       [
@@ -226,9 +236,14 @@ async function seedReachableMentionRecipient(
       ],
     );
     await client.query(
-      "INSERT INTO membership (person_id, scope, scope_id, role_id) VALUES ($1, 'project', $2, $3)",
-      [author.rows[0]?.person_id, projectId, authorRoleId],
+      "INSERT INTO membership (id, person_id, scope, scope_id, role_id) VALUES ($1, $2, 'project', $3, $4)",
+      [authorMembershipId, author.rows[0]?.person_id, projectId, authorRoleId],
     );
+    await client.query("COMMIT");
+    transactionOpen = false;
+  } catch (error) {
+    if (transactionOpen) await client.query("ROLLBACK");
+    throw error;
   } finally {
     await client.end();
   }
