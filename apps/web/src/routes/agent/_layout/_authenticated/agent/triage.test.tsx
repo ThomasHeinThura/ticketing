@@ -231,4 +231,24 @@ describe("intake triage route", () => {
       expect(document.activeElement).toBe(screen.getByRole("status")),
     );
   });
+
+  it("lets the destination selects shrink inside a narrow detail panel", async () => {
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [],
+      page: { hasMore: false, nextCursor: null },
+    });
+    mocks.search = { state: "new", ref: "SUB-7" };
+    mocks.getSubmission.mockReset().mockResolvedValue(detail("new", null));
+    mocks.getSubmissionAttachments.mockResolvedValue([]);
+    mocks.getDuplicateSuggestions.mockResolvedValue({ suggestions: [] });
+    renderTriage();
+    // jsdom has no layout: assert the class contract measured in Chromium at
+    // 375 px (a flex child with min-width:auto would grow to its select text).
+    for (const name of ["Destination project", "Work item type"]) {
+      const trigger = await screen.findByRole("combobox", { name });
+      const wrapper = trigger.closest("div.flex-col") as HTMLElement;
+      expect(wrapper.className).toContain("min-w-0");
+      expect(wrapper.className).toContain("max-w-full");
+    }
+  });
 });

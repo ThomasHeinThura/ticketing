@@ -372,7 +372,7 @@ function IntakeRoute() {
                 current.submission?.state === "clarifying" ? (
                   <>
                     <div className="flex flex-wrap items-end gap-2">
-                      <div className="flex flex-col gap-1 text-sm">
+                      <div className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
                         Destination project
                         <Select
                           value={
@@ -400,7 +400,7 @@ function IntakeRoute() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="flex flex-col gap-1 text-sm">
+                      <div className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
                         Work item type
                         <Select
                           value={
