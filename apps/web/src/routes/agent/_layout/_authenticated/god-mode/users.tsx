@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@taskdesk/ui";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
@@ -43,6 +43,7 @@ import {
   useInstanceUserActions,
   useInstanceUsers,
 } from "@/hooks/queries/god-mode/use-instance-users";
+import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { HttpError } from "@/lib/http-error";
 import {
   type GodModeUserAction,
@@ -96,8 +97,13 @@ export function InstanceUsersPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingActionUrl, setPendingActionUrl] = useState<string | null>(null);
   const intent = godModeUserActionBinding(search.user, action);
-  const previousIntentRef = useRef(intent);
-  const actionGenerationRef = useRef(0);
+  const actionLifecycle = useIntentLifecycle(intent, () => {
+    setReason("");
+    setExpiresAt("");
+    setVerificationNote("");
+    setSecret("");
+    setFormError(null);
+  });
   const factor = useQuery({
     queryKey: ["god-mode", "step-up-factor"],
     queryFn: getCurrentFactorStatus,
@@ -125,32 +131,14 @@ export function InstanceUsersPage() {
     setFormError(null);
   };
 
-  useLayoutEffect(() => {
-    if (previousIntentRef.current === intent) return;
-    previousIntentRef.current = intent;
-    actionGenerationRef.current += 1;
-    setReason("");
-    setExpiresAt("");
-    setVerificationNote("");
-    setSecret("");
-    setFormError(null);
-  }, [intent]);
-
-  useLayoutEffect(
-    () => () => {
-      actionGenerationRef.current += 1;
-    },
-    [],
-  );
-
   async function runAction(
     user: InstanceUser,
     requestedAction: GodModeUserAction,
   ) {
     const binding = godModeUserActionBinding(user.id, requestedAction);
     if (intent !== binding) return;
-    const generation = actionGenerationRef.current;
-    const isCurrentOperation = () => actionGenerationRef.current === generation;
+    const generation = actionLifecycle.capture();
+    const isCurrentOperation = () => actionLifecycle.isCurrent(generation);
     setFormError(null);
     try {
       if (requestedAction === "suspend") {

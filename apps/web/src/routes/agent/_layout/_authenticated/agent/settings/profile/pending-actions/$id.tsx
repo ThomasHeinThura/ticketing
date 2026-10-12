@@ -31,6 +31,7 @@ import {
   getOwnPendingAction,
 } from "@/fetchers/pending-actions";
 import { instanceUsersKey } from "@/hooks/queries/god-mode/use-instance-users";
+import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 
@@ -38,7 +39,7 @@ export const Route = createFileRoute(
   "/_layout/_authenticated/agent/settings/profile/pending-actions/$id",
 )({ component: PendingActionDetailRoute });
 
-function PendingActionDetailRoute() {
+export function PendingActionDetailRoute() {
   const { i18n, t } = useTranslation();
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
@@ -47,6 +48,13 @@ function PendingActionDetailRoute() {
   const [method, setMethod] = useState<StepUpMethod>("password");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const intent = id;
+  const actionLifecycle = useIntentLifecycle(intent, () => {
+    setTypedName("");
+    setSecret("");
+    setError(null);
+    setNotice(null);
+  });
   const action = useQuery({
     queryKey: ["me", "pending-action", id],
     queryFn: () => getOwnPendingAction(id),
@@ -80,29 +88,9 @@ function PendingActionDetailRoute() {
   }, [factor.data]);
   const approve = useMutation({
     mutationFn: approveOwnPendingAction,
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["me", "pending-actions"] }),
-        queryClient.invalidateQueries({
-          queryKey: ["me", "pending-action", id],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: instanceUsersKey,
-          refetchType: "all",
-        }),
-      ]);
-    },
   });
   const cancel = useMutation({
     mutationFn: cancelOwnPendingAction,
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["me", "pending-actions"] }),
-        queryClient.invalidateQueries({
-          queryKey: ["me", "pending-action", id],
-        }),
-      ]);
-    },
   });
 
   if (action.isLoading) {
@@ -151,6 +139,8 @@ function PendingActionDetailRoute() {
   async function approveAction() {
     if (isDeactivationContract && (!email || typedName !== email)) return;
     if (!isDeactivationContract && !isClickContract) return;
+    const capturedIntent = actionLifecycle.capture();
+    const isCurrentIntent = () => actionLifecycle.isCurrent(capturedIntent);
     setError(null);
     try {
       if (isDeactivationContract) {
@@ -159,13 +149,28 @@ function PendingActionDetailRoute() {
           method: effectiveMethod,
           secret,
         });
+        if (!isCurrentIntent()) return;
         await approve.mutateAsync({ id, typedName, stepUpToken });
-        setSecret("");
-        setNotice(t("pendingActions:dynamic.deactivationApproved"));
       } else {
         await approve.mutateAsync({ id });
       }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["me", "pending-actions"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["me", "pending-action", id],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: instanceUsersKey,
+          refetchType: "all",
+        }),
+      ]);
+      if (!isCurrentIntent()) return;
+      if (isDeactivationContract) {
+        setSecret("");
+        setNotice(t("pendingActions:dynamic.deactivationApproved"));
+      }
     } catch (cause) {
+      if (!isCurrentIntent()) return;
       const status = cause instanceof HttpError ? cause.status : undefined;
       setError(
         status === 400
@@ -179,11 +184,21 @@ function PendingActionDetailRoute() {
   }
 
   async function cancelAction() {
+    const capturedIntent = actionLifecycle.capture();
+    const isCurrentIntent = () => actionLifecycle.isCurrent(capturedIntent);
     setError(null);
     try {
       await cancel.mutateAsync(id);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["me", "pending-actions"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["me", "pending-action", id],
+        }),
+      ]);
+      if (!isCurrentIntent()) return;
       setNotice(t("pendingActions:dynamic.cancelled"));
     } catch {
+      if (!isCurrentIntent()) return;
       setError(t("pendingActions:dynamic.cancelFailed"));
     }
   }
