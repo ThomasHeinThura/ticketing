@@ -280,6 +280,33 @@ describe("God Mode Users action context", () => {
     expect(mocks.grantAdmin).not.toHaveBeenCalled();
   });
 
+  it("shows the filter and step-up labels, never the raw option values", async () => {
+    render(<Harness />);
+    const sideTrigger = screen.getByLabelText(
+      "instanceUsers:copy.4dc97a606e2f",
+    );
+    const activeTrigger = screen.getByLabelText(
+      "instanceUsers:copy.dd5947e50ac8",
+    );
+    expect(sideTrigger.textContent).toContain(
+      "instanceUsers:copy.ec137488beec",
+    );
+    expect(activeTrigger.textContent).toContain(
+      "instanceUsers:copy.6405179d241b",
+    );
+    expect(sideTrigger.textContent).not.toMatch(/\ball\b/u);
+    expect(activeTrigger.textContent).not.toMatch(/\ball\b/u);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "instanceUsers:copy.d6ac6adb7aa6" }),
+    );
+    await waitFor(() => expect(mocks.search.action).toBe("grant-admin"));
+    await flushActionContextEffect();
+    const method = document.getElementById("step-up-method");
+    expect(method?.textContent).toContain("instanceUsers:copy.2908b4e9c428");
+    expect(method?.textContent).not.toMatch(/\btotp\b/u);
+  });
+
   it("keeps directory row links shrinkable so long emails wrap inside a 375px viewport", () => {
     // jsdom has no layout engine; this pins the class contract the real-browser
     // 375px probe measured (an inline link wrapping unbreakable block text made

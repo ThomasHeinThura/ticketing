@@ -313,7 +313,11 @@ function PendingActionDetailRoute() {
                         }
                       >
                         <SelectTrigger id="pending-action-step-up-method">
-                          <SelectValue />
+                          <SelectValue>
+                            {method === "backup_code"
+                              ? t("pendingActions:copy.2a8367498e23")
+                              : t("pendingActions:copy.2908b4e9c428")}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="totp">

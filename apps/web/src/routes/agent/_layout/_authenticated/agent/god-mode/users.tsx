@@ -313,7 +313,13 @@ function InstanceUsersPage() {
             aria-label={t("instanceUsers:copy.4dc97a606e2f")}
             className="w-44"
           >
-            <SelectValue />
+            <SelectValue>
+              {search.side === "staff"
+                ? t("instanceUsers:copy.a4730a22cf49")
+                : search.side === "customer"
+                  ? t("instanceUsers:copy.0e85749a6f40")
+                  : t("instanceUsers:copy.ec137488beec")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">
@@ -340,7 +346,13 @@ function InstanceUsersPage() {
             aria-label={t("instanceUsers:copy.dd5947e50ac8")}
             className="w-44"
           >
-            <SelectValue />
+            <SelectValue>
+              {search.active === "true"
+                ? t("instanceUsers:copy.274e10cde2d6")
+                : search.active === "false"
+                  ? t("instanceUsers:copy.c51407d28beb")
+                  : t("instanceUsers:copy.6405179d241b")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">
@@ -870,7 +882,11 @@ function UserActionDialog({
                     }
                   >
                     <SelectTrigger id="step-up-method">
-                      <SelectValue />
+                      <SelectValue>
+                        {method === "backup_code"
+                          ? t("instanceUsers:copy.2a8367498e23")
+                          : t("instanceUsers:copy.2908b4e9c428")}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="totp">
