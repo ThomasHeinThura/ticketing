@@ -291,6 +291,15 @@ describe("God Mode Users action context", () => {
     expect(link.className).toMatch(/\bblock\b/u);
     expect(link.className).toMatch(/\bmin-w-0\b/u);
     expect(link.className).toMatch(/\bmax-w-full\b/u);
+    // The cell must not be whitespace-nowrap (the table default), or break-all is inert.
+    expect(link.closest("td")?.className).toMatch(/\bwhitespace-normal\b/u);
+    // Type/Organisation columns drop below sm (no horizontal table scroll at
+    // 320-375px, docs/02-design/accessibility.md "Zoom and reflow"); their content
+    // stays available in the first cell.
+    const hiddenCells = Array.from(document.querySelectorAll("td")).filter(
+      (td) => td.className.includes("max-sm:hidden"),
+    );
+    expect(hiddenCells.length).toBe(4); // 2 users x (Type, Organisation)
     const email = screen.getAllByText(userA.email)[0];
     expect(email?.className).toMatch(/\bbreak-all\b/u);
   });

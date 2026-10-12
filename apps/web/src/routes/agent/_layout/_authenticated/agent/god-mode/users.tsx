@@ -413,10 +413,10 @@ function InstanceUsersPage() {
                     <TableHead>
                       {t("instanceUsers:copy.9f8a2389a20c")}
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="max-sm:hidden">
                       {t("instanceUsers:copy.3deb74565196")}
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="max-sm:hidden">
                       {t("instanceUsers:copy.6e99c1d3b150")}
                     </TableHead>
                     <TableHead>
@@ -432,7 +432,7 @@ function InstanceUsersPage() {
                         search.user === user.id ? "selected" : undefined
                       }
                     >
-                      <TableCell>
+                      <TableCell className="whitespace-normal">
                         <Link
                           className="block min-w-0 max-w-full rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           to={Route.fullPath}
@@ -452,16 +452,29 @@ function InstanceUsersPage() {
                             {user.email}
                           </span>
                         </Link>
+                        {/* Below sm the Type and Organisation columns are
+                            hidden (no horizontal table scroll at 320-375 px,
+                            accessibility.md "Zoom and reflow"); keep their
+                            content here so nothing is lost. */}
+                        <span className="mt-0.5 block break-words text-xs text-muted-foreground sm:hidden">
+                          {user.person?.side
+                            ? t(
+                                `instanceUsers:dynamic.side.${user.person.side}`,
+                              )
+                            : t("instanceUsers:dynamic.unlinked")}
+                          {" · "}
+                          {user.person?.organisationName ?? "—"}
+                        </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="max-sm:hidden">
                         {user.person?.side
                           ? t(`instanceUsers:dynamic.side.${user.person.side}`)
                           : t("instanceUsers:dynamic.unlinked")}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="max-sm:hidden">
                         {user.person?.organisationName ?? "—"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-normal">
                         <div className="flex flex-wrap gap-1">
                           {user.isInstanceAdmin && (
                             <Badge>
