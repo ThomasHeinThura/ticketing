@@ -9,7 +9,6 @@ const session = {
     token: "visual-token",
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
-    role: "admin",
   },
   user: {
     id: "visual-user",
@@ -19,6 +18,7 @@ const session = {
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     image: null,
+    role: "admin",
   },
 };
 
