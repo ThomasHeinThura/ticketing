@@ -12,7 +12,8 @@
 			"reset": "Ресетирај",
 			"filter": "Филтрирај",
 			"clearAllFilters": "Исчисти ги сите филтри",
-			"retry": "Retry"
+			"retry": "Retry",
+			"tryAgain": "Try Again"
 		},
 		"a11y": {
 			"toggleSidebar": "Вклучи/исклучи странична лента"
@@ -22,7 +23,8 @@
 			"mobileDescription": "Ја прикажува мобилната странична лента."
 		},
 		"empty": {
-			"loading": "Се вчитува..."
+			"loading": "Се вчитува...",
+			"select": "Choose an option"
 		},
 		"pagination": {
 			"label": "Пагинација",
@@ -2323,7 +2325,12 @@
 			"visibilityOrganisation": "People in my organisation",
 			"visibilityPrivate": "Only me and invited participants",
 			"withdraw": "Withdraw request",
-			"noMatch": "No request types match your search."
+			"noMatch": "No request types match your search.",
+			"attachmentListError": "Could not load attachments.",
+			"completeUpload": "Finish upload",
+			"completeUploadError": "Could not finish this upload.",
+			"downloadError": "The file could not be downloaded. Try again.",
+			"fieldRequired": "This field is required."
 		}
 	},
 	"intake": {
@@ -2351,7 +2358,9 @@
 		"type": "Intake queue",
 		"claimedAt": "Claimed {{date}}",
 		"convertedWorkItem": "Converted work item: {{label}}",
-		"prefilledFromType": "Prefilled from request type: {{name}}"
+		"prefilledFromType": "Prefilled from request type: {{name}}",
+		"nextPage": "Next page",
+		"retry": "Retry"
 	},
 	"requestTypes": {
 		"addField": "Add field",

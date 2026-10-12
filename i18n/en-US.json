@@ -12,7 +12,8 @@
 			"reset": "Reset",
 			"filter": "Filter",
 			"clearAllFilters": "Clear all filters",
-			"retry": "Retry"
+			"retry": "Retry",
+			"tryAgain": "Try Again"
 		},
 		"a11y": {
 			"toggleSidebar": "Toggle sidebar"
@@ -22,7 +23,8 @@
 			"mobileDescription": "Displays the mobile sidebar."
 		},
 		"empty": {
-			"loading": "Loading..."
+			"loading": "Loading...",
+			"select": "Choose an option"
 		},
 		"pagination": {
 			"label": "Pagination",
@@ -2323,7 +2325,12 @@
 			"reply": "Reply",
 			"sendReply": "Send reply",
 			"withdraw": "Withdraw request",
-			"noMatch": "No request types match your search."
+			"noMatch": "No request types match your search.",
+			"fieldRequired": "This field is required.",
+			"completeUpload": "Finish upload",
+			"completeUploadError": "Could not finish this upload.",
+			"attachmentListError": "Could not load attachments.",
+			"downloadError": "The file could not be downloaded. Try again."
 		}
 	},
 	"intake": {
@@ -2351,7 +2358,9 @@
 		"type": "Intake queue",
 		"claimedAt": "Claimed {{date}}",
 		"prefilledFromType": "Prefilled from request type: {{name}}",
-		"convertedWorkItem": "Converted work item: {{label}}"
+		"convertedWorkItem": "Converted work item: {{label}}",
+		"retry": "Retry",
+		"nextPage": "Next page"
 	},
 	"requestTypes": {
 		"title": "Request types",

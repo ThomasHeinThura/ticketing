@@ -12,7 +12,8 @@
 			"reset": "재설정",
 			"filter": "필터",
 			"clearAllFilters": "모든 필터 지우기",
-			"retry": "Retry"
+			"retry": "Retry",
+			"tryAgain": "Try Again"
 		},
 		"a11y": {
 			"toggleSidebar": "사이드바 토글"
@@ -22,7 +23,8 @@
 			"mobileDescription": "모바일 사이드바를 표시합니다."
 		},
 		"empty": {
-			"loading": "로딩 중..."
+			"loading": "로딩 중...",
+			"select": "Choose an option"
 		},
 		"pagination": {
 			"label": "페이지 매김",
@@ -2316,7 +2318,12 @@
 			"visibilityOrganisation": "People in my organisation",
 			"visibilityPrivate": "Only me and invited participants",
 			"withdraw": "Withdraw request",
-			"noMatch": "No request types match your search."
+			"noMatch": "No request types match your search.",
+			"attachmentListError": "Could not load attachments.",
+			"completeUpload": "Finish upload",
+			"completeUploadError": "Could not finish this upload.",
+			"downloadError": "The file could not be downloaded. Try again.",
+			"fieldRequired": "This field is required."
 		}
 	},
 	"intake": {
@@ -2344,7 +2351,9 @@
 		"type": "Intake queue",
 		"claimedAt": "Claimed {{date}}",
 		"convertedWorkItem": "Converted work item: {{label}}",
-		"prefilledFromType": "Prefilled from request type: {{name}}"
+		"prefilledFromType": "Prefilled from request type: {{name}}",
+		"nextPage": "Next page",
+		"retry": "Retry"
 	},
 	"requestTypes": {
 		"addField": "Add field",
