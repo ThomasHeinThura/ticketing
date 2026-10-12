@@ -159,3 +159,66 @@ The structural source correction at `a71a78cd...` was independently reviewed twi
 
 The old-head hosted G8 failure authenticates the mismatch and image source; it is not a G8 success at `d3439ff3fe4babacdbe3929e461232cd9bacc008`. At review time, GitHub showed current-head G8 in progress and the PR-template/security-review check failed; several other checks were pending. The conductor must obtain green required checks and an accepted security-review model entry on the exact candidate before considering merge. I ran no new full test suite, browser session, image build, Docker boot, or SIT test under the shared-heavy-runner reservation. A future source change, rebase, or different baseline requires its own delta disposition.
 
+
+<!-- BEGIN REPORT (model claude-opus-5-5; role independent Sol-tier rebind after update-branch merge; candidate 62d037bd55f0b350f8dd64c37146a8879d34e82d; sha256 a4d8c448882014cda0e58bbdf096577c8e144aeb7012bc542f78344fe409c0df) -->
+## Rebind at 62d037bd
+
+Reviewer model: Claude Opus 5.5 (claude-opus-5-5)
+Reviewer context ID: claude-agent:unassigned (a fresh Claude Code subagent; no agent ID was exposed in its context; parent session 3a9e9ce4-8409-47d4-b1be-1f1544697e70)
+**Reviewed head:** 62d037bd55f0b350f8dd64c37146a8879d34e82d
+
+**Verdict: REBIND CLEAR (lightweight exact-head rebind).** 62d037bd is a pure update-branch merge of the PR head a3306409 with main f93e3317. The PR's own delta is byte-identical to the previously reviewed delta. The main side carries only docs/07-planning records. It contains no code, test, CI, migration, dependency or security-scope change, and nothing that interacts with #668's auth form, label association or shared Input change. Since d3439ff3, the PR's own change is a 161-line additive review-note append with zero deletions. The prior GPT-6 Luna/Sol substantive findings carry forward to this head unchanged. This rebind does not re-review the auth change itself. It does not clear the outstanding hosted CI checks, including the G11 failure recorded on main.
+
+**Independence:** this context did not author, direct or remediate #668, #669 or #671. It worked read-only and did no browser, Docker or database work.
+
+### Commands run
+
+```
+git fetch origin                     # first attempt failed: sandbox proxy refused SSH; re-run outside the sandbox and succeeded
+git rev-parse origin/main origin/codex/auth-password-label-association-20261012
+  -> f93e33175b82ad481006ff74fb6c73670d6e1db6 / 62d037bd55f0b350f8dd64c37146a8879d34e82d
+git log -1 --format='%H %P' 62d037bd...
+  -> parents a33064091923751d5bdce754b5d06389e3b7f4f5 f93e33175b82ad481006ff74fb6c73670d6e1db6
+git merge-base f93e3317 a3306409     -> 546a06a4de26671fb94073a527b205a4c40353ec
+git diff --stat a3306409 62d037bd
+git diff --name-only 546a06a4 f93e3317
+git log --oneline 546a06a4..f93e3317
+norm() { grep -v '^index ' | sed -E 's/^@@ -[0-9,]+ \+[0-9,]+ @@/@@/'; }
+git diff f93e3317 62d037bd | norm  vs  git diff 546a06a4 a3306409 | norm   (cmp, sha256)
+git diff a3306409 62d037bd | norm  vs  git diff 546a06a4 f93e3317 | norm   (cmp, sha256)
+git diff --name-only 546a06a4 a3306409
+git diff 546a06a4 f93e3317 | grep -inE '668|sign-in|sign-up|password|label|input\.tsx|auth'
+git diff --name-only a3306409 62d037bd -- apps packages tests .github scripts infra docker 'docs/07-planning/security-reviews/668-*'
+git merge-base --is-ancestor d3439ff3 a3306409
+git diff --stat / --numstat d3439ff3 a3306409 ; git log --oneline d3439ff3..a3306409
+git rev-parse a3306409:<668 note> 62d037bd:<668 note>
+git show 62d037bd:docs/07-planning/security-reviews/668-accepted-diagnostic-composition.md | grep 'Reviewed head'
+```
+
+### Results
+
+1. **The a3306409 to 62d037bd change is main's work only.** Five paths changed: 297 lines added and 8 deleted.
+   - `docs/07-planning/integration-execution-queue.md`
+   - `docs/07-planning/migration-ledger.md`
+   - `docs/07-planning/security-reviews/669-delivery-checkpoint.md`
+   - `docs/07-planning/security-reviews/671-delivery-reconciliation.md`
+   - `docs/07-planning/status.md`
+
+   This list matches `git diff --name-only 546a06a4 f93e3317` exactly. After normalization, the a3306409 to 62d037bd diff is byte-identical to the 546a06a4 to f93e3317 diff (sha256 `d16d9d55953bcb1d654133e4d557572c8979db44db9291919ff255bf3a039465`). The main commits are 220e5b6a, d559cc5b, 01bceb57, 4088e8ab (#669) and f93e3317 (#671).
+2. **The PR's own delta is unchanged.** Index lines and hunk-header line numbers were stripped from both diffs. The f93e3317 to 62d037bd diff is IDENTICAL to the 546a06a4 to a3306409 diff: 684 lines, both with sha256 `a3281915ff6e616af9971d4b00481e04237dbe017a098a12a703c597c6cd6e7f`. The PR's files are:
+   - `apps/web/src/components/auth/sign-in-form.tsx` and its test
+   - `apps/web/src/components/auth/sign-up-form.tsx` and its test
+   - `packages/ui/src/components/input.tsx`
+   - `packages/ui/src/styles/pairs.json`
+   - two PNG baselines
+   - the two 668 review notes
+3. **The main side has no interacting change.** Zero main-side paths fall under apps/, packages/, tests/, .github/, scripts/, infra/ or docker/. None touches a 668 review note: the 668-accepted-diagnostic-composition.md blob is `95c34994f7fd7ae33b24201e78479c16f6282bbb` at both a3306409 and 62d037bd. Grep hits for auth and #668 in the main diff are narrative status text only. That text records #668's state, including the G11 calibration failure in job 114621749455 at a330. It changes no behavior.
+4. **The PR's delta after d3439ff3 is review-note only.** d3439ff3 is an ancestor of a3306409. The only commit in between is a3306409 ("docs(review): record final auth visual and composition closure"). It changes one file, `docs/07-planning/security-reviews/668-accepted-diagnostic-composition.md`, with 161 lines added and 0 deleted.
+
+### Residual / not checked
+
+- The hosted CI status at 62d037bd was not queried.
+- The recorded G11 calibration failure is not addressed by this rebind.
+- The auth source was not re-reviewed on its merits. That rests on the prior d3439ff3-bound reviews, whose delta is proven unchanged here.
+- No new tests were run.
+<!-- END REPORT (sha256 a4d8c448882014cda0e58bbdf096577c8e144aeb7012bc542f78344fe409c0df) -->
