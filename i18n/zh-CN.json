@@ -11,7 +11,8 @@
 			"remove": "移除",
 			"reset": "重置",
 			"filter": "筛选",
-			"clearAllFilters": "清除全部筛选"
+			"clearAllFilters": "清除全部筛选",
+			"retry": "Retry"
 		},
 		"a11y": {
 			"toggleSidebar": "切换侧边栏"
@@ -2314,7 +2315,8 @@
 			"visibilityLabel": "Who can see this request?",
 			"visibilityOrganisation": "People in my organisation",
 			"visibilityPrivate": "Only me and invited participants",
-			"withdraw": "Withdraw request"
+			"withdraw": "Withdraw request",
+			"noMatch": "No request types match your search."
 		}
 	},
 	"intake": {
@@ -2339,7 +2341,10 @@
 		"status": "Status",
 		"submittedAnswers": "Submitted answers",
 		"title": "Intake queue",
-		"type": "Intake queue"
+		"type": "Intake queue",
+		"claimedAt": "Claimed {{date}}",
+		"convertedWorkItem": "Converted work item: {{label}}",
+		"prefilledFromType": "Prefilled from request type: {{name}}"
 	},
 	"requestTypes": {
 		"addField": "Add field",

@@ -11,7 +11,8 @@
 			"remove": "Отстрани",
 			"reset": "Ресетирај",
 			"filter": "Филтрирај",
-			"clearAllFilters": "Исчисти ги сите филтри"
+			"clearAllFilters": "Исчисти ги сите филтри",
+			"retry": "Retry"
 		},
 		"a11y": {
 			"toggleSidebar": "Вклучи/исклучи странична лента"
@@ -2321,7 +2322,8 @@
 			"visibilityLabel": "Who can see this request?",
 			"visibilityOrganisation": "People in my organisation",
 			"visibilityPrivate": "Only me and invited participants",
-			"withdraw": "Withdraw request"
+			"withdraw": "Withdraw request",
+			"noMatch": "No request types match your search."
 		}
 	},
 	"intake": {
@@ -2346,7 +2348,10 @@
 		"status": "Status",
 		"submittedAnswers": "Submitted answers",
 		"title": "Intake queue",
-		"type": "Intake queue"
+		"type": "Intake queue",
+		"claimedAt": "Claimed {{date}}",
+		"convertedWorkItem": "Converted work item: {{label}}",
+		"prefilledFromType": "Prefilled from request type: {{name}}"
 	},
 	"requestTypes": {
 		"addField": "Add field",
