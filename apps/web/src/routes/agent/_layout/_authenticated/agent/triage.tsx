@@ -118,6 +118,14 @@ function IntakeRoute() {
       statusRef.current?.focus();
     },
   });
+  const download = useMutation({
+    mutationFn: (file: { id: string; filename: string }) =>
+      downloadSubmissionAttachment({
+        ref: ref ?? "",
+        id: file.id,
+        filename: file.filename,
+      }),
+  });
   const decline = useMutation({
     mutationFn: () =>
       declineSubmission({ ref: ref ?? "", reason: declineReason.trim() }),
@@ -197,6 +205,7 @@ function IntakeRoute() {
         claim.isError ||
         accept.isError ||
         decline.isError ||
+        download.isError ||
         clarify.isError ||
         duplicate.isError) && (
         <Alert variant="error" role="alert">
@@ -359,9 +368,7 @@ function IntakeRoute() {
                     </span>
                     <Button
                       variant="outline"
-                      onClick={() =>
-                        void downloadSubmissionAttachment({ ref, id: file.id })
-                      }
+                      onClick={() => download.mutate(file)}
                       disabled={file.state !== "ready"}
                     >
                       Download

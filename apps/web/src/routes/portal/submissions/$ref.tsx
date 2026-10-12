@@ -73,6 +73,14 @@ function PortalSubmissionPage() {
         queryKey: ["portal", "submission", ref, "attachments"],
       }),
   });
+  const download = useMutation({
+    mutationFn: (file: { id: string; filename: string }) =>
+      downloadPortalSubmissionAttachment({
+        ref,
+        id: file.id,
+        filename: file.filename,
+      }),
+  });
   const finishUpload = useMutation({
     mutationFn: (id: string) => completePortalSubmissionAttachment({ ref, id }),
     onSuccess: async () =>
@@ -262,6 +270,16 @@ function PortalSubmissionPage() {
                 </Button>
               </Alert>
             )}
+            {download.isError && (
+              <Alert variant="error">
+                <AlertDescription>
+                  {t("portal:intake.downloadError", {
+                    defaultValue:
+                      "The file could not be downloaded. Try again.",
+                  })}
+                </AlertDescription>
+              </Alert>
+            )}
             {finishUpload.isError && (
               <Alert variant="error">
                 <AlertDescription>
@@ -302,11 +320,9 @@ function PortalSubmissionPage() {
                 ) : (
                   <Button
                     variant="outline"
+                    disabled={download.isPending}
                     onClick={() =>
-                      void downloadPortalSubmissionAttachment({
-                        ref,
-                        id: file.id,
-                      })
+                      download.mutate({ id: file.id, filename: file.filename })
                     }
                   >
                     {t("portal:intake.download", { defaultValue: "Download" })}
@@ -353,7 +369,7 @@ function PortalSubmissionPage() {
               </Alert>
             )}
           </section>
-          {state !== "declined" && state !== "withdrawn" && (
+          {(state === "clarifying" || state === "accepted") && (
             <form
               className="flex flex-col gap-2"
               onSubmit={(event) => {

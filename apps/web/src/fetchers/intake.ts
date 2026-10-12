@@ -237,16 +237,17 @@ export async function getSubmissionAttachments(ref: string) {
 export async function downloadSubmissionAttachment(input: {
   ref: string;
   id: string;
+  filename?: string;
 }) {
   const response = await client.submissions[":ref"].attachments[":id"].$get({
-    param: input,
+    param: { ref: input.ref, id: input.id },
   });
   if (!response.ok)
     throw new Error((await response.text()) || "Unable to download attachment");
   const url = URL.createObjectURL(await response.blob());
   const link = document.createElement("a");
   link.href = url;
-  link.download = input.id;
+  link.download = input.filename || input.id;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -301,16 +302,17 @@ export async function presignPortalSubmissionAttachment(input: {
 export async function downloadPortalSubmissionAttachment(input: {
   ref: string;
   id: string;
+  filename?: string;
 }) {
   const response = await client.portal.submissions[":ref"].attachments[
     ":id"
-  ].$get({ param: input });
+  ].$get({ param: { ref: input.ref, id: input.id } });
   if (!response.ok)
     throw new Error((await response.text()) || "Unable to download attachment");
   const url = URL.createObjectURL(await response.blob());
   const link = document.createElement("a");
   link.href = url;
-  link.download = input.id;
+  link.download = input.filename || input.id;
   link.click();
   URL.revokeObjectURL(url);
 }

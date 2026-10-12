@@ -80,7 +80,10 @@ describe("portal submission route", () => {
     mocks.getSubmission
       .mockReset()
       .mockRejectedValueOnce(new Error("temporary failure"))
-      .mockResolvedValue(submission);
+      .mockResolvedValue({
+        ...submission,
+        submission: { ...submission.submission, state: "clarifying" },
+      });
     mocks.getAttachments.mockReset().mockResolvedValue([]);
   });
 
@@ -113,5 +116,58 @@ describe("portal submission route", () => {
     const { container } = renderSubmission();
     expect(container.querySelector("header p")).toBeNull();
     expect(await screen.findByText("Access request · new")).toBeVisible();
+  });
+
+  it("offers the reply box only where the API accepts a reply (clarifying, accepted)", async () => {
+    for (const [state, visible] of [
+      ["new", false],
+      ["duplicate", false],
+      ["declined", false],
+      ["withdrawn", false],
+      ["clarifying", true],
+      ["accepted", true],
+    ] as const) {
+      mocks.getSubmission.mockReset().mockResolvedValue({
+        ...submission,
+        submission: { ...submission.submission, state },
+        workItem:
+          state === "accepted"
+            ? { title: "T", description: "", state: "open", priority: null }
+            : null,
+      });
+      const view = renderSubmission();
+      await screen.findByText(/Access request ·/u);
+      expect(
+        screen.queryByRole("button", { name: "Send reply" }) !== null,
+        state,
+      ).toBe(visible);
+      view.unmount();
+    }
+  });
+
+  it("downloads under the file name and shows an error when the download fails", async () => {
+    mocks.getSubmission.mockReset().mockResolvedValue(submission);
+    mocks.getAttachments
+      .mockReset()
+      .mockResolvedValue([
+        { id: "att-1", filename: "evidence.png", size: 2048, state: "ready" },
+      ]);
+    mocks.downloadAttachment
+      .mockReset()
+      .mockRejectedValueOnce(new Error("Unable to download attachment"))
+      .mockResolvedValue(undefined);
+    renderSubmission();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Download" }));
+    await waitFor(() =>
+      expect(mocks.downloadAttachment).toHaveBeenCalledWith({
+        ref: "SUB-7",
+        id: "att-1",
+        filename: "evidence.png",
+      }),
+    );
+    expect(
+      await screen.findByText("The file could not be downloaded. Try again."),
+    ).toBeVisible();
   });
 });

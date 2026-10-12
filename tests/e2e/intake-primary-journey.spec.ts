@@ -17,6 +17,11 @@ const playwright = webRequire(
 ) as typeof import("@playwright/test");
 const { expect, test } = playwright;
 
+const evidencePng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aZ8AAAAASUVORK5CYII=",
+  "base64",
+);
+
 type PortalPerson = {
   email: string;
   password: string;
@@ -634,10 +639,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         await customerPage.locator("#submission-file-evidence").setInputFiles({
           name: "evidence.png",
           mimeType: "image/png",
-          buffer: Buffer.from(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aZ8AAAAASUVORK5CYII=",
-            "base64",
-          ),
+          buffer: evidencePng,
         });
         const presignResponse = await presignPromise;
         expect(presignResponse.status()).toBe(200);
@@ -740,6 +742,21 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       expect((await returningPageResponse).status()).toBe(200);
       await expect(returnPage).toHaveURL(submissionUrl);
       await expect(returnPage.getByText("Need account access")).toBeVisible();
+    });
+    await runPhase(phaseJournal, "requester-downloads-attachment", async () => {
+      // The finalized object key (…/attachment/<id>/final/<token>-evidence.png) must be
+      // admitted on the portal host, and the saved file must carry the real name/bytes.
+      const downloadPromise = returnPage.waitForEvent("download");
+      await returnPage
+        .getByRole("button", { name: "Download", exact: true })
+        .click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toBe("evidence.png");
+      const savedPath = await download.path();
+      expect(readFileSync(savedPath)).toEqual(evidencePng);
+      await expect(
+        returnPage.getByText("The file could not be downloaded."),
+      ).toHaveCount(0);
     });
     await runPhase(phaseJournal, "accepted-requester-screenshot", () =>
       returnPage.screenshot({
