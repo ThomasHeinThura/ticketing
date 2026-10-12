@@ -13,6 +13,7 @@ The reviewed source was repaired in rounds. The chain below runs from the first 
 - Two later test-and-UI deltas, `809b593c` and `8e47e787`, were cleared by a fresh Claude Opus 5.5 context as delta security reviews, with ordinary reviews by Claude Sonnet 5.5. These are labelled Claude Opus 5.5 and Claude Sonnet 5.5 in the index. They are not recorded as GPT-6 Sol. Claude Opus 5.5 is on the accepted-model list on main.
 - The real-browser journey at `8e47e787` passed 1/1 (private evidence `670-real-users-playwright-8e47e787-claude`).
 - Two UI acceptance deltas after the real-browser probe, `55227706` (layout, loading skeleton, option labels and a clean merge of main `d86d3089`) and `c5ccfe58` (layout-shift fix, contrast manifest, three Linux baselines), were reviewed by fresh Claude Sonnet 5.5 ordinary contexts and cleared by fresh Claude Opus 5.5 security rebind contexts. They are labelled with those models and are not recorded as GPT-6 Sol.
+- After `main` gained #677 (deterministic G8 rendering), `main` `8d739bd6` was merged and the users-directory baseline regenerated under the new flag (`af805562`). A fresh Claude Sonnet 5.5 ordinary review approved it, and a fresh Claude Opus 5.5 rebind cleared it.
 
 **Reviewed head:** `9bff711d84929a1d7bbb6135e64bf5af8f5c20d6`
 **Reviewed head:** `d2de7ce0d6eecae487944bebff21391da65b04e2`
@@ -30,8 +31,9 @@ The reviewed source was repaired in rounds. The chain below runs from the first 
 **Reviewed head:** `8e47e787e40c85754d51c33fb8bcc686a432d91c`
 **Reviewed head:** `552277064d6e09b41157b14afc431928f24bff7b`
 **Reviewed head:** `c5ccfe58458077c4882937799dfc39010c285145`
+**Reviewed head:** `af805562c4b66f0ced347a434b786e3854a72ec1`
 
-The last line above is the candidate head, `c5ccfe58458077c4882937799dfc39010c285145`, cleared by Claude Opus 5.5 as an exact-head delta review over `55227706..c5ccfe58`. Earlier heads are listed in chronological order for the audit trail. Every one is an ancestor of the candidate.
+The last line above is the candidate head, `af805562c4b66f0ced347a434b786e3854a72ec1`, cleared by Claude Opus 5.5 as an exact-head delta review over `c5ccfe58..af805562`. Earlier heads are listed in chronological order for the audit trail. Every one is an ancestor of the candidate.
 
 ## Context index
 
@@ -71,6 +73,8 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 30 | `670-5522-security-rebind-opus.md` | Security delta review and rebind (80ba782f..55227706) | Claude Opus 5.5 | `55227706` | CLEAR | `f8b91619c6d627c5528e188e080db3348e667ba261df77e73ffe0c118536435c` |
 | 31 | `670-5522-c5cc-ordinary-sonnet.md` | Ordinary delta review (55227706..c5ccfe58) | Claude Sonnet 5.5 | `c5ccfe58` | APPROVE | `13991dea0ae8e610db5eccdaeb43d2d5f0848f417410fd19b8f80e8cb15dfdc1` |
 | 32 | `670-c5cc-security-rebind-opus.md` | Security delta review and rebind (55227706..c5ccfe58) | Claude Opus 5.5 | `c5ccfe58` | CLEAR | `430b362062683b238646317cc09dd0f5ba4c7e163392dc4c4f9cec1e52baaf99` |
+| 33 | `670-b8e6-af80-ordinary-sonnet.md` | Ordinary delta review (b8e625bb..af805562: main merge and baseline) | Claude Sonnet 5.5 | `af805562` | APPROVE | `d7c7a0c04fc4886e80908bb3d0cf5e11ae061e650123a3237d31af03a3a256d0` |
+| 34 | `670-af80-security-rebind-opus.md` | Security delta review and rebind (c5ccfe58..af805562) | Claude Opus 5.5 | `af805562` | CLEAR | `7698e29b24fc3e9c6ec0ac22ffdc9418db66fdb13634d9de9a86c62a55eb5b07` |
 
 Model bindings checked against session metadata (private JSON, metadata only): `608-current9bff-ordinary-ab-model-bindings.json`, `608-current9bff-ordinary-c-model-binding.json`, `608-full-sol-and606-runner-v2-model-bindings.json`, `670-current-route-g8-review-model-bindings.json` and `current606-panel-and643-users-review-model-bindings.json` record `gpt-6-luna` for the Luna reviewers and `gpt-6-sol` for the Sol reviewer sessions they cover. The Sol reports after `f5ef92fb` came from the same Sol reviewer session and declare the Sol tier; the binding file covers the turns that existed when it was written. The Claude Sonnet 5.5 and Claude Opus 5.5 reports declare their own model in their first line.
 
@@ -1352,3 +1356,107 @@ I formed this view before reading the ordinary Sonnet review. That review agrees
 
 Verdict: CLEAR
 <!-- END REPORT (sha256 430b362062683b238646317cc09dd0f5ba4c7e163392dc4c4f9cec1e52baaf99) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/670-b8e6-af80-ordinary-sonnet.md; Claude Sonnet 5.5; sha256 d7c7a0c04fc4886e80908bb3d0cf5e11ae061e650123a3237d31af03a3a256d0) -->
+# PR #670 (Users UI) - ordinary re-review of merge delta
+
+Reviewer model: Claude Sonnet (fresh independent ordinary-review context)
+Role: ordinary reviewer; did not author, direct or remediate this change. Read-only (no edits, commits or pushes).
+
+**Reviewed head:** af805562c4b66f0ced347a434b786e3854a72ec1
+**Delta base (previously reviewed head):** b8e625bba4735ce24a36f9dccdee5c4e732bca04
+**Worktree:** /Users/heinthura/.codex/worktrees/field-source-conservation/Ticketing.v2
+Commit chain: b8e625bb -> 710f27b2 (merge of origin/main 8d739bd6a393ad9db5de99c778ebada9d9287ee6, i.e. #677) -> af805562 (PNG regeneration).
+`git rev-parse HEAD` = af805562c4b66f0ced347a434b786e3854a72ec1. origin/main = 8d739bd6 (same as the merged main).
+
+## Files examined
+- `git diff b8e625bb..HEAD --stat` (8 files): .gitleaksignore, apps/web/playwright.visual.config.ts, scripts/ci/check-visual-scope.mjs (+28), scripts/ci/check-visual-scope.test.mjs (+62), docs/07-planning/decision-log.md (+14), docs/07-planning/security-reviews/677-g8-partial-raster.md (+391), account-security-setup-linux.png, instance-users-directory-linux.png.
+- Per-file check: for every file in that delta, `git diff 8d739bd6 HEAD -- <file>` is empty EXCEPT apps/web/e2e/visual.spec.ts-snapshots/instance-users-directory-linux.png (the intentionally regenerated PNG). So the delta is exactly main's #677 content plus the one PNG.
+- Files changed b8e625bb..710f27b2 that are not in main's side of the merge: none (comm check, empty).
+- `git diff origin/main...HEAD --stat` = 49 files, all #670's own (users.tsx, pending-actions.tsx, pending-actions/$id.tsx + test, screen-inventory.md, 670 review note, i18n x20, pairs.json, check-bundle-size.mjs/test). No #677 files appear in #670's own diff, so the merge introduced nothing unintended into #670's files.
+- account-security-setup-linux.png changed in the delta comes from main (#677), identical to main's blob.
+- PNG viewed: instance-users-directory-linux.png (1280x720, dark theme).
+- apps/web/e2e/visual.spec.ts fixture and users.tsx badge logic read to interpret the PNG.
+
+## Commands run (results)
+- `git rev-parse HEAD` -> af805562c4b66f0ced347a434b786e3854a72ec1.
+- `pnpm check:visual-scope` -> PASS: "G8 scope check passed: 10 screenshot cases, 9 active inventory route rows mapped (124 route rows total)".
+- `npx vitest run` (apps/web) on users.test.tsx, pending-actions/$id.test.tsx, own-pending-actions-query.test.ts -> 3 test files passed, 14 tests passed, 0 failed. (Ran with the sandbox disabled because vite writes node_modules/.vite-temp in the worktree; no tracked-file change resulted.)
+- Not run: Playwright visual suite (task forbade browsers); full CI.
+
+## PNG assessment
+Screen shows "Instance users" heading, subtitle, "My pending actions" link, search/account-type/status/organisation filter row, table with Taylor Staff / taylor@example.test / Staff / em dash, "1 users on this page", disabled "Next page", Refresh button. Matches the visual fixture (non-admin, active, not suspended, no organisation), so the empty Status cell is correct per users.tsx (badges render only for admin/suspended/inactive). It is the intended screen. Size delta 32708 -> 32692 bytes is consistent with a raster-mode change, not a content change. Pixel-exact validity under CI's Linux renderer cannot be confirmed locally; CI's visual job (maxDiffPixels 0) is the authority.
+
+## Findings
+- Blocking: none.
+- Non-blocking: untracked file `apps/web/e2e/zz-users-ui-acceptance-probe.spec.ts` exists in the worktree (not in HEAD). Make sure it is not staged in any later commit.
+
+## Residual risk
+- PNG byte-correctness against CI's renderer not independently verified (no Playwright/Docker allowed); rely on the G8 CI job.
+- #677 content itself was reviewed separately; only its clean integration was checked here.
+- Earlier #670 review heads' substantive findings are not re-reviewed; this review is limited to the b8e625bb..af805562 delta plus re-running the #670 vitest files.
+
+Verdict: APPROVE
+<!-- END REPORT (sha256 d7c7a0c04fc4886e80908bb3d0cf5e11ae061e650123a3237d31af03a3a256d0) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/670-af80-security-rebind-opus.md; Claude Opus 5.5; sha256 7698e29b24fc3e9c6ec0ac22ffdc9418db66fdb13634d9de9a86c62a55eb5b07) -->
+# #670 Users pending-action UI: security rebind at af805562
+
+**Reviewer model:** Claude Opus 5.5 (fresh independent security-review context). I did not author, direct or remediate any part of #670 or #677.
+**Reviewed head:** `af805562c4b66f0ced347a434b786e3854a72ec1`
+**Comparison base:** prior CLEAR Opus rebind product head `c5ccfe58458077c4882937799dfc39010c285145`
+**Merge base with origin/main:** `8d739bd6a393ad9db5de99c778ebada9d9287ee6` (origin/main at review time; `git fetch` was refused by the sandbox, so this is the locally known origin/main)
+**Worktree:** `/Users/heinthura/.codex/worktrees/field-source-conservation/Ticketing.v2`
+**Mode:** read-only. No edits, commits or pushes. No Docker or browsers.
+
+## Delta reviewed (`c5ccfe58..af805562`, first parent)
+
+| Commit | Kind | Content |
+| --- | --- | --- |
+| `b8e625bb` | note only | `docs/07-planning/security-reviews/670-users-pending-ui.md` (+210/-1). No other file. |
+| `710f27b2` | merge of origin/main `8d739bd6` | Brings in #677 only. Changed files: `.gitleaksignore`, `apps/web/playwright.visual.config.ts`, `scripts/ci/check-visual-scope.mjs`, `scripts/ci/check-visual-scope.test.mjs`, `docs/07-planning/decision-log.md`, `docs/07-planning/security-reviews/677-g8-partial-raster.md`, `apps/web/e2e/visual.spec.ts-snapshots/account-security-setup-linux.png`. |
+| `af805562` | baseline | `apps/web/e2e/visual.spec.ts-snapshots/instance-users-directory-linux.png` only. |
+
+Correction to the brief: #668 (`d86d3089`, auth label association) is already an ancestor of `c5ccfe58`, so the prior CLEAR already covered it. The merge `710f27b2` carries only #677.
+
+## Surfaces examined and checks
+
+1. **Merge is conflict-free and mechanical.** `git show --remerge-diff 710f27b2` produces an empty diff, so there was no manual conflict resolution. Every file changed by the merge is blob-identical to `8d739bd6`.
+2. **#670's own files are unchanged by the merge.** The set of #670 files (`merge-base..c5ccfe58`, 49 paths) and the set of files touched by the merge have an empty intersection. Of those 49 paths, only two differ between `c5ccfe58` and HEAD: the note file (`b8e625bb`) and the regenerated users-directory PNG (`af805562`). Every path differing between HEAD and origin/main belongs to #670's own set.
+3. **No semantic interaction with auth, step-up or pending-action proof paths.** The #677 content is limited to the following:
+   - `apps/web/playwright.visual.config.ts:6-13` adds a `use.launchOptions.args` entry of `--disable-partial-raster` for the visual Playwright project only. It is a Chromium raster flag and has no runtime effect on the shipped app.
+   - `scripts/ci/check-visual-scope.mjs:423-447` pins that `use` object key-for-key (spread of `base.use` at index 0, `launchOptions` with exactly `args`, and exactly one arg). This tightens the G8 guard and cannot weaken it.
+   - `.gitleaksignore` adds three exact commit:path:rule:line fingerprints for #677 review prose. These are not path or rule exemptions, and none touches a #670 path.
+   - Decision-log and #677 review-note prose.
+
+   No file under `apps/api`, `packages/*`, the auth or step-up client code, the pending-action routes, or `own-pending-actions-query` is touched.
+4. **PNGs contain no secrets.**
+   - Both changed PNGs (`instance-users-directory-linux.png` and `account-security-setup-linux.png`) contain only `IHDR`, `IDAT` and `IEND` chunks, with no text or metadata chunks.
+   - I inspected both visually. The users screen shows a fixture "Taylor Staff" with an `example.test` address. The account-security screen shows a masked password field (bullets only) and a fixture `example.test` identity.
+   - Neither shows tokens, codes or real PII.
+5. **Note commit `b8e625bb`.** This is review-record prose only, and it is covered by the clean gitleaks range scan below.
+
+## Tests actually run
+
+| Command | Result |
+| --- | --- |
+| `apps/web: vitest run` on `god-mode/users.test.tsx`, `settings/profile/pending-actions/$id.test.tsx`, `hooks/queries/own-pending-actions-query.test.ts` | **3 files, 14 tests passed** (vitest 4.1.11) |
+| `node --test scripts/ci/check-visual-scope.test.mjs` | **161 tests passed, 0 failed** |
+| `node scripts/ci/check-visual-scope.mjs` | passed (10 screenshot cases, 9 active inventory rows mapped, 124 total) |
+| `gitleaks detect --redact --no-banner --log-opts="--no-merges --first-parent 8d739bd6..HEAD"` (gitleaks 8.30.1) | **no leaks found, exit 0** (26 commits scanned) |
+
+vitest and node had to run outside the macOS sandbox, because vitest writes a temporary config under `node_modules/.vite-temp` in the worktree. No source file was modified.
+
+## Findings
+
+- **No BLOCKING findings.**
+- **N1, NON-BLOCKING (hygiene, not in the PR).** The worktree has an untracked file, `apps/web/e2e/zz-users-ui-acceptance-probe.spec.ts`. It is not committed and not part of the reviewed head. It must not be committed by accident.
+
+## Residual risk / not checked
+
+- The PNG regeneration was not reproduced. I did not run Playwright or Docker. I relied on content inspection only.
+- The remote origin/main could not be refreshed. If main has advanced past `8d739bd6`, a further merge needs its own rebind.
+- The #670 product code was not re-reviewed here beyond confirming it is byte-identical to `c5ccfe58`, which the prior Opus rebind cleared.
+
+Verdict: CLEAR
+<!-- END REPORT (sha256 7698e29b24fc3e9c6ec0ac22ffdc9418db66fdb13634d9de9a86c62a55eb5b07) -->
