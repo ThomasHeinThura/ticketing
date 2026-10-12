@@ -8,8 +8,10 @@ Root cause, from private evidence `g8-input-flake-diagnosis-sonnet/`: Chromium's
 
 - Ordinary review by Claude Sonnet 5.5: APPROVE at `347e085b`.
 - Security review by Claude Opus 5.5: CLEAR at `347e085b`. It ran 36 guard-bypass variants; 31 were rejected, and the 5 accepted ones behave exactly like the approved config.
+- Security rebind by Claude Opus 5.5 at `cadf3ebe` (exact gitleaks fingerprint for the review-prose false positive): BLOCK, because the accompanying decision-log text re-quoted the flagged phrase. The conductor amended its own unmerged commit to `e735e775`; the same reviewer context then cleared it with the committed-range scan clean and a positive control.
 
 **Reviewed head:** `347e085b8ac53178b2b895dadc580bfde670f770`
+**Reviewed head:** `e735e775e5ac8af8254a2cc8d68e33eb9b0f4cf5`
 
 ## Context index
 
@@ -19,6 +21,8 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `677-ordinary-sonnet.md` | Ordinary review (d86d3089..347e085b) | Claude Sonnet 5.5 | `347e085b` | APPROVE | `dc9213023a34754c3481c9bd3f895bbc9a79d12b433b76a93dee7818f99afa45` |
 | 2 | `677-security-opus.md` | Security review (d86d3089..347e085b) | Claude Opus 5.5 | `347e085b` | CLEAR | `b11eb0537a21630b5e0dd0c47692b801a28ed5398b42d015ebbe0552d3f92fe5` |
+| 3 | `677-cadf-security-rebind-opus.md` | Security rebind (347e085b..cadf3ebe, superseded commit) | Claude Opus 5.5 | `cadf3ebe` | BLOCK | `0425e0f53597ffacbb30b040c18cb4ca20766ea362fc25f940cd97f41c0f671c` |
+| 4 | `677-e735-security-rebind-opus.md` | Security rebind (347e085b..e735e775) | Claude Opus 5.5 | `e735e775` | CLEAR | `625a9f33ebd0f5f3b28e41a7bbbfc2b73e720dd334bf3c7c110b05d3ef19f006` |
 
 ## Embedded reports
 
@@ -214,3 +218,112 @@ No blocking findings. The new allowance is the narrowest possible shape, it is r
 
 Verdict: CLEAR
 <!-- END REPORT (sha256 b11eb0537a21630b5e0dd0c47692b801a28ed5398b42d015ebbe0552d3f92fe5) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/677-cadf-security-rebind-opus.md; Claude Opus 5.5; sha256 0425e0f53597ffacbb30b040c18cb4ca20766ea362fc25f940cd97f41c0f671c) -->
+# #677 security rebind 347e085b..cadf3ebe (gitleaks false-positive ignore)
+
+**Reviewer model:** Claude Opus 5.5 (fresh independent security-review context). I did not author, direct or remediate this change. Read-only review: no edits, commits, pushes or Docker.
+
+- **Candidate head:** `cadf3ebede2d808cc4cd3c2084402f2812bd38d2` (worktree HEAD confirmed)
+- **Rebind base:** `347e085b8ac53178b2b895dadc580bfde670f770` (prior Opus CLEAR, `677-security-opus.md`)
+- **PR merge base with local origin/main:** `d86d3089636c1ade443a20b04e1212e4a72f42d1` (`git fetch` was refused in the sandbox; the local `origin/main` ref was used)
+- **Commits in rebind range:** 2 (`2bf94401` review note, `cadf3ebe` ignore entry + decision-log record)
+- **Scanner:** local gitleaks 8.30.1 (`/opt/homebrew/bin/gitleaks`). The repo has no `.gitleaks.toml`, so both local and hosted runs use the default rules. CI uses `gitleaks/gitleaks-action@ff98106e` (v2.3.9) in `.github/workflows/ci-fast.yml:388`.
+
+## Surfaces examined
+- `.gitleaksignore` (diff 347e085b..HEAD)
+- `docs/07-planning/security-reviews/677-g8-partial-raster.md` line 56, plus the surrounding context
+- `docs/07-planning/decision-log.md` (diff 347e085b..HEAD)
+- Whole-range file list: `git diff --numstat 347e085b..HEAD`
+- `.github/workflows/ci-fast.yml` gitleaks step
+
+## Commands and results
+1. `git rev-parse HEAD` returned `cadf3ebede2d808cc4cd3c2084402f2812bd38d2`. MATCH.
+2. `git diff --numstat 347e085b..HEAD` showed exactly 3 files, all insert-only: `.gitleaksignore` 4/0, `decision-log.md` 14/0, `677-g8-partial-raster.md` 216/0. Nothing else changed. `git diff --stat 2bf94401..HEAD` shows only `.gitleaksignore` and `decision-log.md`, so the note is unchanged since `2bf94401`.
+3. Note line 56 begins "- Guard: `use` must be exactly {launchOptions} ... Duplicate keys, shorthand/computed keys, extra spreads, ...". This is reviewer prose. **It is not a credential.** The matched token is `shorthand/computed`.
+4. `git diff 347e085b..HEAD -- .gitleaksignore` adds 4 lines: a blank line, 2 comment lines and one fingerprint, `2bf94401517ca8a232dfdf18b3364741e7a584c8:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:56`. 0 lines are removed. The entry has no wildcard and no path-only or rule-only form, and it pins the immutable commit SHA, file, rule and line. Existing entries are untouched.
+5. `git diff 347e085b..HEAD -- docs/07-planning/decision-log.md` shows one hunk at `@@ -1,3 +1,17 @@` with 14 added lines and 0 removed. The insert is at the top, and existing entries are unmodified.
+6. **PR-range scan:** `gitleaks git . --log-opts="--no-merges --first-parent d86d3089..HEAD" --redact -v` reported **leaks found: 1**:
+   - `cadf3ebede2d808cc4cd3c2084402f2812bd38d2:docs/07-planning/decision-log.md:generic-api-key:7`
+   - Line 7 of the new decision-log entry is `listing rejected guard inputs ("Duplicate keys, shorthand/computed keys, ..."); it is not a`. The decision-log record re-quotes the same prose, so the same rule fires on a new fingerprint.
+   - The note's fingerprint at `2bf94401...:56` is suppressed as intended.
+7. **Positive control** (temp clone `$TMPDIR/gl677.7EXY/c`, not the worktree): changing the fingerprint line `:56` to `:57` produced **leaks found: 2** (`2bf94401...:677-g8-partial-raster.md:generic-api-key:56` returned, plus `decision-log.md:7`). Restoring the file brought the result back to **leaks found: 1** (`decision-log.md:7` only). This proves the ignore entry is exact and not vacuous.
+8. **Full-history scan** (`gitleaks git .`, default all refs, 3230 commits) reported **leaks found: 7**:
+   - 1 is from this PR: `cadf3ebe:decision-log.md:7`, the same finding as in step 6.
+   - 6 are pre-existing and outside the PR range: `6222eff5` (601-operational-records.md:53, status.md:6172, status.md:8318) and `a9b1e5bc` (13-kaneo-import-lenses/E-secrets.md:85) are ancestors of the merge base. `a945805b` (601-operational-records.md:53) and `0d075205` (existence-oracle-317.test.ts:110) are only on other remote branches (`origin/codex/p0-088-operational-records`, `origin/fix/317-oracle-hardening`).
+
+## Findings
+- **B1 (BLOCKING):** Commit `cadf3ebe` introduces a new, unsuppressed gitleaks `generic-api-key` finding, fingerprint `cadf3ebede2d808cc4cd3c2084402f2812bd38d2:docs/07-planning/decision-log.md:generic-api-key:7`.
+  - Cause: the decision-log entry re-quotes the phrase "shorthand/computed keys".
+  - Like the original, it is prose, not a credential. Even so, the PR-range scan is not clean, and hosted gitleaks-action will fail the required secret-scan check at this head.
+  - The entry's claim that a local PR-range scan "reproduced exactly this one" fingerprint is not true of the PR as committed.
+  - The `cadf3ebe` blob stays in range whatever a follow-up commit does. The fix is therefore to add a second exact fingerprint for `cadf3ebe...:decision-log.md:generic-api-key:7`. Alternatively, rewrite the unmerged branch so the decision-log text does not quote the matched phrase.
+  - If the fix is a further ignore commit, its own text should not quote the phrase either. Then re-run the PR-range scan (expect 0) and a changed-fingerprint positive control, and rebind at the new head.
+- **N1 (non-blocking):** The `2bf94401...:56` ignore entry itself is correct. It is an exact single immutable fingerprint, has no wildcard, removes no lines, and the positive control proves it is not vacuous.
+- **N2 (non-blocking, pre-existing):** The full-history scan shows 6 unignored historical findings outside this PR's range. These were not introduced by #677 and are recorded for awareness only.
+- **N3 (non-blocking):** `git fetch` could not run in the sandbox, so the merge base came from the local `origin/main` ref. The PR-range first-parent commits (8924c7f2, 347e085b, 2bf94401, cadf3ebe) match the expected PR contents.
+
+## Residual risk
+- The hosted gitleaks-action run was not observed. Its range is assumed to be PR base..head, consistent with the original hosted finding.
+- Note line 56 and decision-log line 7 were judged as prose. Neither contains secret material.
+- The G8 code change was not re-reviewed. It is unchanged since 347e085b, where the prior Opus review was CLEAR.
+
+**Reviewed head:** `cadf3ebede2d808cc4cd3c2084402f2812bd38d2`
+
+Verdict: BLOCK
+<!-- END REPORT (sha256 0425e0f53597ffacbb30b040c18cb4ca20766ea362fc25f940cd97f41c0f671c) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/677-e735-security-rebind-opus.md; Claude Opus 5.5; sha256 625a9f33ebd0f5f3b28e41a7bbbfc2b73e720dd334bf3c7c110b05d3ef19f006) -->
+# #677 security rebind at e735e775 (gitleaks exact-fingerprint ignore, amended decision-log wording)
+
+**Reviewer model:** Claude Opus 5.5 (fresh independent security-review context). I did not author, direct or remediate this change. Read-only review: no edits, commits, pushes or Docker. This report supersedes nothing. The earlier report, `677-cadf-security-rebind-opus.md` (Verdict: BLOCK at cadf3ebe), stays unchanged as history.
+
+- **Candidate head:** `e735e775e5ac8af8254a2cc8d68e33eb9b0f4cf5` (worktree HEAD confirmed; parent `2bf94401517ca8a232dfdf18b3364741e7a584c8`)
+- **Rebind base:** `347e085b8ac53178b2b895dadc580bfde670f770` (prior Opus CLEAR)
+- **Comparison to the previous candidate:** `cadf3ebede2d808cc4cd3c2084402f2812bd38d2` (BLOCK, B1)
+- **PR merge base / main:** `d86d3089636c1ade443a20b04e1212e4a72f42d1`. This is the local `origin/main` ref; `git fetch` is not permitted in this sandbox.
+- **Scanner:** local gitleaks 8.30.1 (`/opt/homebrew/bin/gitleaks`) with default rules. The repo has no `.gitleaks.toml`. CI uses gitleaks-action v2.3.9.
+
+## Surfaces examined
+- `git diff cadf3ebe e735e775` (complete)
+- `.gitleaksignore`, `docs/07-planning/decision-log.md` and `docs/07-planning/security-reviews/677-g8-partial-raster.md`, each diffed against 347e085b and main (d86d3089)
+- Committed PR range `d86d3089..e735e775`, first-parent: 4 commits (8924c7f2, 347e085b, 2bf94401, e735e775). gitleaks reports 3 scanned because 347e085b contains only a binary PNG change.
+
+## Commands and results
+1. `git rev-parse HEAD` returned `e735e775e5ac8af8254a2cc8d68e33eb9b0f4cf5`. MATCH. The parent is `2bf94401`, so e735e775 replaces cadf3ebe.
+2. `git diff --numstat cadf3ebe e735e775` returned `2 2 docs/07-planning/decision-log.md`, and **no other file**. The two changed lines are prose only:
+   - Before: "listing rejected guard inputs (\"Duplicate keys, [flagged phrase], ...\"); it is not a / credential. A local gitleaks 8.x scan of the PR range reproduced exactly this one"
+   - After: "listing the object-literal forms the guard rejects; it is not a credential. A local gitleaks / 8.x scan of the committed PR range reproduced exactly this one"
+   - The flagged phrase is no longer quoted.
+3. `git diff --numstat 347e085b e735e775` showed exactly 3 files, all insert-only: `.gitleaksignore` 4/0, `decision-log.md` 14/0, `677-g8-partial-raster.md` 216/0. Nothing else changed.
+4. `.gitleaksignore` vs 347e085b: +4/-0. The additions are a blank line, 2 comments and the single exact fingerprint `2bf94401517ca8a232dfdf18b3364741e7a584c8:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:56`. There is no wildcard and no path-only or rule-only entry. Existing entries are untouched. This file is identical to the version reviewed at cadf3ebe.
+5. The note is unchanged since 2bf94401 (`git diff --quiet 2bf94401 e735e775 -- <note>` succeeded). Line 56 is reviewer prose describing rejected guard input forms and is **not a credential**.
+6. The decision log is insert-only:
+   - vs 347e085b: one hunk `@@ -1,3 +1,17 @@`, 14 added, 0 removed.
+   - vs main d86d3089: `14 0`, the same single top hunk, 0 removed lines.
+   - The new entry is at the top. All existing entries are unmodified.
+7. **Committed PR-range scan:** `gitleaks git . --log-opts="--no-merges --first-parent d86d3089..HEAD" --redact -v` reported **no leaks found** (0).
+8. **Positive control** (temp clone `$TMPDIR/gl677e.ogkZ/c` at e735e775, not the worktree): changing the fingerprint line `:56` to `:57` made the same scan report **leaks found: 1**, `2bf94401517ca8a232dfdf18b3364741e7a584c8:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:56`. Restoring the file (`git diff --quiet` succeeded) brought it back to **no leaks found**. The ignore entry is therefore exact and not vacuous. The control also shows that this one finding is the **only** finding in the range, so B1 no longer appears.
+9. **Full-history scan** (`gitleaks git .`, all refs, 3230 commits) reported **leaks found: 6**, all pre-existing and outside this PR's range:
+   - `6222eff5`: 601-operational-records.md:53, status.md:6172 and status.md:8318
+   - `a9b1e5bc`: E-secrets.md:85
+   - `a945805b` and `0d075205`, which are only on other remote branches
+   - None of the 6 is from 8924c7f2, 347e085b, 2bf94401 or e735e775.
+
+## Findings
+- **B1 (from cadf3ebe): RESOLVED.** The decision-log wording no longer quotes the flagged phrase, and the committed PR-range scan is clean.
+- **N1 (non-blocking):** The `.gitleaksignore` comment line still quotes the phrase. gitleaks did not flag it at either cadf3ebe or e735e775, so this has no effect.
+- **N2 (non-blocking, pre-existing):** 6 historical findings appear in the full all-refs scan, outside this PR's range. They were not introduced by #677.
+- **N3 (non-blocking):** The orphaned `cadf3ebe` object is no longer on any ref, so it is outside both the local all-refs scan and the PR range base..e735e775. Its hosted run stays as history.
+- **N4 (non-blocking):** The merge base comes from the local `origin/main` ref because fetch is blocked in this sandbox.
+- No blocking findings.
+
+## Residual risk
+- I did not observe the hosted gitleaks-action run at e735e775. Its range is expected to be the PR base..head, which matches the local committed-range scan.
+- The G8 code change was not re-reviewed. It is unchanged since 347e085b, where the prior Opus review was CLEAR.
+- If main moves before merge, a rebase would change the SHAs. The `.gitleaksignore` fingerprint is tied to 2bf94401, so a rebase would invalidate it and need a new exact fingerprint and a rebind.
+
+**Reviewed head:** `e735e775e5ac8af8254a2cc8d68e33eb9b0f4cf5`
+
+Verdict: CLEAR
+<!-- END REPORT (sha256 625a9f33ebd0f5f3b28e41a7bbbfc2b73e720dd334bf3c7c110b05d3ef19f006) -->
