@@ -24,6 +24,7 @@ import useCreateWorkItemComment from "@/hooks/mutations/work-item/use-create-wor
 import useUpdateWorkItemComment from "@/hooks/mutations/work-item/use-update-work-item-comment";
 import useGetWorkItemActivity from "@/hooks/queries/work-item/use-get-work-item-activity";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
 
 export type ActivityFilter = "everything" | "comments" | "public";
@@ -142,6 +143,11 @@ function WorkItemActivity({
 }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const {
+    canCreatePublicComments,
+    canCreateInternalComments,
+    isCheckingPermissions,
+  } = useWorkspacePermission();
   const { data: people } = useGetActiveWorkspaceUsers(workspaceId);
   const activity = useGetWorkItemActivity({ key: workItemKey });
   const cannedResponses = useQuery({
@@ -161,6 +167,15 @@ function WorkItemActivity({
   const [visibility, setVisibility] = useState<"public" | "internal">(
     defaultVisibility,
   );
+  const allowedCommentVisibilities = [
+    ...(canCreateInternalComments() ? (["internal"] as const) : []),
+    ...(canCreatePublicComments() ? (["public"] as const) : []),
+  ];
+  const selectedCommentVisibility = allowedCommentVisibilities.includes(
+    visibility,
+  )
+    ? visibility
+    : (allowedCommentVisibilities[0] ?? defaultVisibility);
   const [editing, setEditing] = useState<string | null>(null);
   const [submitInProgress, setSubmitInProgress] = useState(false);
   const submitInProgressRef = useRef(false);
@@ -175,11 +190,17 @@ function WorkItemActivity({
       "work-items",
       "comment-mention-candidates",
       workItemKey,
-      visibility,
+      selectedCommentVisibility,
     ],
     queryFn: () =>
-      getCommentMentionCandidates({ key: workItemKey, visibility }),
-    enabled: Boolean(workItemKey),
+      getCommentMentionCandidates({
+        key: workItemKey,
+        visibility: selectedCommentVisibility,
+      }),
+    enabled:
+      Boolean(workItemKey) &&
+      !isCheckingPermissions &&
+      allowedCommentVisibilities.length > 0,
   });
   const mentionPersonIds = useMemo(
     () => collectMentionPersonIds(draftDocument),
@@ -190,16 +211,20 @@ function WorkItemActivity({
       "work-items",
       "comment-mention-preflight",
       workItemKey,
-      visibility,
+      selectedCommentVisibility,
       mentionPersonIds,
     ],
     queryFn: () =>
       preflightCommentMentions({
         key: workItemKey,
         personIds: mentionPersonIds,
-        visibility,
+        visibility: selectedCommentVisibility,
       }),
-    enabled: Boolean(workItemKey) && mentionPersonIds.length > 0,
+    enabled:
+      Boolean(workItemKey) &&
+      !isCheckingPermissions &&
+      allowedCommentVisibilities.length > 0 &&
+      mentionPersonIds.length > 0,
   });
   const rows = activity.data?.pages.flatMap((page) => page.data) ?? [];
   // The API returns newest first; grouping reverses once so the rendered list
@@ -300,7 +325,7 @@ function WorkItemActivity({
       await createComment.mutateAsync({
         key: workItemKey,
         body: draftDocument,
-        visibility,
+        visibility: selectedCommentVisibility,
       });
       const emptyDraft = { text: "", document: EMPTY_COMMENT_DOCUMENT };
       persistedDraftRef.current = emptyDraft;
@@ -347,6 +372,11 @@ function WorkItemActivity({
           {t("activity:timeline.heading")}
         </h2>
         <Select
+          items={[
+            { value: "everything", label: t("activity:timeline.everything") },
+            { value: "comments", label: t("activity:timeline.comments") },
+            { value: "public", label: t("activity:timeline.publicOnly") },
+          ]}
           value={filter}
           onValueChange={(value) => onFilterChange(value as ActivityFilter)}
         >
@@ -570,8 +600,11 @@ function WorkItemActivity({
       )}
 
       <div
+        hidden={
+          isCheckingPermissions || allowedCommentVisibilities.length === 0
+        }
         className={
-          visibility === "internal"
+          selectedCommentVisibility === "internal"
             ? "rounded-xl border border-warning/50 bg-warning/5 p-3"
             : "rounded-xl border bg-card p-3"
         }
@@ -583,7 +616,11 @@ function WorkItemActivity({
           {t("activity:timeline.visibilityLabel")}
         </label>
         <Select
-          value={visibility}
+          items={allowedCommentVisibilities.map((value) => ({
+            value,
+            label: t(`activity:timeline.${value}`),
+          }))}
+          value={selectedCommentVisibility}
           disabled={submitInProgress}
           onValueChange={(value) => {
             const next = value as "public" | "internal";
@@ -597,16 +634,15 @@ function WorkItemActivity({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="internal">
-              {t("activity:timeline.internal")}
-            </SelectItem>
-            <SelectItem value="public">
-              {t("activity:timeline.public")}
-            </SelectItem>
+            {allowedCommentVisibilities.map((value) => (
+              <SelectItem key={value} value={value}>
+                {t(`activity:timeline.${value}`)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <p className="my-2 text-xs text-muted-foreground">
-          {visibility === "internal"
+          {selectedCommentVisibility === "internal"
             ? t("activity:timeline.internalNotice")
             : t("activity:timeline.publicNotice")}
         </p>
@@ -644,8 +680,9 @@ function WorkItemActivity({
                 document: response.body,
               }));
               if (
-                response.visibilityDefault === "public" ||
-                response.visibilityDefault === "internal"
+                (response.visibilityDefault === "public" ||
+                  response.visibilityDefault === "internal") &&
+                allowedCommentVisibilities.includes(response.visibilityDefault)
               ) {
                 updateVisibility(response.visibilityDefault);
               }

@@ -18,6 +18,7 @@ const { mocks, translate } = vi.hoisted(() => ({
     mentionCandidates: [] as Array<Record<string, unknown>>,
     rows: [] as Array<Record<string, unknown>>,
     cannedResponses: [] as Array<Record<string, unknown>>,
+    permissions: { public: true, internal: true, checking: false },
   },
   translate: (key: string, values?: Record<string, unknown>) => {
     if (key === "activity:timeline.deleted") {
@@ -35,6 +36,9 @@ const { mocks, translate } = vi.hoisted(() => ({
         "activity:comment.leavePlaceholder": "Leave a comment",
         "activity:timeline.internal": "Internal",
         "activity:timeline.public": "Public",
+        "activity:timeline.publicOnly": "Public only",
+        "activity:timeline.everything": "Everything",
+        "activity:timeline.comments": "Comments",
         "activity:timeline.edited": "Edited",
         "common:unknown": "Unknown",
       }[key] ?? key
@@ -86,16 +90,20 @@ vi.mock("@taskdesk/ui", async (importOriginal) => {
     value,
     onValueChange,
     children,
+    items,
   }: {
     value?: string;
     onValueChange?: (value: string) => void;
     children: ReactNode;
+    items?: Array<{ value: string; label: string }>;
   }) {
+    const selectedLabel = items?.find((item) => item.value === value)?.label;
     return (
       // ui-exempt: test double for the shared Select value/change contract.
       <select
         aria-label={value === "" ? "Canned response" : "Comment visibility"}
         value={value}
+        data-selected-label={selectedLabel ?? value}
         onChange={(event) => onValueChange?.(event.currentTarget.value)}
       >
         {children}
@@ -199,6 +207,13 @@ vi.mock(
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "workspace-1" } }),
 }));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canCreatePublicComments: () => mocks.permissions.public,
+    canCreateInternalComments: () => mocks.permissions.internal,
+    isCheckingPermissions: mocks.permissions.checking,
+  }),
+}));
 vi.mock("@/hooks/use-shiki-highlighter-for-code", () => ({
   useShikiHighlighterForCode: () => null,
 }));
@@ -237,11 +252,31 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     mocks.rows = [];
     mocks.cannedResponses = [];
     mocks.mentionCandidates = [];
+    mocks.permissions = { public: true, internal: true, checking: false };
   });
 
   afterEach(() => {
     cleanup();
     window.localStorage.clear();
+  });
+
+  it("maps selected Select values to translated labels and filters visibility by capability", () => {
+    mocks.permissions = { public: true, internal: false, checking: false };
+    const view = renderActivity();
+    const [filter, visibility] = within(view.container).getAllByRole(
+      "combobox",
+    );
+
+    expect(filter).toHaveValue("everything");
+    expect(filter).toHaveAttribute("data-selected-label", "Everything");
+    expect(visibility).toHaveValue("public");
+    expect(visibility).toHaveAttribute("data-selected-label", "Public");
+    expect(
+      within(visibility as HTMLElement).getAllByRole("option"),
+    ).toHaveLength(1);
+    expect(
+      within(visibility as HTMLElement).getByRole("option"),
+    ).toHaveTextContent("Public");
   });
 
   it("opens a legacy string-bodied comment with editable Markdown and saves a document", async () => {
