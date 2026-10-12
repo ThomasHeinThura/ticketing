@@ -31,6 +31,8 @@ type UserTarget = {
   email: string;
   sessionId?: string;
   apiKeyId?: string;
+  membershipId?: string;
+  membershipGrantId?: string;
 };
 
 async function createAdminWorkspace(
@@ -106,17 +108,27 @@ async function seedTargets(
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
   try {
-    const adminPerson = await client.query<{ organisation_id: string }>(
-      `SELECT p.organisation_id
+    const adminPerson = await client.query<{
+      organisation_id: string;
+      person_id: string;
+      workspace_id: string;
+    }>(
+      `SELECT p.organisation_id, p.id AS person_id, wm.workspace_id
          FROM person AS p
          JOIN "user" AS u ON u.id = p.user_id
+         JOIN workspace_member AS wm ON wm.user_id = u.id
         WHERE u.email = $1 AND p.side = 'staff' AND p.active = true
+        ORDER BY wm.joined_at
         LIMIT 1`,
       [adminEmail],
     );
     expect(adminPerson.rowCount).toBe(1);
     const organisationId = adminPerson.rows[0]?.organisation_id;
+    const adminPersonId = adminPerson.rows[0]?.person_id;
+    const workspaceId = adminPerson.rows[0]?.workspace_id;
     expect(organisationId).toBeTruthy();
+    expect(adminPersonId).toBeTruthy();
+    expect(workspaceId).toBeTruthy();
 
     const createTarget = async (
       label: string,
@@ -176,6 +188,50 @@ async function seedTargets(
           ],
         );
       }
+
+      if (label === "Deactivation") {
+        const roleId = `users-journey-role-${suffix}`;
+        target.membershipId = `users-journey-membership-${suffix}`;
+        target.membershipGrantId = `users-journey-grant-${suffix}`;
+        await client.query(
+          `INSERT INTO "role"
+             (id, scope, workspace_id, key, name, rank, capabilities,
+              is_system, is_editable, created_at, updated_at)
+           VALUES ($1, 'workspace', $2, $3, $4, 1, '[]'::jsonb,
+                   false, true, $5, $5)`,
+          [
+            roleId,
+            workspaceId,
+            `users-journey-${suffix}`,
+            "Users journey direct role",
+            now,
+          ],
+        );
+        await client.query(
+          `INSERT INTO membership
+             (id, person_id, scope, scope_id, role_id, sees_all,
+              created_at, updated_at)
+           VALUES ($1, $2, 'workspace', $3, $4, false, $5, $5)`,
+          [target.membershipId, target.personId, workspaceId, roleId, now],
+        );
+        await client.query(
+          `INSERT INTO membership_grant
+             (id, membership_id, person_id, scope, scope_id, role_id,
+              source_kind, sees_all, direct_origin, granted_by_person_id,
+              created_at, updated_at)
+           VALUES ($1, $2, $3, 'workspace', $4, $5,
+                   'direct', false, 'admin', $6, $7, $7)`,
+          [
+            target.membershipGrantId,
+            target.membershipId,
+            target.personId,
+            workspaceId,
+            roleId,
+            adminPersonId,
+            now,
+          ],
+        );
+      }
       return target;
     };
 
@@ -211,10 +267,12 @@ async function selectUser(page: Page, user: UserTarget) {
 
 function holdNextRealStepUpResponse(page: Page) {
   let resolveReady!: (status: number) => void;
+  let rejectReady!: (error: unknown) => void;
   let resolveRelease!: () => void;
   let resolveCompleted!: () => void;
-  const ready = new Promise<number>((resolve) => {
+  const ready = new Promise<number>((resolve, reject) => {
     resolveReady = resolve;
+    rejectReady = reject;
   });
   const release = new Promise<void>((resolve) => {
     resolveRelease = resolve;
@@ -238,6 +296,9 @@ function holdNextRealStepUpResponse(page: Page) {
       resolveReady(response.status());
       await release;
       await route.fulfill({ response });
+    } catch (error) {
+      rejectReady(error);
+      await route.abort().catch(() => {});
     } finally {
       resolveCompleted();
     }
@@ -337,6 +398,11 @@ test("real Users UI binds delayed proof and approval to its current route intent
           .getByRole("button", { name: "Grant instance administrator" })
           .click();
         expect(await delayedGrantProof.ready).toBe(200);
+        await page.keyboard.press("Escape");
+        await expect(grantDialog).toBeHidden();
+        await expect(page).toHaveURL(
+          new RegExp(`[?&]user=${users.staleGrant.id}(?:&|$)`, "u"),
+        );
         await selectUser(page, users.deactivation);
       } finally {
         await delayedGrantProof.remove();
@@ -423,6 +489,26 @@ test("real Users UI binds delayed proof and approval to its current route intent
       );
       expect(credentialsBeforeApproval.rows).toEqual([
         { sessions: 1, enabled_keys: 1 },
+      ]);
+      expect(users.deactivation.membershipId).toBeTruthy();
+      expect(users.deactivation.membershipGrantId).toBeTruthy();
+      const membershipBeforeApproval = await client.query<{
+        membership_id: string;
+        grant_id: string;
+        revoked_at: Date | null;
+      }>(
+        `SELECT m.id AS membership_id, g.id AS grant_id, g.revoked_at
+           FROM membership AS m
+           JOIN membership_grant AS g ON g.membership_id = m.id
+          WHERE m.id = $1 AND g.id = $2`,
+        [users.deactivation.membershipId, users.deactivation.membershipGrantId],
+      );
+      expect(membershipBeforeApproval.rows).toEqual([
+        {
+          membership_id: users.deactivation.membershipId,
+          grant_id: users.deactivation.membershipGrantId,
+          revoked_at: null,
+        },
       ]);
 
       await page.getByRole("link", { name: "My pending actions" }).click();
@@ -512,6 +598,26 @@ test("real Users UI binds delayed proof and approval to its current route intent
       ]);
 
       expect(await getPersonState(client, users.deactivation.id)).toBe(false);
+      const retiredMembership = await client.query<{
+        id: string;
+        revocation_reason: string | null;
+      }>(
+        `SELECT id, revocation_reason
+           FROM membership_grant
+          WHERE id = $1 AND revoked_at IS NOT NULL`,
+        [users.deactivation.membershipGrantId],
+      );
+      expect(retiredMembership.rows).toEqual([
+        {
+          id: users.deactivation.membershipGrantId,
+          revocation_reason: "person_deactivated",
+        },
+      ]);
+      const effectiveMembership = await client.query<{ id: string }>(
+        "SELECT id FROM membership WHERE id = $1",
+        [users.deactivation.membershipId],
+      );
+      expect(effectiveMembership.rows).toEqual([]);
       const finalPending = await client.query<{
         state: string;
         action: string;
@@ -581,6 +687,7 @@ test("real Users UI binds delayed proof and approval to its current route intent
           resultingAction: "deactivated",
           sessionsRevoked: 1,
           keysRevoked: 1,
+          membershipsEnded: 1,
         },
       });
 
