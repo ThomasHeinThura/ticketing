@@ -306,6 +306,17 @@ describe("API integration: work-item comments (#27)", () => {
       })
       .returning();
     if (!projectRole) throw new Error("expected project reach role");
+    const [creatorPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, creator.user.id));
+    if (!creatorPerson) throw new Error("expected creator person");
+    await db.insert(schema.membershipTable).values({
+      personId: creatorPerson.id,
+      scope: "project",
+      scopeId: project.id,
+      roleId: projectRole.id,
+    });
     await db.insert(schema.membershipTable).values({
       personId: person.id,
       scope: "project",
