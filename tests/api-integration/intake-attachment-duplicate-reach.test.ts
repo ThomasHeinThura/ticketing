@@ -148,4 +148,65 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
     expect(ok.status).toBe(200);
     expect(await names(ok)).toEqual(["owner-private.pdf"]);
   });
+
+  it("staff attachment download and request-type writes audit the staff person, not the user", async () => {
+    const s = await seed();
+    const staff = await personOf(s.t.requester.user.id);
+    expect(staff.id).not.toBe(s.t.requester.user.id);
+    const own = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: s.t.workspaceId,
+          organisationId: s.other.orgId,
+          submissionId: s.duplicate.id,
+          objectKey: `workspace/${s.t.workspaceId}/submission/${s.duplicate.id}/attachment/a2/own.pdf`,
+          filename: "own.pdf",
+          mimeType: "application/pdf",
+          size: 5,
+          state: "ready",
+          customerVisible: true,
+          uploadedBy: s.other.person.id,
+        })
+        .returning(),
+      "own attachment",
+    );
+    mockAuthenticatedSession(s.t.requester.user);
+    const download = await s.t.app.request(
+      `/api/submissions/SUB-${s.duplicate.number}/attachments/${own.id}`,
+    );
+    expect(download.status, await download.clone().text()).toBe(302);
+    const created = await s.t.app.request(
+      `/api/request-types?workspaceId=${s.t.workspaceId}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Audited",
+          group: "General",
+          workItemTypeId: s.t.type.id,
+          formSchema: { fields: [] },
+        }),
+      },
+    );
+    expect(created.status, await created.clone().text()).toBe(200);
+    const rows = await db
+      .select({
+        action: schema.auditLogTable.action,
+        actorId: schema.auditLogTable.actorId,
+        actorType: schema.auditLogTable.actorType,
+      })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.workspaceId, s.t.workspaceId),
+          eq(schema.auditLogTable.actorType, "person"),
+        ),
+      );
+    for (const action of ["attachment.downloaded", "request_type.created"]) {
+      const row = rows.find((candidate) => candidate.action === action);
+      expect(row, action).toBeDefined();
+      expect(row?.actorId, action).toBe(staff.id);
+    }
+  });
 });

@@ -1,6 +1,7 @@
 import { and, eq, isNull, or } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
+import { getActiveStaffPerson } from "../instance/users/repository";
 import { submissionRefParam } from "../intake/schema";
 import {
   apiRouter,
@@ -535,10 +536,15 @@ const attachment = apiRouter<
       row.filename,
       requirePublicAppOrigin(c.get("appPublicOrigin")),
     );
+    // A person actor is recorded by person id (as triage writes do), not the auth user id.
+    const apiKey = c.get("apiKey");
+    const [staffPerson] = apiKey
+      ? [null]
+      : await getActiveStaffPerson(c.get("userId"));
     await appendAuditLog(db, {
-      actorId: c.get("userId"),
-      actorType: c.get("apiKey") ? "api_key" : "person",
-      apiKeyId: c.get("apiKey")?.id ?? null,
+      actorId: staffPerson?.id ?? c.get("userId"),
+      actorType: apiKey ? "api_key" : "person",
+      apiKeyId: apiKey?.id ?? null,
       workspaceId: c.get("workspaceId"),
       action: "attachment.downloaded",
       entityType: "attachment",

@@ -836,7 +836,7 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
             ...c.req.valid("json"),
             workspaceId: c.req.valid("query").workspaceId,
           } as Parameters<typeof createRequestType>[0],
-          c.get("userId"),
+          await triagerPersonId(c),
         ),
       ),
       200,
@@ -857,7 +857,7 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
           c.req.valid("param").id,
           body as Parameters<typeof updateRequestType>[1],
           version,
-          c.get("userId"),
+          await triagerPersonId(c),
         ),
       ),
       200,
@@ -866,7 +866,7 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
   .openapi(publishRoute, async (c) => {
     const published = await publishRequestType(
       c.req.valid("param").id,
-      c.get("userId"),
+      await triagerPersonId(c),
     );
     return c.json(
       {
@@ -882,7 +882,7 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
         await setRequestTypePublished(
           c.req.valid("param").id,
           false,
-          c.get("userId"),
+          await triagerPersonId(c),
         ),
       ),
       200,
