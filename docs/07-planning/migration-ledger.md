@@ -15,10 +15,10 @@ strictly increasing. The recorded hash is the SHA-256 of the exact `.sql` bytes.
 | --- | --- | --- |
 | 0000-0087 | accepted `main` (journal max `when` 1791107747302 at idx 87, `0087_romantic_sway`) | applied, frozen |
 | 0088-0118 | M1 post-P0 migration spine (this change) | landed by M1 |
-| 0119 | N2 tenant-composite foreign keys (forward-only) | allocated, see below |
-| 0120 | `approval` tenant anchor (forward-only) | allocated, see below |
-| 0121 | S6 admin-suspension PA-15 step-up binding (forward-only) | allocated and cut, see below |
-| 0122 | #569 pending-action expiry indexes (current-source re-cut) | allocated and cut; acceptance pending |
+| 0119 | N2 tenant-composite foreign keys (forward-only) | accepted on main, see below |
+| 0120 | `approval` tenant anchor (forward-only) | accepted on main, see below |
+| 0121 | S6 admin-suspension PA-15 step-up binding (forward-only) | accepted on main via #647, see below |
+| 0122 | #569 pending-action expiry indexes (current-source re-cut) | accepted on main via #663, see below |
 | 0123+ | unallocated | next allocation below |
 
 ## 0088-0118 (M1)
@@ -252,8 +252,12 @@ Journal SHA-256 at the S6 candidate: `d48eba085e5e1acd62cd9adc8d085aedae50f078fb
 
 The conductor reservation carries forward the 2026-10-10 handoff allocation: 0121 is for
 S6's required operation-bound admin-suspension step-up binding, following 0120; #569's
-pending-action expiry-index re-cut moves to **0122**. Neither slot is accepted applied
-migration history until its owning candidate passes the normal gates.
+pending-action expiry-index re-cut moves to **0122**. This was the historical reservation.
+0121 is now accepted on main through protected #647, candidate
+`804f20b099624c20bbe1e9d5365f9581bcd8ef5a`, merged as
+`8973cbb179f490f3ee1d58cd2edea71bda4a4f94` at2026-10-11T11:28:43Z.
+The SQL, snapshot and original journal timestamp are unchanged. Accepted source does not
+assert application to the laptop SIT database.
 
 ### 0122 · #569 pending-action expiry indexes
 
@@ -265,8 +269,12 @@ SQL SHA-256: `bd628a99a8479f1e2051336487e2b48a9e1160d47a611687cbd77a62b11e357b`.
 Snapshot SHA-256: `f994f16dee182854589ab6be35c26622bb62487b5b7c211998679f19008f1cd0`.
 Current journal SHA-256: `fe40ab48321db5d5d8e51e2e10b660e77101c4548bdd3d4a40395a48b837ce57`.
 The indexes cover pending workspace actions plus the two registered nullable-scope instance
-user-deactivation row forms, and a separate unsupported-null probe. This records generated
-source allocation only; it does not assert migration execution or acceptance.
+user-deactivation row forms, and a separate unsupported-null probe. The allocation is now
+accepted on main through protected #663, candidate
+`1b22a738a055d73a99a6b56b897198cf5d1dedc4`, merged as
+`fe5ebd3578efe5706110b1e71879786cd0e02ace` at2026-10-11T20:16:29Z.
+SQL, snapshot and journal bytes are unchanged. Acceptance of this source does not assert
+application to the laptop SIT database.
 
 ### Next allocation
 
