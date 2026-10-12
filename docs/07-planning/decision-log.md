@@ -1,3 +1,17 @@
+### 2026-10-12 · Technical disposition: public review filenames secret-scan false positives
+
+**Technical rationale, not a new Thomas decision or gate waiver:** #661's required secret
+scan flags two public reviewer-report filenames in root-written headings of its own note,
+`docs/07-planning/security-reviews/661-accepted-native-records-composition.md`, immutable
+publication commit `347142043050587d76076c09c6b8589252f5de3c`, lines 7 and 39. The values
+name the authentic ordinary and security composition reports; neither is a credential.
+A real local conserved-range scan reproduced exactly the two `generic-api-key` fingerprints.
+Following the existing exact-finding mechanism, only these two immutable findings are added
+to `.gitleaksignore`. The required scanner still runs: no path/rule exemption, history rewrite,
+threshold change, report edit or scanner bypass. A changed-fingerprint positive control and
+fresh independent ordinary plus full security review are required before merge. Original
+hosted/local failures, report bytes and source bindings remain preserved.
+
 ### 2026-10-11 · Owner approves bounded boot-refusal test deadlines
 
 **Decision:** Thomas approves only the proposed production-import child deadline of10 seconds and outer test deadline of11 seconds for the built-entrypoint boot-refusal regression. The fresh-build deadline remains5 seconds, and every existing rejection assertion remains: natural nonzero exit, no timeout/signal/error, exact PolicyEnforcementConfigError, and no successful-import marker. No production runtime budget changes.
