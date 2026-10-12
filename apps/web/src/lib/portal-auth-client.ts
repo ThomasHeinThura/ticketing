@@ -1,13 +1,16 @@
 import { twoFactorClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
+import { getApiUrl } from "../fetchers/get-api-url";
 
 function getBaseURL() {
-  const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:1337";
+  // Reuse getApiUrl (the single VITE_API_URL reader). A same-origin build
+  // (VITE_API_URL="") yields a relative "/api/" path, which is not a
+  // parseable URL, so the base is "" and the client resolves against the
+  // current origin.
   try {
-    const url = new URL(apiUrl);
-    return `${url.protocol}//${url.host}`;
+    return new URL(getApiUrl("/")).origin;
   } catch {
-    return apiUrl.split("/").slice(0, 3).join("/");
+    return "";
   }
 }
 
