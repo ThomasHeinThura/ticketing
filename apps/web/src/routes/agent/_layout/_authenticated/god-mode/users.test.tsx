@@ -1,12 +1,13 @@
 import {
   act,
+  cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InstanceUsersPage } from "./users";
 
 const mocks = vi.hoisted(() => ({
@@ -107,7 +108,15 @@ function Harness() {
   return <InstanceUsersPage />;
 }
 
+async function flushActionContextEffect() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
 describe("God Mode Users action context", () => {
+  afterEach(() => cleanup());
+
   beforeEach(() => {
     mocks.search = { user: userA.id };
     mocks.grantAdmin.mockReset();
@@ -128,6 +137,7 @@ describe("God Mode Users action context", () => {
       screen.getByRole("button", { name: "instanceUsers:copy.d6ac6adb7aa6" }),
     );
     await waitFor(() => expect(mocks.search.action).toBe("grant-admin"));
+    await flushActionContextEffect();
     fireEvent.change(
       screen.getByLabelText("instanceUsers:dynamic.authenticatorCode"),
       {
@@ -164,6 +174,142 @@ describe("God Mode Users action context", () => {
     ).toHaveValue("");
 
     await act(async () => finishProof?.("proof-for-a"));
+    expect(mocks.grantAdmin).not.toHaveBeenCalled();
+  });
+
+  it("invalidates a pending proof when Back restores the same URL action context", async () => {
+    let finishProof: ((value: string) => void) | undefined;
+    mocks.createProof.mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          finishProof = resolve;
+        }),
+    );
+    render(<Harness />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "instanceUsers:copy.d6ac6adb7aa6" }),
+    );
+    await waitFor(() => expect(mocks.search.action).toBe("grant-admin"));
+    await flushActionContextEffect();
+    fireEvent.input(
+      screen.getByLabelText("instanceUsers:dynamic.authenticatorCode"),
+      { target: { value: "first-secret" } },
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("instanceUsers:dynamic.authenticatorCode"),
+      ).toHaveValue("first-secret"),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "instanceUsers:dynamic.actions.grantAdmin",
+      }),
+    );
+    await waitFor(() => expect(mocks.createProof).toHaveBeenCalledOnce());
+
+    act(() => {
+      mocks.search = { user: userB.id };
+      mocks.changed();
+    });
+    await waitFor(() =>
+      expect(
+        screen.queryByText("instanceUsers:dynamic.actions.grantAdmin"),
+      ).toBeNull(),
+    );
+    act(() => {
+      mocks.search = { user: userA.id, action: "grant-admin" };
+      mocks.changed();
+    });
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeTruthy());
+    await flushActionContextEffect();
+
+    await act(async () => finishProof?.("proof-from-first-context"));
+    expect(mocks.grantAdmin).not.toHaveBeenCalled();
+  });
+
+  it("ignores a rejected proof after cancel and reopening the same action", async () => {
+    let rejectProof: ((error: Error) => void) | undefined;
+    mocks.createProof.mockImplementation(
+      () =>
+        new Promise<string>((_resolve, reject) => {
+          rejectProof = reject;
+        }),
+    );
+    render(<Harness />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "instanceUsers:copy.d6ac6adb7aa6" }),
+    );
+    await waitFor(() => expect(mocks.search.action).toBe("grant-admin"));
+    await flushActionContextEffect();
+    fireEvent.input(
+      screen.getByLabelText("instanceUsers:dynamic.authenticatorCode"),
+      { target: { value: "first-secret" } },
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("instanceUsers:dynamic.authenticatorCode"),
+      ).toHaveValue("first-secret"),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "instanceUsers:dynamic.actions.grantAdmin",
+      }),
+    );
+    await waitFor(() => expect(mocks.createProof).toHaveBeenCalledOnce());
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "instanceUsers:copy.77dfd2135f4d" }),
+    );
+    await waitFor(() => expect(mocks.search.action).toBeUndefined());
+    fireEvent.click(
+      screen.getByRole("button", { name: "instanceUsers:copy.d6ac6adb7aa6" }),
+    );
+    await waitFor(() => expect(mocks.search.action).toBe("grant-admin"));
+    await flushActionContextEffect();
+    expect(
+      screen.getByLabelText("instanceUsers:dynamic.authenticatorCode"),
+    ).toHaveValue("");
+
+    await act(async () => rejectProof?.(new Error("old proof failed")));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.grantAdmin).not.toHaveBeenCalled();
+  });
+
+  it("invalidates a pending proof when the Users route unmounts", async () => {
+    let finishProof: ((value: string) => void) | undefined;
+    mocks.createProof.mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          finishProof = resolve;
+        }),
+    );
+    const { unmount } = render(<Harness />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "instanceUsers:copy.d6ac6adb7aa6" }),
+    );
+    await waitFor(() => expect(mocks.search.action).toBe("grant-admin"));
+    await flushActionContextEffect();
+    fireEvent.input(
+      screen.getByLabelText("instanceUsers:dynamic.authenticatorCode"),
+      { target: { value: "first-secret" } },
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("instanceUsers:dynamic.authenticatorCode"),
+      ).toHaveValue("first-secret"),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "instanceUsers:dynamic.actions.grantAdmin",
+      }),
+    );
+    await waitFor(() => expect(mocks.createProof).toHaveBeenCalledOnce());
+
+    unmount();
+    await act(async () => finishProof?.("proof-after-unmount"));
     expect(mocks.grantAdmin).not.toHaveBeenCalled();
   });
 });

@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@taskdesk/ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
@@ -96,9 +96,8 @@ export function InstanceUsersPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingActionUrl, setPendingActionUrl] = useState<string | null>(null);
   const intent = godModeUserActionBinding(search.user, action);
-  const intentRef = useRef(intent);
   const previousIntentRef = useRef(intent);
-  intentRef.current = intent;
+  const actionGenerationRef = useRef(0);
   const factor = useQuery({
     queryKey: ["god-mode", "step-up-factor"],
     queryFn: getCurrentFactorStatus,
@@ -126,9 +125,10 @@ export function InstanceUsersPage() {
     setFormError(null);
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (previousIntentRef.current === intent) return;
     previousIntentRef.current = intent;
+    actionGenerationRef.current += 1;
     setReason("");
     setExpiresAt("");
     setVerificationNote("");
@@ -136,12 +136,21 @@ export function InstanceUsersPage() {
     setFormError(null);
   }, [intent]);
 
+  useLayoutEffect(
+    () => () => {
+      actionGenerationRef.current += 1;
+    },
+    [],
+  );
+
   async function runAction(
     user: InstanceUser,
     requestedAction: GodModeUserAction,
   ) {
     const binding = godModeUserActionBinding(user.id, requestedAction);
-    if (intentRef.current !== binding) return;
+    if (intent !== binding) return;
+    const generation = actionGenerationRef.current;
+    const isCurrentOperation = () => actionGenerationRef.current === generation;
     setFormError(null);
     try {
       if (requestedAction === "suspend") {
@@ -160,7 +169,7 @@ export function InstanceUsersPage() {
               secret,
             })
           : undefined;
-        if (intentRef.current !== binding) return;
+        if (!isCurrentOperation()) return;
         await actions.suspend.mutateAsync({
           id: user.id,
           request,
@@ -172,6 +181,7 @@ export function InstanceUsersPage() {
         await actions.signOut.mutateAsync(user.id);
       } else if (requestedAction === "deactivate") {
         const result = await actions.deactivate.mutateAsync(user.id);
+        if (!isCurrentOperation()) return;
         if (!("approveUrl" in result)) {
           throw new Error(t("instanceUsers:dynamic.approvalMissing"));
         }
@@ -186,7 +196,7 @@ export function InstanceUsersPage() {
           method,
           secret,
         });
-        if (intentRef.current !== binding) return;
+        if (!isCurrentOperation()) return;
         await actions.grantAdmin.mutateAsync({ id: user.id, token });
       } else if (requestedAction === "reset-mfa") {
         const note = verificationNote.trim();
@@ -197,7 +207,7 @@ export function InstanceUsersPage() {
           method,
           secret,
         });
-        if (intentRef.current !== binding) return;
+        if (!isCurrentOperation()) return;
         await actions.resetMfa.mutateAsync({
           id: user.id,
           verificationNote: note,
@@ -206,6 +216,7 @@ export function InstanceUsersPage() {
       } else {
         return;
       }
+      if (!isCurrentOperation()) return;
       const noticeKey =
         requestedAction === "suspend"
           ? "suspended"
@@ -220,9 +231,10 @@ export function InstanceUsersPage() {
       await queryClient.invalidateQueries({
         queryKey: ["god-mode", "instance-users"],
       });
+      if (!isCurrentOperation()) return;
       resetAction();
     } catch (error) {
-      if (intentRef.current !== binding) return;
+      if (!isCurrentOperation()) return;
       const status = error instanceof HttpError ? error.status : undefined;
       setFormError(
         t(
