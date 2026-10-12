@@ -96,6 +96,8 @@ type RequestType = {
   position: number;
   key: string;
 };
+let rowCounter = 0;
+const newRowId = () => `row-${++rowCounter}`;
 const blank = (): Omit<
   RequestType,
   "id" | "version" | "published" | "key"
@@ -142,6 +144,13 @@ function RequestTypesPage() {
     Omit<RequestType, "id" | "version" | "published" | "key">
   >(blank());
   const [dragged, setDragged] = useState<number | null>(null);
+  // Stable per-row ids (parallel to draft.formSchema.fields): the field key is
+  // user-editable, so keying a row by it remounted the row on every keystroke.
+  const [rowIds, setRowIds] = useState<string[]>(["row-0"]);
+  // Raw "Options" text while a row is being edited, so Enter and blank lines survive
+  // typing; the parsed options are written on every change and the raw text is
+  // dropped on blur.
+  const [optionsText, setOptionsText] = useState<Record<string, string>>({});
   const [previewValues, setPreviewValues] = useState<Record<string, unknown>>(
     {},
   );
@@ -165,6 +174,8 @@ function RequestTypesPage() {
       forcePrivate: response.forcePrivate,
       position: response.position,
     });
+    setRowIds(response.formSchema.fields.map(() => newRowId()));
+    setOptionsText({});
   }, [detail.data]);
   const save = useMutation({
     mutationFn: () =>
@@ -200,7 +211,12 @@ function RequestTypesPage() {
   });
   const choose = (id: string | null) => {
     setSelected(id);
-    if (!id) setDraft(blank());
+    if (!id) {
+      const fresh = blank();
+      setDraft(fresh);
+      setRowIds(fresh.formSchema.fields.map(() => newRowId()));
+      setOptionsText({});
+    }
   };
   const fields = draft.formSchema.fields;
   const previewVisibility = resolveIntakeVisibility(
@@ -216,13 +232,20 @@ function RequestTypesPage() {
         ),
       },
     }));
-  const reorder = (from: number, to: number) =>
+  const reorder = (from: number, to: number) => {
+    setRowIds((current) => {
+      const next = [...current];
+      const [id] = next.splice(from, 1);
+      if (id) next.splice(to, 0, id);
+      return next;
+    });
     setDraft((current) => {
       const next = [...current.formSchema.fields];
       const [item] = next.splice(from, 1);
       if (item) next.splice(to, 0, item);
       return { ...current, formSchema: { fields: next } };
     });
+  };
   const loading = types.isLoading || workItemTypes.isLoading;
   const selectedType = (
     types.data as unknown as { requestTypes: RequestType[] } | undefined
@@ -266,6 +289,18 @@ function RequestTypesPage() {
         workItemTypes.isError) && (
         <Alert variant="error">
           <AlertDescription>{t("loadError")}</AlertDescription>
+          {(types.isError || detail.isError || workItemTypes.isError) && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (types.isError) void types.refetch();
+                if (detail.isError) void detail.refetch();
+                if (workItemTypes.isError) void workItemTypes.refetch();
+              }}
+            >
+              {t("common:actions.retry", { defaultValue: "Retry" })}
+            </Button>
+          )}
         </Alert>
       )}
       {loading ? (
@@ -449,7 +484,8 @@ function RequestTypesPage() {
               <h3 className="font-medium">Form fields</h3>
               <Button
                 variant="outline"
-                onClick={() =>
+                onClick={() => {
+                  setRowIds((current) => [...current, newRowId()]);
                   setDraft({
                     ...draft,
                     formSchema: {
@@ -463,292 +499,322 @@ function RequestTypesPage() {
                         },
                       ],
                     },
-                  })
-                }
+                  });
+                }}
               >
                 Add field
               </Button>
             </div>
-            {fields.map((field, index) => (
-              <article
-                key={field.key}
-                draggable
-                onDragStart={() => setDragged(index)}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => {
-                  if (dragged !== null) reorder(dragged, index);
-                  setDragged(null);
-                }}
-                className="grid gap-2 rounded border p-3 sm:grid-cols-[1fr_1fr_auto_auto]"
-              >
-                <label htmlFor={`field-key-${index}`}>
-                  Field key
-                  <Input
-                    id={`field-key-${index}`}
-                    value={field.key}
-                    onChange={(e) =>
-                      updateField(index, { key: e.target.value })
-                    }
-                  />
-                </label>
-                <label htmlFor={`field-label-${index}`}>
-                  Customer label
-                  <Input
-                    id={`field-label-${index}`}
-                    value={field.label}
-                    onChange={(e) =>
-                      updateField(index, { label: e.target.value })
-                    }
-                  />
-                </label>
-                <label htmlFor={`field-type-${index}`}>
-                  Type
-                  <Select
-                    value={field.type}
-                    onValueChange={(value) =>
-                      value &&
-                      updateField(index, { type: value as Field["type"] })
-                    }
-                  >
-                    <SelectTrigger id={`field-type-${index}`}>
-                      <SelectValue>{fieldTypeLabels[field.type]}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="text">Text</SelectItem>
-                      <SelectItem value="textarea">Long text</SelectItem>
-                      <SelectItem value="select">Select</SelectItem>
-                      <SelectItem value="checkbox">Checkbox</SelectItem>
-                      <SelectItem value="file">File</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label
-                  className="flex items-center gap-2"
-                  htmlFor={`field-required-${index}`}
+            {fields.map((field, index) => {
+              const rowId = rowIds[index] ?? `row-i${index}`;
+              return (
+                <article
+                  key={rowId}
+                  draggable
+                  onDragStart={() => setDragged(index)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={() => {
+                    if (dragged !== null) reorder(dragged, index);
+                    setDragged(null);
+                  }}
+                  className="grid gap-2 rounded border p-3 sm:grid-cols-[1fr_1fr_auto_auto]"
                 >
-                  <Checkbox
-                    id={`field-required-${index}`}
-                    checked={field.required}
-                    disabled={field.type === "file" && !field.required}
-                    onCheckedChange={(checked) =>
-                      updateField(index, { required: Boolean(checked) })
-                    }
-                  />{" "}
-                  Required
-                </label>
-                {field.type === "file" && (
-                  <p
-                    className={
-                      field.required
-                        ? "text-sm text-destructive sm:col-span-2"
-                        : "text-sm text-muted-foreground sm:col-span-2"
-                    }
-                  >
-                    {field.required
-                      ? "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish."
-                      : "Required is unavailable for file uploads until the submission file contract is defined."}
-                  </p>
-                )}
-                <label
-                  className="sm:col-span-2"
-                  htmlFor={`field-help-${index}`}
-                >
-                  Help text
-                  <Input
-                    id={`field-help-${index}`}
-                    value={field.help ?? ""}
-                    onChange={(e) =>
-                      updateField(index, { help: e.target.value || undefined })
-                    }
-                  />
-                </label>
-                <label
-                  className="sm:col-span-2"
-                  htmlFor={`field-options-${index}`}
-                >
-                  Options (one per line)
-                  <Textarea
-                    id={`field-options-${index}`}
-                    value={(field.options ?? []).join("\n")}
-                    onChange={(e) =>
-                      updateField(index, {
-                        options: e.target.value.split("\n").filter(Boolean),
-                      })
-                    }
-                    disabled={field.type !== "select"}
-                  />
-                </label>
-                <label htmlFor={`field-maps-to-${index}`}>
-                  Maps to
-                  <Select
-                    value={field.mapsTo?.field ?? null}
-                    onValueChange={(value) =>
-                      updateField(index, {
-                        mapsTo: value ? { field: value } : undefined,
-                      })
-                    }
-                  >
-                    <SelectTrigger id={`field-maps-to-${index}`}>
-                      <SelectValue placeholder="Keep in request data">
-                        {field.mapsTo?.field
-                          ? mapsToLabels[field.mapsTo.field]
-                          : undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="title">Work item title</SelectItem>
-                      <SelectItem value="description">
-                        Work item description
-                      </SelectItem>
-                      <SelectItem value="priority">
-                        Work item priority
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                {field.type === "select" &&
-                  field.mapsTo?.field === "priority" && (
-                    <fieldset className="flex flex-col gap-2 sm:col-span-2">
-                      <legend className="font-medium">
-                        Priority value mapping
-                      </legend>
-                      {field.options?.map((option) => (
-                        <label
-                          key={option}
-                          className="grid gap-2 sm:grid-cols-2"
-                          htmlFor={`field-map-${index}-${option}`}
-                        >
-                          <span>{option}</span>
-                          <Select
-                            value={priorityValueFor(field, option)}
-                            onValueChange={(value) => {
-                              const map = { ...(field.mapsTo?.map ?? {}) };
-                              if (value) map[option] = value;
-                              else delete map[option];
-                              updateField(index, {
-                                mapsTo: { field: "priority", map },
-                              });
-                            }}
-                          >
-                            <SelectTrigger id={`field-map-${index}-${option}`}>
-                              <SelectValue placeholder="Choose priority">
-                                {priorityLabels[
-                                  priorityValueFor(field, option) ?? ""
-                                ] ?? undefined}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="low">Low</SelectItem>
-                              <SelectItem value="medium">Medium</SelectItem>
-                              <SelectItem value="high">High</SelectItem>
-                              <SelectItem value="urgent">Urgent</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </label>
-                      ))}
-                    </fieldset>
-                  )}
-                <label htmlFor={`field-show-when-${index}`}>
-                  Show when
-                  <Select
-                    value={field.showIf?.field_key ?? null}
-                    onValueChange={(value) =>
-                      updateField(index, {
-                        showIf: value
-                          ? { field_key: value, op: "eq", value: "" }
-                          : undefined,
-                      })
-                    }
-                  >
-                    <SelectTrigger id={`field-show-when-${index}`}>
-                      <SelectValue placeholder="Always visible">
-                        {field.showIf
-                          ? fields.find(
-                              (candidate) =>
-                                candidate.key === field.showIf?.field_key,
-                            )?.label
-                          : undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fields
-                        .filter((candidate) => candidate.key !== field.key)
-                        .map((candidate) => (
-                          <SelectItem key={candidate.key} value={candidate.key}>
-                            {candidate.label}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </label>
-                {field.showIf && (
-                  <label htmlFor={`field-show-value-${index}`}>
-                    Equals value
+                  <label htmlFor={`field-key-${index}`}>
+                    Field key
                     <Input
-                      id={`field-show-value-${index}`}
-                      value={String(field.showIf.value ?? "")}
+                      id={`field-key-${index}`}
+                      value={field.key}
+                      onChange={(e) =>
+                        updateField(index, { key: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label htmlFor={`field-label-${index}`}>
+                    Customer label
+                    <Input
+                      id={`field-label-${index}`}
+                      value={field.label}
+                      onChange={(e) =>
+                        updateField(index, { label: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label htmlFor={`field-type-${index}`}>
+                    Type
+                    <Select
+                      value={field.type}
+                      onValueChange={(value) =>
+                        value &&
+                        updateField(index, { type: value as Field["type"] })
+                      }
+                    >
+                      <SelectTrigger id={`field-type-${index}`}>
+                        <SelectValue>{fieldTypeLabels[field.type]}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="textarea">Long text</SelectItem>
+                        <SelectItem value="select">Select</SelectItem>
+                        <SelectItem value="checkbox">Checkbox</SelectItem>
+                        <SelectItem value="file">File</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  <label
+                    className="flex items-center gap-2"
+                    htmlFor={`field-required-${index}`}
+                  >
+                    <Checkbox
+                      id={`field-required-${index}`}
+                      checked={field.required}
+                      disabled={field.type === "file" && !field.required}
+                      onCheckedChange={(checked) =>
+                        updateField(index, { required: Boolean(checked) })
+                      }
+                    />{" "}
+                    Required
+                  </label>
+                  {field.type === "file" && (
+                    <p
+                      className={
+                        field.required
+                          ? "text-sm text-destructive sm:col-span-2"
+                          : "text-sm text-muted-foreground sm:col-span-2"
+                      }
+                    >
+                      {field.required
+                        ? "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish."
+                        : "Required is unavailable for file uploads until the submission file contract is defined."}
+                    </p>
+                  )}
+                  <label
+                    className="sm:col-span-2"
+                    htmlFor={`field-help-${index}`}
+                  >
+                    Help text
+                    <Input
+                      id={`field-help-${index}`}
+                      value={field.help ?? ""}
                       onChange={(e) =>
                         updateField(index, {
-                          showIf: {
-                            ...(field.showIf ?? {
-                              field_key: "",
-                              op: "eq",
-                            }),
-                            value: e.target.value,
-                          },
+                          help: e.target.value || undefined,
                         })
                       }
                     />
                   </label>
-                )}
-                {field.type === "file" && (
                   <label
-                    className="flex items-center gap-2"
-                    htmlFor={`field-multiple-${index}`}
+                    className="sm:col-span-2"
+                    htmlFor={`field-options-${index}`}
                   >
-                    <Checkbox
-                      id={`field-multiple-${index}`}
-                      checked={field.multiple ?? false}
-                      onCheckedChange={(checked) =>
-                        updateField(index, { multiple: Boolean(checked) })
+                    Options (one per line)
+                    <Textarea
+                      id={`field-options-${index}`}
+                      value={
+                        optionsText[rowId] ?? (field.options ?? []).join("\n")
                       }
-                    />{" "}
-                    Allow multiple files
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setOptionsText((current) => ({
+                          ...current,
+                          [rowId]: raw,
+                        }));
+                        updateField(index, {
+                          options: raw
+                            .split("\n")
+                            .map((line) => line.trim())
+                            .filter(Boolean),
+                        });
+                      }}
+                      onBlur={() =>
+                        setOptionsText((current) => {
+                          const { [rowId]: _raw, ...rest } = current;
+                          return rest;
+                        })
+                      }
+                      disabled={field.type !== "select"}
+                    />
                   </label>
-                )}
-                <div className="flex gap-1">
-                  <Button
-                    variant="outline"
-                    aria-label={`Move ${field.label} up`}
-                    disabled={index === 0}
-                    onClick={() => reorder(index, index - 1)}
-                  >
-                    ↑
-                  </Button>
-                  <Button
-                    variant="outline"
-                    aria-label={`Move ${field.label} down`}
-                    disabled={index === fields.length - 1}
-                    onClick={() => reorder(index, index + 1)}
-                  >
-                    ↓
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={() =>
-                      setDraft({
-                        ...draft,
-                        formSchema: {
-                          fields: fields.filter((_, i) => i !== index),
-                        },
-                      })
-                    }
-                  >
-                    Remove
-                  </Button>
-                </div>
-              </article>
-            ))}
+                  <label htmlFor={`field-maps-to-${index}`}>
+                    Maps to
+                    <Select
+                      value={field.mapsTo?.field ?? null}
+                      onValueChange={(value) =>
+                        updateField(index, {
+                          mapsTo: value ? { field: value } : undefined,
+                        })
+                      }
+                    >
+                      <SelectTrigger id={`field-maps-to-${index}`}>
+                        <SelectValue placeholder="Keep in request data">
+                          {field.mapsTo?.field
+                            ? mapsToLabels[field.mapsTo.field]
+                            : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="title">Work item title</SelectItem>
+                        <SelectItem value="description">
+                          Work item description
+                        </SelectItem>
+                        <SelectItem value="priority">
+                          Work item priority
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  {field.type === "select" &&
+                    field.mapsTo?.field === "priority" && (
+                      <fieldset className="flex flex-col gap-2 sm:col-span-2">
+                        <legend className="font-medium">
+                          Priority value mapping
+                        </legend>
+                        {field.options?.map((option) => (
+                          <label
+                            key={option}
+                            className="grid gap-2 sm:grid-cols-2"
+                            htmlFor={`field-map-${index}-${option}`}
+                          >
+                            <span>{option}</span>
+                            <Select
+                              value={priorityValueFor(field, option)}
+                              onValueChange={(value) => {
+                                const map = { ...(field.mapsTo?.map ?? {}) };
+                                if (value) map[option] = value;
+                                else delete map[option];
+                                updateField(index, {
+                                  mapsTo: { field: "priority", map },
+                                });
+                              }}
+                            >
+                              <SelectTrigger
+                                id={`field-map-${index}-${option}`}
+                              >
+                                <SelectValue placeholder="Choose priority">
+                                  {priorityLabels[
+                                    priorityValueFor(field, option) ?? ""
+                                  ] ?? undefined}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="low">Low</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                                <SelectItem value="urgent">Urgent</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </label>
+                        ))}
+                      </fieldset>
+                    )}
+                  <label htmlFor={`field-show-when-${index}`}>
+                    Show when
+                    <Select
+                      value={field.showIf?.field_key ?? null}
+                      onValueChange={(value) =>
+                        updateField(index, {
+                          showIf: value
+                            ? { field_key: value, op: "eq", value: "" }
+                            : undefined,
+                        })
+                      }
+                    >
+                      <SelectTrigger id={`field-show-when-${index}`}>
+                        <SelectValue placeholder="Always visible">
+                          {field.showIf
+                            ? fields.find(
+                                (candidate) =>
+                                  candidate.key === field.showIf?.field_key,
+                              )?.label
+                            : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fields
+                          .filter((candidate) => candidate.key !== field.key)
+                          .map((candidate) => (
+                            <SelectItem
+                              key={candidate.key}
+                              value={candidate.key}
+                            >
+                              {candidate.label}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  {field.showIf && (
+                    <label htmlFor={`field-show-value-${index}`}>
+                      Equals value
+                      <Input
+                        id={`field-show-value-${index}`}
+                        value={String(field.showIf.value ?? "")}
+                        onChange={(e) =>
+                          updateField(index, {
+                            showIf: {
+                              ...(field.showIf ?? {
+                                field_key: "",
+                                op: "eq",
+                              }),
+                              value: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  )}
+                  {field.type === "file" && (
+                    <label
+                      className="flex items-center gap-2"
+                      htmlFor={`field-multiple-${index}`}
+                    >
+                      <Checkbox
+                        id={`field-multiple-${index}`}
+                        checked={field.multiple ?? false}
+                        onCheckedChange={(checked) =>
+                          updateField(index, { multiple: Boolean(checked) })
+                        }
+                      />{" "}
+                      Allow multiple files
+                    </label>
+                  )}
+                  <div className="flex gap-1">
+                    <Button
+                      variant="outline"
+                      aria-label={`Move ${field.label} up`}
+                      disabled={index === 0}
+                      onClick={() => reorder(index, index - 1)}
+                    >
+                      ↑
+                    </Button>
+                    <Button
+                      variant="outline"
+                      aria-label={`Move ${field.label} down`}
+                      disabled={index === fields.length - 1}
+                      onClick={() => reorder(index, index + 1)}
+                    >
+                      ↓
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      aria-label={`Remove ${field.label}`}
+                      onClick={() => {
+                        setRowIds((current) =>
+                          current.filter((_, i) => i !== index),
+                        );
+                        setDraft({
+                          ...draft,
+                          formSchema: {
+                            fields: fields.filter((_, i) => i !== index),
+                          },
+                        });
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
             <section className="rounded-md bg-muted p-4">
               <h3 className="font-medium">Customer preview</h3>
               <p className="text-sm text-muted-foreground">
@@ -763,6 +829,7 @@ function RequestTypesPage() {
                       {field.required ? " *" : ""}
                       {field.type === "textarea" ? (
                         <Textarea
+                          aria-label={field.label}
                           placeholder={field.help}
                           value={String(previewValues[field.key] ?? "")}
                           onChange={(event) =>
@@ -782,7 +849,7 @@ function RequestTypesPage() {
                             })
                           }
                         >
-                          <SelectTrigger>
+                          <SelectTrigger aria-label={field.label}>
                             <SelectValue placeholder="Choose…" />
                           </SelectTrigger>
                           <SelectContent>
@@ -794,9 +861,14 @@ function RequestTypesPage() {
                           </SelectContent>
                         </Select>
                       ) : field.type === "file" ? (
-                        <Input type="file" multiple={field.multiple} />
+                        <Input
+                          type="file"
+                          aria-label={field.label}
+                          multiple={field.multiple}
+                        />
                       ) : field.type === "checkbox" ? (
                         <Checkbox
+                          aria-label={field.label}
                           checked={Boolean(previewValues[field.key])}
                           onCheckedChange={(checked) =>
                             setPreviewValues({
@@ -808,6 +880,7 @@ function RequestTypesPage() {
                       ) : (
                         <Input
                           type="text"
+                          aria-label={field.label}
                           value={String(previewValues[field.key] ?? "")}
                           onChange={(event) =>
                             setPreviewValues({
