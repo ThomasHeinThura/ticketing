@@ -318,12 +318,23 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
     await activity.getByRole("button", { name: "Send comment" }).click();
     const internalResponse = await internalSubmit;
     expect(internalResponse.status()).toBe(200);
-    const internalPayload = internalResponse.request().postDataJSON() as {
+    expect(internalResponse.request().headers()["content-type"]).toMatch(
+      /^application\/json(?:;|$)/iu,
+    );
+    expect(internalResponse.headers()["content-type"]).toMatch(
+      /^application\/json(?:;|$)/iu,
+    );
+    const internalComment = (await internalResponse.json()) as {
+      id: string;
       visibility: string;
       body: { type: string };
     };
-    expect(internalPayload.visibility).toBe("internal");
-    expect(internalPayload.body.type).toBe("doc");
+    expect(internalComment.id).toBeTruthy();
+    expect(internalComment.visibility).toBe("internal");
+    expect(internalComment.body.type).toBe("doc");
+    expect(JSON.stringify(internalComment.body)).toContain(
+      "Recovered internal draft",
+    );
     await expect(
       activity.locator('li[data-visibility="internal"]').filter({
         hasText: "Recovered internal draft",
@@ -373,17 +384,29 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
     await activity.getByRole("button", { name: "Send comment" }).click();
     const publicResponse = await publicSubmit;
     expect(publicResponse.status()).toBe(200);
-    const publicPayload = publicResponse.request().postDataJSON() as {
+    expect(publicResponse.request().headers()["content-type"]).toMatch(
+      /^application\/json(?:;|$)/iu,
+    );
+    expect(publicResponse.headers()["content-type"]).toMatch(
+      /^application\/json(?:;|$)/iu,
+    );
+    const publicComment = (await publicResponse.json()) as {
+      id: string;
       visibility: string;
       body: {
         content?: Array<{
-          content?: Array<{ type?: string; attrs?: { id?: string } }>;
+          content?: Array<{
+            type?: string;
+            text?: string;
+            attrs?: { id?: string };
+          }>;
         }>;
       };
     };
-    expect(publicPayload.visibility).toBe("public");
+    expect(publicComment.id).toBeTruthy();
+    expect(publicComment.visibility).toBe("public");
     expect(
-      publicPayload.body.content?.flatMap(
+      publicComment.body.content?.flatMap(
         (paragraph) => paragraph.content ?? [],
       ),
     ).toContainEqual(
@@ -392,12 +415,36 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         attrs: expect.objectContaining({ id: mentionRecipient.personId }),
       }),
     );
-    const publicComment = (await publicResponse.json()) as { id: string };
-    expect(publicComment.id).toBeTruthy();
+    expect(
+      publicComment.body.content
+        ?.flatMap((paragraph) => paragraph.content ?? [])
+        .some((node) => node.text?.includes("saw the update")),
+    ).toBe(true);
 
     const historyDb = new Client({ connectionString: databaseUrl });
     await historyDb.connect();
     try {
+      const persistedComments = await historyDb.query<{
+        id: string;
+        body: { type: string } | null;
+        visibility: string;
+      }>(
+        `SELECT id, body, visibility FROM comment
+          WHERE work_item_id = $1 AND id = ANY($2::text[])`,
+        [item.id, [internalComment.id, publicComment.id]],
+      );
+      const persistedById = new Map(
+        persistedComments.rows.map((comment) => [comment.id, comment]),
+      );
+      expect(persistedById.size).toBe(2);
+      expect(persistedById.get(internalComment.id)).toMatchObject({
+        body: internalComment.body,
+        visibility: internalComment.visibility,
+      });
+      expect(persistedById.get(publicComment.id)).toMatchObject({
+        body: publicComment.body,
+        visibility: publicComment.visibility,
+      });
       const persisted = await historyDb.query<{
         notification_count: string;
         delivery_count: string;
