@@ -352,23 +352,32 @@ function matchesPortalPolicyRoute(method: string, path: string): boolean {
  */
 const PORTAL_SUBMISSION_ATTACHMENT_KEY =
   /^workspace\/[A-Za-z0-9_-]+\/submission\/[A-Za-z0-9_-]+\/attachment\/[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+$/u;
+/**
+ * `complete` moves the object to `<pending dir>/final/<cuid2 token>-<file>`
+ * (`toFinalAttachmentObjectKey`), and the attachment row then points at that key, so a
+ * download redirect carries it. Downloads only: nothing ever mints an upload token for a
+ * finalized key.
+ */
+const PORTAL_SUBMISSION_FINAL_ATTACHMENT_KEY =
+  /^workspace\/[A-Za-z0-9_-]+\/submission\/[A-Za-z0-9_-]+\/attachment\/[A-Za-z0-9_-]+\/final\/[a-z0-9]+-[A-Za-z0-9_.-]+$/u;
 
 function isPortalSubmissionStorageRequest(
   method: string,
   path: string,
   key: string | undefined,
 ): boolean {
-  const upload =
-    method === "PUT" && path === "/api/storage/filesystem-attachment-upload";
-  const download =
+  if (key === undefined || key.includes("..")) return false;
+  if (method === "PUT" && path === "/api/storage/filesystem-attachment-upload")
+    return PORTAL_SUBMISSION_ATTACHMENT_KEY.test(key);
+  if (
     (method === "GET" || method === "HEAD") &&
-    path === "/api/storage/filesystem-download";
-  return (
-    (upload || download) &&
-    key !== undefined &&
-    !key.includes("..") &&
-    PORTAL_SUBMISSION_ATTACHMENT_KEY.test(key)
-  );
+    path === "/api/storage/filesystem-download"
+  )
+    return (
+      PORTAL_SUBMISSION_ATTACHMENT_KEY.test(key) ||
+      PORTAL_SUBMISSION_FINAL_ATTACHMENT_KEY.test(key)
+    );
+  return false;
 }
 
 function isCustomerAuthEndpoint(method: string, path: string): boolean {

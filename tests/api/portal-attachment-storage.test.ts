@@ -1,6 +1,13 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../apps/api/src/index";
 import {
@@ -129,6 +136,59 @@ describe("portal host admits only portal-submission attachment storage URLs (CP-
       );
       expect((await put(app, url.uploadUrl)).status, key).toBe(404);
     }
+  });
+
+  const FINAL_KEY =
+    "workspace/ws1/submission/sub1/attachment/att1/final/k3x9q2m7z1a8b4c6d0e5f2g1-report.pdf";
+  const download = (
+    app: ReturnType<typeof createApp>["app"],
+    key: string,
+    host = PORTAL_HOST,
+    method = "GET",
+  ) =>
+    app.request(
+      pathOf(createAttachmentDownloadUrl(key, "report.pdf", `${PORTAL}/api`)),
+      { method, headers: { host } },
+    );
+
+  it("downloads a finalized portal submission attachment (final/<token>-<file>) on the portal host", async () => {
+    const { app } = createApp();
+    mkdirSync(dirname(join(root, FINAL_KEY)), { recursive: true });
+    writeFileSync(join(root, FINAL_KEY), "finalized bytes");
+    const response = await download(app, FINAL_KEY);
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("finalized bytes");
+    expect((await download(app, FINAL_KEY, PORTAL_HOST, "HEAD")).status).toBe(
+      200,
+    );
+  });
+
+  it("refuses finalized-key lookalikes on the portal host (traversal, prefix, work item, extra segments, separators)", async () => {
+    const { app } = createApp();
+    const token = "k3x9q2m7z1a8b4c6d0e5f2g1";
+    for (const key of [
+      `workspace/ws1/submission/sub1/attachment/att1/final/${token}-../../x.pdf`,
+      `workspace/ws1/submission/sub1/attachment/att1/final/../${token}-x.pdf`,
+      `workspace/ws1/work-item/wi1/attachment/att1/final/${token}-x.pdf`,
+      `other/ws1/submission/sub1/attachment/att1/final/${token}-x.pdf`,
+      `workspace/ws1/submission/sub1/attachment/att1/final/${token}-x.pdf/extra`,
+      `workspace/ws1/submission/sub1/attachment/att1/final/extra/${token}-x.pdf`,
+      `workspace/ws1/submission/sub1/attachment/att1/final/${token}.pdf`,
+      "workspace/ws1/submission/sub1/attachment/att1/final/UPPER-x.pdf",
+      `workspace/ws1/submission/sub1/attachment/att1/final/${token}-x%2Fy.pdf`,
+      `workspace/ws1/submission/sub1/attachment/att1/final/${token}-x\\y.pdf`,
+      `/workspace/ws1/submission/sub1/attachment/att1/final/${token}-x.pdf`,
+    ]) {
+      expect((await download(app, key)).status, key).toBe(404);
+    }
+    // A finalized key is never admitted for upload on the portal host.
+    const upload = createAttachmentUploadUrl(
+      FINAL_KEY,
+      "application/pdf",
+      1024,
+      `${PORTAL}/api`,
+    );
+    expect((await put(app, upload.uploadUrl)).status).toBe(404);
   });
 
   it("keeps the rest of the storage surface and the agent host unchanged", async () => {
