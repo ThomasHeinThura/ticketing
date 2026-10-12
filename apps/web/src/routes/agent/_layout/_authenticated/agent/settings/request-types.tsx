@@ -56,6 +56,30 @@ type Field = {
     value?: unknown;
   } | null;
 };
+const fieldTypeLabels: Record<Field["type"], string> = {
+  text: "Text",
+  textarea: "Long text",
+  select: "Select",
+  checkbox: "Checkbox",
+  file: "File",
+};
+const mapsToLabels: Record<string, string> = {
+  title: "Work item title",
+  description: "Work item description",
+  priority: "Work item priority",
+};
+const priorityLabels: Record<string, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  urgent: "Urgent",
+};
+function priorityValueFor(field: Field, option: string): string | null {
+  return (
+    field.mapsTo?.map?.[option] ??
+    (Object.hasOwn(priorityLabels, option) ? option : null)
+  );
+}
 type RequestType = {
   id: string;
   name: string;
@@ -337,7 +361,13 @@ function RequestTypesPage() {
                   }
                 >
                   <SelectTrigger id="request-type-work-item-type">
-                    <SelectValue placeholder="Choose a type" />
+                    <SelectValue placeholder="Choose a type">
+                      {
+                        workItemTypes.data?.find(
+                          (type) => type.id === draft.workItemTypeId,
+                        )?.name
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {workItemTypes.data?.map((type) => (
@@ -481,7 +511,7 @@ function RequestTypesPage() {
                     }
                   >
                     <SelectTrigger id={`field-type-${index}`}>
-                      <SelectValue />
+                      <SelectValue>{fieldTypeLabels[field.type]}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="text">Text</SelectItem>
@@ -559,7 +589,11 @@ function RequestTypesPage() {
                     }
                   >
                     <SelectTrigger id={`field-maps-to-${index}`}>
-                      <SelectValue placeholder="Keep in request data" />
+                      <SelectValue placeholder="Keep in request data">
+                        {field.mapsTo?.field
+                          ? mapsToLabels[field.mapsTo.field]
+                          : undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="title">Work item title</SelectItem>
@@ -586,14 +620,7 @@ function RequestTypesPage() {
                         >
                           <span>{option}</span>
                           <Select
-                            value={
-                              field.mapsTo?.map?.[option] ??
-                              (["low", "medium", "high", "urgent"].includes(
-                                option,
-                              )
-                                ? option
-                                : null)
-                            }
+                            value={priorityValueFor(field, option)}
                             onValueChange={(value) => {
                               const map = { ...(field.mapsTo?.map ?? {}) };
                               if (value) map[option] = value;
@@ -604,7 +631,11 @@ function RequestTypesPage() {
                             }}
                           >
                             <SelectTrigger id={`field-map-${index}-${option}`}>
-                              <SelectValue placeholder="Choose priority" />
+                              <SelectValue placeholder="Choose priority">
+                                {priorityLabels[
+                                  priorityValueFor(field, option) ?? ""
+                                ] ?? undefined}
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="low">Low</SelectItem>
@@ -630,7 +661,14 @@ function RequestTypesPage() {
                     }
                   >
                     <SelectTrigger id={`field-show-when-${index}`}>
-                      <SelectValue placeholder="Always visible" />
+                      <SelectValue placeholder="Always visible">
+                        {field.showIf
+                          ? fields.find(
+                              (candidate) =>
+                                candidate.key === field.showIf?.field_key,
+                            )?.label
+                          : undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {fields

@@ -146,6 +146,15 @@ function IntakeRoute() {
         }>;
       }
     | undefined;
+  const selectedProjectId = projectId || current?.version?.defaultProjectId;
+  const selectedProject = projects.data?.find(
+    (project) => project.id === selectedProjectId,
+  );
+  const selectedWorkItemTypeId =
+    workItemTypeId || current?.version?.workItemTypeId;
+  const selectedWorkItemType = workItemTypes.data?.find(
+    (type) => type.id === selectedWorkItemTypeId,
+  );
   useEffect(() => {
     setWorkItemTypeId(current?.version?.workItemTypeId ?? "");
     setProjectId(current?.version?.defaultProjectId ?? "");
@@ -339,7 +348,11 @@ function IntakeRoute() {
                           }}
                         >
                           <SelectTrigger aria-label="Destination project">
-                            <SelectValue placeholder="Choose a project" />
+                            <SelectValue placeholder="Choose a project">
+                              {selectedProject
+                                ? `${selectedProject.name} (${selectedProject.slug})`
+                                : undefined}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {projects.data?.map((project) => (
@@ -363,7 +376,9 @@ function IntakeRoute() {
                           }}
                         >
                           <SelectTrigger aria-label="Work item type">
-                            <SelectValue placeholder="Choose a work item type" />
+                            <SelectValue placeholder="Choose a work item type">
+                              {selectedWorkItemType?.name}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {workItemTypes.data?.map((type) => (
