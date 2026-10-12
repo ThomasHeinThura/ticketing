@@ -274,6 +274,10 @@ export function getConfiguredAgentOrigin(): string {
   return new URL(agentOrigin).origin;
 }
 
+export function getConfiguredCustomerOrigin(): string {
+  return new URL(customerOrigin).origin;
+}
+
 async function getUserLocale(email: string) {
   const [user] = await getAuthUserLocale(email);
 

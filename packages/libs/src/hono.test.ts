@@ -351,4 +351,23 @@ describe("TaskDesk Hono transport", () => {
     expect(request?.headers.has("authorization")).toBe(false);
     expect(request?.headers.has("x-api-key")).toBe(false);
   });
+
+  it("never requests the agent CSRF issuer when the portal build disables it", async () => {
+    const requested: string[] = [];
+    const portalFetch = createApiFetch(
+      async (input, init) => {
+        const request = new Request(input, init);
+        requested.push(`${request.method} ${new URL(request.url).pathname}`);
+        return Response.json({ ref: "SUB-1" });
+      },
+      { apiBaseUrl, agentCsrfToken: false },
+    );
+    const response = await portalFetch(`${apiBaseUrl}/portal/submissions`, {
+      method: "POST",
+      body: JSON.stringify({ requestTypeKey: "access" }),
+    });
+    expect(response.status).toBe(200);
+    expect(requested).toEqual(["POST /api/portal/submissions"]);
+    expect(requested.some((entry) => entry.includes("csrf-token"))).toBe(false);
+  });
 });
