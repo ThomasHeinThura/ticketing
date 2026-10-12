@@ -231,7 +231,8 @@ export default function CommentEditor({
       })),
     [workspaceUsers],
   );
-  mentionMembersRef.current = mentionMembers ?? defaultMentionMembers;
+  const resolvedMentionMembers = mentionMembers ?? defaultMentionMembers;
+  mentionMembersRef.current = resolvedMentionMembers;
   const editorShellRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const dragDepthRef = useRef(0);
@@ -971,6 +972,19 @@ export default function CommentEditor({
       onAttachActionChange(null);
     };
   }, [editor, onAttachActionChange, openImagePicker]);
+
+  // Candidates can arrive (or change with visibility) after the user has
+  // already typed `@`; Tiptap only evaluates `items()` on query changes, so ask
+  // the active suggestion to re-evaluate against the latest candidates.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh when the candidate set changes
+  useEffect(() => {
+    if (!isLiveEditor(editor) || !enableMentions) return;
+    (
+      editor.storage as
+        | { taskdeskMentionSuggestion?: { refresh?: () => void } }
+        | undefined
+    )?.taskdeskMentionSuggestion?.refresh?.();
+  }, [editor, enableMentions, resolvedMentionMembers]);
 
   useEffect(() => {
     if (!isLiveEditor(editor) || !shikiHighlighter) return;

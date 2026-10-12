@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -129,5 +130,81 @@ describe("CommentEditor lifecycle", () => {
         }),
       ),
     );
+  });
+
+  describe("mention suggestion candidate lifecycle (real Tiptap)", () => {
+    const person = {
+      id: "user-comments-recipient",
+      label: "Comments Mention Recipient",
+    };
+    type EditorHandle = { commands: { insertContent: (v: string) => boolean } };
+    const getEditor = (container: HTMLElement): EditorHandle => {
+      const dom = container.querySelector<
+        HTMLElement & { editor?: EditorHandle }
+      >('.ProseMirror[contenteditable="true"]');
+      expect(dom?.editor).toBeDefined();
+      return dom?.editor as EditorHandle;
+    };
+    afterEach(() => {
+      for (const el of document.body.querySelectorAll(
+        ".taskdesk-mention-popup",
+      )) {
+        el.remove();
+      }
+    });
+    const mentionButton = () =>
+      document.body.querySelector<HTMLElement>(".taskdesk-mention-list button");
+    const renderEditor = (members: (typeof person)[]) => (
+      <CommentEditor
+        value=""
+        showQuickAttachButton={false}
+        mentionMembers={members}
+      />
+    );
+
+    it("control: shows the candidate when candidates exist before typing", async () => {
+      const { container, unmount } = render(renderEditor([person]));
+      const editor = await waitFor(() => getEditor(container));
+      await act(async () => {
+        editor.commands.insertContent("@Com");
+      });
+      await waitFor(() => expect(mentionButton()).not.toBeNull());
+      expect(
+        within(document.body).getByRole("button", {
+          name: person.label,
+        }),
+      ).toBeInTheDocument();
+      unmount();
+    });
+
+    it("re-evaluates an active @query when candidates arrive or change", async () => {
+      const { container, rerender, unmount } = render(renderEditor([]));
+      const editor = await waitFor(() => getEditor(container));
+      await act(async () => {
+        editor.commands.insertContent("@Com");
+      });
+      await waitFor(() =>
+        expect(
+          document.body.querySelector(".taskdesk-mention-popup"),
+        ).not.toBeNull(),
+      );
+      expect(mentionButton()).toBeNull();
+
+      await act(async () => {
+        rerender(renderEditor([person]));
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: person.label }),
+        ).toBeInTheDocument(),
+      );
+
+      // Visibility change: the candidate set shrinks while still active.
+      await act(async () => {
+        rerender(renderEditor([]));
+      });
+      await waitFor(() => expect(mentionButton()).toBeNull());
+      unmount();
+    });
   });
 });

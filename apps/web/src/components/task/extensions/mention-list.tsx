@@ -58,6 +58,7 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
             variant="ghost"
             type="button"
             key={item.id}
+            aria-label={item.label}
             className={`taskdesk-mention-item${index === selected ? " is-active" : ""}`}
             onClick={() => select(index)}
             onMouseEnter={() => setSelected(index)}
