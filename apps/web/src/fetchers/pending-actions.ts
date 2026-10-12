@@ -61,12 +61,16 @@ export async function createPendingActionProof(input: {
     challengeId: string;
     nonce: string;
   };
+  const challengeFields = {
+    challengeId: challenge.challengeId,
+    nonce: challenge.nonce,
+  };
   const proofResponse =
     input.method === "password"
       ? await client.me["step-up"].$post({
           json: {
             ...binding,
-            ...challenge,
+            ...challengeFields,
             method: "password",
             password: input.secret,
           },
@@ -75,7 +79,7 @@ export async function createPendingActionProof(input: {
         ? await client.me["step-up"].$post({
             json: {
               ...binding,
-              ...challenge,
+              ...challengeFields,
               method: "totp",
               code: input.secret,
             },
@@ -83,7 +87,7 @@ export async function createPendingActionProof(input: {
         : await client.me["step-up"].$post({
             json: {
               ...binding,
-              ...challenge,
+              ...challengeFields,
               method: "backup_code",
               code: input.secret,
             },

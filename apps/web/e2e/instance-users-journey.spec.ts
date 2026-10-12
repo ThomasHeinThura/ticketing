@@ -548,6 +548,18 @@ test("real Users UI binds delayed proof and approval to its current route intent
       await expect(page).toHaveURL(
         /\/agent\/settings\/profile\/pending-actions$/u,
       );
+      await expect(
+        page.getByRole("heading", {
+          name: "My pending actions",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", {
+          name: `Deactivate person · ${users.deactivation.email}`,
+          exact: true,
+        }),
+      ).toBeVisible();
       await page.screenshot({
         path: testInfo.outputPath("pending-actions-list-after-auth.png"),
         fullPage: true,
