@@ -109,7 +109,7 @@ describe("CommentVersionHistory", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(query.options.at(-1)?.enabled).toBe(false);
     const trigger = screen.getByRole("button", {
-      name: "activity:timeline.historyLabel",
+      name: "Edited — activity:timeline.historyLabel",
     });
     expect(trigger).toHaveTextContent("Edited");
     trigger.focus();
@@ -154,7 +154,7 @@ describe("CommentVersionHistory", () => {
     );
     fireEvent.click(
       screen.getByRole("button", {
-        name: "activity:timeline.historyLabel",
+        name: "Edited — activity:timeline.historyLabel",
       }),
     );
     fireEvent.click(
@@ -198,7 +198,7 @@ describe("CommentVersionHistory", () => {
     );
     fireEvent.click(
       screen.getByRole("button", {
-        name: "activity:timeline.historyLabel",
+        name: "Edited — activity:timeline.historyLabel",
       }),
     );
     fireEvent.click(

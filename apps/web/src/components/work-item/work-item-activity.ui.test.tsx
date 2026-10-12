@@ -556,7 +556,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Edited" }),
+      screen.queryByRole("button", { name: /^Edited/ }),
     ).not.toBeInTheDocument();
   });
 });

@@ -45,7 +45,12 @@ export default function CommentVersionHistory({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button aria-label={historyLabel} size="xs" variant="ghost">
+        {/* Name starts with the visible label so it contains it (WCAG 2.5.3). */}
+        <Button
+          aria-label={`${label} — ${historyLabel}`}
+          size="xs"
+          variant="ghost"
+        >
           {label}
         </Button>
       </PopoverTrigger>
