@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   approve: vi.fn(),
   cancel: vi.fn(),
   clickContract: false,
+  loading: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -37,8 +38,8 @@ vi.mock("@tanstack/react-query", () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
     if (queryKey[0] === "me" && queryKey[1] === "pending-action") {
       return {
-        data: actionFor(String(queryKey[2])),
-        isLoading: false,
+        data: mocks.loading ? undefined : actionFor(String(queryKey[2])),
+        isLoading: mocks.loading,
         isError: false,
       };
     }
@@ -129,9 +130,21 @@ describe("pending action detail intent lifecycle", () => {
   beforeEach(() => {
     mocks.id = "action-a";
     mocks.clickContract = false;
+    mocks.loading = false;
     mocks.proof.mockReset();
     mocks.approve.mockReset().mockResolvedValue(undefined);
     mocks.cancel.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("renders the loading skeleton in a full-width main so it is visible inside the flex shell", () => {
+    // Real-browser measurement (#670 r3): the loading <main> sat in a flex row
+    // and shrank to its padding (64px wide), giving the w-full skeleton width 0.
+    mocks.loading = true;
+    render(<Harness />);
+    const main = document.querySelector("main");
+    expect(main?.className).toMatch(/\bw-full\b/u);
+    expect(main?.getAttribute("aria-busy")).toBe("true");
+    expect(document.querySelector('[data-slot="skeleton"]')).not.toBeNull();
   });
 
   it("does not approve after A→B→A while the proof request is pending", async () => {

@@ -95,14 +95,14 @@ function PendingActionDetailRoute() {
 
   if (action.isLoading) {
     return (
-      <main className="p-5 lg:p-8">
+      <main className="w-full p-5 lg:p-8" aria-busy="true">
         <Skeleton className="h-48 w-full" />
       </main>
     );
   }
   if (action.isError || !action.data) {
     return (
-      <main className="space-y-4 p-5 lg:p-8">
+      <main className="w-full space-y-4 p-5 lg:p-8">
         <PageTitle title={t("pendingActions:copy.a93eb80c8601")} />
         <p role="alert" className="text-sm text-destructive">
           {t("pendingActions:copy.85baf535b480")}
@@ -204,7 +204,7 @@ function PendingActionDetailRoute() {
   }
 
   return (
-    <main className="flex min-h-full flex-col gap-5 p-5 lg:p-8">
+    <main className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
       <PageTitle title={t("pendingActions:copy.a93eb80c8601")} />
       <header>
         <h1 className="text-2xl font-semibold">
