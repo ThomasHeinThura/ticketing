@@ -91,7 +91,7 @@ async function setupWorkItem(
 ): Promise<WorkItemSetup> {
   const headers = await csrfHeaders(page, origin);
   const workspacesResponse = await page.request.get(
-    new URL("/api/workspaces", origin).toString(),
+    new URL("/api/workspace", origin).toString(),
     { headers: { Origin: origin } },
   );
   expect(workspacesResponse.status()).toBe(200);
@@ -116,7 +116,7 @@ async function setupWorkItem(
   expect(type?.id).toBeTruthy();
 
   const projectResponse = await page.request.post(
-    new URL("/api/projects", origin).toString(),
+    new URL("/api/project", origin).toString(),
     {
       headers,
       data: {
