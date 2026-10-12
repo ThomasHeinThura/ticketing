@@ -69,14 +69,42 @@ async function enrollFactor(page: Page, origin: string, password: string) {
   expect(provisioningUri.startsWith("otpauth://totp/")).toBe(true);
   await page.locator("#enrollment-code").fill(totpForUri(provisioningUri));
   await page.getByRole("button", { name: "Verify and enable" }).click();
-  const backupCodes = await page.locator('[role="alert"] li').allTextContents();
+  const saveCodesButton = page.getByRole("button", {
+    name: "I saved these codes",
+  });
+  await expect(saveCodesButton).toBeVisible();
+  const backupCodeItems = page.locator('[role="alert"] li');
+  await expect
+    .poll(() => backupCodeItems.count(), {
+      message: "Authenticator enrollment backup codes were not rendered",
+    })
+    .toBeGreaterThanOrEqual(3);
+  const backupCodes = await backupCodeItems.allTextContents();
   expect(backupCodes.length).toBeGreaterThanOrEqual(3);
-  await page.getByRole("button", { name: "I saved these codes" }).click();
+  await saveCodesButton.click();
+  await expect(saveCodesButton).toBeHidden();
   return {
     provisioningUri,
     backupCodes: backupCodes.map((code) => code.trim()),
   };
 }
+
+type PlaywrightTestError = {
+  errorContext?: string;
+  cause?: PlaywrightTestError;
+};
+
+function redactSensitiveErrorContext(error: PlaywrightTestError) {
+  // TestInfoError.errorContext is Playwright's public switch for replacing its
+  // automatic DOM/ARIA snapshot in the generated error-context.md artifact.
+  error.errorContext =
+    "Page snapshot omitted because this workflow displays authentication secrets.";
+  if (error.cause) redactSensitiveErrorContext(error.cause);
+}
+
+test.afterEach((_fixtures, testInfo) => {
+  for (const error of testInfo.errors) redactSensitiveErrorContext(error);
+});
 
 async function signInWithTotp(
   page: Page,
