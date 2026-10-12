@@ -143,3 +143,46 @@ No completed scope was reopened. The failed Comments journey remains failed and 
 
 None. No security, schema, authority, or gate semantics changed; the net diff is limited to dated factual status/queue records and migration-ledger status wording.
 
+
+---
+
+## Current factual delta and automated finding closure
+
+**Reviewed head:** `701a3800afc05503949a223e3e47b81465c80ddc`
+
+**Provenance:** fresh independent `/root/review_delivery_reconciliation_a_luna`, actual `gpt-6-luna` verified from trusted session metadata; same explicitly dispatched fork_turns=none context. Report transported unchanged, SHA-256 `fe1f592bf4ebf99ceedf26fd24ea7abb062ff10978da3662183bc0dcd8953b06`. Prior full-source reviews retain their f93 scope; this factual status/queue-only delta has the required independent disposition. No migration or security-control change.
+
+# Independent factual delta closure — PR #671
+
+**Verdict: CLEAR for the bounded factual delta at the exact head below.** The credible Codex P2 is addressed in the revised queue. This is not a new full-panel review, and it does not certify the current Users checks, real API/database/browser acceptance, release, SIT, or phase completion.
+
+## Identity and source
+
+- **Reviewer:** independent factual-review A context; no authorship, direction, or remediation of this delta.
+- **Model:** GPT-6, platform-visible; exact serving variant is not exposed. Assigned ordinary Luna-tier factual review.
+- **PR:** #671, `https://github.com/ThomasHeinThura/ticketing/pull/671`
+- **Exact head:** `701a3800afc05503949a223e3e47b81465c80ddc`
+- **Parent:** `5df3a51ca6b16a3e614591ae84fc829dbedc0f13`
+- **Prior accepted-source review head:** `f93be5e7929c420ec3411a12b506a10036c605c5`
+- **Delta:** the review-packet publication at 5df3 plus this head's status/queue correction. The final report packet is unchanged from 5df3 to 701a; f93 remains an ancestor. No migration-ledger or application source is changed by the current commit. Worktree clean; no tests/browser/heavy checks run.
+
+## Bot P2 disposition and current-state check
+
+The automated Codex P2 on the queue at 5df3 correctly identified that the next-action paragraph still assigned (a) committing/pushing the Users correction already recorded at 9034 and (b) reconciling migration statuses already edited in this same records change. The current paragraph instead assigns root to verify the new Users delta and image inputs, obtain controlled Linux baselines and real API/database/browser proof, complete current checks, advance this records correction through protected acceptance, and diagnose G11. It explicitly says completed source commits and ledger edits are not repeated. That addresses the finding's stated risk and its requested replacement with current successors.
+
+Live GitHub confirmed PR #671's head is 701a and PR #670's current head is `2ea000279eb4967453285b31ccf75a890ffd125f`, the referenced clean pushed restoration commit. The private `670-2ea00027-nav-source-conservation.json` names the same commit and branch. I recomputed the blob IDs and SHA-256 values for the three files listed in that receipt; all match. The receipt records the scoped mocked Operations → Instance users E2E as 1/1, focused test/typecheck/inventory/route checks, and separately records that contrast source-context checks passed but the dynamic `#contrast-probe` hover timed out. The checkpoint accurately limits the E2E result to mocked UI behavior and keeps the contrast failure distinct. Current PR #670 hosted checks were not all green in the last successful live check query (G11 and G8 failed, PR-template check failed, and PostgreSQL integration was in progress); the checkpoint says current checks remain required and makes no green claim.
+
+PR #671's live check query at review time showed the gate-checker/red-probes job still in progress; I make no all-checks-green or merge-ready claim. A later GitHub refresh attempt timed out at TLS, so I do not claim a newer status.
+
+The bot's inline review thread remains `isResolved: false` in GitHub. The finding is factually addressed by this exact source delta; I did not mutate or resolve the thread.
+
+## Other factual corrections and currency
+
+- Both status and queue headings now read `2026-10-12 04:17:41 UTC`, matching commit 701a's timestamp. The updated Users source commit 2ea was pushed at 03:59:24Z, before this checkpoint.
+- The Users paragraph distinguishes d106's old source-bound review/image and performance result from the 9034 and 2ea corrections, and states current checks, image-input accounting, controlled Linux baselines, and real API/database/browser proof remain. It correctly records native menu conservation through the existing session `isAdmin` signal without inferring workspace/projected authority.
+- The next-action text no longer asks for completed 9034 or ledger edits to be repeated. Protected acceptance remains a future action.
+- The Comments failure remains described as an operator-observed UI error before sign-in, with no captured API origin/status and no CORS cause asserted. Runner exit 0/cleanup, collector failure, PTY130 operator report, absent collector-command exit receipt, absent screenshots/traces, and preserved 25/58 resource inventories remain separate facts. No browser acceptance is claimed.
+- The original source-f93 and migration-ledger claims remain unchanged from the prior review. The published review packet was not modified after 5df3, preserving the original A/B clearances and prior reports without rewriting them.
+
+No new factual blocker was found in this batch. The unresolved bot-thread flag is GitHub thread state, not a remaining defect in the next-action text.
+
