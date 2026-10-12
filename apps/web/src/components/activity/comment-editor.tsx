@@ -82,7 +82,8 @@ type CommentEditorProps = {
   className?: string;
   contentClassName?: string;
   proseClassName?: string;
-  autoFocus?: boolean;
+  /** `true`/`"start"` focus the start, `"end"` the end of the content. */
+  autoFocus?: boolean | "start" | "end";
   disabled?: boolean;
   readOnly?: boolean;
   showBubbleMenu?: boolean;
@@ -1568,6 +1569,10 @@ export default function CommentEditor({
           ref={imageInputRef}
           type="file"
           className="sr-only"
+          // Opened only programmatically (slash menu / paste); an unlabelled,
+          // invisible Tab stop in front of the editor is a keyboard defect.
+          tabIndex={-1}
+          aria-hidden="true"
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (!file) return;

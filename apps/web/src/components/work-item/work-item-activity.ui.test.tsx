@@ -20,6 +20,7 @@ const { mocks, translate } = vi.hoisted(() => ({
     cannedResponses: [] as Array<Record<string, unknown>>,
     permissions: { public: true, internal: true, checking: false },
     permissionWorkspaces: [] as Array<string | undefined>,
+    activityState: { isLoading: false, isError: false },
   },
   translate: (key: string, values?: Record<string, unknown>) => {
     if (key === "activity:timeline.deleted") {
@@ -182,6 +183,9 @@ vi.mock("@/hooks/queries/work-item/use-get-work-item-activity", () => ({
     data: { pages: [{ data: mocks.rows }] },
     hasNextPage: false,
     isFetchingNextPage: false,
+    isLoading: mocks.activityState.isLoading,
+    isError: mocks.activityState.isError,
+    refetch: vi.fn(),
   }),
 }));
 vi.mock(
@@ -244,6 +248,29 @@ function editable(root: HTMLElement) {
 
 describe("work item comment editor lifecycle and CA-16 drafts", () => {
   beforeEach(() => {
+    // jsdom has no layout: ProseMirror's scrollToSelection (run when the editor
+    // takes focus) measures ranges and text nodes.
+    const zeroRect = {
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: 0,
+      height: 0,
+      toJSON: () => ({}),
+    };
+    for (const proto of [Range.prototype, Text.prototype, Element.prototype]) {
+      Object.defineProperty(proto, "getClientRects", {
+        configurable: true,
+        value: () => [],
+      });
+      Object.defineProperty(proto, "getBoundingClientRect", {
+        configurable: true,
+        value: () => zeroRect,
+      });
+    }
     window.localStorage.clear();
     mocks.createComment.mockReset().mockResolvedValue({});
     mocks.updateComment.mockReset().mockResolvedValue({});
@@ -258,6 +285,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     mocks.mentionCandidates = [];
     mocks.permissions = { public: true, internal: true, checking: false };
     mocks.permissionWorkspaces = [];
+    mocks.activityState = { isLoading: false, isError: false };
   });
 
   afterEach(() => {
@@ -523,6 +551,100 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     ) as { text?: string; document?: unknown } | null;
     expect(saved?.text).toBe("");
     expect(JSON.stringify(saved?.document)).not.toContain("person-mention");
+  });
+
+  it("does not claim the timeline is empty while it failed to load", () => {
+    mocks.activityState = { isLoading: false, isError: true };
+    renderActivity();
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "activity:timeline.loadFailed",
+    );
+    expect(
+      screen.queryByText("activity:timeline.empty"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the empty text only when the load succeeded with no rows", () => {
+    renderActivity();
+
+    expect(screen.getByText("activity:timeline.empty")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("renders row-shaped loading placeholders (G13) with an accessible status", () => {
+    mocks.activityState = { isLoading: true, isError: false };
+    renderActivity();
+
+    const loading = screen.getByTestId("work-item-activity-loading");
+    expect(loading).toHaveAttribute("role", "status");
+    expect(loading).toHaveAttribute("aria-busy", "true");
+    expect(loading).toHaveTextContent("activity:timeline.loading");
+    expect(loading.querySelectorAll('[data-slot="skeleton"]').length).toBe(12);
+    expect(
+      screen.queryByText("activity:timeline.empty"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("moves focus into the editor on Edit and back to the Edit trigger on Cancel and Save", async () => {
+    mocks.rows = [
+      {
+        id: "comment-focus",
+        workItemId: "work-item-1",
+        actorId: "user-1",
+        actorType: "person",
+        verb: "commented",
+        field: null,
+        oldValue: null,
+        newValue: null,
+        payload: null,
+        visibility: "internal",
+        workflowVersionId: null,
+        createdAt: "2026-10-08T10:00:00.000Z",
+        kind: "comment",
+        body: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "focus me" }],
+            },
+          ],
+        },
+        activityId: "activity-1",
+        editedAt: null,
+        deletedAt: null,
+        deletedBy: null,
+      },
+    ];
+    const view = renderActivity();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    await waitFor(() => expect(editable(view.container)).not.toBeNull());
+    await waitFor(() =>
+      expect(
+        document.activeElement?.closest(".taskdesk-comment-editor-content"),
+      ).not.toBeNull(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Edit" }),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    await waitFor(() => expect(editable(view.container)).not.toBeNull());
+    const save = screen.getByRole("button", { name: "Save changes" });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+    await waitFor(() => expect(mocks.updateComment).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Edit" }),
+      ),
+    );
   });
 
   it("retains the legacy tombstone actor and withholds comment history", async () => {

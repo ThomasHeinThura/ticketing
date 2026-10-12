@@ -132,6 +132,23 @@ describe("CommentEditor lifecycle", () => {
     );
   });
 
+  it("keeps the programmatic file picker out of the tab order and the accessibility tree", async () => {
+    const { container, unmount } = render(
+      <CommentEditor value="" showQuickAttachButton={false} />,
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector('.ProseMirror[contenteditable="true"]'),
+      ).not.toBeNull(),
+    );
+    const picker =
+      container.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(picker).not.toBeNull();
+    expect(picker).toHaveAttribute("tabindex", "-1");
+    expect(picker).toHaveAttribute("aria-hidden", "true");
+    unmount();
+  });
+
   describe("mention suggestion candidate lifecycle (real Tiptap)", () => {
     const person = {
       id: "user-comments-recipient",

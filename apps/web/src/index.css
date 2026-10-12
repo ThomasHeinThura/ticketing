@@ -264,7 +264,9 @@ input:-webkit-autofill:active {
 
   .taskdesk-mention-popup {
     position: absolute;
-    z-index: 50;
+    /* Above the focused comment editor shell (z-index 80) and the embed
+       composer (120), or the picker renders underneath the editor it serves. */
+    z-index: 130;
   }
 
   .taskdesk-mention-list {
@@ -856,6 +858,15 @@ input:-webkit-autofill:active {
 
   .taskdesk-comment-editor-shell:focus-within {
     z-index: 80;
+  }
+
+  /* Visible keyboard focus for the editor (the ProseMirror node itself has
+     outline: none): the same border + 3px ring tokens the shared Input uses. */
+  .taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible) {
+    border-radius: 0.6rem;
+    box-shadow:
+      0 0 0 1px var(--ring),
+      0 0 0 4px color-mix(in srgb, var(--ring) 24%, transparent);
   }
 
   .taskdesk-editor-drop-indicator {

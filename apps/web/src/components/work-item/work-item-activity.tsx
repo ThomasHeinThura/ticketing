@@ -8,6 +8,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Skeleton,
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -177,6 +178,10 @@ function WorkItemActivity({
     ? visibility
     : (allowedCommentVisibilities[0] ?? defaultVisibility);
   const [editing, setEditing] = useState<string | null>(null);
+  // Edit mode unmounts the row's Edit button. When it closes, focus returns to
+  // that button instead of dropping to <body>.
+  const [restoreFocusId, setRestoreFocusId] = useState<string | null>(null);
+  const editTriggers = useRef(new Map<string, HTMLButtonElement | null>());
   const [submitInProgress, setSubmitInProgress] = useState(false);
   const submitInProgressRef = useRef(false);
   const [editDraft, setEditDraft] = useState<CommentContentSnapshot>({
@@ -313,6 +318,12 @@ function WorkItemActivity({
     }
   }, [defaultVisibility, draftStorageKey]);
 
+  useEffect(() => {
+    if (editing !== null || restoreFocusId === null) return;
+    editTriggers.current.get(restoreFocusId)?.focus();
+    setRestoreFocusId(null);
+  }, [editing, restoreFocusId]);
+
   const submit = async () => {
     if (submitInProgressRef.current || !draftText.trim() || !draftDocument)
       return;
@@ -351,6 +362,7 @@ function WorkItemActivity({
     if (!editing || !editText.trim() || !editDocument) return;
     try {
       await updateComment.mutateAsync({ id: editing, body: editDocument });
+      setRestoreFocusId(editing);
       setEditing(null);
       await queryClient.invalidateQueries({ queryKey: activityKey });
       await queryClient.invalidateQueries({
@@ -415,11 +427,29 @@ function WorkItemActivity({
         </Alert>
       )}
       {activity.isLoading && (
-        <p role="status" className="text-sm text-muted-foreground">
-          {t("activity:timeline.loading")}
-        </p>
+        // Row-shaped placeholders so the arriving timeline does not push the
+        // composer down (G13); the status text stays available to assistive tech.
+        <div
+          role="status"
+          aria-busy="true"
+          className="flex flex-col gap-3"
+          data-testid="work-item-activity-loading"
+        >
+          <span className="sr-only">{t("activity:timeline.loading")}</span>
+          {[0, 1, 2, 3].map((index) => (
+            <div
+              key={index}
+              aria-hidden="true"
+              className="flex flex-col gap-2 rounded-lg border p-3"
+            >
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          ))}
+        </div>
       )}
-      {!activity.isLoading && visibleRows.length === 0 && (
+      {!activity.isLoading && !activity.isError && visibleRows.length === 0 && (
         <p className="text-sm text-muted-foreground">
           {t("activity:timeline.empty")}
         </p>
@@ -465,6 +495,9 @@ function WorkItemActivity({
                     <Button
                       size="xs"
                       variant="ghost"
+                      ref={(node: HTMLButtonElement | null) => {
+                        editTriggers.current.set(row.id, node);
+                      }}
                       onClick={() => {
                         setEditing(row.id);
                         setEditDraft({
@@ -496,12 +529,16 @@ function WorkItemActivity({
                       uploadSurface="comment"
                       showQuickAttachButton={false}
                       enableMentions={false}
+                      autoFocus="end"
                     />
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setEditing(null)}
+                        onClick={() => {
+                          setRestoreFocusId(row.id);
+                          setEditing(null);
+                        }}
                       >
                         {t("activity:timeline.cancel")}
                       </Button>
