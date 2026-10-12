@@ -1,22 +1,27 @@
+import { randomUUID } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import hasCommentCapability from "../../comment/has-comment-capability";
 import db from "../../database";
 import {
   commentTable,
   personTable,
+  watcherTable,
   workItemTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
-import {
-  isUnambiguousMembership,
-  workspaceMemberRoles,
-} from "../../utils/workspace-member-roles";
+import { enqueueNotificationEvent } from "../../notification/fanout";
+import { resolveMentionEventRecipient } from "../../notification/recipient-resolvers";
+import { parseNativeMentionPersonIds } from "../../utils/parse-native-mentions";
 import type { ActivityActorType } from "../activity";
 import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../assert-work-item-live";
+import {
+  classifyWorkItemMentionPeople,
+  findWorkItemMentionContext,
+} from "../mention-access";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 
 export type CreateCommentInput = {
@@ -50,16 +55,13 @@ export async function createComment(
       ? "comment:create"
       : "comment:create_internal";
 
-  const roles = await workspaceMemberRoles(db, workspaceId, actorId);
-  if (
-    !isUnambiguousMembership(roles) ||
-    !(await builtInRoleHasCapability(workspaceId, roles[0], requiredCapability))
-  ) {
+  if (!(await hasCommentCapability(workspaceId, actorId, requiredCapability))) {
     throw new HTTPException(403, {
       message: `Missing ${requiredCapability} permission`,
     });
   }
 
+  const mentionIds = parseNativeMentionPersonIds(input.body);
   // Issue #493: this route had NO in-transaction liveness re-check at all --
   // The work-item row is locked FOR UPDATE because a qualifying comment also sets its
   // first-response fact. This serializes concurrent first responses and keeps the
@@ -80,6 +82,10 @@ export async function createComment(
         .for("update");
       assertWorkItemStillLive(locked);
       await assertProjectStillLive(tx, locked.projectId);
+      const mentionContext = await findWorkItemMentionContext(tx, workItemId);
+      if (!mentionContext || mentionContext.workspaceId !== workspaceId) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
 
       const [row] = await tx
         .insert(commentTable)
@@ -119,6 +125,60 @@ export async function createComment(
             );
         }
       }
+
+      const mentionCandidates = await classifyWorkItemMentionPeople(
+        tx,
+        mentionContext,
+        mentionIds,
+        input.visibility,
+        { includeUnreachableCustomers: true },
+      );
+      const reachableMentionedPeople = mentionCandidates.filter(
+        (candidate) => candidate.reachable && candidate.userId !== actorId,
+      );
+      for (const candidate of reachableMentionedPeople) {
+        await tx
+          .insert(watcherTable)
+          .values({
+            workItemId,
+            personId: candidate.personId,
+            source: "explicit",
+            muted: false,
+          })
+          .onConflictDoNothing({
+            target: [watcherTable.workItemId, watcherTable.personId],
+          });
+
+        const mentionEvent = {
+          id: `evt_${randomUUID()}`,
+          kind: "work_item.mentioned" as const,
+          occurredAt: new Date().toISOString(),
+          actor: {
+            type: actorType === "api_key" ? "api_key" : "person",
+            id: actorId,
+            name: "TaskDesk actor",
+          } as const,
+          scope: {
+            workspaceId: mentionContext.workspaceId,
+            organisationId: mentionContext.organisationId ?? undefined,
+            projectId: mentionContext.projectId,
+          },
+          payload: {
+            key: mentionContext.key,
+            url: `/agent/work-items/${encodeURIComponent(mentionContext.key)}`,
+            workItemId: mentionContext.id,
+            mentionedPersonId: candidate.personId,
+            commentId: row.id,
+          },
+          causationId: null,
+          depth: 0,
+          originAutomationId: null,
+        };
+        await enqueueNotificationEvent(tx, mentionEvent, {
+          resolveRecipients: resolveMentionEventRecipient,
+        });
+      }
+
       const realtimeEvent = await recordWorkItemEvent(tx, {
         kind: "work_item.commented",
         workItemId,

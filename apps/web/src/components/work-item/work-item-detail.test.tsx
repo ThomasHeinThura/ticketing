@@ -25,6 +25,10 @@ vi.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
 
+vi.mock("./work-item-activity", () => ({
+  default: () => <div data-testid="work-item-activity" />,
+}));
+
 function makeItem(
   overrides: Partial<WorkItemDetailRow> = {},
 ): WorkItemDetailRow {
@@ -40,6 +44,7 @@ function makeItem(
     stateId: "state_1",
     stateName: "Backlog",
     stateCategory: "backlog",
+    defaultCommentVisibility: "internal",
     priority: "high",
     assigneeId: null,
     assigneeName: null,
@@ -62,6 +67,8 @@ function makeItem(
 const baseProps: WorkItemDetailProps = {
   item: undefined,
   workItemKey: "PROJ-123",
+  activityFilter: "everything",
+  onActivityFilterChange: vi.fn(),
   project: undefined,
   isLoading: false,
   isNotFound: false,

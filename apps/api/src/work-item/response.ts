@@ -66,6 +66,10 @@ export const workItemDetailSchema = workItemShape
       description:
         "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
     }),
+    defaultCommentVisibility: z.enum(["public", "internal"]).openapi({
+      description:
+        "The project's CA-2 default for the comment composer; comments still require an explicit visibility on create.",
+    }),
     assigneeName: z.string().nullable(),
   })
   .openapi("WorkItemDetail");
@@ -392,6 +396,23 @@ export const workItemActivityListResponseSchema = z
   })
   .openapi("WorkItemActivityListResponse");
 
+export const commentMentionCandidateSchema = z.object({
+  personId: z.string(),
+  name: z.string(),
+  image: z.string().nullable(),
+  side: z.enum(["staff", "customer"]),
+  reachable: z.boolean(),
+});
+
+export const commentMentionCandidatesSchema = z.array(
+  commentMentionCandidateSchema,
+);
+
+export const commentMentionPreflightResponseSchema = z.object({
+  reachablePersonIds: z.array(z.string()),
+  unreachablePersonIds: z.array(z.string()),
+});
+
 // `assignment.md` § API: `DELETE /api/work-items/{key}/assign`. The assignment as
 // cleared. `assigneeId` is null BY TYPE -- a client cannot mistake "cleared" for "field
 // missing" -- and `previousAssigneeId` still names who to notify (`AS-17`) or to show in
@@ -472,3 +493,20 @@ export const workItemTransitionBlockedSchema = z
     blockedBy: z.array(workItemBlockReasonSchema),
   })
   .openapi("WorkItemTransitionBlocked");
+
+export const commentVersionPageResponseSchema = z
+  .object({
+    data: z.array(
+      z.object({
+        number: z.number().int().positive(),
+        body: z.unknown(),
+        editedBy: z.string().nullable(),
+        createdAt: responseTimestamp,
+      }),
+    ),
+    page: z.object({
+      hasMore: z.boolean(),
+      nextCursor: z.string().nullable(),
+    }),
+  })
+  .openapi("CommentVersionPage");

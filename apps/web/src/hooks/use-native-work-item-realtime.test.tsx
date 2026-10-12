@@ -527,6 +527,10 @@ describe("work-item list realtime composition", () => {
       queryKey: ["activities"],
       refetchType: "active",
     });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["work-items", "activity", "WI-COMMENT"],
+      refetchType: "active",
+    });
     expect(mocks.getWorkItem).not.toHaveBeenCalled();
     expect(mocks.getWorkItems).not.toHaveBeenCalled();
     expect(screen.getByTestId("combined-detail-state")).toHaveTextContent(

@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
   personTable,
+  projectTable,
   stateTable,
   stateTemplateTable,
   userTable,
@@ -41,6 +42,7 @@ export async function getWorkItemByKey(key: string, workspaceId: string) {
       workItem: workItemTable,
       stateName: stateTemplateTable.name,
       stateCategory: stateTemplateTable.group,
+      defaultCommentVisibility: projectTable.defaultCommentVisibility,
       assigneeName: userTable.name,
       // Signals whether the assignee's own user is actually a member of THIS work
       // item's workspace -- see the join comment below for why this gates
@@ -56,6 +58,7 @@ export async function getWorkItemByKey(key: string, workspaceId: string) {
       stateTemplateTable,
       eq(stateTable.stateTemplateId, stateTemplateTable.id),
     )
+    .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
     // `assignee_id`/`person.user_id` are both nullable (unassigned; or a placeholder
     // person with no linked login) -- LEFT JOINs so those rows still come back, with
     // `assigneeName: null`, rather than being silently dropped.
@@ -93,6 +96,7 @@ export async function getWorkItemByKey(key: string, workspaceId: string) {
     ...row.workItem,
     stateName: row.stateName,
     stateCategory: row.stateCategory,
+    defaultCommentVisibility: row.defaultCommentVisibility,
     // Only ever the resolved name when the assignee is a member of THIS workspace --
     // see the `workspaceUserTable` join's own comment above. `null` otherwise: the
     // raw `assigneeId` is still returned so the caller can tell "assigned, name not

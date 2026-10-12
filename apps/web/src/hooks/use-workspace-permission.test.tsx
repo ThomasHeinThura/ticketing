@@ -124,6 +124,46 @@ describe("useWorkspacePermission", () => {
     });
   });
 
+  it("fails closed when optional comment capabilities are absent", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap(),
+    });
+
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(result.current.canCreatePublicComments()).toBe(false);
+    expect(result.current.canCreateInternalComments()).toBe(false);
+  });
+
+  it("exposes only the server's permission-filtered comment choices", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({
+          createPublicComments: true,
+          createInternalComments: false,
+        }),
+    });
+
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(result.current.canCreatePublicComments()).toBe(true);
+    expect(result.current.canCreateInternalComments()).toBe(false);
+  });
+
   it("exposes every one of the 16 capabilitiesResponseSchema keys, not a subset", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,

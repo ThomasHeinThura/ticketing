@@ -12,9 +12,10 @@ export type PermissionLevel = "owner" | "admin" | "member";
 // computes the exact same 16 keys server-side over hasWorkspacePermission --
 // see apps/api/src/capabilities/capability-checks.ts, a deliberate
 // server-side duplicate of the map this file used to carry.
-type Capability = keyof typeof EMPTY_CAPABILITIES;
-
-type CapabilityMap = Record<Capability, boolean>;
+type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
+  createPublicComments?: boolean;
+  createInternalComments?: boolean;
+};
 
 // Mirrors apps/api/src/capabilities/response.ts's capabilitiesResponseSchema
 // key-for-key. Used only as the "no data yet" fallback -- the real values
@@ -93,6 +94,8 @@ export function useWorkspacePermission() {
       canInviteUsers: () => can.inviteUsers,
       canManageTeam: () => can.manageTeam,
       canRemoveMembers: () => can.removeMembers,
+      canCreatePublicComments: () => can.createPublicComments === true,
+      canCreateInternalComments: () => can.createInternalComments === true,
     };
   }, [can]);
 
