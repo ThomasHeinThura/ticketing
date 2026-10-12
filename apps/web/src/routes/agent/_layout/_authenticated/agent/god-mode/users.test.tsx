@@ -280,6 +280,21 @@ describe("God Mode Users action context", () => {
     expect(mocks.grantAdmin).not.toHaveBeenCalled();
   });
 
+  it("keeps directory row links shrinkable so long emails wrap inside a 375px viewport", () => {
+    // jsdom has no layout engine; this pins the class contract the real-browser
+    // 375px probe measured (an inline link wrapping unbreakable block text made
+    // the first column wider than the viewport).
+    render(<Harness />);
+    // The mocked Link renders an <a> without href, so query by aria-label.
+    const [link] = screen.getAllByLabelText("instanceUsers:selectUser");
+    if (!link) throw new Error("directory row link missing");
+    expect(link.className).toMatch(/\bblock\b/u);
+    expect(link.className).toMatch(/\bmin-w-0\b/u);
+    expect(link.className).toMatch(/\bmax-w-full\b/u);
+    const email = screen.getAllByText(userA.email)[0];
+    expect(email?.className).toMatch(/\bbreak-all\b/u);
+  });
+
   it("invalidates a pending proof when the Users route unmounts", async () => {
     let finishProof: ((value: string) => void) | undefined;
     mocks.createProof.mockImplementation(

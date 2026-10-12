@@ -434,7 +434,7 @@ function InstanceUsersPage() {
                     >
                       <TableCell>
                         <Link
-                          className="rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="block min-w-0 max-w-full rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           to={Route.fullPath}
                           search={(current: GodModeUsersSearch) => {
                             const { action: _action, ...rest } = current;
@@ -445,8 +445,10 @@ function InstanceUsersPage() {
                             email: user.email,
                           })}
                         >
-                          <span className="block font-medium">{user.name}</span>
-                          <span className="block text-xs text-muted-foreground">
+                          <span className="block break-words font-medium">
+                            {user.name}
+                          </span>
+                          <span className="block break-all text-xs text-muted-foreground">
                             {user.email}
                           </span>
                         </Link>
