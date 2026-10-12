@@ -23,7 +23,7 @@ GPT-6 Sol review plus two ordinary Luna delta reviews:
 Earlier BLOCKED and CHANGES-style reports are preserved below unmodified, including the
 privacy BLOCK on the real-journey test (traces could publish credentials) and the P2
 target-workspace permission-hint finding. The latest full security-tier delta clearance, over
-`79c7281f..60ca6721`, is by Claude Opus 5.5.
+`60ca6721..5bd14fa0` (CI fixes, real-browser UI acceptance fixes and the merge of `main` `8d739bd6`), is by Claude Opus 5.5.
 
 **Scope of this record.** Only reviews of the selected Comments source (the real-journey test
 and the selected product, remediation and delta reviews from `201070b9` onward) are indexed.
@@ -53,6 +53,9 @@ script, never retyped. The SHA-256 in each marker is of the report file bytes.
 **Reviewed head:** `f931895371359372a653457c748d4f6e838842a9`
 **Reviewed head:** `565ef76314e2f2945ed78e661162a937a00864ed`
 **Reviewed head:** `60ca6721c41d380aaa202fb492884cec81a9da06`
+**Reviewed head:** `04965bd0ce4d44c3c07bfd28a2823ef5b99a99a5`
+**Reviewed head:** `96658f343686ef816abf712834bb6a58bb8af427`
+**Reviewed head:** `5bd14fa0c3409444c805664baad5d921b28137ed`
 
 ## Index
 
@@ -80,6 +83,10 @@ script, never retyped. The SHA-256 in each marker is of the report file bytes.
 | 20 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/E12/606-mention-query-delta-security-sol.md` | GPT-6 Sol | Security delta (test-only) | `79c7281f` | CLEAR | `763acfe64c754bfe8094dc8646754db26ec91df7e57d4237061d9f4ee26dadad` |
 | 21 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/606-3de3-mention-fix-ordinary-sonnet.md` | Claude Sonnet 5.5 (claude-sonnet-5-5) | Ordinary delta (mention lifecycle fix) | `3de34e8d`, `f9318953`, `565ef763` | APPROVE with non-blocking findings at 3de34e8d; APPROVE at f9318953 and 565ef763 | `ca1dd3ceedc8688c8e336eaaf0abe2c0b43fdafab85653a4f150418641616793` |
 | 22 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/606-79c7-60ca-security-opus.md` | Claude Opus 5.5 (claude-opus-5-5) | Security delta (79c7281f..60ca6721) | `60ca6721` | CLEAR | `7535eea505221390d390ea62eae0ca555bb1bcb53cc912d6407930775ed0855c` |
+| 23 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-565e-0496-ordinary-sonnet.md` | Claude Sonnet 5.5 (claude-sonnet-5-5) | Ordinary delta (565ef763..04965bd0: CI fixes) | `04965bd0` | APPROVE | `5e6b05d12d0c1b0419fa398f3d56a630d2ba1b16f71bd4fffa647a4e2830acdd` |
+| 24 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-114d-9665-ordinary-sonnet.md` | Claude Sonnet 5.5 (claude-sonnet-5-5) | Ordinary delta (114d8448..96658f34: UI acceptance fixes) | `96658f34` | APPROVE | `ad1d929dc3b3d535fe8edd412a5fd2250b92ccbca24c936f8eff50fb0c405a91` |
+| 25 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-9665-5bd1-ordinary-sonnet.md` | Claude Sonnet 5.5 (claude-sonnet-5-5) | Ordinary delta (96658f34..5bd14fa0: main merge) | `5bd14fa0` | APPROVE | `7ab672c14fdebe34b30e7e446786ac4447f47ea420dcc304ea43fb8e6f713be3` |
+| 26 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-5bd1-security-opus.md` | Claude Opus 5.5 (claude-opus-5-5) | Security delta (60ca6721..5bd14fa0) | `5bd14fa0` | CLEAR | `7ff9b5fc953bf043bad5cedc654bfc3ef52a219f1b8e44007c55a31bca9db611` |
 
 ## Reports
 
@@ -914,3 +921,219 @@ git worktree remove --force $TMPDIR/opus-606-60ca && git worktree prune   (candi
 - I did not re-review unchanged product source outside the delta. That relies on the prior Sol closures.
 - The `tsc` exit status was taken through a pipe. The absence of any diagnostic output is the evidence.
 <!-- END REPORT (sha256 7535eea505221390d390ea62eae0ca555bb1bcb53cc912d6407930775ed0855c) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-565e-0496-ordinary-sonnet.md; Claude Sonnet 5.5 (claude-sonnet-5-5); sha256 5e6b05d12d0c1b0419fa398f3d56a630d2ba1b16f71bd4fffa647a4e2830acdd) -->
+# PR #672 ordinary review, range 565ef763..04965bd0
+
+**Reviewer model:** Claude Sonnet (fresh independent ordinary-review context)
+**Reviewed head:** 04965bd0ce4d44c3c07bfd28a2823ef5b99a99a5 (confirmed HEAD of worktree)
+**Base:** 565ef763 (previously approved ordinary-review head)
+
+## Files examined
+- apps/web/e2e/work-item-comments-journey.spec.ts (60ca6721)
+- apps/web/e2e/visual.spec.ts (04965bd0)
+- packages/ui/src/styles/pairs.json (c43e843c), compared semantically with a script
+- scripts/ci/check-contrast.mjs (contract at lines ~468-710, 3660-3700)
+- apps/web/src/components/work-item/work-item-activity.tsx, activity/comment-version-history.tsx
+- apps/web/src/hooks/queries/work-item/use-get-work-item-activity.ts, fetchers/work-item/get-work-item-activity.ts
+- tests/api-contract/openapi.json (WorkItemActivityListResponse, WorkItemPage)
+- docs/security-reviews/606-selected-comments.md (c6bfef30): `git show --stat` shows one file, +916, docs-only.
+
+## Commands run
+- `git rev-parse HEAD`, `git log --oneline 565ef763..04965bd0`, `git diff --stat`: 4 commits; 4 files changed.
+- `pnpm check:tokens`: INCONCLUSIVE in this sandbox. The static stages passed: check-tokens.mjs and the manifest/occurrence/surface/category validation in check-contrast.mjs produced no failures and reached the production-build step. The build (`pnpm --filter @taskdesk/web... build`) then failed with EPERM writing packages/email/dist (sandbox write denial, read-only review), so the final measured-ratio stage did not run here. Needs confirmation by CI or the orchestrator.
+- Node script diffing pairs.json at base vs head (418 entries each).
+
+## 1. 60ca6721 (Edit button exact match)
+Correct. The version-history trigger's accessible name starts with "Edited", so a substring "Edit" match resolves to two buttons in Playwright strict mode; `exact: true` selects only Edit. The change is in the journey spec, which loops 6 edits through the UI, so it fails at the first iteration if reverted. No finding.
+
+## 2. c43e843c (pairs.json)
+Semantic diff: no entry or occurrence removed, no existing occurrence changed, no metadata changed except entries 326/327. Entries 6/7, 198/200 and the select/field-label reordering differ only in ordering (198/200 gain one occurrence each, count 50 to 51).
+Added occurrences (all category body):
+- work-item-activity.tsx WorkItemActivity: muted-foreground on card (16/17 caller-chain; 24/25 bg-card ancestors), destructive on card (102/103), warning-foreground on card (326/327).
+- alert.tsx AlertDescription via WorkItemActivity (24/25).
+- comment-version-history.tsx on popover (36/37).
+Source spot-checks match: text-muted-foreground at work-item-activity.tsx 418/423/451/481 and comment-version-history.tsx 65/115; text-destructive at 517/739; text-warning-foreground at 665 (`<p role="status">`); bg-card at 440/609; Alert/AlertDescription at 404/650; WorkItemActivity mounted at work-item-detail.tsx:254. The checker itself validates occurrence coverage (it passed that stage), which independently confirms the listing.
+Entries 326/327: non-text/3 changed to body/4.5. check-contrast.mjs lines 697-710 require the pair threshold to use the strongest bound occurrence category; the new occurrence is body text (work-item-activity.tsx:665), so the change is mandated and is a strengthening. The existing priority.tsx ChevronsUp occurrence stays non-text per occurrence (mixed-category entries are normal: 66 at head, 64 at base). No threshold lowered, no category weakened.
+Residual: the actual ratio for warning-foreground on card at 4.5 is only verified by the build-time stage that could not run here.
+
+## 3. 04965bd0 (visual stub)
+- Stub `{ data: [], page: { nextCursor: null, hasMore: false } }` matches openapi WorkItemActivityListResponse (required data[] and page{nextCursor,hasMore}) and the TS type WorkItemActivityPage.
+- Root cause of the old failure: the generic `[]` default has neither `page` nor `data`; `getNextPageParam` reads `lastPage.page.nextCursor` and rows flatMap `page.data`, so a contract-violating payload throws. This is a fixture gap, not a product bug on valid input (valid empty responses work).
+- Other detail-route queries (mention candidates, canned responses) tolerate the `[]` default; mention preflight is disabled without mentions.
+- The empty page renders the "timeline empty" text plus the composer: deterministic and meaningful.
+
+## Findings
+No blocking findings.
+- Non-blocking N1: apps/web/e2e/visual.spec.ts-snapshots/work-item-detail-linux.png is untouched by the PR, but work-item-activity.tsx is a new file in this PR (absent on main), so the detail page now renders a new Activity section. The Linux baseline (maxDiffPixels 0, threshold 0; ci-full.yml visual G8) predates it. Unless regenerated, G8 should diff. Confirm in CI or regenerate the baseline. Not a defect in the reviewed range.
+- Non-blocking N2: `pnpm check:tokens` final measured stage not run locally (above).
+- Non-blocking N3: the activity query/UI does not tolerate malformed (non-contract) payloads, and the typed client does not validate at runtime. Hardening only.
+
+## Residual risk
+Measured contrast ratios for the new occurrences, the G8 visual baseline, and Linux execution of the journey spec were not run here. c6bfef30 was only confirmed docs-only, not reviewed for content.
+
+Verdict: APPROVE
+<!-- END REPORT (sha256 5e6b05d12d0c1b0419fa398f3d56a630d2ba1b16f71bd4fffa647a4e2830acdd) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-114d-9665-ordinary-sonnet.md; Claude Sonnet 5.5 (claude-sonnet-5-5); sha256 ad1d929dc3b3d535fe8edd412a5fd2250b92ccbca24c936f8eff50fb0c405a91) -->
+# PR #672 ordinary review, 114d8448..96658f34
+
+Reviewer model: Claude Sonnet (fresh independent ordinary-review context)
+**Reviewed head:** 96658f343686ef816abf712834bb6a58bb8af427
+Base: 114d8448a6cfff4487b3e4acda63ed0729c76c04
+Worktree: /Users/heinthura/.codex/worktrees/605-native-client-selected/Ticketing.v2 (read-only review)
+
+## Files examined
+apps/web/src/components/work-item/work-item-activity.tsx, apps/web/src/components/activity/comment-editor.tsx,
+apps/web/src/index.css, packages/ui/src/styles/pairs.json, packages/ui/src/components/{dialog,alert-dialog,popover,menu,toast,sheet}.tsx (z-index),
+work-item-detail-loading.tsx (skeleton pattern), docs/02-design/design-tokens.md, and the 3 changed test files.
+
+## Commands and results
+- `git rev-parse HEAD` = 96658f34... (matches).
+- `pnpm typecheck` (apps/web): clean, no errors.
+- `vitest run --config vitest.config.ts` on comment-editor-stacking.test.ts, comment-editor.test.tsx, work-item-activity.ui.test.tsx:
+  3 files, 19 tests passed (3 runs, exit 0 each). Run 1 printed one "Errors 1" unhandled error from
+  ProseMirror scrollIntoView in comment-editor.test.tsx; not reproduced in runs 2 and 3, and comment-editor.test.tsx alone passed 7/7 exit 0. See N1.
+- `pnpm check:tokens` (rebuilds web dist): passed; "check:contrast: 418 declared, source-grounded pairs meet thresholds".
+- Sandbox was disabled for vitest/check:tokens (EPERM writing node_modules/.vite-temp, dist) and for writing this note.
+
+## Per-item assessment
+1. Error vs empty: work-item-activity.tsx:452 adds `!activity.isError`. Correct. Test "does not claim the timeline is empty while it failed to load" fails if reverted; companion test covers success-empty.
+2. Focus: autoFocus="end" (Tiptap accepts "end") passed at work-item-activity.tsx:~532; Cancel sets restoreFocusId before setEditing(null); Save sets it only after mutateAsync resolves, so on save error the editor stays open, focus untouched, error alert shown (:553). Effect (:321) runs after the commit that remounts the Edit button; the inline callback ref re-registers each render so the map is current. Row removed: no-op. Reverting autoFocus, Cancel or Save handoff fails the focus test. Not tested: save failure (N2).
+3. Focus ring: uses var(--ring), same 1px + 4px/24% recipe as shared Input; `:has(.ProseMirror:focus-visible)` appropriate. Tokens only except literal border-radius 0.6rem (N3). Test is a CSS source-text assertion (var(--ring) + box-shadow); fails if rule removed.
+4. z-index 130: design-tokens.md (lines 4, 213-222) states z-index is deliberately NOT tokenised (Tailwind scale used directly) and check:tokens does not lint it, so 130 is not a registered-token violation. Scale in repo: Dialog/AlertDialog/Sheet/Popover/Menu/Combobox z-50, slash menu 50/120, drag-active 90, focused shell 80, toast z-[200]. 130 is above dialogs (50) but the picker exists only while an editor has focus and a modal's focus trap prevents that behind a dialog; it stays below toasts (200). No collision found. Test compares picker z-index with `.taskdesk-comment-editor-shell:focus-within` (80); fails if reverted to 50.
+5. Skeleton: uses shared Skeleton from @taskdesk/ui (data-slot="skeleton"), same pattern as work-item-detail-loading.tsx (sr-only text + aria-busy). role="status" is fine (implicit polite); detail loader uses aria-live="polite" instead (N4). Test asserts role, aria-busy, text and 12 skeletons; fails on revert. CLS numbers not verified (no browser).
+6. File input: tabIndex=-1 + aria-hidden is valid (axe aria-hidden-focus permits tabindex=-1). Only clicked programmatically (comment-editor.tsx:423 via slash menu / openImagePicker; paste/drag). The visible Paperclip button is disabled via showQuickAttachButton={false} at every call site (work-item-activity.tsx:530,753; comment-input.tsx:68; comment-version-history.tsx:80,88), so keyboard users reach attachments through the slash menu, not a labelled button. Previously the unlabelled invisible input was the only Tab stop, so no regression, but see N5. Test asserts both attributes.
+7. pairs.json: removed entries are `section[0]/p[0]::text-muted-foreground#1` (list + record, in both light and dark blocks). The loading `<p>` is gone from source; `#0` for the empty-state `<p>` remains. check:tokens passes, so the contract is consistent. Justified.
+
+## Findings
+- N1 (non-blocking, low): one-off unhandled ProseMirror scrollIntoView/getClientRects error in comment-editor.test.tsx on the first multi-file run; not reproduced in two reruns. jsdom layout stubs were added only in work-item-activity.ui.test.tsx beforeEach (~lines 251-273) and are not restored in afterEach. If it recurs in CI, add the same stubs to comment-editor.test.tsx.
+- N2 (non-blocking): no test that a failed save keeps the editor open and does not move focus.
+- N3 (non-blocking): apps/web/src/index.css (~line 863) hard-codes border-radius 0.6rem; consider the Input radius token.
+- N4 (non-blocking): role=status/aria-busy here vs aria-live=polite in work-item-detail-loading.tsx; pick one convention.
+- N5 (residual): composer exposes no visible labelled attach control for keyboard users (slash menu only); pre-existing design.
+- Observation: untracked apps/web/e2e/zz-comments-ui-acceptance-probe.spec.ts is in the worktree and not in the commit; do not commit it accidentally.
+
+## Residual risk
+No browser verification (CLS, ring rendering, picker stacking); stacking and ring tests are CSS-text assertions. Test revert sensitivity was determined by reading, not mutation (read-only review).
+
+Verdict: APPROVE
+<!-- END REPORT (sha256 ad1d929dc3b3d535fe8edd412a5fd2250b92ccbca24c936f8eff50fb0c405a91) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-9665-5bd1-ordinary-sonnet.md; Claude Sonnet 5.5 (claude-sonnet-5-5); sha256 7ab672c14fdebe34b30e7e446786ac4447f47ea420dcc304ea43fb8e6f713be3) -->
+# PR #672 (Comments) - ordinary re-review of merge delta
+
+Reviewer model: Claude Sonnet (fresh independent ordinary-review context)
+Role: ordinary reviewer; did not author, direct or remediate this change. Read-only (no edits, commits or pushes).
+
+**Reviewed head:** 5bd14fa0c3409444c805664baad5d921b28137ed
+**Delta base (previously reviewed head):** 96658f343686ef816abf712834bb6a58bb8af427
+**Worktree:** /Users/heinthura/.codex/worktrees/605-native-client-selected/Ticketing.v2
+HEAD is a merge commit: parents 96658f34 (#672 prior head) and 8d739bd6a393ad9db5de99c778ebada9d9287ee6 (origin/main, includes #668 d86d3089 and #677). Merge base of the parents: f93e33175b82ad481006ff74fb6c73670d6e1db6.
+
+## Files examined
+- `git diff 96658f34..HEAD --stat` (17 files, +1058/-54): .gitleaksignore, playwright.visual.config.ts, check-visual-scope.mjs/.test.mjs, decision-log.md, security-reviews/668-accepted-diagnostic-composition.md, 668-password-label-association.md, 677-g8-partial-raster.md, sign-in-form.tsx/.test.tsx, sign-up-form.tsx/.test.tsx, packages/ui/src/components/input.tsx (1 line), packages/ui/src/styles/pairs.json, sign-in-linux.png, account-security-setup-linux.png, primitives-form--default--linux.png.
+- Per-file check: every delta file is byte-identical to main (8d739bd6) EXCEPT packages/ui/src/styles/pairs.json, which both sides modified (see below). So the merge brought in main's content only, with no hand-resolved edits elsewhere.
+- Overlap of files changed on both sides since the merge base: only packages/ui/src/styles/pairs.json (generated contrast pair ledger). No overlap in any comment, activity, mention, fetcher, hook, i18n, api or openapi file. #668's touched files (auth sign-in/sign-up forms, input.tsx, 668 review notes) are disjoint from #672's comment/activity/mention files.
+- Semantic check of #668's shared Input change: the input.tsx edit is one line; comment-editor.tsx uses `<Input` at two sites (lines ~1568, ~2002). The comment-editor unit tests pass and check:contrast passes on the merged built CSS (418 declared pairs, including the merged pairs.json). #668 regenerated only primitives-form--default--linux.png among baselines; whether it also moves work-item-detail-linux.png (which #672 changes) is not verifiable without Playwright (see residual risk).
+- pairs.json: merged file differs from main as expected (it carries #672's own pairs on top of main's); validated by the check:tokens/contrast pass below.
+
+## Commands run (results)
+- `git rev-parse HEAD` -> 5bd14fa0c3409444c805664baad5d921b28137ed.
+- `pnpm check:visual-scope` -> PASS: "G8 scope check passed: 7 screenshot cases, 6 active inventory route rows mapped (123 route rows total)".
+- `pnpm check:tokens` (= check-tokens.mjs && check-contrast.mjs) -> PASS. First run inside the sandbox failed with EPERM writing dist/ during the contrast step's web build (sandbox, not a code defect); re-run with sandbox disabled: check-tokens passed ("theme.css tokens are concrete in both themes ... no hard-coded color literal outside packages/ui/src/styles/") and "check:contrast: 418 declared, source-grounded pairs meet thresholds in light/dark built CSS."
+- `npx vitest run work-item-activity comment-editor comment-version-history` (apps/web, sandbox disabled for vite temp writes) -> 6 test files passed, 25 tests passed, 0 failed. Files matched: comment-editor.test.tsx, comment-editor-stacking.test.ts, comment-editor-disposal.test.tsx, comment-version-history.test.tsx, work-item-activity.ui.test.tsx, use-get-comment-version-history.test.tsx.
+- Not run: Playwright visual/e2e (forbidden), API integration/unit suites, full CI.
+
+## Findings
+- Blocking: none.
+- Non-blocking: untracked file `apps/web/e2e/zz-comments-ui-acceptance-probe.spec.ts` exists in the worktree (not in HEAD); ensure it is never staged.
+- Non-blocking: the web build run by check:contrast writes ignored dist/ output in the worktree; git status shows only the probe file.
+
+## Residual risk
+- Visual baselines: #672's work-item-detail-linux.png was generated before #668's Input change and #677's full-raster config; the G8 CI job (maxDiffPixels 0) is the only check that the committed work-item-detail baseline still matches. Not verified locally.
+- API-side suites (mentions, comment versions, openapi, permissions fixture) were unaffected by the delta (no overlapping files) and were not re-run.
+- Substantive #672 logic was reviewed at earlier heads; this review covers only the merge delta and the requested checks.
+
+Verdict: APPROVE
+<!-- END REPORT (sha256 7ab672c14fdebe34b30e7e446786ac4447f47ea420dcc304ea43fb8e6f713be3) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-5bd1-security-opus.md; Claude Opus 5.5 (claude-opus-5-5); sha256 7ff9b5fc953bf043bad5cedc654bfc3ef52a219f1b8e44007c55a31bca9db611) -->
+# #672 Comments: security review at 5bd14fa0
+
+**Reviewer model:** Claude Opus 5.5 (fresh independent security-review context). I did not author, direct or remediate any part of #672, #668 or #677.
+**Reviewed head:** `5bd14fa0c3409444c805664baad5d921b28137ed`
+**Comparison base:** prior CLEAR Opus security review head `60ca6721c41d380aaa202fb492884cec81a9da06`
+**Merge base with origin/main:** `8d739bd6a393ad9db5de99c778ebada9d9287ee6` (the locally known origin/main; remote refresh was not possible from the sandbox)
+**Worktree:** `/Users/heinthura/.codex/worktrees/605-native-client-selected/Ticketing.v2`
+**Mode:** read-only. No edits, commits or pushes. No Docker or browsers.
+
+I formed my view before reading the prior Opus report (`606-79c7-60ca-security-opus.md`) and the ordinary Sonnet report (`672-114d-9665-ordinary-sonnet.md`).
+
+## Delta reviewed (`60ca6721..5bd14fa0`)
+
+The commits are `c6bfef30` (note), `c43e843c` (pairs.json), `04965bd0` (visual fixture stub), `114d8448` (baseline), `96658f34` (UI fixes) and `5bd14fa0` (merge of main).
+
+**#672's own changes (`60ca6721..96658f34`)** touch the following files:
+
+- `comment-editor.tsx`
+- `work-item-activity.tsx`
+- `index.css`
+- `e2e/visual.spec.ts`
+- `work-item-detail-linux.png`
+- three test files
+- the 606 review note
+- `packages/ui/src/styles/pairs.json`
+
+No file under `apps/api`, `packages/db|domain|auth`, or `tests/` (API or integration) changed in the whole delta.
+
+## Surfaces examined
+
+1. **Comment and mention data shown to whom.** `work-item-activity.tsx` changes are presentation only:
+   - an edit-trigger ref map and focus restore (`:183-184`, `:321-325`, `:498-500`, `:538-541`);
+   - the skeleton loading state (`:430-452`);
+   - the empty message suppressed on error (`:452`);
+   - `autoFocus="end"` on the edit editor (`:532`).
+
+   The row source (`visibleRows`), the visibility filter, the composer visibility options and the query keys are unchanged. The skeleton renders no data. The error path still shows only the existing alert (`:415`) and now omits a misleading empty message. That reduces confusion and exposes nothing.
+2. **Mention-candidate reach.** The delta does not touch candidate sourcing, `mention-list.tsx` or the server mention classification. The edit editor keeps `enableMentions={false}` (unchanged context line). `index.css:269` raises `.taskdesk-mention-popup` from z-index 50 to 130. This is stacking only and does not change which candidates are listed.
+3. **Hidden file input and attachment authorization.** `comment-editor.tsx:1574-1575` adds `tabIndex={-1}` and `aria-hidden="true"` to the existing programmatic image input. The input is still rendered only when `!readOnly && !disabled` (`:1567`). It is still opened only through `imageInputRef.current?.click()` (`:423`). Its `onChange` still routes through the unchanged `handleAssetFileUpload`. Upload and attachment authorization are server-side, and the server is untouched, so authorization is unaffected. Removing it from the tab order adds no new path to the input.
+4. **XSS.** The delta adds no `dangerouslySetInnerHTML`, `innerHTML` or raw HTML sinks. The new skeleton markup is static. The CSS `:has(.ProseMirror:focus-visible)` focus ring (`index.css:865`) is a style only. `autoFocus` widens a prop type to `boolean | "start" | "end"`, which passes straight to the TipTap `autofocus` option (`:628`), so it has no content effect.
+5. **Visual fixture stub.** `apps/web/e2e/visual.spec.ts:124` returns an empty paged activity envelope inside the Playwright route mock. It is test-only and does not ship.
+6. **Merge `5bd14fa0` and its interaction with comment paths.** `git show --remerge-diff 5bd14fa0` is empty, so the merge is conflict-free. Every merged file is blob-identical to `8d739bd6`, except `packages/ui/src/styles/pairs.json`, which both sides edited. That file is a contrast manifest, it auto-merged, and it parses as valid JSON. The merge brings in two changes:
+   - #668: password-label association in `sign-in-form.tsx`, `sign-up-form.tsx` and `packages/ui/src/components/input.tsx`, plus tests.
+   - #677: the visual raster flag, the pinned G8 guard and the exact gitleaks fingerprints.
+
+   None of it touches comment, mention, activity or attachment code. The only overlap with #672's own files is the non-semantic `pairs.json`.
+7. **Baselines.** `work-item-detail-linux.png` has only `IHDR`, `IDAT` and `IEND` chunks. On visual inspection it shows fixture work-item text and an empty activity state, with no secrets.
+
+## Tests actually run
+
+| Command | Result |
+| --- | --- |
+| `apps/web: vitest run` on the 13 #672 web test files plus `auth/sign-in-form.test.tsx` and `auth/sign-up-form.test.tsx` (from the merge). The #672 files are `comment-editor{,-disposal,-stacking}`, `comment-version-history`, `work-item-activity.ui`, `work-item-detail`, `get-work-item`, `native-activity`, `use-get-comment-version-history`, `use-native-work-item-realtime`, `use-workspace-permission`, `routes` and `types/work-item/index`. | **15 files, 106 tests passed** |
+| `apps/api: vitest run` on `tests/api/comment-version-cursor`, `native-mentions`, `notification-mention-recipient` and `work-item-detail-schema` | **4 files, 11 tests passed** |
+| `gitleaks detect --redact --no-banner --log-opts="--no-merges --first-parent 8d739bd6..HEAD"` (gitleaks 8.30.1) | **no leaks found, exit 0** (21 commits scanned) |
+
+I did not run the Postgres-backed `tests/api-integration/*` files, because no private `*_test` database was provisioned for this read-only lane. No server or integration-test file changed since `60ca6721`, where they were last validated. vitest ran outside the sandbox because of its temporary config write.
+
+## Findings
+
+- **No BLOCKING findings.**
+- **N1, NON-BLOCKING (carried, unchanged).** `apps/web/src/components/activity/comment-editor.tsx`: the mention-list refresh runs in a passive effect, as already recorded in the prior Opus report. The delta does not touch it, and server-side reach re-classification still bounds the impact.
+- **N2, NON-BLOCKING (UX).** `apps/web/src/index.css:269`: the mention popup now has z-index 130, which is above the shared dialog overlay (`packages/ui/src/components/dialog.tsx:63`, z-50). If a dialog opened while the picker was open, the picker could paint above the overlay. It lists only candidates already available to the current user, so this is not a disclosure.
+- **N3, NON-BLOCKING (hygiene, not in the PR).** The worktree has an untracked file, `apps/web/e2e/zz-comments-ui-acceptance-probe.spec.ts`. It is not committed and not part of the reviewed head.
+
+## Comparison with prior reports (read after forming this view)
+
+- The prior Opus review at `60ca6721` was CLEAR, with non-blocking N1 (passive-effect refresh) and N2 (highlight reset). Both are consistent with what I found, and the delta leaves both untouched.
+- The ordinary Sonnet review of `114d8448..96658f34` returned APPROVE. I found nothing that contradicts it.
+
+## Residual risk / not checked
+
+- I did not reproduce the Playwright visual or acceptance runs, or the DB integration suite.
+- The remote origin/main could not be refreshed. If main has advanced past `8d739bd6`, a further merge needs its own rebind.
+- The #668 auth-form content was reviewed only for interaction with comment paths. It is identical to main, where it carries its own review.
+
+Verdict: CLEAR
+<!-- END REPORT (sha256 7ff9b5fc953bf043bad5cedc654bfc3ef52a219f1b8e44007c55a31bca9db611) -->
