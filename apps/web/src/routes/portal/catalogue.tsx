@@ -99,6 +99,19 @@ function PortalCatalogue() {
   } | null>(null);
   const visibilityValue =
     visibility && visibility.key === selected?.key ? visibility.value : null;
+  const effectiveVisibility: "private" | "organisation" =
+    visibilityValue ??
+    (selectionMetadata.data ?? catalogue.data)?.defaultCustomerVisibility ??
+    "organisation";
+  const visibilityPrivateLabel = t("portal:intake.visibilityPrivate", {
+    defaultValue: "Only me and invited participants",
+  });
+  const visibilityOrganisationLabel = t(
+    "portal:intake.visibilityOrganisation",
+    {
+      defaultValue: "People in my organisation",
+    },
+  );
   const submit = useMutation({
     mutationFn: () =>
       submitPortalRequest({
@@ -106,9 +119,7 @@ function PortalCatalogue() {
         formData: answers,
         customerVisibility: selected?.forcePrivate
           ? "private"
-          : (visibilityValue ??
-            catalogue.data?.defaultCustomerVisibility ??
-            "organisation"),
+          : effectiveVisibility,
       }),
     onSuccess: async (result) => {
       if (storageKey) localStorage.removeItem(storageKey);
@@ -421,12 +432,7 @@ function PortalCatalogue() {
                   defaultValue: "Who can see this request?",
                 })}
                 <Select
-                  value={
-                    visibilityValue ??
-                    (selectionMetadata.data ?? catalogue.data)
-                      ?.defaultCustomerVisibility ??
-                    "organisation"
-                  }
+                  value={effectiveVisibility}
                   onValueChange={(value) =>
                     value &&
                     setVisibility({
@@ -436,18 +442,18 @@ function PortalCatalogue() {
                   }
                 >
                   <SelectTrigger id="request-customer-visibility">
-                    <SelectValue />
+                    <SelectValue>
+                      {effectiveVisibility === "private"
+                        ? visibilityPrivateLabel
+                        : visibilityOrganisationLabel}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="private">
-                      {t("portal:intake.visibilityPrivate", {
-                        defaultValue: "Only me and invited participants",
-                      })}
+                      {visibilityPrivateLabel}
                     </SelectItem>
                     <SelectItem value="organisation">
-                      {t("portal:intake.visibilityOrganisation", {
-                        defaultValue: "People in my organisation",
-                      })}
+                      {visibilityOrganisationLabel}
                     </SelectItem>
                   </SelectContent>
                 </Select>

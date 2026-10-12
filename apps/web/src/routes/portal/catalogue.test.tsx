@@ -111,6 +111,21 @@ describe("portal catalogue route", () => {
     cleanup();
   });
 
+  it("shows the visibility label, not the raw value, in the trigger", async () => {
+    renderCatalogue();
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Access request" }),
+      ).toBeVisible(),
+    );
+    const trigger = screen.getByRole("combobox", {
+      name: /Who can see this request/u,
+    });
+    expect(trigger).toHaveTextContent("People in my organisation");
+    expect(trigger).not.toHaveTextContent(/^organisation$/u);
+  });
+
   it("keeps the selected form and saved draft when q no longer matches the type", async () => {
     mocks.getCatalogue.mockImplementation(async (query?: string) =>
       query === "does-not-match" ? emptyCatalogue : catalogue,
