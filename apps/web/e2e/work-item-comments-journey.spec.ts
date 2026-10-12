@@ -363,8 +363,34 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
     await visibility.click();
     await page.getByRole("option", { name: "Public", exact: true }).click();
     await expect(visibility).toContainText("Public");
+    const mentionCandidatesResponse = await page.request.get(
+      new URL(
+        `/api/work-items/${encodeURIComponent(item.key)}/comments/mention-candidates?visibility=public`,
+        origin,
+      ).toString(),
+      { headers: { Origin: origin } },
+    );
+    expect(mentionCandidatesResponse.status()).toBe(200);
+    expect(mentionCandidatesResponse.headers()["content-type"]).toMatch(
+      /^application\/json(?:;|$)/iu,
+    );
+    const mentionCandidates =
+      (await mentionCandidatesResponse.json()) as Array<{
+        personId: string;
+        name: string;
+        reachable: boolean;
+      }>;
+    expect(Array.isArray(mentionCandidates)).toBe(true);
+    expect(
+      mentionCandidates.some(
+        (candidate) =>
+          candidate.personId === mentionRecipient.personId &&
+          candidate.name === mentionRecipient.recipientName &&
+          candidate.reachable,
+      ),
+    ).toBe(true);
     await composer.click();
-    await composer.pressSequentially("@Comments Mention Recipient");
+    await composer.pressSequentially("@Comments");
     const mentionButton = page
       .locator(".taskdesk-mention-list")
       .getByRole("button", {
