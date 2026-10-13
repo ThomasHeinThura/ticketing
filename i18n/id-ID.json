@@ -785,6 +785,8 @@
 			"doneColumnTooltip": "Perlakukan ini sebagai kolom selesai",
 			"doneColumn": "Kolom selesai",
 			"markDoneAria": "Tandai {{name}} sebagai kolom selesai",
+			"nameAria": "Nama kolom {{name}}",
+			"deleteAria": "Hapus kolom {{name}}",
 			"on": "Aktif",
 			"off": "Nonaktif",
 			"newColumnPlaceholder": "Nama kolom baru...",
@@ -1140,6 +1142,7 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Saat event webhook Gitea terjadi, pindahkan tugas tertaut ke kolom.",
 			"selectColumnPlaceholder": "Pilih kolom...",
+			"targetColumnAria": "{{section}}: kolom tujuan untuk {{event}}",
 			"toastUpdated": "Aturan alur kerja diperbarui",
 			"toastError": "Gagal memperbarui aturan",
 			"events": {
@@ -1401,6 +1404,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Proyek"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Navigasi proyek"
 		},
 		"keyboardShortcuts": {
 			"title": "Pintasan Keyboard",

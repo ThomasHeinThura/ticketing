@@ -3700,6 +3700,12 @@
 						"markDoneAria": {
 							"type": "string"
 						},
+						"nameAria": {
+							"type": "string"
+						},
+						"deleteAria": {
+							"type": "string"
+						},
 						"on": {
 							"type": "string"
 						},
@@ -3730,6 +3736,8 @@
 						"doneColumnTooltip",
 						"doneColumn",
 						"markDoneAria",
+						"nameAria",
+						"deleteAria",
 						"on",
 						"off",
 						"newColumnPlaceholder",
@@ -5224,6 +5232,9 @@
 						"selectColumnPlaceholder": {
 							"type": "string"
 						},
+						"targetColumnAria": {
+							"type": "string"
+						},
 						"toastUpdated": {
 							"type": "string"
 						},
@@ -5267,6 +5278,7 @@
 						"giteaHeading",
 						"giteaHint",
 						"selectColumnPlaceholder",
+						"targetColumnAria",
 						"toastUpdated",
 						"toastError",
 						"events"
@@ -5654,6 +5666,16 @@
 					},
 					"required": ["projectLabel"]
 				},
+				"mobileProjectNav": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"menuLabel": {
+							"type": "string"
+						}
+					},
+					"required": ["menuLabel"]
+				},
 				"keyboardShortcuts": {
 					"type": "object",
 					"additionalProperties": false,
@@ -5792,6 +5814,7 @@
 				"workspaceSwitcher",
 				"page",
 				"projectSettings",
+				"mobileProjectNav",
 				"keyboardShortcuts"
 			]
 		},

@@ -100,7 +100,13 @@ export default function WorkflowEditor({ projectId }: WorkflowEditorProps) {
                   }
                 }}
               >
-                <SelectTrigger className="w-48 h-8 text-sm">
+                <SelectTrigger
+                  aria-label={t("settings:workflowEditor.targetColumnAria", {
+                    section: t(`settings:workflowEditor.${headingKey}`),
+                    event: t(`settings:workflowEditor.events.${eventType}`),
+                  })}
+                  className="w-48 h-8 text-sm"
+                >
                   <SelectValue
                     placeholder={t(
                       "settings:workflowEditor.selectColumnPlaceholder",

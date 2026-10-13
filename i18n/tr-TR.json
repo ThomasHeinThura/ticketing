@@ -785,6 +785,8 @@
 			"doneColumnTooltip": "Bunu tamamlandı sütunu olarak işaretle",
 			"doneColumn": "Tamamlandı sütunu",
 			"markDoneAria": "{{name}} sütununu tamamlandı olarak işaretle",
+			"nameAria": "{{name}} sütununun adı",
+			"deleteAria": "{{name}} sütununu sil",
 			"on": "Açık",
 			"off": "Kapalı",
 			"newColumnPlaceholder": "Yeni sütun adı...",
@@ -1140,6 +1142,7 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Bir Gitea webhook olayı gerçekleştiğinde, bağlı talebi bir sütuna taşıyın.",
 			"selectColumnPlaceholder": "Sütun seç...",
+			"targetColumnAria": "{{section}}: {{event}} için hedef sütun",
 			"toastUpdated": "İş akışı kuralı güncellendi",
 			"toastError": "Kural güncellenemedi",
 			"events": {
@@ -1402,6 +1405,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Proje"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Proje gezinmesi"
 		},
 		"keyboardShortcuts": {
 			"title": "Klavye Kısayolları",

@@ -785,6 +785,8 @@
 			"doneColumnTooltip": "Считать эту колонку завершающей",
 			"doneColumn": "Колонка завершения",
 			"markDoneAria": "Отметить {{name}} как колонку завершения",
+			"nameAria": "Название колонки {{name}}",
+			"deleteAria": "Удалить колонку {{name}}",
 			"on": "Вкл",
 			"off": "Выкл",
 			"newColumnPlaceholder": "Название новой колонки...",
@@ -1148,6 +1150,7 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Когда происходит событие вебхука Gitea, перемещать связанную задачу в колонку.",
 			"selectColumnPlaceholder": "Выберите колонку...",
+			"targetColumnAria": "{{section}}: целевая колонка для {{event}}",
 			"toastUpdated": "Правило рабочего процесса обновлено",
 			"toastError": "Не удалось обновить правило",
 			"events": {
@@ -1412,6 +1415,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Проект"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Навигация по проекту"
 		},
 		"keyboardShortcuts": {
 			"title": "Сочетания клавиш",

@@ -948,6 +948,8 @@
 			"doneColumnTooltip": "Considera questa come colonna di completamento",
 			"doneColumn": "Colonna completata",
 			"markDoneAria": "Segna {{name}} come colonna completata",
+			"nameAria": "Nome della colonna {{name}}",
+			"deleteAria": "Elimina la colonna {{name}}",
 			"on": "Attivo",
 			"off": "Disattivo",
 			"newColumnPlaceholder": "Nuovo nome colonna...",
@@ -1303,6 +1305,7 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Quando si verifica un evento webhook Gitea, sposta l'attività collegata in una colonna.",
 			"selectColumnPlaceholder": "Seleziona colonna...",
+			"targetColumnAria": "{{section}}: colonna di destinazione per {{event}}",
 			"toastUpdated": "Regola flusso di lavoro aggiornata",
 			"toastError": "Aggiornamento regola fallito",
 			"events": {
@@ -1403,6 +1406,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Progetto"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Navigazione del progetto"
 		},
 		"keyboardShortcuts": {
 			"title": "Scorciatoie da Tastiera",

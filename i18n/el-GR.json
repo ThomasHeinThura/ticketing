@@ -785,6 +785,8 @@
 			"doneColumnTooltip": "Αντιμετώπιση αυτής ως στήλη ολοκλήρωσης",
 			"doneColumn": "Στήλη ολοκλήρωσης",
 			"markDoneAria": "Επισήμανση του {{name}} ως στήλη ολοκλήρωσης",
+			"nameAria": "Όνομα στήλης {{name}}",
+			"deleteAria": "Διαγραφή στήλης {{name}}",
 			"on": "Ενεργό",
 			"off": "Ανενεργό",
 			"newColumnPlaceholder": "Όνομα νέας στήλης...",
@@ -1138,6 +1140,7 @@
 			"githubHeading": "GitHub",
 			"githubHint": "Όταν συμβαίνει ένα γεγονός στο GitHub, μετακινήστε τη συνδεδεμένη εργασία σε μια στήλη.",
 			"selectColumnPlaceholder": "Επιλέξτε στήλη...",
+			"targetColumnAria": "{{section}}: στήλη προορισμού για {{event}}",
 			"toastUpdated": "Ο κανόνας ροής εργασίας ενημερώθηκε",
 			"toastError": "Αποτυχία ενημέρωσης κανόνα",
 			"events": {
@@ -1402,6 +1405,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Έργο"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Πλοήγηση έργου"
 		},
 		"keyboardShortcuts": {
 			"title": "Συντομεύσεις πληκτρολογίου",

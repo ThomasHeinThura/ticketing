@@ -118,6 +118,7 @@ function RouteComponent() {
                 }}
               >
                 <SelectTrigger
+                  aria-label={t("navigation:projectSettings.projectLabel")}
                   className="h-8 text-sm font-normal text-foreground"
                   size="sm"
                 >

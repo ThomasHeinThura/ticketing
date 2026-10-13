@@ -948,6 +948,8 @@
 			"doneColumnTooltip": "Tratar isto como uma coluna de concluído",
 			"doneColumn": "Coluna de concluído",
 			"markDoneAria": "Marcar {{name}} como coluna de concluído",
+			"nameAria": "Nome da coluna {{name}}",
+			"deleteAria": "Excluir a coluna {{name}}",
 			"on": "Ativado",
 			"off": "Desativado",
 			"newColumnPlaceholder": "Nome da nova coluna...",
@@ -1303,6 +1305,7 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Quando um evento de webhook do Gitea ocorrer, mova a tarefa vinculada para uma coluna.",
 			"selectColumnPlaceholder": "Selecionar coluna...",
+			"targetColumnAria": "{{section}}: coluna de destino para {{event}}",
 			"toastUpdated": "Regra de fluxo de trabalho atualizada",
 			"toastError": "Falha ao atualizar regra",
 			"events": {
@@ -1403,6 +1406,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Projeto"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Navegação do projeto"
 		},
 		"keyboardShortcuts": {
 			"title": "Atalhos de teclado",
