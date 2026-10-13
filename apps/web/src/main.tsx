@@ -10,9 +10,9 @@ import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { AppErrorBoundary } from "./components/app-error-boundary";
 import KeyboardShortcutsHelpLauncher from "./components/keyboard-shortcuts-help-launcher";
 import AuthProvider from "./components/providers/auth-provider";
+import { DeferredUserPreferencesSync } from "./components/providers/deferred-user-preferences-sync";
 import { ThemeProvider } from "./components/providers/theme-provider";
 import { UserPreferencesEffects } from "./components/providers/user-preferences-effects";
-import { UserPreferencesSync } from "./components/providers/user-preferences-sync";
 import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { captureCheckoutIntent } from "./lib/checkout-intent";
 import { AppI18nProvider } from "./lib/i18n/provider";
@@ -131,7 +131,7 @@ if (!rootElement.innerHTML) {
           <ThemeProvider>
             <UserPreferencesEffects />
             <AuthProvider>
-              <UserPreferencesSync />
+              <DeferredUserPreferencesSync />
               <AppI18nProvider>
                 <KeyboardShortcutsProvider>
                   <App />
