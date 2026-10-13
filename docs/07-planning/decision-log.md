@@ -1,3 +1,137 @@
+### 2026-10-13 · Conductor records: G11 re-run rule, #664 deletion removal and navigation scope
+
+**Owner decision recorded: G11 calibration re-run.** On 2026-10-12, in this conductor chat, Thomas answered "Yes, one re-run (Recommended)":
+- A G11 failure from calibration spread, raised before any budget is scored, is transient infrastructure. It gets one re-run per incident.
+- A budget failure never gets a re-run.
+
+Source: the conductor session transcript, 3a9e9ce4-8409-47d4-b1be-1f1544697e70.
+
+**Decisions the conductor made, each reversible:**
+- **Request-type deletion.** `DELETE /api/request-types/{id}` was removed from #664 (`8677a154`) because deletion is an unresolved owner decision. `request_type.deleted` stays unregistered. Reversal: restore from `8677a154^` once Thomas sets the confirmation contract.
+- **#609 successor URL state.** It goes on the legacy `/dashboard/workspace/.../project/...` routes that #609 targeted, because those are the live navigation. The per-user layout preference (VW-2) uses `localStorage` until the user-preference schema freezes. Reversal: move the codec consumers to the native `/agent/projects/{key}/work`.
+- **#512 successor.** A 404 from any work-item mutation shows the not-found state (access loss). Reversal: limit this to the 409 handling.
+- **GitGuardian finding 38135530** (`tests/api/portal-attachment-storage.test.ts:168`) is adjudicated a fabricated test value: a strictly alternating letter/digit literal that is used only as a rejected-key segment. The scanner is unchanged and no ignore rule was added. Dismissal in the dashboard is Thomas's action.
+- **Public CI artifacts.** Thomas authorised deleting the three artifacts that held MFA backup codes (11728227868, 11729238081, 11728864540), and they were deleted on 2026-10-13. The restricted incident record is kept privately. The recurrence guard is PR #686.
+
+This entry records facts and reversible conductor choices. It waives no gate and accepts no phase.
+
+### 2026-10-13 · Recovered record: Bind customer-serving projects at creation (originally 2026-10-04)
+
+**Source:** decision-log text recorded at commit 7d531ac8 (PR #598 branch; lost from the branch head in a later merge), carried unchanged below. This re-records an existing decision; it is not a new one.
+
+Under the standing recommended-decision authorization, `project.organisation_id` is a
+nullable FK: null means internal; a non-null value names the one customer organisation
+served by that project. Project creation may choose an active organisation explicitly;
+general project updates cannot rebind it. Existing projects remain null/internal, with no
+inferred backfill. Intake acceptance requires the selected project to have the exact
+submission organisation binding and the same workspace as the pinned request-type version.
+
+This is an implementation contract, not review, merge, or phase acceptance.
+
+### 2026-10-13 · Recovered record: Pin request-type mapping in published submission versions (originally 2026-10-04)
+
+**Source:** decision-log text recorded at commit 7d531ac8 (PR #598 branch; lost from the branch head in a later merge), carried unchanged below. This re-records an existing decision; it is not a new one.
+
+Publishing a request type snapshots its form schema, work-item type, request-type SLA
+override, and default assignee in an immutable version. A submission uses the version it
+was created against; later edits do not remap queued work. Acceptance revalidates the
+snapshot's referenced type, policy and assignee in the same workspace and fails atomically
+if they are unavailable. The chosen work-item type supplies its workflow; request types do
+not add a workflow override. The accepted work item's SLA policy version is still selected
+using the existing SLA-1 precedence at its SLA start instant, with the original submission
+time preserved for accepted submissions.
+
+This is an implementation contract under the standing recommended-decision authorization,
+not review, merge, or phase acceptance.
+
+### 2026-10-13 · Recovered record: Implement persisted feature-toggle defaults and controls (originally 2026-10-04)
+
+**Source:** decision-log text recorded at commit 7d531ac8 (PR #598 branch; lost from the branch head in a later merge), carried unchanged below. This re-records an existing decision; it is not a new one.
+
+The three documented flag tables are the runtime source of truth and resolve
+project → workspace → instance → built-in default. Seed all enumerated features off except
+`feature.scim` and `feature.import`; import is on and locked at the instance level. Intake
+stays off until explicitly enabled by an administrator through settings. Instance,
+workspace, and project controls use versioned writes, with change audit in the same
+transaction; locked instance values reject lower-level writes with `409`. Disabled feature
+APIs return generic `404`, and UI navigation hides the feature. Flags do not grant route
+permissions. Browser code shares intake-only pure rules through the internal
+`@taskdesk/domain/intake` entrypoint; the web bundle must not import the Node-only package
+root.
+
+This is implementation direction under the standing recommended-decision authorization,
+not review, merge, or phase acceptance.
+
+### 2026-10-13 · Recovered record: Keep request-type route keys opaque and share intake rules with the portal (originally 2026-10-04)
+
+**Source:** decision-log text recorded at commit 7d531ac8 (PR #598 branch; lost from the branch head in a later merge), carried unchanged below. This re-records an existing decision; it is not a new one.
+
+**Decision:** under the standing authorization to implement recommended decisions, generate
+`request_type.key` as an immutable CUID2 value independent from the row id and unique across
+the instance. Return it in DTOs; reject it from create/update input. The web package may
+depend on the internal `@taskdesk/domain` workspace package only through its browser-safe
+`@taskdesk/domain/intake` export, so conditional form visibility has one implementation and
+the Node-only package-root audit exports never enter a browser bundle.
+
+This is an implementation contract, not review, merge, or phase acceptance.
+
+**Recorded by:** GPT-6 Luna implementation author, 2026-10-04.
+
+### 2026-10-13 · Recovered record: Reuse canonical domain visibility in the portal (originally 2026-10-07)
+
+**Source:** decision-log text recorded at commit 3fecb75c (PR #598 head), carried unchanged below. This re-records an existing decision; it is not a new one.
+
+**Decision:** Add the existing `@taskdesk/domain` package as a direct workspace dependency
+of `@taskdesk/web` and call its canonical request-type visibility evaluator from the portal.
+The evaluator owns `eq`, `neq`, `in`, and trimmed `is_set` semantics; do not maintain a
+second frontend operator switch. This adds no package or runtime dependency beyond the
+already existing workspace package.
+
+**Approval:** Thomas explicitly approved adding the existing workspace dependency in the
+PR #598 bulk-remediation task, 2026-10-07.
+
+**Recorded:** orchestrator, 2026-10-07.
+
+### 2026-10-13 · Recovered record: Auto-accept actor attribution for intake acceptance (originally 2026-10-07)
+
+**Source:** decision-log text recorded at commit 3fecb75c (PR #598 head), carried unchanged below. This re-records an existing decision; it is not a new one.
+
+**Decision:** Thomas explicitly approves auto-accept attribution as a `system` action with no
+person actor id and display name `Request type auto-accept`; the customer remains the
+requester and initiator. Manual acceptance retains the actual staff actor id and name. Use the
+existing outbox actor shape (`type: "system"`, `id: null`, `name: "Request type auto-accept"`);
+do not invent a job or automation key. Canonical behavior is recorded in `RT-15`, `IQ-4`, and
+the audit actor contract before source changes.
+
+This settles attribution only. It adds no event key, actor identifier, or phase/merge claim.
+
+**Approval:** Thomas explicitly approved this rule in the PR #598 bulk-remediation task,
+2026-10-07.
+
+**Recorded:** orchestrator, 2026-10-07.
+
+### 2026-10-13 · Recovered record: Register request-type and intake triage audit actions (originally 2026-10-07)
+
+**Source:** decision-log text recorded at commit 3fecb75c (PR #598 head), carried unchanged below. This re-records an existing decision; it is not a new one.
+
+**Decision:** Thomas approves the audit-only actions `request_type.created`,
+`request_type.updated`, `request_type.published`, `request_type.unpublished`,
+`request_type.deleted`, `submission.claimed`, and `submission.duplicate`. These actions are
+registered in the audit-trail catalogue and written in the same transaction as their
+mutation. They do not add domain events or outbox rows. Existing `submission.accepted`
+continues to be emitted by the shared conversion path for both manual and auto-accept.
+
+This resolves only the canonical vocabulary gap identified during PR #598 bulk remediation.
+It does not clear the custom-field mapping hold, the required-file serialization contract,
+the review ledger, independent review, or any P2 acceptance gate.
+
+**Approval:** Thomas explicitly approved the exact actions and no-new-event boundary in this
+task, 2026-10-07.
+
+**Recorded:** orchestrator, 2026-10-07.
+
+**Note (2026-10-13):** `request_type.deleted` stays unregistered while request-type deletion is an open owner decision, as in the conductor records entry above.
+
 ### 2026-10-12 · Technical disposition: #677 review-prose secret-scan false positive
 
 **Technical rationale, not a new Thomas decision or gate waiver:** #677's required secret
