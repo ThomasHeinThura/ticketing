@@ -25,6 +25,23 @@ vi.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
 
+vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
+  useAuth: () => ({ user: { id: "user-1", role: "user" } }),
+}));
+
+vi.mock("@/hooks/queries/approval/use-get-work-item-approvals", () => ({
+  default: () => ({
+    data: { approvals: [] },
+    isError: false,
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
+}));
+
+vi.mock("@/hooks/mutations/approval/use-withdraw-approval", () => ({
+  default: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
+}));
+
 vi.mock("./work-item-activity", () => ({
   default: () => <div data-testid="work-item-activity" />,
 }));
@@ -138,6 +155,11 @@ describe("WorkItemDetail", () => {
     fireEvent.click(detailsTrigger);
     expect(detailsTrigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Worklist")).toBeInTheDocument();
+  });
+
+  it("AP-20 renders the approvals section on the ready detail", () => {
+    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
+    expect(screen.getByTestId("work-item-approvals")).toBeInTheDocument();
   });
 
   it("renders Unassigned for an unassigned item, and (inactive) when the assignee has no resolvable name", () => {
