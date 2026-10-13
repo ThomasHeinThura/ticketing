@@ -785,6 +785,8 @@
 			"doneColumnTooltip": "Considérer ceci comme une colonne terminée",
 			"doneColumn": "Colonne terminée",
 			"markDoneAria": "Marquer {{name}} comme colonne terminée",
+			"nameAria": "Nom de la colonne",
+			"deleteAria": "Supprimer la colonne {{name}}",
 			"on": "On",
 			"off": "Off",
 			"newColumnPlaceholder": "Nouveau nom de colonne...",
@@ -1403,6 +1405,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Projet"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Navigation du projet"
 		},
 		"keyboardShortcuts": {
 			"title": "Raccourcis clavier",

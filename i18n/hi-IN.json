@@ -947,6 +947,8 @@
 			"doneColumnTooltip": "इसे Done कॉलम मानें",
 			"doneColumn": "Done कॉलम",
 			"markDoneAria": "{{name}} को Done कॉलम चिह्नित करें",
+			"nameAria": "कॉलम का नाम",
+			"deleteAria": "कॉलम {{name}} हटाएं",
 			"on": "चालू",
 			"off": "बंद",
 			"newColumnPlaceholder": "नया कॉलम नाम...",
@@ -1402,6 +1404,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "प्रोजेक्ट"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "प्रोजेक्ट नेविगेशन"
 		},
 		"keyboardShortcuts": {
 			"title": "कीबोर्ड शॉर्टकट",

@@ -785,6 +785,8 @@
 			"doneColumnTooltip": "Третирај ја како завршна колона",
 			"doneColumn": "Завршна колона",
 			"markDoneAria": "Означи {{name}} како завршна колона",
+			"nameAria": "Име на колоната",
+			"deleteAria": "Избриши ја колоната {{name}}",
 			"on": "Вклучено",
 			"off": "Исклучено",
 			"newColumnPlaceholder": "Име на нова колона...",
@@ -1402,6 +1404,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Проект"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Навигација на проектот"
 		},
 		"keyboardShortcuts": {
 			"title": "Кратенки на тастатура",

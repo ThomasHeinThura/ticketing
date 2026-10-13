@@ -947,6 +947,8 @@
 			"doneColumnTooltip": "Treat this as a done column",
 			"doneColumn": "Done column",
 			"markDoneAria": "Mark {{name}} as done column",
+			"nameAria": "Column name",
+			"deleteAria": "Delete column {{name}}",
 			"on": "On",
 			"off": "Off",
 			"newColumnPlaceholder": "New column name...",
@@ -1402,6 +1404,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Project"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Project navigation"
 		},
 		"keyboardShortcuts": {
 			"title": "Keyboard Shortcuts",

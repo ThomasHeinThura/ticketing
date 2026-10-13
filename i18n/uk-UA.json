@@ -785,6 +785,8 @@
 			"doneColumnTooltip": "Вважати цю колонку колонкою готовності",
 			"doneColumn": "Колонка готовності",
 			"markDoneAria": "Позначити {{name}} як колонку готовності",
+			"nameAria": "Назва колонки",
+			"deleteAria": "Видалити колонку {{name}}",
 			"on": "Увімк.",
 			"off": "Вимк.",
 			"newColumnPlaceholder": "Назва нової колонки...",
@@ -1404,6 +1406,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Проєкт"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Навігація проєктом"
 		},
 		"keyboardShortcuts": {
 			"title": "Гарячі клавіші",

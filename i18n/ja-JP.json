@@ -946,6 +946,8 @@
 			"doneColumnTooltip": "これを完了カラムとして扱います",
 			"doneColumn": "完了カラム",
 			"markDoneAria": "{{name}} を完了カラムとして設定",
+			"nameAria": "カラム名",
+			"deleteAria": "カラム {{name}} を削除",
 			"on": "オン",
 			"off": "オフ",
 			"newColumnPlaceholder": "新しいカラム名...",
@@ -1401,6 +1403,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "プロジェクト"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "プロジェクトナビゲーション"
 		},
 		"keyboardShortcuts": {
 			"title": "キーボードショートカット",

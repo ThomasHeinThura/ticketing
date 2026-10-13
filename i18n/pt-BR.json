@@ -948,6 +948,8 @@
 			"doneColumnTooltip": "Tratar isto como uma coluna de concluído",
 			"doneColumn": "Coluna de concluído",
 			"markDoneAria": "Marcar {{name}} como coluna de concluído",
+			"nameAria": "Nome da coluna",
+			"deleteAria": "Excluir a coluna {{name}}",
 			"on": "Ativado",
 			"off": "Desativado",
 			"newColumnPlaceholder": "Nome da nova coluna...",
@@ -1403,6 +1405,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Projeto"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Navegação do projeto"
 		},
 		"keyboardShortcuts": {
 			"title": "Atalhos de teclado",
