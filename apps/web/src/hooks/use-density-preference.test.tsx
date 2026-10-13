@@ -409,4 +409,49 @@ describe("density preference sync (VW-6, ST-17)", () => {
     });
     expect(useUserPreferencesStore.getState().compactMode).toBe(true);
   });
+
+  it("does not send a queued write after its user's last consumer unmounts before the sync mounts", async () => {
+    let release: (() => void) | undefined;
+    mocks.put.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve({});
+        }),
+    );
+    serverHas();
+    const page = renderHook(() => useDensityPreference(), {
+      wrapper: wrapper("user-solo-a"),
+    });
+    act(() => page.result.current.setDensity("compact"));
+    act(() => page.result.current.setDensity("comfortable"));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    expect(mocks.put).toHaveBeenCalledTimes(1);
+    // A leaves the settings page and signs out before the deferred sync has mounted.
+    page.unmount();
+    await act(async () => {
+      release?.();
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    expect(mocks.put).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps writing for a user while another consumer for that user stays mounted", async () => {
+    serverHas();
+    const sync = renderHook(() => useDensityPreferenceSync(), {
+      wrapper: wrapper("user-both"),
+    });
+    const page = renderHook(() => useDensityPreference(), {
+      wrapper: wrapper("user-both"),
+    });
+    page.unmount();
+    const again = renderHook(() => useDensityPreference(), {
+      wrapper: wrapper("user-both"),
+    });
+    act(() => again.result.current.setDensity("compact"));
+    await waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(1));
+    sync.unmount();
+    again.unmount();
+  });
 });

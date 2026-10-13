@@ -43,6 +43,10 @@ const writeStates = new Map<
   { chain: Promise<unknown>; latest: number }
 >();
 let activeUserId: string | undefined;
+// How many mounted consumers vouch for each signed-in user. When the last one unmounts
+// (sign-out, or the only consumer leaving before the deferred sync mounts), the active user
+// is cleared so a still-queued write cannot be sent under the next person's session.
+const activeUserMounts = new Map<string, number>();
 
 function writeStateFor(userId: string) {
   let state = writeStates.get(userId);
@@ -57,6 +61,17 @@ function writeStateFor(userId: string) {
 function useActiveUser(userId: string | undefined) {
   useLayoutEffect(() => {
     activeUserId = userId;
+    if (!userId) return;
+    activeUserMounts.set(userId, (activeUserMounts.get(userId) ?? 0) + 1);
+    return () => {
+      const remaining = (activeUserMounts.get(userId) ?? 1) - 1;
+      if (remaining > 0) {
+        activeUserMounts.set(userId, remaining);
+        return;
+      }
+      activeUserMounts.delete(userId);
+      if (activeUserId === userId) activeUserId = undefined;
+    };
   }, [userId]);
 }
 
