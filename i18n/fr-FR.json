@@ -1379,6 +1379,7 @@
 			"workspaces": "Espaces de travail",
 			"switching": "Changement...",
 			"addWorkspace": "Ajouter un espace de travail",
+			"instanceUsers": "Utilisateurs de l’instance",
 			"selectWorkspace": "Sélectionner un espace de travail"
 		},
 		"page": {

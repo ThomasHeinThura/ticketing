@@ -7,6 +7,9 @@ import {
 
 export const DEFAULT_COMMENT_VERSION_LIMIT = 5;
 export const MAX_COMMENT_VERSION_LIMIT = 10;
+// `comment_version.number` is a PostgreSQL `integer`; a larger cursor value would overflow
+// when bound into the keyset predicate (500) instead of being refused as a malformed cursor.
+const POSTGRES_INTEGER_MAX = 2_147_483_647;
 
 type CommentVersionCursor = {
   v: 1;
@@ -42,6 +45,7 @@ export function decodeCommentVersionCursor(
       typeof cursor.number !== "number" ||
       !Number.isSafeInteger(cursor.number) ||
       cursor.number < 1 ||
+      cursor.number > POSTGRES_INTEGER_MAX ||
       typeof cursor.id !== "string" ||
       cursor.id.length < 1 ||
       cursor.id.length > 128 ||

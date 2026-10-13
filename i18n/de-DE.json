@@ -1378,6 +1378,7 @@
 			"workspaces": "Workspaces",
 			"switching": "Wechseln...",
 			"addWorkspace": "Workspace hinzufügen",
+			"instanceUsers": "Instanzbenutzer",
 			"selectWorkspace": "Workspace auswählen"
 		},
 		"page": {

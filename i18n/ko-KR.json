@@ -1377,6 +1377,7 @@
 			"workspaces": "워크스페이스",
 			"switching": "전환 중...",
 			"addWorkspace": "워크스페이스 추가",
+			"instanceUsers": "인스턴스 사용자",
 			"selectWorkspace": "워크스페이스 선택"
 		},
 		"page": {
