@@ -942,8 +942,19 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
   })
   .openapi(createSubmissionRoute, async (c) => {
     const body = c.req.valid("json");
+    const created = await createSubmission({
+      userId: c.get("userId"),
+      ...body,
+    });
+    // Customer-facing: return only the declared fields, never the stored row.
     return c.json(
-      await createSubmission({ userId: c.get("userId"), ...body }),
+      {
+        id: created.id,
+        number: created.number,
+        ref: created.ref,
+        state: created.state,
+        createdAt: created.createdAt.toISOString(),
+      },
       200,
     );
   });

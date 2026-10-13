@@ -429,18 +429,24 @@ const attachment = apiRouter<
       200,
     ),
   )
-  .openapi(portalSubmissionCompleteRoute, async (c) =>
-    c.json(
-      await completeSubmissionAttachment({
-        attachmentId: c.req.valid("param").id,
-        submissionId: c.get("submissionId"),
-        submissionWorkItemId: c.get("submissionWorkItemId"),
-        requesterId: c.get("requesterId"),
-        workspaceId: c.get("workspaceId"),
-      }),
+  .openapi(portalSubmissionCompleteRoute, async (c) => {
+    const completed = await completeSubmissionAttachment({
+      attachmentId: c.req.valid("param").id,
+      submissionId: c.get("submissionId"),
+      submissionWorkItemId: c.get("submissionWorkItemId"),
+      requesterId: c.get("requesterId"),
+      workspaceId: c.get("workspaceId"),
+    });
+    // Customer-facing: the declared shape only, so no storage key reaches the wire.
+    return c.json(
+      {
+        ...toAttachmentResponse(completed),
+        workItemId: completed.workItemId ?? null,
+        submissionId: completed.submissionId ?? null,
+      },
       200,
-    ),
-  )
+    );
+  })
   .openapi(portalSubmissionListRoute, async (c) => {
     const parents = [
       eq(schema.attachmentTable.submissionId, c.get("submissionId")),
