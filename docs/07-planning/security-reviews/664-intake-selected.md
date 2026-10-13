@@ -19,6 +19,9 @@ This note records the ordinary and security reviews of PR #664. The PR covers re
 - **Merge of `main` `d9af1c83` (#670) at `b658d5cc`.** Claude Sonnet 5.5 approved it, and a Claude Opus 5.5 security rebind cleared it.
 
 Every model is labelled as the report declares it. Claude Sonnet 5.5 and Claude Opus 5.5 reports are Claude contexts and are not recorded as GPT-6 Luna or GPT-6 Sol.
+- **Checklist closure on `c9a8a4ba`.** Every intake route, staff and portal, now maps to an explicit response schema, and 19 negative HTTP integration tests were added. Claude Sonnet 5.5 approved and Claude Opus 5.5 cleared.
+- **Merge of `main` `b596d2de` (#672) at `7d9d6635`.** It included an add/add union of `apps/api/src/work-item/repository.ts`. Claude Sonnet 5.5 approved and Claude Opus 5.5 cleared.
+- **Final fixes at `a8ec7478`.** A concurrency test now asserts atomicity rather than lock-grant order, and the portal catalogue shows a single Retry. Claude Sonnet 5.5 approved and Claude Opus 5.5 cleared. A first Opus rebind of `6c219c2a` ended on an API authentication error before writing any report, so nothing from it is recorded.
 
 **Reviewed head:** `afa009bd5180f90f0026592a8d1c405ef3b21f9c`
 **Reviewed head:** `0cdcff749ced72ef0e0f664b3df5a3f03e970213`
@@ -28,8 +31,11 @@ Every model is labelled as the report declares it. Claude Sonnet 5.5 and Claude 
 **Reviewed head:** `852890f4193a884a3227bf378d428ba473e3f14c`
 **Reviewed head:** `7b30dfbf7a647119d4247b96248ab9dd89317013`
 **Reviewed head:** `b658d5cc15a1cb7e03c53a3610a152e6772eee33`
+**Reviewed head:** `c9a8a4baafe11d3082fb71fd02eda728a848bc7b`
+**Reviewed head:** `7d9d6635773023364fad50e510fd852c13856eb1`
+**Reviewed head:** `a8ec7478b1136bd17a5e8d31b168adb3fbac6b35`
 
-The last line above is the candidate head, `b658d5cc15a1cb7e03c53a3610a152e6772eee33`. Earlier heads are listed in chronological order, and every one is an ancestor of the candidate.
+The last line above is the candidate head, `a8ec7478b1136bd17a5e8d31b168adb3fbac6b35`. Earlier heads are listed in chronological order, and every one is an ancestor of the candidate.
 
 ## Context index
 
@@ -57,6 +63,12 @@ SHA-256 is of the report file bytes and matches the embedded copy.
 | 18 | `2026-10-12/664-7b30-security-rebind-opus.md` | Security rebind (852890f4..7b30dfbf) | Claude Opus 5.5 | `7b30dfbf` | CLEAR | `70c325ba4168420ec3b8b0b74d0c82d6d6de9244ed32ebcdd8e0d578f21903a0` |
 | 19 | `2026-10-12/664-b658-merge-ordinary-sonnet.md` | Ordinary (7b30dfbf..b658d5cc: merge of main d9af1c83) | Claude Sonnet 5.5 | `b658d5cc` | APPROVE | `3cf309468994383423ec81b85e9eb07b486f661a505e8876480848ba4ce6547f` |
 | 20 | `2026-10-12/664-b658-security-rebind-opus.md` | Security rebind (7b30dfbf..b658d5cc) | Claude Opus 5.5 | `b658d5cc` | CLEAR | `42f86f589b4928820f51d5782d4e648baf8defce4c311e0c306fa6f1aa2159be` |
+| 21 | `664-edce-c9a8-ordinary-sonnet.md` | Ordinary delta (edce6dc6..c9a8a4ba: response schemas and negative tests) | Claude Sonnet 5.5 | `c9a8a4ba` | APPROVE | `16145cac24b60c76a6af937637ead3ad493fc2686af747868b7782da05632e8a` |
+| 22 | `664-c9a8-security-rebind-opus.md` | Security rebind (b658d5cc..c9a8a4ba) | Claude Opus 5.5 | `c9a8a4ba` | CLEAR | `3b2684e674936fa4053d9dcff72d8a5ee8ab1044b7532d0c877c5eb0b5e49eb7` |
+| 23 | `664-7d9d-merge-ordinary-sonnet.md` | Ordinary (c9a8a4ba..7d9d6635: merge of main b596d2de) | Claude Sonnet 5.5 | `7d9d6635` | APPROVE | `9ce38e9eb679d83edd71727342c522374089fcfc0dbb6d5b24eca23819ecffb8` |
+| 24 | `664-7d9d-security-rebind-opus.md` | Security rebind (c9a8a4ba..7d9d6635) | Claude Opus 5.5 | `7d9d6635` | CLEAR | `647678ea92063b4b6df342814f72efcc926475a45fe4bd902d883b433b88bde1` |
+| 25 | `664-7d9d-a8ec-ordinary-sonnet.md` | Ordinary delta (7d9d6635..a8ec7478) | Claude Sonnet 5.5 | `a8ec7478` | APPROVE | `20cb023f6b98483f8e7f512c69ddf409f393b636d7dc766aceb6c96bb9c09dd5` |
+| 26 | `664-a8ec-security-rebind-opus.md` | Security rebind (7d9d6635..a8ec7478) | Claude Opus 5.5 | `a8ec7478` | CLEAR | `1d014821e6934c7c28479953d5c9e362212df72a2b36b9f5c81b2ffc69fafae6` |
 
 ## Embedded reports
 
@@ -1517,3 +1529,578 @@ and its test. There are no changes to `apps/api`, `packages/libs`, `packages/dom
 
 Verdict: CLEAR
 <!-- END REPORT (sha256 42f86f589b4928820f51d5782d4e648baf8defce4c311e0c306fa6f1aa2159be) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/664-edce-c9a8-ordinary-sonnet.md; Claude Sonnet 5.5; sha256 16145cac24b60c76a6af937637ead3ad493fc2686af747868b7782da05632e8a) -->
+# PR #664 ordinary review, delta edce6dc..c9a8a4ba
+
+Reviewer model: Claude Sonnet (fresh independent ordinary-review context)
+Head: c9a8a4baafe11d3082fb71fd02eda728a848bc7b (confirmed in worktree; only the three untracked intake-probe e2e files present, left alone)
+Base: edce6dc65f77bd3f47c654243a721719a1f1cd2c
+Scope: read-only; no edit, commit, push, Docker or browser.
+
+## Files examined
+- apps/api/src/intake/response.ts (new), apps/api/src/intake/index.ts (delta)
+- apps/api/src/intake/repository.ts (listSubmissions return shape)
+- tests/api-contract/openapi.json (diff stat; consistency via check:openapi)
+- tests/api-integration/helpers/intake-http.ts
+- tests/api-integration/intake-reach-negative.test.ts (6 tests)
+- tests/api-integration/intake-triage-negative.test.ts (13 tests)
+- tests/api-integration/intake-staff-response-shape.test.ts (3 tests)
+- Web consumers: apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx, .../settings/request-types.tsx, apps/web/src/routes/portal/submissions/$ref.tsx
+
+## Commands and counts
+- apps/api: CI=true pnpm exec vitest run --config vitest.integration.config.ts intake (run unsandboxed): Test Files 8 passed (8), Tests 37 passed (37).
+- pnpm check:openapi: tests/api-contract/openapi.json matches the API (277 operations).
+- tsc: apps/api tsc --noEmit clean; apps/api tsc -p tsconfig.tests.json clean (covers the new test files); apps/web tsc --noEmit clean.
+- pnpm test:permissions: Test Files 14 passed (14), Tests 88 passed (88); turbo 5/5 tasks.
+- web vitest (triage, request-types, portal routes): Test Files 6 passed (6), Tests 30 passed (30).
+- New test count: 6 + 13 = 19 negative tests, plus 3 exact-key tests.
+
+## Findings
+
+### Response schemas
+- Web compatibility: verified, no regression found. The triage queue reads requestType.name, requester.displayName, organisation.name, submission.createdAt (all kept). Triage detail reads submission.state/claimedAt/formData/workItemId, version.formSchema/defaultProjectId/workItemTypeId, messages[].(actorType,body,createdAt) (all kept). Accept onSuccess reads workItem.key/title (kept). Request-type settings reads versions[].number/createdAt and the unchanged saved request-type shape. Portal detail route is not changed by this delta.
+- Sensitive or cross-tenant exposure: none introduced. The queue no longer returns the full person row (email and other columns), the full organisation row, the stored version row, or formData. Remaining exposed items (requester id and displayName, org name, formData on detail, work-item requesterId and workspaceId) are staff-scoped within the workspace and required by spec or tests. workspaceId equals the caller's own workspace.
+- OpenAPI: regenerated and check:openapi passes; the previously z.unknown fields (submission, requestType, version, workItem, message, versions[]) are now typed, and claimedAt moved from z.date to an ISO string, which matches what JSON serialisation already produced.
+- Non-blocking (response.ts:19, 54 area): formData is cast with "as Record<string, unknown>" and the version formSchema is z.unknown, so the contract is only as strict as the stored JSON; acceptable, but the OpenAPI doc says little about the form shape.
+- Non-blocking (apps/api/src/intake/index.ts, list route handler): the queue mapping is inlined in the handler rather than a to-function in response.ts like the others; cosmetic inconsistency only.
+- Non-blocking: the 404 and 409 responses newly declared for duplicate-suggestions and staff message match behaviour exercised by the tests.
+
+### c9a8a4ba (requesterId and workspaceId restored)
+- response.ts submissionWorkItemSchema and toSubmissionWorkItem now carry both; the exact-key test (WORK_ITEM_KEYS) pins all seven keys for accept and duplicate. Consistent.
+
+### Negative tests
+- Meaningful: each negative test asserts both the status and the persisted state (row state, claimedBy, message count, work-item count), so a guard that returned the right code but mutated data would fail. Control cases are present (own page reads 200, assigned type becomes submittable, open submission presigns). Accept rollback uses a real BEFORE UPDATE trigger on attachment, asserts no work item, no comment copy, no accepted audit row, restored attachment ownership, and that the retry yields work-item numbers [1,2] (number not consumed); trigger and function dropped in finally. Good.
+- Race tests (intake-triage-negative.test.ts, "withdrawal races", ROUNDS=6): deterministic in outcome because the assertion is "exactly one winner, loser 409, DB consistent with the winner", which holds for either order; they will not flake. Non-blocking limitation: they do not force overlap, and win distribution is not asserted, so a run could be fully sequential and never exercise the interleaving; they guard the invariant but may not catch a regression every time. Per-request session resolution via x-test-user header is a sound way to avoid the single global session mock.
+- Concurrent accept (same file): expects statuses [200, 409] sorted, one extra work item, row.workItemId equal to the winner's id. Deterministic, would fail if both succeeded or the count were 2.
+- Non-blocking: wd-refused test treats a failed accept (422, bad project) as a triage action that leaves claimedBy set. That pins current behaviour; if intended, fine, but it deserves a one-line comment citing the spec rule.
+- mockSessionsByHeader uses vi.spyOn repeatedly; spies are re-established per round. No leak seen in the 37-test run; relies on suite-level restore behaviour, not verified further.
+
+### Known spec gaps, pinned honestly?
+- No-session SUB-n 401 vs spec 404: pinned as toBe(401) with an explicit comment that intake-queue.md says 404 and that the gap was reported; also asserts no submission text leaks. Honest. Non-blocking: the comment cites no issue number; add it so the test is greppable when the spec or behaviour is fixed.
+- Losing concurrent acceptor not shown the work item: the test pins only the 409 and does not assert the body or mention the gap. It is not dishonest (it does not claim the spec behaviour) but nothing documents the gap in the test. Non-blocking: add a comment with the issue number at the concurrent-accept test.
+
+## Residual risk
+- Race tests may run sequentially; true interleaving is not guaranteed.
+- I did not run e2e or the untracked probe specs, nor the full API suite; only the intake-filtered integration set (8 files).
+- Other consumers outside apps/web (scripts, docs examples) of the staff intake responses were not searched.
+- Spec text was not re-read beyond what the test comments state.
+
+## Blocking findings
+None.
+
+Verdict: APPROVE
+<!-- END REPORT (sha256 16145cac24b60c76a6af937637ead3ad493fc2686af747868b7782da05632e8a) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/664-c9a8-security-rebind-opus.md; Claude Opus 5.5; sha256 3b2684e674936fa4053d9dcff72d8a5ee8ab1044b7532d0c877c5eb0b5e49eb7) -->
+# PR #664 (Intake) - security rebind review, b658d5cc..c9a8a4ba
+
+- **Reviewer model:** Claude Opus 5.5 (fresh independent security-review context)
+- **Role:** independent security reviewer. I did not author, direct or remediate this candidate.
+- **Date:** 2026-10-13
+- **Worktree:** /Users/heinthura/.codex/worktrees/delivery-conductor-20261011/Ticketing.v2
+- **Candidate SHA:** `c9a8a4baafe11d3082fb71fd02eda728a848bc7b` (I confirmed it with `git rev-parse HEAD`)
+- **Comparison base (prior exact-head clearance):** `b658d5cc15a1cb7e03c53a3610a152e6772eee33`, which Opus cleared in 664-b658-security-rebind-opus.md
+- **Merge base with main:** `d9af1c83306a0c752ca38c50e70d8f6cf713ce03`
+
+## Delta reviewed
+
+There are five commits in the delta. They are listed oldest first:
+
+- `edce6dc6` adds the review record only.
+- `1215f4a1` maps staff responses to declared schemas.
+- `5aeb4211` adds the negative tests and race tests.
+- `3f62fd4b` is a typing change to a test helper.
+- `c9a8a4ba` adds `requesterId` and `workspaceId` to the accepted work item.
+
+The delta changes 8 files:
+
+- `apps/api/src/intake/index.ts`
+- `apps/api/src/intake/response.ts` (new)
+- `tests/api-contract/openapi.json`
+- `tests/api-integration/helpers/intake-http.ts` (new)
+- `intake-reach-negative.test.ts`, `intake-staff-response-shape.test.ts` and `intake-triage-negative.test.ts` (all new)
+- the review-record doc
+
+No authentication, policy, middleware, repository, migration or package file changed.
+
+## Surfaces examined
+
+### 1. Response mapping (`response.ts`, `index.ts`)
+
+Every staff route that used to return a stored row or `z.unknown()` now builds its response
+field by field through an explicit mapper. The routes are:
+
+- the queue
+- submission detail
+- claim
+- accept
+- duplicate
+- decline
+- the staff message
+- request-type detail and publish
+
+The schemas are declared in the OpenAPI contract. The change only narrows responses: each
+mapper copies named fields, so a new or internal column can no longer reach the wire by
+accident.
+
+### 2. Tenant and organisation leakage
+
+- The staff queue is still loaded through `listSubmissions(query.workspaceId, ...)`, which the
+  unchanged route policy gates.
+- Detail, claim, accept, duplicate, decline and message all still pass
+  `c.get("workspaceId")` into repository functions. Those functions filter on the request
+  type's `workspaceId`, and the repository is unchanged.
+- For the newly exposed work-item fields:
+  - `workspaceId` is always the caller's own workspace, because accept creates the item there.
+  - For duplicate, `markSubmissionDuplicate` requires `workItem.workspaceId = workspaceId` and
+    `project.organisationId = submission.organisationId`; otherwise it returns 404.
+  - `requesterId` is the submitting customer's person ID. Staff in that workspace already see
+    it as `requester.id` in the queue.
+- No storage keys, attachment paths, `submissionId` or other internal columns appear in any
+  mapped schema.
+
+### 3. Portal (customer) surface
+
+- The only portal response changed in the delta is the reply route
+  (`POST /portal/submissions/{ref}/messages`).
+- That route now returns `{id, ref, state, message}`, where `message` is
+  `{id, authorId, actorType, body, createdAt}`.
+- The `authorId` is the customer's own person ID, because the customer just posted the reply.
+- The previously undeclared `submissionId` is no longer returned.
+- The other portal routes' handlers and schemas are untouched by the delta. Those are the
+  catalogue, list, detail, withdraw and attachments routes.
+
+### 4. Authorization middleware and policy
+
+- In the `index.ts` diff, no line containing `middleware`, `portalOwnSubmission`,
+  `portalOrganisation` or a capability or policy reference was added or removed.
+- No policy-registry file changed.
+- `check:route-policy` and `test:permissions` are green.
+- The OpenAPI diff adds no `security` or `x-` extension keys. It adds response schemas plus
+  404 and 409 error entries for the duplicate-suggestions and staff-message routes.
+
+### 5. Negative tests: do they exercise the boundaries?
+
+There are 19 new tests: 6 in `intake-reach-negative` and 13 in `intake-triage-negative`.
+
+- **Organisation scope.**
+  - RT-8a covers three cases: a request type not assigned to the organisation, the same type
+    once assigned (the control case), and a type assigned to a foreign organisation. Each case
+    checks catalogue absence, a 404 on detail, a 404 on submit and zero rows inserted.
+  - The accept test checks that a project serving another organisation returns 422, creates
+    no work item and leaves the submission in `new`.
+- **Foreign session.**
+  - IQ-3 tests a same-organisation other customer and a foreign-tenant customer against
+    detail, messages and withdraw. All return 404, the body text is not leaked, and the state
+    is unchanged.
+  - The attachment tests cover completing another requester's attachment, both through the
+    owner's reference and through the attacker's own reference. Both return 404 and the
+    attachment is not marked ready.
+- **No session.** IQ-3 makes an anonymous request to the durable page. It returns 401 with no
+  submission content.
+- **The tests use the real routes.** They go through `t.app.request` on the real router. The
+  only session mocking is `getSession`, either globally or per request through the
+  `x-test-user` header, and it does not bypass the route middleware.
+- Every negative case has a positive control (owner read, open presign, assigned type), so
+  none of the assertions is vacuous.
+
+### 6. 401 versus 404 without a session (`SUB-n`)
+
+- The 401 comes from the shared `authenticateApiRequest` path before the intake route or
+  repository runs. That path is in `apps/api/src/index.ts`, which the delta does not change.
+- Because no submission lookup happens, the response is the same for an existing and a
+  non-existing reference. It is therefore not an existence oracle, and the reference grants
+  nothing.
+- The spec mismatch is filed as issue **#683**, which is open, under the title "Portal
+  submission routes return 401, not the specified 404, without a session".
+
+### 7. Gitleaks
+
+- `gitleaks git --log-opts=d9af1c83..HEAD` scanned 54 commits and found 1 finding.
+- That finding is the known one: `tests/api/portal-attachment-storage.test.ts:168`, rule
+  `generic-api-key`, in commit `4812dc8c`.
+- The delta range `b658d5cc..HEAD` has no findings.
+
+## Tests and gates run (at c9a8a4ba)
+
+| Command | Result |
+| --- | --- |
+| `CI=true npx vitest run --config vitest.integration.config.ts intake` (apps/api, Testcontainers Postgres) | 8 files, 37 tests, all passed |
+| `pnpm test:permissions` | 14 files, 88 tests, all passed |
+| `pnpm check:route-policy` | exit 0; Turbo ran 5 of 5 tasks; the permissions suite inside it had 14 files and 88 tests passed |
+| `pnpm check:openapi` | exit 0; `openapi.json` matches the API (277 operations) |
+
+The 8 intake files are:
+
+- `intake-atomic-conversion`
+- `intake-attachment-duplicate-reach`
+- `intake-feature-gate`
+- `intake-portal-response-shape`
+- `intake-reach-negative`
+- `intake-staff-response-shape`
+- `intake-triage-actor`
+- `intake-triage-negative`
+
+## Findings
+
+There are no blocking findings.
+
+**Non-blocking findings:**
+
+1. **Form data still passes through as declared.** `formData`
+   (`z.record(z.string(), z.unknown())`) and `formSchema` (`z.unknown()`) are still declared
+   pass-through. They carry customer-entered form data and admin-authored form definitions to
+   staff in the same workspace. That is intended and in scope for staff triage, but the
+   contract does not constrain their inner shape.
+2. **401 versus 404 (#683).** This is a behaviour gap against the spec, not an exploitable
+   one. See item 6 above.
+3. **The new tests do not cover a cross-workspace staff call.** For example, a staff member of
+   tenant B calling claim, accept or decline on tenant A's `SUB-n` is not in the delta's new
+   files. The repository's workspace filter is unchanged and was cleared before, so this is a
+   coverage note only.
+
+## Residual risk / not checked
+
+- I did not run Docker image builds, browsers or the full integration suite. Only the intake
+  files were run.
+- I did not re-audit repository query logic outside the delta. It is unchanged since the
+  prior clearance.
+- Response-shape tests assert key sets on the happy paths only. Error bodies use the shared
+  `errorResponse` envelope and were not re-checked.
+
+**Reviewed head:** `c9a8a4baafe11d3082fb71fd02eda728a848bc7b`
+
+Verdict: CLEAR
+<!-- END REPORT (sha256 3b2684e674936fa4053d9dcff72d8a5ee8ab1044b7532d0c877c5eb0b5e49eb7) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/664-7d9d-merge-ordinary-sonnet.md; Claude Sonnet 5.5; sha256 9ce38e9eb679d83edd71727342c522374089fcfc0dbb6d5b24eca23819ecffb8) -->
+# PR #664 merge commit ordinary review
+
+**Reviewer model:** Claude Sonnet (fresh independent ordinary-review context)
+**Reviewed head:** 7d9d6635773023364fad50e510fd852c13856eb1
+**Parent 1 (PR side):** c9a8a4baafe11d3082fb71fd02eda728a848bc7b
+**Parent 2 (main, carries #672 Comments):** b596d2de2c285e7a37f798c60d87fc4476abcbbb
+Worktree: /Users/heinthura/.codex/worktrees/delivery-conductor-20261011/Ticketing.v2 (HEAD confirmed equal to the reviewed head; read-only review, no edits, commits or pushes).
+
+## Method
+Recomputed git's automatic merge with `git merge-tree --write-tree` of the two parents against their merge base. Compared that tree with HEAD's tree.
+
+Result: exactly three files differ from git's automatic merge, and they are the three the conductor reported. Every other file in the merge matches git's automatic result, so nothing from either side was lost or altered there.
+
+## Files examined
+- apps/api/src/work-item/repository.ts (add/add)
+- apps/web/src/lib/routes.test.ts
+- packages/ui/src/styles/pairs.json
+- apps/api/src/events/outbox.ts (DbTransaction definition)
+- tests/api/mfa-csrf-app-fixture.test.ts (attributing the unit failure)
+
+## 1. repository.ts (add/add)
+- Extracted both side versions (`git show c9a8a4ba:` and `b596d2de:`). Mechanical string check: the entire body of the main (#672) file, from `export type WorkItemMentionContext` to its end, appears verbatim and contiguous in the resolved file. The entire PR body, from `findWorkspaceDefaultSlaPolicyQuery` to its end, also appears verbatim and contiguous.
+- All 5 + 3 functions are present and unchanged: findLiveCommentVersionParentQuery, listCommentVersionPageQuery, findWorkItemMentionContextQuery, listWorkItemMentionParticipantIdsQuery, listWorkItemMentionPeopleQuery, plus findWorkspaceDefaultSlaPolicyQuery, findWorkspaceOwnedSlaPolicyQuery, findEffectiveSlaPolicyVersionQuery. The two exported types are intact.
+- Executor equivalence: the PR's `DbTransaction` is defined in outbox.ts as `Parameters<Parameters<typeof db.transaction>[0]>[0]`. That is identical to the type main's Executor spells inline, so `Pick<DbTransaction,"select">` equals main's second union arm. The resolved Executor is the same shape every PR caller was already using. `tsc` is clean on all api tsconfigs, which confirms every caller type-checks.
+- Imports: the resolved import list is the union (adds desc, isNotNull, lte, slaPolicyTable, slaPolicyVersionTable). `biome check` on the file reports no findings (no unused imports). Every imported identifier is used in the body.
+- A stale comment line in the join ("SLA lookups used by intake conversion (selected #598 source, PR #664)") is harmless.
+
+## 2. routes.test.ts
+The diff against git's conflicted tree shows only the removal of the conflict markers, keeping both sides' import names (parsePortalCatalogueSearch, parsePortalSignInSearch, parseRequestTypeEditorSearch from the PR; parseWorkItemDetailSearch from main). Alphabetical order retained. The file runs: 23 tests passed. Biome clean.
+
+## 3. pairs.json (418 entries)
+Scripted three-way check against the merge base, per entry (keyed by every non-occurrence field), for both `occurrenceIds` and `occurrences`:
+- Rule used: keep an item if added by either side, or if present in base and on both sides; drop if either side removed it.
+- Result: 0 mismatches over 420 distinct entry keys (418 base, PR and main each; main re-categorised 2 priority.tsx warning-foreground entries from non-text 3:1 to body 4.5:1 for light and dark). The resolved file follows main's category change and contains the PR's additions; the PR made no additions under the old non-text keys, so nothing is orphaned.
+- No duplicate ids in any entry. `occurrenceIds` are not sorted in base, PR or result alike, so there is no ordering regression.
+- `check:tokens` (including check:contrast) confirms 418 declared, source-grounded pairs meet thresholds in light/dark built CSS, which independently validates the file against the real source.
+
+## Commands and counts
+- `pnpm check:tokens`: pass (418 pairs; build included)
+- `pnpm check:visual-scope`: pass (15 screenshot cases, 14 active inventory rows mapped of 123)
+- `pnpm check:i18n`: pass (all locales in sync with en-US)
+- `pnpm check:openapi`: pass (280 operations match tests/api-contract/openapi.json)
+- web vitest `src/lib/routes.test.ts`: 1 file, 23 tests passed
+- api typecheck (`npm run typecheck`, all 5 tsconfigs) and `pnpm typecheck` (turbo, 9 tasks): clean
+- api unit subset (work-item, comment, intake, mention, sla filters): 8 files, 29 tests passed
+- api unit full (vitest.config.ts): 117 files, 838 tests. I got 834 passed and 4 failed, all in tests/api/mfa-csrf-app-fixture.test.ts (lock reaper / metrics listener tests). Re-running that file alone gave the same 4 failures (7 passed).
+- biome check on repository.ts and routes.test.ts: clean
+
+Note on environment: the review sandbox blocked writes into the worktree, so `check:tokens`, `check:openapi`, typecheck and the test runs were executed without the sandbox. They only write gitignored build output (dist directories). `git status` after the runs shows only the three untracked probe files that were present at the start (tests/e2e/playwright.intake-probe.config.ts, tests/e2e/tsconfig.intake-probe.json, tests/e2e/zz-intake-ui-acceptance-probe.spec.ts). I did not touch them and they are not part of the merge commit.
+
+## Findings
+1. Non-blocking: the 4 mfa-csrf-app-fixture failures are environmental. The errors are EADDRINUSE on port 9464 and lock timeouts waiting for a prior metrics listener. `lsof` shows another node process (pid 65613, not started by me) listening on 9464 during my run. The test file is byte-identical to the PR side and was not changed by this merge, and neither parent's change touches it. This matches the conductor's observation of one intermittent, non-recurring unit failure; here the cause is host port contention from a concurrent lane. It should pass with the port free; I did not kill the other process.
+2. Non-blocking: I did not run the integration suites or the browser journey (outside my read-only, no-Docker remit). The conductor's recorded results for those (10 files, 74 tests; real journey) are unverified by me.
+3. No blocking findings.
+
+## Residual risk
+- Integration and real-journey evidence relies on the conductor's runs, not mine.
+- The mfa-csrf fixture tests were not seen to pass under my run; the argument that they are environmental rests on the port-held evidence and the unchanged file.
+- pairs.json merge logic was verified by script plus check:contrast; any occurrence that exists in neither tool's view would not be caught (low).
+
+Verdict: APPROVE
+<!-- END REPORT (sha256 9ce38e9eb679d83edd71727342c522374089fcfc0dbb6d5b24eca23819ecffb8) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/664-7d9d-security-rebind-opus.md; Claude Opus 5.5; sha256 647678ea92063b4b6df342814f72efcc926475a45fe4bd902d883b433b88bde1) -->
+# PR #664 (Intake) security rebind: merge commit 7d9d6635
+
+- **Reviewer model:** Claude Opus 5.5 (fresh independent security-review context)
+- **Role:** Independent security reviewer. I did not author, direct or remediate this candidate. The review was read-only: no edits, commits, pushes, Docker or browsers.
+- **Date:** 2026-10-13
+- **Worktree:** `/Users/heinthura/.codex/worktrees/delivery-conductor-20261011/Ticketing.v2`
+- **Candidate (merge commit):** `7d9d6635773023364fad50e510fd852c13856eb1`. I confirmed it with `git rev-parse HEAD`.
+- **Parent 1 (PR side):** `c9a8a4baafe11d3082fb71fd02eda728a848bc7b`. Opus cleared it in `664-c9a8-security-rebind-opus.md`.
+- **Parent 2 (main):** `b596d2de2c285e7a37f798c60d87fc4476abcbbb`. This is main carrying the #672 Comments merge.
+- **Merge base of the parents:** `d9af1c83306a0c752ca38c50e70d8f6cf713ce03`
+
+**Reviewed head:** `7d9d6635773023364fad50e510fd852c13856eb1`
+
+## Scope of the merge
+
+`git show --remerge-diff` reports three conflicted files:
+
+- `apps/api/src/work-item/repository.ts` was an add/add conflict.
+- `apps/web/src/lib/routes.test.ts` had an import-list conflict.
+- `packages/ui/src/styles/pairs.json` had a style-token conflict.
+
+I checked the PR side's security surfaces in the committed tree. Nothing under these paths differs between parent 1 and HEAD (`git diff --quiet` exit 0):
+
+- `apps/api/src/intake/`
+- `apps/api/src/attachment/`
+- `apps/api/src/portal-client-routes.ts`
+
+The API changes from parent 1 to HEAD are exactly #672's files, plus the resolved repository file. The merge brings in no migration or database-schema change. The only `schema.ts` in the delta is the zod file `apps/api/src/work-item/schema.ts`.
+
+## Surfaces examined
+
+1. **`apps/api/src/work-item/repository.ts`, the add/add resolution.**
+   - **Against parent 2 (#672):** the only removed line is the old single-line `drizzle-orm` import. It became a multi-line import that adds `desc`, `isNotNull` and `lte`. Each #672 query is byte-identical to main:
+     - `findLiveCommentVersionParentQuery` keeps `eq(commentTable.id)`, `eq(commentTable.workItemId)`, `isNull(commentTable.deletedAt)` and `.for("share")`.
+     - `listCommentVersionPageQuery` keeps its comment scope and continuation predicate.
+     - `findWorkItemMentionContextQuery` keeps `isNull` on the work item's `deletedAt` and `archivedAt`, the project's `deletedAt` and `archivedAt`, and the workspace's `deletedAt`.
+     - `listWorkItemMentionParticipantIdsQuery` and `listWorkItemMentionPeopleQuery` keep the workspace-scoped staff join, organisation-scoped customer reach, the private-visibility participant restriction and the active, non-placeholder, non-banned filters.
+   - **Against parent 1 (#664):** the three SLA lookups are byte-identical apart from the comment line.
+     - `findWorkspaceDefaultSlaPolicyQuery` filters on the workspace id.
+     - `findWorkspaceOwnedSlaPolicyQuery` filters on both the policy id and the workspace id.
+     - `findEffectiveSlaPolicyVersionQuery` filters on workspace id, policy id, `isNotNull(effectiveFrom)` and `lte(effectiveFrom, slaStartedAt)`, with the same ordering and limit.
+   - **Shared `Executor` type:** the shared type is `Pick<typeof db,"select"> | Pick<Parameters<Parameters<typeof db.transaction>[0]>[0],"select">`. This is structurally identical to the PR side's `Pick<DbTransaction,"select">`, because `events/outbox.ts` defines `DbTransaction` with the same expression. `tsc --noEmit -p apps/api/tsconfig.json` passes.
+   - **Callers:** the only callers of the SLA lookups are in `intake/repository.ts`, inside the conversion transaction. No #672 code calls them.
+   - **For-update locks:** the for-update lock used by comment creation is in `work-item/controllers/create-comment.ts`, not in the repository. It is unchanged from main. The project `for("no key update")` lock used by intake conversion is in `intake/repository.ts` and is unchanged from parent 1.
+2. **`apps/api/src/index.ts`** auto-merged. It adds only `workItemCommentVersionsApi` mounted on `/`, alongside the existing `workItemApi`, `intakeApi` and `attachmentApi`. No intake mount or middleware changed.
+3. **Work-item policies (`work-item/policy.ts`).** #672 adds three routes, each with `work_item:read`, `scope: work_item`, `scopeSource: row` and `reach: required`:
+   - the mention-candidates route;
+   - the mention-preflight route;
+   - the comment versions route.
+
+   Intake policies are unchanged.
+4. **Intake-to-work-item conversion (`convertSubmissionInTransaction`), with #672 present.**
+   - The project is selected with the workspace id, `isNull(deletedAt)` and `isNull(archivedAt)` under `for("no key update")`. It must have `organisationId === submission.organisationId`.
+   - The type is scoped to the workspace.
+   - The work item is inserted with `workspaceId`, `projectId`, `requesterId = submission.requesterId` and `customerVisibility = submission.customerVisibility`.
+   - Submission messages become `public` comments with their original author, and the requester becomes an implicit watcher.
+   - These are the inputs that #672's mention reach reads: `findWorkItemMentionContextQuery` takes the project's organisation, the item's `customerVisibility` and its `requesterId`. `mention-access.ts` builds the private-visibility allow-list from participants plus the requester.
+   - Conversion re-homes participants from the submission to the work item, so mention reach on a converted private item resolves to the requester and their participants, as intended.
+   - Conversion emits no `work_item.mentioned` event.
+5. **Portal comment surface.** The portal does show comments.
+   - `findSubmission` merges the work item's comments into the portal submission thread when the submission state is `accepted`. `GET /portal/submissions/{ref}` returns that thread through `findPortalSubmission`, and the portal UI renders it.
+   - The query filters on `commentTable.workItemId = submission.workItemId`, `visibility = 'public'` and `isNull(deletedAt)`. The submission itself is bound with `submission.requesterId = caller personId`. Only the body text is projected, through `extractDocumentText`.
+   - #672 makes the following true:
+     - **CA-1:** visibility is explicit and required on create.
+     - **CA-4:** visibility is immutable, and the update route has no visibility field.
+     - Internal comments need `comment:create_internal`.
+     - Deletion tombstones `deletedAt`.
+   - So internal comments never reach the portal, and a deleted public comment disappears from it.
+   - Mention nodes carry no `text`, so `extractDocumentText` drops them, and portal output shows no mentioned person's details.
+   - The portal does not expose #672's comment-version history. That route is agent-side only, behind `requireWorkItemReach` and `validateWorkspaceAccess`, which require a `workspace_user` row. Customers do not get one through intake.
+   - Customer notifications for mentions go through `resolveMentionEventRecipient`. It re-checks reach with `visibleToPersonIds` for customer identities. An internal comment classifies with `customerScope` undefined, so no customer is a mention candidate.
+6. **Capabilities and comment-capability checks.** The merge adds `capabilities/capability-checks.ts`, `capabilities/controllers/get-capabilities.ts`, `comment/has-comment-capability.ts` and `utils/parse-native-mentions.ts`. None of them is imported by the intake or attachment modules. The interaction runs only through the shared `work_item`, `comment` and `request_participant` rows, covered above.
+
+## Tests and gates run (on HEAD 7d9d6635)
+
+| Command | Result |
+| --- | --- |
+| `tsc --noEmit -p apps/api/tsconfig.json` | pass |
+| `pnpm test:permissions` | exit 0; 14 files, all passed (permissions suite) |
+| `pnpm check:route-policy` | exit 0; Turbo 5/5 tasks; permissions suite ran fresh, not cached: 14 files, 88 tests passed |
+| `pnpm check:openapi` | exit 0; `tests/api-contract/openapi.json matches the API (280 operations)` |
+| `CI=true npx vitest run --config vitest.integration.config.ts intake work-item-comment capabilities-scope approval-portal portal-identity-boundary` (apps/api, Testcontainers Postgres), clean run with JSON reporter | 12 files, 83 tests, 83 passed |
+| — of which intake files | 8 files, 37 tests: atomic-conversion 6, attachment-duplicate-reach 3, feature-gate 3, portal-response-shape 1, reach-negative 6, staff-response-shape 3, triage-actor 2, triage-negative 13 |
+| — work-item-comment | 26 tests passed |
+| — capabilities-scope | 11 tests passed |
+| — approval-portal / portal-identity-boundary | 7 / 2 passed |
+| Repeated runs of `intake-atomic-conversion` "serializes three acceptances for one project before a queued archive" | intermittent: 4 failures in 11 runs (see finding N1) |
+| `gitleaks git --log-opts=d9af1c83..HEAD` | 78 commits scanned; 1 finding: `tests/api/portal-attachment-storage.test.ts:168` (`generic-api-key`, commit `4812dc8c`), the known non-blocking test-fixture finding; no other finding |
+
+## Findings
+
+### Blocking
+
+None.
+
+### Non-blocking
+
+- **N1. The concurrency test `intake-atomic-conversion` is flaky. It is not a security defect and not caused by the merge.**
+  - **What happens:** the test "serializes three acceptances for one project before a queued archive" failed in 4 of 11 runs.
+  - **Evidence:** I ran an instrumented copy in my scratchpad; I did not edit the repository. In the failing runs, one acceptor was rejected with 422 because the queued project-archive `UPDATE` acquired the project row lock before that acceptor. Two messages appeared: "Destination project is unavailable for this organisation" and "Auto-accept project is unavailable for this organisation".
+  - **Cause:** PostgreSQL does not grant waiting row-lock requests in FIFO order after the blocker commits. The test assumes it does.
+  - **Why this is fail-closed:** the losing conversion rolls back as a whole and the project stays archived. This is correct product behaviour.
+  - **Why it is not caused by the merge:**
+    - the intake code is identical to parent 1;
+    - the test file is identical to parent 1;
+    - the merge brings in no migration.
+  - **Risk to the gate:** the flake can turn the required CI check red without any real defect.
+  - **Recommendation:** make the ordering deterministic, or assert "accepted, or 422 with a consistent rollback". Track this as a test-reliability item.
+- **N2. Portal comment exposure is keyed on the submission, not re-checked against the live work item.** This is pre-existing at parent 1, but #672 is the first code that lets staff add public comments. The comment merge in `findSubmission` does not re-check three things that the `workItem` summary query does check:
+  - `workItem.requesterId`;
+  - `workItem.deletedAt`;
+  - the item's `customerVisibility`.
+
+  **Consequence:** public comments on a converted item stay visible to the original submitter even after the work item is soft-deleted. No route currently changes `requesterId`, so the requester cannot drift.
+
+  **Why non-blocking:** public comments are customer-facing by definition (CA-1), and the submitter is the requester.
+
+  **Recommendation:** add `isNull(workItem.deletedAt)`, plus a requester match, to the portal comment merge as a hardening follow-up.
+- **N3. The comment-versions route has no visibility filter for customer callers.** `GET /api/work-items/{key}/comments/{id}/versions` (#672) does not filter internal comments by caller side. It relies on the agent-side gate: `validateWorkspaceAccess` requires a `workspace_user` row, and intake never creates one for a customer.
+
+  **Residual:** this would matter only if a customer user were misconfigured with a `workspace_user` row. That is a #672 surface, it is out of this merge's delta, and it is noted for the #672 owners.
+- **N4. The worktree has three untracked probe files that are not in any commit.** They do not affect the committed candidate:
+  - `tests/e2e/playwright.intake-probe.config.ts`
+  - `tests/e2e/tsconfig.intake-probe.json`
+  - `tests/e2e/zz-intake-ui-acceptance-probe.spec.ts`
+
+## Residual risk / not checked
+
+- I did not run the full API integration suite, the web unit tests or the end-to-end tests. I did not review the conflict resolutions in `apps/web/src/lib/routes.test.ts` (an import list) and `packages/ui/src/styles/pairs.json` (style tokens) for security, because neither is a security surface.
+- I did not re-review #672's own comment, mention and capability logic beyond its interaction with intake. That code was reviewed under #672.
+- I did not build or boot the Docker image.
+- The N1 flake can block CI-green until it is fixed or rerun.
+
+Verdict: CLEAR
+<!-- END REPORT (sha256 647678ea92063b4b6df342814f72efcc926475a45fe4bd902d883b433b88bde1) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/664-7d9d-a8ec-ordinary-sonnet.md; Claude Sonnet 5.5; sha256 20cb023f6b98483f8e7f512c69ddf409f393b636d7dc766aceb6c96bb9c09dd5) -->
+# PR #664 ordinary review, delta 7d9d6635..a8ec7478
+
+Reviewer model: Claude Sonnet (fresh independent ordinary-review context)
+Reviewed head: a8ec7478b1136bd17a5e8d31b168adb3fbac6b35 (confirmed with git rev-parse HEAD)
+Base: 7d9d6635773023364fad50e510fd852c13856eb1
+Worktree: /Users/heinthura/.codex/worktrees/delivery-conductor-20261011/Ticketing.v2
+Mode: read-only; no edits, commits, pushes, Docker or browsers. Untracked probe files untouched.
+
+## Files examined
+- tests/api-integration/intake-atomic-conversion.test.ts (diff plus the full test body, lines 560-740)
+- apps/web/src/routes/portal/catalogue.tsx (diff plus primaryError, needsSelectionMetadata and the alert)
+- apps/web/src/routes/portal/catalogue.test.tsx (existing Retry tests)
+- apps/api/src/intake/repository.ts (422 sources for archived or unavailable project)
+
+## Commands and counts
+- Flaky test, run 5 times, unsandboxed, from apps/api: CI=true pnpm exec vitest run --config vitest.integration.config.ts intake-atomic-conversion -t "serializes three acceptances". Result: 5 of 5 runs passed (1 passed, 5 skipped each time).
+- Whole file once: 1 file passed, 6 of 6 tests passed.
+- Web portal vitest (src/routes/portal): 3 files passed, 20 of 20 tests passed.
+- Web typecheck (tsc --noEmit -p apps/web): no output, clean.
+
+## Commit 6c219c2a (test)
+Assertions checked for meaning:
+- Every rejected operation must be an HTTPException with status 422. Any other failure (deadlock, 500, constraint error) fails the test.
+- The archive must fulfil.
+- Per operation: a fulfilled acceptance must have a non-empty submission.workItemId. A rejected one must have a null link. For auto-accept, the submission row count is 1 if fulfilled and 0 if rejected, so a rolled-back submission is checked.
+- Work items in the project must equal the fulfilled count. The linked ID set must have that size and must equal the set of created item IDs. Item numbers must be contiguous.
+- Archived_at must be set.
+
+Mutation reasoning:
+- A non-atomic conversion that creates a work item without the submission link fails: a fulfilled outcome with a missing link fails, and an orphan item fails the item-count and set-equality checks.
+- A link created without an item, a double conversion, or a partial rollback leaving a submission row also fail.
+- A work item created after the archive is NOT detected. A fulfilled acceptance is accepted whether it ran before or after the archive, because ordering is no longer asserted.
+
+## Commit a8ec7478 (web)
+primaryError is catalogue.isError OR (needsSelectionMetadata AND selectionMetadata.isError) OR selectedType.isError. The Alert, and so the single Retry, renders only when primaryError is true. The click handler refetches exactly the same three conditions, so the button never appears without a failed query and it retries every failed query. Existing tests find a single Retry by role and pass; this works because findByRole would throw on duplicates.
+
+## Findings
+1. Non-blocking. The rewritten test no longer detects an acceptance that commits after the archive (see above). Other tests may cover rejection on an archived project; I did not verify that. A cheap hardening would be to record the archive commit time and assert each fulfilled work item has created_at before it.
+2. Non-blocking. The test can now pass with all three operations rejected (0 items), when the archive wins every lock. The positive path is then not exercised in that run. The 422 check also does not match the message. Consider asserting message text.
+3. Non-blocking. The web change adds no test for the multi-failure case (two or more failed queries yielding one Retry that refetches all). Existing tests only cover a single failed query.
+
+No blocking findings.
+
+## Residual risk
+- Flake rate was observed 0 of 5 here, against about 4 in 11 previously; this does not prove the flake is gone, though the new assertions do not depend on lock order.
+- Mutation analysis is by reading, not executed mutants.
+- Whether other suites cover accept-after-archive was not checked.
+- I did not review code outside the delta.
+
+Verdict: APPROVE
+<!-- END REPORT (sha256 20cb023f6b98483f8e7f512c69ddf409f393b636d7dc766aceb6c96bb9c09dd5) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/664-a8ec-security-rebind-opus.md; Claude Opus 5.5; sha256 1d014821e6934c7c28479953d5c9e362212df72a2b36b9f5c81b2ffc69fafae6) -->
+# PR #664 (Intake) - security rebind, 7d9d6635..a8ec7478
+
+- **Reviewer model:** Claude Opus 5.5 (fresh independent security-review context)
+- **Role:** independent security reviewer. This context did not author, direct or remediate the change.
+- **Candidate head:** `a8ec7478b1136bd17a5e8d31b168adb3fbac6b35` (worktree HEAD confirmed by `git rev-parse HEAD`)
+- **Comparison base:** `7d9d6635773023364fad50e510fd852c13856eb1` (prior Opus CLEAR, report `664-7d9d-security-rebind-opus.md`)
+- **Merge base with origin/main:** `b596d2de2c285e7a37f798c60d87fc4476abcbbb`
+- **Date:** 2026-10-13
+
+## Delta
+
+| Commit | Files | Summary |
+| --- | --- | --- |
+| `6c219c2a` | `tests/api-integration/intake-atomic-conversion.test.ts` only (+38/-39) | Rewrites assertions of "serializes three acceptances for one project before a queued archive" to assert atomicity, not lock-grant order |
+| `a8ec7478` | `apps/web/src/routes/portal/catalogue.tsx` only (+12/-21) | Replaces three conditional Retry buttons with one that refetches each failed query |
+
+`git diff --stat 7d9d6635..a8ec7478` shows exactly these two files. No production API, migration, policy, CI or dependency file changed.
+
+## Surfaces examined
+
+- Full diff of both commits.
+- The full rewritten test body and its fixture setup (project row lock held by a blocker client, three acceptors and the archive queued behind it).
+- Product guards it exercises in `apps/api/src/intake/repository.ts`. Manual and auto acceptance select the project `FOR NO KEY UPDATE` with `archivedAt IS NULL` and `deletedAt IS NULL`. They raise 422 when no row returns. Under READ COMMITTED, a waiter re-checks the WHERE clause against the committed archive, so an acceptance granted after the archive sees no row and is rejected inside its transaction.
+- Sibling tests that still check archive ordering with no race: an acceptance blocked behind a lock that archives and commits must be rejected with 422, with no link and no work item (test file lines ~380-478). Auto-accept into an archived default project must reject with 422 and roll back the submission (~line 1155).
+- `catalogue.tsx` query definitions (`catalogue`, `selectionMetadata`, `selectedType`) and the `primaryError` alert gate.
+
+## Commit 6c219c2a - test assertion rewrite
+
+The commit touches only the named test file. The new assertions still guard the safety property:
+
+- Every rejected operation must be an `HTTPException` with status 422, the clean archived-project rejection. Any other error fails the test.
+- For each of the three operations, a fulfilled outcome must leave a linked `workItemId`. A rejected one must leave no link, and a rejected auto-accept must leave no submission row (`autoRows.length` is 0). This rules out a half-converted submission.
+- The work items in the project must equal the fulfilled count exactly. The set of linked IDs must equal the set of created item IDs, so there is no orphan work item and no double link. Item numbers must stay contiguous.
+- The archive must succeed and `archivedAt` must be non-null at the end.
+
+Taken together: every work item that exists is linked to a fulfilled acceptance. Every acceptance that runs after the archive must fail cleanly. The removed assertions (all three fulfilled, zero rejected) relied on Postgres granting contended row locks in arrival order, which Postgres does not guarantee. That was the source of the prior non-blocking flake.
+
+## Commit a8ec7478 - portal catalogue Retry
+
+The commit is presentation only. The one button is still rendered only inside the `primaryError` alert. Its handler calls `refetch()` on exactly the queries that are in error, using the same conditions as before (`catalogue.isError`, `selectedType.isError`, `needsSelectionMetadata && selectionMetadata.isError`). The query keys, `queryFn`s (`getPortalCatalogue`, `getPortalRequestType`), `enabled` flags and parameters are unchanged. No new request, endpoint, parameter, authorization path or visibility rule is added. The server stays the authority for catalogue visibility.
+
+## Tests run (at a8ec7478)
+
+| Command | Result |
+| --- | --- |
+| `CI=true npx vitest run --config vitest.integration.config.ts ../../tests/api-integration/intake-atomic-conversion.test.ts -t "serializes three acceptances"` (apps/api, Testcontainers Postgres, unsandboxed) x6 | 6/6 runs: 1 passed, 5 skipped (6) |
+| Same file, full, x2 | 2/2 runs: 1 file, 6 passed (6) |
+| `npx vitest run src/routes/portal/catalogue.test.tsx` (apps/web) | 1 file, 7 passed (7) |
+| `gitleaks detect --redact --no-banner --log-opts="--no-merges --first-parent b596d2de..HEAD"` | 56 commits scanned; 1 finding: `generic-api-key`, `tests/api/portal-attachment-storage.test.ts:168`, commit `4812dc8c`. This is the known non-blocking test-fixture finding. There are no other findings. |
+
+The earlier flake reproduced only some of the time. Eight clean runs of the target test do not prove it is fixed. The fix is structural, though: the assertions no longer depend on the order in which locks are granted.
+
+## Findings
+
+### Blocking
+
+None.
+
+### Non-blocking
+
+1. **The race test now tolerates an outcome that is legitimate but less informative.** If a regression made acceptance ignore `archivedAt`, this specific test could still pass with all three fulfilled. **Why non-blocking:** that regression is caught with no race by the sibling tests named above (blocked acceptance then archive gives 422 with nothing written; auto-accept into an archived project gives 422 with rollback). Those tests are unchanged in this delta.
+2. **Known gitleaks test-fixture finding** at `tests/api/portal-attachment-storage.test.ts:168`. This is unchanged from prior reviews and is not touched by this delta.
+3. **Prior finding 1 (flaky concurrency test)** is addressed by `6c219c2a`.
+
+## Residual risk / not checked
+
+- Docker and browser checks were not run, per the task scope. The web change was checked by reading the source and running unit tests only.
+- The run count (6 + 2) cannot statistically rule out a rare remaining flake. The remaining assertions do not depend on lock order.
+- The full integration suite and full web suite were not run. Only the touched test files were run.
+- Everything outside the delta relies on the prior Opus CLEAR at `7d9d6635`.
+
+**Reviewed head:** `a8ec7478b1136bd17a5e8d31b168adb3fbac6b35`
+
+Verdict: CLEAR
+<!-- END REPORT (sha256 1d014821e6934c7c28479953d5c9e362212df72a2b36b9f5c81b2ffc69fafae6) -->
