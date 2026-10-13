@@ -19,10 +19,12 @@ A Claude Sonnet 5.5 implementation lane wrote the code. The conductor (Claude Op
 - Ordinary delta review by reviewer A's context: APPROVE for `bcf65d2b..5c6589dd`, the omitted-body refusal test added for A's finding F1.
 - Security review by Claude Opus 5.5: CLEAR at `5c6589dd`. Its non-blocking items are the duplicate `Comment` schema name in OpenAPI, which predates this PR, the strictness of the no-op body schema, and the optional extra cross-workspace and archived-parent tests.
 - Security rebind by the same Claude Opus 5.5 context: CLEAR at `456d5e77`. That commit is a clean GitHub update-branch merge of `main` `727fa8d2` (#686). `git merge-tree` reproduces its tree exactly, and nothing under `apps/api` changed.
+- Second security rebind by the same Claude Opus 5.5 context: CLEAR at `87aab535`. That commit is a clean update-branch merge of `main` `468ab265` (#687, docs only), and nothing under `apps/api` changed.
 
 **Reviewed head:** `bcf65d2bbf42589137ef9de26800c072e52ad998`
 **Reviewed head:** `5c6589dd2a6f8e21e4c6ee4359dd0d7b07e33a2b`
 **Reviewed head:** `456d5e77895bcac6be8c9636ea9c073d97cd828c`
+**Reviewed head:** `87aab5358856c1a667303dd5a7e71f8247fffb31`
 
 ## Context index
 
@@ -35,6 +37,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 3 | `690-5c65-ordinary-a-sonnet.md` | Ordinary delta review (bcf65d2b..5c6589dd) | Claude Sonnet 5.5 | `5c6589dd` | APPROVE | `dddb3d239d1f16bcf9f38644e05370a486013b470a2fa5bce5fd63c1edb85576` |
 | 4 | `690-security-opus.md` | Security review (31b98613..5c6589dd) | Claude Opus 5.5 | `5c6589dd` | CLEAR | `0e6c4f9fc3fb205f5ee54446108e27c6487b6370a2f5f41305e13bec95b34e6e` |
 | 5 | `690-456d-security-rebind-opus.md` | Security rebind (5c6589dd..456d5e77) | Claude Opus 5.5 | `456d5e77` | CLEAR | `66fb2a3ca61bf67ee7950842c6fd21311787cc52ad85b5f5150cca742599f4ee` |
+| 6 | `690-87aa-security-rebind-opus.md` | Security rebind (456d5e77..87aab535) | Claude Opus 5.5 | `87aab535` | CLEAR | `24cf0b34cd0a29712770cc7538f511a4bd50a1b50d3e5c8dd779491588c00639` |
 
 ## Embedded reports
 
@@ -410,3 +413,67 @@ None. The non-blocking items N1-N3 from `690-security-opus.md` are unchanged and
 
 **CLEAR** at 456d5e77895bcac6be8c9636ea9c073d97cd828c. The merge is a clean, conflict-free merge of 76d31bfd and 727fa8d2. The reviewed `apps/api` code is unchanged, and main's #686 changes do not interact with the #690 surfaces.
 <!-- END REPORT (sha256 66fb2a3ca61bf67ee7950842c6fd21311787cc52ad85b5f5150cca742599f4ee) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-13/690-87aa-security-rebind-opus.md; Claude Opus 5.5; sha256 24cf0b34cd0a29712770cc7538f511a4bd50a1b50d3e5c8dd779491588c00639) -->
+# PR #690 exact-head rebind 2 (sampled independent, Opus)
+
+- **Model:** Claude Opus 5.5 (`claude-opus-5-5`), fresh independent context. I did not author, direct or remediate #690 or #687.
+- **Role note:** Opus 5.5 is the sampled "big reviewer" under `CLAUDE.md`. This rebind does not replace the mandatory GPT-6 Sol exact-head security review.
+- **Reviewed head:** 87aab5358856c1a667303dd5a7e71f8247fffb31
+- **Prior Opus CLEARs:**
+  - 5c6589dd2a6f8e21e4c6ee4359dd0d7b07e33a2b (`690-security-opus.md`, full review with tests);
+  - 456d5e77895bcac6be8c9636ea9c073d97cd828c (`690-456d-security-rebind-opus.md`).
+- **Merge base vs main:** 468ab265caa3700125302a82b41fd014f30faa04 (origin/main, the merge commit of PR #687).
+- **Method:** read-only git object inspection in the PR worktree after `git fetch`. No scratch worktree was needed, and nothing was modified.
+
+## Commit topology (verified)
+
+- `87aab535` has parents `30c0eb74877e699db66d77918030f0ab87300a12` (branch) and `468ab265caa3700125302a82b41fd014f30faa04` (main). Its message is "Merge branch 'main' into codex/comments-users-residual".
+- The parent of `30c0eb74` is `456d5e77`, the prior cleared head. It changes exactly one file: `docs/07-planning/security-reviews/690-comments-users-residual.md`.
+- The parents of `468ab265` are `727fa8d2` (the previous main) and `bfbfb96a` (the #687 head). `git merge-base 456d5e77 468ab265` = `727fa8d2`.
+
+## Checks run
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Clean-merge tree equality | `git merge-tree --write-tree --name-only 30c0eb74 468ab265` vs `git rev-parse 87aab535^{tree}` | Both are `cfbded375f99bfd5399774c9c3d5dc87b7551485`. merge-tree exits 0 and lists no conflicted paths, so there was no hand conflict resolution. |
+| No change to the reviewed API code | `git diff 456d5e77 87aab535 -- apps/api` | Empty (0 lines). |
+| Full delta since the prior cleared head | `git diff --name-only 456d5e77 87aab535` | 4 docs files, listed below. |
+| Main-side delta | `git diff --numstat 727fa8d2 468ab265` | The 3 #687 files: `intake-queue.md` +11/-1, `request-types-and-catalogue.md` +15/-0, `decision-log.md` +134/-0. The decision log is insertion-only, so append-only discipline holds. |
+| Overlap with #690 surfaces | `comm -12` of the main-side and #690 (`31b98613..5c6589dd`) file lists | Empty: no shared files. |
+| Topic interaction | grep of the main-side diff for `comment`, `CA-17`, `CA-18`, `deletedBy`, `activity` or `2026-10-09` | No matches. #687 neither alters nor supersedes the 2026-10-09 owner decision that governs M3. |
+| Branch-side delta after the merge | `git diff --stat 30c0eb74 87aab535` | Exactly the 3 #687 docs files, +160/-1. |
+
+The 4 files changed between 456d5e77 and 87aab535:
+
+| File | Source |
+| --- | --- |
+| `docs/03-features/intake-queue.md` | #687 |
+| `docs/03-features/request-types-and-catalogue.md` | #687 |
+| `docs/07-planning/decision-log.md` | #687 |
+| `docs/07-planning/security-reviews/690-comments-users-residual.md` | 30c0eb74 |
+
+## Interaction analysis
+
+Every change since the prior cleared head is under `docs/`. Nothing touches:
+
+- `apps/api` (comment controllers, `work-item/index.ts`, the activity controller, the cursor code);
+- `apps/web`, i18n, tests, or the OpenAPI snapshot.
+
+#687's text covers intake and request types, which are unrelated to comments, activity or comment history. There is no shared contract and no shared file, so no runtime or contract interaction with M1, M2 or M3 is possible.
+
+## Findings
+
+None. The non-blocking items N1-N3 from `690-security-opus.md` are unchanged and still non-blocking.
+
+## Residual risk / not checked
+
+- I did not re-run test suites. The shipped code is byte-identical to the 5c6589dd code I tested, and the delta is docs-only.
+- I did not verify GitHub CI status for 87aab535. The orchestrator must check it before merging.
+- I did not check whether the report copies appended to `690-comments-users-residual.md` are verbatim.
+- The GPT-6 Sol exact-head gate is still required.
+
+## Verdict
+
+**CLEAR** at 87aab5358856c1a667303dd5a7e71f8247fffb31. The merge is a clean, conflict-free merge of 30c0eb74 and 468ab265. `apps/api` and every other #690 surface are unchanged, and the #687 docs do not interact with #690.
+<!-- END REPORT (sha256 24cf0b34cd0a29712770cc7538f511a4bd50a1b50d3e5c8dd779491588c00639) -->
