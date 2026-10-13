@@ -21,6 +21,10 @@ export const capabilitiesResponseSchema = z
     manageServiceCalendars: z.boolean(),
     shareSavedViews: z.boolean(),
     manageWorkspaceSettings: z.boolean(),
+    bindProjectOrganisation: z.boolean().openapi({
+      description:
+        "Strict project:create (owner/admin/manager): may list customer organisations and bind a new project to one.",
+    }),
     createPublicComments: z.boolean().optional(),
     createInternalComments: z.boolean().optional(),
   })

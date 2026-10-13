@@ -29,6 +29,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { capabilitiesResponseSchema } from "../../apps/api/src/capabilities/response";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resolveMembershipRole } from "../../apps/api/src/utils/workspace-member-roles";
@@ -47,7 +48,20 @@ type App = ReturnType<typeof createApp>["app"];
 async function expectAllFalseCapabilityMap(response: Response): Promise<void> {
   expect(response.status).toBe(200);
   const capabilities = (await response.json()) as Record<string, unknown>;
-  expect(Object.keys(capabilities)).toHaveLength(21);
+  // Every required flag of the capabilities contract is present, no key falls outside the
+  // contract (both derived from the schema, so a new flag needs no hand-maintained count),
+  // and every value is false.
+  const requiredFlags = Object.entries(capabilitiesResponseSchema.shape)
+    .filter(([, flag]) => !flag.isOptional())
+    .map(([name]) => name);
+  expect(Object.keys(capabilities)).toEqual(
+    expect.arrayContaining(requiredFlags),
+  );
+  expect(
+    Object.keys(capabilities).every((name) =>
+      Object.hasOwn(capabilitiesResponseSchema.shape, name),
+    ),
+  ).toBe(true);
   expect(Object.values(capabilities).every((value) => value === false)).toBe(
     true,
   );
