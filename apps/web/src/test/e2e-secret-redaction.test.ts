@@ -15,25 +15,44 @@ const SECRET_SCREEN_MARKERS = [
   "I saved these codes",
   "Verify and enable",
   "#enrollment-code",
+  "otpauth://",
 ];
 
-function specFiles(dir: string): string[] {
+function tsFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory())
-      return name === "node_modules" ? [] : specFiles(path);
-    return /\.(spec|bench)\.ts$/u.test(name) ? [path] : [];
+      return name === "node_modules" ? [] : tsFiles(path);
+    return /\.ts$/u.test(name) && !/\.d\.ts$/u.test(name) ? [path] : [];
   });
+}
+const isSpec = (path: string) => /\.(spec|bench)\.ts$/u.test(path);
+const showsSecret = (path: string) =>
+  SECRET_SCREEN_MARKERS.some((marker) =>
+    readFileSync(path, "utf8").includes(marker),
+  );
+
+// A spec counts as rendering secrets when it contains a marker itself or imports
+// a non-spec e2e helper module that does (for example a shared enrollment helper).
+function renderingSpecs(): string[] {
+  const all = e2eRoots.flatMap(tsFiles);
+  const secretHelpers = all
+    .filter((path) => !isSpec(path) && showsSecret(path))
+    .map((path) => path.replace(/\.ts$/u, "").split("/").pop() as string);
+  return all.filter(
+    (path) =>
+      isSpec(path) &&
+      (showsSecret(path) ||
+        secretHelpers.some((helper) =>
+          new RegExp(`from\\s+"[^"]*/${helper}(\\.ts)?"`, "u").test(
+            readFileSync(path, "utf8"),
+          ),
+        )),
+  );
 }
 
 describe("end-to-end specs that render MFA secrets", () => {
-  const rendering = e2eRoots
-    .flatMap(specFiles)
-    .filter((path) =>
-      SECRET_SCREEN_MARKERS.some((marker) =>
-        readFileSync(path, "utf8").includes(marker),
-      ),
-    );
+  const rendering = renderingSpecs();
 
   it("are found, so the guard is not vacuous", () => {
     expect(rendering.map((path) => relative(repoRoot, path)).sort()).toEqual(
