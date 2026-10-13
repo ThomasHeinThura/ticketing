@@ -1,7 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
+
+// The fixture signs up with a disposable password; a failure snapshot would print it.
+test.afterEach(({ page: _page }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test("SLA policy publishes and reloads its persisted eight-goal snapshot", async ({
   page,
