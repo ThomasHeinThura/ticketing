@@ -30,6 +30,7 @@ import getProjectsCtrl from "./controllers/get-projects";
 import listDocumentLinksCtrl from "./controllers/list-document-links";
 import listMilestonesCtrl from "./controllers/list-milestones";
 import listPrerequisitesCtrl from "./controllers/list-prerequisites";
+import listProjectStatesCtrl from "./controllers/list-project-states";
 import listStakeholdersCtrl from "./controllers/list-stakeholders";
 import reorderProjectsCtrl from "./controllers/reorder-projects";
 import standDownStakeholderCtrl from "./controllers/stand-down-stakeholder";
@@ -44,6 +45,7 @@ import {
   prerequisiteSchema,
   projectListSchema,
   projectSchema,
+  projectStateSchema,
   stakeholderSchema,
 } from "./response";
 import {
@@ -169,6 +171,31 @@ const getProjectRoute = createRoute({
   responses: {
     200: jsonResponse("Project details", projectSchema),
     400: errorResponse("Malformed project ID (including a NUL byte)"),
+    404: errorResponse("Project not found or out of reach"),
+  },
+});
+
+const listProjectStatesRoute = createRoute({
+  method: "get",
+  operationId: "listProjectStates",
+  path: "/{projectId}/states",
+  tags: ["Projects"],
+  summary: "List a project's active states",
+  description:
+    "Returns every active concrete project state, including empty board columns, in project order. " +
+    "An archived state template remains represented while its concrete project state is active.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+    requireWorkspacePermission({ project: ["read"] }),
+  ] as const,
+  request: { params: z.object({ projectId: z.string() }) },
+  responses: {
+    200: jsonResponse(
+      "The project's active states",
+      z.array(projectStateSchema),
+    ),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    403: errorResponse("Missing project:read permission"),
     404: errorResponse("Project not found or out of reach"),
   },
 });
@@ -987,3 +1014,11 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
   });
 
 export default project;
+
+export const projectStates = apiRouter<
+  BaseVariables & { workspaceId: string }
+>().openapi(listProjectStatesRoute, async (c) => {
+  const { projectId } = c.req.valid("param");
+  const states = await listProjectStatesCtrl(projectId, c.get("workspaceId"));
+  return c.json(states, 200);
+});

@@ -1,5 +1,6 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { defaultRolePayloads } from "@taskdesk/permissions";
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CAPABILITY_CHECKS } from "../../apps/api/src/capabilities/capability-checks";
 import db, { schema } from "../../apps/api/src/database";
@@ -129,6 +130,161 @@ describe("GET /api/capabilities", () => {
       `/api/capabilities?workspaceId=${workspace.id}`,
     );
     expect(response.status).toBe(403);
+  });
+
+  // The three flags below are computed from the STRICT canonical capabilities
+  // (`work_item:transition`, `work_item:rank`, `project:manage_settings`), never from the
+  // legacy better-auth statement map (#708: the legacy gate grants more than the matrix).
+  // The expectations are written out by hand from rbac.md, not derived from BUILT_IN_ROLES,
+  // so a drift in either side fails here.
+  const STRICT_FLAGS: Array<
+    [
+      role: string,
+      expected: {
+        transitionTasks: boolean;
+        rankTasks: boolean;
+        manageProjectSettings: boolean;
+      },
+    ]
+  > = [
+    [
+      "owner",
+      { transitionTasks: true, rankTasks: true, manageProjectSettings: true },
+    ],
+    [
+      "admin",
+      { transitionTasks: true, rankTasks: true, manageProjectSettings: true },
+    ],
+    [
+      "manager",
+      { transitionTasks: true, rankTasks: true, manageProjectSettings: true },
+    ],
+    [
+      "lead",
+      { transitionTasks: true, rankTasks: true, manageProjectSettings: false },
+    ],
+    [
+      "member",
+      { transitionTasks: true, rankTasks: true, manageProjectSettings: false },
+    ],
+    [
+      "viewer",
+      {
+        transitionTasks: false,
+        rankTasks: false,
+        manageProjectSettings: false,
+      },
+    ],
+  ];
+
+  it.each(STRICT_FLAGS)(
+    "reports transitionTasks, rankTasks and manageProjectSettings strictly for the %s role",
+    async (role, expected) => {
+      const actor = await createWorkspaceMember({ role });
+      // `createWorkspaceMember` only seeds the viewer/member/admin role rows; the
+      // owner needs none, manager and lead need a genuine system row.
+      if (role === "manager" || role === "lead") {
+        const now = new Date();
+        await db.insert(schema.workspaceRoleTable).values({
+          workspaceId: actor.workspace.id,
+          role,
+          permission: JSON.stringify({}),
+          isSystem: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      mockAuthenticatedSession(actor.user);
+      const { app } = createApp();
+
+      const response = await app.request(
+        `/api/capabilities?workspaceId=${actor.workspace.id}`,
+      );
+      expect(response.status).toBe(200);
+      const caps = (await response.json()) as Record<string, unknown>;
+      expect({
+        transitionTasks: caps.transitionTasks,
+        rankTasks: caps.rankTasks,
+        manageProjectSettings: caps.manageProjectSettings,
+      }).toEqual(expected);
+    },
+  );
+
+  it("never derives the strict flags from a legacy permission map that claims more (#708)", async () => {
+    // A viewer whose stored legacy statements claim transition/rank/manage_settings.
+    // The canonical built-in `viewer` role holds none of the three, so all stay false.
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    await db
+      .update(schema.workspaceRoleTable)
+      .set({
+        permission: JSON.stringify({
+          work_item: ["read", "update", "transition", "rank"],
+          project: ["read", "update", "manage_settings"],
+        }),
+      })
+      .where(eq(schema.workspaceRoleTable.workspaceId, viewer.workspace.id));
+    mockAuthenticatedSession(viewer.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/capabilities?workspaceId=${viewer.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      transitionTasks: false,
+      rankTasks: false,
+      manageProjectSettings: false,
+    });
+  });
+
+  it("returns false for all three strict flags to a malformed (non built-in) role", async () => {
+    const custom = await createWorkspaceMember({ role: "not-a-built-in" });
+    mockAuthenticatedSession(custom.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/capabilities?workspaceId=${custom.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      transitionTasks: false,
+      rankTasks: false,
+      manageProjectSettings: false,
+    });
+  });
+
+  it("is session-only: an API key, even a fully scoped owner key, cannot read the capability map", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      referenceId: owner.user.id,
+      userId: owner.user.id,
+      key: createHash("sha256")
+        .update(rawKey)
+        .digest()
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, ""),
+      name: "capabilities scope test",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({
+        work_item: ["transition", "rank"],
+        project: ["manage_settings"],
+      }),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/capabilities?workspaceId=${owner.workspace.id}`,
+      { headers: { "x-api-key": rawKey } },
+    );
+    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(response.status).toBeLessThan(500);
   });
 
   it("reports exact service-calendar management for an admin", async () => {

@@ -21,6 +21,9 @@ export const capabilitiesResponseSchema = z
     manageServiceCalendars: z.boolean(),
     shareSavedViews: z.boolean(),
     manageWorkspaceSettings: z.boolean(),
+    transitionTasks: z.boolean(),
+    rankTasks: z.boolean(),
+    manageProjectSettings: z.boolean(),
     createPublicComments: z.boolean().optional(),
     createInternalComments: z.boolean().optional(),
   })

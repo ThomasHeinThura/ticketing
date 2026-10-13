@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -5,7 +6,9 @@ import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
+  createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -134,5 +137,225 @@ describe("API integration: project creation", () => {
     await expect(response.text()).resolves.toBe(
       "You don't have access to this workspace",
     );
+  });
+});
+
+describe("API integration: GET /api/projects/{projectId}/states (VW-8)", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  async function addState(
+    workspaceId: string,
+    projectId: string,
+    options: {
+      name: string;
+      group: "backlog" | "unstarted" | "started" | "completed" | "cancelled";
+      position: number;
+      isDefault?: boolean;
+      templateArchived?: boolean;
+      stateArchived?: boolean;
+    },
+  ) {
+    const now = new Date();
+    const template = requireRow(
+      await db
+        .insert(schema.stateTemplateTable)
+        .values({
+          workspaceId,
+          key: `state-${randomUUID()}`,
+          name: options.name,
+          group: options.group,
+          archivedAt: options.templateArchived ? now : null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+      "addState: template",
+    );
+    const state = requireRow(
+      await db
+        .insert(schema.stateTable)
+        .values({
+          projectId,
+          stateTemplateId: template.id,
+          position: options.position,
+          isDefault: options.isDefault ?? false,
+          archivedAt: options.stateArchived ? now : null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+      "addState: state",
+    );
+    return { template, state };
+  }
+
+  async function reachableProject(role: "member" | "viewer" = "member") {
+    const actor = await createWorkspaceMember({ role });
+    const { project } = await createProjectFixture({
+      workspaceId: actor.workspace.id,
+    });
+    await grantProjectRole(actor.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    return { actor, project };
+  }
+
+  it("returns the project's active states in position order, including empty columns and an archived template that is still adopted", async () => {
+    const { actor, project } = await reachableProject();
+    const wsId = actor.workspace.id;
+    // Inserted out of order on purpose: the response order is the stored position, not
+    // insertion order or name.
+    const done = await addState(wsId, project.id, {
+      name: "Done",
+      group: "completed",
+      position: 3,
+    });
+    const backlog = await addState(wsId, project.id, {
+      name: "Backlog",
+      group: "backlog",
+      position: 0,
+      isDefault: true,
+    });
+    const inProgress = await addState(wsId, project.id, {
+      name: "In progress",
+      group: "started",
+      position: 2,
+      templateArchived: true,
+    });
+    // An adopted state with no work items at all: an empty board column.
+    const ready = await addState(wsId, project.id, {
+      name: "Ready",
+      group: "unstarted",
+      position: 1,
+    });
+
+    mockAuthenticatedSession(actor.user);
+    const { app } = createApp();
+    const response = await app.request(`/api/projects/${project.id}/states`);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([
+      {
+        id: backlog.state.id,
+        stateTemplateId: backlog.template.id,
+        name: "Backlog",
+        group: "backlog",
+        position: 0,
+        isDefault: true,
+      },
+      {
+        id: ready.state.id,
+        stateTemplateId: ready.template.id,
+        name: "Ready",
+        group: "unstarted",
+        position: 1,
+        isDefault: false,
+      },
+      {
+        id: inProgress.state.id,
+        stateTemplateId: inProgress.template.id,
+        name: "In progress",
+        group: "started",
+        position: 2,
+        isDefault: false,
+      },
+      {
+        id: done.state.id,
+        stateTemplateId: done.template.id,
+        name: "Done",
+        group: "completed",
+        position: 3,
+        isDefault: false,
+      },
+    ]);
+  });
+
+  it("omits archived concrete states and returns an empty array for a project with none", async () => {
+    const { actor, project } = await reachableProject();
+    mockAuthenticatedSession(actor.user);
+    const { app } = createApp();
+
+    const none = await app.request(`/api/projects/${project.id}/states`);
+    expect(none.status).toBe(200);
+    expect(await none.json()).toEqual([]);
+
+    await addState(actor.workspace.id, project.id, {
+      name: "Retired",
+      group: "started",
+      position: 0,
+      stateArchived: true,
+    });
+    const kept = await addState(actor.workspace.id, project.id, {
+      name: "Live",
+      group: "unstarted",
+      position: 1,
+    });
+    const response = await app.request(`/api/projects/${project.id}/states`);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as Array<{ id: string }>;
+    expect(body.map((s) => s.id)).toEqual([kept.state.id]);
+  });
+
+  it("does not disclose a project the caller cannot reach (no project membership), or one in another workspace", async () => {
+    const { actor, project } = await reachableProject();
+    await addState(actor.workspace.id, project.id, {
+      name: "Secret",
+      group: "backlog",
+      position: 0,
+      isDefault: true,
+    });
+
+    // Same workspace, but explicit project reach was never granted.
+    const noReach = await createWorkspaceMember({ role: "member" });
+    const sameWorkspaceProject = await createProjectFixture({
+      workspaceId: noReach.workspace.id,
+    });
+    mockAuthenticatedSession(noReach.user);
+    const { app } = createApp();
+    const unreachable = await app.request(
+      `/api/projects/${sameWorkspaceProject.project.id}/states`,
+    );
+    expect(unreachable.status).toBe(404);
+    expect(await unreachable.text()).not.toContain("Secret");
+
+    // A reachable member of another workspace asking for this workspace's project.
+    mockAuthenticatedSession(noReach.user);
+    const foreign = await app.request(`/api/projects/${project.id}/states`);
+    expect([403, 404]).toContain(foreign.status);
+    expect(await foreign.text()).not.toContain("Secret");
+
+    const missing = await app.request(`/api/projects/${randomUUID()}/states`);
+    expect([400, 404]).toContain(missing.status);
+  });
+
+  it("requires authentication", async () => {
+    const { project } = await reachableProject();
+    mockAnonymousSession();
+    const { app } = createApp();
+
+    const response = await app.request(`/api/projects/${project.id}/states`);
+    expect(response.status).toBe(401);
+  });
+
+  it("does not list states of a soft-deleted project", async () => {
+    const { actor, project } = await reachableProject();
+    await addState(actor.workspace.id, project.id, {
+      name: "Backlog",
+      group: "backlog",
+      position: 0,
+      isDefault: true,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    mockAuthenticatedSession(actor.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/projects/${project.id}/states`);
+    expect(response.status).toBe(404);
   });
 });
