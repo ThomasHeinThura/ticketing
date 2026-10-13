@@ -600,6 +600,8 @@
 			"descriptionLabel": "Beschrijving",
 			"descriptionHint": "Een korte beschrijving van je project",
 			"descriptionPlaceholder": "Voer projectbeschrijving in",
+			"defaultCommentVisibilityLabel": "Standaardzichtbaarheid van opmerkingen",
+			"defaultCommentVisibilityHint": "Wie een nieuwe opmerking standaard kan zien. De editor start met deze keuze; medewerkers kunnen dit per opmerking wijzigen.",
 			"dangerZone": "Gevarenzone",
 			"dangerZoneSubtitle": "Onomkeerbare en destructieve acties.",
 			"deleteProject": "Project verwijderen",

@@ -13,6 +13,9 @@ export const projectSchema = z
     description: z.string().nullable(),
     // The database stores text with authoritative CHECK constraints. Request DTOs
     // enforce the closed write vocabulary; keep response typing aligned with Drizzle.
+    defaultCommentVisibility: z
+      .string()
+      .openapi({ enum: ["public", "internal"] }),
     kind: z.string().openapi({ enum: ["project", "managed_service"] }),
     health: z
       .string()
