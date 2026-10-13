@@ -1377,6 +1377,7 @@
 			"workspaces": "ワークスペース",
 			"switching": "切り替え中...",
 			"addWorkspace": "ワークスペースを追加",
+			"instanceUsers": "インスタンスユーザー",
 			"selectWorkspace": "ワークスペースを選択"
 		},
 		"page": {

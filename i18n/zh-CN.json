@@ -1377,6 +1377,7 @@
 			"workspaces": "工作区",
 			"switching": "切换中…",
 			"addWorkspace": "添加工作区",
+			"instanceUsers": "实例用户",
 			"selectWorkspace": "选择工作区"
 		},
 		"page": {
