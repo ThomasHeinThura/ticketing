@@ -383,6 +383,10 @@ export const workItemActivityRowSchema = z
     deletedAt: nullableResponseTimestamp.optional().openapi({
       description: "Comment rows only (CA-18 tombstone).",
     }),
+    deletedBy: z.string().nullable().optional().openapi({
+      description:
+        "Comment rows only: the deleting actor id for a CA-18 tombstone; null otherwise.",
+    }),
     updatedAt: responseTimestamp.optional().openapi({
       description: "Comment rows only.",
     }),

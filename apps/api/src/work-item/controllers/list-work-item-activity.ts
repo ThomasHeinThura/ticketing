@@ -153,6 +153,7 @@ type ActivityStreamRow = {
   activityId: string | null;
   editedAt: Date | null;
   deletedAt: Date | null;
+  deletedBy: string | null;
   updatedAt?: Date;
 };
 
@@ -273,6 +274,7 @@ export async function listWorkItemActivity(
         activityId: commentTable.activityId,
         editedAt: commentTable.editedAt,
         deletedAt: commentTable.deletedAt,
+        deletedBy: commentTable.deletedBy,
         createdAt: commentTable.createdAt,
         updatedAt: commentTable.updatedAt,
       })
@@ -290,6 +292,7 @@ export async function listWorkItemActivity(
       activityId: null,
       editedAt: null,
       deletedAt: null,
+      deletedBy: null,
       updatedAt: undefined,
     })),
     // `verb: "commented"` is a real, honest description of what happened -- matching
@@ -315,6 +318,9 @@ export async function listWorkItemActivity(
       activityId: row.activityId,
       editedAt: row.editedAt,
       deletedAt: row.deletedAt,
+      // CA-18: the tombstone names its deleter, who can differ from the author
+      // (`comment:delete_any`). Only a deleted row carries one.
+      deletedBy: row.deletedAt ? row.deletedBy : null,
       updatedAt: row.updatedAt,
     })),
   ].sort((a, b) => {

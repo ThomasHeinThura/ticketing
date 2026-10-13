@@ -4308,6 +4308,13 @@
             "format": "date-time",
             "description": "Comment rows only (CA-18 tombstone)."
           },
+          "deletedBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Comment rows only: the deleting actor id for a CA-18 tombstone; null otherwise."
+          },
           "updatedAt": {
             "type": "string",
             "format": "date-time",
@@ -21354,7 +21361,7 @@
           "Work items"
         ],
         "summary": "List work item activity",
-        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet.",
+        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet. A tombstone includes its `deletedBy` actor id.",
         "parameters": [
           {
             "schema": {
@@ -21917,7 +21924,7 @@
           "Comments"
         ],
         "summary": "Update comment",
-        "description": "Edit a comment's body (`CA-17`). The author may edit within 15 minutes of posting (`comment:update_own`); `comment:update_any` edits anyone's, any time. Visibility cannot be changed (`CA-4`) -- this route has no `visibility` field.",
+        "description": "Edit a comment's body (`CA-17`). The author may edit within 15 minutes of posting (`comment:update_own`); `comment:update_any` edits anyone's, any time. Omitting `body` is a write-free no-op after those checks. Visibility cannot be changed (`CA-4`) -- this route has no `visibility` field.",
         "parameters": [
           {
             "schema": {

@@ -121,6 +121,21 @@ here, to avoid two specs each defining the same write path differently.
 - `RT-15` A request type may be marked **auto-accept** (`request_type.auto_accept boolean` —
   [data-model.md](../01-architecture/data-model.md)), in which case a work item is created
   immediately and the submission is closed. Used for well-understood, high-volume requests.
+  Auto-accept requires a pinned default project that is active, in the request type's
+  workspace, and serves the submitting organisation. Publishing, submission, and
+  acceptance revalidate that binding atomically; the customer never selects a project and
+  the server never chooses an arbitrary project (decision log: 2026-10-04 “Bind customer-serving projects at creation” and 2026-10-07
+  “Auto-accept actor attribution for intake acceptance”, recovered on 2026-10-13). Manual acceptance remains
+  governed by `IQ-7`.
+  Every organisation mapping that advertises a published auto-accept request type must
+  match that pinned project's single `organisation_id`; a project serving one organisation
+  cannot advertise the type to another. Publication validates all configured mappings in
+  the same transaction as the request-type/version/project checks. The God Mode catalogue
+  assignment writer must serialize against that validation and enforce the same binding
+  before changing mappings; its route is specified in `god-mode.md`, not implemented here.
+  Its `submission.accepted` audit and outbox event use the `system` actor with no person
+  actor id and display name `Request type auto-accept`; the customer remains the requester
+  and initiator. Manual acceptance uses the acting staff person's identity and name.
 - `RT-16` Drafts are persisted per request type per version, so a half-completed form
   survives a closed tab — stored in `localStorage`, and therefore per device: a draft
   started on one device is not visible on another. Same mechanism as
