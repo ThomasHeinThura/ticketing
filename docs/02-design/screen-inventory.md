@@ -114,7 +114,8 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | ⬜ |
 | Profile — notifications | `/agent/settings/profile/notifications` | route | P4 | ⬜ |
 | Profile — security & sessions | `/agent/settings/profile/security` | route | P3 | ⬜ |
-| Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/agent/settings/profile/pending-actions` | route | P4 | ⬜ |
+| Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/agent/settings/profile/pending-actions` | route | P4 | 🟡 |
+| Profile — pending action detail | `/agent/settings/profile/pending-actions/{id}` | route | P4 | 🟡 |
 | Profile — API keys | `/agent/settings/profile/api-keys` | route | P4 | ⬜ |
 | Workspace — general | `/agent/settings` | route | P1 | ⬜ |
 | Workspace — terminology | `/agent/settings/terminology` | route | P4 | ⬜ |
@@ -178,7 +179,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | MCP usage | `/agent/god-mode/mcp` | route | P4 | ⬜ |
 | Audit log | `/agent/god-mode/audit` | route | P2 | ⬜ |
 | Import runs | `/agent/god-mode/import` | route | P6 | ⬜ |
-| Users | `/agent/god-mode/users` | route | P4 | ⬜ |
+| Users | `/agent/god-mode/users` | route | P4 | 🟡 |
 
 ## Portal
 
@@ -213,14 +214,14 @@ build if it drifts.
 
 | Stage | Screens |
 | --- | --- |
-| P0 Foundation | 7 |
+| P0 Foundation | 8 |
 | P1 Core work | 33 |
 | P2 Service desk | 15 |
 | P3 Portal & identity | 23 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **137** |
+| **Total** | **138** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see
