@@ -57,7 +57,8 @@ describe("react-hook-form reset under the React Compiler", () => {
   it("only lets allowlisted forms use register()", () => {
     const registerUsers = sourceFiles(srcRoot)
       .filter((file) =>
-        /\.register\(/.test(stripComments(readFileSync(file, "utf8"))),
+        // Matches form.register(...) and a destructured bare register(...).
+        /\bregister\(/.test(stripComments(readFileSync(file, "utf8"))),
       )
       .map((file) => path.relative(srcRoot, file).split(path.sep).join("/"));
     expect(registerUsers.sort()).toEqual(Object.keys(REGISTER_FORMS).sort());
@@ -65,10 +66,17 @@ describe("react-hook-form reset under the React Compiler", () => {
 
   it("keeps field refs on every reset(values) of a register() form", () => {
     for (const resetFile of new Set(Object.values(REGISTER_FORMS))) {
-      const calls = resetCallsWithValues(
-        stripComments(readFileSync(path.join(srcRoot, resetFile), "utf8")),
+      const source = stripComments(
+        readFileSync(path.join(srcRoot, resetFile), "utf8"),
       );
+      const calls = resetCallsWithValues(source);
       expect(calls.length).toBeGreaterThan(0);
+      if (calls.some((args) => args.includes("RESET_KEEP_FIELD_REFS"))) {
+        // The shared options constant must itself keep the refs.
+        expect(source).toMatch(
+          /const RESET_KEEP_FIELD_REFS = \{\s*keepFieldsRef: true\s*\}/,
+        );
+      }
       for (const args of calls) {
         expect(args, `${resetFile}: reset(${args})`).toMatch(
           /keepFieldsRef|RESET_KEEP_FIELD_REFS/,
