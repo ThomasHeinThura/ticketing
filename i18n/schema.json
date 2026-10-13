@@ -3372,6 +3372,12 @@
 						"descriptionPlaceholder": {
 							"type": "string"
 						},
+						"defaultCommentVisibilityLabel": {
+							"type": "string"
+						},
+						"defaultCommentVisibilityHint": {
+							"type": "string"
+						},
 						"dangerZone": {
 							"type": "string"
 						},
@@ -3455,6 +3461,8 @@
 						"descriptionLabel",
 						"descriptionHint",
 						"descriptionPlaceholder",
+						"defaultCommentVisibilityLabel",
+						"defaultCommentVisibilityHint",
 						"dangerZone",
 						"dangerZoneSubtitle",
 						"deleteProject",
@@ -9920,6 +9928,9 @@
 								},
 								"unknown": {
 									"type": "string"
+								},
+								"transitionInvalid": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -9928,7 +9939,8 @@
 								"rejected",
 								"invalid",
 								"forbidden",
-								"unknown"
+								"unknown",
+								"transitionInvalid"
 							]
 						}
 					},

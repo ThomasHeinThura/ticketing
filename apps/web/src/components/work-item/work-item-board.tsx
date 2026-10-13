@@ -123,8 +123,18 @@ export default function WorkItemBoard({
     next?.focus();
   }, [workItems]);
 
-  function describeFailure(failure: WorkItemWriteFailure, key: string) {
-    return t(`workItems:board.failure.${failure}`, { key });
+  function describeFailure(
+    failure: WorkItemWriteFailure,
+    key: string,
+    kind: "rank" | "transition" = "rank",
+  ) {
+    // A 400 means "a neighbour left the partition" for rank only; a transition 400 is a
+    // plain invalid request and must not claim a position was not saved.
+    const name =
+      kind === "transition" && failure === "invalid"
+        ? "transitionInvalid"
+        : failure;
+    return t(`workItems:board.failure.${name}`, { key });
   }
 
   async function refreshBoard() {
@@ -135,11 +145,13 @@ export default function WorkItemBoard({
 
   /** Runs one write at a time; a second concurrent move would rank against stale neighbours. */
   async function runMove(task: () => Promise<Notice>) {
-    if (busyRef.current) return;
+    if (busyRef.current) return undefined;
     busyRef.current = true;
     setBusy(true);
     try {
-      setNotice(await task());
+      const result = await task();
+      setNotice(result);
+      return result;
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -187,6 +199,43 @@ export default function WorkItemBoard({
     if (from === -1 || to < 0 || to >= column.length) return;
     pendingFocus.current = { key: item.key, direction };
     void runMove(() => rankWithin(item, column, to, to, stateName));
+  }
+
+  /** The Change state select shares the board's one-write guard with drag and rank. */
+  async function transitionFromSelect(
+    item: WorkItemRow,
+    offer: { toStateTemplateId: string; toStateName: string },
+  ): Promise<boolean> {
+    const result = await runMove(async () => {
+      try {
+        await transitionWorkItem({
+          key: item.key,
+          toStateTemplateId: offer.toStateTemplateId,
+        });
+        await refreshBoard();
+        await queryClient.invalidateQueries({
+          queryKey: ["work-items", "transitions", item.key],
+        });
+        return {
+          kind: "status",
+          text: t("workItems:board.transitionSaved", {
+            key: item.key,
+            state: offer.toStateName,
+          }),
+        };
+      } catch (error) {
+        await refreshBoard();
+        return {
+          kind: "error",
+          text: describeFailure(
+            classifyWorkItemWriteError(error),
+            item.key,
+            "transition",
+          ),
+        };
+      }
+    });
+    return result?.kind === "status";
   }
 
   async function handleDrop(target: ProjectState, targetItem?: WorkItemRow) {
@@ -239,7 +288,11 @@ export default function WorkItemBoard({
         await refreshBoard();
         return {
           kind: "error",
-          text: describeFailure(classifyWorkItemWriteError(error), item.key),
+          text: describeFailure(
+            classifyWorkItemWriteError(error),
+            item.key,
+            "transition",
+          ),
         };
       }
 
@@ -416,22 +469,8 @@ export default function WorkItemBoard({
                       onDrop={() => {
                         void handleDrop(state, item);
                       }}
-                      projectId={projectId}
-                      onFailure={(failure) => {
-                        setNotice({
-                          kind: "error",
-                          text: describeFailure(failure, item.key),
-                        });
-                        void refreshBoard();
-                      }}
-                      onTransitioned={(stateName) =>
-                        setNotice({
-                          kind: "status",
-                          text: t("workItems:board.transitionSaved", {
-                            key: item.key,
-                            state: stateName,
-                          }),
-                        })
+                      onTransition={(offer) =>
+                        transitionFromSelect(item, offer)
                       }
                     />
                   ))}
@@ -464,7 +503,6 @@ function BoardCard({
   index,
   count,
   busy,
-  projectId,
   canSelect,
   canTransition,
   canRank,
@@ -473,15 +511,13 @@ function BoardCard({
   onMove,
   onDragStart,
   onDrop,
-  onFailure,
-  onTransitioned,
+  onTransition,
 }: {
   item: WorkItemRow;
   state: ProjectState;
   index: number;
   count: number;
   busy: boolean;
-  projectId: string;
   canSelect: boolean;
   canTransition: boolean;
   canRank: boolean;
@@ -490,11 +526,12 @@ function BoardCard({
   onMove: (direction: "up" | "down") => void;
   onDragStart: () => void;
   onDrop: () => void;
-  onFailure: (failure: WorkItemWriteFailure) => void;
-  onTransitioned: (stateName: string) => void;
+  onTransition: (offer: {
+    toStateTemplateId: string;
+    toStateName: string;
+  }) => Promise<boolean>;
 }) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const actionable = !item.unavailableFields.includes("key");
   const [isChangingState, setIsChangingState] = useState(false);
   const [transitionId, setTransitionId] = useState("");
@@ -510,26 +547,10 @@ function BoardCard({
   async function move() {
     if (!chosen) return;
     setIsMoving(true);
-    try {
-      await transitionWorkItem({
-        key: item.key,
-        toStateTemplateId: chosen.toStateTemplateId,
-      });
-      setTransitionId("");
-      setIsChangingState(false);
-      onTransitioned(chosen.toStateName);
-    } catch (error) {
-      onFailure(classifyWorkItemWriteError(error));
-      setTransitionId("");
-    } finally {
-      setIsMoving(false);
-      await queryClient.invalidateQueries({
-        queryKey: ["work-items", projectId],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["work-items", "transitions", item.key],
-      });
-    }
+    const done = await onTransition(chosen);
+    setIsMoving(false);
+    setTransitionId("");
+    if (done) setIsChangingState(false);
   }
 
   const draggable = actionable && (canTransition || canRank);

@@ -2408,7 +2408,8 @@
 				"gone": "{{key}} is no longer available to you. The board was refreshed.",
 				"invalid": "The work items around {{key}} changed, so its position wasn't saved. The board was refreshed.",
 				"rejected": "{{key}} can't be moved right now because a rule blocks it. The board was refreshed.",
-				"unknown": "Couldn't move {{key}}. The board was refreshed."
+				"unknown": "Couldn't move {{key}}. The board was refreshed.",
+				"transitionInvalid": "The state change for {{key}} was not valid. The board was refreshed."
 			},
 			"loadErrorDescription": "The board's states or work items failed to load.",
 			"loadErrorTitle": "Couldn't load the board",

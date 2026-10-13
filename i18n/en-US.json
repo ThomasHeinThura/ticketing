@@ -2416,7 +2416,8 @@
 				"rejected": "{{key}} can't be moved right now because a rule blocks it. The board was refreshed.",
 				"invalid": "The work items around {{key}} changed, so its position wasn't saved. The board was refreshed.",
 				"forbidden": "You don't have permission to move {{key}}.",
-				"unknown": "Couldn't move {{key}}. The board was refreshed."
+				"unknown": "Couldn't move {{key}}. The board was refreshed.",
+				"transitionInvalid": "The state change for {{key}} was not valid. The board was refreshed."
 			}
 		},
 		"bulk": {

@@ -498,6 +498,26 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
     expect(transitionWorkItem).not.toHaveBeenCalled();
   });
 
+  it("a 400 from a dragged transition uses the transition wording", async () => {
+    getWorkItemTransitions.mockResolvedValue([
+      {
+        transitionId: "t1",
+        toStateId: "s-done",
+        toStateTemplateId: "tpl-done",
+        toStateName: "Done",
+        available: true,
+        blockedBy: [],
+      },
+    ]);
+    transitionWorkItem.mockRejectedValue(new HttpError(400, "x"));
+    board({ canTransition: true });
+    fireEvent.dragStart(card("WLP-1"));
+    fireEvent.drop(column("Done"));
+    expect(
+      await screen.findByTestId("work-item-board-error"),
+    ).toHaveTextContent("The state change for WLP-1 was not valid.");
+  });
+
   it("reports no edge to that state as unavailable", async () => {
     board({ canTransition: true });
     fireEvent.dragStart(card("WLP-1"));
@@ -617,8 +637,9 @@ describe("Change state control", () => {
     fireEvent.click(
       await screen.findByRole("combobox", { name: "New state for WLP-1" }),
     );
+    const done = await screen.findByRole("option", { name: "Done" });
     expect(screen.queryByRole("option", { name: "Hidden" })).toBeNull();
-    pickOption(await screen.findByRole("option", { name: "Done" }));
+    pickOption(done);
     fireEvent.click(
       screen.getByRole("button", { name: "Move WLP-1 to the chosen state" }),
     );
@@ -631,6 +652,58 @@ describe("Change state control", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "WLP-1 moved to Done.",
     );
+  });
+
+  it("a drag cannot start while a select transition is in flight", async () => {
+    getWorkItemTransitions.mockResolvedValue(offers);
+    let finish: (value: unknown) => void = () => {};
+    transitionWorkItem.mockReturnValue(
+      new Promise((resolve) => (finish = resolve)),
+    );
+    board({ canTransition: true, canRank: true });
+    await chooseDone();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Move WLP-1 to the chosen state" }),
+    );
+    await waitFor(() => expect(transitionWorkItem).toHaveBeenCalledTimes(1));
+    fireEvent.dragStart(card("WLP-3"));
+    fireEvent.drop(card("WLP-1"));
+    await Promise.resolve();
+    expect(rankWorkItem).not.toHaveBeenCalled();
+    expect(getWorkItemTransitions).toHaveBeenCalledTimes(1);
+    finish({});
+  });
+
+  it("a select transition is ignored while a rank move is in flight", async () => {
+    getWorkItemTransitions.mockResolvedValue(offers);
+    let finish: (value: unknown) => void = () => {};
+    rankWorkItem.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    board({ canTransition: true, canRank: true });
+    await chooseDone();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
+    );
+    await waitFor(() => expect(rankWorkItem).toHaveBeenCalledTimes(1));
+    expect(
+      screen.getByRole("button", { name: "Move WLP-1 to the chosen state" }),
+    ).toBeDisabled();
+    expect(transitionWorkItem).not.toHaveBeenCalled();
+    finish({});
+  });
+
+  it("a 400 from a transition does not claim a position was not saved", async () => {
+    getWorkItemTransitions.mockResolvedValue(offers);
+    transitionWorkItem.mockRejectedValue(new HttpError(400, "x"));
+    board({ canTransition: true });
+    await chooseDone();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Move WLP-1 to the chosen state" }),
+    );
+    const alert = await screen.findByTestId("work-item-board-error");
+    expect(alert).toHaveTextContent(
+      "The state change for WLP-1 was not valid. The board was refreshed.",
+    );
+    expect(alert).not.toHaveTextContent("position");
   });
 
   it.each([
