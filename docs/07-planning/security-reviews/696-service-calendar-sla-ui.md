@@ -15,12 +15,14 @@ The reviewers below are fresh, independent contexts that did not author, direct 
 - Ordinary review B by Claude Sonnet 5.5 (completeness, UI, accessibility, gates, #513 absorption): REQUEST CHANGES at `42ed9164` with three blockers: a raw file input, shrink-wrapped page shells, and mis-laid card headers. After the fixes and baseline regeneration it gave a delta APPROVE at `ecd485c5`, re-measuring the widths and loading visibility in the built app.
 - Security review by Claude Opus 5.5: CLEAR at `371ccac6`. It ran six integration probes: a non-manager writing, cross-workspace access, missing CSRF, a stale If-Match, deletion of an in-use calendar, and hostile iCalendar files. Its finding N1 was that the persisted specs could print the fixture sign-up password in a failure snapshot.
 - Security rebind by the same Opus context: CLEAR at `2245d85f`. It reproduced both the leak without the hook and its redaction with the hook.
+- Second security rebind by the same Opus context: CLEAR at `3a0f1f82`. That commit merges `main` `bf23f525` (#698). Non-conflict files equal git's own merge. `pairs.json` and the 19 i18n catalogs are the exact union of both parents. Nothing from #698 touches the #696 surfaces.
 
 **Reviewed head:** `e32de23d6e042427218e55197eb55858a86c768a`
 **Reviewed head:** `42ed91645599759080e026f15fd386cba3030a02`
 **Reviewed head:** `ecd485c5828a9c242aff731d5a70e66e23a7f107`
 **Reviewed head:** `371ccac6ebc4f38d4960406a497246e3db77bb17`
 **Reviewed head:** `2245d85fa8ad5bf76533ad5d2aaf44f03b2d1086`
+**Reviewed head:** `3a0f1f825d14b082a764556343f77c3a2daeaa61`
 
 ## Context index
 
@@ -35,6 +37,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 5 | `696-security-opus.md` | Security review (af663a0c..371ccac6) | Claude Opus 5.5 | `371ccac6` | CLEAR | `097d7301cb5a5cdd1259cc939f30774a646c80d1708a0064a85272200d21aa78` |
 | 6 | `696-2245-ordinary-a-sonnet.md` | Ordinary delta review A (42ed9164..2245d85f) | Claude Sonnet 5.5 | `2245d85f` | APPROVE | `cab2e59e6f6acfef1c7a188015d3a540e892f6d9af43c354597e31f4b0ea5aac` |
 | 7 | `696-2245-security-rebind-opus.md` | Security rebind (371ccac6..2245d85f) | Claude Opus 5.5 | `2245d85f` | CLEAR | `05afdb9a87437b5442f6f5ab745c79e954d118eb19b6e7a518629e64ce461ff3` |
+| 8 | `696-3a0f-security-rebind-opus.md` | Security rebind (2245d85f..3a0f1f82) | Claude Opus 5.5 | `3a0f1f82` | CLEAR | `70c5b90a1098107f83dfb4a570102f9ca4a59924f2ea6d4a4670050184042b1c` |
 
 ## Embedded reports
 
@@ -592,3 +595,101 @@ Setup: `pnpm install --frozen-lockfile` and `pnpm build` passed.
 ## Verdict
 **CLEAR** at 2245d85fa8ad5bf76533ad5d2aaf44f03b2d1086.
 <!-- END REPORT (sha256 05afdb9a87437b5442f6f5ab745c79e954d118eb19b6e7a518629e64ce461ff3) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-13/696-3a0f-security-rebind-opus.md; Claude Opus 5.5; sha256 70c5b90a1098107f83dfb4a570102f9ca4a59924f2ea6d4a4670050184042b1c) -->
+# PR #696 security rebind: review note and merge of main bf23f525 (#698)
+
+Model: Claude Opus 5.5 (claude-opus-5-5). This is the same independent reviewer context that wrote 696-security-opus.md and 696-2245-security-rebind-opus.md. I did not author, direct or remediate these commits.
+Role: an independent security re-review at the orchestrator's request. It is not the GPT-6 Sol gate and does not replace it.
+
+**Reviewed head:** 3a0f1f825d14b082a764556343f77c3a2daeaa61
+
+- Previously cleared head: 2245d85fa8ad5bf76533ad5d2aaf44f03b2d1086.
+- Parents of 3a0f1f82:
+  - fd9c12f1dae7fe187605db6ad9fac7419055823c (branch: the review note, on top of 2245d85f)
+  - bf23f525e047d986780d724340044f94d865b77c (origin/main, the merge of #698)
+- Merge base of the two parents: af663a0cd65e872c2b368d69e29392e89acfbad3. The new merge base with main is bf23f525.
+
+## Live state
+- `git fetch` succeeded.
+- `git ls-remote origin` was run at the start and again at the end of the review. Both times:
+  - `refs/heads/main` was bf23f525e047d986780d724340044f94d865b77c. **Main is still bf23f525.**
+  - `refs/pull/696/head` was 3a0f1f825d14b082a764556343f77c3a2daeaa61. This matches the candidate.
+
+## fd9c12f1 (the note)
+- It adds only `docs/07-planning/security-reviews/696-service-calendar-sla-ui.md` (+594 lines).
+- gitleaks `dir` on a copy found no leaks.
+- It does not contain the disposable fixture password from my N1 reproduction. I searched for that password's prefix and found 0 matches.
+
+## Merge correctness
+- `git merge-tree --write-tree fd9c12f1 bf23f525` gives tree 048b23e0, with a single conflicted path: `packages/ui/src/styles/pairs.json`.
+- `git diff --name-only 048b23e0 3a0f1f82` lists only `packages/ui/src/styles/pairs.json`. **Every non-conflict file equals git's own merge.**
+- Files changed on both sides relative to af663a0c: the 18 locale files, `i18n/schema.json` and `pairs.json`. Git auto-merged the i18n files.
+- I checked i18n with a scripted three-way comparison of flattened keys for all 19 JSON files. **There are 0 mismatches** against the expected merge: each key is taken from the side that changed it, and no key is lost or invented.
+  - For en-US, #696 changed 220 keys and #698 changed 27, with 0 overlapping.
+  - For schema.json, #696 changed 513 paths and #698 changed 63, with 0 overlapping.
+- `pnpm i18n:schema` on the merge head left the worktree clean, so the schema regeneration is a no-op. `check:i18n` reports all locales in sync.
+- I checked pairs.json with a per-entry three-way script over the base, both parents and the head:
+  - There are 418 entries in all four. The scalar fields of every entry (fg, bg, category, minRatio, themes, usage, backdrop, classes, surfaceContext) equal the base in both parents and in the head.
+  - For occurrenceIds and for the full `occurrences` records (including `chain`), the head equals the exact union of both parents' additions: **0 invented, 0 missing**.
+  - Neither parent removed anything. There are 2,512 occurrenceIds and 3,198 occurrences in the head.
+  - minRatio values are {3, 4.5} and identical per entry to the base. **No threshold changed.**
+  - `check:tokens` passed: "418 declared, source-grounded pairs meet thresholds".
+
+## Interaction between #698 and the #696 surfaces
+- #698's files (af663a0c..bf23f525) are:
+  - the work-item approvals component, its test, and the work-item-detail integration
+  - `fetchers/approval/*` and the approval query and mutation hooks
+  - `e2e/approval-withdrawal.spec.ts`
+  - the `work-item-detail-linux.png` baseline
+  - its own review note, i18n and pairs.json
+- None of these is also changed by #696. That includes routes, route metadata, query-client, use-workspace-permission, the `@taskdesk/libs` client, visual-screens.json, the playwright config and fixtures. #698 changes no `apps/api` code.
+- **i18n:** the key sets are disjoint (see above).
+- **E2E:**
+  - `approval-withdrawal.spec.ts` is mock-only (`page.route("**/api/**")`). It opens no ports and does not use Testcontainers or `withMfaCsrfApp`.
+  - All specs share the config's single preview server on 4178 with `workers: 1`.
+  - The #696 persisted specs use the fixture's dynamically allocated ports, so there is no collision.
+- **The work-item-detail baseline:** #696 changes no `packages/ui` component, and #698's baseline comes from main. G8 in CI is authoritative.
+
+## Tests on the merge head (scratch worktree at 3a0f1f82, removed afterwards)
+- `pnpm install --frozen-lockfile` and `VITE_API_URL="" pnpm build` passed.
+- Static gates, all exit 0:
+  - `check:tokens`
+  - `check:i18n`
+  - `check:visual-scope` (19 cases)
+  - `check:ui:raw-elements` (0 raw elements)
+  - `check:route-policy`
+- Web vitest, full: **149 files, 649 tests passed.**
+- #686 redaction guard: 4/4 passed.
+- **Playwright, together in one run:** `service-calendar.spec.ts`, `sla-policy.spec.ts` and `approval-withdrawal.spec.ts` all passed (15 tests).
+- **Persisted specs, first run:** both failed at sign-up ("Failed to fetch"). This is the same symptom as my earlier misconfigured local build.
+  - Their `error-context.md` files again showed "Page snapshot omitted". This incidentally confirms the N1 redaction on the merged head.
+- **Persisted specs, after a forced full rebuild** (`VITE_API_URL="" pnpm build --force`): the persisted specs and `approval-withdrawal.spec.ts` ran together, and **5 of 5 passed**.
+  - I attribute the first failure to a stale local build artifact. Only the forced rebuild cleared it. This is not a candidate defect.
+  - CI builds from clean.
+
+## Hygiene
+- Docker:
+  - The only containers I created were Testcontainers Ryuk and Postgres for the persisted specs.
+  - The Ryuk reaper removes them. At the end, only my Ryuk (session e64af8160290) remained, and it reaps itself.
+  - I removed no containers by hand. The `taskdesk-*` containers were not touched.
+- The original worktree is clean at 3a0f1f82.
+
+## Findings
+**Blocking:** none.
+
+**Non-blocking:** unchanged from earlier reports.
+- **N1:** resolved.
+- **N1a:** the #686 guard markers are MFA-only. Suggested follow-up: extend them to password fills.
+- **N2 and N3:** pre-existing on main. They are unchanged by #698, which touches no API code.
+- **N4 and N5:** contract and test-depth notes, unchanged.
+
+No new findings from the merge.
+
+## Residual risk
+- I did not compare the Linux G8 visuals for the merged tree, including #698's work-item-detail baseline. CI is authoritative.
+- I did not re-run the API integration probes. The merge brings in no `apps/api` changes, so main's server behaviour for the #696 routes is as probed at 371ccac6.
+
+## Verdict
+**CLEAR** at 3a0f1f825d14b082a764556343f77c3a2daeaa61.
+<!-- END REPORT (sha256 70c5b90a1098107f83dfb4a570102f9ca4a59924f2ea6d4a4670050184042b1c) -->
