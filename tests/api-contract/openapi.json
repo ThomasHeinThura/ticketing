@@ -23895,7 +23895,56 @@
                     },
                     "versions": {
                       "type": "array",
-                      "items": {}
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "number"
+                          },
+                          "formSchema": {},
+                          "workItemTypeId": {
+                            "type": "string"
+                          },
+                          "defaultProjectId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "slaPolicyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "defaultAssigneeId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "autoAccept": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "number",
+                          "workItemTypeId",
+                          "defaultProjectId",
+                          "slaPolicyId",
+                          "defaultAssigneeId",
+                          "autoAccept",
+                          "createdAt"
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -24423,10 +24472,60 @@
                         "updatedAt"
                       ]
                     },
-                    "version": {}
+                    "version": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "number"
+                        },
+                        "formSchema": {},
+                        "workItemTypeId": {
+                          "type": "string"
+                        },
+                        "defaultProjectId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "slaPolicyId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "defaultAssigneeId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "autoAccept": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "workItemTypeId",
+                        "defaultProjectId",
+                        "slaPolicyId",
+                        "defaultAssigneeId",
+                        "autoAccept",
+                        "createdAt"
+                      ]
+                    }
                   },
                   "required": [
-                    "requestType"
+                    "requestType",
+                    "version"
                   ]
                 }
               }
@@ -25042,7 +25141,120 @@
                   "properties": {
                     "submissions": {
                       "type": "array",
-                      "items": {}
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ref": {
+                            "type": "string"
+                          },
+                          "summary": {
+                            "type": "string"
+                          },
+                          "submission": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "number"
+                              },
+                              "state": {
+                                "type": "string"
+                              },
+                              "customerVisibility": {
+                                "type": "string"
+                              },
+                              "claimedBy": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "claimedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "state",
+                              "customerVisibility",
+                              "claimedBy",
+                              "claimedAt",
+                              "createdAt"
+                            ]
+                          },
+                          "requestType": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "key",
+                              "name"
+                            ]
+                          },
+                          "requester": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "displayName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "displayName"
+                            ]
+                          },
+                          "organisation": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "ref",
+                          "summary",
+                          "submission",
+                          "requestType",
+                          "requester",
+                          "organisation"
+                        ]
+                      }
                     },
                     "page": {
                       "type": "object",
@@ -25125,9 +25337,139 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "submission": {},
-                    "requestType": {},
-                    "version": {},
+                    "submission": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "number"
+                        },
+                        "state": {
+                          "type": "string"
+                        },
+                        "formData": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "customerVisibility": {
+                          "type": "string"
+                        },
+                        "claimedBy": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "claimedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        },
+                        "workItemId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "number"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "state",
+                        "formData",
+                        "customerVisibility",
+                        "claimedBy",
+                        "claimedAt",
+                        "workItemId",
+                        "version",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    },
+                    "requestType": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "key": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "key",
+                        "name"
+                      ]
+                    },
+                    "version": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "number"
+                        },
+                        "formSchema": {},
+                        "workItemTypeId": {
+                          "type": "string"
+                        },
+                        "defaultProjectId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "slaPolicyId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "defaultAssigneeId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "autoAccept": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "workItemTypeId",
+                        "defaultProjectId",
+                        "slaPolicyId",
+                        "defaultAssigneeId",
+                        "autoAccept",
+                        "createdAt"
+                      ]
+                    },
                     "messages": {
                       "type": "array",
                       "items": {
@@ -25164,6 +25506,9 @@
                     }
                   },
                   "required": [
+                    "submission",
+                    "requestType",
+                    "version",
                     "messages",
                     "ref"
                   ]
@@ -25325,11 +25670,38 @@
                         "accepted"
                       ]
                     },
-                    "workItem": {}
+                    "workItem": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "key": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "projectId": {
+                          "type": "string"
+                        },
+                        "typeId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "key",
+                        "title",
+                        "projectId",
+                        "typeId"
+                      ]
+                    }
                   },
                   "required": [
                     "ref",
-                    "state"
+                    "state",
+                    "workItem"
                   ]
                 }
               }
@@ -25414,11 +25786,38 @@
                     "state": {
                       "type": "string"
                     },
-                    "workItem": {}
+                    "workItem": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "key": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "projectId": {
+                          "type": "string"
+                        },
+                        "typeId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "key",
+                        "title",
+                        "projectId",
+                        "typeId"
+                      ]
+                    }
                   },
                   "required": [
                     "ref",
-                    "state"
+                    "state",
+                    "workItem"
                   ]
                 }
               }
@@ -25512,6 +25911,16 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Submission not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -25572,12 +25981,40 @@
                     "reason": {
                       "type": "string"
                     },
-                    "message": {}
+                    "message": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "authorId": {
+                          "type": "string"
+                        },
+                        "actorType": {
+                          "type": "string"
+                        },
+                        "body": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "authorId",
+                        "actorType",
+                        "body",
+                        "createdAt"
+                      ]
+                    }
                   },
                   "required": [
                     "ref",
                     "state",
-                    "reason"
+                    "reason",
+                    "message"
                   ]
                 }
               }
@@ -25696,6 +26133,26 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Submission not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Submission cannot receive a message",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }

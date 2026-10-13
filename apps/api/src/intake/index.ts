@@ -39,6 +39,19 @@ import {
   withdrawSubmission,
 } from "./repository";
 import {
+  requestTypeVersionSchema,
+  staffQueueRowSchema,
+  staffRequestTypeRefSchema,
+  staffSubmissionSchema,
+  submissionMessageSchema,
+  submissionWorkItemSchema,
+  toRequestTypeVersion,
+  toStaffRequestTypeRef,
+  toStaffSubmission,
+  toSubmissionMessage,
+  toSubmissionWorkItem,
+} from "./response";
+import {
   acceptBody,
   createRequestTypeBody,
   declineBody,
@@ -84,17 +97,10 @@ const savedRequestTypeSchema = requestTypeSchema.extend({
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
-const submissionMessageSchema = z.object({
-  id: z.string(),
-  authorId: z.string(),
-  actorType: z.string(),
-  body: z.string(),
-  createdAt: z.string().datetime(),
-});
 const submissionResponseSchema = z.object({
-  submission: z.unknown(),
-  requestType: z.unknown(),
-  version: z.unknown(),
+  submission: staffSubmissionSchema,
+  requestType: staffRequestTypeRefSchema,
+  version: requestTypeVersionSchema,
   messages: z.array(submissionMessageSchema),
   ref: z.string(),
 });
@@ -390,7 +396,7 @@ const detailRoute = createRoute({
       "Request type and versions",
       z.object({
         ...savedRequestTypeSchema.shape,
-        versions: z.array(z.unknown()),
+        versions: z.array(requestTypeVersionSchema),
       }),
     ),
     404: errorResponse("Request type not found"),
@@ -435,7 +441,10 @@ const publishRoute = createRoute({
   responses: {
     200: jsonResponse(
       "Published request type",
-      z.object({ requestType: savedRequestTypeSchema, version: z.unknown() }),
+      z.object({
+        requestType: savedRequestTypeSchema,
+        version: requestTypeVersionSchema,
+      }),
     ),
     404: errorResponse("Request type not found"),
     422: errorResponse("Request type form is not publishable"),
@@ -547,7 +556,7 @@ const listSubmissionsRoute = createRoute({
     200: jsonResponse(
       "Submission queue",
       z.object({
-        submissions: z.array(z.unknown()),
+        submissions: z.array(staffQueueRowSchema),
         page: z.object({
           nextCursor: z.string().nullable(),
           hasMore: z.boolean(),
@@ -595,7 +604,7 @@ const claimRoute = createRoute({
         ref: z.string(),
         state: z.string(),
         claimedBy: z.string().nullable(),
-        claimedAt: z.date().nullable(),
+        claimedAt: z.string().datetime().nullable(),
       }),
     ),
     409: errorResponse("Submission is no longer claimable"),
@@ -625,7 +634,7 @@ const acceptRoute = createRoute({
       z.object({
         ref: z.string(),
         state: z.literal("accepted"),
-        workItem: z.unknown(),
+        workItem: submissionWorkItemSchema,
       }),
     ),
     409: errorResponse("Submission is no longer open"),
@@ -653,7 +662,11 @@ const duplicateRoute = createRoute({
   responses: {
     200: jsonResponse(
       "Linked duplicate",
-      z.object({ ref: z.string(), state: z.string(), workItem: z.unknown() }),
+      z.object({
+        ref: z.string(),
+        state: z.string(),
+        workItem: submissionWorkItemSchema,
+      }),
     ),
     409: errorResponse("Submission is no longer open"),
     404: errorResponse("Work item not found"),
@@ -685,6 +698,7 @@ const duplicateSuggestionsRoute = createRoute({
         ),
       }),
     ),
+    404: errorResponse("Submission not found"),
   },
 });
 const declineRoute = createRoute({
@@ -712,7 +726,7 @@ const declineRoute = createRoute({
         ref: z.string(),
         state: z.string(),
         reason: z.string(),
-        message: z.unknown(),
+        message: submissionMessageSchema,
       }),
     ),
     409: errorResponse("Submission is no longer open"),
@@ -746,6 +760,8 @@ const staffMessageRoute = createRoute({
         message: submissionMessageSchema,
       }),
     ),
+    404: errorResponse("Submission not found"),
+    409: errorResponse("Submission cannot receive a message"),
   },
 });
 const portalListRoute = createRoute({
@@ -845,7 +861,10 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
   .openapi(detailRoute, async (c) => {
     const detail = await getRequestType(c.req.valid("param").id);
     return c.json(
-      { ...requestTypeResponse(detail), versions: detail.versions },
+      {
+        ...requestTypeResponse(detail),
+        versions: detail.versions.map(toRequestTypeVersion),
+      },
       200,
     );
   })
@@ -871,7 +890,7 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
     return c.json(
       {
         requestType: requestTypeResponse(published.requestType),
-        version: published.version,
+        version: toRequestTypeVersion(published.version),
       },
       200,
     );
@@ -962,57 +981,110 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
 const intakeSubmissionRouter = apiRouter<IntakeVariables>()
   .openapi(listSubmissionsRoute, async (c) => {
     const query = c.req.valid("query");
+    const result = await listSubmissions(
+      query.workspaceId,
+      query.state ? [query.state] : undefined,
+      query.cursor,
+      parseCollectionLimit(query.limit),
+    );
     return c.json(
-      await listSubmissions(
-        query.workspaceId,
-        query.state ? [query.state] : undefined,
-        query.cursor,
-        parseCollectionLimit(query.limit),
-      ),
+      {
+        submissions: result.submissions.map((row) => ({
+          ref: row.ref,
+          summary: row.summary,
+          submission: {
+            id: row.submission.id,
+            number: row.submission.number,
+            state: row.submission.state,
+            customerVisibility: row.submission.customerVisibility,
+            claimedBy: row.submission.claimedBy,
+            claimedAt: row.submission.claimedAt?.toISOString() ?? null,
+            createdAt: row.submission.createdAt.toISOString(),
+          },
+          requestType: toStaffRequestTypeRef(row.requestType),
+          requester: {
+            id: row.requester.id,
+            displayName: row.requester.displayName,
+          },
+          organisation: {
+            id: row.organisation.id,
+            name: row.organisation.name,
+          },
+        })),
+        page: result.page,
+        meta: result.meta,
+      },
       200,
     );
   })
-  .openapi(submissionDetailRoute, async (c) =>
-    c.json(
-      await findSubmission(c.req.valid("param").ref, c.get("workspaceId")),
+  .openapi(submissionDetailRoute, async (c) => {
+    const detail = await findSubmission(
+      c.req.valid("param").ref,
+      c.get("workspaceId"),
+    );
+    return c.json(
+      {
+        ref: detail.ref,
+        submission: toStaffSubmission(detail.submission),
+        requestType: toStaffRequestTypeRef(detail.requestType),
+        version: toRequestTypeVersion(detail.version),
+        messages: detail.messages.map(toSubmissionMessage),
+      },
       200,
-    ),
-  )
-  .openapi(claimRoute, async (c) =>
-    c.json(
-      await claimSubmission(
-        c.req.valid("param").ref,
-        c.get("workspaceId"),
-        await triagerPersonId(c),
-      ),
+    );
+  })
+  .openapi(claimRoute, async (c) => {
+    const claimed = await claimSubmission(
+      c.req.valid("param").ref,
+      c.get("workspaceId"),
+      await triagerPersonId(c),
+    );
+    return c.json(
+      {
+        id: claimed.id,
+        ref: claimed.ref,
+        state: claimed.state,
+        claimedBy: claimed.claimedBy,
+        claimedAt: claimed.claimedAt?.toISOString() ?? null,
+      },
       200,
-    ),
-  )
-  .openapi(acceptRoute, async (c) =>
-    c.json(
-      await acceptSubmission(
-        c.req.valid("param").ref,
-        c.get("workspaceId"),
-        await triagerPersonId(c),
-        c.req.valid("json").projectId,
-        c.req.valid("json").workItemTypeId,
-      ),
+    );
+  })
+  .openapi(acceptRoute, async (c) => {
+    const accepted = await acceptSubmission(
+      c.req.valid("param").ref,
+      c.get("workspaceId"),
+      await triagerPersonId(c),
+      c.req.valid("json").projectId,
+      c.req.valid("json").workItemTypeId,
+    );
+    return c.json(
+      {
+        ref: accepted.ref,
+        state: accepted.state,
+        workItem: toSubmissionWorkItem(accepted.workItem),
+      },
       200,
-    ),
-  );
+    );
+  });
 
 const triageActionRouter = apiRouter<IntakeVariables>()
-  .openapi(duplicateRoute, async (c) =>
-    c.json(
-      await markSubmissionDuplicate(
-        c.req.valid("param").ref,
-        c.get("workspaceId"),
-        await triagerPersonId(c),
-        c.req.valid("json").workItemId,
-      ),
+  .openapi(duplicateRoute, async (c) => {
+    const linked = await markSubmissionDuplicate(
+      c.req.valid("param").ref,
+      c.get("workspaceId"),
+      await triagerPersonId(c),
+      c.req.valid("json").workItemId,
+    );
+    return c.json(
+      {
+        ref: linked.ref,
+        state: linked.state,
+        workItem: toSubmissionWorkItem(linked.workItem),
+      },
       200,
-    ),
-  )
+    );
+  })
   .openapi(duplicateSuggestionsRoute, async (c) =>
     c.json(
       {
@@ -1024,29 +1096,41 @@ const triageActionRouter = apiRouter<IntakeVariables>()
       200,
     ),
   )
-  .openapi(declineRoute, async (c) =>
-    c.json(
-      await declineSubmission(
-        c.req.valid("param").ref,
-        c.get("workspaceId"),
-        await triagerPersonId(c),
-        c.req.valid("json").reason,
-      ),
+  .openapi(declineRoute, async (c) => {
+    const declined = await declineSubmission(
+      c.req.valid("param").ref,
+      c.get("workspaceId"),
+      await triagerPersonId(c),
+      c.req.valid("json").reason,
+    );
+    return c.json(
+      {
+        ref: declined.ref,
+        state: declined.state,
+        reason: declined.reason,
+        message: toSubmissionMessage(declined.message),
+      },
       200,
-    ),
-  )
-  .openapi(staffMessageRoute, async (c) =>
-    c.json(
-      await postSubmissionMessage({
-        ref: c.req.valid("param").ref,
-        workspaceId: c.get("workspaceId"),
-        actorId: await triagerPersonId(c),
-        actorType: "triager",
-        body: c.req.valid("json").body,
-      }),
+    );
+  })
+  .openapi(staffMessageRoute, async (c) => {
+    const posted = await postSubmissionMessage({
+      ref: c.req.valid("param").ref,
+      workspaceId: c.get("workspaceId"),
+      actorId: await triagerPersonId(c),
+      actorType: "triager",
+      body: c.req.valid("json").body,
+    });
+    return c.json(
+      {
+        id: posted.id,
+        ref: posted.ref,
+        state: posted.state,
+        message: toSubmissionMessage(posted.message),
+      },
       200,
-    ),
-  );
+    );
+  });
 
 const portalSubmissionRouter = apiRouter<IntakeVariables>().openapi(
   portalListRoute,
@@ -1090,14 +1174,20 @@ const portalMessageRouter = apiRouter<IntakeVariables>().openapi(
   portalMessageRoute,
   async (c) => {
     const identity = await portalIdentity(c.get("userId"));
+    const posted = await postSubmissionMessage({
+      ref: c.req.valid("param").ref,
+      requesterId: identity.personId,
+      actorId: identity.personId,
+      actorType: "customer",
+      body: c.req.valid("json").body,
+    });
     return c.json(
-      await postSubmissionMessage({
-        ref: c.req.valid("param").ref,
-        requesterId: identity.personId,
-        actorId: identity.personId,
-        actorType: "customer",
-        body: c.req.valid("json").body,
-      }),
+      {
+        id: posted.id,
+        ref: posted.ref,
+        state: posted.state,
+        message: toSubmissionMessage(posted.message),
+      },
       200,
     );
   },
