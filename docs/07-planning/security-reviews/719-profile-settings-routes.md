@@ -32,6 +32,7 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 - G11 follow-up: a same-machine A/B (`719-g11-ab-sonnet.md`, private) showed #719's entry-chunk sync cost about 8 ms of work-list LCP. `369b42ed` defers and lazy-loads the sync. Reviewer B then found that a failed chunk load crashed the app, which the conductor fixed in `4291ea0f`.
 - Ordinary delta reviews by the reviewer-B context: REQUEST CHANGES at `369b42ed` (the crash on chunk failure), then APPROVE at `4291ea0f` and at `ae828b6a`.
 - Security rebinds: CLEAR at `4291ea0f`, which raised D1 (the stale active-user window before the deferred mount). D1 was fixed by the conductor's per-user mount count in `ae828b6a` and cleared there.
+- Light security rebind: CLEAR at `9c121598`. It is a clean merge of `main` `28481af5` (#721, accessibility); the tree equals `git merge-tree`, and #719's surface is byte-identical to `ae828b6a`.
 
 **Reviewed head:** `beedd219a6d7634254fc66cf3033bd5ba3f54f7c`
 **Reviewed head:** `7a32a0f337b8a195b0054bbd5516a6c88a9ae1f4`
@@ -41,6 +42,7 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 **Reviewed head:** `65ffd4675f711fab39e3ed334cf1b82758d18858`
 **Reviewed head:** `4291ea0f9465bc55361f480197fd2d39ea5060f3`
 **Reviewed head:** `ae828b6a750f18cabadcd415a57cebecbd0ef2ec`
+**Reviewed head:** `9c1215980199b860bbe92bb750a2e167ea0759f7`
 
 ## Context index
 
@@ -63,6 +65,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 13 | `719-4291-security-rebind-opus.md` | Security rebind (65ffd467..4291ea0f) | Claude Opus 5.5 | `4291ea0f` | CLEAR | `2959e7e46c03535b50d00ba2caccf5b18e827bceeb4a7829874e83bd5030a8d3` |
 | 14 | `719-ae82-security-rebind-opus.md` | Security rebind (4291ea0f..ae828b6a) | Claude Opus 5.5 | `ae828b6a` | CLEAR | `cada8be7ad640c1e5794851083f52a09e8f5161ad05624bce4bb4052cc9b53e6` |
 | 15 | `719-ae82-ordinary-b-sonnet.md` | Ordinary delta review B (4291ea0f..ae828b6a) | Claude Sonnet 5.5 | `ae828b6a` | APPROVE | `17cec66eb80c63fda65d9242ba685941915d2372aa7e534eaa38baab8eb9970c` |
+| 16 | `719-9c12-security-rebind-opus.md` | Security rebind (ae828b6a..9c121598) | Claude Opus 5.5 | `9c121598` | CLEAR | `722f07752f489288d65f01aaafaa86b757a994c0c6f6231467600b107f436e0d` |
 
 ## Embedded reports
 
@@ -1265,3 +1268,91 @@ Mocks only; no real-browser sign-out/sign-in run. Sol security rebind recorded C
 ## Verdict
 APPROVE
 <!-- END REPORT (sha256 17cec66eb80c63fda65d9242ba685941915d2372aa7e534eaa38baab8eb9970c) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-9c12-security-rebind-opus.md; Claude Opus 5.5; sha256 722f07752f489288d65f01aaafaa86b757a994c0c6f6231467600b107f436e0d) -->
+# PR #719 light security rebind (sampled big reviewer, Opus 5.5)
+
+- **Model / context:** Claude Opus 5.5 (`claude-opus-5-5`). This is the same reviewer context as the
+  earlier CLEARs at 569aea44, 49298316, 8bf67c9c, 65ffd467, 4291ea0f and ae828b6a. I did not author,
+  direct or remediate the new commits. I made no edits, pushes, comments or merges.
+- **Reviewed head:** 9c1215980199b860bbe92bb750a2e167ea0759f7
+- **Previous reviewed head:** ae828b6a750f18cabadcd415a57cebecbd0ef2ec (CLEAR)
+- **Merge base:** 28481af5826035d702f705ea599858f27634a84b, the new origin/main after the #721
+  merge.
+- **Remote state:** `git ls-remote` over HTTPS gives these refs:
+  - `refs/heads/main` = 28481af5…;
+  - `refs/pull/719/head` = `refs/heads/codex/user-preference-routes` = 9c121598….
+
+## Commits since ae828b6a
+
+1. **`31679ad4`** (parent ae828b6a), "docs(review): record #719 reviews through ae828b6a". It
+   changes one file, `docs/07-planning/security-reviews/719-profile-settings-routes.md`
+   (+390), and contains no code.
+2. **`9c121598`**, a merge with parents 31679ad4 and 28481af5 (origin/main).
+
+Main moved from 66565b2c to 28481af5 through one first-parent commit, the merge of #721
+(`codex/a11y-names-and-lists`). That merge changes 33 files (+959/-142). None of its paths
+matches density, preference, user-settings or `apps/api`.
+
+## Merge integrity
+
+`git merge-tree --write-tree 31679ad4 28481af5` returns tree
+`704529611a87f5df59a9da81ff0cee1ec0341339`. That is identical to `9c121598^{tree}`. The merge
+is clean and contains no conductor edits.
+
+## #719 surface unchanged since ae828b6a
+
+`git diff --stat ae828b6a 9c121598` restricted to #719's surface is **empty**. The surface
+checked:
+- `apps/api`;
+- `tests/api-integration`, `tests/permissions`, `tests/api-contract`;
+- `use-density-preference.ts` and its test;
+- `deferred-user-preferences-sync.tsx` and its test;
+- `user-preferences-sync.tsx` and its test;
+- `fetchers/user-settings`, `lib/user-preference-sync.ts` and its test;
+- `hooks/mutations/user-settings` and `hooks/queries/user-settings`;
+- `main.tsx`;
+- the settings/account routes;
+- `settings-hierarchy.md` and `views.md`.
+
+The full diff from ae828b6a to 9c121598 has 34 files. They are the #721 files plus the #719
+review note:
+- the a11y e2e spec;
+- header, nav, column-editor and workflow-editor components and their tests;
+- `dashboard/settings/projects.tsx` (a separate route from settings/account);
+- `en-translation.ts`;
+- the i18n locale files and `schema.json`;
+- `packages/ui/src/styles/pairs.json`;
+- the #721 security note.
+
+None of these touches authentication, policies, routes, the settings API, the density write
+queue, the user checks or the deferred sync.
+
+## Runs
+
+This was a light rebind. My own work was the source and tree checks above.
+
+I did not re-run the tests. That relies on two facts:
+- the #719 surface is byte-identical to ae828b6a, where I ran full web vitest (798),
+  typecheck, probes and mutations;
+- at 65ffd467 I ran `check:openapi`, `test:permissions` and the integration suites, and the
+  API side has not changed since.
+
+The conductor reports that check:i18n, check:tokens, typecheck and web vitest (805) pass at this
+head. I did not re-run them. Hosted CI at this head is the authority for them.
+
+## Findings
+
+No blocking findings. No new findings.
+
+The findings from earlier reports carry over unchanged and remain non-blocking:
+- T1: the refcount is pinned only by my probe, not by the PR tests;
+- R2: a cookie switched from another tab can race a queued send;
+- N2: an API key can read layout ids through GET;
+- N4: a non-JSON content type gets 422 rather than 415.
+
+## Verdict
+
+**CLEAR** for 9c1215980199b860bbe92bb750a2e167ea0759f7. This sampled Opus 5.5 review does not
+replace the required GPT-6 Sol security review at this head.
+<!-- END REPORT (sha256 722f07752f489288d65f01aaafaa86b757a994c0c6f6231467600b107f436e0d) -->
