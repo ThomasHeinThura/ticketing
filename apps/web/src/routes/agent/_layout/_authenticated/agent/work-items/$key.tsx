@@ -1,6 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@taskdesk/ui";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
@@ -52,9 +53,23 @@ function WorkItemDetailRouteComponent() {
     });
   };
   const { t } = useTranslation();
+  // Set when a mutation answers 404 (access loss). Scoped to the key it happened on.
+  const [accessLostKey, setAccessLostKey] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const onAccessLost = useCallback(() => {
+    setAccessLostKey(key);
+    // Drop everything cached for this item: returning to the same key must not show the
+    // old row while the refetch is in flight.
+    for (const scope of ["detail", "transitions", "activity"]) {
+      queryClient.removeQueries({ queryKey: ["work-items", scope, key] });
+    }
+  }, [key, queryClient]);
+  useEffect(() => {
+    setAccessLostKey((current) => (current === key ? current : null));
+  }, [key]);
 
   const {
-    data: item,
+    data: cachedItem,
     isLoading,
     isError,
     error,
@@ -65,7 +80,16 @@ function WorkItemDetailRouteComponent() {
   // `require-work-item-reach.ts` makes "not yours" and "not there" indistinguishable on
   // purpose (a guessable `{slug}-{number}` key), so a 404 is shown as one not-found
   // state, not split into "missing" vs "no access".
-  const isNotFound = error instanceof HttpError && error.status === 404;
+  //
+  // Decision log 2026-10-13: a 404 from any work-item MUTATION shows the same state, so
+  // access loss mid-session is not left on a stale page. React Query keeps the last good
+  // `data` next to a later `error`, so everything below reads `item`, which is withheld
+  // once the item is known to be gone: the title, the project lookup and the detail view
+  // must never keep rendering cached data for an item the caller can no longer see.
+  const isNotFound =
+    accessLostKey === key ||
+    (error instanceof HttpError && error.status === 404);
+  const item = isNotFound ? undefined : cachedItem;
   return (
     <>
       <PageTitle title={item?.title ? `${item.title} · ${key}` : key} />
@@ -88,9 +112,9 @@ function WorkItemDetailRouteComponent() {
               workItemKey={key}
               activityFilter={activityFilter ?? "everything"}
               onActivityFilterChange={setActivityFilter}
-              isNotFound={isNotFound}
-              isError={isError && !isNotFound}
+              isError={isError}
               onRetry={refetch}
+              onAccessLost={onAccessLost}
             />
           ) : !isNotFound && !isError ? (
             // The data query is the only reason this screen is waiting. Render
@@ -108,6 +132,7 @@ function WorkItemDetailRouteComponent() {
               isNotFound={isNotFound}
               isError={isError && !isNotFound}
               onRetry={refetch}
+              onAccessLost={onAccessLost}
             />
           )}
         </Suspense>
@@ -121,17 +146,17 @@ function WorkItemDetailWithProject({
   workItemKey,
   activityFilter,
   onActivityFilterChange,
-  isNotFound,
   isError,
   onRetry,
+  onAccessLost,
 }: {
   item: NonNullable<ReturnType<typeof useGetWorkItem>["data"]>;
   workItemKey: string;
   activityFilter: ActivityFilter;
   onActivityFilterChange: (filter: ActivityFilter) => void;
-  isNotFound: boolean;
   isError: boolean;
   onRetry: () => void;
+  onAccessLost: () => void;
 }) {
   const { data: projects } = useGetProjects({ workspaceId: item.workspaceId });
   const project = projects?.find(
@@ -146,9 +171,12 @@ function WorkItemDetailWithProject({
       onActivityFilterChange={onActivityFilterChange}
       project={project ? { name: project.name, slug: project.slug } : undefined}
       isLoading={false}
-      isNotFound={isNotFound}
+      // A known-gone item never reaches here (the route withholds it), so this view is
+      // only ever the ready or the error state.
+      isNotFound={false}
       isError={isError}
       onRetry={onRetry}
+      onAccessLost={onAccessLost}
     />
   );
 }

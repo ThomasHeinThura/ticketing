@@ -116,6 +116,11 @@ Where the actor may only assign themselves, the picker shows a single "Assign to
 action rather than a disabled list of colleagues. Showing people you cannot choose is
 worse than not showing them.
 
+`AS-3` is worded for a member, but the detail page asks for the confirmation on **every**
+reassignment of an item that already has a holder, whatever the actor's capability: a
+second explicit click, which is dropped if the holder changes in the meantime. Taking work
+from someone is the same act for a lead as for a member, and the cost is one click.
+
 ## API
 
 ```

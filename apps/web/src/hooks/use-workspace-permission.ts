@@ -15,6 +15,11 @@ export type PermissionLevel = "owner" | "admin" | "member";
 type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   createPublicComments?: boolean;
   createInternalComments?: boolean;
+  // Strict work_item:transition / work_item:rank, exactly as /api/capabilities returns
+  // them. Optional so an older server fails closed; never inferred from `updateTasks`,
+  // which is a different, broader capability.
+  transitionTasks?: boolean;
+  rankTasks?: boolean;
   // Strict project:create (owner/admin/manager) -- the server rule for listing customer
   // organisations and binding a project to one. Never inferred from `createProjects`, which
   // follows the broader legacy statement (members hold it).
@@ -111,8 +116,10 @@ export function useWorkspacePermission(targetWorkspaceId?: string) {
       canManageServiceCalendars: () => can.manageServiceCalendars,
       canCreatePublicComments: () => can.createPublicComments === true,
       canCreateInternalComments: () => can.createInternalComments === true,
-      canBindProjectOrganisation: () => can.bindProjectOrganisation === true,
+      canTransitionTasks: () => can.transitionTasks === true,
+      canRankTasks: () => can.rankTasks === true,
       canManageProjectSettings: () => can.manageProjectSettings === true,
+      canBindProjectOrganisation: () => can.bindProjectOrganisation === true,
     };
   }, [can]);
 
