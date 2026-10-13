@@ -382,7 +382,7 @@ export default function WorkItemBoard({
   return (
     <div
       ref={boardRef}
-      className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden"
+      className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-3 overflow-hidden"
       data-testid="work-item-board"
       data-primary-content-ready="true"
     >
@@ -536,6 +536,7 @@ function BoardCard({
   const [isChangingState, setIsChangingState] = useState(false);
   const [transitionId, setTransitionId] = useState("");
   const [isMoving, setIsMoving] = useState(false);
+  const changeStateRef = useRef<HTMLButtonElement>(null);
   const transitions = useQuery({
     queryKey: ["work-items", "transitions", item.key],
     queryFn: () => getWorkItemTransitions(item.key),
@@ -551,6 +552,8 @@ function BoardCard({
     setIsMoving(false);
     setTransitionId("");
     if (done) setIsChangingState(false);
+    // The Move button unmounts with the select; keep focus on this card's toggle.
+    changeStateRef.current?.focus();
   }
 
   const draggable = actionable && (canTransition || canRank);
@@ -647,6 +650,7 @@ function BoardCard({
       {actionable && canTransition && (
         <div className="flex flex-col gap-2">
           <Button
+            ref={changeStateRef}
             variant="outline"
             size="sm"
             aria-expanded={isChangingState}

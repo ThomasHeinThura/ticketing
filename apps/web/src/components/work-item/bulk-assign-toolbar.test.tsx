@@ -95,6 +95,16 @@ describe("BulkAssignToolbar", () => {
     expect(screen.getByText("1 work item selected")).toBeInTheDocument();
   });
 
+  it("shows the chosen person's name, not their id, in the trigger", async () => {
+    mount();
+    await chooseAssignee();
+    const trigger = screen.getByRole("combobox", {
+      name: "Assign selected work items to",
+    });
+    expect(trigger).toHaveTextContent("Riley");
+    expect(trigger).not.toHaveTextContent("p1");
+  });
+
   it("cannot apply until an assignee is chosen", () => {
     mount();
     expect(

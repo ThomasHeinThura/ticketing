@@ -351,8 +351,16 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             : t("workItems:list.pageTitle")
         }
       />
-      <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
-        <div className="flex items-center justify-between gap-3">
+      <div
+        className={`flex h-full flex-col gap-4 overflow-y-auto p-6${
+          layout === "board" ? " w-full min-w-0" : ""
+        }`}
+      >
+        <div
+          className={`flex items-center justify-between gap-3${
+            layout === "board" ? " flex-wrap" : ""
+          }`}
+        >
           <h1 className="font-semibold text-lg">
             {project ? project.name : projectKey} ·{" "}
             {t("workItems:list.heading")}

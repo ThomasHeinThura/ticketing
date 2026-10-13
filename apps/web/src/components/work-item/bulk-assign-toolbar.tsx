@@ -54,6 +54,9 @@ export default function BulkAssignToolbar({
   const [assigneeId, setAssigneeId] = useState("");
   const [result, setResult] = useState<BulkResult>();
   const people = useGetAssignablePeople({ projectId, enabled: true });
+  const chosenPerson = people.data?.find(
+    (person) => person.personId === assigneeId,
+  );
   const mutation = useMutation({
     mutationFn: () =>
       bulkAssignWorkItems({
@@ -104,7 +107,11 @@ export default function BulkAssignToolbar({
                   ? t("workItems:bulk.loadingPeople")
                   : t("workItems:bulk.assigneePlaceholder")
               }
-            />
+            >
+              {chosenPerson
+                ? (chosenPerson.name ?? t("workItems:bulk.unnamedPerson"))
+                : undefined}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {people.data?.map((person) => (

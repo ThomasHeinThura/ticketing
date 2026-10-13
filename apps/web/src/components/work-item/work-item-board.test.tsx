@@ -654,6 +654,23 @@ describe("Change state control", () => {
     );
   });
 
+  it("returns focus to the card's Change state button after Move", async () => {
+    getWorkItemTransitions.mockResolvedValue(offers);
+    board({ canTransition: true });
+    await chooseDone();
+    const move = screen.getByRole("button", {
+      name: "Move WLP-1 to the chosen state",
+    });
+    move.focus();
+    fireEvent.click(move);
+    await waitFor(() => expect(transitionWorkItem).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Change state of WLP-1" }),
+      ).toHaveFocus(),
+    );
+  });
+
   it("a drag cannot start while a select transition is in flight", async () => {
     getWorkItemTransitions.mockResolvedValue(offers);
     let finish: (value: unknown) => void = () => {};
