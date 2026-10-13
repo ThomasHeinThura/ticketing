@@ -16,8 +16,10 @@ The reviewers below are fresh, independent contexts that did not author or direc
 
 - Ordinary review by Claude Sonnet 5.5: APPROVE at `4c5013f9`. It forced a real-backend spec to fail after the password fill: the password appears 0 times with the hook and once without it.
 - Security review by Claude Opus 5.5: CLEAR at `4c5013f9`. It inventoried every CI upload path and forced failures in two real-backend specs; the password appeared 0 times in artifacts and stdout. It recommends making the rule structural, tracked in #709.
+- Security rebind by the same Opus context: CLEAR at `46a2afbd`. That commit is a clean merge of `main` `53344c8f` (#696), whose tree equals `git merge-tree`. The guard now covers #696's two persisted specs: 15/15 pass, and removing a hook makes it fail.
 
 **Reviewed head:** `4c5013f931ad1cb4ec807aa2a144c1177b99df2d`
+**Reviewed head:** `46a2afbdba0407d0bcdaad4f229f9fa609af5fed`
 
 ## Context index
 
@@ -27,6 +29,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `707-ordinary-sonnet.md` | Ordinary review (bf23f525..4c5013f9) | Claude Sonnet 5.5 | `4c5013f9` | APPROVE | `b1349dcc34e0034d873bfa69e85965c34cb3a4b98197ba4af2075b7294b417fc` |
 | 2 | `707-security-opus.md` | Security review (bf23f525..4c5013f9) | Claude Opus 5.5 | `4c5013f9` | CLEAR | `e078e2d3fe9e42104686427876e1b2174ec0759ac19b381f5bb6dfff25d1102d` |
+| 3 | `707-46a2-security-rebind-opus.md` | Security rebind (4c5013f9..46a2afbd) | Claude Opus 5.5 | `46a2afbd` | CLEAR | `8627404e886c12773da167c03c25f79bd3d1bb0a8be9678d13e8c9fe7bd8bfa8` |
 
 ## Embedded reports
 
@@ -222,3 +225,59 @@ I ran gitleaks 8.30.1 `detect --no-git` on a copy of this report in its own dire
 ## Verdict
 CLEAR
 <!-- END REPORT (sha256 e078e2d3fe9e42104686427876e1b2174ec0759ac19b381f5bb6dfff25d1102d) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-13/707-46a2-security-rebind-opus.md; Claude Opus 5.5; sha256 8627404e886c12773da167c03c25f79bd3d1bb0a8be9678d13e8c9fe7bd8bfa8) -->
+# PR #707 security re-review at new exact head (rebind)
+
+Model: Claude Opus 5.5 (claude-opus-5-5). This is the same independent security-review context that recorded CLEAR at 4c5013f9 (707-security-opus.md). I did not author, direct or remediate the change. I did not edit, push, comment on or merge the branch.
+
+**Reviewed head:** 46a2afbdba0407d0bcdaad4f229f9fa609af5fed
+**Base:** origin/main 53344c8fb9ab815e9229ce39b5d4f932996d0e60 (Merge PR #696). It is the second parent of the head, so the merge base equals main.
+**Prior CLEAR:** 4c5013f931ad1cb4ec807aa2a144c1177b99df2d
+
+## Head and main
+- `git ls-remote https://github.com/ThomasHeinThura/ticketing` gives `refs/pull/707/head` = 46a2afbd… and `refs/heads/main` = 53344c8f… I checked this at the start and again at the end. **Main is still 53344c8f.**
+- The commits after the prior CLEAR are:
+  - 15ca4a10, parent 4c5013f9. It adds only docs/07-planning/security-reviews/707-e2e-real-backend-redaction.md (+224).
+  - 46a2afbd, parents 15ca4a10 and 53344c8f: "Merge origin/main into codex/e2e-real-backend-redaction".
+
+## Merge-tree check
+- `git rev-parse 46a2afbd^{tree}` = a0628ca655477050997b669a3d5b255ec7eb96c4.
+- `git merge-tree --write-tree 15ca4a10 53344c8f` = a0628ca655477050997b669a3d5b255ec7eb96c4.
+- **They are identical.** The merge is clean, with no hand edits.
+- I compared `git diff 53344c8f 46a2afbd` (excluding the review note) with `git diff bf23f525 4c5013f9` using `cmp`. They are **byte-identical**. The PR's code delta against the new main is exactly the delta I cleared.
+
+## What main brought into e2e (bf23f525..53344c8f)
+- Added apps/web/e2e/service-calendar-persisted.spec.ts and sla-policy-persisted.spec.ts. Both are real-backend: they import `withMfaCsrfApp` and fill the fixture password on sign-up.
+  - Both carry file-level `test.use({ trace: "off", video: "off", screenshot: "off" })`.
+  - Both carry `test.afterEach(({ page: _page }, testInfo) => { redactSecretErrorContext(testInfo); })`.
+- Added apps/web/e2e/service-calendar.spec.ts and sla-policy.spec.ts. Both are mocked: every API call is served by `page.route`, there is no fixture import and no credential fill. Correctly unguarded.
+- visual.spec.ts, visual-screens.json and four snapshot PNGs: visual baselines only. No credential or fixture use was added.
+- There were no changes to Playwright configs, workflows or package scripts, so the upload-path inventory in 707-security-opus.md is unchanged.
+
+## Tests run
+I worked in scratch worktree /Users/heinthura/.codex/worktrees/review-707-sec-46a2, detached at 46a2afbd. It was removed afterwards, and the review worktree is clean.
+- `pnpm install --frozen-lockfile`: ok.
+- Guard test, `vitest run --config vitest.config.ts src/test/e2e-secret-redaction.test.ts`: **1 file, 15 tests passed**, up from 13 at 4c5013f9.
+  - The two new `it.each` rows are **apps/web/e2e/service-calendar-persisted.spec.ts** and **apps/web/e2e/sla-policy-persisted.spec.ts**. Both pass.
+- Negative control: I replaced the `redactSecretErrorContext(testInfo)` call in service-calendar-persisted.spec.ts with a no-op. The guard **failed** on that row, so it is non-vacuous for the new spec. I restored the file.
+- `playwright test --config playwright.config.ts --list`: **47 tests in 17 files**. All 17 are `*.spec.ts`, so finding S1 from the prior report (non-spec filenames escaping the guard) is not triggered by anything on main.
+- Inventory: every file under apps/web/e2e and tests/e2e that references `mfa-csrf-app-fixture`, `withMfaCsrfApp` or `approval-runtime` is one of the 13 guarded specs or a helper/tsconfig. These are the 6 web specs (instance-users-journey, mfa-csrf-journey, realtime, work-item-comments-journey, service-calendar-persisted, sla-policy-persisted) and the 7 tests/e2e specs. **No real-backend spec on main escapes the guard.**
+- I ran no live browser or Testcontainers this round. The redaction mechanism and hook are unchanged from the prior head, where two forced-failure runs showed 0 password hits with the hook and 1 hit without it. The new persisted specs use the same helper; their `page`-fixture hook form matches the work-item-comments run already verified.
+- Docker: no containers were created in this round.
+
+## Findings
+### Blocking
+None.
+
+### Non-blocking
+The prior report's S1-S5 are unchanged and still recommended for the structural follow-up. S3, the `statusText` response-body message channel in tests/e2e/users-primary-journey.spec.ts:87-89, remains the item to close under #689.
+
+The merge resolves S6 from the prior report: the #696 persisted specs are now present and guarded.
+
+## Secret scan
+I ran gitleaks 8.30.1 `detect --no-git` on a copy of this report in its own directory. Result: 0 findings ("no leaks found").
+
+## Verdict
+CLEAR
+<!-- END REPORT (sha256 8627404e886c12773da167c03c25f79bd3d1bb0a8be9678d13e8c9fe7bd8bfa8) -->
