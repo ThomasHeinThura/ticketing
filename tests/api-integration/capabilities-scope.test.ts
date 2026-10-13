@@ -210,6 +210,41 @@ describe("GET /api/capabilities", () => {
     },
   );
 
+  it("reports the customer role's strict flags exactly: rankTasks true (own backlog), transition and settings false", async () => {
+    // rbac.md's role table (line 408) gives `customer` `work_item:rank`, and § "The customer
+    // role is special" (line 452) limits it to re-ranking "their own" backlog; that limit
+    // is reach at the work-item route, not part of the capability. The role holds neither
+    // `work_item:transition` nor `project:manage_settings`. The flag reports the role's
+    // capability, so rankTasks is true here.
+    const customer = await createWorkspaceMember({ role: "customer" });
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: customer.workspace.id,
+      role: "customer",
+      permission: JSON.stringify({}),
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    mockAuthenticatedSession(customer.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/capabilities?workspaceId=${customer.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+    const caps = (await response.json()) as Record<string, unknown>;
+    expect({
+      transitionTasks: caps.transitionTasks,
+      rankTasks: caps.rankTasks,
+      manageProjectSettings: caps.manageProjectSettings,
+    }).toEqual({
+      transitionTasks: false,
+      rankTasks: true,
+      manageProjectSettings: false,
+    });
+  });
+
   it("never derives the strict flags from a legacy permission map that claims more (#708)", async () => {
     // A viewer whose stored legacy statements claim transition/rank/manage_settings.
     // The canonical built-in `viewer` role holds none of the three, so all stay false.
