@@ -865,6 +865,8 @@
 			"descriptionLabel": "विवरण",
 			"descriptionHint": "आपके प्रोजेक्ट का संक्षिप्त विवरण",
 			"descriptionPlaceholder": "प्रोजेक्ट विवरण दर्ज करें",
+			"defaultCommentVisibilityLabel": "टिप्पणी की डिफ़ॉल्ट दृश्यता",
+			"defaultCommentVisibilityHint": "नई टिप्पणी डिफ़ॉल्ट रूप से कौन देख सकता है। संपादक इसी विकल्प से शुरू होता है; कर्मचारी प्रत्येक टिप्पणी के लिए इसे बदल सकते हैं।",
 			"dangerZone": "खतरनाक ज़ोन",
 			"dangerZoneSubtitle": "अपरिवर्तनीय और विनाशकारी कार्रवाइयाँ।",
 			"deleteProject": "प्रोजेक्ट हटाएँ",

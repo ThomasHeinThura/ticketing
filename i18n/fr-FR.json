@@ -703,6 +703,8 @@
 			"descriptionLabel": "Description",
 			"descriptionHint": "Une brève description de votre projet",
 			"descriptionPlaceholder": "Entrez la description du projet",
+			"defaultCommentVisibilityLabel": "Visibilité par défaut des commentaires",
+			"defaultCommentVisibilityHint": "Qui peut voir un nouveau commentaire par défaut. L'éditeur démarre sur ce choix ; le personnel peut le modifier pour chaque commentaire.",
 			"dangerZone": "Zone dangereuse",
 			"dangerZoneSubtitle": "Actions irréversibles et destructrices.",
 			"deleteProject": "Supprimer le projet",

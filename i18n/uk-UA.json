@@ -703,6 +703,8 @@
 			"descriptionLabel": "Опис",
 			"descriptionHint": "Короткий опис вашого проєкту",
 			"descriptionPlaceholder": "Введіть опис проєкту",
+			"defaultCommentVisibilityLabel": "Видимість коментарів за замовчуванням",
+			"defaultCommentVisibilityHint": "Хто за замовчуванням бачить новий коментар. Редактор починається з цього вибору; співробітники можуть змінити його для кожного коментаря.",
 			"dangerZone": "Небезпечна зона",
 			"dangerZoneSubtitle": "Незворотні та руйнівні дії.",
 			"deleteProject": "Видалити проєкт",

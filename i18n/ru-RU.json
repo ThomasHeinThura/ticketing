@@ -703,6 +703,8 @@
 			"descriptionLabel": "Описание",
 			"descriptionHint": "Краткое описание вашего проекта",
 			"descriptionPlaceholder": "Введите описание проекта",
+			"defaultCommentVisibilityLabel": "Видимость комментариев по умолчанию",
+			"defaultCommentVisibilityHint": "Кто по умолчанию видит новый комментарий. Редактор начинается с этого выбора; сотрудники могут изменить его для каждого комментария.",
 			"dangerZone": "Опасная зона",
 			"dangerZoneSubtitle": "Необратимые и деструктивные действия.",
 			"deleteProject": "Удалить проект",

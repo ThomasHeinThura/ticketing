@@ -25,6 +25,10 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   // organisations and binding a project to one. Never inferred from `createProjects`, which
   // follows the broader legacy statement (members hold it).
   bindProjectOrganisation?: boolean;
+  // Strict project:manage_settings (owner/admin/manager) -- gates project-level settings such
+  // as CA-2's default comment visibility. Never inferred from `manageProjects`/`updateProjects`,
+  // which follow the broader legacy statement (#708).
+  manageProjectSettings?: boolean;
 };
 
 // Mirrors apps/api/src/capabilities/response.ts's capabilitiesResponseSchema

@@ -864,6 +864,8 @@
 			"descriptionLabel": "描述",
 			"descriptionHint": "项目的简要描述",
 			"descriptionPlaceholder": "输入项目描述",
+			"defaultCommentVisibilityLabel": "默认评论可见性",
+			"defaultCommentVisibilityHint": "新评论默认对谁可见。编辑器以此选项开始;员工仍可针对每条评论更改。",
 			"dangerZone": "危险操作",
 			"dangerZoneSubtitle": "不可逆的破坏性操作。",
 			"deleteProject": "删除项目",

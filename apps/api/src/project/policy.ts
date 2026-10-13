@@ -128,6 +128,10 @@ export const projectPolicies = {
   // `workspaceAccess.fromProject()` reads the project row for its workspaceId, and
   // `requireWorkspacePermission({ project: ["update"] })` runs after -- an exact match for
   // `project:update`.
+  // CA-2: the body may also carry `defaultCommentVisibility`. That field alone has an extra
+  // handler-level STRICT `project:manage_settings` check (+ API-key scope) after body
+  // validation -- route middleware runs before validators, so it cannot be declared here.
+  // The declared capability stays the baseline every caller of this route needs.
   "PUT /api/project/{id}": {
     capability: "project:update",
     scope: "project",

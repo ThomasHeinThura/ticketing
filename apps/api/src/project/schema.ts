@@ -1,5 +1,6 @@
 import { z } from "../openapi";
 import { ALLOWED_URL_PROTOCOLS } from "../utils/assert-public-destination";
+import { commentVisibility } from "../work-item/comment-schema";
 import {
   MAX_WORK_ITEM_INSTANT_MS,
   MIN_WORK_ITEM_INSTANT_MS,
@@ -267,6 +268,12 @@ export const updateProjectBody = z.object({
   kind: z.enum(["project", "managed_service"]).optional(),
   supportLevel: z.enum(["L1", "L2", "L3"]).nullable().optional(),
   serviceCalendarId: nulSafeId.nullable().optional(),
+  defaultCommentVisibility: commentVisibility.optional().openapi({
+    description:
+      "CA-2: the visibility the comment composer starts on for this project. Omit to " +
+      "leave it unchanged. Sending the field requires the strict project:manage_settings " +
+      "capability (and the matching API-key scope), not just project:update.",
+  }),
 });
 
 export const updateProjectHealthBody = z.object({
