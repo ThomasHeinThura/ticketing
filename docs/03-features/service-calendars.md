@@ -173,7 +173,7 @@ repeats every year (`CAL-12`).
 | --- | --- |
 | Read | `sla_policy:read` |
 | Create, edit | `sla_policy:manage` |
-| Delete | Unavailable until pending-action approval (`PA-1`–`PA-15`) is implemented |
+| Delete | `sla_policy:manage`, as a pending-action request only (`PA-1`–`PA-15`); never a direct delete |
 
 Deliberately reused rather than a `service_calendar:*` capability of its own: a calendar
 has no independent lifecycle outside the SLA policies that reference it. The feature flag
@@ -182,17 +182,22 @@ meaningless with SLA turned off.
 
 ## Screens
 
-**Calendar list** — name, timezone, and weekly cover total. It will also show how many
-policies and projects use each calendar once the usage API is available. The current list
-and editor screens are implemented; reference counts and safe deletion remain unavailable.
+**Calendar list** — name, timezone, weekly cover total and holiday count, with cursor
+paging. The list does not show reference counts: `/usage` is per calendar and there is no
+batched usage read, so counts appear in the editor instead. The list and editor screens are
+implemented at `/agent/settings/calendars` and `/agent/settings/calendars/{id}`.
 
 **Calendar editor** — a week grid with draggable window blocks, a timezone selector, and a
 holiday list with a year picker and bounded iCalendar file selection, event-name preview and
 explicit import confirmation. Beside it, a server-calculated preview for the selected year.
 The coverage preview currently reflects the last saved settings; saving is required before it
 reflects editor changes. Changing an existing calendar's timezone opens a confirmation
-warning. The affected-item count is not shown because `/usage` is still blocked by #437 and
-the selected SLA-authoring slice does not define project or work-item policy binding.
+warning that shows the live `/usage` reference counts (informational per `CAL-8`; if they
+cannot be loaded the warning says so and confirmation remains available). A usage card
+reports project, current-policy, retained-policy-version and work-item reference counts. Its
+"Request deletion" action is available to `sla_policy:manage`, is disabled while any
+reference exists (`CAL-9`), and when allowed creates the pending action and opens its
+browser approval page; the calendar is not deleted until that approval.
 
 The preview matters. Without it, an administrator cannot tell whether they have configured
 what they meant, and calendar mistakes are silent and expensive.
@@ -242,7 +247,8 @@ this slice:
 
 This slice also does not seed workspace calendars with named presets or implement calendar
 cloning. The calendar list/editor UI covers manual calendar creation, editing, saved-settings
-coverage preview and bounded file import with confirmation. Issue #33 remains open for
+coverage preview, bounded file import with confirmation, live usage counts and the
+pending-action deletion request. Issue #33 remains open for
 presets, cloning, country holidays, and remaining CAL behavior and acceptance tests. No
 Follow the sun window pattern is defined or inferred here.
 
@@ -256,7 +262,7 @@ Follow the sun window pattern is defined or inferred here.
 
 The API codebase has no runtime feature-flag enforcement helper or persisted flag lookup
 for `feature.sla` yet, so this route slice does not add a second, ad-hoc flag mechanism.
-Deletion is withheld until the pending-action API exists; no direct-delete route is
+Deletion goes through the pending-action request described above; no direct-delete route is
 exposed.
 
 ## Edge cases
@@ -267,7 +273,7 @@ exposed.
 | Holiday falling on a day with no windows anyway | No effect. Allowed |
 | Overlapping holiday ranges | Merged |
 | Window of zero length | Rejected |
-| Calendar timezone changed | Recomputes everything. Requires explicit confirmation; affected-item count stays outstanding until `/usage` exists |
+| Calendar timezone changed | Recomputes everything. Requires explicit confirmation; the confirmation shows the live `/usage` reference counts |
 | Leap second | Ignored. Not modelled |
 | Country preset for a country with regional holidays | Presets are national only. Regional holidays are added manually |
 
