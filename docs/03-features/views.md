@@ -63,24 +63,22 @@ model is `user_preference` (`person_id`, `scope`, `scope_id`, `key`, `value json
 [data model](../01-architecture/data-model.md)); no new table is needed.
 
 The contract is that these preferences persist in `user_preference`, so they follow the
-person across devices and browsers. `VW-6` now does, and `VW-2` has its server route and key,
-through the self-scoped preference routes specified under [Preference routes](#preference-routes).
-The other route that touches the table is `POST /api/views/{id}/pin` (`SV-20`).
+person across devices and browsers. The routes, key mapping, whitelist, policy and limits are
+specified in [settings-hierarchy.md](settings-hierarchy.md#profile-settings-routes)
+(`GET`/`PATCH /api/me/settings`, `ST-12`–`ST-17`); this section does not repeat them.
 
-- `VW-2` is stored server-side as `project.layout` (`board` or `list` in P1) per person per
-  project. The browser keeps a `localStorage` copy, `taskdesk:project-layout:<userId>:<projectId>`,
-  only as a first-paint cache, and an existing value there is written to the server once, then
-  marked migrated. The URL layout still always overrides the stored value. The web read/write of
-  that layout (`apps/web/src/lib/project-layout-preference.ts`, PR #688) is not on `main` yet.
-  When it lands it must use the route rather than `localStorage` alone.
-- `VW-6` is stored server-side as `appearance.density` (`comfortable` or `compact`), one value per
-  person, not per project. The `user-preferences` store's `compactMode` flag is the first-paint
-  cache. After sign-in the server value replaces it, and a non-default local value that the server
-  does not have is written up once.
+- `VW-2` is the settings key `layout.<projectId>` (`board` or `list` in P1). The route exists on
+  `main`, but the web read/write of the layout
+  (`apps/web/src/lib/project-layout-preference.ts`, PR #688) is **not on `main` yet**. When it
+  lands it must read and write through the route, keep `localStorage` only as a first-paint
+  cache, write an existing local value to the server once, and still let the URL layout win.
+- `VW-6` is the settings key `density` (`comfortable` or `compact`), one value per person, not
+  per project, and is persisted server-side. The `user-preferences` store's `compactMode` flag
+  is the first-paint cache.
 - If the server is unreachable or rejects a read or write, the cache keeps working and the next
-  successful write or read reconciles it. The UI never blocks on the preference route.
-- `VW-15`, `VW-19` and `VW-21` are not implemented on `main`. They still need keys added to the
-  whitelist below, each with its own value schema, before they can persist.
+  load reconciles it. The UI never blocks on the route.
+- `VW-15`, `VW-19` and `VW-21` are not implemented on `main`. Each needs a key and value schema
+  added to the whitelist in settings-hierarchy.md before it can persist.
 
 **Board**
 
@@ -216,9 +214,10 @@ and Timeline are P5.
 
 ## API
 
-Views add no routes of their own beyond export and the two self-scoped preference routes below.
-Layout and density are presentational and reach the server only as per-user preferences; the
-table's chosen columns determine which fields are requested.
+Views add no routes of their own beyond export. Layout and density are presentational and reach
+the server only as per-user settings through `GET`/`PATCH /api/me/settings`
+([settings-hierarchy.md](settings-hierarchy.md#profile-settings-routes)); the table's chosen
+columns determine which fields are requested.
 
 | Route | Policy | Used for |
 | --- | --- | --- |
@@ -230,10 +229,8 @@ table's chosen columns determine which fields are requested.
 | `POST /api/work-items/bulk` | `work_item:read` at the route, per-operation capability inside | `VW-3` |
 | `POST /api/work-items/export` | `work_item:export`, audited `work_item.exported` | `VW-23` — **not implemented; see Open questions** |
 
-No route persists layout, density, column or width choices yet. They are browser-local for now,
-an interim state short of the `user_preference` contract (see
-[Per-user preferences](#per-user-preferences)). Saving a view uses the routes in
-[search and saved views](search-and-saved-views.md).
+Layout and density use `/api/me/settings` (see above); column and width choices have no route yet.
+Saving a view uses the routes in [search and saved views](search-and-saved-views.md).
 
 ## Edge cases
 
@@ -264,7 +261,7 @@ Unit:
 - `VW-2` "isolates the remembered layout by user and project" and "ignores invalid and
   unavailable storage values" — `project-layout-preference.test.ts` (PR #688); the URL layout
   beating the remembered one is in the board route test below.
-- `VW-6` / `PREF-8` "migrates an existing local compact value to the server exactly once",
+- `VW-6` / `ST-17` "migrates an existing local compact value to the server exactly once",
   "adopts the server value over the local cache", "keeps the local cache and writes nothing
   when the server read fails" and "keeps a failed local change dirty and pushes it instead of
   the stale server value" — `apps/web/src/hooks/use-density-preference.test.tsx`;
@@ -285,8 +282,8 @@ Integration:
 
 - `VW-1`/`VW-31` search returns only items within reach, and an unavailable field is `422` —
   `tests/api-integration/work-item-structured-search.test.ts`.
-- `PREF-1`..`PREF-7` self-only rows, project reach `404`, whitelist and schema `422`, API-key
-  `403 session_required`, upsert idempotence, `413` and row-limit — `tests/api-integration/user-preference.test.ts`.
+- `ST-12`–`ST-16` self-only rows, layout reach `404`, whitelist and schema `422`, API-key
+  `403 session_required`, upsert idempotence, `413` and row limit — `tests/api-integration/user-preference.test.ts`.
 - `VW-9` "an illegal drag-transition is refused with a reason" —
   `tests/api-integration/work-item-transition.test.ts` ("409s when no transition matches the
   requested target from the current state", "GET /transitions returns only the legal edge,

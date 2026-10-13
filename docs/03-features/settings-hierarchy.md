@@ -98,7 +98,7 @@ Everything that varies between *people*. Stored in `user_preference`.
 | Screen | Owns |
 | --- | --- |
 | General | Name, avatar, job title, locale, timezone |
-| Appearance | Theme, density, sidebar behaviour, default layouts — the keys `theme`, `density`, `sidebar`, `layout.<projectId>` |
+| Appearance | Theme, density, sidebar behaviour, default layouts — the keys `theme`, `density`, `sidebar`, `layout.<projectId>`. Routes, row mapping and which keys are live: [Profile settings routes](#profile-settings-routes) |
 | Notifications | Per-event, per-channel, per-workspace/project preferences, digest, quiet hours |
 | Security | Password, MFA, passkeys, active sessions |
 | API keys | Personal keys and agent configuration |
@@ -164,13 +164,57 @@ GET/PATCH /api/workspaces/{id}/features                workspace:manage_settings
 DELETE    /api/workspaces/{id}                         workspace:delete  E            workspace — the danger zone; → 202 pending action (typed exact name + step-up), refused while the workspace has active projects ([pending-actions.md](../01-architecture/pending-actions.md))
 GET/PATCH /api/projects/{projectId}/settings           project:manage_settings        project
 GET/PATCH /api/projects/{projectId}/features           project:manage_settings        project
-GET/PATCH /api/me/settings                             self (kind 2 — the caller's own `user_preference` rows)
+GET/PATCH /api/me/settings                             self (kind 2 — the caller's own `user_preference` rows); PATCH is session-only — [Profile settings routes](#profile-settings-routes)
 GET       /api/features/resolved?project=…             project:read, scope: project, reach: required (kind 1) — resolved for the caller's reach
 GET       /api/audit?entity_type=&entity_id=           the entity's read capability (kind 1, chosen by `entity_type` from the registry)
 ```
 
 `GET /features/resolved` returns the fully resolved flag set for a context, so the client
 never re-implements the resolution order.
+
+### Profile settings routes
+
+`GET /api/me/settings` and `PATCH /api/me/settings` are the Profile level's routes over
+`user_preference`. This section owns the contract; [views.md](views.md#per-user-preferences) points
+here for `VW-2` (layout) and `VW-6` (density).
+
+- `ST-12` **Self only, session-only writes.** Policy `authenticated + self` (kind 2). Every
+  read and write is keyed on the authenticated caller's `person_id`, never on a client-supplied
+  id; there is no route to read or write another person's settings. `PATCH` refuses an API key,
+  an MCP key or an impersonation session with `403 session_required` before validation, per the
+  2026-10-06 decision to keep self-only personal writes session-only until explicit API-key
+  scopes exist. `GET` reads only the caller's own rows and is open to keys.
+- `ST-13` **Shape.** Both routes carry a flat object keyed by settings key. `GET` returns
+  `{ "settings": { "density": "compact", "layout.<projectId>": "list" } }` containing only keys
+  that are set, whitelisted, still valid and reachable. `PATCH` takes a partial object of the same
+  keys, for example `{ "density": "compact", "layout.<projectId>": "list" }`, validates every key
+  before writing any, applies them in one transaction and returns the same body as `GET`. A key
+  set to `null` clears that row. An empty object, or more than 20 keys, is `422`.
+- `ST-14` **Closed whitelist, per-key value schema, row mapping.** Anything else is `422`. Each
+  settings key is one `user_preference` row ([data model](../01-architecture/data-model.md)):
+
+  | Settings key | `scope` | `scope_id` | `key` | Value |
+  | --- | --- | --- | --- | --- |
+  | `density` | `global` | null | `density` | `"comfortable"` or `"compact"` |
+  | `layout.<projectId>` | `project` | the project id | `layout` | `"board"` or `"list"` |
+
+  `theme` and `sidebar` are named in the Profile table above but have no specified value
+  domain yet, so they are **not** whitelisted and a write of either is `422`. They are added by
+  specifying the domain here first. Writes are upserts on the table's unique indexes, so
+  repeating a request is idempotent.
+- `ST-15` **Reach.** A `layout.<projectId>` key, on read or write, requires the caller to reach
+  that project. A `PATCH` naming an unreachable, missing or soft-deleted project is `404` and
+  writes nothing, so reach cannot be probed. `GET` omits layouts for projects the caller can no
+  longer reach; their rows stay inert. No setting is ever written for a project the person
+  cannot reach.
+- `ST-16` **Size limits.** The request body is at most 4 KiB (`413` above that), a project id
+  at most 128 characters, and a person holds at most 500 stored settings rows (`422
+  settings_limit` when a request would create one more; replacing an existing row is always
+  allowed).
+- `ST-17` **Client cache.** The web client keeps a browser copy for first paint and as the
+  offline fallback, and the server value wins once fetched. A local-only value the server does
+  not have is written once, then marked migrated. The copy is attributed to the user who wrote
+  it, so one person's local value is never uploaded for another person on a shared browser.
 
 ## Edge cases
 
@@ -193,7 +237,8 @@ never re-implements the resolution order.
 `flag-resolution.spec.ts` (`ST-1`, `ST-2`), `locked-flag-cannot-be-overridden.spec.ts`
 (`ST-2`), `inheritance-indicator.spec.ts` (`ST-3`, `ST-4`), `settings-history.spec.ts`
 (`ST-6`), `dry-run-blast-radius.spec.ts` (`ST-7`), `project-move-refuses-unmapped.spec.ts`
-(`ST-10`). Integration: each settings route requires its capability; a locked instance flag
+(`ST-10`). `tests/api-integration/user-preference.test.ts` (`ST-12`–`ST-16`);
+`apps/web/src/hooks/use-density-preference.test.tsx` (`ST-17`). Integration: each settings route requires its capability; a locked instance flag
 cannot be overridden through a crafted request.
 
 ## Open questions
