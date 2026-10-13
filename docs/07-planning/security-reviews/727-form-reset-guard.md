@@ -14,8 +14,10 @@ A Claude Sonnet 5.5 lane implemented the change. The conductor (Claude Opus 5.5)
 - Ordinary review A by Claude Sonnet 5.5: APPROVE at `d827f9af`, with e2e and guard mutations. It noted two guard gaps, which were closed at `e5c1423a`.
 - Ordinary delta review by Claude Sonnet 5.5: APPROVE at `e5c1423a`, with three guard mutations.
 - Security review by Claude Opus 5.5: CLEAR at `e5c1423a`. Diff scope, e2e isolation, secrets and the auth-redirect spec were run together.
+- Mechanical security rebind at `eaacaba2`: CLEAR. This head merges `main` `417944ca` (#726). Its tree equals the merge-tree of `dc480271` with `417944ca`, the changed files are exactly #726's, and there is no interaction with this PR's paths.
 
 **Reviewed head:** `e5c1423a446a98d88f0388a1c741ce06feb0c40d`
+**Reviewed head:** `eaacaba27e0372e9e4d18903af99cf39985f470e`
 
 ## Context index
 
@@ -26,6 +28,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 1 | `727-ordinary-a-sonnet.md` | Ordinary review A (28481af5..d827f9af) | Claude Sonnet 5.5 | `d827f9af` | APPROVE | `57ae068b637a8ba30acce426547d29820bff5cb6134c507e97ea110b48c5820d` |
 | 2 | `727-e5c1-ordinary-delta-sonnet.md` | Ordinary delta review (d827f9af..e5c1423a) | Claude Sonnet 5.5 | `e5c1423a` | APPROVE | `410c92d0cf8f6a5765dc30c373b9f5ae517874f0a1453edf0c5596e08b391cc5` |
 | 3 | `727-security-opus.md` | Security review (28481af5..e5c1423a) | Claude Opus 5.5 | `e5c1423a` | CLEAR | `92ecf47356b9c232f937797708260de9ae42b23511c0a7dbec4aaa3a5052cd0f` |
+| 4 | `727-eaac-security-rebind-opus.md` | Mechanical security rebind (dc480271..eaacaba2) | Claude Opus 5.5 | `eaacaba2` | CLEAR | `002820ec4535c9395eda9fd4299e184683fe84ba25de70e66d320d910f74dd33` |
 
 ## Embedded reports
 
@@ -195,3 +198,66 @@ No Docker was used.
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 92ecf47356b9c232f937797708260de9ae42b23511c0a7dbec4aaa3a5052cd0f) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/727-eaac-security-rebind-opus.md; Claude Opus 5.5; sha256 002820ec4535c9395eda9fd4299e184683fe84ba25de70e66d320d910f74dd33) -->
+# PR #727 — security exact-head rebind (mechanical merge of main #726)
+
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This is a fresh, independent context. I did not author, direct or remediate #727 or #726.
+**Reviewed head:** eaacaba27e0372e9e4d18903af99cf39985f470e
+**Prior CLEAR head:** dc48027125443885f6e6b66f2bd7a480c013ca71 (e5c1423a, CLEAR, plus the review-note commit)
+**Main merged in:** 417944ca57844d02de1590fbed82633a476f4665 (merge of #726; first parent 28481af5)
+**Method:** read-only. A blobless bare clone in the scratchpad. No worktree was modified. No test suites were run, and no Docker was used.
+
+## Commands and outputs
+
+```
+$ git ls-remote origin refs/heads/main refs/pull/727/head        (at the start and again at the end)
+417944ca57844d02de1590fbed82633a476f4665  refs/heads/main
+eaacaba27e0372e9e4d18903af99cf39985f470e  refs/pull/727/head
+$ gh pr view 727 --json headRefOid  -> eaacaba27e0372e9e4d18903af99cf39985f470e (codex/forms-reset-keep-fields-ref)
+
+$ git rev-list --parents -n1 eaacaba2
+eaacaba27e0372e9e4d18903af99cf39985f470e dc48027125443885f6e6b66f2bd7a480c013ca71 417944ca57844d02de1590fbed82633a476f4665
+
+$ git rev-parse eaacaba2^{tree}                      -> 282adb544589e8e8a5854536eb47a7ee4f737e16
+$ git merge-tree --write-tree dc480271 417944ca     -> 282adb544589e8e8a5854536eb47a7ee4f737e16   (identical)
+
+$ git merge-base dc480271 417944ca                  -> 28481af5826035d702f705ea599858f27634a84b
+$ git diff --name-only dc480271 eaacaba2  vs  git diff --name-only 28481af5 417944ca
+35 files each; diff of the two lists is empty -> IDENTICAL
+
+$ git diff --name-only 417944ca...eaacaba2   (#727's own files)
+apps/web/e2e/settings-forms-direct-load.spec.ts
+apps/web/src/test/form-reset-guard.test.ts
+docs/07-planning/security-reviews/727-form-reset-guard.md
+-> no path overlap with #726
+```
+
+## Interaction review: #726 against #727's two test files
+
+1. **`apps/web/src/test/form-reset-guard.test.ts`** scans every non-test `.ts`/`.tsx` file under `apps/web/src` for `register(`, and requires that set to equal its allowlist.
+   - I grepped #726's web files at the new head. None of them contains `register(`.
+   - `general.tsx` contains `useForm` and two `.reset(` calls, but both existed before #726 and the page uses no `register(`.
+   - The #726 diff of `general.tsx` and `default-comment-visibility-setting.tsx` adds no `register`, `reset`, `useForm`, `Controller` or `FormField` line.
+   - The guard's input set is therefore unchanged from the CLEARed head.
+2. **`apps/web/e2e/settings-forms-direct-load.spec.ts`** ("project general" case). #726 adds `<DefaultCommentVisibilitySetting>` to that page, below the `<Form>`.
+   - The component returns `null` unless `canManageProjectSettings()` is true, and that reads the new optional `manageProjectSettings` capability.
+   - The spec's mocked `/api/capabilities` does not set `manageProjectSettings`, so the component renders nothing in the spec.
+   - The asserted `name`, `slug` and `description` inputs are unaffected.
+   - The component only reads `project?.…` after that gate, so the mocked data cannot cause a render crash.
+
+## Hosted CI at eaacaba2 (observed; this is not a substitute for the gate)
+- 18 checks SUCCESS.
+- Integration, visual regression and the performance budgets were IN_PROGRESS.
+- `pull request template + security review` was FAILURE. I expect that to be the exact-head review-note check: it should clear once a note recording this head is committed. The orchestrator must confirm every required check is green at the final head before merging.
+
+## Findings
+- Blocking: none.
+- Non-blocking: none.
+
+## Residual risk / not checked
+- I ran no tests, by instruction. A whole-tree `git grep` at the head failed on a network fetch (blobless clone). The `register(` conclusion therefore rests on two facts: the guard passed at the prior CLEARed tree, and the #726 delta adds no `register(`. Hosted CI at the head is the gate.
+- If a later review-note commit changes the head, a new exact-head confirmation is needed.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 002820ec4535c9395eda9fd4299e184683fe84ba25de70e66d320d910f74dd33) -->
