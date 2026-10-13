@@ -23,11 +23,13 @@ A Claude Sonnet 5.5 lane implemented it, including the merge commit `1cc5b1c2`. 
 - Security rebind by the same Opus context: CLEAR at `613f04a3`. The new `bindProjectOrganisation` flag is computed strictly and leaks no organisation data, and the `pairs.json` edit only relocates occurrences.
 - Ordinary delta review by the reviewer-A context: APPROVE at `613f04a3`. Mutations of the modal condition, the query enablement and the server flag each make a test fail.
 - Security rebind by the same Opus context: CLEAR at `0db35191`. That commit merges `main` `53344c8f` (#696). Non-conflict files equal git's own merge, `pairs.json` is the exact union, and the capabilities response keeps `manageServiceCalendars` and `bindProjectOrganisation`.
+- Security rebind by the same Opus context: CLEAR at `2eee045c`. That commit is a clean merge of `main` `ee499594` (#707, e2e only); its tree equals `git merge-tree`, and no product or contract file changed.
 
 **Reviewed head:** `a685660742d3418fa3c25d4f0228be3eabd05de4`
 **Reviewed head:** `1cc5b1c2be7a1d3b6c671d2d62a68ab8e7b699c8`
 **Reviewed head:** `613f04a3acc3c78d4ed6de29a2291a8a2c9643a5`
 **Reviewed head:** `0db351910f3fe1c14ae7ad54b533400217ea4032`
+**Reviewed head:** `2eee045c99203f73b4309fddee69db029d8236a3`
 
 ## Context index
 
@@ -43,6 +45,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 6 | `705-613f-security-rebind-opus.md` | Security rebind (1cc5b1c2..613f04a3) | Claude Opus 5.5 | `613f04a3` | CLEAR | `e3ca9732576b1e71ef5a92599d37a5e74e66049e2c00ff248d8a3560414eb60f` |
 | 7 | `705-613f-ordinary-a-sonnet.md` | Ordinary delta review A (1cc5b1c2..613f04a3) | Claude Sonnet 5.5 | `613f04a3` | APPROVE | `6fd1234a75a1b421b7dd988a68d9dab79fb15ff1e92bc769e371eb4a255979c5` |
 | 8 | `705-0db3-security-rebind-opus.md` | Security rebind (613f04a3..0db35191) | Claude Opus 5.5 | `0db35191` | CLEAR | `7e39185ed7ac05f5cd4325782063dfe9c10cde18f422b3472064b789910ea52d` |
+| 9 | `705-2eee-security-rebind-opus.md` | Security rebind (0db35191..2eee045c) | Claude Opus 5.5 | `2eee045c` | CLEAR | `a926d40b10dc58a97f0b5d0c344e2ca2357ccfa34c93a2174de253d4e2aba00f` |
 
 ## Embedded reports
 
@@ -565,3 +568,54 @@ None.
 
 **CLEAR** at 0db351910f3fe1c14ae7ad54b533400217ea4032. The required GPT-6 Sol security review at this exact head and CI remain outstanding.
 <!-- END REPORT (sha256 7e39185ed7ac05f5cd4325782063dfe9c10cde18f422b3472064b789910ea52d) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-13/705-2eee-security-rebind-opus.md; Claude Opus 5.5; sha256 a926d40b10dc58a97f0b5d0c344e2ca2357ccfa34c93a2174de253d4e2aba00f) -->
+# PR #705 security re-review (clean merge of main with #707)
+
+**Model:** Claude Opus 5.5. Fresh, independent context. I did not author, direct or remediate this change; I gave the earlier CLEARs at 1cc5b1c2, 613f04a3 and 0db35191.
+**Role:** security re-review requested by the orchestrator. It does not replace the GPT-6 Sol gate (CLAUDE.md).
+
+**Reviewed head:** 2eee045c99203f73b4309fddee69db029d8236a3
+**Parents:** b393e52d26452a7780705c3b860e7dea9bc2e3c9 (0db35191 plus the review note) and ee499594a90896fbb6edb61850b3f4e5001c5266 (origin/main, brings #707).
+**Merge base of the parents:** 53344c8fb9ab815e9229ce39b5d4f932996d0e60.
+**Main at review time:** `git ls-remote` (2026-10-14) gave refs/heads/main = ee499594 and refs/pull/705/head = 2eee045c, so main had not moved.
+
+## Checks
+
+1. **Merge tree equals git's own merge.**
+   - `git merge-tree --write-tree b393e52d ee499594` gives af78ca86f34250c5fc23f83c0f1f072d569ab2ff and reports no conflicts. `git rev-parse 2eee045c^{tree}` gives the same af78ca86f34250c5fc23f83c0f1f072d569ab2ff.
+   - **Identical: the merge has no hand edits at all.**
+2. **b393e52d** changes exactly one file: the #705 review note (docs, +68).
+3. **Everything changed since my CLEAR at 0db35191** (`git diff --name-only 0db35191 2eee045c`) is 13 files, all under apps/web/e2e/, tests/e2e/, apps/web/src/test/ or docs/:
+   - apps/web/e2e/realtime.spec.ts and work-item-comments-journey.spec.ts
+   - seven tests/e2e/*-journey or negative specs (+7 lines each; the redaction hook)
+   - apps/web/src/test/e2e-secret-redaction.test.ts (the widened guard test)
+   - docs/04-engineering/error-fix-loop.md and two review notes
+
+   No file under apps/api, packages/, tests/api-integration, tests/api-contract, tests/permissions, i18n, pairs.json or apps/web/src outside `src/test` changed. That covers the capabilities controller and schema, project routes, policy, create-project modal, fetchers and hooks. The guard-test diff does not mention project, organisation or capabilities.
+4. **#707 itself** (`git diff --name-only 53344c8f ee499594`) touches only the same e2e, test-guard and docs paths.
+
+## Tests
+
+- I re-ran no suites this round. Every product, API, contract, permission, i18n and token file is byte-identical to 0db35191.
+- At that head I ran: 11 integration files / 81 tests (including my 13-test probe suite, the binding, capabilities-scope and all intake suites), `test:permissions` 14 / 88, `check:route-policy`, `check:openapi`, `check:i18n`, `check:tokens`, 19 web tests, and web `tsc`. All passed (report 705-0db3-security-rebind-opus.md).
+- The new e2e hooks and the guard test are outside the #705 security surface. I did not run them.
+
+## Findings
+
+- **No new findings.**
+- Earlier non-blocking items stand: R2 (customer-side workspace membership, S7/#8 follow-up) and the docs line wrap at projects-and-engagements.md:108.
+
+## Residual risk / not checked
+
+- I did not run the #707 e2e specs or the guard test, and did not review #707 beyond its paths.
+- Not run, as before: the full integration suite, Playwright, `test:contract`, image build and boot.
+
+## Owner (Thomas) decision needed
+
+None.
+
+## Verdict
+
+**CLEAR** at 2eee045c99203f73b4309fddee69db029d8236a3. The required GPT-6 Sol security review at this exact head and CI remain outstanding.
+<!-- END REPORT (sha256 a926d40b10dc58a97f0b5d0c344e2ca2357ccfa34c93a2174de253d4e2aba00f) -->
