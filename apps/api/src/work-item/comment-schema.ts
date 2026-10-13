@@ -74,8 +74,10 @@ export const createCommentBody = z.object({
   visibility: commentVisibility,
 });
 
+// `CA-17`: an omitted `body` is a write-free no-op (owner decision 2026-10-09); `null`
+// and other present values keep going through `commentBody` validation unchanged.
 export const updateCommentBody = z.object({
-  body: commentBody,
+  body: commentBody.optional(),
 });
 
 export const commentIdParam = z.object({
