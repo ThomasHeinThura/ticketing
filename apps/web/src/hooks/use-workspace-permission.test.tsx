@@ -222,6 +222,50 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canCreateInternalComments()).toBe(false);
   });
 
+  it("fails closed on the strict transition, rank and project-settings flags when absent", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap({ updateTasks: true }),
+    });
+
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    // `updateTasks` must never imply the strict flags.
+    expect(result.current.canTransitionTasks()).toBe(false);
+    expect(result.current.canRankTasks()).toBe(false);
+    expect(result.current.canManageProjectSettings()).toBe(false);
+  });
+
+  it("exposes the strict transition, rank and project-settings flags from the server", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({
+          transitionTasks: true,
+          rankTasks: false,
+          manageProjectSettings: true,
+        }),
+    });
+
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(result.current.canTransitionTasks()).toBe(true);
+    expect(result.current.canRankTasks()).toBe(false);
+    expect(result.current.canManageProjectSettings()).toBe(true);
+  });
+
   it("exposes only the server's permission-filtered comment choices", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,
