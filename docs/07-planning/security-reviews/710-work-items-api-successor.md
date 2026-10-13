@@ -20,10 +20,12 @@ Authorship: a Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 
   - It also found F1, a separate pre-existing work-item write-route project-reach defect, which is owned by a separate fix.
 - Security rebind by the same context: BLOCK at `a51f4910`. The new customer test framed `rankTasks: true` as the intended contract.
 - Light security rebind: CLEAR at `cdc121ab`. The test is reworded to pin today's value; the assertions are unchanged.
+- Light security rebind by the same context: CLEAR at `5061424a`. A test-only commit derives the all-false capability-map check from the schema. Three mutations each fail 3 of 13.
 
 **Reviewed head:** `224cc555aa30bfcecbcb4a2439c3703ba1dd637f`
 **Reviewed head:** `a51f49107d7d870e6ae73e67d5afb53b90ab0875`
 **Reviewed head:** `cdc121abf2790cd8324cd0101ad4b6d016acaa3a`
+**Reviewed head:** `5061424a1087d54d6c2061dd3f06fc459bea1913`
 
 ## Context index
 
@@ -37,6 +39,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 4 | `710-rebind-security-opus.md` | Security rebind (224cc555..a51f4910) | Claude Opus 5.5 | `a51f4910` | BLOCK | `d5cdfb8776378f2538327c15f3db3a0d6286183147801701729299843ab82008` |
 | 5 | `710-cdc1-security-rebind-opus.md` | Security rebind (a51f4910..cdc121ab) | Claude Opus 5.5 | `cdc121ab` | CLEAR | `b38eff4c57c285bb77b5db1e20de3c9ac644102dab8cba6bd1fa5ce48f23460b` |
 | 6 | `710-cdc1-ordinary-b-sonnet.md` | Ordinary delta review B (224cc555..cdc121ab) | Claude Sonnet 5.5 | `cdc121ab` | APPROVE | `b79c43d141d80d2efd4b2fcef0c1cbed7cfd5a05c66f52f2c662ec85a389f1e8` |
+| 7 | `../2026-10-14/710-5061-security-rebind-opus.md` | Security rebind (cdc121ab..5061424a) | Claude Opus 5.5 | `5061424a` | CLEAR | `14806183cf855ba53682b6d5ae414917dfd84fd5d91e1e824664a6f64e359285` |
 
 ## Embedded reports
 
@@ -491,3 +494,70 @@ Only capabilities-scope was run as integration; other integration suites rely on
 ## Verdict
 APPROVE
 <!-- END REPORT (sha256 b79c43d141d80d2efd4b2fcef0c1cbed7cfd5a05c66f52f2c662ec85a389f1e8) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-13/../2026-10-14/710-5061-security-rebind-opus.md; Claude Opus 5.5; sha256 14806183cf855ba53682b6d5ae414917dfd84fd5d91e1e824664a6f64e359285) -->
+# PR #710 security rebind (cdc121ab to 5061424a)
+
+**Model:** Claude Opus 5.5. Fresh, independent context. I did not author, direct or remediate this change. My previous CLEAR was at cdc121ab (2026-10-13/710-cdc1-security-rebind-opus.md).
+**Role:** a light exact-head security rebind requested by the orchestrator. It does not replace the GPT-6 Sol gate (CLAUDE.md).
+
+**Reviewed head:** 5061424a1087d54d6c2061dd3f06fc459bea1913
+**Previous reviewed head:** cdc121abf2790cd8324cd0101ad4b6d016acaa3a
+**Main:** ee499594a90896fbb6edb61850b3f4e5001c5266
+
+## Identity checks
+
+- `git ls-remote origin`, before and after the run:
+  - refs/heads/codex/work-items-api-successor = refs/pull/710/head = 5061424a.
+  - refs/heads/main = ee499594, so main has not moved.
+- The chain is single-parent: 5061424a, then d1f057c3, then cdc121ab.
+- `git diff --name-only cdc121ab d1f057c3` shows only `docs/07-planning/security-reviews/710-work-items-api-successor.md` (review note, +493). This is a docs-only commit; I did not audit its prose.
+- `git diff d1f057c3 5061424a` shows only `tests/api-integration/multi-role-membership-remediation.test.ts` (15+/1-). No runtime, policy, matrix, OpenAPI or other test file changed.
+
+## The change
+
+`expectAllFalseCapabilityMap` used to assert `Object.keys(...).toHaveLength(21)` and then that all values are false. It now does three things:
+
+1. It asserts that every required (non-optional) key of `capabilitiesResponseSchema.shape` is present.
+2. It asserts that every returned key is a key of that schema.
+3. It keeps the existing all-false assertion.
+
+The schema import comes from `apps/api/src/capabilities/response.ts`, which is the same object the route's OpenAPI response uses.
+
+## Runs (scratch worktree at 5061424a, removed afterwards; the tree was clean after each revert)
+
+- `pnpm install --frozen-lockfile` and `turbo build --filter=@taskdesk/api^...`: ok.
+- multi-role-membership-remediation.test.ts, `CI=true` and serialized: **13/13 passed.**
+- Mutations of `get-capabilities.ts`. Each was reverted with `git checkout`.
+
+| Mutation | Result | Where it fails |
+| --- | --- | --- |
+| M1: `rankTasks: true` forced | **3 failed** / 10 passed | the all-false assertion |
+| M2: `rankTasks` dropped from the map | **3 failed** | helper line 57: required-flag presence (`arrayContaining`) |
+| M3: an extra key `probeExtraKey: false` added | **3 failed** | helper line 64: key outside the schema |
+
+The same three tests fail every time (lines 242, 262 and 445), and they are the helper's callers.
+
+- So the helper still guards what it did: all-false, no missing flag, no stray key. It also no longer needs a hand-kept count.
+- Docker: only the Testcontainers Postgres and Ryuk containers, which exit on their own. Nothing was removed by hand, and the `taskdesk-*` containers were untouched.
+
+## Findings
+
+**None blocking.**
+
+**N1 (informational):** optional schema keys (`createPublicComments`, `createInternalComments`) are no longer required to be present.
+
+- The old count of 21 implicitly pinned them.
+- When they are present, they must still be false and inside the schema.
+- That matches the schema's own contract, so it weakens nothing the API promises.
+
+## Residual risk
+
+- I did not audit the prose of the d1f057c3 review note.
+- I re-ran only the changed test file, plus the mutations.
+- The runtime surface is unchanged since cdc121ab, where it was CLEAR.
+
+## Verdict
+
+**CLEAR** at 5061424a1087d54d6c2061dd3f06fc459bea1913. This review does not replace the required GPT-6 Sol review at this exact head.
+<!-- END REPORT (sha256 14806183cf855ba53682b6d5ae414917dfd84fd5d91e1e824664a6f64e359285) -->
