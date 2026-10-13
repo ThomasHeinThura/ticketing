@@ -202,19 +202,28 @@ here for `VW-2` (layout) and `VW-6` (density).
   domain yet, so they are **not** whitelisted and a write of either is `422`. They are added by
   specifying the domain here first. Writes are upserts on the table's unique indexes, so
   repeating a request is idempotent.
-- `ST-15` **Reach.** A `layout.<projectId>` key, on read or write, requires the caller to reach
-  that project. A `PATCH` naming an unreachable, missing or soft-deleted project is `404` and
-  writes nothing, so reach cannot be probed. `GET` omits layouts for projects the caller can no
-  longer reach; their rows stay inert. No setting is ever written for a project the person
-  cannot reach.
-- `ST-16` **Size limits.** The request body is at most 4 KiB (`413` above that), a project id
-  at most 128 characters, and a person holds at most 500 stored settings rows (`422
-  settings_limit` when a request would create one more; replacing an existing row is always
-  allowed).
+- `ST-15` **Reach.** Setting a `layout.<projectId>` key requires the caller to reach that
+  project. A `PATCH` that sets a layout for an unreachable, missing or soft-deleted project is
+  `404` and writes nothing, so reach cannot be probed. `GET` omits layouts for projects the
+  caller can no longer reach; their rows stay inert. **Clearing** a layout (`null`) needs no
+  reach: it only ever deletes the caller's own row, so a stale row for a project the person lost
+  cannot get stuck, and the result (`200` with the current settings) is the same whether or not
+  the row or the project existed. No setting is ever written for a project the person cannot
+  reach.
+- `ST-16` **Size limits.** The request body is at most 4 KiB (`413`, same plain-text error shape
+  as every other API error), a project id at most 128 characters, a `PATCH` at most 20 keys, and
+  a person holds at most 500 stored settings rows (`422 settings_limit` when a request would
+  create one more; replacing an existing row is always allowed). The bound is exact: one
+  person's writes take a per-person transaction advisory lock around the count and the upsert.
 - `ST-17` **Client cache.** The web client keeps a browser copy for first paint and as the
   offline fallback, and the server value wins once fetched. A local-only value the server does
   not have is written once, then marked migrated. The copy is attributed to the user who wrote
-  it, so one person's local value is never uploaded for another person on a shared browser.
+  it (per settings key, and per project for `layout.<projectId>`), so one person's local value is
+  never uploaded for another person on a shared browser. A local change that has not reached the
+  server stays marked unsent and is retried on the next load, except that only the most recent
+  write may clear the mark, and a write the server rejects permanently (any `4xx` other than
+  `401`, `408` and `429`) drops the unsent value and adopts the server state instead of retrying
+  forever.
 
 ## Edge cases
 
