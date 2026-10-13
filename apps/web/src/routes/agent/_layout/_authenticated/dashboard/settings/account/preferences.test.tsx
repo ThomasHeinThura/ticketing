@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -7,10 +8,16 @@ import {
 } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AuthContext } from "@/components/providers/auth-provider";
 import { UserPreferencesEffects } from "@/components/providers/user-preferences-effects";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import { Route } from "./preferences";
 
+const putUserPreference = vi.hoisted(() => vi.fn());
+vi.mock("@/fetchers/user-preference/user-preferences", () => ({
+  getUserPreferences: vi.fn(),
+  putUserPreference,
+}));
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => options,
 }));
@@ -34,6 +41,9 @@ function pick(option: HTMLElement) {
 
 describe("preferences page density setter (#673)", () => {
   beforeEach(() => {
+    localStorage.clear();
+    putUserPreference.mockReset();
+    putUserPreference.mockResolvedValue({});
     useUserPreferencesStore.setState({ compactMode: false });
     document.documentElement.classList.remove("compact-mode");
   });
@@ -44,10 +54,18 @@ describe("preferences page density setter (#673)", () => {
 
   it("switches density to compact and back, toggling html.compact-mode", async () => {
     render(
-      <>
-        <UserPreferencesEffects />
-        <PreferencesPage />
-      </>,
+      <QueryClientProvider client={new QueryClient()}>
+        <AuthContext.Provider
+          value={{
+            user: { id: "user-1" } as never,
+            isLoading: false,
+            refetchUser: async () => {},
+          }}
+        >
+          <UserPreferencesEffects />
+          <PreferencesPage />
+        </AuthContext.Provider>
+      </QueryClientProvider>,
     );
     expect(document.documentElement).not.toHaveClass("compact-mode");
 
@@ -61,6 +79,14 @@ describe("preferences page density setter (#673)", () => {
       expect(useUserPreferencesStore.getState().compactMode).toBe(true),
     );
     expect(document.documentElement).toHaveClass("compact-mode");
+    // VW-6: the change is also persisted server-side.
+    await waitFor(() =>
+      expect(putUserPreference).toHaveBeenCalledWith({
+        scope: "global",
+        key: "appearance.density",
+        value: "compact",
+      }),
+    );
 
     fireEvent.click(screen.getByTestId("density-select"));
     pick(

@@ -12,6 +12,7 @@ import KeyboardShortcutsHelpLauncher from "./components/keyboard-shortcuts-help-
 import AuthProvider from "./components/providers/auth-provider";
 import { ThemeProvider } from "./components/providers/theme-provider";
 import { UserPreferencesEffects } from "./components/providers/user-preferences-effects";
+import { UserPreferencesSync } from "./components/providers/user-preferences-sync";
 import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { captureCheckoutIntent } from "./lib/checkout-intent";
 import { AppI18nProvider } from "./lib/i18n/provider";
@@ -126,6 +127,7 @@ if (!rootElement.innerHTML) {
           <ThemeProvider>
             <UserPreferencesEffects />
             <AuthProvider>
+              <UserPreferencesSync />
               <AppI18nProvider>
                 <KeyboardShortcutsProvider>
                   <App />
