@@ -1,27 +1,10 @@
-import { responseTimestamp, z } from "../openapi";
+import { z } from "../openapi";
 
-export const preferenceItemSchema = z
+export const settingsSchema = z
   .object({
-    key: z.string(),
-    value: z.unknown(),
-    updatedAt: responseTimestamp,
+    settings: z.record(z.string(), z.unknown()).openapi({
+      description:
+        "The caller's stored settings keyed by settings key, e.g. `density` and `layout.<projectId>`.",
+    }),
   })
-  .openapi("UserPreferenceItem");
-
-export const preferenceListSchema = z
-  .object({
-    scope: z.string(),
-    scopeId: z.string().nullable(),
-    preferences: z.array(preferenceItemSchema),
-  })
-  .openapi("UserPreferenceList");
-
-export const preferenceWrittenSchema = z
-  .object({
-    scope: z.string(),
-    scopeId: z.string().nullable(),
-    key: z.string(),
-    value: z.unknown(),
-    updatedAt: responseTimestamp,
-  })
-  .openapi("UserPreference");
+  .openapi("MeSettings");

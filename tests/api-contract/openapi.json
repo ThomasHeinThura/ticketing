@@ -2198,74 +2198,17 @@
           "expiresAt"
         ]
       },
-      "UserPreferenceList": {
+      "MeSettings": {
         "type": "object",
         "properties": {
-          "scope": {
-            "type": "string"
-          },
-          "scopeId": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "preferences": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/UserPreferenceItem"
-            }
+          "settings": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "The caller's stored settings keyed by settings key, e.g. `density` and `layout.<projectId>`."
           }
         },
         "required": [
-          "scope",
-          "scopeId",
-          "preferences"
-        ]
-      },
-      "UserPreferenceItem": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "value": {},
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "key",
-          "updatedAt"
-        ]
-      },
-      "UserPreference": {
-        "type": "object",
-        "properties": {
-          "scope": {
-            "type": "string"
-          },
-          "scopeId": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "key": {
-            "type": "string"
-          },
-          "value": {},
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "scope",
-          "scopeId",
-          "key",
-          "updatedAt"
+          "settings"
         ]
       },
       "SearchResponse": {
@@ -12768,136 +12711,56 @@
         }
       }
     },
-    "/me/preferences": {
+    "/me/settings": {
       "get": {
-        "operationId": "listOwnPreferences",
+        "operationId": "getOwnSettings",
         "tags": [
-          "User preferences"
+          "User settings"
         ],
-        "summary": "List the caller's preferences for one scope",
-        "description": "Returns the caller's own stored preferences (whitelisted keys only) for a global, workspace or project scope. A workspace or project the caller cannot reach is 404.",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "maxLength": 32
-            },
-            "required": true,
-            "name": "scope",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "maxLength": 128
-            },
-            "required": false,
-            "name": "scopeId",
-            "in": "query"
-          }
-        ],
+        "summary": "Get the caller's profile settings",
+        "description": "Returns the caller's own stored settings (whitelisted keys only). A layout for a project the caller can no longer reach is omitted.",
         "responses": {
           "200": {
-            "description": "The caller's preferences",
+            "description": "The caller's settings",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserPreferenceList"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/MeSettings"
                 }
               }
             }
           },
           "401": {
             "description": "Missing or invalid credentials"
-          },
-          "404": {
-            "description": "Workspace or project not found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Invalid scope or scopeId",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
           }
         }
-      }
-    },
-    "/me/preferences/{scope}/{key}": {
-      "put": {
-        "operationId": "putOwnPreference",
+      },
+      "patch": {
+        "operationId": "patchOwnSettings",
         "tags": [
-          "User preferences"
+          "User settings"
         ],
-        "summary": "Set one of the caller's preferences",
-        "description": "Create or replace the caller's value for a whitelisted key. Browser session only; API keys are refused.",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "maxLength": 32
-            },
-            "required": true,
-            "name": "scope",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "maxLength": 64
-            },
-            "required": true,
-            "name": "key",
-            "in": "path"
-          }
-        ],
+        "summary": "Update the caller's profile settings",
+        "description": "Apply a partial object of whitelisted keys (`density`, `layout.<projectId>`); `null` clears a key. All keys are validated before any is written. Browser session only; API keys are refused.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {
-                  "scopeId": {
-                    "type": "string",
-                    "maxLength": 128,
-                    "description": "Required for `workspace` and `project` scope, forbidden for `global`."
-                  },
-                  "value": {
-                    "description": "The key's value; its schema is fixed per key (views.md PREF-5)."
-                  }
-                }
+                "additionalProperties": {},
+                "description": "A partial object of whitelisted settings keys (`density`, `layout.<projectId>`). A `null` value clears that key."
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "The stored preference",
+            "description": "The caller's updated settings",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserPreference"
+                  "$ref": "#/components/schemas/MeSettings"
                 }
               }
             }
@@ -12926,7 +12789,7 @@
             }
           },
           "404": {
-            "description": "Workspace or project not found",
+            "description": "Project not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12946,7 +12809,7 @@
             }
           },
           "422": {
-            "description": "Key, scope or value not allowed",
+            "description": "Key or value not allowed",
             "content": {
               "text/plain": {
                 "schema": {

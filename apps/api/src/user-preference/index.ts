@@ -7,87 +7,65 @@ import {
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
-import { preferenceListSchema, preferenceWrittenSchema } from "./response";
-import {
-  listPreferencesQuery,
-  preferencePathParams,
-  putPreferenceBody,
-} from "./schema";
-import { listOwnPreferences, putOwnPreference } from "./service";
-import { PREFERENCE_BODY_MAX_BYTES } from "./whitelist";
+import { settingsSchema } from "./response";
+import { patchSettingsBody } from "./schema";
+import { getOwnSettings, patchOwnSettings } from "./service";
+import { SETTINGS_BODY_MAX_BYTES } from "./whitelist";
 
-const listPreferencesRoute = createRoute({
+const getSettingsRoute = createRoute({
   method: "get",
-  operationId: "listOwnPreferences",
-  path: "/preferences",
-  tags: ["User preferences"],
-  summary: "List the caller's preferences for one scope",
+  operationId: "getOwnSettings",
+  path: "/settings",
+  tags: ["User settings"],
+  summary: "Get the caller's profile settings",
   description:
-    "Returns the caller's own stored preferences (whitelisted keys only) for a global, workspace or project scope. A workspace or project the caller cannot reach is 404.",
-  request: { query: listPreferencesQuery },
+    "Returns the caller's own stored settings (whitelisted keys only). A layout for a project the caller can no longer reach is omitted.",
   responses: {
-    200: jsonResponse("The caller's preferences", preferenceListSchema),
-    400: errorResponse("Invalid request"),
-    404: errorResponse("Workspace or project not found"),
-    422: errorResponse("Invalid scope or scopeId"),
+    200: jsonResponse("The caller's settings", settingsSchema),
   },
 });
 
-const putPreferenceRoute = createRoute({
-  method: "put",
-  operationId: "putOwnPreference",
-  path: "/preferences/{scope}/{key}",
-  tags: ["User preferences"],
-  summary: "Set one of the caller's preferences",
+const patchSettingsRoute = createRoute({
+  method: "patch",
+  operationId: "patchOwnSettings",
+  path: "/settings",
+  tags: ["User settings"],
+  summary: "Update the caller's profile settings",
   description:
-    "Create or replace the caller's value for a whitelisted key. Browser session only; API keys are refused.",
+    "Apply a partial object of whitelisted keys (`density`, `layout.<projectId>`); `null` clears a key. All keys are validated before any is written. Browser session only; API keys are refused.",
   middleware: [
     requireSessionOnly(),
     bodyLimit({
-      maxSize: PREFERENCE_BODY_MAX_BYTES,
+      maxSize: SETTINGS_BODY_MAX_BYTES,
       onError: (c) => c.text("Payload too large", 413),
     }),
   ] as const,
   request: {
-    params: preferencePathParams,
     body: {
       required: true,
-      content: { "application/json": { schema: putPreferenceBody } },
+      content: { "application/json": { schema: patchSettingsBody } },
     },
   },
   responses: {
-    200: jsonResponse("The stored preference", preferenceWrittenSchema),
+    200: jsonResponse("The caller's updated settings", settingsSchema),
     400: errorResponse("Invalid request"),
     403: errorResponse("A browser session is required"),
-    404: errorResponse("Workspace or project not found"),
+    404: errorResponse("Project not found"),
     413: errorResponse("Payload too large"),
-    422: errorResponse("Key, scope or value not allowed"),
+    422: errorResponse("Key or value not allowed"),
   },
 });
 
 const userPreference = apiRouter()
-  .openapi(listPreferencesRoute, async (c) => {
-    const result = await listOwnPreferences(
-      c.get("userId"),
-      c.req.valid("query"),
-    );
+  .openapi(getSettingsRoute, async (c) => {
+    const result = await getOwnSettings(c.get("userId"));
     // Only the caller's own rows were read; mark after the read succeeds so a failure
     // leaves the shadow comparison unknown.
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(result, 200);
   })
-  .openapi(putPreferenceRoute, async (c) => {
-    const { scope, key } = c.req.valid("param");
-    const { scopeId, value } = c.req.valid("json");
-    return c.json(
-      await putOwnPreference(c.get("userId"), {
-        scope,
-        key,
-        ...(scopeId === undefined ? {} : { scopeId }),
-        value,
-      }),
-      200,
-    );
-  });
+  .openapi(patchSettingsRoute, async (c) =>
+    c.json(await patchOwnSettings(c.get("userId"), c.req.valid("json")), 200),
+  );
 
 export default userPreference;
