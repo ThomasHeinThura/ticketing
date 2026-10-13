@@ -34,11 +34,13 @@ A Claude Sonnet 5.5 lane implemented the change. The conductor (Claude Opus 5.5)
 - Security rebind: CLEAR at `edd4f91a`. Round 3 was verified, and two test gaps (N2) and a leader-lock order dependence (N4) were raised.
 - Light security rebind: CLEAR at `7b97d249`. The N2 rows pin the mutations, and the N4 setup no longer depends on test order.
 - Mechanical security rebind at `510df528`: CLEAR. The merge tree is identical to `git merge-tree` of `7b97d249` and `28481af5` (#721), and no API or test path changed.
+- Mechanical security rebind at `eb660151`: CLEAR. This head merges `main` `417944ca` (#726). Its tree equals the merge-tree of `dc41b2a3` with `417944ca`, the changed files are exactly #726's, and there is no interaction with this PR's paths.
 
 **Reviewed head:** `aec692e94d681ca3aae1172f88615c42c1597f6b`
 **Reviewed head:** `edd4f91a85a9edd220ecc249febb0ab3f79da8b9`
 **Reviewed head:** `7b97d24923043fc6823ec7c462107afd18c21fcf`
 **Reviewed head:** `510df528d067d8a447ee31ac84a74395b97ee37b`
+**Reviewed head:** `eb6601511153430c444b8c814b85c4b5965ff30c`
 
 ## Context index
 
@@ -54,6 +56,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 6 | `712-edd4-security-rebind-opus.md` | Security rebind (aec692e9..edd4f91a) | Claude Opus 5.5 | `edd4f91a` | CLEAR | `65d3b4a7a7c274232f7f86e92f40263b3b25812e178cadbfa18102df9baea8a3` |
 | 7 | `712-7b97-security-rebind-opus.md` | Security rebind (edd4f91a..7b97d249) | Claude Opus 5.5 | `7b97d249` | CLEAR | `ce8f30e514a2c4a082b7129e84a948a262935e47cb58b08e9f8ab94bbc5f7c49` |
 | 8 | `712-510d-security-rebind-opus.md` | Mechanical security rebind (7b97d249..510df528) | Claude Opus 5.5 | `510df528` | CLEAR | `7703fe57ef1a32f48026a8c6f1be6527af6fd5368b3b6882426371360d77a487` |
+| 9 | `712-eb66-security-rebind-opus.md` | Mechanical security rebind (dc41b2a3..eb660151) | Claude Opus 5.5 | `eb660151` | CLEAR | `2ce401440990e9832ff5ee278fe0b8dd816d1f40ab8e8c3a8f30cfbd29634271` |
 
 ## Embedded reports
 
@@ -924,3 +927,61 @@ No new finding. Everything from my 7b97d249 report carries over unchanged:
 - No security-relevant path changed.
 - Main is still 28481af5.
 <!-- END REPORT (sha256 7703fe57ef1a32f48026a8c6f1be6527af6fd5368b3b6882426371360d77a487) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/712-eb66-security-rebind-opus.md; Claude Opus 5.5; sha256 2ce401440990e9832ff5ee278fe0b8dd816d1f40ab8e8c3a8f30cfbd29634271) -->
+# PR #712 — security exact-head rebind (mechanical merge of main #726)
+
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This is a fresh, independent context. I did not author, direct or remediate #712 or #726.
+**Reviewed head:** eb6601511153430c444b8c814b85c4b5965ff30c
+**Prior CLEAR head:** dc41b2a3e2e3366aa57cf0d73280d6ddd81a9ce6 (510df528, security CLEAR, plus the review-note commit)
+**Main merged in:** 417944ca57844d02de1590fbed82633a476f4665 (merge of #726, CA-2 project default comment visibility; first parent 28481af5)
+**Method:** read-only. A blobless bare clone in the scratchpad. No worktree was modified. No test suites were run, and no Docker was used.
+
+## Commands and outputs
+
+```
+$ git ls-remote origin refs/heads/main refs/pull/712/head        (at the start and again at the end)
+417944ca57844d02de1590fbed82633a476f4665  refs/heads/main
+eb6601511153430c444b8c814b85c4b5965ff30c  refs/pull/712/head
+$ gh pr view 712 --json headRefOid  -> eb6601511153430c444b8c814b85c4b5965ff30c (codex/work-item-write-project-reach)
+
+$ git rev-list --parents -n1 eb660151
+eb6601511153430c444b8c814b85c4b5965ff30c dc41b2a3e2e3366aa57cf0d73280d6ddd81a9ce6 417944ca57844d02de1590fbed82633a476f4665
+
+$ git rev-parse eb660151^{tree}                       -> 85526422792737a8b3e22780e74778367a098ae1
+$ git merge-tree --write-tree dc41b2a3 417944ca      -> 85526422792737a8b3e22780e74778367a098ae1   (identical)
+
+$ git merge-base dc41b2a3 417944ca                   -> 28481af5826035d702f705ea599858f27634a84b
+$ git diff --name-only dc41b2a3 eb660151  vs  git diff --name-only 28481af5 417944ca
+35 files each; diff of the two lists is empty -> IDENTICAL
+$ comm -12 (#712 files vs main, 417944ca...eb660151) (#726 files)  -> empty (no path overlap)
+```
+
+## Semantic interaction review (read at eb660151)
+
+1. **PUT /api/project/{id}: route reach and policy are unaffected by #712's middleware.**
+   - The route still uses `workspaceAccess.fromProject()` with no options, followed by `requireWorkspacePermission({ project: ["update"] })`.
+   - #712's `ReachOptions`/`deferApiKeyCapability` changes leave `requireProjectReach` and `deferApiKeyCapability` undefined for this route. The new 404 message selection, the deferred API-key branch and the customer-principal 403 all sit inside `if (config.requireProjectReach)`, so none of them runs on this route.
+   - The `WORK_ITEM_REACH_MARK` symbol attached to the middleware is metadata that only the test reads. It changes nothing at runtime.
+   - #726's handler-level STRICT `assertCallerHasCapability(..., "project:manage_settings", capabilityCredential(apiKey))` runs after body validation and before any read or write. Nothing #712 changed sits in that path.
+2. **Policy maps.** #726 changed only a comment in `apps/api/src/project/policy.ts`. The entry is still `"PUT /api/project/{id}": { capability: "project:update", scope: "project", scopeSource: "row", reach: "required" }`. #712 touches no `policy.ts` file, so its policy maps cannot collide with #726's.
+3. **`tests/permissions/work-item-reach-guard.test.ts`.** The guard set is the registry entries with `scope === "work_item" && reach === "required"`. #726 adds no work-item-scoped policy, because its only route is `scope: "project"`. The guard set, the marker check and the behavioural-coverage cross-check (`reach-route-keys.ts`) therefore keep the same inputs and the same expectations. The guard's non-vacuous negative cases are untouched.
+4. **Shared imports.** #726's `project/schema.ts` imports `commentVisibility` from `apps/api/src/work-item/comment-schema.ts`. #712 does not modify that file, and it is present at the reviewed head.
+5. The web-side #726 files (settings page, composer, the permission hook and i18n) don't overlap any #712 path. #712 changes only the API, tests and docs.
+
+## Hosted CI at eb660151 (observed; this is not a substitute for the gate)
+- 18 checks SUCCESS.
+- Integration (Postgres 18), the e2e redirect check and the performance budgets were IN_PROGRESS.
+- `pull request template + security review` was FAILURE. I expect that to be the exact-head review-note check: it should clear once a note recording this head is committed. The orchestrator must confirm every required check is green at the final head before merging.
+
+## Findings
+- Blocking: none.
+- Non-blocking: none.
+
+## Residual risk / not checked
+- I ran no test suites, by instruction. Hosted CI at the candidate head is the gate.
+- I did not re-review #712's own semantics; that was CLEARed at 510df528. This review covers only the merge delta and its interaction with #726.
+- If a further commit, such as a review-note commit, changes the head, a new exact-head confirmation is needed.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 2ce401440990e9832ff5ee278fe0b8dd816d1f40ab8e8c3a8f30cfbd29634271) -->
