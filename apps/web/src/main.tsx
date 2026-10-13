@@ -11,6 +11,7 @@ import { AppErrorBoundary } from "./components/app-error-boundary";
 import KeyboardShortcutsHelpLauncher from "./components/keyboard-shortcuts-help-launcher";
 import AuthProvider from "./components/providers/auth-provider";
 import { ThemeProvider } from "./components/providers/theme-provider";
+import { UserPreferencesEffects } from "./components/providers/user-preferences-effects";
 import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { captureCheckoutIntent } from "./lib/checkout-intent";
 import { AppI18nProvider } from "./lib/i18n/provider";
@@ -127,6 +128,7 @@ if (!rootElement.innerHTML) {
       <AppErrorBoundary fallback={RootCrashFallback}>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
+            <UserPreferencesEffects />
             <AuthProvider>
               <AppI18nProvider>
                 <KeyboardShortcutsProvider>
