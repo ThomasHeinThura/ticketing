@@ -13,18 +13,29 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Label,
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import icons from "@/constants/project-icons";
 import useCreateProject from "@/hooks/mutations/project/use-create-project";
+import useCustomerOrganisations from "@/hooks/queries/project/use-customer-organisations";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import generateProjectSlug from "@/lib/generate-project-id";
 import { toast } from "@/lib/toast";
+
+/** The "no customer organisation" choice: the project stays internal (null on the API). */
+const INTERNAL_PROJECT = "__internal__";
 
 type CreateProjectModalProps = {
   open: boolean;
@@ -38,13 +49,32 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
   const [selectedIcon, setSelectedIcon] = useState("Layout");
   const [iconPopoverOpen, setIconPopoverOpen] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
+  const [organisationId, setOrganisationId] = useState(INTERNAL_PROJECT);
   const queryClient = useQueryClient();
   const { data: workspace } = useActiveWorkspace();
+  // The list route and the binding need the strict project:create capability; callers
+  // without it (e.g. members) create internal projects and never see the selector.
+  const { canBindProjectOrganisation } = useWorkspacePermission();
+  const canBindOrganisation = canBindProjectOrganisation();
+  const organisations = useCustomerOrganisations(
+    { workspaceId: workspace?.id ?? "" },
+    open && canBindOrganisation,
+  );
+  const customerOrganisations = organisations.data ?? [];
+  const selectedOrganisationId = customerOrganisations.some(
+    (organisation) => organisation.id === organisationId,
+  )
+    ? organisationId
+    : INTERNAL_PROJECT;
   const { mutateAsync } = useCreateProject({
     name,
     slug,
     workspaceId: workspace?.id ?? "",
     icon: selectedIcon,
+    organisationId:
+      selectedOrganisationId === INTERNAL_PROJECT
+        ? null
+        : selectedOrganisationId,
   });
   const SelectedIcon =
     icons[selectedIcon as keyof typeof icons] || icons.Layout;
@@ -59,6 +89,7 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
     setSelectedIcon("Layout");
     setIconPopoverOpen(false);
     setIconSearch("");
+    setOrganisationId(INTERNAL_PROJECT);
     onClose();
   };
 
@@ -214,6 +245,86 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
               </div>
             </div>
           </div>
+
+          {canBindOrganisation ? (
+            <div
+              className="space-y-1.5 px-3"
+              data-testid="project-organisation"
+            >
+              <Label htmlFor="project-organisation">
+                {t("common:modals.createProject.organisationLabel")}
+              </Label>
+              {organisations.isPending ? (
+                <p
+                  role="status"
+                  className="text-xs text-muted-foreground"
+                  data-testid="project-organisation-loading"
+                >
+                  {t("common:modals.createProject.organisationLoading")}
+                </p>
+              ) : organisations.isError ? (
+                <div
+                  role="alert"
+                  className="flex items-center justify-between gap-2 text-xs text-destructive"
+                  data-testid="project-organisation-error"
+                >
+                  <span>
+                    {t("common:modals.createProject.organisationError")}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => organisations.refetch()}
+                  >
+                    {t("common:modals.createProject.organisationRetry")}
+                  </Button>
+                </div>
+              ) : customerOrganisations.length === 0 ? (
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-testid="project-organisation-empty"
+                >
+                  {t("common:modals.createProject.organisationEmpty")}
+                </p>
+              ) : (
+                <>
+                  <Select
+                    value={selectedOrganisationId}
+                    onValueChange={(value) => {
+                      if (value !== null) setOrganisationId(value);
+                    }}
+                  >
+                    <SelectTrigger id="project-organisation">
+                      <SelectValue>
+                        {customerOrganisations.find(
+                          (organisation) =>
+                            organisation.id === selectedOrganisationId,
+                        )?.name ??
+                          t("common:modals.createProject.organisationNone")}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={INTERNAL_PROJECT}>
+                        {t("common:modals.createProject.organisationNone")}
+                      </SelectItem>
+                      {customerOrganisations.map((organisation) => (
+                        <SelectItem
+                          key={organisation.id}
+                          value={organisation.id}
+                        >
+                          {organisation.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {t("common:modals.createProject.organisationHint")}
+                  </p>
+                </>
+              )}
+            </div>
+          ) : null}
 
           <DialogFooter>
             <Button

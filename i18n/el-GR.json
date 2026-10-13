@@ -101,7 +101,14 @@
 				"keyHint": "Χρησιμοποιείται για IDs αιτημάτων (π.χ. {{example}}-123)",
 				"createButton": "Δημιουργία έργου",
 				"successToast": "Το έργο δημιουργήθηκε με επιτυχία",
-				"errorToast": "Αποτυχία δημιουργίας έργου"
+				"errorToast": "Αποτυχία δημιουργίας έργου",
+				"organisationLabel": "Οργανισμός πελάτη",
+				"organisationLoading": "Φόρτωση οργανισμών πελατών...",
+				"organisationError": "Δεν ήταν δυνατή η φόρτωση των οργανισμών πελατών.",
+				"organisationRetry": "Επανάληψη",
+				"organisationEmpty": "Δεν υπάρχουν ακόμη ενεργοί οργανισμοί πελατών. Αυτό το έργο θα είναι εσωτερικό.",
+				"organisationNone": "Κανένας (εσωτερικό έργο)",
+				"organisationHint": "Προαιρετικό. Επιλέγεται τώρα και δεν μπορεί να αλλάξει μετά τη δημιουργία του έργου."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",

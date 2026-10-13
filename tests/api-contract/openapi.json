@@ -177,6 +177,10 @@
           "manageWorkspaceSettings": {
             "type": "boolean"
           },
+          "bindProjectOrganisation": {
+            "type": "boolean",
+            "description": "Strict project:create (owner/admin/manager): may list customer organisations and bind a new project to one."
+          },
           "createPublicComments": {
             "type": "boolean"
           },
@@ -203,8 +207,27 @@
           "removeMembers",
           "manageServiceCalendars",
           "shareSavedViews",
-          "manageWorkspaceSettings"
+          "manageWorkspaceSettings",
+          "bindProjectOrganisation"
         ]
+      },
+      "ProjectCustomerOrganisationList": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ]
+        }
       },
       "ProjectListItem": {
         "allOf": [
@@ -562,6 +585,13 @@
               "null"
             ]
           },
+          "organisationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The customer organisation this project serves; null for an internal project."
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -610,6 +640,7 @@
           "health",
           "supportLevel",
           "serviceCalendarId",
+          "organisationId",
           "createdAt",
           "archivedAt",
           "deletedAt",
@@ -5309,6 +5340,61 @@
         }
       }
     },
+    "/project/organisations": {
+      "get": {
+        "operationId": "listProjectCustomerOrganisations",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List customer organisations a new project may serve",
+        "description": "Active, live customer organisations (never the internal one), for the create-project selector. Requires project:create in the workspace.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer organisations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectCustomerOrganisationList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing project:create permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/project": {
       "get": {
         "operationId": "listProjects",
@@ -5428,6 +5514,14 @@
                       "null"
                     ],
                     "minLength": 1
+                  },
+                  "organisationId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "description": "The customer organisation this project serves. Omit or null for an internal project. Chosen at creation only: it must be an active customer organisation and cannot be changed by a later update."
                   }
                 },
                 "required": [
@@ -5485,7 +5579,7 @@
             }
           },
           "422": {
-            "description": "PR-9 or same-workspace service calendar validation failed",
+            "description": "PR-9, same-workspace service calendar, or customer organisation validation failed",
             "content": {
               "text/plain": {
                 "schema": {
