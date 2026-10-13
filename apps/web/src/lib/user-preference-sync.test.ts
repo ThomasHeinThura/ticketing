@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  getPreferenceCacheOwner,
   hasPreferenceMarker,
+  isTerminalWriteRejection,
   type PreferenceMarkerStorage,
   reconcilePreference,
+  setPreferenceCacheOwner,
   setPreferenceMarker,
 } from "./user-preference-sync";
 
@@ -18,7 +21,7 @@ function memoryStorage(): PreferenceMarkerStorage & {
   };
 }
 
-describe("reconcilePreference (views.md PREF-8)", () => {
+describe("reconcilePreference (ST-17)", () => {
   const base = {
     serverValue: undefined as unknown,
     localValue: "compact" as unknown,
@@ -100,5 +103,26 @@ describe("preference markers", () => {
     expect(() =>
       setPreferenceMarker(undefined, "dirty", "u1", "k", true),
     ).not.toThrow();
+  });
+});
+
+describe("cache owner and write rejection helpers", () => {
+  it("attributes a scoped cache per scope id", () => {
+    const storage = memoryStorage();
+    setPreferenceCacheOwner(storage, "layout", "u1", "p1");
+    expect(getPreferenceCacheOwner(storage, "layout", "p1")).toBe("u1");
+    expect(getPreferenceCacheOwner(storage, "layout", "p2")).toBeNull();
+    expect(getPreferenceCacheOwner(storage, "layout")).toBeNull();
+  });
+
+  it("treats 4xx as terminal except 401, 408 and 429; never network or 5xx errors", () => {
+    expect(isTerminalWriteRejection({ status: 422 })).toBe(true);
+    expect(isTerminalWriteRejection({ status: 404 })).toBe(true);
+    expect(isTerminalWriteRejection({ status: 403 })).toBe(true);
+    for (const status of [401, 408, 429, 500, 503]) {
+      expect(isTerminalWriteRejection({ status })).toBe(false);
+    }
+    expect(isTerminalWriteRejection(new Error("offline"))).toBe(false);
+    expect(isTerminalWriteRejection(undefined)).toBe(false);
   });
 });

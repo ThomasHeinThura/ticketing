@@ -104,21 +104,29 @@ export function reconcilePreference(input: {
 }
 
 /**
- * Who the browser copy belongs to. The persisted store is per browser, not per user, so a value
- * written by one person must never be uploaded as another person's. A copy with no recorded
- * owner predates this attribution and is claimed by the first user who signs in.
+ * Who the browser copy of a preference belongs to. The persisted store is per browser, not per
+ * user, so a value written by one person must never be uploaded as another person's. A copy
+ * with no recorded owner predates this attribution and is claimed by the first user who signs
+ * in.
+ *
+ * `scopeId` is required for any key whose value is per scope (e.g. `layout.<projectId>`): the
+ * owner record is keyed by preference key AND scope id, exactly like the markers above. Omit it
+ * only for a global key such as `density`.
  */
-function cacheOwnerKey(preferenceKey: string) {
-  return `taskdesk:preference-cache-owner:${preferenceKey}`;
+function cacheOwnerKey(preferenceKey: string, scopeId?: string) {
+  return `taskdesk:preference-cache-owner:${preferenceKey}${
+    scopeId ? `:${scopeId}` : ""
+  }`;
 }
 
 export function getPreferenceCacheOwner(
   storage: PreferenceMarkerStorage | undefined,
   preferenceKey: string,
+  scopeId?: string,
 ): string | null {
   if (!storage) return null;
   try {
-    return storage.getItem(cacheOwnerKey(preferenceKey));
+    return storage.getItem(cacheOwnerKey(preferenceKey, scopeId));
   } catch {
     return null;
   }
@@ -128,10 +136,11 @@ export function setPreferenceCacheOwner(
   storage: PreferenceMarkerStorage | undefined,
   preferenceKey: string,
   userId: string,
+  scopeId?: string,
 ) {
   if (!storage) return;
   try {
-    storage.setItem(cacheOwnerKey(preferenceKey), userId);
+    storage.setItem(cacheOwnerKey(preferenceKey, scopeId), userId);
   } catch {
     // Unavailable storage: no cache survives anyway.
   }
@@ -142,7 +151,27 @@ export function isCacheOwnedByAnotherUser(
   storage: PreferenceMarkerStorage | undefined,
   preferenceKey: string,
   userId: string,
+  scopeId?: string,
 ): boolean {
-  const owner = getPreferenceCacheOwner(storage, preferenceKey);
+  const owner = getPreferenceCacheOwner(storage, preferenceKey, scopeId);
   return owner !== null && owner !== userId;
+}
+
+/**
+ * A server rejection that retrying cannot fix: any 4xx except 401 (session expiry, the user's
+ * choice must survive re-login), 408 and 429 (transient).
+ */
+export function isTerminalWriteRejection(error: unknown): boolean {
+  const status =
+    typeof error === "object" && error !== null && "status" in error
+      ? (error as { status: unknown }).status
+      : undefined;
+  return (
+    typeof status === "number" &&
+    status >= 400 &&
+    status < 500 &&
+    status !== 401 &&
+    status !== 408 &&
+    status !== 429
+  );
 }

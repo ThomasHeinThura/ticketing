@@ -1,4 +1,5 @@
 import { bodyLimit } from "hono/body-limit";
+import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
   createRoute,
@@ -37,7 +38,9 @@ const patchSettingsRoute = createRoute({
     requireSessionOnly(),
     bodyLimit({
       maxSize: SETTINGS_BODY_MAX_BYTES,
-      onError: (c) => c.text("Payload too large", 413),
+      onError: () => {
+        throw new HTTPException(413, { message: "Payload too large" });
+      },
     }),
   ] as const,
   request: {

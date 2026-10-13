@@ -1,6 +1,7 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { getUserSettings } from "@/fetchers/user-settings/user-settings";
 import { usePatchUserSettings } from "@/hooks/mutations/user-settings/use-patch-user-settings";
 import {
   useGetUserSettings,
@@ -10,6 +11,7 @@ import {
   getPreferenceMarkerStorage,
   hasPreferenceMarker,
   isCacheOwnedByAnotherUser,
+  isTerminalWriteRejection,
   reconcilePreference,
   setPreferenceCacheOwner,
   setPreferenceMarker,
@@ -29,6 +31,75 @@ function toDensity(compactMode: boolean): Density {
   return compactMode ? "compact" : "comfortable";
 }
 
+// Writes are sent one at a time, in order, so an older toggle can never land after a newer one
+// on the server. Only the most recent write may clear the "unsent" mark or adopt server state,
+// so an earlier success cannot hide a later change that is still in flight or failed.
+let writeChain: Promise<unknown> = Promise.resolve();
+let latestWrite = 0;
+
+type DensityWriter = (patch: Record<string, unknown>) => Promise<unknown>;
+
+function writeDensity(input: {
+  userId: string;
+  density: Density;
+  patchSettings: DensityWriter;
+  queryClient: QueryClient;
+}) {
+  const { userId, density, patchSettings, queryClient } = input;
+  const generation = ++latestWrite;
+  const storage = getPreferenceMarkerStorage();
+  const send = () => patchSettings({ [DENSITY_SETTING_KEY]: density });
+  const result = writeChain.then(send, send);
+  writeChain = result.catch(() => undefined);
+
+  result.then(
+    () => {
+      if (generation !== latestWrite) return;
+      setPreferenceCacheOwner(storage, DENSITY_SETTING_KEY, userId);
+      setPreferenceMarker(
+        storage,
+        "migrated",
+        userId,
+        DENSITY_SETTING_KEY,
+        true,
+      );
+      setPreferenceMarker(storage, "dirty", userId, DENSITY_SETTING_KEY, false);
+      void queryClient.invalidateQueries({
+        queryKey: userSettingsQueryKey(userId),
+      });
+    },
+    async (error: unknown) => {
+      // Offline or transient: stay dirty and retry on the next successful load.
+      if (generation !== latestWrite || !isTerminalWriteRejection(error))
+        return;
+      // The server permanently refuses this value: drop it and adopt the server state.
+      setPreferenceMarker(storage, "dirty", userId, DENSITY_SETTING_KEY, false);
+      try {
+        const fresh = await queryClient.fetchQuery({
+          queryKey: userSettingsQueryKey(userId),
+          queryFn: getUserSettings,
+          staleTime: 0,
+        });
+        useUserPreferencesStore
+          .getState()
+          .setCompactMode(
+            parseDensity(fresh.settings[DENSITY_SETTING_KEY]) === "compact",
+          );
+        setPreferenceCacheOwner(storage, DENSITY_SETTING_KEY, userId);
+        setPreferenceMarker(
+          storage,
+          "migrated",
+          userId,
+          DENSITY_SETTING_KEY,
+          true,
+        );
+      } catch {
+        // Server unreachable: the next load adopts its state; nothing is retried.
+      }
+    },
+  );
+}
+
 /**
  * Reconciles the browser's `compactMode` cache with the server's `density` setting.
  * Mount once, inside the auth provider (`UserPreferencesSync`).
@@ -44,6 +115,7 @@ export function useDensityPreferenceSync() {
   const userId = user?.id;
   const { data } = useGetUserSettings(userId);
   const { mutateAsync: patchSettings } = usePatchUserSettings();
+  const queryClient = useQueryClient();
   const reconciledFor = useRef<unknown>(null);
 
   useEffect(() => {
@@ -88,32 +160,17 @@ export function useDensityPreferenceSync() {
         true,
       );
     } else if (action === "push-local") {
-      patchSettings({ [DENSITY_SETTING_KEY]: localDensity })
-        .then(() => {
-          setPreferenceCacheOwner(storage, DENSITY_SETTING_KEY, userId);
-          setPreferenceMarker(
-            storage,
-            "migrated",
-            userId,
-            DENSITY_SETTING_KEY,
-            true,
-          );
-          setPreferenceMarker(
-            storage,
-            "dirty",
-            userId,
-            DENSITY_SETTING_KEY,
-            false,
-          );
-        })
-        .catch(() => {
-          // Offline or rejected: the cache stays authoritative locally, retried next load.
-        });
+      writeDensity({
+        userId,
+        density: localDensity,
+        patchSettings,
+        queryClient,
+      });
     } else {
       // Nothing to upload or adopt: the cache now reflects this user's (default) choice.
       setPreferenceCacheOwner(storage, DENSITY_SETTING_KEY, userId);
     }
-  }, [userId, data, patchSettings]);
+  }, [userId, data, patchSettings, queryClient]);
 }
 
 /** The density control: updates the local cache at once, then syncs to the server. */
@@ -134,29 +191,7 @@ export function useDensityPreference() {
       const storage = getPreferenceMarkerStorage();
       setPreferenceCacheOwner(storage, DENSITY_SETTING_KEY, userId);
       setPreferenceMarker(storage, "dirty", userId, DENSITY_SETTING_KEY, true);
-      patchSettings({ [DENSITY_SETTING_KEY]: density })
-        .then(() => {
-          setPreferenceMarker(
-            storage,
-            "dirty",
-            userId,
-            DENSITY_SETTING_KEY,
-            false,
-          );
-          setPreferenceMarker(
-            storage,
-            "migrated",
-            userId,
-            DENSITY_SETTING_KEY,
-            true,
-          );
-          void queryClient.invalidateQueries({
-            queryKey: userSettingsQueryKey(userId),
-          });
-        })
-        .catch(() => {
-          // Kept dirty: pushed again on the next successful settings load.
-        });
+      writeDensity({ userId, density, patchSettings, queryClient });
     },
     [userId, setCompactMode, patchSettings, queryClient],
   );

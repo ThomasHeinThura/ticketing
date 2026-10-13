@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -300,5 +301,183 @@ describe("API integration: GET/PATCH /api/me/settings (settings-hierarchy.md ST-
     expect(
       (await patch(app, { [`layout.${project.id}`]: "list" })).status,
     ).toBe(200);
+  });
+
+  it("returns the API's plain-text error shape for an oversized body", async () => {
+    const member = await createWorkspaceMember();
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const response = await patch(app, { density: "x".repeat(5000) });
+    expect(response.status).toBe(413);
+    expect(response.headers.get("content-type")).toContain("text/plain");
+    expect(await response.text()).toBe("Payload too large");
+  });
+
+  it("rejects an over-length project id with 422", async () => {
+    const member = await createWorkspaceMember();
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const response = await patch(app, {
+      [`layout.${"p".repeat(129)}`]: "list",
+    });
+    expect(response.status).toBe(422);
+    expect(await rowsFor(member.user.id)).toHaveLength(0);
+  });
+
+  it("refuses PATCH from an impersonation session and from a scope-less key (an MCP key is an API key in this runtime)", async () => {
+    const member = await createWorkspaceMember({ role: "owner" });
+    const { app } = createApp();
+
+    mockAuthenticatedSession(member.user, { impersonatedBy: "admin-user" });
+    const impersonated = await patch(app, { density: "compact" });
+    expect(impersonated.status).toBe(403);
+    expect(await impersonated.text()).toContain("session_required");
+
+    const rawKey = `taskdesk_mcp_${randomUUID()}`;
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: hashApiKey(rawKey),
+      name: "mcp-style key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const keyed = await app.request("/api/me/settings", {
+      method: "PATCH",
+      headers: {
+        authorization: `Bearer ${rawKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ density: "compact" }),
+    });
+    expect(keyed.status).toBe(403);
+    expect(await keyed.text()).toContain("session_required");
+    expect(await rowsFor(member.user.id)).toHaveLength(0);
+  });
+
+  it("clears a layout with null, and lets the caller clear a stale row for a project they can no longer reach", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const lost = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await grantProjectRole(owner.user.id, project.id, ["work_item:read"]);
+    await grantProjectRole(owner.user.id, lost.project.id, ["work_item:read"]);
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+
+    await patch(app, {
+      [`layout.${project.id}`]: "list",
+      [`layout.${lost.project.id}`]: "board",
+    });
+    // Reachable clear.
+    expect(
+      await (await patch(app, { [`layout.${project.id}`]: null })).json(),
+    ).toEqual({
+      settings: { [`layout.${lost.project.id}`]: "board" },
+    });
+    expect(await rowsFor(owner.user.id)).toHaveLength(1);
+
+    // The project is soft-deleted: the row is stale and unreachable, but still clearable.
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.projectTable.id, lost.project.id));
+    expect(
+      (await patch(app, { [`layout.${lost.project.id}`]: "list" })).status,
+    ).toBe(404);
+    const cleared = await patch(app, { [`layout.${lost.project.id}`]: null });
+    expect(cleared.status).toBe(200);
+    expect(await cleared.json()).toEqual({ settings: {} });
+    expect(await rowsFor(owner.user.id)).toHaveLength(0);
+
+    // Same answer for a project that never existed: nothing is revealed.
+    const unknown = await patch(app, { "layout.never-existed": null });
+    expect(unknown.status).toBe(200);
+    expect(await unknown.json()).toEqual({ settings: {} });
+  });
+
+  it("serialises one person's writes under a per-person advisory lock so the 500-row cap is exact", async () => {
+    const member = await createWorkspaceMember({ role: "owner" });
+    const first = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const second = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    await grantProjectRole(member.user.id, first.project.id, [
+      "work_item:read",
+    ]);
+    await grantProjectRole(member.user.id, second.project.id, [
+      "work_item:read",
+    ]);
+    const personId = await personIdOf(member.user.id);
+    await db.insert(schema.userPreferenceTable).values(
+      Array.from({ length: 499 }, (_, index) => ({
+        personId,
+        scope: "project",
+        scopeId: `legacy-project-${index}`,
+        key: "layout",
+        value: "board",
+      })),
+    );
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const NAMESPACE = 699_001;
+    const connectionString = process.env.TASKDESK_DATABASE_URL;
+    const blocker = new Client({ connectionString });
+    const observer = new Client({ connectionString });
+    await Promise.all([blocker.connect(), observer.connect()]);
+    let held = false;
+    let responses: Promise<Response[]> | undefined;
+    try {
+      await blocker.query("SELECT pg_advisory_lock($1, hashtext($2))", [
+        NAMESPACE,
+        personId,
+      ]);
+      held = true;
+      responses = Promise.all([
+        patch(app, { [`layout.${first.project.id}`]: "list" }),
+        patch(app, { [`layout.${second.project.id}`]: "board" }),
+      ]);
+      // Both writers must be queued on the person's lock before it is released.
+      const deadline = Date.now() + 15_000;
+      for (;;) {
+        const waiting = await observer.query<{ waiting: string }>(
+          "SELECT count(*) AS waiting FROM pg_locks WHERE locktype = 'advisory' AND classid = $1 AND NOT granted",
+          [NAMESPACE],
+        );
+        if (Number(waiting.rows[0]?.waiting) >= 2) break;
+        if (Date.now() > deadline) {
+          throw new Error("both writers never queued on the person lock");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      await blocker.query("SELECT pg_advisory_unlock($1, hashtext($2))", [
+        NAMESPACE,
+        personId,
+      ]);
+      held = false;
+      const statuses = (await responses).map((r) => r.status).sort();
+      // Exactly one fits under the cap; without the lock both would pass.
+      expect(statuses).toEqual([200, 422]);
+      expect(await rowsFor(member.user.id)).toHaveLength(500);
+    } finally {
+      if (held) {
+        await blocker.query("SELECT pg_advisory_unlock($1, hashtext($2))", [
+          NAMESPACE,
+          personId,
+        ]);
+      }
+      await responses?.catch(() => undefined);
+      await Promise.all([blocker.end(), observer.end()]);
+    }
   });
 });

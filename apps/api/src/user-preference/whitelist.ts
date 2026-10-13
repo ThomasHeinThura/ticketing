@@ -71,3 +71,5 @@ export const SETTINGS_BODY_MAX_BYTES = 4096;
 export const SETTING_SCOPE_ID_MAX_LENGTH = 128;
 export const SETTINGS_MAX_KEYS_PER_REQUEST = 20;
 export const SETTINGS_MAX_ROWS_PER_PERSON = 500;
+/** Advisory-lock namespace serialising one person's settings writes (cap + upsert, ST-16). */
+export const SETTINGS_WRITE_LOCK_NAMESPACE = 699_001;

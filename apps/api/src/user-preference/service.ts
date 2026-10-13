@@ -1,5 +1,5 @@
 import { reaches } from "@taskdesk/permissions";
-import { and, count, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
@@ -8,6 +8,7 @@ import {
   parseSettingKey,
   SETTINGS_MAX_KEYS_PER_REQUEST,
   SETTINGS_MAX_ROWS_PER_PERSON,
+  SETTINGS_WRITE_LOCK_NAMESPACE,
   type SettingTarget,
 } from "./whitelist";
 
@@ -157,8 +158,11 @@ export async function patchOwnSettings(
   }
 
   const identity = await resolveCaller(userId);
-  const projectIds = [...sets.map((s) => s.target), ...clears].flatMap((t) =>
-    t.kind === "layout" ? [t.scopeId] : [],
+  // Reach is required to SET a layout. Clearing the caller's own row needs no reach, so a stale
+  // row for a project the caller lost cannot get stuck; the result is the same whether or not
+  // the row or the project existed, so it reveals nothing (ST-15).
+  const projectIds = sets.flatMap(({ target }) =>
+    target.kind === "layout" ? [target.scopeId] : [],
   );
   const reachable = await reachableProjectIds(identity, projectIds);
   if (projectIds.some((id) => !reachable.has(id))) {
@@ -167,13 +171,29 @@ export async function patchOwnSettings(
   }
 
   await db.transaction(async (tx) => {
-    // Row cap (ST-16). Replacing an existing row is always allowed; the count is a soft
-    // bound (two concurrent first writes may both pass), acceptable for a UI-preference store
-    // whose keys are a closed whitelist.
-    const [{ total } = { total: 0 }] = await tx
-      .select({ total: count() })
-      .from(userPreferenceTable)
-      .where(ownRowsFilter(identity.personId));
+    // One person's settings writes are serialised so the row cap below is exact, not a soft
+    // bound (ST-16). The lock is per person, released at commit/rollback.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(${SETTINGS_WRITE_LOCK_NAMESPACE}, hashtext(${identity.personId}))`,
+    );
+
+    // Clears first, so a request that clears and sets is judged against the cap afterwards.
+    for (const target of clears) {
+      await tx
+        .delete(userPreferenceTable)
+        .where(
+          and(
+            eq(userPreferenceTable.personId, identity.personId),
+            eq(userPreferenceTable.scope, target.scope),
+            eq(userPreferenceTable.key, target.rowKey),
+            target.scopeId === null
+              ? isNull(userPreferenceTable.scopeId)
+              : eq(userPreferenceTable.scopeId, target.scopeId),
+          ),
+        );
+    }
+
+    // Row cap (ST-16). Replacing an existing row is always allowed.
     const existing = await tx
       .select({
         scope: userPreferenceTable.scope,
@@ -185,7 +205,7 @@ export async function patchOwnSettings(
     const newRows = sets.filter(
       (s) => !have.has(`${s.target.scope}:${s.target.scopeId ?? ""}`),
     ).length;
-    if (total + newRows > SETTINGS_MAX_ROWS_PER_PERSON) {
+    if (existing.length + newRows > SETTINGS_MAX_ROWS_PER_PERSON) {
       throw new HTTPException(422, {
         message: "settings_limit: too many stored settings",
       });
@@ -223,20 +243,6 @@ export async function patchOwnSettings(
               : sqlNotNull(),
           set: { value, updatedAt: now },
         });
-    }
-    for (const target of clears) {
-      await tx
-        .delete(userPreferenceTable)
-        .where(
-          and(
-            eq(userPreferenceTable.personId, identity.personId),
-            eq(userPreferenceTable.scope, target.scope),
-            eq(userPreferenceTable.key, target.rowKey),
-            target.scopeId === null
-              ? isNull(userPreferenceTable.scopeId)
-              : eq(userPreferenceTable.scopeId, target.scopeId),
-          ),
-        );
     }
   });
 
