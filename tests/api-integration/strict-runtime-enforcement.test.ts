@@ -33,6 +33,7 @@ const priorEnforcementSetting = vi.hoisted(() => {
     "apps/api/src/notification-preferences/policy.ts",
     "apps/api/src/search/policy.ts",
     "apps/api/src/user/policy.ts",
+    "apps/api/src/user-preference/policy.ts",
     "apps/api/src/auth/factor-status-policy.ts",
     "apps/api/src/pending-action/policy.ts",
     "apps/api/src/oauth/policy.ts",

@@ -59,6 +59,7 @@ import { taskPolicies } from "./task/policy";
 import { taskRelationPolicies } from "./task-relation/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
 import { userPolicies } from "./user/policy";
+import { userPreferencePolicies } from "./user-preference/policy";
 import { viewPolicies } from "./view/policy";
 import { workItemPolicies } from "./work-item/policy";
 import { workflowPolicies } from "./workflow/policy";
@@ -357,6 +358,10 @@ export const POLICY_SOURCES = [
   },
   { name: "apps/api/src/search/policy.ts", policies: searchPolicies },
   { name: "apps/api/src/user/policy.ts", policies: userPolicies },
+  {
+    name: "apps/api/src/user-preference/policy.ts",
+    policies: userPreferencePolicies,
+  },
   {
     name: "apps/api/src/auth/factor-status-policy.ts",
     policies: factorStatusPolicies,
