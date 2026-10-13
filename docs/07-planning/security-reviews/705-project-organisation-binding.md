@@ -22,10 +22,12 @@ A Claude Sonnet 5.5 lane implemented it, including the merge commit `1cc5b1c2`. 
 - Ordinary delta review by the reviewer-A context: APPROVE at `1cc5b1c2`. The hand-made changes were isolated against `git merge-tree`, and gate and lock mutations make the tests fail.
 - Security rebind by the same Opus context: CLEAR at `613f04a3`. The new `bindProjectOrganisation` flag is computed strictly and leaks no organisation data, and the `pairs.json` edit only relocates occurrences.
 - Ordinary delta review by the reviewer-A context: APPROVE at `613f04a3`. Mutations of the modal condition, the query enablement and the server flag each make a test fail.
+- Security rebind by the same Opus context: CLEAR at `0db35191`. That commit merges `main` `53344c8f` (#696). Non-conflict files equal git's own merge, `pairs.json` is the exact union, and the capabilities response keeps `manageServiceCalendars` and `bindProjectOrganisation`.
 
 **Reviewed head:** `a685660742d3418fa3c25d4f0228be3eabd05de4`
 **Reviewed head:** `1cc5b1c2be7a1d3b6c671d2d62a68ab8e7b699c8`
 **Reviewed head:** `613f04a3acc3c78d4ed6de29a2291a8a2c9643a5`
+**Reviewed head:** `0db351910f3fe1c14ae7ad54b533400217ea4032`
 
 ## Context index
 
@@ -40,6 +42,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 5 | `705-1cc5-ordinary-a-sonnet.md` | Ordinary delta review A (a6856607..1cc5b1c2) | Claude Sonnet 5.5 | `1cc5b1c2` | APPROVE | `acebc96c6aa317b944e70ee2b63f77024ad54a35941ee9640a8ac6dea5e8f0b8` |
 | 6 | `705-613f-security-rebind-opus.md` | Security rebind (1cc5b1c2..613f04a3) | Claude Opus 5.5 | `613f04a3` | CLEAR | `e3ca9732576b1e71ef5a92599d37a5e74e66049e2c00ff248d8a3560414eb60f` |
 | 7 | `705-613f-ordinary-a-sonnet.md` | Ordinary delta review A (1cc5b1c2..613f04a3) | Claude Sonnet 5.5 | `613f04a3` | APPROVE | `6fd1234a75a1b421b7dd988a68d9dab79fb15ff1e92bc769e371eb4a255979c5` |
+| 8 | `705-0db3-security-rebind-opus.md` | Security rebind (613f04a3..0db35191) | Claude Opus 5.5 | `0db35191` | CLEAR | `7e39185ed7ac05f5cd4325782063dfe9c10cde18f422b3472064b789910ea52d` |
 
 ## Embedded reports
 
@@ -497,3 +500,68 @@ Not run: lint, Playwright/visual, oasdiff contract test, the full API integratio
 ## Verdict
 APPROVE
 <!-- END REPORT (sha256 6fd1234a75a1b421b7dd988a68d9dab79fb15ff1e92bc769e371eb4a255979c5) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-13/705-0db3-security-rebind-opus.md; Claude Opus 5.5; sha256 7e39185ed7ac05f5cd4325782063dfe9c10cde18f422b3472064b789910ea52d) -->
+# PR #705 security re-review (merge of main with #696)
+
+**Model:** Claude Opus 5.5. Fresh, independent context. I did not author, direct or remediate this change; I gave the earlier CLEARs at 1cc5b1c2 and 613f04a3.
+**Role:** security re-review requested by the orchestrator. It does not replace the GPT-6 Sol gate (CLAUDE.md).
+
+**Reviewed head:** 0db351910f3fe1c14ae7ad54b533400217ea4032
+**Parents:** 9481cb5263d8dd340b6ddd961359a0f12dc11784 (613f04a3 plus the review note) and 53344c8fb9ab815e9229ce39b5d4f932996d0e60 (origin/main, brings #696).
+**Merge base of the parents:** bf23f525e047d986780d724340044f94d865b77c.
+**Main at review time:** `git ls-remote` gave refs/heads/main = 53344c8f and refs/pull/705/head = 0db35191, so main had not moved.
+
+## What changed since my CLEAR at 613f04a3
+
+- **9481cb52** adds one file: the review note (705-project-organisation-binding.md, +499). It is docs only.
+- **0db35191** is a merge of origin/main 53344c8f.
+  - `git merge-tree --write-tree 9481cb52 53344c8f` gives tree 32f3c131, with a single conflict: packages/ui/src/styles/pairs.json.
+  - `git diff 32f3c131 0db35191` touches **only** packages/ui/src/styles/pairs.json.
+  - **So every non-conflict file equals git's own merge.**
+- `git diff 613f04a3 0db35191 -- apps/api tests/api-contract tests/permissions tests/api-integration` is **empty**. The server side of #705 is byte-identical to the head I cleared.
+
+## #696 interaction
+
+- #696 changes (bf23f525..53344c8f, 81 files) touch nothing outside apps/web, i18n/* and pairs.json except docs. It touches no apps/api, permissions, OpenAPI contract or integration-test file.
+- No #696 web change references `/api/project/organisations`, `bindProjectOrganisation`, `organisationId`, the create-project modal or the project create fetcher. Its only `createProjects` mentions are `createProjects: false` entries in its own test mocks of the capabilities map.
+- **Capabilities shape:**
+  - Server: apps/api/src/capabilities/response.ts has `manageServiceCalendars: z.boolean()` (:21, pre-existing on main before #705) and `bindProjectOrganisation` (:24). openapi.json lists both as properties and in `required` (:208, :211). `check:openapi` passes (the contract matches the app).
+  - Web: use-workspace-permission.ts auto-merged cleanly. `EMPTY_CAPABILITIES` gains #696's `manageServiceCalendars: false` and `canManageServiceCalendars` (:107). #705's optional `bindProjectOrganisation` and `canBindProjectOrganisation` (:110, `=== true`) are both intact. Web `tsc --noEmit` passes.
+  - The two flags are independent. The selector still defaults to hidden when the flag is absent.
+
+## pairs.json: exact union, no threshold change
+
+- I ran a three-way check of base bf23f525, ours 9481cb52, theirs 53344c8f and result 0db35191, matching rows by all scalar fields plus position among duplicates. All four have 418 rows.
+- The result's row set equals base ∪ ours ∪ theirs. Neither side added or removed a row. Because rows are matched on every scalar field, **no `minRatio`, category, theme or colour value changed**.
+- For every row, `occurrenceIds` and `occurrences` each equal (ours ∪ theirs) minus anything either side removed from base: **0 mismatches**. No row has a duplicate entry, and every occurrence id is present in its row's `occurrenceIds`.
+- Two rows changed on both sides, and both were unioned correctly.
+- I noted that 82 rows have `occurrenceIds` and occurrence ids that differ as multisets. The count is identical in all four files, so it is a pre-existing property of the manifest, not a merge artefact.
+- `check:tokens` (including contrast) passes at the head.
+
+## Tests (scratch worktree at the exact head, removed afterwards)
+
+- `pnpm install --frozen-lockfile` and `turbo build --filter=@taskdesk/api^...`: ok.
+- `CI=true` serialized integration run (Testcontainers Postgres 18): my 13-test probe suite + project-organisation-binding + capabilities-scope + the eight `intake-*` files gave **11 files / 81 tests, all passed**. This is the same count and result as at 613f04a3, including P9 (role matrix on list and bind), P10 (API-key matrix) and P11 (`/api/capabilities` flag).
+- `test:permissions`: **14 files / 88 tests, all passed**. `check:route-policy`, `check:openapi`, `check:i18n`, `check:tokens`: pass.
+- Web: create-project-modal.test.tsx + use-workspace-permission.test.tsx gave 2 files / 19 tests, all passed. Web `tsc --noEmit`: pass.
+- Docker: the containers started by my runs stopped themselves. Nothing was removed, and the `taskdesk-*` containers were untouched.
+
+## Findings
+
+- **No new findings.**
+- Earlier non-blocking items stand: R2 (customer-side workspace membership, S7/#8 follow-up) and the docs line wrap at projects-and-engagements.md:108.
+
+## Residual risk / not checked
+
+- Not run: the full web vitest suite (the conductor reports 659 passing), the full integration suite, Playwright, visual and a11y suites, `test:contract` (oasdiff), image build and boot.
+- I did not review #696's own code beyond confirming it does not interact with the #705 surfaces.
+
+## Owner (Thomas) decision needed
+
+None.
+
+## Verdict
+
+**CLEAR** at 0db351910f3fe1c14ae7ad54b533400217ea4032. The required GPT-6 Sol security review at this exact head and CI remain outstanding.
+<!-- END REPORT (sha256 7e39185ed7ac05f5cd4325782063dfe9c10cde18f422b3472064b789910ea52d) -->
