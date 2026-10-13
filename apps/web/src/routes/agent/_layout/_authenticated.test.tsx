@@ -2,8 +2,12 @@ import {
   defaultParseSearch,
   defaultStringifySearch,
 } from "@tanstack/react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Route } from "./_authenticated";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  Route,
+  SESSION_RETRY_DELAYS_MS,
+  SessionUnavailableError,
+} from "./_authenticated";
 
 const getSession = vi.fn();
 
@@ -166,5 +170,89 @@ describe("_authenticated route beforeLoad", () => {
     expect(redirectOptions.search.redirect).toBe(
       "/dashboard/workspace/w1?tab=board#task-42",
     );
+  });
+
+  describe("transient get-session failures (#674)", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    async function run() {
+      const beforeLoad = Route.options.beforeLoad;
+      if (!beforeLoad) {
+        throw new Error("_authenticated route has no beforeLoad");
+      }
+      const settled = beforeLoad({
+        location: buildRealLocation("/agent/triage", "", ""),
+      } as Parameters<typeof beforeLoad>[0]).then(
+        (value) => ({ value, thrown: undefined as unknown }),
+        (thrown: unknown) => ({ value: undefined, thrown }),
+      );
+      await vi.runAllTimersAsync();
+      return settled;
+    }
+
+    it("does not redirect to sign-in on a 429, and recovers when a retry succeeds", async () => {
+      vi.useFakeTimers();
+      getSession
+        .mockResolvedValueOnce({ data: null, error: { status: 429 } })
+        .mockResolvedValueOnce({ data: null, error: { status: 429 } })
+        .mockResolvedValue({ data: { user: "u1" }, error: null });
+
+      const { value, thrown } = await run();
+
+      expect(thrown).toBeUndefined();
+      expect(value).toEqual({
+        session: { user: "u1" },
+        sessionError: false,
+      });
+      expect(getSession).toHaveBeenCalledTimes(3);
+    });
+
+    it("keeps retrying only a bounded number of times, then shows a transient error instead of redirecting", async () => {
+      vi.useFakeTimers();
+      getSession.mockResolvedValue({ data: null, error: { status: 429 } });
+
+      const { thrown } = await run();
+
+      expect(thrown).toBeInstanceOf(SessionUnavailableError);
+      // Not a sign-in redirect (TanStack redirects are thrown Responses).
+      expect(thrown).not.toBeInstanceOf(Response);
+      expect(getSession).toHaveBeenCalledTimes(
+        SESSION_RETRY_DELAYS_MS.length + 1,
+      );
+    });
+
+    it("treats a 5xx like a transient failure, not a sign-out", async () => {
+      vi.useFakeTimers();
+      getSession.mockResolvedValue({ data: null, error: { status: 503 } });
+
+      const { thrown } = await run();
+
+      expect(thrown).toBeInstanceOf(SessionUnavailableError);
+    });
+
+    it("still redirects to sign-in on a real 401 without retrying", async () => {
+      vi.useFakeTimers();
+      getSession.mockResolvedValue({ data: null, error: { status: 401 } });
+
+      const { thrown } = await run();
+
+      expect(thrown).toBeInstanceOf(Response);
+      expect(
+        (thrown as Response & { options: { to: string } }).options.to,
+      ).toBe("/auth/sign-in");
+      expect(getSession).toHaveBeenCalledTimes(1);
+    });
+
+    it("still redirects to sign-in when the session is null with no error", async () => {
+      vi.useFakeTimers();
+      getSession.mockResolvedValue({ data: null, error: null });
+
+      const { thrown } = await run();
+
+      expect(thrown).toBeInstanceOf(Response);
+      expect(getSession).toHaveBeenCalledTimes(1);
+    });
   });
 });

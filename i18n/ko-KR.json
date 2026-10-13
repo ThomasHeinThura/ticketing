@@ -60,6 +60,7 @@
 			"tryAgain": "다시 시도",
 			"viewDeploymentGuide": "배포 가이드 보기",
 			"refreshPage": "페이지 새로고침",
+			"sessionUnavailable": "지금은 세션을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",

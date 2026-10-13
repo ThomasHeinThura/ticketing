@@ -232,6 +232,9 @@
 						"refreshPage": {
 							"type": "string"
 						},
+						"sessionUnavailable": {
+							"type": "string"
+						},
 						"messages": {
 							"type": "object",
 							"additionalProperties": false,
@@ -321,6 +324,7 @@
 						"tryAgain",
 						"viewDeploymentGuide",
 						"refreshPage",
+						"sessionUnavailable",
 						"messages",
 						"troubleshootingSteps"
 					]

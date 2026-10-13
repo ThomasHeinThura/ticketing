@@ -60,6 +60,7 @@
 			"tryAgain": "Tekrar dene",
 			"viewDeploymentGuide": "Dağıtım Kılavuzunu Görüntüle",
 			"refreshPage": "Sayfayı Yenile",
+			"sessionUnavailable": "Oturumunuz şu anda kontrol edilemedi. Lütfen biraz sonra tekrar deneyin.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",

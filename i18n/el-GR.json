@@ -60,6 +60,7 @@
 			"tryAgain": "Δοκιμάστε ξανά",
 			"viewDeploymentGuide": "Προβολή οδηγού εγκατάστασης",
 			"refreshPage": "Ανανέωση σελίδας",
+			"sessionUnavailable": "Δεν ήταν δυνατός ο έλεγχος της συνεδρίας σας αυτή τη στιγμή. Δοκιμάστε ξανά σε λίγο.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",

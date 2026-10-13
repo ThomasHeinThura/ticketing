@@ -60,6 +60,7 @@
 			"tryAgain": "重试",
 			"viewDeploymentGuide": "查看部署指南",
 			"refreshPage": "刷新页面",
+			"sessionUnavailable": "暂时无法检查您的会话，请稍后重试。",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",

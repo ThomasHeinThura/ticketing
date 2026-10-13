@@ -60,6 +60,7 @@
 			"tryAgain": "Обиди се повторно",
 			"viewDeploymentGuide": "Погледни го водичот за поставување",
 			"refreshPage": "Освежи ја страницата",
+			"sessionUnavailable": "Моментално не можевме да ја проверим вашата сесија. Обидете се повторно за момент.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",

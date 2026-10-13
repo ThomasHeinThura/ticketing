@@ -60,6 +60,7 @@
 			"tryAgain": "Opnieuw proberen",
 			"viewDeploymentGuide": "Implementatiehandleiding bekijken",
 			"refreshPage": "Pagina vernieuwen",
+			"sessionUnavailable": "We konden je sessie nu niet controleren. Probeer het zo opnieuw.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",

@@ -60,6 +60,7 @@
 			"tryAgain": "Réessayer",
 			"viewDeploymentGuide": "Voir le guide de déploiement",
 			"refreshPage": "Rafraîchir la page",
+			"sessionUnavailable": "Nous n'avons pas pu vérifier votre session pour le moment. Réessayez dans un instant.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",

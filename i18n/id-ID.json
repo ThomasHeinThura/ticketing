@@ -60,6 +60,7 @@
 			"tryAgain": "Coba lagi",
 			"viewDeploymentGuide": "Lihat panduan deployment",
 			"refreshPage": "Muat ulang halaman",
+			"sessionUnavailable": "Kami belum dapat memeriksa sesi Anda saat ini. Coba lagi sebentar lagi.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",

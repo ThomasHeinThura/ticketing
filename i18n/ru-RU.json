@@ -60,6 +60,7 @@
 			"tryAgain": "Попробовать снова",
 			"viewDeploymentGuide": "Руководство по развёртыванию",
 			"refreshPage": "Обновить страницу",
+			"sessionUnavailable": "Сейчас не удалось проверить вашу сессию. Повторите попытку через минуту.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",

@@ -60,6 +60,7 @@
 			"tryAgain": "Thử lại",
 			"viewDeploymentGuide": "Xem hướng dẫn triển khai",
 			"refreshPage": "Tải lại trang",
+			"sessionUnavailable": "Hiện chưa thể kiểm tra phiên của bạn. Vui lòng thử lại sau giây lát.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",

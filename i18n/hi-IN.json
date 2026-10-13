@@ -60,6 +60,7 @@
 			"tryAgain": "पुनः प्रयास करें",
 			"viewDeploymentGuide": "डिप्लॉयमेंट गाइड देखें",
 			"refreshPage": "पेज रिफ़्रेश करें",
+			"sessionUnavailable": "अभी हम आपका सत्र जाँच नहीं सके। कृपया थोड़ी देर में फिर प्रयास करें।",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",
