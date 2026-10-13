@@ -1,5 +1,5 @@
 import { Button } from "@taskdesk/ui";
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { getInitials } from "@/lib/get-initials";
 
@@ -20,10 +20,15 @@ type MentionListProps = {
 
 const MentionList = forwardRef<MentionListRef, MentionListProps>(
   ({ items, command }, ref) => {
-    const [selected, setSelected] = useState(0);
-
-    // biome-ignore lint/correctness/useExhaustiveDependencies: reset on items change
-    useEffect(() => setSelected(0), [items]);
+    // The highlight is tracked by person id so it survives list updates; it
+    // falls back to the first row when that person is no longer listed.
+    const [selectedId, setSelectedId] = useState<string | undefined>();
+    const found = items.findIndex((item) => item.id === selectedId);
+    const selected = found >= 0 ? found : 0;
+    const setSelected = (updater: number | ((current: number) => number)) => {
+      const next = typeof updater === "function" ? updater(selected) : updater;
+      setSelectedId(items[next]?.id);
+    };
 
     const select = (index: number) => {
       const item = items[index];
@@ -58,6 +63,7 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
             variant="ghost"
             type="button"
             key={item.id}
+            aria-label={item.label}
             className={`taskdesk-mention-item${index === selected ? " is-active" : ""}`}
             onClick={() => select(index)}
             onMouseEnter={() => setSelected(index)}

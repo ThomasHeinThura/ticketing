@@ -11,8 +11,9 @@ import { useWorkspacePermission } from "./use-workspace-permission";
 // not invented -- so a key renamed or dropped on either side of the wire
 // shows up here as a real assertion failure, not a passing test that never
 // touched the real contract.
-const { capabilitiesGet } = vi.hoisted(() => ({
+const { capabilitiesGet, activeWorkspaceId } = vi.hoisted(() => ({
   capabilitiesGet: vi.fn(),
+  activeWorkspaceId: { value: "workspace-1" },
 }));
 
 vi.mock("@taskdesk/libs", () => ({
@@ -24,7 +25,7 @@ vi.mock("@taskdesk/libs", () => ({
 }));
 
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: { id: "workspace-1" } }),
+  default: () => ({ data: { id: activeWorkspaceId.value } }),
 }));
 
 vi.mock("@/hooks/queries/workspace-users/use-active-workspace-user", () => ({
@@ -72,6 +73,7 @@ function fullCapabilityMap(overrides: Partial<Record<string, boolean>> = {}) {
 describe("useWorkspacePermission", () => {
   beforeEach(() => {
     capabilitiesGet.mockReset();
+    activeWorkspaceId.value = "workspace-1";
   });
 
   it("keeps update capabilities independent from delete capabilities", async () => {
@@ -122,6 +124,84 @@ describe("useWorkspacePermission", () => {
     expect(capabilitiesGet).toHaveBeenCalledWith({
       query: { workspaceId: "workspace-1" },
     });
+  });
+
+  it("keeps target-scoped capabilities bound to the item's workspace", async () => {
+    activeWorkspaceId.value = "active-workspace-A";
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({
+          createPublicComments: true,
+          createInternalComments: false,
+        }),
+    });
+
+    const { result, rerender } = renderHook(
+      ({ targetWorkspaceId }: { targetWorkspaceId: string }) =>
+        useWorkspacePermission(targetWorkspaceId),
+      {
+        initialProps: { targetWorkspaceId: "item-workspace-B" },
+        wrapper: createWrapper(),
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+    expect(capabilitiesGet).toHaveBeenCalledTimes(1);
+    expect(capabilitiesGet).toHaveBeenCalledWith({
+      query: { workspaceId: "item-workspace-B" },
+    });
+    expect(result.current.canCreatePublicComments()).toBe(true);
+    expect(result.current.canCreateInternalComments()).toBe(false);
+    expect(result.current.workspace).toBeUndefined();
+    expect(result.current.member).toBeUndefined();
+    expect(result.current.role).toBeUndefined();
+
+    activeWorkspaceId.value = "active-workspace-C";
+    rerender({ targetWorkspaceId: "item-workspace-B" });
+    expect(capabilitiesGet).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed when optional comment capabilities are absent", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap(),
+    });
+
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(result.current.canCreatePublicComments()).toBe(false);
+    expect(result.current.canCreateInternalComments()).toBe(false);
+  });
+
+  it("exposes only the server's permission-filtered comment choices", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({
+          createPublicComments: true,
+          createInternalComments: false,
+        }),
+    });
+
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(result.current.canCreatePublicComments()).toBe(true);
+    expect(result.current.canCreateInternalComments()).toBe(false);
   });
 
   it("exposes every one of the 16 capabilitiesResponseSchema keys, not a subset", async () => {

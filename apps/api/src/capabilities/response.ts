@@ -21,5 +21,7 @@ export const capabilitiesResponseSchema = z
     manageServiceCalendars: z.boolean(),
     shareSavedViews: z.boolean(),
     manageWorkspaceSettings: z.boolean(),
+    createPublicComments: z.boolean().optional(),
+    createInternalComments: z.boolean().optional(),
   })
   .openapi("Capabilities");

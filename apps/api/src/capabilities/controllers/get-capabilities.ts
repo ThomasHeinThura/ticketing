@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import hasCommentCapability from "../../comment/has-comment-capability";
 import {
   assertCallerHasCapability,
   capabilityCredential,
@@ -30,10 +31,29 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     manageWorkspaceSettings,
   ] = await Promise.all([
     Promise.all(
-      entries.map(
-        async ([name, permissions]) =>
-          [name, await hasWorkspacePermission(c, permissions)] as const,
-      ),
+      entries.map(async ([name, permissions]) => {
+        if (name === "createPublicComments") {
+          return [
+            name,
+            await hasCommentCapability(
+              c.get("workspaceId"),
+              c.get("userId"),
+              "comment:create",
+            ),
+          ] as const;
+        }
+        if (name === "createInternalComments") {
+          return [
+            name,
+            await hasCommentCapability(
+              c.get("workspaceId"),
+              c.get("userId"),
+              "comment:create_internal",
+            ),
+          ] as const;
+        }
+        return [name, await hasWorkspacePermission(c, permissions)] as const;
+      }),
     ),
     hasServiceCalendarManageCapability(c),
     hasCanonicalCapability(c, "saved_view:share"),

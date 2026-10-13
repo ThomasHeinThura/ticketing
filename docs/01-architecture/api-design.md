@@ -620,6 +620,9 @@ POST   /api/work-items/{key}/watch
 DELETE /api/work-items/{key}/watch
 GET    /api/work-items/{key}/activity
 POST   /api/work-items/{key}/comments
+GET    /api/work-items/{key}/comments/mention-candidates
+POST   /api/work-items/{key}/comments/mention-preflight
+GET    /api/work-items/{key}/comments/{id}/versions
 GET    /api/work-items/{key}/sla             ← computed fresh, never stored
 ```
 
