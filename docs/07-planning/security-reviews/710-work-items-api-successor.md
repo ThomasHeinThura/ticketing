@@ -22,12 +22,14 @@ Authorship: a Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 
 - Light security rebind: CLEAR at `cdc121ab`. The test is reworded to pin today's value; the assertions are unchanged.
 - Light security rebind by the same context: CLEAR at `5061424a`. A test-only commit derives the all-false capability-map check from the schema. Three mutations each fail 3 of 13.
 - Full security rebind by the same context: CLEAR at `69c3e903`. The commit merges `main` `f0964fd5` (#705), whose capability conflicts were resolved by hand. Each hunk is a pure union, the `Promise.all` order is mutation-checked, and the registry, matrix and runtime agree for all four new items.
+- Light security rebind by the same context: CLEAR at `e913694f`. It is a clean merge of `main` `9a8e84cf` (#688, web only). The tree equals `git merge-tree`, and nothing under `apps/api` or the API test and contract paths changed.
 
 **Reviewed head:** `224cc555aa30bfcecbcb4a2439c3703ba1dd637f`
 **Reviewed head:** `a51f49107d7d870e6ae73e67d5afb53b90ab0875`
 **Reviewed head:** `cdc121abf2790cd8324cd0101ad4b6d016acaa3a`
 **Reviewed head:** `5061424a1087d54d6c2061dd3f06fc459bea1913`
 **Reviewed head:** `69c3e903ca91c7682227034adb0f367a46172a0a`
+**Reviewed head:** `e913694fefddf4d6b1bc6e2f462dce1e5e327ae0`
 
 ## Context index
 
@@ -43,6 +45,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 6 | `710-cdc1-ordinary-b-sonnet.md` | Ordinary delta review B (224cc555..cdc121ab) | Claude Sonnet 5.5 | `cdc121ab` | APPROVE | `b79c43d141d80d2efd4b2fcef0c1cbed7cfd5a05c66f52f2c662ec85a389f1e8` |
 | 7 | `../2026-10-14/710-5061-security-rebind-opus.md` | Security rebind (cdc121ab..5061424a) | Claude Opus 5.5 | `5061424a` | CLEAR | `14806183cf855ba53682b6d5ae414917dfd84fd5d91e1e824664a6f64e359285` |
 | 8 | `../2026-10-14/710-69c3-security-rebind-opus.md` | Security rebind (5061424a..69c3e903) | Claude Opus 5.5 | `69c3e903` | CLEAR | `20f02c392752208544ae8b8eb1e0c46b40c3a85d6fc5de4cb662f2badf175ccc` |
+| 9 | `../2026-10-14/710-e913-security-rebind-opus.md` | Security rebind (69c3e903..e913694f) | Claude Opus 5.5 | `e913694f` | CLEAR | `3bc9154d93ec7ff691298e4514e2f8e129ab9bf8ebd84684cd90ac7d8975adc9` |
 
 ## Embedded reports
 
@@ -702,3 +705,51 @@ F1, the pre-existing work-item write-route reach defect, stays with its separate
 - N1 and N2 are non-blocking.
 - This review does not replace the required GPT-6 Sol review at this exact head.
 <!-- END REPORT (sha256 20f02c392752208544ae8b8eb1e0c46b40c3a85d6fc5de4cb662f2badf175ccc) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-13/../2026-10-14/710-e913-security-rebind-opus.md; Claude Opus 5.5; sha256 3bc9154d93ec7ff691298e4514e2f8e129ab9bf8ebd84684cd90ac7d8975adc9) -->
+# PR #710 security rebind (69c3e903 to e913694f)
+
+**Model:** Claude Opus 5.5. Fresh, independent context. I did not author, direct or remediate this change, or the merge. My previous CLEAR was at 69c3e903 (710-69c3-security-rebind-opus.md).
+**Role:** a light exact-head security rebind requested by the orchestrator. It does not replace the GPT-6 Sol gate (CLAUDE.md).
+
+**Reviewed head:** e913694fefddf4d6b1bc6e2f462dce1e5e327ae0
+**Previous reviewed head:** 69c3e903ca91c7682227034adb0f367a46172a0a
+**Main:** 9a8e84cf68fc802bac84e68bcc3051e65172b5ba
+**Merge base of the two sides:** f0964fd5d0b63634e2d51e440713cfc1571956f1
+
+## Checks
+
+1. **Main and head.** `git ls-remote origin`:
+   - refs/heads/main = 9a8e84cf, so main is still at the stated commit.
+   - refs/heads/codex/work-items-api-successor = refs/pull/710/head = e913694f.
+2. **Chain.**
+   - 6e24eaaf has a single parent, 69c3e903. `git diff --name-only` shows only `docs/07-planning/security-reviews/710-work-items-api-successor.md`. I did not audit that prose.
+   - e913694f has parents 6e24eaaf and 9a8e84cf.
+3. **Merge tree.**
+   - e913694f's tree is bc1155f28672e5a33c6c163b9ca0b1b416300681.
+   - `git merge-tree --write-tree 6e24eaaf 9a8e84cf` gives bc1155f28672e5a33c6c163b9ca0b1b416300681. **They are equal**, so this is a clean merge with no hand edits.
+   - Also, the full patch `git diff f0964fd5 9a8e84cf` and the full patch `git diff 6e24eaaf e913694f` have the same SHA-1 (ee786642f443…). So the merge brings exactly #688's change set and nothing else.
+4. **Security-relevant paths.**
+   - `git diff --stat 69c3e903 e913694f -- apps/api tests/api-integration tests/permissions tests/api-contract` is **empty**.
+   - Everything that changed since 69c3e903: 33 files under `apps/web/`, `packages/ui/src/styles/pairs.json` (the colour-contrast data), and the review note.
+   - No API runtime, route policy, permission matrix, OpenAPI contract or integration test changed. So every gate and probe result from the 69c3e903 review still applies to this head's API surface.
+
+## Runs
+
+- None needed beyond the git checks above. The API-side tree is byte-identical to 69c3e903, where 7 files / 131 integration tests, test:permissions (88), check:route-policy, check:openapi (282) and the mutation checks passed.
+- I created no scratch worktree and no containers.
+
+## Findings
+
+- No new findings.
+- N1 (stale organisations-policy comment) and N2 (gap in the strict-flag test table) from 710-69c3-security-rebind-opus.md are still open. Both are non-blocking.
+- F1, the pre-existing write-route reach defect, stays with its separate fix lane.
+
+## Residual risk
+
+- I did not review #688's web changes or the review-note prose. They are outside this security rebind's API scope; #688 had its own review on main.
+
+## Verdict
+
+**CLEAR** at e913694fefddf4d6b1bc6e2f462dce1e5e327ae0. This review does not replace the required GPT-6 Sol review at this exact head.
+<!-- END REPORT (sha256 3bc9154d93ec7ff691298e4514e2f8e129ab9bf8ebd84684cd90ac7d8975adc9) -->
