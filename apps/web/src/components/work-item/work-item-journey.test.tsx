@@ -45,7 +45,11 @@ vi.mock("@/fetchers/work-item/unassign-work-item", () => ({
 }));
 vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-i18next")>()),
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    // Echoes the interpolated reasons so a test can see which texts were composed.
+    t: (key: string, options?: { reasons?: string }) =>
+      options?.reasons ? `${key}: ${options.reasons}` : key,
+  }),
 }));
 // Every capability is read for the item's own workspace (target-scoped), never the
 // active one; the stub records what it was asked for.
@@ -563,7 +567,9 @@ describe("WorkItemJourney assignment (AS-1, AS-2, AS-3, AS-9)", () => {
       }),
     );
     pickOption(
-      await screen.findByRole("option", { name: "Person B · Member" }),
+      await screen.findByRole("option", {
+        name: "Person B · team:roles.member",
+      }),
     );
     fireEvent.click(
       screen.getByRole("button", { name: "workItems:journey.assign" }),
@@ -668,7 +674,9 @@ describe("WorkItemJourney item change", () => {
       }),
     );
     pickOption(
-      await screen.findByRole("option", { name: "Person C · Member" }),
+      await screen.findByRole("option", {
+        name: "Person C · team:roles.member",
+      }),
     );
     view.rerender(
       wrap(
@@ -756,7 +764,7 @@ describe("WorkItemJourney state change (WI-9, workflows)", () => {
       screen.getByRole("combobox", { name: "workItems:detail.stateLabel" }),
     ).toHaveTextContent("Done");
     const submit = screen.getByRole("button", {
-      name: "workItems:journey.save",
+      name: "workItems:journey.transitionSubmit",
     });
     expect(submit).toBeDisabled();
     fireEvent.change(
@@ -808,7 +816,9 @@ describe("WorkItemJourney state change (WI-9, workflows)", () => {
     );
     pickOption(await screen.findByRole("option", { name: /Done/ }));
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:journey.save" }),
+      screen.getByRole("button", {
+        name: "workItems:journey.transitionSubmit",
+      }),
     );
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "workItems:journey.transitionConflict",
@@ -828,7 +838,9 @@ describe("WorkItemJourney state change (WI-9, workflows)", () => {
     );
     pickOption(await screen.findByRole("option", { name: /Done/ }));
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:journey.save" }),
+      screen.getByRole("button", {
+        name: "workItems:journey.transitionSubmit",
+      }),
     );
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "workItems:journey.transitionUnavailable",
@@ -903,7 +915,9 @@ describe("WorkItemJourney access loss (decision log 2026-10-13: a 404 from any w
     );
     pickOption(await screen.findByRole("option", { name: /Done/ }));
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:journey.save" }),
+      screen.getByRole("button", {
+        name: "workItems:journey.transitionSubmit",
+      }),
     );
     await waitFor(() => expect(onAccessLost).toHaveBeenCalledTimes(1));
   });
@@ -1084,7 +1098,9 @@ describe("WorkItemJourney assignment follows the item's holder", () => {
       }),
     );
     pickOption(
-      await screen.findByRole("option", { name: "Person C · Member" }),
+      await screen.findByRole("option", {
+        name: "Person C · team:roles.member",
+      }),
     );
     fireEvent.click(
       screen.getByRole("button", { name: "workItems:journey.assign" }),
@@ -1161,7 +1177,9 @@ describe("WorkItemJourney assignment follows the item's holder", () => {
       screen.getByRole("combobox", { name: "workItems:journey.assignee" }),
     );
     pickOption(
-      await screen.findByRole("option", { name: "Person C · Member" }),
+      await screen.findByRole("option", {
+        name: "Person C · team:roles.member",
+      }),
     );
     view.rerender(
       wrap(
@@ -1175,5 +1193,241 @@ describe("WorkItemJourney assignment follows the item's holder", () => {
     expect(
       screen.getByRole("combobox", { name: "workItems:journey.assignee" }),
     ).toHaveTextContent("Person C");
+  });
+});
+
+describe("WorkItemJourney accessibility: focus, announcements, names", () => {
+  const status = () => screen.getByTestId("work-item-journey-status");
+  const readyOffer = () =>
+    offer({ notePolicy: "none", available: true, blockedBy: [] });
+
+  async function chooseDone() {
+    fireEvent.click(
+      await screen.findByRole("combobox", {
+        name: "workItems:detail.stateLabel",
+      }),
+    );
+    pickOption(await screen.findByRole("option", { name: /Done/ }));
+  }
+
+  it("announces a saved edit politely and returns focus to the Edit button", async () => {
+    updateWorkItem.mockResolvedValue({});
+    render(
+      wrap(
+        newClient(),
+        <WorkItemJourney item={makeItem()} onAccessLost={vi.fn()} />,
+      ),
+    );
+    expect(status()).toHaveAttribute("role", "status");
+    openEdit();
+    changeTitle("Edited");
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.save" }),
+    );
+    await waitFor(() =>
+      expect(status()).toHaveTextContent("workItems:journey.editSaved"),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "workItems:journey.edit" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("after a transition, announces it and moves focus to the section heading, not <body>", async () => {
+    permissionFlags.transition = true;
+    transitionsFetcher.mockResolvedValue([readyOffer()]);
+    render(
+      wrap(
+        newClient(),
+        <WorkItemJourney item={makeItem()} onAccessLost={vi.fn()} />,
+      ),
+    );
+    await chooseDone();
+    // Distinct accessible name from the edit form's Save.
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "workItems:journey.transitionSubmit",
+      }),
+    );
+    await waitFor(() =>
+      expect(status()).toHaveTextContent("workItems:journey.transitionDone"),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "workItems:detail.stateLabel" }),
+      ).toHaveFocus(),
+    );
+    expect(document.body).not.toHaveFocus();
+  });
+
+  it("keeps focus on a stable target when a transition fails too", async () => {
+    permissionFlags.transition = true;
+    transitionsFetcher.mockResolvedValue([readyOffer()]);
+    transitionWorkItem.mockRejectedValue(new HttpError(422, "blocked"));
+    render(
+      wrap(
+        newClient(),
+        <WorkItemJourney item={makeItem()} onAccessLost={vi.fn()} />,
+      ),
+    );
+    await chooseDone();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "workItems:journey.transitionSubmit",
+      }),
+    );
+    await screen.findByRole("alert");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "workItems:detail.stateLabel" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("announces assign and unassign and moves focus to the assignment heading", async () => {
+    permissionFlags.assign = false;
+    getAssignablePeople.mockResolvedValue([
+      { personId: "self", name: "Current Agent", roleName: "Member" },
+    ]);
+    const view = render(
+      wrap(
+        newClient(),
+        <WorkItemJourney item={makeItem()} onAccessLost={vi.fn()} />,
+      ),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "workItems:journey.assignToMe",
+      }),
+    );
+    await waitFor(() =>
+      expect(status()).toHaveTextContent("workItems:journey.assignDone"),
+    );
+    const heading = screen.getByRole("heading", {
+      name: "workItems:journey.assignmentHeading",
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+
+    view.unmount();
+    render(
+      wrap(
+        newClient(),
+        <WorkItemJourney
+          item={makeItem({ assigneeId: "self" })}
+          onAccessLost={vi.fn()}
+        />,
+      ),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "workItems:journey.unassign" }),
+    );
+    await waitFor(() =>
+      expect(status()).toHaveTextContent("workItems:journey.unassignDone"),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", {
+          name: "workItems:journey.assignmentHeading",
+        }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("shows blocked reasons as translated text, never the raw reason code", async () => {
+    permissionFlags.transition = true;
+    transitionsFetcher.mockResolvedValue([
+      offer({
+        notePolicy: "none",
+        blockedBy: [
+          { kind: "guard", reasonCode: "guard.assignee_present" },
+          { kind: "guard", reasonCode: "guard.something_new" },
+        ],
+      }),
+    ]);
+    render(
+      wrap(
+        newClient(),
+        <WorkItemJourney item={makeItem()} onAccessLost={vi.fn()} />,
+      ),
+    );
+    fireEvent.click(
+      await screen.findByRole("combobox", {
+        name: "workItems:detail.stateLabel",
+      }),
+    );
+    const option = await screen.findByRole("option", { name: /Done/ });
+    expect(option).toHaveTextContent("workItems:journey.reasonAssigneePresent");
+    expect(option).toHaveTextContent("workItems:journey.reasonUnknown");
+    expect(option.textContent).not.toContain("guard.");
+  });
+
+  it("localises built-in role names and shows a custom role as the workspace named it", async () => {
+    getAssignablePeople.mockResolvedValue([
+      { personId: "a", name: "Person A", roleName: "Admin" },
+      { personId: "b", name: "Person B", roleName: "Duty Manager" },
+    ]);
+    render(
+      wrap(
+        newClient(),
+        <WorkItemJourney item={makeItem()} onAccessLost={vi.fn()} />,
+      ),
+    );
+    fireEvent.click(
+      await screen.findByRole("combobox", {
+        name: "workItems:journey.assignee",
+      }),
+    );
+    expect(
+      await screen.findByRole("option", {
+        name: "Person A · team:roles.admin",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Person B · Duty Manager" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("WorkItemJourney edit refinements", () => {
+  it("reverting the description text is not a change", () => {
+    render(
+      wrap(
+        newClient(),
+        <WorkItemJourney item={makeItem()} onAccessLost={vi.fn()} />,
+      ),
+    );
+    openEdit();
+    const save = screen.getByRole("button", { name: "workItems:journey.save" });
+    const field = screen.getByLabelText("workItems:journey.description");
+    fireEvent.change(field, { target: { value: "Notes plus" } });
+    expect(save).toBeEnabled();
+    fireEvent.change(field, { target: { value: "Notes" } });
+    expect(save).toBeDisabled();
+  });
+
+  it("a stored date with no time part falls back to UTC midnight when moved", async () => {
+    updateWorkItem.mockResolvedValue({});
+    render(
+      wrap(
+        newClient(),
+        <WorkItemJourney
+          item={makeItem({ dueDate: "2026-10-10" })}
+          onAccessLost={vi.fn()}
+        />,
+      ),
+    );
+    openEdit();
+    fireEvent.change(screen.getByLabelText("workItems:journey.dueDate"), {
+      target: { value: "2026-11-02" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.save" }),
+    );
+    await waitFor(() =>
+      expect(updateWorkItem).toHaveBeenCalledWith(
+        expect.objectContaining({ dueDate: "2026-11-02T00:00:00.000Z" }),
+      ),
+    );
   });
 });

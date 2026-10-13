@@ -38,9 +38,14 @@ import { extractDescription, type WorkItemDetailRow } from "@/types/work-item";
  */
 function dateInputToIso(value: string, original: string | null) {
   if (!value) return null;
-  const timeOfDay = original?.slice(10) ?? "T00:00:00.000Z";
+  const timeOfDay = original?.slice(10) || "T00:00:00.000Z";
   return `${value}${timeOfDay}`;
 }
+
+type SectionProps = WorkItemJourneyProps & {
+  /** Polite, visually hidden announcement of a successful change (WCAG 4.1.3). */
+  announce: (message: string) => void;
+};
 
 export type WorkItemJourneyProps = {
   item: WorkItemDetailRow;
@@ -69,6 +74,9 @@ export default function WorkItemJourney(props: WorkItemJourneyProps) {
 }
 
 function WorkItemJourneyForItem({ item, onAccessLost }: WorkItemJourneyProps) {
+  // One live region for the whole journey, mounted before any change so the message is
+  // announced; sections remount between loading/ready/empty, this does not.
+  const [announcement, setAnnouncement] = useState("");
   const {
     canUpdateTasks,
     canAssignTasks,
@@ -84,15 +92,66 @@ function WorkItemJourneyForItem({ item, onAccessLost }: WorkItemJourneyProps) {
 
   return (
     <div className="flex flex-col gap-6" data-testid="work-item-journey">
-      {mayEdit && <EditSection item={item} onAccessLost={onAccessLost} />}
+      <p
+        role="status"
+        className="sr-only"
+        data-testid="work-item-journey-status"
+      >
+        {announcement}
+      </p>
+      {mayEdit && (
+        <EditSection
+          item={item}
+          onAccessLost={onAccessLost}
+          announce={setAnnouncement}
+        />
+      )}
       {mayTransition && (
-        <TransitionSection item={item} onAccessLost={onAccessLost} />
+        <TransitionSection
+          item={item}
+          onAccessLost={onAccessLost}
+          announce={setAnnouncement}
+        />
       )}
       {mayAssign && (
-        <AssignmentSection item={item} onAccessLost={onAccessLost} />
+        <AssignmentSection
+          item={item}
+          onAccessLost={onAccessLost}
+          announce={setAnnouncement}
+        />
       )}
     </div>
   );
+}
+
+/** Server reason codes (`workflows.md`: `guard.<type>`, `note.required`, approval/CAB
+ * gates) as readable text. An unrecognised code never shows raw. */
+const REASON_KEYS: Record<string, string> = {
+  "note.required": "reasonNoteRequired",
+  "guard.assignee_present": "reasonAssigneePresent",
+  "guard.children_closed": "reasonChildrenClosed",
+  "guard.no_open_blockers": "reasonNoOpenBlockers",
+  "guard.field_required": "reasonFieldRequired",
+  "guard.change_risk_at_most": "reasonChangeRisk",
+  "guard.unrecognized": "reasonUnknown",
+  "approval.pending": "reasonApprovalPending",
+  "cab.pending": "reasonCabPending",
+};
+
+function reasonKey(code: string) {
+  return `workItems:journey.${REASON_KEYS[code] ?? "reasonUnknown"}`;
+}
+
+const BUILT_IN_ROLES = ["owner", "admin", "member", "viewer"];
+
+/** `roleName` is the role's display name (custom roles are free text). The four built-in
+ * names are localised; anything else is shown as the workspace named it. */
+function roleLabel(
+  roleName: string,
+  t: ReturnType<typeof useTranslation>["t"],
+) {
+  const key = roleName.trim().toLowerCase();
+  return BUILT_IN_ROLES.includes(key) ? t(`team:roles.${key}`) : roleName;
 }
 
 function useInvalidateWorkItem(item: WorkItemDetailRow) {
@@ -118,7 +177,7 @@ function useInvalidateWorkItem(item: WorkItemDetailRow) {
   return { invalidateDetail, invalidateAll };
 }
 
-function EditSection({ item, onAccessLost }: WorkItemJourneyProps) {
+function EditSection({ item, onAccessLost, announce }: SectionProps) {
   const { t } = useTranslation();
   const { invalidateDetail, invalidateAll } = useInvalidateWorkItem(item);
   const ids = useId();
@@ -134,10 +193,10 @@ function EditSection({ item, onAccessLost }: WorkItemJourneyProps) {
   const [descriptionText, setDescriptionText] = useState(
     description.kind === "text" ? description.text : "",
   );
-  const [descriptionChanged, setDescriptionChanged] = useState(false);
   // The item values the draft was seeded from, so only real changes are sent.
   const [baseline, setBaseline] = useState({
     title: item.title,
+    description: description.kind === "text" ? description.text : "",
     startDate: item.startDate,
     dueDate: item.dueDate,
   });
@@ -155,12 +214,12 @@ function EditSection({ item, onAccessLost }: WorkItemJourneyProps) {
     setEditVersion(item.version);
     setBaseline({
       title: item.title,
+      description: description.kind === "text" ? description.text : "",
       startDate: item.startDate,
       dueDate: item.dueDate,
     });
     setTitle(item.title);
     setDescriptionText(description.kind === "text" ? description.text : "");
-    setDescriptionChanged(false);
     setStartDate(item.startDate?.slice(0, 10) ?? "");
     setDueDate(item.dueDate?.slice(0, 10) ?? "");
     setEditError("");
@@ -185,6 +244,8 @@ function EditSection({ item, onAccessLost }: WorkItemJourneyProps) {
   }, [editing]);
 
   const titleChanged = title !== baseline.title;
+  // Reverting the text to what it was is not a change.
+  const descriptionChanged = descriptionText !== baseline.description;
   const startChanged = startDate !== (baseline.startDate?.slice(0, 10) ?? "");
   const dueChanged = dueDate !== (baseline.dueDate?.slice(0, 10) ?? "");
   const hasChanges =
@@ -206,6 +267,7 @@ function EditSection({ item, onAccessLost }: WorkItemJourneyProps) {
       }),
     onSuccess: async () => {
       stopEditing();
+      announce(t("workItems:journey.editSaved"));
       await invalidateAll();
     },
     onError: async (error) => {
@@ -286,7 +348,6 @@ function EditSection({ item, onAccessLost }: WorkItemJourneyProps) {
                 value={descriptionText}
                 onChange={(event) => {
                   setDescriptionText(event.target.value);
-                  setDescriptionChanged(true);
                 }}
               />
             </div>
@@ -354,7 +415,8 @@ function EditSection({ item, onAccessLost }: WorkItemJourneyProps) {
   );
 }
 
-function TransitionSection({ item, onAccessLost }: WorkItemJourneyProps) {
+function TransitionSection({ item, onAccessLost, announce }: SectionProps) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const { t } = useTranslation();
   const { invalidateAll, invalidateDetail } = useInvalidateWorkItem(item);
   const ids = useId();
@@ -387,12 +449,21 @@ function TransitionSection({ item, onAccessLost }: WorkItemJourneyProps) {
   const mutation = useMutation({
     mutationFn: (input: { toStateTemplateId: string; note?: string }) =>
       transitionWorkItem({ key: item.key, ...input }),
-    onSuccess: async () => {
+    onSuccess: async (_result, input) => {
+      const moved = transitions.data?.find(
+        (entry) => entry.toStateTemplateId === input.toStateTemplateId,
+      );
       setSelectedId("");
       setNote("");
       setError("");
+      announce(
+        t("workItems:journey.transitionDone", { state: moved?.toStateName }),
+      );
       await invalidateAll();
     },
+    // The submit button disables once the offers refetch; focus would drop to <body>
+    // (WCAG 2.4.3), so it moves to the section heading, a stable target.
+    onSettled: () => headingRef.current?.focus(),
     onError: async (mutationError) => {
       if (isWorkItemAccessLost(mutationError)) {
         onAccessLost();
@@ -411,7 +482,12 @@ function TransitionSection({ item, onAccessLost }: WorkItemJourneyProps) {
   });
 
   const heading = (
-    <h2 id={`${ids}-heading`} className="font-medium text-lg">
+    <h2
+      id={`${ids}-heading`}
+      ref={headingRef}
+      tabIndex={-1}
+      className="font-medium text-lg"
+    >
       {t("workItems:detail.stateLabel")}
     </h2>
   );
@@ -508,7 +584,7 @@ function TransitionSection({ item, onAccessLost }: WorkItemJourneyProps) {
             {transitions.data.map((offer) => {
               const blocked = !offer.available && !onlyNeedsNote(offer);
               const reasons = offer.blockedBy
-                .map((reason) => reason.reasonCode)
+                .map((reason) => t(reasonKey(reason.reasonCode)))
                 .join(", ");
               return (
                 <SelectItem
@@ -553,8 +629,8 @@ function TransitionSection({ item, onAccessLost }: WorkItemJourneyProps) {
             disabled={!canRun || mutation.isPending}
           >
             {mutation.isPending
-              ? t("workItems:journey.saving")
-              : t("workItems:journey.save")}
+              ? t("workItems:journey.transitionMoving")
+              : t("workItems:journey.transitionSubmit")}
           </Button>
         </div>
       </form>
@@ -562,7 +638,8 @@ function TransitionSection({ item, onAccessLost }: WorkItemJourneyProps) {
   );
 }
 
-function AssignmentSection({ item, onAccessLost }: WorkItemJourneyProps) {
+function AssignmentSection({ item, onAccessLost, announce }: SectionProps) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const { t } = useTranslation();
   const { invalidateAll, invalidateDetail } = useInvalidateWorkItem(item);
   const ids = useId();
@@ -620,11 +697,21 @@ function AssignmentSection({ item, onAccessLost }: WorkItemJourneyProps) {
         assigneeId,
         expectedCurrentAssigneeId: item.assigneeId,
       }),
-    onSuccess: async () => {
+    onSuccess: async (_result, assigneeId) => {
+      const person = assignees.data?.find(
+        (entry) => entry.personId === assigneeId,
+      );
       setError("");
       setConfirmReassign(false);
+      announce(
+        t("workItems:journey.assignDone", {
+          name: person?.name ?? t("workItems:journey.unnamedPerson"),
+        }),
+      );
       await invalidateAll();
     },
+    // The buttons disable or unmount as the item refetches; keep focus on a stable target.
+    onSettled: () => headingRef.current?.focus(),
     onError: (mutationError) =>
       handleFailure(mutationError, "workItems:journey.assignmentError"),
   });
@@ -632,8 +719,10 @@ function AssignmentSection({ item, onAccessLost }: WorkItemJourneyProps) {
     mutationFn: () => unassignWorkItem(item.key),
     onSuccess: async () => {
       setError("");
+      announce(t("workItems:journey.unassignDone"));
       await invalidateAll();
     },
+    onSettled: () => headingRef.current?.focus(),
     onError: (mutationError) =>
       handleFailure(mutationError, "workItems:journey.unassignmentError"),
   });
@@ -658,7 +747,12 @@ function AssignmentSection({ item, onAccessLost }: WorkItemJourneyProps) {
   );
   const self = assignees.data?.[0];
   const heading = (
-    <h2 id={`${ids}-heading`} className="font-medium text-lg">
+    <h2
+      id={`${ids}-heading`}
+      ref={headingRef}
+      tabIndex={-1}
+      className="font-medium text-lg"
+    >
       {t("workItems:journey.assignmentHeading")}
     </h2>
   );
@@ -809,7 +903,7 @@ function AssignmentSection({ item, onAccessLost }: WorkItemJourneyProps) {
               {people.map((person) => (
                 <SelectItem key={person.personId} value={person.personId}>
                   {person.name ?? t("workItems:journey.unnamedPerson")} ·{" "}
-                  {person.roleName}
+                  {roleLabel(person.roleName, t)}
                 </SelectItem>
               ))}
             </SelectContent>

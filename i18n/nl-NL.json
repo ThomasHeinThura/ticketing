@@ -2391,7 +2391,7 @@
 			"reloadLatest": "Discard my draft and reload the latest",
 			"editUnavailable": "Some fields could not be loaded, so this work item can't be edited right now.",
 			"transitionPlaceholder": "Choose a new state",
-			"transitionBlocked": "not available ({{reasons}})",
+			"transitionBlocked": "unavailable: {{reasons}}",
 			"transitionNoteRequired": "note required",
 			"transitionNote": "Note",
 			"transitionsEmpty": "No state changes are available right now.",
@@ -2414,7 +2414,22 @@
 			"loadingPeople": "Loading people…",
 			"peopleError": "Couldn't load the people you can assign to.",
 			"noPeople": "There is nobody you can assign this work item to.",
-			"unnamedPerson": "Unnamed person"
+			"unnamedPerson": "Unnamed person",
+			"editSaved": "Changes saved.",
+			"transitionSubmit": "Move to state",
+			"transitionMoving": "Moving…",
+			"transitionDone": "State changed to {{state}}.",
+			"assignDone": "Assigned to {{name}}.",
+			"unassignDone": "Unassigned.",
+			"reasonNoteRequired": "a note is required",
+			"reasonAssigneePresent": "needs an assignee",
+			"reasonChildrenClosed": "child items are still open",
+			"reasonNoOpenBlockers": "blocked by open items",
+			"reasonFieldRequired": "a required field is empty",
+			"reasonChangeRisk": "change risk is too high",
+			"reasonUnknown": "not available",
+			"reasonApprovalPending": "waiting for approval",
+			"reasonCabPending": "waiting for change advisory board approval"
 		}
 	},
 	"portal": {
