@@ -62,21 +62,24 @@ of them lives in `saved_view` (a shared query object). Their authoritative home 
 model is `user_preference` (`person_id`, `scope`, `scope_id`, `key`, `value jsonb` —
 [data model](../01-architecture/data-model.md)); no new table is needed.
 
-**Current implementation: browser `localStorage` only.** Each value is stored per user per
-project in the browser that set it and is **not synced across devices or browsers**. No route
-on `main` reads or writes `user_preference` for these keys (the only route that touches that
-table is `POST /api/views/{id}/pin`, `SV-20`). In practice:
+The contract is that these preferences persist in `user_preference`, so they follow the
+person across devices and browsers. No route on `main` reads or writes `user_preference` for
+these keys yet. The only route that touches that table is `POST /api/views/{id}/pin`
+(`SV-20`). Until that route exists, the current implementation is interim and falls short of
+the contract:
 
-- `VW-2` is `taskdesk:project-layout:<userId>:<projectId>` (`board` or `list` in P1), written
-  only for a signed-in user, and the URL layout always overrides it. Decision log
-  2026-10-13: it uses `localStorage` until the user-preference schema freezes.
-- `VW-6` is the persisted `user-preferences` store's `compactMode` flag. It is one value per
-  browser, not per project.
-- `VW-15`, `VW-19` and `VW-21` have no implementation on `main`; they follow this same rule
-  until a user-preference route is specified.
+- `VW-2` is stored in browser `localStorage` as `taskdesk:project-layout:<userId>:<projectId>`
+  (`board` or `list` in P1). It is written only for a signed-in user, the URL layout always
+  overrides it, and it is not synced across devices.
+  - This interim storage is a reversible conductor decision (decision log 2026-10-13, "#609
+    successor URL state"), not an owner decision. It lasts until the user-preference route
+    exists.
+- `VW-6` is today the browser-persisted `user-preferences` store's `compactMode` flag. It is
+  one value per browser, not per project, and not synced.
+- `VW-15`, `VW-19` and `VW-21` are not implemented on `main`.
 
-Moving any of these onto `user_preference` (and therefore across devices) is a change to this
-section, not an implementation detail.
+Moving these onto `user_preference` needs a self-scoped preference route. That route does not
+yet exist and must be specified with its policy before it is built.
 
 **Board**
 
