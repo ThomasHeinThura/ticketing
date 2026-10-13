@@ -228,7 +228,8 @@ the server, except that the table's chosen columns determine which fields are re
 | `POST /api/work-items/bulk` | `work_item:read` at the route, per-operation capability inside | `VW-3` |
 | `POST /api/work-items/export` | `work_item:export`, audited `work_item.exported` | `VW-23` — **not implemented; see Open questions** |
 
-No route persists layout, density, column or width choices; those are browser-local (see
+No route persists layout, density, column or width choices yet. They are browser-local for now,
+an interim state short of the `user_preference` contract (see
 [Per-user preferences](#per-user-preferences)). Saving a view uses the routes in
 [search and saved views](search-and-saved-views.md).
 
