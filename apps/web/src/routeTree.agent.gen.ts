@@ -30,7 +30,9 @@ import { Route as LayoutAuthenticatedDashboardInvitationsRouteImport } from './r
 import { Route as LayoutAuthenticatedDashboardSettingsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings'
 import { Route as LayoutAuthenticatedGodModeObservabilityRouteImport } from './routes/agent/_layout/_authenticated/god-mode/observability'
 import { Route as LayoutAuthenticatedAgentGodModeUsersRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/users'
+import { Route as LayoutAuthenticatedAgentSettingsCalendarsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/calendars'
 import { Route as LayoutAuthenticatedAgentSettingsRequestTypesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/request-types'
+import { Route as LayoutAuthenticatedAgentSettingsSlaPoliciesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/sla-policies'
 import { Route as LayoutAuthenticatedAgentWorkItemsKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/work-items/$key'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account'
 import { Route as LayoutAuthenticatedDashboardSettingsProjectsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects'
@@ -38,7 +40,9 @@ import { Route as LayoutAuthenticatedDashboardSettingsWorkspaceRouteImport } fro
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId'
 import { Route as LayoutAuthenticatedDashboardWorkspaceCreateRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/create'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyWorkRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/work'
+import { Route as LayoutAuthenticatedAgentSettingsCalendarsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/calendars/$id'
 import { Route as LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions'
+import { Route as LayoutAuthenticatedAgentSettingsSlaPoliciesIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/sla-policies/$id'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountDeveloperRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account/developer'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountInformationRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account/information'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountNotificationsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account/notifications'
@@ -174,10 +178,22 @@ const LayoutAuthenticatedAgentGodModeUsersRoute =
     path: '/agent/god-mode/users',
     getParentRoute: () => LayoutAuthenticatedRoute,
   } as any)
+const LayoutAuthenticatedAgentSettingsCalendarsRoute =
+  LayoutAuthenticatedAgentSettingsCalendarsRouteImport.update({
+    id: '/agent/settings/calendars',
+    path: '/agent/settings/calendars',
+    getParentRoute: () => LayoutAuthenticatedRoute,
+  } as any)
 const LayoutAuthenticatedAgentSettingsRequestTypesRoute =
   LayoutAuthenticatedAgentSettingsRequestTypesRouteImport.update({
     id: '/agent/settings/request-types',
     path: '/agent/settings/request-types',
+    getParentRoute: () => LayoutAuthenticatedRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsSlaPoliciesRoute =
+  LayoutAuthenticatedAgentSettingsSlaPoliciesRouteImport.update({
+    id: '/agent/settings/sla-policies',
+    path: '/agent/settings/sla-policies',
     getParentRoute: () => LayoutAuthenticatedRoute,
   } as any)
 const LayoutAuthenticatedAgentWorkItemsKeyRoute =
@@ -222,11 +238,23 @@ const LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute =
     path: '/agent/projects/$projectKey/work',
     getParentRoute: () => LayoutAuthenticatedRoute,
   } as any)
+const LayoutAuthenticatedAgentSettingsCalendarsIdRoute =
+  LayoutAuthenticatedAgentSettingsCalendarsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsCalendarsRoute,
+  } as any)
 const LayoutAuthenticatedAgentSettingsProfilePendingActionsRoute =
   LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteImport.update({
     id: '/agent/settings/profile/pending-actions',
     path: '/agent/settings/profile/pending-actions',
     getParentRoute: () => LayoutAuthenticatedRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute =
+  LayoutAuthenticatedAgentSettingsSlaPoliciesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsSlaPoliciesRoute,
   } as any)
 const LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute =
   LayoutAuthenticatedDashboardSettingsAccountDeveloperRouteImport.update({
@@ -392,7 +420,9 @@ export interface FileRoutesByFullPath {
   '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
   '/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
+  '/agent/settings/calendars': typeof LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren
   '/agent/settings/request-types': typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
+  '/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
   '/dashboard/settings/projects': typeof LayoutAuthenticatedDashboardSettingsProjectsRouteWithChildren
@@ -400,7 +430,9 @@ export interface FileRoutesByFullPath {
   '/dashboard/workspace/$workspaceId': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteWithChildren
   '/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
+  '/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
   '/agent/settings/profile/pending-actions': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
+  '/agent/settings/sla-policies/$id': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute
   '/dashboard/settings/account/developer': typeof LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute
   '/dashboard/settings/account/information': typeof LayoutAuthenticatedDashboardSettingsAccountInformationRoute
   '/dashboard/settings/account/notifications': typeof LayoutAuthenticatedDashboardSettingsAccountNotificationsRoute
@@ -441,14 +473,18 @@ export interface FileRoutesByTo {
   '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/dashboard': typeof LayoutAuthenticatedDashboardIndexRoute
   '/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
+  '/agent/settings/calendars': typeof LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren
   '/agent/settings/request-types': typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
+  '/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
   '/dashboard/settings/projects': typeof LayoutAuthenticatedDashboardSettingsProjectsRouteWithChildren
   '/dashboard/settings/workspace': typeof LayoutAuthenticatedDashboardSettingsWorkspaceRouteWithChildren
   '/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
+  '/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
   '/agent/settings/profile/pending-actions': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
+  '/agent/settings/sla-policies/$id': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute
   '/dashboard/settings/account/developer': typeof LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute
   '/dashboard/settings/account/information': typeof LayoutAuthenticatedDashboardSettingsAccountInformationRoute
   '/dashboard/settings/account/notifications': typeof LayoutAuthenticatedDashboardSettingsAccountNotificationsRoute
@@ -493,7 +529,9 @@ export interface FileRoutesById {
   '/_layout/_authenticated/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/_layout/_authenticated/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
   '/_layout/_authenticated/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
+  '/_layout/_authenticated/agent/settings/calendars': typeof LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren
   '/_layout/_authenticated/agent/settings/request-types': typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
+  '/_layout/_authenticated/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/_layout/_authenticated/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/_layout/_authenticated/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
   '/_layout/_authenticated/dashboard/settings/projects': typeof LayoutAuthenticatedDashboardSettingsProjectsRouteWithChildren
@@ -501,7 +539,9 @@ export interface FileRoutesById {
   '/_layout/_authenticated/dashboard/workspace/$workspaceId': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteWithChildren
   '/_layout/_authenticated/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/_layout/_authenticated/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
+  '/_layout/_authenticated/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
   '/_layout/_authenticated/agent/settings/profile/pending-actions': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
+  '/_layout/_authenticated/agent/settings/sla-policies/$id': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute
   '/_layout/_authenticated/dashboard/settings/account/developer': typeof LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute
   '/_layout/_authenticated/dashboard/settings/account/information': typeof LayoutAuthenticatedDashboardSettingsAccountInformationRoute
   '/_layout/_authenticated/dashboard/settings/account/notifications': typeof LayoutAuthenticatedDashboardSettingsAccountNotificationsRoute
@@ -545,7 +585,9 @@ export interface FileRouteTypes {
     | '/god-mode/observability'
     | '/dashboard/'
     | '/agent/god-mode/users'
+    | '/agent/settings/calendars'
     | '/agent/settings/request-types'
+    | '/agent/settings/sla-policies'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
     | '/dashboard/settings/projects'
@@ -553,7 +595,9 @@ export interface FileRouteTypes {
     | '/dashboard/workspace/$workspaceId'
     | '/dashboard/workspace/create'
     | '/agent/projects/$projectKey/work'
+    | '/agent/settings/calendars/$id'
     | '/agent/settings/profile/pending-actions'
+    | '/agent/settings/sla-policies/$id'
     | '/dashboard/settings/account/developer'
     | '/dashboard/settings/account/information'
     | '/dashboard/settings/account/notifications'
@@ -594,14 +638,18 @@ export interface FileRouteTypes {
     | '/god-mode/observability'
     | '/dashboard'
     | '/agent/god-mode/users'
+    | '/agent/settings/calendars'
     | '/agent/settings/request-types'
+    | '/agent/settings/sla-policies'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
     | '/dashboard/settings/projects'
     | '/dashboard/settings/workspace'
     | '/dashboard/workspace/create'
     | '/agent/projects/$projectKey/work'
+    | '/agent/settings/calendars/$id'
     | '/agent/settings/profile/pending-actions'
+    | '/agent/settings/sla-policies/$id'
     | '/dashboard/settings/account/developer'
     | '/dashboard/settings/account/information'
     | '/dashboard/settings/account/notifications'
@@ -645,7 +693,9 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/god-mode/observability'
     | '/_layout/_authenticated/dashboard/'
     | '/_layout/_authenticated/agent/god-mode/users'
+    | '/_layout/_authenticated/agent/settings/calendars'
     | '/_layout/_authenticated/agent/settings/request-types'
+    | '/_layout/_authenticated/agent/settings/sla-policies'
     | '/_layout/_authenticated/agent/work-items/$key'
     | '/_layout/_authenticated/dashboard/settings/account'
     | '/_layout/_authenticated/dashboard/settings/projects'
@@ -653,7 +703,9 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId'
     | '/_layout/_authenticated/dashboard/workspace/create'
     | '/_layout/_authenticated/agent/projects/$projectKey/work'
+    | '/_layout/_authenticated/agent/settings/calendars/$id'
     | '/_layout/_authenticated/agent/settings/profile/pending-actions'
+    | '/_layout/_authenticated/agent/settings/sla-policies/$id'
     | '/_layout/_authenticated/dashboard/settings/account/developer'
     | '/_layout/_authenticated/dashboard/settings/account/information'
     | '/_layout/_authenticated/dashboard/settings/account/notifications'
@@ -833,11 +885,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeUsersRouteImport
       parentRoute: typeof LayoutAuthenticatedRoute
     }
+    '/_layout/_authenticated/agent/settings/calendars': {
+      id: '/_layout/_authenticated/agent/settings/calendars'
+      path: '/agent/settings/calendars'
+      fullPath: '/agent/settings/calendars'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsRouteImport
+      parentRoute: typeof LayoutAuthenticatedRoute
+    }
     '/_layout/_authenticated/agent/settings/request-types': {
       id: '/_layout/_authenticated/agent/settings/request-types'
       path: '/agent/settings/request-types'
       fullPath: '/agent/settings/request-types'
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsRequestTypesRouteImport
+      parentRoute: typeof LayoutAuthenticatedRoute
+    }
+    '/_layout/_authenticated/agent/settings/sla-policies': {
+      id: '/_layout/_authenticated/agent/settings/sla-policies'
+      path: '/agent/settings/sla-policies'
+      fullPath: '/agent/settings/sla-policies'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteImport
       parentRoute: typeof LayoutAuthenticatedRoute
     }
     '/_layout/_authenticated/agent/work-items/$key': {
@@ -889,12 +955,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRouteImport
       parentRoute: typeof LayoutAuthenticatedRoute
     }
+    '/_layout/_authenticated/agent/settings/calendars/$id': {
+      id: '/_layout/_authenticated/agent/settings/calendars/$id'
+      path: '/$id'
+      fullPath: '/agent/settings/calendars/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsRoute
+    }
     '/_layout/_authenticated/agent/settings/profile/pending-actions': {
       id: '/_layout/_authenticated/agent/settings/profile/pending-actions'
       path: '/agent/settings/profile/pending-actions'
       fullPath: '/agent/settings/profile/pending-actions'
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteImport
       parentRoute: typeof LayoutAuthenticatedRoute
+    }
+    '/_layout/_authenticated/agent/settings/sla-policies/$id': {
+      id: '/_layout/_authenticated/agent/settings/sla-policies/$id'
+      path: '/$id'
+      fullPath: '/agent/settings/sla-policies/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsSlaPoliciesIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRoute
     }
     '/_layout/_authenticated/dashboard/settings/account/developer': {
       id: '/_layout/_authenticated/dashboard/settings/account/developer'
@@ -1192,6 +1272,36 @@ const LayoutAuthenticatedDashboardRouteWithChildren =
     LayoutAuthenticatedDashboardRouteChildren,
   )
 
+interface LayoutAuthenticatedAgentSettingsCalendarsRouteChildren {
+  LayoutAuthenticatedAgentSettingsCalendarsIdRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
+}
+
+const LayoutAuthenticatedAgentSettingsCalendarsRouteChildren: LayoutAuthenticatedAgentSettingsCalendarsRouteChildren =
+  {
+    LayoutAuthenticatedAgentSettingsCalendarsIdRoute:
+      LayoutAuthenticatedAgentSettingsCalendarsIdRoute,
+  }
+
+const LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren =
+  LayoutAuthenticatedAgentSettingsCalendarsRoute._addFileChildren(
+    LayoutAuthenticatedAgentSettingsCalendarsRouteChildren,
+  )
+
+interface LayoutAuthenticatedAgentSettingsSlaPoliciesRouteChildren {
+  LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute: typeof LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute
+}
+
+const LayoutAuthenticatedAgentSettingsSlaPoliciesRouteChildren: LayoutAuthenticatedAgentSettingsSlaPoliciesRouteChildren =
+  {
+    LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute:
+      LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute,
+  }
+
+const LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren =
+  LayoutAuthenticatedAgentSettingsSlaPoliciesRoute._addFileChildren(
+    LayoutAuthenticatedAgentSettingsSlaPoliciesRouteChildren,
+  )
+
 interface LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteChildren {
   LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute: typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute
 }
@@ -1215,7 +1325,9 @@ interface LayoutAuthenticatedRouteChildren {
   LayoutAuthenticatedAgentTriageRoute: typeof LayoutAuthenticatedAgentTriageRoute
   LayoutAuthenticatedGodModeObservabilityRoute: typeof LayoutAuthenticatedGodModeObservabilityRoute
   LayoutAuthenticatedAgentGodModeUsersRoute: typeof LayoutAuthenticatedAgentGodModeUsersRoute
+  LayoutAuthenticatedAgentSettingsCalendarsRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren
   LayoutAuthenticatedAgentSettingsRequestTypesRoute: typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
+  LayoutAuthenticatedAgentSettingsSlaPoliciesRoute: typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   LayoutAuthenticatedAgentWorkItemsKeyRoute: typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
   LayoutAuthenticatedAgentSettingsProfilePendingActionsRoute: typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
@@ -1232,8 +1344,12 @@ const LayoutAuthenticatedRouteChildren: LayoutAuthenticatedRouteChildren = {
     LayoutAuthenticatedGodModeObservabilityRoute,
   LayoutAuthenticatedAgentGodModeUsersRoute:
     LayoutAuthenticatedAgentGodModeUsersRoute,
+  LayoutAuthenticatedAgentSettingsCalendarsRoute:
+    LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren,
   LayoutAuthenticatedAgentSettingsRequestTypesRoute:
     LayoutAuthenticatedAgentSettingsRequestTypesRoute,
+  LayoutAuthenticatedAgentSettingsSlaPoliciesRoute:
+    LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren,
   LayoutAuthenticatedAgentWorkItemsKeyRoute:
     LayoutAuthenticatedAgentWorkItemsKeyRoute,
   LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute:
