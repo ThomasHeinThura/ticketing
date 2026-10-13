@@ -29,6 +29,9 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 - Ordinary delta review by the reviewer-B context: APPROVE at `8bf67c9c`. The tests match its recipes, and mutations of the generation and user clauses each make a test fail.
 - Security rebind: CLEAR at `65ffd467`. The render-safety fix (`d7b4c019`) fails closed, because malformed settings bodies become failed reads and the user checks stay outside the try/catch. The commit is a clean merge of `main` `66565b2c` (#710).
 - Ordinary delta review by the reviewer-B context: APPROVE at `65ffd467`. Mutating the try/catch and the fetcher validation makes the tests fail, and the e2e approval-withdrawal spec passes 3/3 locally.
+- G11 follow-up: a same-machine A/B (`719-g11-ab-sonnet.md`, private) showed #719's entry-chunk sync cost about 8 ms of work-list LCP. `369b42ed` defers and lazy-loads the sync. Reviewer B then found that a failed chunk load crashed the app, which the conductor fixed in `4291ea0f`.
+- Ordinary delta reviews by the reviewer-B context: REQUEST CHANGES at `369b42ed` (the crash on chunk failure), then APPROVE at `4291ea0f` and at `ae828b6a`.
+- Security rebinds: CLEAR at `4291ea0f`, which raised D1 (the stale active-user window before the deferred mount). D1 was fixed by the conductor's per-user mount count in `ae828b6a` and cleared there.
 
 **Reviewed head:** `beedd219a6d7634254fc66cf3033bd5ba3f54f7c`
 **Reviewed head:** `7a32a0f337b8a195b0054bbd5516a6c88a9ae1f4`
@@ -36,6 +39,8 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 **Reviewed head:** `49298316eea9f330cf086c5a1b0e1b664b6acdcb`
 **Reviewed head:** `8bf67c9cf1349cda549ae3f8ecfe598d5ec6b306`
 **Reviewed head:** `65ffd4675f711fab39e3ed334cf1b82758d18858`
+**Reviewed head:** `4291ea0f9465bc55361f480197fd2d39ea5060f3`
+**Reviewed head:** `ae828b6a750f18cabadcd415a57cebecbd0ef2ec`
 
 ## Context index
 
@@ -53,6 +58,11 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 8 | `719-8bf6-ordinary-b-sonnet.md` | Ordinary delta review B (49298316..8bf67c9c) | Claude Sonnet 5.5 | `8bf67c9c` | APPROVE | `379f33f0e63117581efdf08d1019ac5ad200dab2544984c42627bd927af56f69` |
 | 9 | `719-65ff-security-rebind-opus.md` | Security rebind (8bf67c9c..65ffd467) | Claude Opus 5.5 | `65ffd467` | CLEAR | `be54809a3804c3ec08c510df50e632e6148c8e8cb7b0e79c50e18b7fbfb84695` |
 | 10 | `719-65ff-ordinary-b-sonnet.md` | Ordinary delta review B (8bf67c9c..65ffd467) | Claude Sonnet 5.5 | `65ffd467` | APPROVE | `2a77b093e6d193efbfeac268231fea67ee70d828cbeafab960c33a50220eab32` |
+| 11 | `719-defer-ordinary-b-sonnet.md` | Ordinary delta review B (65ffd467..369b42ed) | Claude Sonnet 5.5 | `369b42ed` | REQUEST CHANGES | `6304ed881aff9317f721ff2bbf2fe4b05a9f091fc659b906be911a4449a76fc2` |
+| 12 | `719-4291-ordinary-b-sonnet.md` | Ordinary delta review B (369b42ed..4291ea0f) | Claude Sonnet 5.5 | `4291ea0f` | APPROVE | `b733bce6bcebacb29aec25e7b22ce190501d6ac53a2060d6b895c42099b1ae67` |
+| 13 | `719-4291-security-rebind-opus.md` | Security rebind (65ffd467..4291ea0f) | Claude Opus 5.5 | `4291ea0f` | CLEAR | `2959e7e46c03535b50d00ba2caccf5b18e827bceeb4a7829874e83bd5030a8d3` |
+| 14 | `719-ae82-security-rebind-opus.md` | Security rebind (4291ea0f..ae828b6a) | Claude Opus 5.5 | `ae828b6a` | CLEAR | `cada8be7ad640c1e5794851083f52a09e8f5161ad05624bce4bb4052cc9b53e6` |
+| 15 | `719-ae82-ordinary-b-sonnet.md` | Ordinary delta review B (4291ea0f..ae828b6a) | Claude Sonnet 5.5 | `ae828b6a` | APPROVE | `17cec66eb80c63fda65d9242ba685941915d2372aa7e534eaa38baab8eb9970c` |
 
 ## Embedded reports
 
@@ -875,3 +885,383 @@ Only the approval-withdrawal e2e spec was run; other mocked/G8 harness specs, vi
 ## Verdict
 APPROVE
 <!-- END REPORT (sha256 2a77b093e6d193efbfeac268231fea67ee70d828cbeafab960c33a50220eab32) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-defer-ordinary-b-sonnet.md; Claude Sonnet 5.5; sha256 6304ed881aff9317f721ff2bbf2fe4b05a9f091fc659b906be911a4449a76fc2) -->
+# PR #719 delta ordinary review B (65ffd467 -> 369b42ed), deferred sync mount
+
+- Model/context: Claude Sonnet 5.5, fresh independent reviewer B (did not author or direct the change)
+- **Reviewed head:** 369b42edc365598c9dd0db5d5b61d6e20d561e00 (from `git ls-remote origin refs/heads/codex/user-preference-routes`)
+- Previous approval head: 65ffd4675f711fab39e3ed334cf1b82758d18858
+- Scratch worktree /Users/heinthura/.codex/worktrees/review-719-b5 (removed afterwards; all scratch tests and mutations reverted, git status clean). No Docker containers created.
+
+## Delta examined
+apps/web/src/components/providers/deferred-user-preferences-sync.tsx (+test), main.tsx (swap to the deferred wrapper). 4cdc0fd7 is a review note only.
+
+## Commands and results
+- Touched provider and density tests: 4 files / 27 PASS. Full web vitest: 165 files / 795 tests PASS. web typecheck PASS.
+- Scratch reproduction (not committed): a test where the lazy import of `./user-preferences-sync` fails ("Failed to fetch dynamically imported module"), rendered inside `AppErrorBoundary`: the app is REPLACED by the error fallback (test fails, "CRASH" shown). With `.catch(() => ({ default: () => null }))` on the lazy factory the same test passes (1/1).
+- Mutation: `if (!cancelled)` guard removed from `start`: both existing tests still PASS (guard is unpinned; React ignores setState on an unmounted component, so "never starts the sync if unmounted" is vacuous for that guard; the real protection is the cleanup cancelling the pending callbacks).
+- gitleaks --no-git on a copy of this report: no leaks found.
+
+## Answers to the questions
+1. Sync guarantees under deferral.
+   - First paint from cache: unaffected; the persisted store is synchronous and the wrapper renders null until ready.
+   - Per-user queue, generation guard, user checks: unchanged. `use-density-preference` is one module shared by the settings page and the lazy sync chunk, so the write queue and `activeUserId` are the same instance.
+   - Settings-page toggle before the sync mounts: works independently (`useDensityPreference` has its own queue, dirty marker and `useActiveUser`). When the sync mounts later its GET returns the written value, or a dirty marker pushes the local value. Same outcome as the earlier race analysis.
+   - Behaviour change to be aware of: server-wins now lands after two frames plus idle (up to 3 s) plus chunk plus GET, instead of right after the GET. On a browser whose cache disagrees with the server (new device), the density flips visibly several seconds after load. Accepted trade-off for the LCP gain, non-blocking.
+2. Sign-out or user change before the deferred mount. `ready` is user-independent and, once true, stays true; with no user the query is disabled, so nothing fires. One residual: `activeUserId` is only updated by mounted hooks (no cleanup on unmount). Before the sync mounts (about 3 s window) a user who toggled on the settings page, then left it, then signed out and another user signed in, would leave `activeUserId` stale, so a still-queued write for the first user could be sent with the second user's session. Requires a settings toggle plus sign-out and sign-in inside a few seconds of page load with a write still pending. Negligible; non-blocking. Cheap hardening if desired: derive `activeUserId` from the auth provider rather than from hook effects.
+3. Idle and timeout fallbacks. Without `requestIdleCallback` the code falls back to a 200 ms timer after the two frames; `cancelIdleCallback` is guarded; cleanup clears the timer and frames; StrictMode double-effect is safe (each run has its own `cancelled`). Two nits, non-blocking: rAF does not run in a hidden tab, so a tab opened in the background does not sync until it is shown (acceptable, arguably desirable); `requestAnimationFrame` is used unguarded (fine in all supported browsers).
+
+## Findings
+1. BLOCKING: a failed chunk load takes down the whole app. `React.lazy` rejections throw during render, and the `<Suspense fallback={null}>` has no error boundary below it; the nearest boundary is the root `AppErrorBoundary`, which replaces the entire application with the crash page. The sync is best-effort (the previous commit d7b4c019 exists precisely so it can never throw into the render tree). A stale hashed chunk after a deploy, an offline moment or a flaky network in the few seconds after load would crash the app over a cosmetic preference. Reproduced in scratch (see above). Fix (verified): `import("./user-preferences-sync").then(...).catch(() => ({ default: () => null }))`, or a small local error boundary returning null. Add the failing-import test as a regression test.
+2. NON-BLOCKING: the "unmounted before idle" test does not pin the `cancelled` guard (mutation survives). Either accept (cleanup covers it) or assert that `cancelIdleCallback`/`cancelAnimationFrame` were called on unmount.
+3. NON-BLOCKING: stale `activeUserId` window before the deferred mount (above).
+
+## Residual risk
+No real-browser run (Safari rIC absence, background tabs) and no LCP re-measurement by me; the A/B evidence is the G11 lane's. e2e, visual and container checks not run. Sol security rebind for this commit is separate and not substituted.
+
+## Verdict
+REQUEST CHANGES (one small blocking fix: swallow a failed chunk import; everything else APPROVE).
+<!-- END REPORT (sha256 6304ed881aff9317f721ff2bbf2fe4b05a9f091fc659b906be911a4449a76fc2) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-4291-ordinary-b-sonnet.md; Claude Sonnet 5.5; sha256 b733bce6bcebacb29aec25e7b22ce190501d6ac53a2060d6b895c42099b1ae67) -->
+# PR #719 delta ordinary review B (369b42ed -> 4291ea0f)
+
+- Model/context: Claude Sonnet 5.5, fresh independent reviewer B (did not author or direct the change)
+- **Reviewed head:** 4291ea0f9465bc55361f480197fd2d39ea5060f3 (matches `git ls-remote origin refs/heads/codex/user-preference-routes`)
+- Previous head reviewed: 369b42edc365598c9dd0db5d5b61d6e20d561e00 (REQUEST CHANGES, now addressed)
+- Scratch worktree /Users/heinthura/.codex/worktrees/review-719-b6 (removed afterwards; mutations and scratch test reverted). No Docker containers created.
+
+## Delta
+deferred-user-preferences-sync.tsx: new exported `loadUserPreferencesSync(importer)` using `importer().then(onOk, () => ({ default: () => null }))`, and `lazy(() => loadUserPreferencesSync())`. One new test in deferred-user-preferences-sync.test.tsx.
+
+## Is the fix correct? Can a crash still happen when the import fails?
+Correct. The two-argument `then` turns any rejection of the dynamic import (stale chunk, network error, module evaluation error) into a null-rendering component, so `lazy` never rejects and nothing reaches the root error boundary. The success handler cannot throw. The result is cached by `lazy`, so a failure is not retried until reload (the cached density stays; acceptable for a background reconcile). A synchronous throw from the importer is impossible with the default importer (a dynamic `import()` always returns a promise). Runtime errors inside the sync once loaded are covered by the earlier try/catch and fetcher validation.
+Verified end to end with a scratch test through the real `DeferredUserPreferencesSync` with the module mock throwing, inside `AppErrorBoundary`: with the fix the app content stays and no crash fallback appears (1/1 PASS).
+
+## Commands and results
+- Provider tests: 13/13 PASS. Full web vitest: 165 files / 796 tests PASS. web typecheck PASS.
+- Mutation M1 (rejection handler removed): the new test FAILS (1). Non-vacuous for the handler.
+- Mutation M2 (lazy wired directly to the dynamic import, bypassing `loadUserPreferencesSync`): all 13 provider tests still PASS, while my wired scratch test FAILS (crash fallback shown). So the committed test pins the loader but not that `lazy` actually uses it.
+- gitleaks --no-git on a copy of this report: no leaks found.
+
+## Findings
+1. NON-BLOCKING: the regression test calls `loadUserPreferencesSync` directly, so reverting the wiring (`lazy(() => loadUserPreferencesSync())`) would not be caught. Optional extra test: `vi.mock("./user-preferences-sync", () => { throw new Error("Failed to fetch dynamically imported module"); })`, render `DeferredUserPreferencesSync` inside `AppErrorBoundary` with a fallback, advance past the idle callback (about 1.5 s real time or stub rAF/rIC as the existing tests do), and assert the app content is present and the fallback absent.
+
+No blocking findings. My earlier blocking finding is resolved.
+
+## Residual risk
+No real-browser chunk-failure run; mocks only. Sol security rebind for this commit is separate and not substituted.
+
+## Verdict
+APPROVE
+<!-- END REPORT (sha256 b733bce6bcebacb29aec25e7b22ce190501d6ac53a2060d6b895c42099b1ae67) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-4291-security-rebind-opus.md; Claude Opus 5.5; sha256 2959e7e46c03535b50d00ba2caccf5b18e827bceeb4a7829874e83bd5030a8d3) -->
+# PR #719 light security rebind (sampled big reviewer, Opus 5.5)
+
+- **Model / context:** Claude Opus 5.5 (`claude-opus-5-5`). This is the same reviewer context as
+  the CLEARs at 569aea44, 49298316, 8bf67c9c and 65ffd467. I did not author, direct or remediate
+  the new commits. I made no edits, pushes, comments or merges on the branch.
+- **Reviewed head:** 4291ea0f9465bc55361f480197fd2d39ea5060f3
+- **Previous reviewed head:** 65ffd4675f711fab39e3ed334cf1b82758d18858 (CLEAR)
+- **Merge base:** 66565b2c2eade2378b5a1d1fd518054b2e298238.
+- **Remote state:** `git ls-remote` (HTTPS) at the start and at the end:
+  - `refs/heads/main` = 66565b2c… (unchanged since the last rebind);
+  - `refs/pull/719/head` = `refs/heads/codex/user-preference-routes` = 4291ea0f….
+- **Scratch worktree:** `/Users/heinthura/.codex/worktrees/review-719-4291`, detached at the
+  head. I installed and built it, confirmed it was clean after the mutation and probe, and then
+  removed it. No Docker was used, because the change is web only.
+
+## Delta 65ffd467..4291ea0f
+
+There are three single-parent commits:
+
+- **`4cdc0fd7`, docs(review):** one file, `docs/07-planning/security-reviews/719-profile-settings-routes.md`
+  (+172). It is a review note only.
+- **`369b42ed`, perf(web): defer the user-preference sync.** It touches three files:
+  - `components/providers/deferred-user-preferences-sync.tsx` (new);
+  - its test (new);
+  - `main.tsx` (+2/-2), which swaps `<UserPreferencesSync />` for
+    `<DeferredUserPreferencesSync />` in the same position inside `AuthProvider`.
+- **`4291ea0f`, fix(web): failed chunk load renders null.** It touches only the deferred
+  component and its test.
+
+Apart from the review note, the only code and test files touched are the deferred component, its
+test and `main.tsx`. `use-density-preference.ts`, the fetcher, the API, the policies, the matrix
+and OpenAPI are byte-identical to 65ffd467.
+
+## What the deferral does
+
+`DeferredUserPreferencesSync` stays unmounted until a sequence of steps completes:
+
+1. two animation frames;
+2. then `requestIdleCallback` with a 3 s timeout, or a 200 ms timer where `requestIdleCallback`
+   is not available.
+
+After that it renders `lazy(UserPreferencesSync)` inside `<Suspense fallback={null}>`.
+`loadUserPreferencesSync` maps any import rejection to a component that renders null. The `ready`
+flag does not depend on the user, and the sync it mounts is the unchanged
+`useDensityPreferenceSync`.
+
+## Security properties cleared earlier
+
+| Property | Status at 4291ea0f |
+| --- | --- |
+| Per-user write queue and generation (`writeStates`) | unchanged. It is one module instance, shared by the settings page and the lazy chunk. |
+| Send-time, terminal, adopt and generation checks | unchanged and still pinned by the hook tests. |
+| Fetcher fails closed on a malformed body; reconcile `try/catch` | unchanged. |
+| Server side: self-only, reach, session-only PATCH, CSRF, caps | untouched. The server only ever writes the session's own person's row. |
+| No cross-user write after a mid-flight sign-out and sign-in | **narrower guarantee before the sync mounts; see D1.** |
+
+## D1: the stale `activeUserId` window (reviewer B's note)
+
+**The mechanism.** `activeUserId` is set only by the `useLayoutEffect` in mounted hooks, and
+there is no cleanup on unmount. Before this commit the sync was mounted synchronously under
+`AuthProvider` and stayed mounted, so a sign-out reset `activeUserId` to `undefined` right away.
+That was the basis for N3. Now, until the deferred sync mounts, the only setter is the settings
+page's `useDensityPreference`. If that page has unmounted, `activeUserId` keeps the last user.
+
+**Reproduction.** I wrote a unit probe, `719-4291-security-rebind-opus-probe.test.tsx` in this
+folder (SHA-256 `92a3850a467c30e920a86143d7867d2ba5a2d2275eee988b34fa458c1ce535d9`). It ran
+2 of 2 passing in the scratch copy and was then removed from it.
+
+- **WINDOW.** User A toggles twice on the settings page while the first PATCH hangs. The page
+  then unmounts, with no sync mounted. When the first PATCH resolves, A's queued second PATCH
+  is still sent. In a real browser it would carry whatever session cookie is current.
+- **CONTROL.** Mounting the sync for user B before the release makes A's queued write drop:
+  only one PATCH is sent.
+
+**How long the window lasts:**
+
+- Normally, from page load until the idle callback fires, which is at most about 3 s plus two
+  frames.
+- If the lazy chunk fails to load, the sync never mounts. The window then lasts for the whole
+  page lifetime. The null fallback in 4291ea0f prevents a crash but does not restore the
+  `activeUserId` reset.
+
+**Preconditions for harm.** All of these must happen in one tab without a reload:
+
+1. A opens the settings page and toggles density at least twice;
+2. one PATCH stays in flight;
+3. A leaves the page and signs out;
+4. B signs in;
+5. the hanging PATCH then resolves.
+
+The normal case packs all of this into the first few seconds. The chunk-failure case allows it
+at any time.
+
+**Impact.** At most one cosmetic bit, A's last density choice, is written to B's own row through
+B's own session. The following do not happen:
+
+- disclosure of either user's data;
+- any write the server would not accept from B anyway;
+- any write to a person other than the session holder;
+- any change to authorization, reach or another user's capabilities.
+
+An attacker cannot trigger or steer it remotely. It needs sequential shared use of one tab.
+
+**Assessment: non-blocking.** It is not security-relevant in the confidentiality or
+authorization sense. It is a narrow integrity regression of the ST-17 promise that one person's
+local value is never uploaded for another person, in the same class as R2 (cookie switched from
+another tab).
+
+**Recommended hardening, small and cheap.** Make `useActiveUser` clear the value on unmount, for
+example a cleanup of `() => { if (activeUserId === userId) activeUserId = undefined; }`. An
+alternative is to set `activeUserId` from a tiny always-mounted, non-lazy component. Either one
+closes both the 3 s window and the chunk-failure case, and my probe's WINDOW case would then
+send only one PATCH. This can be done in this PR or as a follow-up.
+
+## Tests and checks
+
+| Run | Result |
+| --- | --- |
+| Web sync set: deferred, provider, density hook, sync lib, fetcher, preferences page | 6 files / 40 tests passed |
+| Full web vitest (`apps/web`) | 165 files / 796 tests passed |
+| Mutation: drop the import-rejection handler in `loadUserPreferencesSync` | "renders nothing instead of crashing when the sync chunk fails to load" fails (1 of 3), so the regression test is not vacuous |
+| Stale-window probe (above) | WINDOW and CONTROL behave as described |
+
+I did not re-run the API checks (`check:openapi`, `test:permissions`, integration), because no
+file they cover changed since 65ffd467, where they passed. I also did not run e2e, visual,
+image-build or deployment checks.
+
+## Findings
+
+No blocking findings.
+
+- **D1 (non-blocking, client integrity, new at this head).** This is the stale `activeUserId`
+  window described above:
+  - **Where:** `apps/web/src/hooks/use-density-preference.ts:57-61` (no cleanup), combined with
+    the deferral in `deferred-user-preferences-sync.tsx:27-61`.
+  - **How long:** about 3 s normally, or the whole session if the sync chunk fails to load.
+  - **Impact:** one cosmetic bit, the victim's own row, through the victim's own session.
+  - **Fix:** recommended above.
+- R2, N2 and N4 are unchanged and non-blocking.
+
+## Verdict
+
+**CLEAR** for 4291ea0f9465bc55361f480197fd2d39ea5060f3, with D1 recorded as non-blocking and
+the unmount-cleanup hardening recommended. This sampled Opus 5.5 review does not replace the
+required GPT-6 Sol security review at this head.
+<!-- END REPORT (sha256 2959e7e46c03535b50d00ba2caccf5b18e827bceeb4a7829874e83bd5030a8d3) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-ae82-security-rebind-opus.md; Claude Opus 5.5; sha256 cada8be7ad640c1e5794851083f52a09e8f5161ad05624bce4bb4052cc9b53e6) -->
+# PR #719 light security rebind (sampled big reviewer, Opus 5.5)
+
+- **Model / context:** Claude Opus 5.5 (`claude-opus-5-5`). This is the same reviewer context as
+  the earlier CLEARs at 569aea44, 49298316, 8bf67c9c, 65ffd467 and 4291ea0f. I did not author,
+  direct or remediate the new commit. I made no edits, pushes, comments or merges on the branch.
+- **Reviewed head:** ae828b6a750f18cabadcd415a57cebecbd0ef2ec
+- **Previous reviewed head:** 4291ea0f9465bc55361f480197fd2d39ea5060f3. That review was CLEAR,
+  with D1 non-blocking.
+- **Merge base:** 66565b2c2eade2378b5a1d1fd518054b2e298238.
+- **Remote state:** I ran `git ls-remote` over HTTPS at the start and at the end.
+  - `refs/heads/main` = 66565b2c…, unchanged.
+  - `refs/pull/719/head` = `refs/heads/codex/user-preference-routes` = ae828b6a….
+- **Scratch worktree:** `/Users/heinthura/.codex/worktrees/review-719-ae82`, detached at the
+  head. I installed and built it, checked it was clean after the mutations and probes, then
+  removed it. No Docker was used, because the change is web only.
+
+## Delta 4291ea0f..ae828b6a
+
+The delta is one single-parent commit, `ae828b6a` ("fix(web): clear the active settings user
+when its last consumer unmounts").
+
+It changes exactly two files:
+- `apps/web/src/hooks/use-density-preference.ts` (+15/-0);
+- `apps/web/src/hooks/use-density-preference.test.tsx` (+45/-0, additions only).
+
+No other file changed.
+
+The hook change works like this:
+- `activeUserMounts: Map<userId, count>` is new.
+- `useActiveUser`'s `useLayoutEffect` (deps `[userId]`) sets `activeUserId = userId`. When
+  `userId` is defined, it also increments that user's count and returns a cleanup.
+- The cleanup decrements the count. At zero it deletes the entry and clears `activeUserId`, but
+  only if `activeUserId` still equals that user.
+
+## Refcount logic
+
+- **StrictMode double mount.** React runs mount, then cleanup, then mount. The count goes
+  1 → 0, which clears the user, and then back to 1, which restores `activeUserId`. The net
+  state is correct.
+  - Probe: under `<StrictMode>`, both a sent write and a queued write work while mounted.
+  - Probe: after unmount, the queued write is dropped.
+- **User change in the same component** (deps `[userId]`). A's cleanup runs before B's effect.
+  A's count drops to 0, so the user is cleared, and then B is set.
+  - Probe: A's queued write is dropped and B's new write is sent.
+  - Probe: changing to `null` in the same component (sign-out) sets `activeUserId = undefined`
+    and adds no count, so later toggles stay local only.
+- **Several consumers of the same user** (the sync and the settings page). All consumers read the
+  same `AuthContext`, so they change user in the same commit. Every cleanup runs before any new
+  effect, so there is no mixed state.
+  - Probe: the page unmounts while the sync for the same user stays mounted, and the queued
+    write is still sent.
+- **The clear is guarded and fail-safe.** The `activeUserId === userId` check means a late
+  cleanup cannot clear a newer user. The `?? 1` default cannot drive a count negative.
+- **Every failure mode drops writes rather than redirecting them.** A dropped write stays dirty
+  under its own user's marker and is retried by the next load's sync.
+
+## Chunk-failure case is now covered
+
+If the lazy sync chunk fails to load, the settings page is the only consumer. It unmounts on
+navigation, and sign-out navigates away, so the last-consumer cleanup clears `activeUserId`. A
+queued write for A is then dropped instead of being sent with the next session's cookie. The
+same mechanism covers the normal first-seconds window before the deferred sync mounts.
+
+The one remaining case is a cookie switched from another tab while this tab's page stays
+mounted. That is R2 and is unchanged.
+
+## Probe re-run (scratch only, then removed)
+
+I copied two probe files into the worktree and ran them there:
+- my 4291 probe, `719-4291-security-rebind-opus-probe.test.tsx`;
+- a new ae82 probe, `719-ae82-security-rebind-opus-probe.test.tsx` in this folder (SHA-256
+  `234c1945164a1f3bcd5590668cb91ef03ca86a167e96ef7befc2822628e28e53`).
+
+Results at this head:
+
+| Probe | Result |
+| --- | --- |
+| 4291 WINDOW: asserted the bug (A's queued write sent after the page unmounts, 2 PATCHes) | **fails as intended**: only 1 PATCH is sent, so the window is closed |
+| 4291 CONTROL | passes |
+| ae82 WINDOW (inverted): queued write not sent | passes |
+| ae82 StrictMode ×2, user change in the same component, refcount with the sync still mounted | pass |
+
+## Mutation checks (scratch, reverted each time)
+
+| Mutation | Result |
+| --- | --- |
+| A: remove the refcount (plain clear on every unmount) | My REFCOUNT probe fails. **The PR's own hook tests all still pass** (see T1). |
+| B: remove `if (activeUserId === userId) activeUserId = undefined` | The PR's new test "does not send a queued write after its user's last consumer unmounts…" fails. My inverted WINDOW and StrictMode-unmount probes also fail. |
+
+## Other runs at this head
+
+| Run | Result |
+| --- | --- |
+| Full web vitest (`apps/web`) | 165 files / 798 tests passed |
+| `tsc --noEmit -p apps/web/tsconfig.json` | passed |
+
+## Findings
+
+No blocking findings. D1 is closed.
+
+- **T1 (non-blocking, test coverage).** The PR's test "keeps writing for a user while another
+  consumer for that user stays mounted" does not pin the refcount. It mounts a fresh page
+  consumer before writing, and that consumer resets `activeUserId` by itself. So the test passes
+  with the refcount removed (mutation A).
+  - If the refcount regressed, the only effect would be that writes are dropped. Writes would
+    never go to the wrong user, so this is fail-safe and has no security impact.
+  - To pin the refcount: queue a write on the page while the first PATCH hangs, unmount the
+    page with the same user's sync still mounted, and assert that the queued write is sent. My
+    REFCOUNT probe does exactly this.
+- **Functional note (no security impact).** With no sync mounted, a toggle whose PATCH is still
+  queued when the user leaves the settings page is now dropped and stays dirty. This happens in
+  the first seconds or after a chunk failure. The next load's sync retries it.
+- R2, N2 and N4 are unchanged and non-blocking.
+
+## Verdict
+
+**CLEAR** for ae828b6a750f18cabadcd415a57cebecbd0ef2ec. D1 is fixed, and T1 is recorded as a
+non-blocking test-coverage note. This sampled Opus 5.5 review does not replace the required
+GPT-6 Sol security review at this head.
+<!-- END REPORT (sha256 cada8be7ad640c1e5794851083f52a09e8f5161ad05624bce4bb4052cc9b53e6) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-ae82-ordinary-b-sonnet.md; Claude Sonnet 5.5; sha256 17cec66eb80c63fda65d9242ba685941915d2372aa7e534eaa38baab8eb9970c) -->
+# PR #719 delta ordinary review B (4291ea0f -> ae828b6a)
+
+- Model/context: Claude Sonnet 5.5, fresh independent reviewer B (did not author or direct the change)
+- **Reviewed head:** ae828b6a750f18cabadcd415a57cebecbd0ef2ec (matches `git ls-remote origin refs/heads/codex/user-preference-routes`)
+- Previous head reviewed: 4291ea0f9465bc55361f480197fd2d39ea5060f3 (APPROVE)
+- Scratch worktree /Users/heinthura/.codex/worktrees/review-719-b7 (removed afterwards; scratch test and mutations reverted, git status clean). No Docker containers created.
+
+## Delta
+use-density-preference.ts: `activeUserMounts` per-user count; `useActiveUser` increments on mount and, on cleanup, decrements, and when the last consumer for that user leaves clears `activeUserId` if it still equals that user. Two new hook tests.
+
+## Logic review
+Correct.
+- Same-component user change (A to B, or A to signed-out): cleanup runs for A first (clears `activeUserId` only if it equals A), then the effect for the new user sets it. No stale A.
+- StrictMode double effect: cleanup drops the count to 0 and clears, the re-run sets it again. Safe.
+- Several consumers (sync plus settings page): the count keeps the user active until the last one unmounts; the equality check stops one user's cleanup clobbering another's id.
+- Effect of the clear: a queued write for A that is still waiting when A's last consumer is gone is dropped at send time (stays dirty under A's marker) and pushed by the sync's reconcile when it mounts. That closes the stale-`activeUserId` window I noted.
+- No new request storms or ordering issues; the write queue and generation guard are untouched.
+
+## T1 (does the refcount need its own test now?)
+Yes, a cheap test is worth adding. The committed "keeps writing for a user while another consumer ... stays mounted" test does not pin the refcount: with the `remaining > 0` branch removed (always clear on any unmount) it still PASSES, because the later `renderHook` re-sets `activeUserId` on mount. The security reviewer's T1 is confirmed independently.
+Recommended test (written and verified in scratch): mount `useDensityPreferenceSync` and `useDensityPreference` for the same user, make the sync's read never resolve (`mocks.get.mockReturnValue(new Promise(() => {}))`, otherwise the sync adds its own dirty push and the call count is off), defer the first put, call `setDensity("compact")` then `setDensity("comfortable")`, wait for put to be called once, unmount only the page hook, release the first put, then assert put is called a second time with `{ density: "comfortable" }` and unmount the sync. Passes on the real code (18/18) and FAILS when the refcount branch is removed (1 failure).
+
+## Commands and results
+- Hook test file: 16 pass on the committed code (counts as part of the full suite below); full web vitest: 165 files / 798 tests PASS. web typecheck PASS.
+- Mutation (with T1 added in scratch): clear-on-last-unmount removed: the committed "does not send a queued write after its user's last consumer unmounts" test FAILS (1), so that guard is pinned. Refcount branch removed: only T1 fails (the committed "keeps writing" test passes), so the refcount is not pinned without T1.
+- gitleaks --no-git on a copy of this report: no leaks found.
+
+## Findings
+1. NON-BLOCKING: add the T1 test above to pin the refcount.
+No blocking findings.
+
+## Residual risk
+Mocks only; no real-browser sign-out/sign-in run. Sol security rebind recorded CLEAR separately and not substituted by this report.
+
+## Verdict
+APPROVE
+<!-- END REPORT (sha256 17cec66eb80c63fda65d9242ba685941915d2372aa7e534eaa38baab8eb9970c) -->
