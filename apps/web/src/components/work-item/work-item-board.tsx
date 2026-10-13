@@ -35,7 +35,7 @@ type ProjectState = { id: string; name: string };
 
 type Notice = { kind: "status" | "error"; text: string };
 
-type FocusTarget = { key: string; direction: "up" | "down" };
+type FocusTarget = { key: string; direction: "up" | "down" | "state" };
 
 /**
  * The project board (`docs/03-features/views.md` `VW-8`-`VW-10`, `VW-14`): one column per
@@ -113,6 +113,15 @@ export default function WorkItemBoard({
     pendingFocus.current = undefined;
     const root = boardRef.current;
     if (!root) return;
+    if (target.direction === "state") {
+      // The card may have moved column (and remounted): find its toggle by item key.
+      root
+        .querySelector<HTMLButtonElement>(
+          `[data-change-state-button="${CSS.escape(target.key)}"]`,
+        )
+        ?.focus();
+      return;
+    }
     const find = (direction: "up" | "down") =>
       root.querySelector<HTMLButtonElement>(
         `[data-rank-button="${CSS.escape(target.key)}:${direction}"]`,
@@ -206,6 +215,7 @@ export default function WorkItemBoard({
     item: WorkItemRow,
     offer: { toStateTemplateId: string; toStateName: string },
   ): Promise<boolean> {
+    pendingFocus.current = { key: item.key, direction: "state" };
     const result = await runMove(async () => {
       try {
         await transitionWorkItem({
@@ -382,7 +392,7 @@ export default function WorkItemBoard({
   return (
     <div
       ref={boardRef}
-      className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-3 overflow-hidden"
+      className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col gap-3 overflow-hidden"
       data-testid="work-item-board"
       data-primary-content-ready="true"
     >
@@ -394,7 +404,7 @@ export default function WorkItemBoard({
           <AlertDescription>{notice.text}</AlertDescription>
         </Alert>
       ) : null}
-      <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto p-4">
+      <div className="relative flex min-h-0 flex-1 gap-4 overflow-x-auto p-4">
         {states.map((state) => {
           const stateItems = itemsByState.get(state.id) ?? [];
           const selectable = stateItems.filter(
@@ -536,7 +546,6 @@ function BoardCard({
   const [isChangingState, setIsChangingState] = useState(false);
   const [transitionId, setTransitionId] = useState("");
   const [isMoving, setIsMoving] = useState(false);
-  const changeStateRef = useRef<HTMLButtonElement>(null);
   const transitions = useQuery({
     queryKey: ["work-items", "transitions", item.key],
     queryFn: () => getWorkItemTransitions(item.key),
@@ -552,8 +561,6 @@ function BoardCard({
     setIsMoving(false);
     setTransitionId("");
     if (done) setIsChangingState(false);
-    // The Move button unmounts with the select; keep focus on this card's toggle.
-    changeStateRef.current?.focus();
   }
 
   const draggable = actionable && (canTransition || canRank);
@@ -650,7 +657,7 @@ function BoardCard({
       {actionable && canTransition && (
         <div className="flex flex-col gap-2">
           <Button
-            ref={changeStateRef}
+            data-change-state-button={item.key}
             variant="outline"
             size="sm"
             aria-expanded={isChangingState}

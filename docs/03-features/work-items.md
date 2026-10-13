@@ -189,6 +189,16 @@ The detail view follows progressive disclosure strictly: state, assignee, priori
 date in the header; description and activity in the body; everything else in collapsible
 sections. v1's twenty-plus-field header is the specific mistake being avoided.
 
+Editing on the detail page (UI decisions the rules above do not fix; none conflicts with them):
+
+- The edit form sends only the fields the user changed (`WI-8` is a partial `PATCH`), and
+  Save is disabled while nothing differs from the values the form was opened with, so an
+  empty `PATCH` is never attempted. Reverting a field to its original value is not a change.
+- `startDate` and `dueDate` are stored UTC instants. The form edits only the calendar day:
+  moving a date keeps its stored UTC time of day, a date set where none existed lands on
+  UTC midnight, and an untouched date is never sent. A date is therefore never silently
+  rewritten to midnight by an unrelated edit.
+
 ## API
 
 ```

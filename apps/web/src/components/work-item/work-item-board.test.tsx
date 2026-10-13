@@ -654,9 +654,23 @@ describe("Change state control", () => {
     );
   });
 
-  it("returns focus to the card's Change state button after Move", async () => {
+  it("after Move the card changes column and focus lands on its Change state button there", async () => {
     getWorkItemTransitions.mockResolvedValue(offers);
-    board({ canTransition: true });
+    const view = board({ canTransition: true });
+    // The server's refetch moves the card: the mock re-renders with it in Done.
+    transitionWorkItem.mockImplementation(async () => {
+      view.rerender({
+        canTransition: true,
+        workItems: [
+          item("WLP-2", "s-open", "2"),
+          item("WLP-3", "s-open", "3"),
+          item("WLP-1", "s-done", "0"),
+          item("WLP-4", "s-done", "1"),
+          item("WLP-5", "s-done", "2"),
+        ],
+      });
+      return {};
+    });
     await chooseDone();
     const move = screen.getByRole("button", {
       name: "Move WLP-1 to the chosen state",
@@ -664,11 +678,14 @@ describe("Change state control", () => {
     move.focus();
     fireEvent.click(move);
     await waitFor(() => expect(transitionWorkItem).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Change state of WLP-1" }),
-      ).toHaveFocus(),
-    );
+    await waitFor(() => expect(keysIn("Done")).toContain("WLP-1"));
+    await waitFor(() => {
+      const toggle = screen.getByRole("button", {
+        name: "Change state of WLP-1",
+      });
+      expect(toggle).toHaveFocus();
+      expect(column("Done")).toContainElement(toggle);
+    });
   });
 
   it("a drag cannot start while a select transition is in flight", async () => {

@@ -9816,6 +9816,230 @@
 						"approvals"
 					]
 				},
+				"journey": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"editHeading": {
+							"type": "string"
+						},
+						"edit": {
+							"type": "string"
+						},
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"startDate": {
+							"type": "string"
+						},
+						"dueDate": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"saveAttention": {
+							"type": "string"
+						},
+						"editConflict": {
+							"type": "string"
+						},
+						"saveError": {
+							"type": "string"
+						},
+						"reloadLatest": {
+							"type": "string"
+						},
+						"editUnavailable": {
+							"type": "string"
+						},
+						"transitionPlaceholder": {
+							"type": "string"
+						},
+						"transitionBlocked": {
+							"type": "string"
+						},
+						"transitionNoteRequired": {
+							"type": "string"
+						},
+						"transitionNote": {
+							"type": "string"
+						},
+						"transitionsEmpty": {
+							"type": "string"
+						},
+						"loadingTransitions": {
+							"type": "string"
+						},
+						"transitionsError": {
+							"type": "string"
+						},
+						"transitionConflict": {
+							"type": "string"
+						},
+						"transitionUnavailable": {
+							"type": "string"
+						},
+						"assignmentHeading": {
+							"type": "string"
+						},
+						"assignee": {
+							"type": "string"
+						},
+						"assigneePlaceholder": {
+							"type": "string"
+						},
+						"assign": {
+							"type": "string"
+						},
+						"assignToMe": {
+							"type": "string"
+						},
+						"unassign": {
+							"type": "string"
+						},
+						"confirmReassign": {
+							"type": "string"
+						},
+						"confirmReassignDescription": {
+							"type": "string"
+						},
+						"confirmAssignment": {
+							"type": "string"
+						},
+						"assignmentConflict": {
+							"type": "string"
+						},
+						"assignmentError": {
+							"type": "string"
+						},
+						"unassignmentError": {
+							"type": "string"
+						},
+						"loadingPeople": {
+							"type": "string"
+						},
+						"peopleError": {
+							"type": "string"
+						},
+						"noPeople": {
+							"type": "string"
+						},
+						"unnamedPerson": {
+							"type": "string"
+						},
+						"editSaved": {
+							"type": "string"
+						},
+						"transitionSubmit": {
+							"type": "string"
+						},
+						"transitionMoving": {
+							"type": "string"
+						},
+						"transitionDone": {
+							"type": "string"
+						},
+						"assignDone": {
+							"type": "string"
+						},
+						"unassignDone": {
+							"type": "string"
+						},
+						"reasonNoteRequired": {
+							"type": "string"
+						},
+						"reasonAssigneePresent": {
+							"type": "string"
+						},
+						"reasonChildrenClosed": {
+							"type": "string"
+						},
+						"reasonNoOpenBlockers": {
+							"type": "string"
+						},
+						"reasonFieldRequired": {
+							"type": "string"
+						},
+						"reasonChangeRisk": {
+							"type": "string"
+						},
+						"reasonUnknown": {
+							"type": "string"
+						},
+						"reasonApprovalPending": {
+							"type": "string"
+						},
+						"reasonCabPending": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"editHeading",
+						"edit",
+						"title",
+						"description",
+						"startDate",
+						"dueDate",
+						"save",
+						"saving",
+						"cancel",
+						"saveAttention",
+						"editConflict",
+						"saveError",
+						"reloadLatest",
+						"editUnavailable",
+						"transitionPlaceholder",
+						"transitionBlocked",
+						"transitionNoteRequired",
+						"transitionNote",
+						"transitionsEmpty",
+						"loadingTransitions",
+						"transitionsError",
+						"transitionConflict",
+						"transitionUnavailable",
+						"assignmentHeading",
+						"assignee",
+						"assigneePlaceholder",
+						"assign",
+						"assignToMe",
+						"unassign",
+						"confirmReassign",
+						"confirmReassignDescription",
+						"confirmAssignment",
+						"assignmentConflict",
+						"assignmentError",
+						"unassignmentError",
+						"loadingPeople",
+						"peopleError",
+						"noPeople",
+						"unnamedPerson",
+						"editSaved",
+						"transitionSubmit",
+						"transitionMoving",
+						"transitionDone",
+						"assignDone",
+						"unassignDone",
+						"reasonNoteRequired",
+						"reasonAssigneePresent",
+						"reasonChildrenClosed",
+						"reasonNoOpenBlockers",
+						"reasonFieldRequired",
+						"reasonChangeRisk",
+						"reasonUnknown",
+						"reasonApprovalPending",
+						"reasonCabPending"
+					]
+				},
 				"board": {
 					"type": "object",
 					"additionalProperties": false,
@@ -10093,7 +10317,7 @@
 					]
 				}
 			},
-			"required": ["list", "create", "detail", "board", "bulk"]
+			"required": ["list", "create", "detail", "journey", "board", "bulk"]
 		},
 		"portal": {
 			"type": "object",
