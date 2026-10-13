@@ -177,6 +177,10 @@
           "manageWorkspaceSettings": {
             "type": "boolean"
           },
+          "bindProjectOrganisation": {
+            "type": "boolean",
+            "description": "Strict project:create (owner/admin/manager): may list customer organisations and bind a new project to one."
+          },
           "createPublicComments": {
             "type": "boolean"
           },
@@ -203,7 +207,8 @@
           "removeMembers",
           "manageServiceCalendars",
           "shareSavedViews",
-          "manageWorkspaceSettings"
+          "manageWorkspaceSettings",
+          "bindProjectOrganisation"
         ]
       },
       "ProjectCustomerOrganisationList": {

@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   createProject: vi.fn(),
   createProjectArgs: vi.fn(),
   navigate: vi.fn(),
+  canBind: true,
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -26,6 +27,12 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "workspace-1", name: "Ops" } }),
+}));
+
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canBindProjectOrganisation: () => mocks.canBind,
+  }),
 }));
 
 vi.mock("@/hooks/queries/project/use-customer-organisations", () => ({
@@ -75,6 +82,7 @@ function fillAndSubmit() {
 }
 
 beforeEach(() => {
+  mocks.canBind = true;
   mocks.createProject.mockResolvedValue({ id: "project-1" });
 });
 
@@ -85,6 +93,40 @@ afterEach(() => {
 });
 
 describe("CreateProjectModal customer organisation selector", () => {
+  it("hides the selector and never fetches without the strict project:create capability", async () => {
+    mocks.canBind = false;
+    mocks.organisations.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+      refetch: mocks.refetch,
+    });
+    render(<CreateProjectModal open onClose={vi.fn()} />);
+    expect(mocks.organisations).toHaveBeenCalledWith(
+      { workspaceId: "workspace-1" },
+      false,
+    );
+    expect(screen.queryByTestId("project-organisation")).toBeNull();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    fillAndSubmit();
+    await waitFor(() => expect(mocks.createProject).toHaveBeenCalledTimes(1));
+    expect(lastCreateArgs().organisationId).toBeNull();
+  });
+
+  it("shows the selector and fetches with the capability", () => {
+    mocks.organisations.mockReturnValue(
+      loaded([{ id: "org-1", name: "Acme Ltd" }]),
+    );
+    render(<CreateProjectModal open onClose={vi.fn()} />);
+    expect(mocks.organisations).toHaveBeenCalledWith(
+      { workspaceId: "workspace-1" },
+      true,
+    );
+    expect(screen.getByTestId("project-organisation")).toBeTruthy();
+  });
+
   it("only loads organisations while the modal is open, for the active workspace", () => {
     mocks.organisations.mockReturnValue(loaded([]));
     render(<CreateProjectModal open={false} onClose={vi.fn()} />);

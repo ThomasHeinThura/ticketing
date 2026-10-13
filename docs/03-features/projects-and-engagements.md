@@ -105,7 +105,9 @@ rebound, and existing projects are not backfilled. `GET /api/project/organisatio
 instance-wide (customer organisations are not tied to a workspace), and both it and a create
 that carries an `organisationId` require the strict `project:create` capability, held by
 owner, admin and manager only; the legacy member permission does not suffice. Creating an
-internal project (no `organisationId`) keeps its existing check.
+internal project (no `organisationId`) keeps its existing check. Custom roles cannot bind until the capability migration (#7); the create-project
+selector is shown only to callers whose `GET /api/capabilities` response sets
+`bindProjectOrganisation`.
 - `PR-10` **(warning)** A project must have a start date; an end date is optional.
 
 Rule violations appear as a persistent banner on the project overview rather than blocking
