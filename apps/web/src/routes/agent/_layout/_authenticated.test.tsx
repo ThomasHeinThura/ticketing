@@ -182,12 +182,15 @@ describe("_authenticated route beforeLoad", () => {
       if (!beforeLoad) {
         throw new Error("_authenticated route has no beforeLoad");
       }
-      const settled = beforeLoad({
-        location: buildRealLocation("/agent/triage", "", ""),
-      } as Parameters<typeof beforeLoad>[0]).then(
-        (value) => ({ value, thrown: undefined as unknown }),
-        (thrown: unknown) => ({ value: undefined, thrown }),
-      );
+      const settled: Promise<{ value: unknown; thrown: unknown }> =
+        Promise.resolve(
+          beforeLoad({
+            location: buildRealLocation("/agent/triage", "", ""),
+          } as Parameters<typeof beforeLoad>[0]),
+        ).then(
+          (value: unknown) => ({ value, thrown: undefined }),
+          (thrown: unknown) => ({ value: undefined, thrown }),
+        );
       await vi.runAllTimersAsync();
       return settled;
     }
