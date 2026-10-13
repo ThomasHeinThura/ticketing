@@ -703,6 +703,8 @@
 			"descriptionLabel": "Περιγραφή",
 			"descriptionHint": "Μια σύντομη περιγραφή του έργου σας",
 			"descriptionPlaceholder": "Εισαγάγετε περιγραφή έργου",
+			"defaultCommentVisibilityLabel": "Προεπιλεγμένη ορατότητα σχολίων",
+			"defaultCommentVisibilityHint": "Ποιος βλέπει ένα νέο σχόλιο από προεπιλογή. Ο επεξεργαστής ξεκινά με αυτή την επιλογή· το προσωπικό μπορεί να την αλλάξει ανά σχόλιο.",
 			"dangerZone": "Ζώνη κινδύνου",
 			"dangerZoneSubtitle": "Μη αναστρέψιμες και καταστροφικές ενέργειες.",
 			"deleteProject": "Διαγραφή έργου",

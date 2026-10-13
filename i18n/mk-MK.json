@@ -703,6 +703,8 @@
 			"descriptionLabel": "Опис",
 			"descriptionHint": "Краток опис на твојот проект",
 			"descriptionPlaceholder": "Внеси опис на проект",
+			"defaultCommentVisibilityLabel": "Стандардна видливост на коментарите",
+			"defaultCommentVisibilityHint": "Кој го гледа новиот коментар по основно. Уредникот започнува со овој избор; персоналот може да го смени за секој коментар.",
 			"dangerZone": "Опасна зона",
 			"dangerZoneSubtitle": "Неповратни и деструктивни акции.",
 			"deleteProject": "Избриши проект",
