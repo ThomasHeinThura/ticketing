@@ -7,6 +7,7 @@ import {
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
@@ -89,21 +90,8 @@ async function enrollFactor(page: Page, origin: string, password: string) {
   };
 }
 
-type PlaywrightTestError = {
-  errorContext?: string;
-  cause?: PlaywrightTestError;
-};
-
-function redactSensitiveErrorContext(error: PlaywrightTestError) {
-  // TestInfoError.errorContext is Playwright's public switch for replacing its
-  // automatic DOM/ARIA snapshot in the generated error-context.md artifact.
-  error.errorContext =
-    "Page snapshot omitted because this workflow displays authentication secrets.";
-  if (error.cause) redactSensitiveErrorContext(error.cause);
-}
-
 test.afterEach(({ page: _page }, testInfo) => {
-  for (const error of testInfo.errors) redactSensitiveErrorContext(error);
+  redactSecretErrorContext(testInfo);
 });
 
 async function signInWithTotp(

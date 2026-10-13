@@ -3,8 +3,13 @@ import {
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
+
+test.afterEach(({ page: _page }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 async function createAdminWorkspace(
   page: Page,

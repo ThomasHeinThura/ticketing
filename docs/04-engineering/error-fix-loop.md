@@ -358,6 +358,20 @@ Add to this as things are learned. It is the institutional memory that agents do
   and discard queued events after terminal denial. Exercise the real authentication
   adapter with post-handshake revocation; a mocked session cannot prove this boundary.
 
+- **A failing test's automatic artifacts can publish the secrets the test displayed.**
+  Playwright writes an `error-context.md` ARIA snapshot on every failure, whatever the
+  trace, video and screenshot settings are. On a public repository, CI uploads it as a
+  downloadable artifact. A Users journey that failed on the MFA enrollment screen
+  published its backup codes this way in three artifacts. The codes belonged to a
+  disposable CI database, so they could not authenticate anywhere, and the artifacts
+  were deleted.
+  - **Rule:** every spec that renders a secret turns off traces, video and screenshots,
+    and redacts the failure snapshot through the shared helper.
+  - **Guard:** a unit test finds every such spec by the UI text the secret screens show
+    and enforces both.
+  - **Before relying on any new capture mechanism,** look for it in every spec that can
+    fail while a secret is on screen.
+
 ## Related
 
 - [SDLC](sdlc.md) · [Testing strategy](testing-strategy.md)
