@@ -24,12 +24,14 @@ A Claude Sonnet 5.5 lane implemented it, including the merge commit `1cc5b1c2`. 
 - Ordinary delta review by the reviewer-A context: APPROVE at `613f04a3`. Mutations of the modal condition, the query enablement and the server flag each make a test fail.
 - Security rebind by the same Opus context: CLEAR at `0db35191`. That commit merges `main` `53344c8f` (#696). Non-conflict files equal git's own merge, `pairs.json` is the exact union, and the capabilities response keeps `manageServiceCalendars` and `bindProjectOrganisation`.
 - Security rebind by the same Opus context: CLEAR at `2eee045c`. That commit is a clean merge of `main` `ee499594` (#707, e2e only); its tree equals `git merge-tree`, and no product or contract file changed.
+- Light security rebind by the same Opus context: CLEAR at `1d6bca6f`. A test-only commit derives the all-false capability-map check from the schema. Mutations (a true flag, a stray key) each fail 3 of 13.
 
 **Reviewed head:** `a685660742d3418fa3c25d4f0228be3eabd05de4`
 **Reviewed head:** `1cc5b1c2be7a1d3b6c671d2d62a68ab8e7b699c8`
 **Reviewed head:** `613f04a3acc3c78d4ed6de29a2291a8a2c9643a5`
 **Reviewed head:** `0db351910f3fe1c14ae7ad54b533400217ea4032`
 **Reviewed head:** `2eee045c99203f73b4309fddee69db029d8236a3`
+**Reviewed head:** `1d6bca6f4ad47cee567fa8522645b434bf855d76`
 
 ## Context index
 
@@ -46,6 +48,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 7 | `705-613f-ordinary-a-sonnet.md` | Ordinary delta review A (1cc5b1c2..613f04a3) | Claude Sonnet 5.5 | `613f04a3` | APPROVE | `6fd1234a75a1b421b7dd988a68d9dab79fb15ff1e92bc769e371eb4a255979c5` |
 | 8 | `705-0db3-security-rebind-opus.md` | Security rebind (613f04a3..0db35191) | Claude Opus 5.5 | `0db35191` | CLEAR | `7e39185ed7ac05f5cd4325782063dfe9c10cde18f422b3472064b789910ea52d` |
 | 9 | `705-2eee-security-rebind-opus.md` | Security rebind (0db35191..2eee045c) | Claude Opus 5.5 | `2eee045c` | CLEAR | `a926d40b10dc58a97f0b5d0c344e2ca2357ccfa34c93a2174de253d4e2aba00f` |
+| 10 | `../2026-10-14/705-1d6b-security-rebind-opus.md` | Security rebind (2eee045c..1d6bca6f) | Claude Opus 5.5 | `1d6bca6f` | CLEAR | `e92b523abfb78dd425e8873dac9723d4d4bd862184af4687d5b5848a974ed4ac` |
 
 ## Embedded reports
 
@@ -619,3 +622,66 @@ None.
 
 **CLEAR** at 2eee045c99203f73b4309fddee69db029d8236a3. The required GPT-6 Sol security review at this exact head and CI remain outstanding.
 <!-- END REPORT (sha256 a926d40b10dc58a97f0b5d0c344e2ca2357ccfa34c93a2174de253d4e2aba00f) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-13/../2026-10-14/705-1d6b-security-rebind-opus.md; Claude Opus 5.5; sha256 e92b523abfb78dd425e8873dac9723d4d4bd862184af4687d5b5848a974ed4ac) -->
+# PR #705 security re-review (light: capability-map test helper)
+
+**Model:** Claude Opus 5.5. Fresh, independent context. I did not author, direct or remediate this change; I gave the earlier CLEARs at 1cc5b1c2, 613f04a3, 0db35191 and 2eee045c.
+**Role:** light exact-head rebind requested by the orchestrator. It does not replace the GPT-6 Sol gate (CLAUDE.md).
+
+**Reviewed head:** 1d6bca6f4ad47cee567fa8522645b434bf855d76
+**Parent:** 2bdb8d93f65e2ce71f5c1ffedee081f8f33ba647. That commit is 2eee045c (my last CLEAR) plus one docs-only commit, the #705 review note (+54).
+**Main at review time:** `git ls-remote` gave refs/heads/main = ee499594a90896fbb6edb61850b3f4e5001c5266 and refs/pull/705/head = 1d6bca6f, so main had not moved.
+
+## Scope of the commit
+
+`git diff --stat 2bdb8d93 1d6bca6f` shows exactly one file: tests/api-integration/multi-role-membership-remediation.test.ts (+15/-1). It adds an import of `capabilitiesResponseSchema` and rewrites the body of `expectAllFalseCapabilityMap`. There is no other change: no production code, schema, contract or other test changed.
+
+## Does the helper still guard what it did?
+
+**Old helper:** status 200; exactly 21 keys; every value `=== false`.
+
+**New helper:**
+- status 200;
+- the returned keys contain every required (non-optional) field of `capabilitiesResponseSchema.shape`;
+- every returned key is an own key of the schema shape, so stray keys fail;
+- every value `=== false` (unchanged).
+
+**Schema at this head:** 20 required booleans, including `bindProjectOrganisation`, plus 2 optional (`createPublicComments`, `createInternalComments`), so 22 in total. The old count of 21 was therefore 19 required plus both optional keys.
+
+**Assessment:**
+- The two security properties are preserved: no flag may be true for a malformed or ambiguous membership, and no key may exist outside the contract. The comparison is now tied to the contract rather than to a hand count.
+- **The only loosening:** the new helper would accept a response that omits one of the two *optional* comment flags, where the old exact count would not. That does not weaken the all-false guarantee. An absent optional flag reads as not granted, and the web side treats both flags as `=== true` only.
+- The guard is not vacuous: an empty object fails the `arrayContaining(requiredFlags)` check.
+
+## Verification (scratch worktree at the exact head, removed afterwards)
+
+- `pnpm install --frozen-lockfile` and `turbo build --filter=@taskdesk/api^...`: ok.
+- `CI=true` serialized integration run, multi-role-membership-remediation.test.ts + capabilities-scope.test.ts: **2 files / 25 tests, all passed** (13/13 in the remediation file, as reported).
+- **Mutations** on apps/api/src/capabilities/controllers/get-capabilities.ts (return object, line 70), each reverted afterwards:
+  - `bindProjectOrganisation: true` (a flag granted to a malformed membership): **3 tests fail**, 10 pass.
+  - an extra `strayKey: false` in the response: **3 tests fail**, 10 pass. This is the "outside the schema" check.
+  - The fourth call site (:499, "still no authority") follows a separate assertion path in that test and was not needed to show the guard bites.
+- Docker: my run's containers stopped themselves.
+  - Two Testcontainers containers (60a1aa5314b0 postgres and cfe8dc00ec7c ryuk, session ff053e7ac548) were running when I finished. Postgres was still up and healthy after my run had already exited and torn down its own container, so I judged them another lane's run. I did not remove them.
+  - The `taskdesk-*` containers were untouched.
+
+## Findings
+
+- **No new security findings.**
+- **Non-blocking note:** the helper no longer detects a missing optional comment flag. It is acceptable as explained above. If exactness is wanted, compare against the full shape key set when the membership is known to resolve to a workspace.
+- Earlier non-blocking items stand: R2 (customer-side workspace membership, S7/#8 follow-up) and the docs line wrap at projects-and-engagements.md:108.
+
+## Residual risk / not checked
+
+- Only these two integration files were run at this head.
+- Everything else is byte-identical to 2eee045c, whose evidence is in 705-2eee-security-rebind-opus.md (2026-10-13) and 705-0db3-security-rebind-opus.md.
+
+## Owner (Thomas) decision needed
+
+None.
+
+## Verdict
+
+**CLEAR** at 1d6bca6f4ad47cee567fa8522645b434bf855d76. The required GPT-6 Sol security review at this exact head and CI remain outstanding.
+<!-- END REPORT (sha256 e92b523abfb78dd425e8873dac9723d4d4bd862184af4687d5b5848a974ed4ac) -->
