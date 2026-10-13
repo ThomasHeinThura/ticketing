@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { APIRequestContext, APIResponse } from "@playwright/test";
 import type { Client as PgClient } from "pg";
+import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import {
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
@@ -20,6 +21,12 @@ const playwright = webRequire(
 ) as typeof import("@playwright/test");
 const { Client } = apiRequire("pg") as typeof import("pg");
 const { expect, test } = playwright;
+
+test.use({ trace: "off", video: "off", screenshot: "off" });
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 type CustomerCredentials = { email: string; password: string };
 
