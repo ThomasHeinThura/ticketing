@@ -15,9 +15,11 @@ A Claude Sonnet 5.5 lane implemented the change. The conductor (Claude Opus 5.5)
 - Ordinary delta review by Claude Sonnet 5.5: APPROVE at `e5c1423a`, with three guard mutations.
 - Security review by Claude Opus 5.5: CLEAR at `e5c1423a`. Diff scope, e2e isolation, secrets and the auth-redirect spec were run together.
 - Mechanical security rebind at `eaacaba2`: CLEAR. This head merges `main` `417944ca` (#726). Its tree equals the merge-tree of `dc480271` with `417944ca`, the changed files are exactly #726's, and there is no interaction with this PR's paths.
+- Mechanical security rebind at `77e69d7a`: CLEAR. This head merges `main` `aefb6888` (#722). Its tree equals the merge-tree of `39515633` with `aefb6888`, and the changed files are exactly #722's, with no interaction.
 
 **Reviewed head:** `e5c1423a446a98d88f0388a1c741ce06feb0c40d`
 **Reviewed head:** `eaacaba27e0372e9e4d18903af99cf39985f470e`
+**Reviewed head:** `77e69d7a3d2cbe90aa7ad86501e78a5e1f5cba88`
 
 ## Context index
 
@@ -29,6 +31,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 2 | `727-e5c1-ordinary-delta-sonnet.md` | Ordinary delta review (d827f9af..e5c1423a) | Claude Sonnet 5.5 | `e5c1423a` | APPROVE | `410c92d0cf8f6a5765dc30c373b9f5ae517874f0a1453edf0c5596e08b391cc5` |
 | 3 | `727-security-opus.md` | Security review (28481af5..e5c1423a) | Claude Opus 5.5 | `e5c1423a` | CLEAR | `92ecf47356b9c232f937797708260de9ae42b23511c0a7dbec4aaa3a5052cd0f` |
 | 4 | `727-eaac-security-rebind-opus.md` | Mechanical security rebind (dc480271..eaacaba2) | Claude Opus 5.5 | `eaacaba2` | CLEAR | `002820ec4535c9395eda9fd4299e184683fe84ba25de70e66d320d910f74dd33` |
+| 5 | `727-77e6-security-rebind-opus.md` | Mechanical security rebind (39515633..77e69d7a) | Claude Opus 5.5 | `77e69d7a` | CLEAR | `da097263e6ce28cb4cea7861d5b2c2225dd91765addc8026e1dbb6790271e042` |
 
 ## Embedded reports
 
@@ -261,3 +264,50 @@ docs/07-planning/security-reviews/727-form-reset-guard.md
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 002820ec4535c9395eda9fd4299e184683fe84ba25de70e66d320d910f74dd33) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/727-77e6-security-rebind-opus.md; Claude Opus 5.5; sha256 da097263e6ce28cb4cea7861d5b2c2225dd91765addc8026e1dbb6790271e042) -->
+# PR #727 — security exact-head rebind (mechanical merge of main #722)
+
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This is a fresh, independent context. I did not author, direct or remediate #727 or #722.
+**Reviewed head:** 77e69d7a3d2cbe90aa7ad86501e78a5e1f5cba88
+**Prior CLEAR head:** eaacaba27e0372e9e4d18903af99cf39985f470e
+**Pre-merge head:** 39515633070768a8a2bcc910e226f52b327319ff
+**Main merged in:** aefb6888f3d45ad3439c69133ac644f738a70a4a (merge of #722)
+**Method:** read-only. A blobless bare clone in the scratchpad. No tests were run and no Docker was used.
+
+## Commands and outputs
+```
+$ git ls-remote origin refs/heads/main refs/pull/727/head      (at the start and again at the end)
+aefb6888f3d45ad3439c69133ac644f738a70a4a  refs/heads/main
+77e69d7a3d2cbe90aa7ad86501e78a5e1f5cba88  refs/pull/727/head
+
+$ git rev-list --parents -n1 77e69d7a
+77e69d7a... 39515633070768a8a2bcc910e226f52b327319ff aefb6888f3d45ad3439c69133ac644f738a70a4a
+
+$ git rev-parse 77e69d7a^{tree}                     -> bab8f5f4602ebfd29d23d0184f4f06c2851ba831
+$ git merge-tree --write-tree 39515633 aefb6888    -> bab8f5f4602ebfd29d23d0184f4f06c2851ba831  (identical)
+
+$ git diff --name-only 39515633 77e69d7a  vs  git diff --name-only 417944ca aefb6888
+39 files each -> IDENTICAL; no overlap with #727's own three files
+
+$ git log --oneline eaacaba2..39515633
+39515633 docs(security-reviews): bind the main-merge rebind
+$ git diff --name-only eaacaba2 39515633
+docs/07-planning/security-reviews/727-form-reset-guard.md      (note-only)
+```
+
+## Interaction review
+1. **`form-reset-guard.test.ts`.** In the #722 diff under `apps/web/src`, no added line matches `\bregister\(`, `\.reset\(` or `useForm` (grep exit status 1). The guard's set of files using `register()` is therefore unchanged.
+2. **`settings-forms-direct-load.spec.ts`.** The spec's `goto` targets are only `/dashboard/settings/account/information`, `/dashboard/settings/workspace/general` and `/dashboard/settings/projects/{id}/general`. The new work-item detail page (`agent/work-items/$key`) is never loaded.
+   - #722's `use-workspace-permission.ts` change only adds the optional `transitionTasks`/`rankTasks` flags and their accessors. Nothing on the settings pages reads them.
+
+## Findings
+- Blocking: none.
+- Non-blocking: none.
+
+## Residual risk / not checked
+- No tests were run, by instruction. Hosted CI at 77e69d7a is the gate.
+- A further head change needs a new exact-head confirmation.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 da097263e6ce28cb4cea7861d5b2c2225dd91765addc8026e1dbb6790271e042) -->
