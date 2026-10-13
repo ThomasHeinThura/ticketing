@@ -74,6 +74,7 @@ vi.mock("@/components/common/project-layout", () => ({
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/components/calendar/month-grid", () => ({
   default: ({ onOpenTask }: { onOpenTask: (taskId: string) => void }) => (
+    // ui-exempt: this test double stands in for the calendar's open-task callback.
     <button type="button" onClick={() => onOpenTask("task-9")}>
       open-task
     </button>
@@ -81,6 +82,7 @@ vi.mock("@/components/calendar/month-grid", () => ({
 }));
 vi.mock("@/components/task/task-details-sheet", () => ({
   default: ({ onClose }: { onClose: () => void }) => (
+    // ui-exempt: this test double stands in for the task details sheet's close control.
     <button type="button" onClick={onClose}>
       close-sheet
     </button>

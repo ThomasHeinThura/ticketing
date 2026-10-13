@@ -100,6 +100,7 @@ vi.mock("@/components/shared/modals/create-task-modal", () => ({
 }));
 vi.mock("@/components/task/task-details-sheet", () => ({
   default: ({ onClose }: { onClose: () => void }) => (
+    // ui-exempt: this test double stands in for the task details sheet's close control.
     <button type="button" onClick={onClose}>
       close-sheet
     </button>
@@ -111,6 +112,7 @@ vi.mock("@/components/common/sort-control", () => ({
   }: {
     onSortChange: (sort: { field: string; direction: string }) => void;
   }) => (
+    // ui-exempt: this test double stands in for the sort control.
     <button
       type="button"
       onClick={() => onSortChange({ field: "title", direction: "desc" })}

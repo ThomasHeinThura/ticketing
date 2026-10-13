@@ -108,6 +108,7 @@ vi.mock("@/components/common/project-layout", () => ({
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/components/task/task-details-sheet", () => ({
   default: ({ taskId, onClose }: { taskId?: string; onClose: () => void }) => (
+    // ui-exempt: this test double stands in for the task details sheet's close control.
     <button type="button" onClick={onClose}>
       close-sheet:{taskId ?? "none"}
     </button>
@@ -119,40 +120,49 @@ vi.mock("@/components/kanban-board", () => ({
 vi.mock("@/components/list-view", () => ({
   default: () => <div data-testid="list-view" />,
 }));
-vi.mock("@/components/board/board-toolbar", () => ({
-  default: ({
-    viewMode,
-    setViewMode,
-    onSortChange,
-    updateFilter,
-    filters,
+vi.mock("@/components/board/board-toolbar", () => {
+  const MockButton = ({
+    children,
+    onClick,
   }: {
-    viewMode: string;
-    setViewMode: (mode: "board" | "list") => void;
-    onSortChange: (sort: { field: string; direction: string }) => void;
-    updateFilter: (key: string, value: string[]) => void;
-    filters: { status: string[] };
+    children: ReactNode;
+    onClick: () => void;
   }) => (
-    <div data-testid="toolbar" data-mode={viewMode}>
-      <span data-testid="status-filter">{filters.status.join(",")}</span>
-      <button type="button" onClick={() => setViewMode("list")}>
-        to-list
-      </button>
-      <button type="button" onClick={() => setViewMode("board")}>
-        to-board
-      </button>
-      <button
-        type="button"
-        onClick={() => onSortChange({ field: "priority", direction: "desc" })}
-      >
-        sort
-      </button>
-      <button type="button" onClick={() => updateFilter("status", ["todo"])}>
-        filter
-      </button>
-    </div>
-  ),
-}));
+    // ui-exempt: this test double stands in for the board toolbar's design-system buttons.
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
+  );
+  return {
+    default: ({
+      viewMode,
+      setViewMode,
+      onSortChange,
+      updateFilter,
+      filters,
+    }: {
+      viewMode: string;
+      setViewMode: (mode: "board" | "list") => void;
+      onSortChange: (sort: { field: string; direction: string }) => void;
+      updateFilter: (key: string, value: string[]) => void;
+      filters: { status: string[] };
+    }) => (
+      <div data-testid="toolbar" data-mode={viewMode}>
+        <span data-testid="status-filter">{filters.status.join(",")}</span>
+        <MockButton onClick={() => setViewMode("list")}>to-list</MockButton>
+        <MockButton onClick={() => setViewMode("board")}>to-board</MockButton>
+        <MockButton
+          onClick={() => onSortChange({ field: "priority", direction: "desc" })}
+        >
+          sort
+        </MockButton>
+        <MockButton onClick={() => updateFilter("status", ["todo"])}>
+          filter
+        </MockButton>
+      </div>
+    ),
+  };
+});
 
 vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-i18next")>()),
