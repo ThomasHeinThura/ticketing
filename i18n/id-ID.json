@@ -60,6 +60,7 @@
 			"tryAgain": "Coba lagi",
 			"viewDeploymentGuide": "Lihat panduan deployment",
 			"refreshPage": "Muat ulang halaman",
+			"sessionUnavailable": "Kami belum dapat memeriksa sesi Anda saat ini. Coba lagi sebentar lagi.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",
@@ -549,6 +550,11 @@
 			"gantt": "Gantt",
 			"sidebarDefault": "Default panel samping",
 			"sidebarDefaultDescription": "Biarkan sanel samping terbuka saat mulai",
+			"density": "Kepadatan",
+			"densityDescription": "Jarak antar baris, kartu, dan kolom",
+			"densityComfortable": "Nyaman",
+			"densityCompact": "Ringkas",
+			"selectDensity": "Pilih kepadatan",
 			"displayOptions": "Opsi tampilan",
 			"displayOptionsDescription": "Pilih informasi yang ditampilkan di tampilan tugas",
 			"taskNumbers": "Nomor Tugas",
@@ -1377,6 +1383,7 @@
 			"workspaces": "Ruang kerja",
 			"switching": "Beralih...",
 			"addWorkspace": "Tambah ruang kerja",
+			"instanceUsers": "Pengguna instans",
 			"selectWorkspace": "Pilih ruang kerja"
 		},
 		"page": {

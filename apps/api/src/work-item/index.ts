@@ -764,7 +764,7 @@ const listWorkItemActivityRoute = createRoute({
     'table row (issue #292) or `"comment"` for a posted `comment` row (issue #452) -- ' +
     "merged and sorted together, not two separate lists. Every row is returned " +
     "regardless of `visibility` -- see the controller's own doc comment for why no " +
-    "caller-type filtering is applied yet.",
+    "caller-type filtering is applied yet. A tombstone includes its `deletedBy` actor id.",
   middleware: [
     requireWorkItemReach("key", { requireProjectReach: true }),
   ] as const,
@@ -995,7 +995,7 @@ const updateCommentRoute = createRoute({
   description:
     "Edit a comment's body (`CA-17`). The author may edit within 15 minutes of " +
     "posting (`comment:update_own`); `comment:update_any` edits anyone's, any time. " +
-    "Visibility cannot be changed (`CA-4`) -- this route has no `visibility` field.",
+    "Omitting `body` is a write-free no-op after those checks. Visibility cannot be changed (`CA-4`) -- this route has no `visibility` field.",
   middleware: [requireCommentReach()] as const,
   request: {
     params: commentIdParam,

@@ -122,12 +122,17 @@ security-sensitive field in the product.
   the activity response does not embed prior bodies, and the composer retains already
   fetched pages while the user asks for earlier versions. History uses the same work-item
   reach and read policy as activity, remains agent-side, and cannot expose a tombstone's
-  former body. The existing edit request still requires a body and keeps its current
-  writer behavior.
+  former body. An edit request that omits `body` is a no-op (owner decision 2026-10-09):
+  it runs the same reach, live-parent, membership, ownership and 15-minute-window checks
+  as a real edit, then returns the comment unchanged, writing no `comment_version`, no
+  `edited_at`, no `updated_at` change and no event. A present `body` (including `null`)
+  is validated and written as before.
 - `CA-18` Deleting sets `comment.deleted_at` / `deleted_by` and clears the body; the row and
   its activity stay, and the tombstone renders from those two columns — "Comment deleted by
   Jane, 2 March" — never a
-  silent gap. Like every deletion it is a pending action approved by the requester — a
+  silent gap. The activity route returns `deletedBy` (the deleting actor's id, null on a
+  live comment) so the client can name the deleter, who can differ from the author; the
+  name is resolved through the same reach-filtered directory as every other actor. Like every deletion it is a pending action approved by the requester — a
   click-level confirmation showing the comment and its work item
   ([pending-actions.md](../01-architecture/pending-actions.md)).
 - `CA-11a` Inherited from kaneo and kept inside the Tiptap document: Markdown paste/import

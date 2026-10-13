@@ -61,6 +61,7 @@
 			"tryAgain": "Try Again",
 			"viewDeploymentGuide": "View Deployment Guide",
 			"refreshPage": "Refresh Page",
+			"sessionUnavailable": "We couldn't check your session right now. Try again in a moment.",
 			"messages": {
 				"cors": "Unable to connect to the server. This might be due to CORS configuration issues.",
 				"network": "Network error. Please check your internet connection and try again.",
@@ -549,6 +550,11 @@
 			"gantt": "Gantt",
 			"sidebarDefault": "Sidebar Default",
 			"sidebarDefaultDescription": "Keep sidebar expanded on startup",
+			"density": "Density",
+			"densityDescription": "Spacing of rows, cards and fields",
+			"densityComfortable": "Comfortable",
+			"densityCompact": "Compact",
+			"selectDensity": "Select density",
 			"displayOptions": "Display options",
 			"displayOptionsDescription": "Choose which information to show in task views",
 			"taskNumbers": "Task Numbers",
@@ -1378,6 +1384,7 @@
 			"workspaces": "Workspaces",
 			"switching": "Switching...",
 			"addWorkspace": "Add workspace",
+			"instanceUsers": "Instance users",
 			"selectWorkspace": "Select workspace"
 		},
 		"page": {

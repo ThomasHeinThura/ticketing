@@ -61,6 +61,7 @@
 			"tryAgain": "もう一度試す",
 			"viewDeploymentGuide": "デプロイガイドを表示",
 			"refreshPage": "ページを更新",
+			"sessionUnavailable": "現在、セッションを確認できませんでした。しばらくしてからもう一度お試しください。",
 			"messages": {
 				"cors": "サーバーに接続できません。CORS設定に問題がある可能性があります。",
 				"network": "ネットワークエラーが発生しました。インターネット接続を確認して再試行してください。",
@@ -549,6 +550,11 @@
 			"gantt": "ガント",
 			"sidebarDefault": "サイドバーのデフォルト状態",
 			"sidebarDefaultDescription": "起動時にサイドバーを展開した状態に保ちます",
+			"density": "表示密度",
+			"densityDescription": "行・カード・フィールドの間隔",
+			"densityComfortable": "標準",
+			"densityCompact": "コンパクト",
+			"selectDensity": "表示密度を選択",
 			"displayOptions": "表示オプション",
 			"displayOptionsDescription": "タスクビューに表示する情報を選択します",
 			"taskNumbers": "タスク番号",
@@ -1377,6 +1383,7 @@
 			"workspaces": "ワークスペース",
 			"switching": "切り替え中...",
 			"addWorkspace": "ワークスペースを追加",
+			"instanceUsers": "インスタンスユーザー",
 			"selectWorkspace": "ワークスペースを選択"
 		},
 		"page": {

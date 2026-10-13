@@ -5,7 +5,7 @@
  * route are NOT covered here -- see this PR's own body.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { subscribeToEvent } from "../../apps/api/src/events";
@@ -84,6 +84,33 @@ async function makeDefaultState(workspaceId: string, projectId: string) {
     .returning();
   if (!state) throw new Error("makeDefaultState: no state row");
   return state;
+}
+
+async function addCustomerIdentity(organisationId: string) {
+  const user = await db
+    .insert(schema.userTable)
+    .values({
+      id: `customer-${randomUUID()}`,
+      email: `customer-${randomUUID()}@example.com`,
+      emailVerified: true,
+      name: "Customer mention candidate",
+    })
+    .returning()
+    .then(([row]) => row);
+  if (!user) throw new Error("addCustomerIdentity: no user row");
+  const person = await db
+    .insert(schema.personTable)
+    .values({
+      userId: user.id,
+      organisationId,
+      side: "customer",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning()
+    .then(([row]) => row);
+  if (!person) throw new Error("addCustomerIdentity: no person row");
+  return { user, person };
 }
 
 async function addWorkspaceMember(workspaceId: string, role: string) {
@@ -864,6 +891,48 @@ describe("API integration: work-item comments (#27)", () => {
     expect(again.status).toBe(200);
   });
 
+  it("CA-18: the activity stream names the deleter, who can differ from the author", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    await grantProjectRole(creator.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    const live = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    const { id: liveId } = (await live.json()) as { id: string };
+    const created = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    const { id } = (await created.json()) as { id: string };
+
+    const admin = await addWorkspaceMember(creator.workspace.id, "admin");
+    mockAuthenticatedSession(admin);
+    const response = await deleteComment(app, id);
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { deletedBy: string }).deletedBy).toBe(
+      admin.id,
+    );
+
+    mockAuthenticatedSession(creator.user);
+    const activity = await app.request(
+      `/api/work-items/${workItem.key}/activity`,
+    );
+    expect(activity.status).toBe(200);
+    const rows = (
+      (await activity.json()) as {
+        data: Array<{ id: string; deletedBy?: string | null }>;
+      }
+    ).data;
+    const tombstone = rows.find((row) => row.id === id);
+    expect(tombstone?.deletedBy).toBe(admin.id);
+    expect(tombstone?.deletedBy).not.toBe(creator.user.id);
+    // A live comment never carries a deleter.
+    expect(rows.find((row) => row.id === liveId)?.deletedBy ?? null).toBeNull();
+  });
+
   it("does not return a tombstoned comment to a member without delete authority", async () => {
     const { app, workItem, creator } = await setupWorkItem("member");
     const created = await postComment(app, workItem.key, {
@@ -1061,5 +1130,454 @@ describe("API integration: work-item comments (#27)", () => {
       .from(schema.commentVersionTable)
       .where(eq(schema.commentVersionTable.commentId, id));
     expect(versions).toHaveLength(0);
+  });
+
+  it("CA-12: lists and notifies only reachable customers on private work items", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const organisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `private-mention-org-${randomUUID()}`,
+        name: "Private mention organisation",
+        isInternal: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!organisation) throw new Error("expected serving organisation");
+    const requester = await addCustomerIdentity(organisation.id);
+    const participant = await addCustomerIdentity(organisation.id);
+    const nonparticipant = await addCustomerIdentity(organisation.id);
+    const foreignOrganisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `private-mention-foreign-${randomUUID()}`,
+        name: "Foreign mention organisation",
+        isInternal: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!foreignOrganisation) throw new Error("expected foreign organisation");
+    const foreignCustomer = await addCustomerIdentity(foreignOrganisation.id);
+    const [creatorPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, creator.user.id));
+    if (!creatorPerson) throw new Error("expected creator person");
+
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: organisation.id })
+      .where(eq(schema.projectTable.id, project.id));
+    await db
+      .update(schema.workItemTable)
+      .set({
+        requesterId: requester.person.id,
+        customerVisibility: "private",
+      })
+      .where(eq(schema.workItemTable.id, workItem.id));
+    await db.insert(schema.requestParticipantTable).values({
+      workItemId: workItem.id,
+      personId: participant.person.id,
+      addedBy: creatorPerson.id,
+      createdAt: new Date(),
+    });
+    await grantProjectRole(creator.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    await db.insert(schema.watcherTable).values({
+      workItemId: workItem.id,
+      personId: requester.person.id,
+      source: "explicit",
+      muted: true,
+    });
+
+    const candidateIds = [
+      requester.person.id,
+      participant.person.id,
+      nonparticipant.person.id,
+      foreignCustomer.person.id,
+    ];
+    const candidatesResponse = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=public`,
+    );
+    expect(candidatesResponse.status).toBe(200);
+    const candidates = (await candidatesResponse.json()) as Array<{
+      personId: string;
+      side: string;
+      reachable: boolean;
+    }>;
+    expect(candidates).toContainEqual(
+      expect.objectContaining({
+        personId: requester.person.id,
+        side: "customer",
+        reachable: true,
+      }),
+    );
+    expect(candidates).toContainEqual(
+      expect.objectContaining({
+        personId: participant.person.id,
+        side: "customer",
+        reachable: true,
+      }),
+    );
+    expect(candidates.map(({ personId }) => personId)).not.toContain(
+      nonparticipant.person.id,
+    );
+    expect(candidates.map(({ personId }) => personId)).not.toContain(
+      foreignCustomer.person.id,
+    );
+
+    const internalCandidates = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=internal`,
+    );
+    expect(internalCandidates.status).toBe(200);
+    const internalCandidateIds = (
+      (await internalCandidates.json()) as Array<{ personId: string }>
+    ).map(({ personId }) => personId);
+    for (const personId of candidateIds)
+      expect(internalCandidateIds).not.toContain(personId);
+
+    const publicPreflight = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-preflight`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ personIds: candidateIds, visibility: "public" }),
+      },
+    );
+    expect(publicPreflight.status).toBe(200);
+    expect(await publicPreflight.json()).toEqual({
+      reachablePersonIds: [requester.person.id, participant.person.id],
+      unreachablePersonIds: [
+        nonparticipant.person.id,
+        foreignCustomer.person.id,
+      ],
+    });
+    const internalPreflight = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-preflight`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          personIds: candidateIds,
+          visibility: "internal",
+        }),
+      },
+    );
+    expect(internalPreflight.status).toBe(200);
+    expect(await internalPreflight.json()).toEqual({
+      reachablePersonIds: [],
+      unreachablePersonIds: candidateIds,
+    });
+
+    const mentionDocument = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: candidateIds.map((id) => ({
+            type: "taskdeskMention",
+            attrs: { id },
+          })),
+        },
+      ],
+    };
+    const publicComment = await postComment(app, workItem.key, {
+      body: mentionDocument,
+      visibility: "public",
+    });
+    expect(publicComment.status).toBe(200);
+
+    const customerWatchers = await db
+      .select({
+        personId: schema.watcherTable.personId,
+        source: schema.watcherTable.source,
+        muted: schema.watcherTable.muted,
+      })
+      .from(schema.watcherTable)
+      .where(inArray(schema.watcherTable.personId, candidateIds));
+    expect(customerWatchers).toHaveLength(2);
+    expect(customerWatchers).toContainEqual({
+      personId: requester.person.id,
+      source: "explicit",
+      muted: true,
+    });
+    expect(customerWatchers).toContainEqual({
+      personId: participant.person.id,
+      source: "explicit",
+      muted: false,
+    });
+
+    const publicMentionEvents = await db
+      .select({
+        kind: schema.outboxTable.kind,
+        payload: schema.outboxTable.payload,
+      })
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "work_item.mentioned"));
+    expect(publicMentionEvents).toHaveLength(2);
+    expect(
+      publicMentionEvents.map(
+        ({ payload }) =>
+          (payload as { payload: { mentionedPersonId: string } }).payload
+            .mentionedPersonId,
+      ),
+    ).toEqual(
+      expect.arrayContaining([requester.person.id, participant.person.id]),
+    );
+
+    const internalComment = await postComment(app, workItem.key, {
+      body: mentionDocument,
+      visibility: "internal",
+    });
+    expect(internalComment.status).toBe(200);
+    const notifications = await db
+      .select({ personId: schema.notificationTable.personId })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.kind, "work_item.mentioned"));
+    expect(notifications).toHaveLength(2);
+    expect(notifications.map(({ personId }) => personId)).toEqual(
+      expect.arrayContaining([requester.person.id, participant.person.id]),
+    );
+    const mentionEventsAfterInternalComment = await db
+      .select({
+        kind: schema.outboxTable.kind,
+        payload: schema.outboxTable.payload,
+      })
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "work_item.mentioned"));
+    expect(mentionEventsAfterInternalComment).toHaveLength(2);
+    const watchersAfterInternalComment = await db
+      .select({
+        personId: schema.watcherTable.personId,
+        source: schema.watcherTable.source,
+        muted: schema.watcherTable.muted,
+      })
+      .from(schema.watcherTable)
+      .where(inArray(schema.watcherTable.personId, candidateIds));
+    expect(watchersAfterInternalComment).toHaveLength(2);
+    expect(watchersAfterInternalComment).toContainEqual({
+      personId: requester.person.id,
+      source: "explicit",
+      muted: true,
+    });
+    expect(watchersAfterInternalComment).toContainEqual({
+      personId: participant.person.id,
+      source: "explicit",
+      muted: false,
+    });
+  });
+
+  it("CA-13: permits same-organisation customer mentions publicly and excludes them internally", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const customerOrganisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `mention-customer-org-${randomUUID()}`,
+        name: "Mention customer organisation",
+        isInternal: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!customerOrganisation)
+      throw new Error("expected customer organisation");
+    const customer = await addCustomerIdentity(customerOrganisation.id);
+    const foreignOrganisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `mention-foreign-org-${randomUUID()}`,
+        name: "Foreign customer organisation",
+        isInternal: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!foreignOrganisation)
+      throw new Error("expected foreign customer organisation");
+    const foreignCustomer = await addCustomerIdentity(foreignOrganisation.id);
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: customerOrganisation.id })
+      .where(eq(schema.projectTable.id, project.id));
+    await db
+      .update(schema.workItemTable)
+      .set({ customerVisibility: "organisation" })
+      .where(eq(schema.workItemTable.id, workItem.id));
+    await grantProjectRole(creator.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+
+    const publicCandidates = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=public`,
+    );
+    expect(publicCandidates.status).toBe(200);
+    const publicCandidateBody = await publicCandidates.json();
+    expect(publicCandidateBody).toContainEqual(
+      expect.objectContaining({
+        personId: customer.person.id,
+        side: "customer",
+        reachable: true,
+      }),
+    );
+    expect(publicCandidateBody).not.toContainEqual(
+      expect.objectContaining({ personId: foreignCustomer.person.id }),
+    );
+
+    const internalCandidates = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=internal`,
+    );
+    expect(internalCandidates.status).toBe(200);
+    expect(await internalCandidates.json()).not.toContainEqual(
+      expect.objectContaining({ personId: customer.person.id }),
+    );
+
+    const mentionDocument = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "taskdeskMention", attrs: { id: customer.person.id } },
+            {
+              type: "taskdeskMention",
+              attrs: { id: foreignCustomer.person.id },
+            },
+          ],
+        },
+      ],
+    };
+    const publicPreflight = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-preflight`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          personIds: [customer.person.id, foreignCustomer.person.id],
+          visibility: "public",
+        }),
+      },
+    );
+    expect(publicPreflight.status).toBe(200);
+    expect(await publicPreflight.json()).toEqual({
+      reachablePersonIds: [customer.person.id],
+      unreachablePersonIds: [foreignCustomer.person.id],
+    });
+
+    const publicComment = await postComment(app, workItem.key, {
+      body: mentionDocument,
+      visibility: "public",
+    });
+    expect(publicComment.status).toBe(200);
+    const customerNotifications = await db
+      .select({ kind: schema.notificationTable.kind })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.personId, customer.person.id));
+    expect(customerNotifications).toEqual([{ kind: "work_item.mentioned" }]);
+    const foreignNotifications = await db
+      .select({ kind: schema.notificationTable.kind })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.personId, foreignCustomer.person.id));
+    expect(foreignNotifications).toEqual([]);
+    const foreignWatchers = await db
+      .select({ personId: schema.watcherTable.personId })
+      .from(schema.watcherTable)
+      .where(eq(schema.watcherTable.personId, foreignCustomer.person.id));
+    expect(foreignWatchers).toEqual([]);
+
+    const internalPreflight = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-preflight`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          personIds: [customer.person.id],
+          visibility: "internal",
+        }),
+      },
+    );
+    expect(internalPreflight.status).toBe(200);
+    expect(await internalPreflight.json()).toEqual({
+      reachablePersonIds: [],
+      unreachablePersonIds: [customer.person.id],
+    });
+    const internalComment = await postComment(app, workItem.key, {
+      body: mentionDocument,
+      visibility: "internal",
+    });
+    expect(internalComment.status).toBe(200);
+    const notificationsAfterInternalComment = await db
+      .select({ kind: schema.notificationTable.kind })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.personId, customer.person.id));
+    expect(notificationsAfterInternalComment).toEqual([
+      { kind: "work_item.mentioned" },
+    ]);
+  });
+
+  it("CA-17: an omitted body is a write-free no-op after the normal edit checks", async () => {
+    const { app, workItem } = await setupWorkItem("member");
+    const originalBody = { type: "doc", content: [{ type: "paragraph" }] };
+    const created = await postComment(app, workItem.key, {
+      body: originalBody,
+      visibility: "internal",
+    });
+    const { id } = (await created.json()) as { id: string };
+
+    const response = await patchComment(app, id, {});
+    expect(response.status).toBe(200);
+    const returned = (await response.json()) as {
+      body: unknown;
+      editedAt: string | null;
+    };
+    expect(returned.body).toEqual(originalBody);
+    expect(returned.editedAt).toBeNull();
+
+    const [stored] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    expect(stored?.body).toEqual(originalBody);
+    expect(stored?.editedAt).toBeNull();
+    const versions = await db
+      .select()
+      .from(schema.commentVersionTable)
+      .where(eq(schema.commentVersionTable.commentId, id));
+    expect(versions).toHaveLength(0);
+  });
+
+  it("CA-17: an omitted body is still refused for a non-author, outside the window, and on a deleted comment", async () => {
+    const { app, workItem, creator } = await setupWorkItem("member");
+    const post = async () => {
+      const created = await postComment(app, workItem.key, {
+        body: { type: "doc", content: [{ type: "paragraph" }] },
+        visibility: "internal",
+      });
+      return ((await created.json()) as { id: string }).id;
+    };
+    const nonAuthorTarget = await post();
+    const staleTarget = await post();
+    const deletedTarget = await post();
+
+    await db
+      .update(schema.commentTable)
+      .set({ createdAt: new Date(Date.now() - 16 * 60 * 1000) })
+      .where(eq(schema.commentTable.id, staleTarget));
+    expect((await patchComment(app, staleTarget, {})).status).toBe(403);
+
+    expect((await deleteComment(app, deletedTarget)).status).toBe(200);
+    expect((await patchComment(app, deletedTarget, {})).status).toBe(404);
+
+    const otherUser = await addWorkspaceMember(creator.workspace.id, "member");
+    mockAuthenticatedSession(otherUser);
+    expect((await patchComment(app, nonAuthorTarget, {})).status).toBe(403);
   });
 });

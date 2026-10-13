@@ -41,6 +41,24 @@ describe("comment-version cursor binding", () => {
     ).toThrow();
   });
 
+  it("bounds version numbers to PostgreSQL integer values before querying", () => {
+    const atMaximum = encodeCommentVersionCursor({
+      ...cursor,
+      number: 2_147_483_647,
+    });
+    expect(
+      decodeCommentVersionCursor(atMaximum, "TD-42", "comment-abc").number,
+    ).toBe(2_147_483_647);
+
+    const aboveMaximum = encodeCommentVersionCursor({
+      ...cursor,
+      number: 2_147_483_648,
+    });
+    expect(() =>
+      decodeCommentVersionCursor(aboveMaximum, "TD-42", "comment-abc"),
+    ).toThrow("cursor: malformed");
+  });
+
   it("keeps page sizes bounded and cursor input finite", () => {
     expect(listCommentVersionsQuery.safeParse({}).success).toBe(true);
     expect(listCommentVersionsQuery.safeParse({ limit: 10 }).success).toBe(

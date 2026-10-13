@@ -61,6 +61,7 @@
 			"tryAgain": "Spróbuj ponownie",
 			"viewDeploymentGuide": "Zobacz przewodnik wdrożenia",
 			"refreshPage": "Odśwież stronę",
+			"sessionUnavailable": "Nie udało się teraz sprawdzić Twojej sesji. Spróbuj ponownie za chwilę.",
 			"messages": {
 				"cors": "Nie można połączyć się z serwerem. Przyczyną mogą być ustawienia CORS.",
 				"network": "Błąd sieci. Sprawdź połączenie z internetem i spróbuj ponownie.",
@@ -440,6 +441,7 @@
 			"workspaces": "Obszary robocze",
 			"switching": "Przełączanie...",
 			"addWorkspace": "Dodaj obszar roboczy",
+			"instanceUsers": "Użytkownicy instancji",
 			"selectWorkspace": "Wybierz obszar roboczy"
 		},
 		"page": {
@@ -1377,6 +1379,11 @@
 			"selectViewMode": "Wybierz tryb wyświetlania",
 			"sidebarDefault": "Domyślny stan paska bocznego",
 			"sidebarDefaultDescription": "Domyślnie rozwijaj pasek boczny przy uruchomieniu",
+			"density": "Gęstość",
+			"densityDescription": "Odstępy między wierszami, kartami i polami",
+			"densityComfortable": "Komfortowa",
+			"densityCompact": "Kompaktowa",
+			"selectDensity": "Wybierz gęstość",
 			"subtitle": "Dostosuj korzystanie z TaskDesk.",
 			"taskNumbers": "Numery zadań",
 			"taskNumbersDescription": "Pokaż identyfikatory i numery zadań",

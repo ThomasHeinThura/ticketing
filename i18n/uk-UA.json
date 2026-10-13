@@ -60,6 +60,7 @@
 			"tryAgain": "Спробувати ще раз",
 			"viewDeploymentGuide": "Переглянути інструкцію з розгортання",
 			"refreshPage": "Оновити сторінку",
+			"sessionUnavailable": "Зараз не вдалося перевірити вашу сесію. Спробуйте ще раз за мить.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",
@@ -549,6 +550,11 @@
 			"gantt": "Ґант",
 			"sidebarDefault": "Бічна панель за замовчуванням",
 			"sidebarDefaultDescription": "Тримати бічну панель розгорнутою при запуску",
+			"density": "Щільність",
+			"densityDescription": "Відступи рядків, карток і полів",
+			"densityComfortable": "Комфортна",
+			"densityCompact": "Компактна",
+			"selectDensity": "Виберіть щільність",
 			"displayOptions": "Параметри відображення",
 			"displayOptionsDescription": "Оберіть, яку інформацію показувати в представленнях завдань",
 			"taskNumbers": "Номери завдань",
@@ -1380,6 +1386,7 @@
 			"workspaces": "Робочі простори",
 			"switching": "Перемикання...",
 			"addWorkspace": "Додати робочий простір",
+			"instanceUsers": "Користувачі екземпляра",
 			"selectWorkspace": "Обрати робочий простір"
 		},
 		"page": {

@@ -831,7 +831,6 @@
       "packages/ui/src/components/input-group.tsx::InputGroup::div[0]::text-foreground#0",
       "packages/ui/src/components/input.tsx::Input::span[0]::text-foreground#0",
       "packages/ui/src/components/number-field.tsx::NumberFieldGroup::NumberFieldPrimitive.Group[0]::text-foreground#0",
-      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
       "packages/ui/src/components/textarea.tsx::Textarea::span[0]::text-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/p[0]::text-foreground#0",
       "packages/ui/src/components/separator.stories.tsx::<module>::div[0]::text-foreground#0",
@@ -848,7 +847,9 @@
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/p[0]::text-foreground#0",
-      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0"
+      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/h1[0]::text-foreground#0"
     ],
     "occurrences": [
       {
@@ -1493,28 +1494,6 @@
         "backdropLayers": []
       },
       {
-        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/service-calendar/holiday-fields.tsx:HolidayFields",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "packages/ui/src/components/textarea.tsx::Textarea::span[0]::text-foreground#0",
         "usage": "packages/ui/src/components/textarea.tsx",
         "surfaceContext": "same-element",
@@ -1921,6 +1900,39 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/h1[0]::text-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:SessionRouteError",
+          "jsx:div[0]/div[0]/h1[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/holiday-fields.tsx:HolidayFields",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -1999,7 +2011,6 @@
       "packages/ui/src/components/input-group.tsx::InputGroup::div[0]::text-foreground#0",
       "packages/ui/src/components/input.tsx::Input::span[0]::text-foreground#0",
       "packages/ui/src/components/number-field.tsx::NumberFieldGroup::NumberFieldPrimitive.Group[0]::text-foreground#0",
-      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
       "packages/ui/src/components/textarea.tsx::Textarea::span[0]::text-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/p[0]::text-foreground#0",
       "packages/ui/src/components/separator.stories.tsx::<module>::div[0]::text-foreground#0",
@@ -2016,7 +2027,9 @@
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/p[0]::text-foreground#0",
-      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0"
+      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/h1[0]::text-foreground#0"
     ],
     "occurrences": [
       {
@@ -2661,28 +2674,6 @@
         "backdropLayers": []
       },
       {
-        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/service-calendar/holiday-fields.tsx:HolidayFields",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "packages/ui/src/components/textarea.tsx::Textarea::span[0]::text-foreground#0",
         "usage": "packages/ui/src/components/textarea.tsx",
         "surfaceContext": "same-element",
@@ -3089,6 +3080,39 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/h1[0]::text-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:SessionRouteError",
+          "jsx:div[0]/div[0]/h1[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/holiday-fields.tsx:HolidayFields",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -3180,7 +3204,8 @@
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
       "packages/ui/src/components/accordion.tsx::AccordionPanel::AccordionPrimitive.Panel[0]::text-muted-foreground#0",
       "packages/ui/src/components/sheet.tsx::SheetDescription::SheetPrimitive.Description[0]::text-muted-foreground#0",
-      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0"
+      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[1]/div[1]/div[5]/div[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -4102,6 +4127,17 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:SettingsLayout",
           "jsx:div[0]/div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[1]/div[1]/div[5]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/div[5]/div[0]/p[0]>bg-sidebar"
         ],
         "backdropLayers": []
       }
@@ -4192,7 +4228,8 @@
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
       "packages/ui/src/components/accordion.tsx::AccordionPanel::AccordionPrimitive.Panel[0]::text-muted-foreground#0",
       "packages/ui/src/components/sheet.tsx::SheetDescription::SheetPrimitive.Description[0]::text-muted-foreground#0",
-      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0"
+      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[1]/div[1]/div[5]/div[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -5114,6 +5151,17 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:SettingsLayout",
           "jsx:div[0]/div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[1]/div[1]/div[5]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/div[5]/div[0]/p[0]>bg-sidebar"
         ],
         "backdropLayers": []
       }
@@ -6617,8 +6665,6 @@
       "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::div[0]/Collapsible[0]/CollapsiblePanel[0]/dl[0]/dt[2]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::div[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]/Button[0]::text-muted-foreground#0",
       "apps/web/src/main.tsx::RootCrashFallback::div[0]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]::text-muted-foreground#0",
@@ -6718,7 +6764,10 @@
       "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/header[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#1",
-      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -7073,32 +7122,6 @@
         "chain": [
           "apps/web/src/main.tsx:RootCrashFallback",
           "jsx:div[0]/div[0]/p[0]>bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
       },
@@ -8432,28 +8455,6 @@
         "backdropLayers": []
       },
       {
-        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/service-calendar/holiday-fields.tsx:HolidayFields",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
         "usage": "packages/ui/src/components/table.tsx",
         "surfaceContext": "caller-chain",
@@ -8808,6 +8809,65 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:SessionRouteError",
+          "jsx:div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/holiday-fields.tsx:HolidayFields",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -8862,8 +8922,6 @@
       "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::div[0]/Collapsible[0]/CollapsiblePanel[0]/dl[0]/dt[2]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::div[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]/Button[0]::text-muted-foreground#0",
       "apps/web/src/main.tsx::RootCrashFallback::div[0]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]::text-muted-foreground#0",
@@ -8963,7 +9021,10 @@
       "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/header[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#1",
-      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -9318,32 +9379,6 @@
         "chain": [
           "apps/web/src/main.tsx:RootCrashFallback",
           "jsx:div[0]/div[0]/p[0]>bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
       },
@@ -10677,28 +10712,6 @@
         "backdropLayers": []
       },
       {
-        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/service-calendar/holiday-fields.tsx:HolidayFields",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
         "usage": "packages/ui/src/components/table.tsx",
         "surfaceContext": "caller-chain",
@@ -11053,6 +11066,65 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:SessionRouteError",
+          "jsx:div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/holiday-fields.tsx:HolidayFields",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []

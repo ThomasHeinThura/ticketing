@@ -60,6 +60,7 @@
 			"tryAgain": "Réessayer",
 			"viewDeploymentGuide": "Voir le guide de déploiement",
 			"refreshPage": "Rafraîchir la page",
+			"sessionUnavailable": "Nous n'avons pas pu vérifier votre session pour le moment. Réessayez dans un instant.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",
@@ -549,6 +550,11 @@
 			"gantt": "Gantt",
 			"sidebarDefault": "Barre latérale par défaut",
 			"sidebarDefaultDescription": "Garder la barre latérale ouverte au démarrage",
+			"density": "Densité",
+			"densityDescription": "Espacement des lignes, cartes et champs",
+			"densityComfortable": "Confortable",
+			"densityCompact": "Compacte",
+			"selectDensity": "Sélectionner la densité",
 			"displayOptions": "Options d'affichage",
 			"displayOptionsDescription": "Choisissez les informations à afficher dans les vues de tâches",
 			"taskNumbers": "Numéros de tâches",
@@ -1379,6 +1385,7 @@
 			"workspaces": "Espaces de travail",
 			"switching": "Changement...",
 			"addWorkspace": "Ajouter un espace de travail",
+			"instanceUsers": "Utilisateurs de l’instance",
 			"selectWorkspace": "Sélectionner un espace de travail"
 		},
 		"page": {

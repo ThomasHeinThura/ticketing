@@ -60,6 +60,7 @@
 			"tryAgain": "Opnieuw proberen",
 			"viewDeploymentGuide": "Implementatiehandleiding bekijken",
 			"refreshPage": "Pagina vernieuwen",
+			"sessionUnavailable": "We konden je sessie nu niet controleren. Probeer het zo opnieuw.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",
@@ -446,6 +447,11 @@
 			"gantt": "Gantt",
 			"sidebarDefault": "Zijbalk standaard",
 			"sidebarDefaultDescription": "Houd de zijbalk uitgeklapt bij het opstarten",
+			"density": "Dichtheid",
+			"densityDescription": "Ruimte tussen rijen, kaarten en velden",
+			"densityComfortable": "Comfortabel",
+			"densityCompact": "Compact",
+			"selectDensity": "Dichtheid selecteren",
 			"displayOptions": "Weergaveopties",
 			"displayOptionsDescription": "Kies welke informatie getoond wordt in taakoverzichten",
 			"taskNumbers": "Taaknummers",
@@ -1378,6 +1384,7 @@
 			"workspaces": "Werkruimtes",
 			"switching": "Wisselen...",
 			"addWorkspace": "Werkruimte toevoegen",
+			"instanceUsers": "Instantiegebruikers",
 			"selectWorkspace": "Werkruimte selecteren"
 		},
 		"page": {

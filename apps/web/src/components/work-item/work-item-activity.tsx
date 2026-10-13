@@ -242,7 +242,7 @@ function WorkItemActivity({
     return displayPersonName(id);
   }
   function displayPersonName(personId: string | null) {
-    if (!personId) return t("common:unknown");
+    if (!personId) return t("common:people.unknown");
     // Mention candidates carry person IDs and are already filtered by current
     // work-item reach. The workspace-members DTO only carries user IDs, so use
     // that legacy mapping only when no reachable person candidate is available.
@@ -251,7 +251,9 @@ function WorkItemActivity({
     );
     if (candidate) return candidate.name;
     const member = users.find((entry) => entry.userId === personId);
-    return member?.user?.name ?? member?.user?.email ?? t("common:unknown");
+    return (
+      member?.user?.name ?? member?.user?.email ?? t("common:people.unknown")
+    );
   }
   const activityKey = ["work-items", "activity", workItemKey] as const;
   const draftStorageKey = `taskdesk:comment-draft:${user?.id ?? ""}:${workItemKey}`;
@@ -515,7 +517,7 @@ function WorkItemActivity({
                     {t("activity:timeline.deleted", {
                       actor: row.deletedBy
                         ? displayName(row.deletedBy, "person")
-                        : t("common:unknown"),
+                        : t("common:people.unknown"),
                       date: formatDateTime(row.deletedAt ?? row.createdAt),
                     })}
                   </p>

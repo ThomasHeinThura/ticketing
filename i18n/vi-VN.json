@@ -60,6 +60,7 @@
 			"tryAgain": "Thử lại",
 			"viewDeploymentGuide": "Xem hướng dẫn triển khai",
 			"refreshPage": "Tải lại trang",
+			"sessionUnavailable": "Hiện chưa thể kiểm tra phiên của bạn. Vui lòng thử lại sau giây lát.",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"messages": {
 				"auth": "Authentication failed. Please sign in again.",
@@ -549,6 +550,11 @@
 			"gantt": "Gantt",
 			"sidebarDefault": "Thanh bên mặc định",
 			"sidebarDefaultDescription": "Giữ thanh bên mở rộng khi khởi động",
+			"density": "Mật độ",
+			"densityDescription": "Khoảng cách giữa hàng, thẻ và trường",
+			"densityComfortable": "Thoải mái",
+			"densityCompact": "Gọn",
+			"selectDensity": "Chọn mật độ",
 			"displayOptions": "Tùy chọn hiển thị",
 			"displayOptionsDescription": "Chọn thông tin cần hiển thị trong chế độ xem công việc",
 			"taskNumbers": "Số công việc",
@@ -1377,6 +1383,7 @@
 			"workspaces": "Không gian làm việc",
 			"switching": "Đang chuyển...",
 			"addWorkspace": "Thêm không gian làm việc",
+			"instanceUsers": "Người dùng phiên bản",
 			"selectWorkspace": "Chọn không gian làm việc"
 		},
 		"page": {
