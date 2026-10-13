@@ -15,6 +15,10 @@ export type PermissionLevel = "owner" | "admin" | "member";
 type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   createPublicComments?: boolean;
   createInternalComments?: boolean;
+  // Strict project:create (owner/admin/manager) -- the server rule for listing customer
+  // organisations and binding a project to one. Never inferred from `createProjects`, which
+  // follows the broader legacy statement (members hold it).
+  bindProjectOrganisation?: boolean;
 };
 
 // Mirrors apps/api/src/capabilities/response.ts's capabilitiesResponseSchema
@@ -103,6 +107,7 @@ export function useWorkspacePermission(targetWorkspaceId?: string) {
       canManageServiceCalendars: () => can.manageServiceCalendars,
       canCreatePublicComments: () => can.createPublicComments === true,
       canCreateInternalComments: () => can.createInternalComments === true,
+      canBindProjectOrganisation: () => can.bindProjectOrganisation === true,
     };
   }, [can]);
 

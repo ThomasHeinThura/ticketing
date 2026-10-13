@@ -12,6 +12,7 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   manageServiceCalendars: boolean;
   shareSavedViews: boolean;
   manageWorkspaceSettings: boolean;
+  bindProjectOrganisation: boolean;
 };
 
 /**
@@ -29,6 +30,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     manageServiceCalendars,
     shareSavedViews,
     manageWorkspaceSettings,
+    bindProjectOrganisation,
   ] = await Promise.all([
     Promise.all(
       entries.map(async ([name, permissions]) => {
@@ -58,18 +60,23 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasServiceCalendarManageCapability(c),
     hasCanonicalCapability(c, "saved_view:share"),
     hasCanonicalCapability(c, "workspace:manage_settings"),
+    hasCanonicalCapability(c, "project:create"),
   ]);
   return {
     ...Object.fromEntries(results),
     manageServiceCalendars,
     shareSavedViews,
     manageWorkspaceSettings,
+    bindProjectOrganisation,
   } as CapabilityMap;
 }
 
 async function hasCanonicalCapability(
   c: Context,
-  capability: "saved_view:share" | "workspace:manage_settings",
+  capability:
+    | "saved_view:share"
+    | "workspace:manage_settings"
+    | "project:create",
 ): Promise<boolean> {
   const workspaceId = c.get("workspaceId");
   const userId = c.get("userId");

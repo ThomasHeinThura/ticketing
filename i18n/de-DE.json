@@ -101,7 +101,14 @@
 				"keyHint": "Wird für Ticket-IDs verwendet (z. B. {{example}}-123)",
 				"createButton": "Projekt erstellen",
 				"successToast": "Projekt erfolgreich erstellt",
-				"errorToast": "Projekt konnte nicht erstellt werden"
+				"errorToast": "Projekt konnte nicht erstellt werden",
+				"organisationLabel": "Kundenorganisation",
+				"organisationLoading": "Kundenorganisationen werden geladen ...",
+				"organisationError": "Kundenorganisationen konnten nicht geladen werden.",
+				"organisationRetry": "Erneut versuchen",
+				"organisationEmpty": "Noch keine aktiven Kundenorganisationen. Dieses Projekt wird intern.",
+				"organisationNone": "Keine (internes Projekt)",
+				"organisationHint": "Optional. Wird jetzt festgelegt und kann nach dem Erstellen des Projekts nicht mehr geändert werden."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",

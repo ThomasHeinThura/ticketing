@@ -248,6 +248,15 @@ export const createProjectBody = z.object({
   kind: z.enum(["project", "managed_service"]).default("project"),
   supportLevel: z.enum(["L1", "L2", "L3"]).nullable().optional(),
   serviceCalendarId: nulSafeId.nullable().optional(),
+  organisationId: nulSafeId
+    .nullable()
+    .optional()
+    .openapi({
+      description:
+        "The customer organisation this project serves. Omit or null for an internal " +
+        "project. Chosen at creation only: it must be an active customer organisation and " +
+        "cannot be changed by a later update.",
+    }),
 });
 
 export const updateProjectBody = z.object({
