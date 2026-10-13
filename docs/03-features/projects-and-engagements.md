@@ -82,7 +82,16 @@ table further down.
   project-scoped `membership` can therefore never hold the `customer` role, and there is
   nothing for this rule to warn about or block.
 - `PR-9` **(blocking)** A managed service must have a support level and a service
-  calendar.
+  calendar. The persisted project row uses `kind = managed_service`; `support_level` is
+  the canonical `L1 | L2 | L3` vocabulary from the glossary, and `service_calendar_id`
+  must identify a calendar in the same workspace. Create and update reject an incomplete
+  managed-service configuration with `422` naming PR-9; PostgreSQL also enforces the
+  required fields and workspace binding.
+
+Project configuration and health are available at the existing project detail/update
+routes. Health is nullable RAG (`red | amber | green`) and can be read or changed at
+`GET /api/project/{id}/health` and `PATCH /api/project/{id}/health`; it is set by a person,
+not computed. Project create/update accept `kind`, `supportLevel`, and `serviceCalendarId`.
 - `PR-10` **(warning)** A project must have a start date; an end date is optional.
 
 Rule violations appear as a persistent banner on the project overview rather than blocking
@@ -137,10 +146,6 @@ Customer visibility is off by default.
   out of. See [ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md) and
   [workflows.md](workflows.md) `WF-2`.
 - `PR-18` Feature flags are per project, so a simple project shows a simple interface.
-- `PR-19` A project serves exactly one customer organisation, which determines who can see
-  it in the portal. `project.organisation_id` is **nullable**: null means an internal
-  project with no customer organisation, and it never appears in the portal — there is no
-  organisation for a portal session to match against ([data model](../01-architecture/data-model.md)).
 - `PR-20` **Deleting a project is a pending action**
   ([pending-actions.md](../01-architecture/pending-actions.md)): `DELETE /api/projects/{projectId}`
   returns `202`; the dialog shows the affected work items, members, attachments and
@@ -174,7 +179,6 @@ activity — and nothing else.
 
 ```
 GET    /api/projects                                          project:read
-POST   /api/projects                                          project:create
 GET    /api/projects/{projectId}                              project:read
 PATCH  /api/projects/{projectId}                              project:manage_settings  — never parent_id or owner_team_id
 PATCH  /api/projects/{projectId}/ownership                    project:manage_members   — parent_id and/or owner_team_id only; re-parenting requires it on both the child and the prospective parent

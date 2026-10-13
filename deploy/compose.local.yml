@@ -37,12 +37,12 @@ services:
       - traefik.docker.network=taskdesk
       - traefik.http.services.taskdesk-local.loadbalancer.server.port=${TASKDESK_PORT:-5173}
       - traefik.http.services.taskdesk-local.loadbalancer.healthcheck.path=/api/public/health/ready
-      - traefik.http.routers.taskdesk-local-agent.rule=Host(`ticket.${DOMAIN:-localhost}`)
+      - traefik.http.routers.taskdesk-local-agent.rule=Host(`${TASKDESK_AGENT_HOST:-ticket.${DOMAIN:-localhost}}`)
       - traefik.http.routers.taskdesk-local-agent.entrypoints=websecure
       - traefik.http.routers.taskdesk-local-agent.tls=true
       - traefik.http.routers.taskdesk-local-agent.service=taskdesk-local
       - traefik.http.routers.taskdesk-local-agent.middlewares=security-headers@file,compress@file,rate-limit@file
-      - traefik.http.routers.taskdesk-local-portal.rule=Host(`portal.${DOMAIN:-localhost}`)
+      - traefik.http.routers.taskdesk-local-portal.rule=Host(`${TASKDESK_PORTAL_HOST:-portal.${DOMAIN:-localhost}}`)
       - traefik.http.routers.taskdesk-local-portal.entrypoints=websecure
       - traefik.http.routers.taskdesk-local-portal.tls=true
       - traefik.http.routers.taskdesk-local-portal.service=taskdesk-local
@@ -83,7 +83,7 @@ services:
       - traefik.enable=true
       - traefik.docker.network=taskdesk
       - traefik.http.services.taskdesk-local-files.loadbalancer.server.port=8333
-      - traefik.http.routers.taskdesk-local-files.rule=Host(`files.${DOMAIN:-localhost}`)
+      - traefik.http.routers.taskdesk-local-files.rule=Host(`${TASKDESK_FILES_HOST:-files.${DOMAIN:-localhost}}`)
       - traefik.http.routers.taskdesk-local-files.entrypoints=websecure
       - traefik.http.routers.taskdesk-local-files.tls=true
       - traefik.http.routers.taskdesk-local-files.service=taskdesk-local-files

@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -12,15 +15,33 @@ import {
 } from "./helpers/fixtures";
 
 const originalAgentUrl = process.env.TASKDESK_AGENT_URL;
+const storageDriverEnv = "TASKDESK_STORAGE_DRIVER";
+const originalStorageDriver = process.env[storageDriverEnv];
+const filesystemRootEnv = "TASKDESK_STORAGE_FILESYSTEM_ROOT";
+const originalFilesystemRoot = process.env[filesystemRootEnv];
+let filesystemRoot: string;
 
 function restoreAgentUrl() {
   if (originalAgentUrl === undefined) delete process.env.TASKDESK_AGENT_URL;
   else process.env.TASKDESK_AGENT_URL = originalAgentUrl;
 }
 
+function restoreStorageDriver() {
+  if (originalStorageDriver === undefined) delete process.env[storageDriverEnv];
+  else process.env[storageDriverEnv] = originalStorageDriver;
+}
+
+function restoreFilesystemRoot() {
+  if (originalFilesystemRoot === undefined)
+    delete process.env[filesystemRootEnv];
+  else process.env[filesystemRootEnv] = originalFilesystemRoot;
+}
+
 describe("API integration: task image upload finalize", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+    filesystemRoot = await mkdtemp(join(tmpdir(), "taskdesk-task-image-"));
+    process.env[filesystemRootEnv] = filesystemRoot;
 
     process.env.S3_ENDPOINT = "https://storage.example.test";
     process.env.S3_BUCKET = "test-bucket";
@@ -29,13 +50,19 @@ describe("API integration: task image upload finalize", () => {
     delete process.env.S3_KEY_PREFIX;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.restoreAllMocks();
     restoreAgentUrl();
+    restoreStorageDriver();
+    restoreFilesystemRoot();
+    await rm(filesystemRoot, { recursive: true, force: true });
   });
 
-  it("returns a URL using KANEO_API_URL", async () => {
-    process.env.KANEO_API_URL = "http://taskdesk.test:1337";
+  it("uses the configured HTTPS origin for task image URLs behind internal HTTP", async () => {
+    // Match the host captured by the integration auth setup while changing
+    // only the public scheme. This models HTTPS at the proxy and internal HTTP.
+    process.env.TASKDESK_AGENT_URL = "https://localhost:1337";
+    process.env.TASKDESK_STORAGE_DRIVER = "filesystem";
 
     const member = await createWorkspaceMember();
     const { project, columns } = await createProjectFixture({
@@ -62,88 +89,90 @@ describe("API integration: task image upload finalize", () => {
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
 
-    const key = `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/test-image.png`;
-
-    const response = await app.request(
-      `/api/task/image-upload/${task.id}/finalize`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+    const uploadResponse = await app.request(
+      new Request(`http://localhost:1337/api/task/image-upload/${task.id}`, {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          host: "localhost:1337",
+          "x-forwarded-host": "attacker.example",
+          "x-forwarded-proto": "http",
+        },
         body: JSON.stringify({
-          key,
           filename: "test-image.png",
           contentType: "image/png",
           size: 12345,
           surface: "description",
         }),
-      },
+      }),
+    );
+    expect(uploadResponse.status).toBe(200);
+    const upload = (await uploadResponse.json()) as { uploadUrl: string };
+    expect(upload.uploadUrl).toMatch(
+      /^https:\/\/localhost:1337\/api\/storage\/filesystem-upload\?/u,
+    );
+    expect(upload.uploadUrl.match(/\/api\//gu)).toHaveLength(1);
+
+    const key = `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/test-image.png`;
+
+    const response = await app.request(
+      new Request(
+        `http://localhost:1337/api/task/image-upload/${task.id}/finalize`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            host: "localhost:1337",
+            "x-forwarded-host": "attacker.example",
+            "x-forwarded-proto": "http",
+          },
+          body: JSON.stringify({
+            key,
+            filename: "test-image.png",
+            contentType: "image/png",
+            size: 12345,
+            surface: "description",
+          }),
+        },
+      ),
     );
 
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { id: string; url: string };
     expect(payload).toHaveProperty("id");
     expect(payload).toHaveProperty("url");
-    expect(payload.url).toBe(
-      `http://taskdesk.test:1337/api/asset/${payload.id}`,
-    );
-    expect(payload.url).not.toContain("localhost");
+    expect(payload.url).toBe(`https://localhost:1337/api/asset/${payload.id}`);
+    expect(payload.url.match(/\/api\//gu)).toHaveLength(1);
   });
 
-  it("updates the URL when KANEO_API_URL changes", async () => {
-    process.env.KANEO_API_URL = "https://proxy.taskdesk.internal";
-
-    const member = await createWorkspaceMember();
-    const { project, columns } = await createProjectFixture({
-      workspaceId: member.workspace.id,
-    });
-
-    const task = requireRow(
-      await db
-        .insert(schema.taskTable)
-        .values({
-          projectId: project.id,
-          userId: member.user.id,
-          title: "Proxy test",
-          status: "to-do",
-          columnId: columns.todo.id,
-          priority: "medium",
-          number: 1,
-          position: 1,
-        })
-        .returning(),
-      "task",
-    );
-
-    mockAuthenticatedSession(member.user);
+  it("does not use a forwarded or spoofed Host value as a public origin", async () => {
+    process.env.TASKDESK_AGENT_URL = "https://localhost:1337";
     const { app } = createApp();
-
-    const key = `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/proxy-image.png`;
-
     const response = await app.request(
-      `/api/task/image-upload/${task.id}/finalize`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          key,
-          filename: "proxy-image.png",
-          contentType: "image/png",
-          size: 99999,
-          surface: "description",
-        }),
-      },
+      new Request(
+        "http://attacker.example/api/task/image-upload/not-a-task/finalize",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            host: "attacker.example",
+            "x-forwarded-host": "localhost:1337",
+            "x-forwarded-proto": "https",
+          },
+          body: JSON.stringify({
+            key: "irrelevant",
+            filename: "file.png",
+            contentType: "image/png",
+            size: 1,
+            surface: "description",
+          }),
+        },
+      ),
     );
-
-    expect(response.status).toBe(200);
-    const payload = (await response.json()) as { id: string; url: string };
-    expect(payload.url).toBe(
-      `https://proxy.taskdesk.internal/api/asset/${payload.id}`,
-    );
-    expect(payload.url).not.toContain("localhost");
+    expect(response.status).toBe(404);
   });
 
-  it("falls back to deriving URL from the request when KANEO_API_URL is not set", async () => {
-    delete process.env.KANEO_API_URL;
+  it("uses the configured public origin when no URL override is set", async () => {
     const configuredAgentUrl = process.env.TASKDESK_AGENT_URL;
     if (!configuredAgentUrl) throw new Error("Missing configured agent URL");
     const agentOrigin = new URL(configuredAgentUrl).origin;

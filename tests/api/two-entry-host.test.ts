@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer, type RequestListener } from "node:http";
 import { createRequire } from "node:module";
 import { connect } from "node:net";
@@ -6,8 +12,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { portalAuth } from "../../apps/api/src/auth";
 import { getDatabasePool } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import {
+  isPortalClientRoute,
+  PORTAL_CLIENT_ROUTE_PATTERNS,
+} from "../../apps/api/src/portal-client-routes";
 
 const requireFromApi = createRequire(
   fileURLToPath(new URL("../../apps/api/package.json", import.meta.url)),
@@ -101,7 +112,109 @@ describe("P0 host and static isolation", () => {
     }
   });
 
-  it("denies portal API and websocket before effects and keeps health narrowly host-independent", async () => {
+  it("serves the portal shell for registered portal client routes only (CP-19)", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    const headers = { host: "portal.localhost:5174" };
+    for (const path of [
+      "/sign-in",
+      "/catalogue",
+      "/submissions/REQ-123",
+      "/submissions/abc",
+    ]) {
+      const response = await app.request(path, { headers });
+      expect(response.status, path).toBe(200);
+      const body = await response.text();
+      expect(body, path).toContain("PORTAL ROOT MARKER");
+      expect(body, path).not.toContain("AGENT ROOT MARKER");
+      const head = await app.request(path, { method: "HEAD", headers });
+      expect(head.status, path).toBe(200);
+      expect(await head.text(), path).toBe("");
+    }
+    // The same paths on the agent host still get the agent shell (SPA fallback unchanged).
+    const agent = await app.request("/sign-in", {
+      headers: { host: "localhost:5173" },
+    });
+    expect(agent.status).toBe(200);
+    await expect(agent.text()).resolves.toContain("AGENT ROOT MARKER");
+  });
+
+  it("keeps unknown, agent-only, near-miss and asset portal paths at 404", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    const headers = { host: "portal.localhost:5174" };
+    for (const path of [
+      "/portal/not-a-route",
+      "/inbox",
+      "/workspaces/abc/board",
+      "/sign-in/extra",
+      "/sign-in/",
+      "/catalogue/x",
+      "/submissions",
+      "/submissions/",
+      "/submissions/a/b",
+      "/assets/missing.js",
+      "/sign-in.js",
+    ]) {
+      for (const method of ["GET", "HEAD"]) {
+        const response = await app.request(path, { method, headers });
+        expect(response.status, `${method} ${path}`).toBe(404);
+        expect(await response.text(), `${method} ${path}`).not.toContain(
+          "MARKER",
+        );
+      }
+    }
+  });
+
+  it("does not serve the portal shell for non-GET/HEAD requests on registered routes", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    for (const method of ["POST", "PUT", "DELETE", "PATCH"]) {
+      const response = await app.request("/sign-in", {
+        method,
+        headers: { host: "portal.localhost:5174" },
+      });
+      expect(response.status, method).not.toBe(200);
+      expect(await response.text(), method).not.toContain("MARKER");
+    }
+  });
+
+  it("returns 503 for a registered portal route when the portal root is missing", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: join(portalRoot, "does-not-exist"),
+    });
+    const response = await app.request("/sign-in", {
+      headers: { host: "portal.localhost:5174" },
+    });
+    expect(response.status).toBe(503);
+  });
+
+  it("keeps the server-side portal route allowlist equal to the portal route tree", () => {
+    const tree = readFileSync(
+      fileURLToPath(
+        new URL("../../apps/web/src/routeTree.portal.gen.ts", import.meta.url),
+      ),
+      "utf8",
+    );
+    const match = /fullPaths:\s*([^\n]+)/.exec(tree);
+    expect(match).not.toBeNull();
+    const treePaths = [...(match?.[1] ?? "").matchAll(/'([^']+)'/g)]
+      .map((m) => m[1] as string)
+      .sort();
+    expect(treePaths.length).toBeGreaterThan(0);
+    expect([...PORTAL_CLIENT_ROUTE_PATTERNS].sort()).toEqual(treePaths);
+    expect(isPortalClientRoute("/submissions/x")).toBe(true);
+    expect(isPortalClientRoute("/submissions/")).toBe(false);
+  });
+
+  it("permits only portal policy/auth routes and keeps denied requests before effects", async () => {
     const { app } = createApp({
       staticRoot: agentRoot,
       portalStaticRoot: portalRoot,
@@ -111,6 +224,12 @@ describe("P0 host and static isolation", () => {
       .mockRejectedValue(
         new Error("Host-denied requests must not reach the database."),
       );
+    const getPortalSession = vi
+      .spyOn(portalAuth.api, "getSession")
+      .mockResolvedValue(null);
+    const portalAuthHandler = vi
+      .spyOn(portalAuth, "handler")
+      .mockResolvedValue(new Response("null", { status: 200 }));
     try {
       const portalApi = await app.request("/api/workspaces", {
         method: "POST",
@@ -124,11 +243,60 @@ describe("P0 host and static isolation", () => {
       expect(await portalApi.text()).toBe('{"message":"Not Found"}');
       expect(portalApi.headers.has("set-cookie")).toBe(false);
 
-      const portalAuth = await app.request("/api/auth/get-session", {
+      const blockedPortalAuth = await app.request(
+        "/api/auth/admin/list-users",
+        {
+          method: "POST",
+          headers: {
+            host: "portal.localhost:5174",
+            "content-type": "application/json",
+          },
+          body: "{}",
+        },
+      );
+      expect(blockedPortalAuth.status).toBe(404);
+      expect(await blockedPortalAuth.text()).toBe('{"message":"Not Found"}');
+
+      const portalRegistration = await app.request("/api/auth/sign-up/email", {
+        method: "POST",
+        headers: {
+          host: "portal.localhost:5174",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: "customer@example.test",
+          password: "not-created",
+        }),
+      });
+      expect(portalRegistration.status).toBe(404);
+
+      const portalMagicLink = await app.request(
+        "/api/auth/sign-in/magic-link",
+        {
+          method: "POST",
+          headers: {
+            host: "portal.localhost:5174",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ email: "customer@example.test" }),
+        },
+      );
+      expect(portalMagicLink.status).toBe(404);
+
+      const allowedPortalAuth = await app.request("/api/auth/get-session", {
         headers: { host: "portal.localhost:5174" },
       });
-      expect(portalAuth.status).toBe(404);
-      expect(portalAuth.headers.has("set-cookie")).toBe(false);
+      expect(allowedPortalAuth.status).toBe(200);
+      expect(await allowedPortalAuth.text()).toBe("null");
+
+      getPortalSession.mockResolvedValueOnce({
+        session: { portal: "agent" },
+        user: { id: "staff-person" },
+      } as never);
+      const copiedAgentSession = await app.request("/api/auth/get-session", {
+        headers: { host: "portal.localhost:5174", cookie: "session=agent" },
+      });
+      expect(copiedAgentSession.status).toBe(401);
 
       const portalWs = await app.request("/api/ws/project", {
         headers: {
@@ -154,6 +322,17 @@ describe("P0 host and static isolation", () => {
         headers: { host: "unknown.example.test" },
       });
       expect(unknownApi.status).toBe(404);
+
+      const spoofedHost = await app.request(
+        new Request("http://attacker.example.test/api/workspaces", {
+          headers: {
+            "x-forwarded-host": "localhost:5173",
+            "x-forwarded-proto": "https",
+          },
+        }),
+      );
+      expect(spoofedHost.status).toBe(404);
+
       const unknownUpgrade = await app.request("/api/public/health/live", {
         headers: {
           host: "unknown.example.test",
@@ -177,7 +356,11 @@ describe("P0 host and static isolation", () => {
       }
 
       expect(query).not.toHaveBeenCalled();
+      expect(getPortalSession).toHaveBeenCalled();
+      expect(portalAuthHandler).toHaveBeenCalled();
     } finally {
+      getPortalSession.mockRestore();
+      portalAuthHandler.mockRestore();
       query.mockRestore();
     }
   });

@@ -18,7 +18,7 @@ import { isCurrentInstanceAdmin } from "./observability/audit-failure-notifier";
  */
 export async function requireCurrentInstanceAdmin(
   c: Context,
-  method: "GET" | "PATCH",
+  method: "GET" | "PATCH" | "POST",
   path: string,
 ): Promise<void> {
   const userId = c.get("userId") as string | undefined;

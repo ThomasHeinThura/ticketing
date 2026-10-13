@@ -393,7 +393,8 @@ function RouteComponent() {
               </Label>
               <div className="flex flex-wrap gap-2">
                 {labelColors.map((c) => (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={c.value}
                     type="button"
                     title={c.label}
@@ -485,7 +486,8 @@ function RouteComponent() {
               </Label>
               <div className="flex flex-wrap gap-2">
                 {labelColors.map((c) => (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={c.value}
                     type="button"
                     title={c.label}

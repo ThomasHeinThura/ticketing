@@ -116,6 +116,7 @@ describe("telling middleware from routes", () => {
     expect(DECLARED_ROUTER_MIDDLEWARE.map((d) => d.key).sort()).toEqual([
       "ALL /*",
       "ALL /api/*",
+      "ALL /scim/v2/*",
     ]);
     for (const declared of DECLARED_ROUTER_MIDDLEWARE) {
       expect(declared.note.length).toBeGreaterThan(0);

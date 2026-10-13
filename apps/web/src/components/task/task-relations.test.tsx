@@ -52,6 +52,7 @@ vi.mock("@taskdesk/ui", () => {
       children,
       ...props
     }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      // ui-exempt: this test double preserves the shared Button's click semantics.
       <button {...props}>{children}</button>
     ),
     Collapsible: passthrough,

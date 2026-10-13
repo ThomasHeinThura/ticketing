@@ -9,7 +9,7 @@
  * - The canonical capability check: a `member` (no `workspace:manage_settings`) is
  *   refused the workspace route.
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { appendAuditLog } from "../../apps/api/src/audit/audit-writer";
@@ -98,6 +98,62 @@ describe("GET /api/instance/audit (AU-11/AU-12/AU-13)", () => {
 
     const response = await app.request("/api/instance/audit");
     expect(response.status).toBe(403);
+  });
+
+  it("requires an instance API key scope in addition to the owner's admin role", async () => {
+    const admin = {
+      id: "user-audit-key-admin",
+      email: "audit-key-admin@example.com",
+      name: "Audit Key Admin",
+      emailVerified: true,
+      role: "admin",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await db.insert(schema.userTable).values(admin);
+    await prepareAuthenticatedApiFixture(admin.id);
+
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    const [apiKey] = await db
+      .insert(schema.apikeyTable)
+      .values({
+        referenceId: admin.id,
+        userId: admin.id,
+        key: createHash("sha256")
+          .update(rawKey)
+          .digest()
+          .toString("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, ""),
+        name: "instance audit scope test key",
+        start: rawKey.slice(0, 12),
+        prefix: "taskdesk",
+        permissions: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning({ id: schema.apikeyTable.id });
+    expect(apiKey).toBeDefined();
+    const { app } = createApp();
+    const readsBefore = await auditReadCount(null);
+
+    const missingScope = await app.request("/api/instance/audit", {
+      headers: { authorization: `Bearer ${rawKey}` },
+    });
+    expect(missingScope.status, await missingScope.clone().text()).toBe(403);
+    expect(await auditReadCount(null)).toBe(readsBefore);
+
+    await db
+      .update(schema.apikeyTable)
+      .set({ permissions: JSON.stringify({ instance: ["read_audit"] }) })
+      .where(eq(schema.apikeyTable.id, apiKey?.id ?? ""));
+    const scoped = await app.request("/api/instance/audit", {
+      headers: { authorization: `Bearer ${rawKey}` },
+    });
+    expect(scoped.status, await scoped.clone().text()).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(await auditReadCount(null)).toBe(readsBefore + 1);
   });
 
   it("the action prefix filter matches dotted groups", async () => {

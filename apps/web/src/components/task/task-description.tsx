@@ -64,6 +64,7 @@ import {
 import { useTranslation } from "react-i18next";
 import type { Highlighter } from "shiki";
 import { useUpdateTaskDescription } from "@/hooks/mutations/task/use-update-task-description";
+import { selectTaskDescription } from "@/hooks/queries/task/select-task-description";
 import useGetTask from "@/hooks/queries/task/use-get-task";
 import { useShikiHighlighterForCode } from "@/hooks/use-shiki-highlighter-for-code";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -302,7 +303,11 @@ const SLASH_COMMANDS: SlashCommand[] = [
 
 function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
   const { t } = useTranslation();
-  const { data: fetchedTask } = useGetTask(taskId, undefined, !providedTask);
+  const { data: fetchedTask } = useGetTask(
+    taskId,
+    selectTaskDescription,
+    !providedTask,
+  );
   const task = providedTask ?? fetchedTask;
   const description = task?.description;
   const queryClient = useQueryClient();
@@ -1406,7 +1411,9 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
       onDragLeave={handleShellDragLeave}
       onDrop={handleShellDrop}
     >
-      <input
+      <Input
+        unstyled
+        nativeInput
         ref={imageInputRef}
         type="file"
         className="sr-only"
@@ -1437,7 +1444,8 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
             position: "absolute",
           }}
         >
-          <button
+          <Button
+            variant="ghost"
             type="button"
             className="taskdesk-codeblock-language-trigger taskdesk-codeblock-copy-trigger"
             aria-label={
@@ -1462,20 +1470,21 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
                 ? t("tasks:detail.editor.copied")
                 : t("tasks:detail.editor.copy")}
             </span>
-          </button>
+          </Button>
           {canEdit && (
             <DropdownMenu
               open={isCodeLanguageMenuOpen}
               onOpenChange={setIsCodeLanguageMenuOpen}
             >
               <DropdownMenuTrigger asChild>
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   className="taskdesk-codeblock-language-trigger"
                 >
                   <span className="truncate">{activeCodeLanguageLabel}</span>
                   <ChevronDown className="size-3.5 opacity-70" />
-                </button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
@@ -1801,7 +1810,8 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
                       (candidate) => candidate.id === command.id,
                     );
                     return (
-                      <button
+                      <Button
+                        variant="ghost"
                         key={command.id}
                         type="button"
                         className={cn(
@@ -1828,7 +1838,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
                             {command.shortcut}
                           </span>
                         )}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -1853,7 +1863,8 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
         >
           {embedComposer.mode === "choice" ? (
             <div className="taskdesk-embed-choice-menu">
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 className="taskdesk-embed-choice-item is-primary"
                 onMouseDown={(event) => {
@@ -1863,8 +1874,9 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
               >
                 <span>{t("tasks:detail.editor.embed.choice.embedVideo")}</span>
                 <span className="taskdesk-embed-choice-hint">Tab</span>
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 type="button"
                 className="taskdesk-embed-choice-item"
                 onMouseDown={(event) => {
@@ -1875,7 +1887,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
               >
                 <span>{t("tasks:detail.editor.embed.choice.keepAsLink")}</span>
                 <span className="taskdesk-embed-choice-hint">Esc</span>
-              </button>
+              </Button>
             </div>
           ) : (
             <form
@@ -1938,7 +1950,8 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
         onMouseLeave={handleEditorMouseLeave}
       />
       {canEdit && (
-        <button
+        <Button
+          variant="ghost"
           type="button"
           className="taskdesk-editor-quick-attach"
           onMouseDown={(event) => {
@@ -1948,7 +1961,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
           aria-label={t("tasks:detail.editor.attachFile")}
         >
           <Paperclip className="size-3.5" />
-        </button>
+        </Button>
       )}
       {canEdit && isDragActive && (
         <div className="taskdesk-editor-drop-indicator">

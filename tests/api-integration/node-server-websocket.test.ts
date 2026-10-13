@@ -10,7 +10,7 @@ import { basename, join } from "node:path";
 import { defaultRolePayloads } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, portalAuth } from "../../apps/api/src/auth";
+import { portalAuth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp, createNodeServer } from "../../apps/api/src/index";
 import archiveProject from "../../apps/api/src/project/controllers/archive-project";
@@ -1021,7 +1021,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         userAgent: null,
         portal: "agent",
       },
-      user: { ...secondUser, twoFactorEnabled: false },
+      user: { ...secondUser },
     });
     const secondSocket = await openSocket(url, {
       ...headers,
@@ -1039,7 +1039,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         userAgent: null,
         portal: "agent",
       },
-      user: { ...first.user, twoFactorEnabled: false },
+      user: { ...first.user },
     });
 
     for (const socket of [firstSocket, secondSocket]) {
@@ -1146,8 +1146,54 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       expect(Date.parse(message.at as string)).not.toBeNaN();
       expect(message.payload).toEqual({ key: created.key });
     }
-    expect(firstEvents).toHaveLength(2);
-    expect(secondEvents).toHaveLength(2);
+    const firstCommented = nextMessage(firstSocket);
+    const secondCommented = nextMessage(secondSocket);
+    const commentResponse = await csrfRequest(
+      app,
+      `/api/work-items/${encodeURIComponent(created.key)}/comments`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          body: { type: "doc", content: [] },
+          visibility: "public",
+        }),
+      },
+      headers.cookie,
+    );
+    expect(commentResponse.status).toBe(200);
+    const createdComment = (await commentResponse.json()) as {
+      id: string;
+      visibility: string;
+    };
+    expect(createdComment.visibility).toBe("public");
+    const [firstCommentEnvelope, secondCommentEnvelope] = await Promise.all([
+      firstCommented,
+      secondCommented,
+    ]);
+    for (const envelope of [firstCommentEnvelope, secondCommentEnvelope]) {
+      const message = envelope as Record<string, unknown>;
+      expect(Object.keys(message).sort()).toEqual([
+        "at",
+        "eventId",
+        "payload",
+        "topic",
+        "type",
+      ]);
+      expect(message.type).toBe("work_item.commented");
+      expect(message.topic).toBe(`project:${project.project.id}`);
+      expect(message.eventId).toEqual(expect.stringMatching(/^evt_/));
+      expect(message.payload).toEqual({ key: created.key });
+      expect(JSON.stringify(message)).not.toContain(createdComment.id);
+      expect(JSON.stringify(message)).not.toContain("visibility");
+    }
+    const persistedComment = await db
+      .select({ visibility: schema.commentTable.visibility })
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, createdComment.id));
+    expect(persistedComment).toEqual([{ visibility: "public" }]);
+    expect(firstEvents).toHaveLength(3);
+    expect(secondEvents).toHaveLength(3);
     expect(secondEvents).toEqual(firstEvents);
 
     const persistedResponse = await app.request(
@@ -1261,7 +1307,6 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
 
   it("rejects session upgrades before 101 for missing, foreign, wrong-host, or wrong-portal boundaries", async () => {
     const member = await createWorkspaceMember();
-    mockAuthenticatedSession(member.user);
     const { app } = createApp();
     const node = createNodeServer(app);
     closeServer = node.close;
@@ -1269,9 +1314,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const url = websocketUrl(node.server, "/api/ws");
     const cookie = "__Host-tdk_agent_session=integration-session";
 
-    expect(await rejectHandshake(url, { host: "localhost:1337", cookie })).toBe(
-      403,
-    );
+    // Keep this first request truly unauthenticated: the session mock below returns a
+    // persisted-session shape even when this Node-socket fixture omits a cookie. The pure
+    // origin-policy tests cover the separately authenticated missing-Origin case.
+    expect(await rejectHandshake(url, { host: "localhost:1337" })).toBe(401);
+    mockAuthenticatedSession(member.user);
     expect(
       await rejectHandshake(url, {
         host: "localhost:1337",
@@ -1287,6 +1334,8 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       }),
     ).toBe(404);
 
+    // Request authentication invalidates a session bound to the other portal as 401 before
+    // the later WebSocket origin policy can return its authenticated wrong-portal 403.
     mockAuthenticatedSession(member.user, { portal: "customer" });
     expect(
       await rejectHandshake(url, {
@@ -1294,7 +1343,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         origin: "http://localhost:1337",
         cookie,
       }),
-    ).toBe(403);
+    ).toBe(401);
 
     expect(
       await rejectHandshake(url, {
@@ -1382,7 +1431,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     ).toBe(403);
   });
 
-  it("keeps the portal edge disabled while its underlying auth instance binds sessions", async () => {
+  it("keeps customer sign-in closed without scoped provider and admitted identity", async () => {
     const member = await createWorkspaceMember();
     await db.insert(schema.accountTable).values({
       id: `credential-${member.user.id}`,
@@ -1439,18 +1488,8 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       },
     );
     const portalSignInResponse = await portalAuth.handler(portalSignInRequest);
-    expect(portalSignInResponse.status).toBe(200);
-    const portalSetCookie =
-      portalSignInResponse.headers.get("set-cookie") ?? "";
-    const portalCookie = portalSetCookie.match(
-      /__Host-tdk_portal_session=[^;,]+/,
-    )?.[0];
-    expect(portalCookie).toBeDefined();
-    expect(portalSetCookie).toMatch(/;\s*Path=\//i);
-    expect(portalSetCookie).toMatch(/;\s*Secure(?:;|$)/i);
-    expect(portalSetCookie).toMatch(/;\s*HttpOnly(?:;|$)/i);
-    expect(portalSetCookie).toMatch(/;\s*SameSite=Lax(?:;|$)/i);
-    expect(portalSetCookie).not.toMatch(/;\s*Domain=/i);
+    expect(portalSignInResponse.status).toBe(400);
+    expect(portalSignInResponse.headers.has("set-cookie")).toBe(false);
 
     const portalEdgeSignIn = await rawPostToHost(
       address.port,
@@ -1475,7 +1514,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     );
     expect(
       currentSessions.some((session) => session.portal === "customer"),
-    ).toBe(true);
+    ).toBe(false);
 
     const url = websocketUrl(node.server, "/api/ws");
     expect(
@@ -1494,55 +1533,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       liveSocket.once("close", () => resolve()),
     );
 
-    expect(
-      await rejectHandshake(url, {
-        host: "portal.localhost:5174",
-        origin: "http://portal.localhost:5174",
-        cookie: portalCookie as string,
-      }),
-    ).toBe(404);
-    expect(
-      await rawGetToHost(
-        address.port,
-        "/api/auth/get-session",
-        "portal.localhost:5174",
-        "http://portal.localhost:5174",
-        { cookie: portalCookie as string },
-      ),
-    ).toMatchObject({ status: 404, body: '{"message":"Not Found"}' });
-    const portalSession = await portalAuth.api.getSession({
-      headers: new Headers({ cookie: portalCookie as string }),
-    });
-    expect(portalSession?.session.portal).toBe("customer");
-    expect(
-      await auth.api.getSession({
-        headers: new Headers({ cookie: portalCookie as string }),
-      }),
-    ).toBeNull();
-    expect(
-      await rejectHandshake(url, {
-        host: "localhost:1337",
-        origin: "http://localhost:1337",
-        cookie: portalCookie as string,
-      }),
-    ).toBe(401);
-
-    const copiedAgentCookie = `__Host-tdk_portal_session=${firstCookie.split("=", 2)[1]}`;
-    expect(
-      await rejectHandshake(url, {
-        host: "portal.localhost:5174",
-        origin: "http://portal.localhost:5174",
-        cookie: copiedAgentCookie,
-      }),
-    ).toBe(404);
-    const crossPortalSession = await rawGetToHost(
-      address.port,
-      "/api/auth/get-session",
-      "portal.localhost:5174",
-      "http://portal.localhost:5174",
-      { cookie: copiedAgentCookie },
-    );
-    expect(crossPortalSession.status).toBe(404);
+    expect(portalSignInResponse.headers.get("set-cookie")).toBeNull();
 
     const agentSession = currentSessions.find(
       (session) => session.portal === "agent",
@@ -1553,13 +1544,15 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       .update(schema.sessionTable)
       .set({ portal: null })
       .where(eq(schema.sessionTable.id, agentSession.id));
+    // Unbound legacy sessions fail closed at authenticated request resolution (401), as
+    // specified by auth-and-identity.md; the WebSocket handler never sees them as valid.
     expect(
       await rejectHandshake(url, {
         host: "localhost:1337",
         origin: "http://localhost:1337",
         cookie: firstCookie,
       }),
-    ).toBe(403);
+    ).toBe(401);
     const unboundSession = await rawGetToHost(
       address.port,
       "/api/auth/get-session",
@@ -1567,7 +1560,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       "http://localhost:1337",
       { cookie: firstCookie },
     );
-    expect(unboundSession.status).toBe(403);
+    expect(unboundSession.status).toBe(401);
 
     await db
       .update(schema.sessionTable)
@@ -1630,6 +1623,193 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         cookie: expiredCookie,
       }),
     ).toBe(401);
+  });
+
+  it.each([
+    ["user", "ban"],
+    ["user", "deactivate"],
+    ["user", "revoke-session"],
+    ["project", "ban"],
+    ["project", "deactivate"],
+    ["project", "revoke-session"],
+  ] as const)(
+    "stops legacy %s events after %s with a real Better Auth session",
+    async (kind, change) => {
+      const { app } = createApp();
+      const node = createNodeServer(app);
+      closeServer = node.close;
+      await listening(node.server);
+      const member = await signUpUser(app);
+      const response = await createWorkspaceNative(app, member.cookie, {
+        name: "Legacy realtime authority",
+      });
+      expect(response.status).toBe(200);
+      const workspace = (await response.json()) as { id: string };
+      const { project } = await createProjectFixture({
+        workspaceId: workspace.id,
+      });
+      const socket = await openSocket(
+        websocketUrl(
+          node.server,
+          kind === "user" ? "/api/ws/user" : `/api/ws/${project.id}`,
+        ),
+        {
+          host: "localhost:1337",
+          origin: "http://localhost:1337",
+          cookie: member.cookie,
+        },
+      );
+      const publish = () => {
+        if (kind === "user")
+          broadcastToUser(member.user.id, { type: "NOTIFICATION_CREATED" });
+        else
+          broadcastToProject(project.id, {
+            type: "work_item.updated",
+            projectId: project.id,
+            taskId: "TD-authority",
+          });
+      };
+      const permitted = nextMessage(socket);
+      publish();
+      await expect(permitted).resolves.toHaveProperty("type");
+      const received: unknown[] = [];
+      socket.on("message", (data) => received.push(data.toString()));
+      const closed = new Promise<number>((resolve) =>
+        socket.once("close", resolve),
+      );
+      if (change === "ban")
+        await db
+          .update(schema.userTable)
+          .set({ banned: true })
+          .where(eq(schema.userTable.id, member.user.id));
+      else if (change === "deactivate")
+        await db
+          .update(schema.personTable)
+          .set({ active: false })
+          .where(eq(schema.personTable.userId, member.user.id));
+      else
+        await db
+          .delete(schema.sessionTable)
+          .where(eq(schema.sessionTable.userId, member.user.id));
+      publish();
+      await expect(closed).resolves.toBe(1008);
+      expect(received).toEqual([]);
+    },
+  );
+
+  it.each(["user", "project"] as const)(
+    "stops legacy %s events after disabling the requesting API key",
+    async (kind) => {
+      const member = await createWorkspaceMember();
+      const { project } = await createProjectFixture({
+        workspaceId: member.workspace.id,
+      });
+      const rawKey = `taskdesk_test_${randomBytes(16).toString("hex")}`;
+      const now = new Date();
+      const [key] = await db
+        .insert(schema.apikeyTable)
+        .values({
+          referenceId: member.user.id,
+          userId: member.user.id,
+          key: createHash("sha256").update(rawKey).digest("base64url"),
+          name: "legacy authority",
+          start: rawKey.slice(0, 12),
+          prefix: "taskdesk",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: schema.apikeyTable.id });
+      if (!key) throw new Error("API key was not persisted");
+      const { app } = createApp();
+      const node = createNodeServer(app);
+      closeServer = node.close;
+      await listening(node.server);
+      const socket = await openSocket(
+        websocketUrl(
+          node.server,
+          kind === "user" ? "/api/ws/user" : `/api/ws/${project.id}`,
+        ),
+        { host: "localhost:1337", authorization: `Bearer ${rawKey}` },
+      );
+      const publish = () => {
+        if (kind === "user")
+          broadcastToUser(member.user.id, { type: "NOTIFICATION_CREATED" });
+        else
+          broadcastToProject(project.id, {
+            type: "work_item.updated",
+            projectId: project.id,
+            taskId: "TD-key-authority",
+          });
+      };
+      const permitted = nextMessage(socket);
+      publish();
+      await expect(permitted).resolves.toHaveProperty("type");
+      const received: unknown[] = [];
+      socket.on("message", (data) => received.push(data.toString()));
+      const closed = new Promise<number>((resolve) =>
+        socket.once("close", resolve),
+      );
+      await db
+        .update(schema.apikeyTable)
+        .set({ enabled: false })
+        .where(eq(schema.apikeyTable.id, key.id));
+      publish();
+      await expect(closed).resolves.toBe(1008);
+      expect(received).toEqual([]);
+    },
+  );
+
+  it("stops legacy project events after actual workspace membership removal", async () => {
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const owner = await signUpUser(app);
+    const response = await createWorkspaceNative(app, owner.cookie, {
+      name: "Legacy membership removal",
+    });
+    expect(response.status).toBe(200);
+    const workspace = (await response.json()) as { id: string };
+    const member = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspace.id,
+      "member",
+    );
+    const { project } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    const socket = await openSocket(
+      websocketUrl(node.server, `/api/ws/${project.id}`),
+      {
+        host: "localhost:1337",
+        origin: "http://localhost:1337",
+        cookie: member.cookie,
+      },
+    );
+    const message = {
+      type: "work_item.updated",
+      projectId: project.id,
+      taskId: "TD-membership",
+    };
+    const permitted = nextMessage(socket);
+    broadcastToProject(project.id, message);
+    await expect(permitted).resolves.toMatchObject(message);
+    const received: unknown[] = [];
+    socket.on("message", (data) => received.push(data.toString()));
+    const closed = new Promise<number>((resolve) =>
+      socket.once("close", resolve),
+    );
+    const removed = await removeWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspace.id,
+      member.user.id,
+    );
+    expect(removed.status).toBe(200);
+    broadcastToProject(project.id, message);
+    await expect(closed).resolves.toBe(1008);
+    expect(received).toEqual([]);
   });
 
   it("preserves legacy task project reach masking, window fanout, and shutdown", async () => {

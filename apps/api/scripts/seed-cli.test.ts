@@ -19,6 +19,10 @@ const stubSeedModule: SeedProfileModule = {
   runSeedCli: async () => {},
 };
 
+// Most tests control process.env directly. Do not load the developer's real
+// monorepo .env over those deliberately empty fixtures.
+const skipEnvironmentLoad = () => {};
+
 describe("seed CLI database configuration preflight", () => {
   beforeEach(() => {
     for (const key of databaseKeys) {
@@ -33,7 +37,9 @@ describe("seed CLI database configuration preflight", () => {
   it("refuses the local fallback before importing the DB-backed profile", async () => {
     const loadProfile = vi.fn(async () => stubSeedModule);
 
-    await expect(loadConfiguredSeedProfile(loadProfile)).rejects.toThrow(
+    await expect(
+      loadConfiguredSeedProfile(loadProfile, skipEnvironmentLoad),
+    ).rejects.toThrow(
       "Seed requires an explicitly configured database. Set TASKDESK_DATABASE_URL",
     );
     expect(loadProfile).not.toHaveBeenCalled();
@@ -46,9 +52,9 @@ describe("seed CLI database configuration preflight", () => {
     );
     const loadProfile = vi.fn(async () => stubSeedModule);
 
-    await expect(loadConfiguredSeedProfile(loadProfile)).resolves.toBe(
-      stubSeedModule,
-    );
+    await expect(
+      loadConfiguredSeedProfile(loadProfile, skipEnvironmentLoad),
+    ).resolves.toBe(stubSeedModule);
     expect(loadProfile).toHaveBeenCalledOnce();
   });
 
@@ -103,9 +109,9 @@ describe("seed CLI database configuration preflight", () => {
     vi.stubEnv("POSTGRES_HOST", "db.example.invalid");
     const loadProfile = vi.fn(async () => stubSeedModule);
 
-    await expect(loadConfiguredSeedProfile(loadProfile)).resolves.toBe(
-      stubSeedModule,
-    );
+    await expect(
+      loadConfiguredSeedProfile(loadProfile, skipEnvironmentLoad),
+    ).resolves.toBe(stubSeedModule);
     expect(loadProfile).toHaveBeenCalledOnce();
   });
 
@@ -113,7 +119,9 @@ describe("seed CLI database configuration preflight", () => {
     vi.stubEnv("POSTGRES_HOST", "db.example.invalid");
     const loadProfile = vi.fn(async () => stubSeedModule);
 
-    await expect(loadConfiguredSeedProfile(loadProfile)).rejects.toThrow(
+    await expect(
+      loadConfiguredSeedProfile(loadProfile, skipEnvironmentLoad),
+    ).rejects.toThrow(
       "POSTGRES_PASSWORD must be set when deriving TASKDESK_DATABASE_URL",
     );
     expect(loadProfile).not.toHaveBeenCalled();

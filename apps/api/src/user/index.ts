@@ -6,6 +6,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import { requireSessionOnly } from "../utils/require-session-only";
 import { MAX_AVATAR_BYTES } from "./avatar";
 import deleteAvatar from "./controllers/delete-avatar";
 import saveAvatar from "./controllers/save-avatar";
@@ -21,6 +22,7 @@ const uploadAvatarRoute = createRoute({
   description: `Store a base64 encoded avatar (PNG, JPEG, or WebP, up to ${Math.floor(
     MAX_AVATAR_BYTES / 1024,
   )}KB) for the current user and return its public URL. Replaces any existing avatar.`,
+  middleware: [requireSessionOnly()] as const,
   request: {
     body: {
       required: true,
@@ -29,6 +31,7 @@ const uploadAvatarRoute = createRoute({
   },
   responses: {
     200: jsonResponse("Avatar stored", avatarSchema),
+    403: errorResponse("A browser session is required"),
     400: errorResponse(
       "Unsupported content type, malformed base64, or too large",
     ),
@@ -43,8 +46,10 @@ const deleteAvatarRoute = createRoute({
   summary: "Delete avatar",
   description:
     "Remove the uploaded avatar of the current user. Succeeds even when there was nothing to remove.",
+  middleware: [requireSessionOnly()] as const,
   responses: {
     200: jsonResponse("Avatar removed", avatarDeletedSchema),
+    403: errorResponse("A browser session is required"),
   },
 });
 

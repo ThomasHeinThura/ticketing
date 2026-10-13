@@ -1,0 +1,2 @@
+ALTER TABLE "pending_action" DROP CONSTRAINT "pending_action_action_check";--> statement-breakpoint
+ALTER TABLE "pending_action" ADD CONSTRAINT "pending_action_action_check" CHECK ("pending_action"."action" in ('delete', 'bulk_delete', 'purge', 'mcp_destructive', 'user_deactivation'));

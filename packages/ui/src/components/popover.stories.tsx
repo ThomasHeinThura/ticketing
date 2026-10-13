@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 import { Button } from "./button";
 import {
   Popover,
@@ -28,6 +29,25 @@ export const Default: Story = {
       </PopoverPopup>
     </Popover>
   ),
+};
+
+function TrackingPausedWhenClosedExample() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={<Button variant="secondary">Open</Button>} />
+      <PopoverPopup disableAnchorTracking={!open}>
+        <PopoverTitle>Notifications</PopoverTitle>
+        <PopoverDescription>
+          Anchor tracking pauses while the popup is closed.
+        </PopoverDescription>
+      </PopoverPopup>
+    </Popover>
+  );
+}
+
+export const DisableAnchorTrackingWhenClosed: Story = {
+  render: () => <TrackingPausedWhenClosedExample />,
 };
 
 export const OpenByDefault: Story = {

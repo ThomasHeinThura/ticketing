@@ -6,9 +6,14 @@ import { BoardCreateTaskDialog } from "./create-task-dialog";
 vi.mock("@/components/shared/modals/create-task-modal", () => ({
   default: ({ status, onClose }: { status: string; onClose: () => void }) => (
     <div data-status={status} role="dialog">
-      <button onClick={onClose} type="button">
-        Close create dialog
-      </button>
+      {(() => {
+        return (
+          // ui-exempt: this mock exposes the create dialog's close callback.
+          <button onClick={onClose} type="button">
+            Close create dialog
+          </button>
+        );
+      })()}
     </div>
   ),
 }));
@@ -19,16 +24,26 @@ function Harness() {
 
   return (
     <>
-      <button
-        onClick={() => setStatus("backlog")}
-        ref={triggerRef}
-        type="button"
-      >
-        Add to backlog
-      </button>
-      <button onClick={() => setStatus("in-progress")} type="button">
-        Add in progress
-      </button>
+      {(() => {
+        return (
+          // ui-exempt: test fixture for the backlog trigger's focus restoration.
+          <button
+            onClick={() => setStatus("backlog")}
+            ref={triggerRef}
+            type="button"
+          >
+            Add to backlog
+          </button>
+        );
+      })()}
+      {(() => {
+        return (
+          // ui-exempt: test fixture for selecting a different column status.
+          <button onClick={() => setStatus("in-progress")} type="button">
+            Add in progress
+          </button>
+        );
+      })()}
       <BoardCreateTaskDialog
         onClose={() => setStatus(null)}
         projectId="project-1"

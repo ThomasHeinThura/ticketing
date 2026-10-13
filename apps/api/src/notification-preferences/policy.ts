@@ -44,11 +44,9 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * fixed here (changing route wiring is outside a pure classification pass) — flagged for the
  * security review.
  *
- * No `capability` kind anywhere in this file for the same reason as `notification/policy.ts`:
- * the caller's own preference rows are not one of `SCOPES` in `packages/permissions/src/
- * policy.ts` — they are per-user configuration, not a tenant-scoped resource with a capability
- * held in some other scope. No `elevated`/`AUTHORITY_GRANTING` concern and no `sessionOnly`,
- * same reasoning as the other four files in this lane.
+ * No `capability` kind exists for these per-user rows in the registered scope vocabulary.
+ * The three writes are session-only under the explicit 2026-10-06 AK-9 decision: self-row
+ * ownership is not a registered API-key write capability. The GET remains unchanged.
  */
 export const notificationPreferencesPolicies = {
   "GET /api/notification-preferences": {
@@ -64,6 +62,7 @@ export const notificationPreferencesPolicies = {
   "PUT /api/notification-preferences": {
     authenticated: true,
     self: true,
+    sessionOnly: true,
     personParam: {
       exempt: "no_person_parameter",
       reason:
@@ -74,6 +73,7 @@ export const notificationPreferencesPolicies = {
   "PUT /api/notification-preferences/workspaces/{workspaceId}": {
     authenticated: true,
     self: true,
+    sessionOnly: true,
     personParam: {
       exempt: "no_person_parameter",
       reason:
@@ -84,6 +84,7 @@ export const notificationPreferencesPolicies = {
   "DELETE /api/notification-preferences/workspaces/{workspaceId}": {
     authenticated: true,
     self: true,
+    sessionOnly: true,
     personParam: {
       exempt: "no_person_parameter",
       reason:

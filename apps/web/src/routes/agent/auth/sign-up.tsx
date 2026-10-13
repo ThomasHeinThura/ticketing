@@ -6,26 +6,18 @@ import {
 import { Alert, AlertDescription } from "@taskdesk/ui";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { z } from "zod/v4";
 import { AuthLayout } from "@/components/auth/layout";
 import { SignUpForm } from "@/components/auth/sign-up-form";
 import { SSOProviders } from "@/components/auth/sso-providers";
 import { AuthToggle } from "@/components/auth/toggle";
 import PageTitle from "@/components/page-title";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
+import { parseOptionalStringSearch } from "@/lib/optional-string-search";
 
-const signUpSearchSchema = z.object({
-  invitationId: z.string().optional(),
-  email: z.string().optional(),
-  // #18: the one-time setup URL printed to the container log carries this
-  // token (auth-and-identity.md § Break-glass). Its presence -- not any
-  // server-reported "no users yet" state, which is deliberately no longer
-  // observable pre-auth -- is what tells this page it is bootstrapping the
-  // instance admin rather than doing an ordinary self-service signup. The
-  // backend is the actual authority: it verifies and single-use-consumes the
-  // token itself, so a wrong or reused value here just fails normally.
-  setupToken: z.string().optional(),
-});
+const signUpSearchSchema = (search: Record<string, unknown>) =>
+  // The setup token's presence selects bootstrap UI only; the API verifies and
+  // single-use-consumes it before granting instance-admin setup.
+  parseOptionalStringSearch(search, ["invitationId", "email", "setupToken"]);
 
 export const Route = createFileRoute("/auth/sign-up")({
   component: SignUp,

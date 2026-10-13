@@ -10,6 +10,21 @@ export type AppOrigin = {
 
 export type SelectedOrigin = AppOrigin["kind"] | "unknown" | "invalid";
 
+export function publicOriginForKind(
+  kind: AppOrigin["kind"],
+  origins: readonly [AppOrigin, AppOrigin],
+): string {
+  const origin = origins.find((candidate) => candidate.kind === kind);
+  if (!origin) throw new Error(`No configured public origin for ${kind}.`);
+  return origin.url;
+}
+
+export function requirePublicAppOrigin(value: string | undefined): string {
+  if (!value)
+    throw new Error("A validated application origin is required for this URL.");
+  return value;
+}
+
 type NodeIncomingBinding = {
   rawHeaders?: string[];
   httpVersionMajor?: number;

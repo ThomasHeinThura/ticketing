@@ -14,11 +14,11 @@ export const Default: Story = {
   render: () => (
     <Fieldset>
       <FieldsetLegend>Notifications</FieldsetLegend>
-      <Field>
+      <Field className="bg-background">
         <FieldLabel>Email</FieldLabel>
         <FieldControl placeholder="you@example.com" type="email" />
       </Field>
-      <Field>
+      <Field className="bg-background">
         <FieldLabel>Phone</FieldLabel>
         <FieldControl placeholder="+1 555 0100" type="tel" />
       </Field>
@@ -30,7 +30,7 @@ export const Disabled: Story = {
   render: () => (
     <Fieldset disabled>
       <FieldsetLegend>Notifications</FieldsetLegend>
-      <Field>
+      <Field className="bg-background">
         <FieldLabel>Email</FieldLabel>
         <FieldControl placeholder="you@example.com" type="email" />
       </Field>

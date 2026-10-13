@@ -61,7 +61,8 @@
  *    disabled → `null` (S6 below).
  *  - A team whose workspace the person no longer has a `workspace_member` row in is
  *    excluded from `teamIds` (S5 below).
- *  - No persisted API-key capability subset exists yet (see the KNOWN GAP below) →
+ *  - The authenticated request layer supplies only registered capabilities projected from
+ *    the key's stored Better Auth resource/action scope; absent or malformed scope gives
  *    `keyCapabilities: []`, never `undefined` and never the owner's full RBAC.
  *
  * SECURITY REVIEW FIXES (Opus 5.5, PR #315, `docs/07-planning/security-reviews/315-resolve-identity.md`,
@@ -75,16 +76,15 @@
  * KNOWN GAPS AGAINST THE SPEC — found while building this, not guessed around. Per this
  * slice's own instructions: spec wins, and each is listed in the PR body too.
  *
- *  1. **No API-key capability-subset column exists.** `auth-and-identity.md` describes an
+ *  1. **The P4 API-key extension table does not exist yet.** `auth-and-identity.md` describes an
  *     `api_key` extension table carrying "capability subset, IP allowlist, per-key rate
  *     limit, expiry, last-used, `is_mcp`". `apps/api/src/database/schema.ts`'s `apikeyTable`
  *     has none of that — only better-auth's own `permissions` column, a `{resource:
- *     action[]}` statements map in a completely different, disjoint SHAPE from `Capability`
- *     (`{ work_item: ["read"] }` vs the flat string `"work_item:read"`; `"share"` vs no such
- *     action at all). Translating one into the other would be guessing at a mapping no document specifies, so this loader
- *     does not attempt it: every key-credentialed identity gets `keyCapabilities: []` until
- *     the real extension table lands. This is the maximally fail-closed answer, not a
- *     placeholder pretending to be a real one.
+ *     action[]}` statements map rather than the extension table's capability array. The
+ *     request adapter projects only exact `resource:action` pairs accepted by
+ *     `isCapability`; unknown strings are discarded, malformed scope becomes empty, and
+ *     no alias or owner-derived capability is inferred. Full P4 key lifecycle and extension
+ *     storage remain separate work.
  *  2. **`mcp_key` cannot be distinguished from `api_key` yet.** The same missing extension
  *     table would carry `is_mcp`; without it, every key-authenticated request resolves to
  *     the `"api_key"` `CredentialKind`. Harmless today (both kinds are clamped identically
@@ -199,9 +199,8 @@ export type ApiKeyFact = {
   /** `apikey.userId` (or `.referenceId`) — the id the key row itself claims to belong to. */
   readonly ownerUserId: string;
   /**
-   * The persisted capability subset, when one exists. Always absent from the real loader
-   * today (KNOWN GAP 1) — present here so the mapper's clamping-and-passthrough behaviour
-   * is unit-testable without inventing schema that does not exist yet.
+   * Registered capability pairs projected from the authenticated key's stored permission
+   * scope by the request adapter. Missing or malformed scope is supplied as an empty list.
    */
   readonly capabilities?: readonly string[];
 };
@@ -356,9 +355,10 @@ export function resolveIdentityFromFacts(
   }
 
   // S6 (Opus review of PR #315): a banned user is refused unconditionally, staff or
-  // customer. better-auth's own ban enforcement is session-only and the API-key path
-  // (`verifyApiKey`) does not check it at all — this is the one place that resolves
-  // identity for BOTH paths, so it is the one place that can refuse for both.
+  // customer. better-auth's own ban enforcement is session-only. Two points enforce it for
+  // API keys: `verifyApiKey` refuses a banned or inactive owner's key at verification (every
+  // route, whether or not strict enforcement is on), and this resolver refuses it again for
+  // strict and shadow evaluation, for sessions and keys alike.
   if (facts.banned) {
     return null;
   }

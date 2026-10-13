@@ -2,11 +2,16 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { Context, Next } from "hono";
 import { setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
-import { getConfiguredAgentOrigin, signCsrfPayload } from "../auth";
+import {
+  getConfiguredAgentOrigin,
+  getConfiguredCustomerOrigin,
+  signCsrfPayload,
+} from "../auth";
 
 const TOKEN_LIFETIME_MS = 10 * 60 * 1000;
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const SESSION_COOKIE_NAMES = ["__Host-tdk_agent_session"] as const;
+const PORTAL_SESSION_COOKIE_NAME = "__Host-tdk_portal_session";
 const TOKEN_CLAIM_KEYS = [
   "version",
   "sessionId",
@@ -30,8 +35,8 @@ export type CsrfSourceResult = { ok: true; origin: string } | { ok: false };
 function sourceOrigin(
   context: Context,
   allowFetchMetadata: boolean,
+  expected = getConfiguredAgentOrigin(),
 ): CsrfSourceResult {
-  const expected = getConfiguredAgentOrigin();
   const originHeader = context.req.header("origin");
   if (originHeader !== undefined) {
     if (originHeader === "null") return { ok: false };
@@ -224,6 +229,24 @@ export function csrfProtectionMiddleware() {
     } | null;
     if (!session) return next();
     const cookieHeader = context.req.header("cookie");
+    // Portal sessions have no CSRF token issuer (the agent issuer is unreachable on the
+    // portal host, CP-19). An unsafe portal cookie-session request instead requires a
+    // single exact Origin (or, if absent, a same-origin Referer) equal to the configured
+    // portal origin; the agent origin, `null` and any foreign origin are refused.
+    if (
+      session.portal === "customer" &&
+      cookieValues(cookieHeader, PORTAL_SESSION_COOKIE_NAME).length > 0
+    ) {
+      const portalSource = sourceOrigin(
+        context,
+        false,
+        getConfiguredCustomerOrigin(),
+      );
+      if (!portalSource.ok || context.get("appOrigin") !== "portal") {
+        return context.json({ message: "csrf_origin_invalid" as const }, 403);
+      }
+      return next();
+    }
     const hasSessionCookie = SESSION_COOKIE_NAMES.some(
       (name) => cookieValues(cookieHeader, name).length > 0,
     );

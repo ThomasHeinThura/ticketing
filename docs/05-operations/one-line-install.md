@@ -1,146 +1,216 @@
 # One-line install
 
-- **Status:** ⬜ Planned — P0, alongside `scripts/deploy.sh`
-- **Depends on:** [Deployment](deployment.md), which this wraps rather than replaces
+- **Status:** P0 bootstrap source and signed release-asset path implemented; public URL hosting and stable-tag promotion belong to P7.
+- **Depends on:** [Deployment](deployment.md), which the installer wraps instead of replacing.
 
 ## Purpose
 
+The bootstrap source is [`install.sh`](../../install.sh). The intended public command is:
+
 ```bash
-curl -fsSL https://get.taskdesk.dev | bash
+curl -fsSL https://get.taskdesk.dev/install.sh | bash
 ```
 
-The script is `install.sh` — the same name it is called by in
-[traefik-and-domains.md](traefik-and-domains.md) and the one you get from
-`curl -o install.sh`. One command, on a clean machine with nothing but a shell and outbound
-HTTPS, ends with a running instance and a printed sign-in URL. This is the installer a small customer runs
-without ever cloning a repository, and it is also what a bigger customer's automation calls
-identically — the same command either way.
+A clean host needs only a shell, outbound HTTPS, and the platform tools described below. The
+installer obtains a specific signed GitHub release archive and hands off to the same
+`scripts/deploy.sh` used by the manual deployment path. It does not clone the source tree or
+implement a second deployment mechanism.
 
-**It is a bootstrapper, not a second implementation.** It fetches the same release
-artefact and runs the same `scripts/deploy.sh` that [Deployment](deployment.md) already
-documents — including its idempotency and its final API probe. There is exactly one
-deployment mechanism; this is a shorter path onto it, not a parallel one. A user who never
-runs the one-liner and instead follows the manual `git clone` steps in
-[Deployment](deployment.md) ends up with an identical result.
+P0 provides the bootstrapper source and release workflow assets. Serving `install.sh` and
+`stable.txt` at `get.taskdesk.dev`, hardening that URL, and promoting the stable version
+pointer are P7 hosting work. Until those static assets are published, use a reviewed local
+copy of `install.sh` and pass `--version` for a published release.
 
-## What it does
+## Install flow
 
-1. **Detects** OS and architecture (Linux x86-64 / arm64; macOS for local evaluation only —
-   production targets Linux). Refuses unsupported combinations with a clear message rather
-   than failing halfway through.
-2. **Checks for Docker** and the Compose plugin. If absent, offers to install them via the
-   distribution's own package manager or Docker's official install script, and **asks
-   before doing anything that requires root** unless `--yes` was passed.
-3. **Downloads a pinned release archive** — a specific tagged version's tarball from the
-   project's release artefacts, verified against a published SHA-256 checksum — into an
-   install directory (`~/taskdesk` by default, `--dir` to override). It downloads a
-   released *artefact*, not `git clone`, so the machine does not need `git` and the version
-   installed is exactly the one named, never whatever `main` happens to contain that day.
-4. **Writes `.env`** using the same secret-generation logic `scripts/deploy.sh` already has
-   — generated once, never regenerated over an existing value.
-5. **Runs `scripts/deploy.sh`** in the requested mode (`local` by default; `--env
-   production` for a real deployment with a real domain and TLS). Every step from
-   [Deployment](deployment.md)'s "First run" — start dependencies, wait for health, apply
-   migrations, create the bootstrap administrator, probe the API — happens exactly as
-   documented, because it is the same script.
-6. **Prints the result**: the one-time **setup URL and its token**, read from the container
-   log and printed as the last thing on screen, at which the first administrator is created;
-   and a reminder that everything else — storage, mail, identity providers, branding — is
-   configured in God Mode, not in a file. A fresh install works with **no storage
-   configuration at all**: `storage.filesystem` is the default until an administrator
-   chooses otherwise, so there is no bucket, no credential and no third hostname to arrange
-   first. The token is short-lived; if it has expired by the time you get to it, see the
-   runbook's **First run** section.
+1. **Check the host.** Linux x86-64 and arm64 are supported for production. macOS is supported
+   for local evaluation. Other operating systems and architectures stop before downloads.
+2. **Check Docker.** Docker Engine, the Compose plugin and `docker buildx` must be available
+   (`scripts/deploy.sh` resolves the image tag to a digest with buildx). If any is missing,
+   the installer asks before installing them with the system package manager, which it only
+   does on Ubuntu (`docker.io docker-compose-v2 docker-buildx`). On Debian, Fedora, RHEL and
+   CentOS it stops with guidance to install Docker Engine, Compose and buildx from Docker's
+   official repository, because those distributions' own package names do not reliably
+   provide all three. Arch Linux
+   stops with guidance to install Docker during a synchronized full-system update; the
+   installer never runs a partial `pacman` upgrade. `--yes` accepts supported install prompts
+   and the later install-file prompt. It never pipes a remote script into a shell. The Docker
+   daemon must be running and accessible to the invoking user.
+3. **Choose a release.** `--version TAG` selects an exact semantic version tag. Without that
+   flag, the installer reads the single-line `stable.txt` pointer over HTTPS. A static
+   `stable.txt` is published as part of P7 hosting; it is not dynamically resolved by a
+   service.
+4. **Authenticate before extraction.** Downloaded release assets are the versioned archive,
+   its SHA-256 file, and separate cosign bundles for both files. Cosign verification pins the
+   GitHub Actions OIDC issuer and the exact `release.yml` workflow identity. The archive hash
+   must match the signed checksum. Archive members must stay under the expected versioned
+   root and may not contain unsafe paths or symbolic links. `--skip-verify` is an explicit
+   opt-out; it prints a warning and still checks the archive SHA-256.
+5. **Install deployment files.** Files are unpacked in a private temporary directory before
+   the installer prompts to write them. The installer preserves an existing `.env`, generated
+   secrets, certificates, database volumes, and deployment data. When the selected version
+   changes, it updates the image tag and clears a retained rollback digest so the selected
+   version resolves to its signed image. It only changes hostname settings when the
+   corresponding flags are supplied. A new `.env` is created from `deploy/.env.example`
+   with mode `0600`.
+6. **Delegate deployment.** The installer runs `scripts/deploy.sh` in the selected mode. That
+   script generates only missing secrets, verifies the image signature, waits for health,
+   runs migrations through its one-shot role, probes the API, and prints the first-run setup
+   URL and token.
 
-### Production pre-flight
+The install is repeatable. Running it again with a new `--version` updates deployment files
+and image selection without replacing existing secret values or data.
 
-`--env production` runs two checks before it touches anything, because both failures are
-cheap to catch here and expensive to diagnose later:
+## Production preflight
 
-- **DNS.** The hostnames in play must already resolve to this host — ACME HTTP-01 needs them
-  before the first `up`. `ticket.` and `portal.` always; `files.` **only when `--files-host`
-  is given**, because a `storage.filesystem` install has no third hostname at all
-  ([deployment.md](deployment.md)). The script prints the exact records to create and stops.
-- **Port 5173 must not already be bound.** Production publishes no application port — that
-  is what makes `TASKDESK_TRUST_PROXY=1` sound ([traefik-and-domains.md](traefik-and-domains.md))
-  — so something already listening on 5173 means another stack is running, or a local-mode
-  install is still up on this host. The check does **not** run for `--env local`, where
-  publishing 5173 is exactly what the local overlay is for.
+`--env production` requires `--domain` or an existing `DOMAIN` in the install directory's
+`.env`. `--agent-host` and `--portal-host` override the derived `ticket.<domain>` and
+`portal.<domain>` names. Compose routes and application public URLs use the same host values.
+`--files-host` is checked only when supplied on that run, or when `--profile s3` is given (the
+profile is never remembered, so repeat it when re-running an S3 install); the default
+`TASKDESK_FILES_HOST` the installer records in `.env` is not DNS-checked on a re-run. A third hostname is needed only when this host
+also serves an operator-owned S3 endpoint. Use `--profile s3` to start the bundled SeaweedFS
+profile.
+
+Before writing deployment files, the installer checks that the agent and portal names (and
+the files name when requested) resolve, and that TCP port 5173 is free. DNS resolution alone
+cannot establish which public host owns an address; the operator must ensure the records point
+to this deployment host before proceeding. The preflight prints the record names that need
+attention when resolution fails. Production does not publish the application port.
+
+For local installs, host overrides are included in the generated local certificate SANs.
+The installer leaves the local mode's application port and certificate behavior to
+`scripts/deploy.sh`.
 
 ## Flags
 
 | Flag | Effect |
 | --- | --- |
-| `--env local\|production` | Which Compose overlay to bring up. Default `local` |
-| `--domain <domain>` | Derives `ticket.<domain>` and `portal.<domain>` for `production`; `--agent-host` / `--portal-host` override either. `--files-host` adds the third hostname, and is only wanted when this host also serves an operator-owned S3 endpoint. The DNS pre-flight above checks exactly the hostnames in play |
-| `--version <tag>` | Install a specific release instead of the latest stable one |
-| `--dir <path>` | Install directory. Default `~/taskdesk` |
-| `--yes` | Do not prompt before installing Docker or writing files |
-| `--dry-run` | Print every step it would take without doing any of them |
+| `--env local\|production` | Selects deployment mode; default is `local` |
+| `--domain DOMAIN` | Sets the Compose domain and derives agent/portal hostnames |
+| `--agent-host HOST` | Overrides the agent route host and public URL |
+| `--portal-host HOST` | Overrides the portal route host and public URL |
+| `--files-host HOST` | Adds the files hostname to the production DNS check |
+| `--profile s3` | Starts the optional S3 profile; configure its credentials in God Mode |
+| `--version TAG` | Installs the exact release tag instead of the stable pointer |
+| `--dir PATH` | Install directory; default is `~/taskdesk` |
+| `--yes` | Skips the install-file and Docker-install prompts |
+| `--dry-run` | Prints the release and deployment plan without downloading or writing files |
+| `--skip-verify` | Explicitly skips cosign verification, warns, and retains the SHA-256 check |
 
-`curl ... | bash -s -- --dry-run` is the recommended first run for anyone who wants to see
-what the script does before it does it — see **Trust model** below.
+Preview a pinned install without changing the host:
+
+```bash
+bash install.sh --version 2.22.0 --dry-run
+```
 
 ## Trust model
 
-Piping a downloaded script into a shell is a real trust decision, and the installer is
-built to make that decision an informed one rather than to paper over it.
+The signed archive and checksum file use keyless cosign signing from the repository's
+`release.yml` workflow. The installer verifies both bundles with the same issuer and workflow
+identity used by `scripts/deploy.sh`; a valid checksum from the same download site alone is
+not treated as authentication. A verification failure stops before extraction or writes to the
+install directory. There is no automatic fallback from a failed signature check.
 
-- **Served only over HTTPS**, from a domain under our control, with HSTS. There is no HTTP
-  fallback.
-- **The installer script itself is small, reviewable, and does no work beyond the steps
-  listed above.** All actual logic — secret generation, health waiting, migration,
-  probing — lives in the versioned `scripts/deploy.sh` inside the release artefact, which
-  anyone can read before running by downloading the same release from the repository.
-- **The release archive is signed, not merely checksummed.** A checksum fetched from the
-  same origin over the same connection only defends against corruption — not against the
-  compromise of `get.taskdesk.dev`, which is the threat a `curl | bash` reader is actually
-  worried about. So CI signs the release archive and its checksum file with **cosign**
-  (keyless, the same identity that signs the container image — [ci-cd.md](../04-engineering/ci-cd.md)),
-  and the installer verifies the signature against the published identity before
-  extracting anything. There is no silent fallback: `--skip-verify` exists, prints a loud
-  warning, and is the operator's explicit choice. A verification failure aborts with no
-  partial state left behind. The installer's own SHA-256 is published in the docs so
-  `curl -o install.sh && sha256sum -c` is always possible.
-- **`--dry-run` prints the exact commands** the installer would execute, so a security-
-  conscious operator can review the plan before committing to it — and can equally well
-  just `curl -fsSL https://get.taskdesk.dev -o install.sh`, read it, and run it locally,
-  which is always an option and is documented as one, not treated as an edge case.
-- **Root is requested only for the Docker installation step**, and only after an explicit
-  prompt (or `--yes`). Everything after that runs as the invoking user, inside containers.
-- **Idempotent**, inherited directly from `scripts/deploy.sh`: running the one-liner again
-  on an existing install does not regenerate secrets or duplicate data. Re-running it is
-  the documented way to pick up a version bump via `--version`.
+The source installer is small and reviewable. Its SHA-256 is:
 
-## Offline / air-gapped
-
-A network that cannot reach `get.taskdesk.dev` at deploy time is expected, not exotic — see
-[Deploy targets](deployment.md#deploy-targets)'s single-node profile. The same release
-archive the installer downloads is published as a plain, checksummed file; the documented
-alternative is:
-
-```bash
-# on a machine with internet access
-curl -fsSLo taskdesk-v2.x.x.tar.gz https://github.com/<org>/taskdesk/releases/download/v2.x.x/taskdesk-v2.x.x.tar.gz
-sha256sum -c taskdesk-v2.x.x.tar.gz.sha256
-
-# transferred to the air-gapped host
-tar xzf taskdesk-v2.x.x.tar.gz && cd taskdesk-v2.x.x
-scripts/deploy.sh local     # or production
+```text
+ab4e319e2ea267ebab4b7c63f61944a98c86d0544f77e49b9dce86a19891fb4c
 ```
 
-Which is exactly [Deployment](deployment.md)'s manual path, one step shorter because there
-is no `git clone` — a release archive, not a repository, is what ships.
+You can download and inspect the script before running it. The installer requests elevation
+only through an explicit supported package-manager prompt when Docker is missing; Arch Linux
+requires a synchronized full-system update performed by the operator. The rest of the flow
+runs as the invoking user.
 
-## Hosting
+## Offline / air-gapped install
 
-`get.taskdesk.dev` serves two static files from the same infrastructure as the
-documentation site (`apps/site`): the installer script, and `stable.txt` — a one-line file
-containing the current stable version tag, rewritten by the release pipeline only when a
-digest is promoted ([release-plan.md](../07-planning/release-plan.md)). The script reads
-`stable.txt` and installs that tag; `--version` overrides it. Nothing is resolved
-dynamically and nothing about the installer requires application code to be running
-anywhere.
+Download the archive, checksum, and their cosign bundles on a connected machine. Verify both
+signatures with the repository's exact workflow identity, verify the checksum, then transfer
+and extract the archive:
+
+```bash
+version=v2.22.0
+archive="taskdesk-${version}.tar.gz"
+base="https://github.com/ThomasHeinThura/ticketing/releases/download/${version}"
+curl -fsSLo "$archive" "$base/$archive"
+curl -fsSLo "$archive.sha256" "$base/$archive.sha256"
+curl -fsSLo "$archive.sigstore.json" "$base/$archive.sigstore.json"
+curl -fsSLo "$archive.sha256.sigstore.json" "$base/$archive.sha256.sigstore.json"
+identity='https://github.com/ThomasHeinThura/ticketing/.github/workflows/release.yml@refs/heads/main'
+cosign verify-blob --bundle "$archive.sigstore.json" --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity "$identity" "$archive"
+cosign verify-blob --bundle "$archive.sha256.sigstore.json" --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity "$identity" "$archive.sha256"
+sha256sum -c "$archive.sha256"
+```
+
+The installer cannot be used on the air-gapped host because it fetches its release assets
+from GitHub. After transferring the four verified files, extract the archive and deploy from
+the versioned directory. The example below distinguishes a new installation from an upgrade.
+An upgrade must carry the previous installation's `.env` into the new version directory
+before running the deploy script. It contains database, authentication, and encryption keys;
+in particular, replacing `TASKDESK_ENCRYPTION_KEY` makes stored encrypted plugin credentials
+unreadable. Transfer the file securely, keep its values unchanged, and restrict the new copy
+to the installing user. If the previous `.env` is unavailable, stop and recover it from the
+installation's protected backup; do not create a replacement and continue.
+
+```bash
+set -eu
+tar -xzf "$archive"
+cd "taskdesk-${version}"
+# Choose exactly one. For an upgrade, point this at the previous version directory.
+install_kind=upgrade
+prior_dir=/srv/taskdesk-v2.21.0
+
+if [ -e .env ]; then
+  printf '%s\n' 'Refusing to overwrite .env in the extracted directory.' >&2
+  exit 1
+fi
+case "$install_kind" in
+  upgrade)
+    if [ ! -d "$prior_dir" ] || [ ! -f "$prior_dir/.env" ] || [ -L "$prior_dir/.env" ]; then
+      printf '%s\n' 'Upgrade requires the prior version directory and its regular .env file.' >&2
+      exit 1
+    fi
+    transfer_file=".env.transfer.$$"
+    trap 'rm -f "$transfer_file"' EXIT
+    (umask 077; cp "$prior_dir/.env" "$transfer_file")
+    chmod 600 "$transfer_file"
+    if ! cmp -s "$prior_dir/.env" "$transfer_file"; then
+      printf '%s\n' 'The copied .env does not match the prior file; refusing to deploy.' >&2
+      exit 1
+    fi
+    mv "$transfer_file" .env
+    trap - EXIT
+    ;;
+  fresh)
+    cp deploy/.env.example .env
+    chmod 600 .env
+    ;;
+  *)
+    printf '%s\n' 'Set install_kind to upgrade or fresh.' >&2
+    exit 1
+    ;;
+esac
+${EDITOR:-vi} .env
+scripts/deploy.sh local
+```
+
+For a fresh installation, set `install_kind=fresh`; this is the only path that copies the
+example file. For an upgrade, retain the old version directory and its `.env` until the new
+version is verified and backed up. The guarded copy fails before deployment if the prior file
+is missing, a symlink, or differs after copying. Do not proceed by switching a failed upgrade
+to `fresh`.
+
+For production, configure the required host and secrets in `.env` and run
+`scripts/deploy.sh production` instead. The signed archive contains deployment assets and
+`scripts/deploy.sh`; it does not contain application source or secrets. See
+[Deployment](deployment.md) for the manual setup details.
+
+## Hosting boundary
+
+P7 publishes two static files at `get.taskdesk.dev`: `install.sh` and `stable.txt`. The latter
+contains one stable release tag and is updated only by the P7 promotion process. This feature
+does not create or operate that host, publish a customer release, or promote a version.
 
 ## Related
 

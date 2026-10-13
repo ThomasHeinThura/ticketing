@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useNavigate } from "@tanstack/react-router";
-import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
+import { Button, ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import type { TFunction } from "i18next";
 import { produce } from "immer";
@@ -51,9 +51,11 @@ import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import type { TaskCardWorkspaceUser } from "../kanban-board/task-card";
 import TaskCardContextMenuContent from "../kanban-board/task-card-context-menu/task-card-context-menu-content";
 import { ArchiveTasksModal } from "../shared/modals/archive-tasks-modal";
-import CreateTaskModal from "../shared/modals/create-task-modal";
 import TaskRow from "./task-row";
 
+const CreateTaskModal = lazy(
+  () => import("../shared/modals/create-task-modal"),
+);
 const TaskCardDeleteConfirmation = lazy(
   () => import("../kanban-board/task-card-delete-confirmation"),
 );
@@ -97,7 +99,8 @@ function ListColumnSection({
       )}
     >
       <div className="flex items-center justify-between py-2 px-4 bg-muted/60 border-b border-border/50">
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={onToggle}
           className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground transition-colors"
@@ -117,26 +120,28 @@ function ListColumnSection({
               </span>
             </div>
           </div>
-        </button>
+        </Button>
 
         <div className="flex items-center gap-1">
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={onAddTask}
             className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
             title={t("tasks:listView.addTask")}
           >
             <Plus className="w-3 h-3" />
-          </button>
+          </Button>
           {column.isFinal && column.tasks.length > 0 && (
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={onArchive}
               className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
               title={t("tasks:listView.archiveAllTooltip")}
             >
               <Archive className="w-3 h-3" />
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -262,6 +267,7 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
     return sections;
   });
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [hasOpenedTaskModal, setHasOpenedTaskModal] = useState(false);
   const [activeColumn, setActiveColumn] = useState<string | null>(null);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [columnToArchive, setColumnToArchive] = useState<
@@ -439,6 +445,7 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
 
   const handleAddTask = useCallback((columnId: string) => {
     setIsTaskModalOpen(true);
+    setHasOpenedTaskModal(true);
     setActiveColumn(columnId);
   }, []);
 
@@ -523,7 +530,7 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
                   {column.tasks.map((task) => (
                     <motion.div
                       key={task.id}
-                      initial={{ opacity: 0 }}
+                      initial={false}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
@@ -598,12 +605,16 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
         )}
       </DragOverlay>
 
-      <CreateTaskModal
-        open={isTaskModalOpen}
-        projectId={project.id}
-        onClose={() => setIsTaskModalOpen(false)}
-        status={activeColumn ?? "done"}
-      />
+      {hasOpenedTaskModal && (
+        <Suspense fallback={null}>
+          <CreateTaskModal
+            open={isTaskModalOpen}
+            projectId={project.id}
+            onClose={() => setIsTaskModalOpen(false)}
+            status={activeColumn ?? "done"}
+          />
+        </Suspense>
+      )}
       <ArchiveTasksModal
         open={isArchiveModalOpen}
         onClose={() => {

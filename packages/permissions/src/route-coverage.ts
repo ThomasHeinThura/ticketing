@@ -102,6 +102,11 @@ export const DECLARED_ROUTER_MIDDLEWARE: readonly DeclaredRouterMiddleware[] = [
     registrations: 1,
     note: 'apps/api/src/index.ts — api.use("*", <Sentry isolation scope + authenticateApiRequest guard>)',
   },
+  {
+    key: "ALL /scim/v2/*",
+    registrations: 1,
+    note: "apps/api/src/identity/scim-protocol.ts — the delegated mount authenticates only its per-connection SCIM bearer",
+  },
 ];
 
 /**

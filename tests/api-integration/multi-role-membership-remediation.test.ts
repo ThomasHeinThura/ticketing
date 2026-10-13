@@ -47,7 +47,7 @@ type App = ReturnType<typeof createApp>["app"];
 async function expectAllFalseCapabilityMap(response: Response): Promise<void> {
   expect(response.status).toBe(200);
   const capabilities = (await response.json()) as Record<string, unknown>;
-  expect(Object.keys(capabilities)).toHaveLength(16);
+  expect(Object.keys(capabilities)).toHaveLength(21);
   expect(Object.values(capabilities).every((value) => value === false)).toBe(
     true,
   );

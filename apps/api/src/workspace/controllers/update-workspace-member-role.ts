@@ -1,5 +1,6 @@
-import { and, eq, sql } from "drizzle-orm";
-import db, { schema } from "../../database";
+import { and, eq } from "drizzle-orm";
+import { schema } from "../../database";
+import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
 import {
   anyRoleIsOwner,
   roleGrantsOwner,
@@ -11,7 +12,7 @@ import {
   OwnerRoleNotAssignableHereError,
   WorkspaceRoleNotFoundError,
 } from "./workspace-membership-errors";
-import { WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE } from "./workspace-membership-lock";
+import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 /**
  * Change a member's assigned role.
@@ -60,10 +61,8 @@ async function updateWorkspaceMemberRole(
     throw new OwnerRoleNotAssignableHereError();
   }
 
-  return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${workspaceId}))`,
-    );
+  return withWorkspaceDeletionAccessLifecycle(workspaceId, async (tx) => {
+    await lockWorkspaceRoleAssignment(tx, workspaceId);
 
     const targetRoles = await workspaceMemberRoles(tx, workspaceId, userId);
     if (targetRoles.length === 0) {

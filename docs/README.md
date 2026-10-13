@@ -11,6 +11,7 @@
 | New to the project | [Vision](00-overview/vision.md) → [Architecture overview](01-architecture/overview.md) |
 | About to write code | [SDLC](04-engineering/sdlc.md) → [Coding standards](04-engineering/coding-standards.md) → [Definition of Done](04-engineering/definition-of-done.md) |
 | An AI agent picking up a task | [Agent workflow](04-engineering/agent-workflow.md) — **required reading** |
+| Checking what agents are authorized to do now | [Active mission](07-planning/active-mission.md) |
 | Building UI | [Design system](02-design/design-system.md) → [UX quality gates](02-design/ux-quality-gates.md) |
 | Adding a feature | [Feature index](03-features/README.md) |
 | Deploying | [Deployment](05-operations/deployment.md) → [One-line install](05-operations/one-line-install.md) → [Configuration reference](05-operations/configuration-reference.md) |

@@ -25,14 +25,6 @@ input:-webkit-autofill:active {
     contain-intrinsic-block-size: calc(var(--spacing) * 4.5);
   }
 
-  /* Keep every sortable card mounted, but let the browser defer card descendants
-     outside the board's scrollport until they approach the viewport. The intrinsic
-     estimate follows the compact single-line card geometry; once measured, `auto`
-     retains the card's actual size for later scrolls and drag measurements. */
-  .kanban-board-task-card {
-    content-visibility: auto;
-    contain-intrinsic-block-size: auto calc(var(--spacing) * 24);
-  }
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -272,7 +264,9 @@ input:-webkit-autofill:active {
 
   .taskdesk-mention-popup {
     position: absolute;
-    z-index: 50;
+    /* Above the focused comment editor shell (z-index 80) and the embed
+       composer (120), or the picker renders underneath the editor it serves. */
+    z-index: 130;
   }
 
   .taskdesk-mention-list {
@@ -864,6 +858,15 @@ input:-webkit-autofill:active {
 
   .taskdesk-comment-editor-shell:focus-within {
     z-index: 80;
+  }
+
+  /* Visible keyboard focus for the editor (the ProseMirror node itself has
+     outline: none): the same border + 3px ring tokens the shared Input uses. */
+  .taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible) {
+    border-radius: 0.6rem;
+    box-shadow:
+      0 0 0 1px var(--ring),
+      0 0 0 4px color-mix(in srgb, var(--ring) 24%, transparent);
   }
 
   .taskdesk-editor-drop-indicator {

@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@taskdesk/ui", async () => {
   const React = await import("react");
+  const { Button } =
+    await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const PopoverContext = React.createContext<{
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -31,7 +33,7 @@ vi.mock("@taskdesk/ui", async () => {
       children,
       ...props
     }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-      <button {...props}>{children}</button>
+      <Button {...props}>{children}</Button>
     ),
     Label: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
@@ -90,9 +92,9 @@ vi.mock("@taskdesk/ui", async () => {
     }) => {
       const select = React.useContext(SelectContext);
       return (
-        <button type="button" onClick={() => select?.onValueChange(value)}>
+        <Button type="button" onClick={() => select?.onValueChange(value)}>
           {children}
-        </button>
+        </Button>
       );
     },
     SelectTrigger: ({
@@ -104,13 +106,13 @@ vi.mock("@taskdesk/ui", async () => {
     }) => {
       const select = React.useContext(SelectContext);
       return (
-        <button
+        <Button
           type="button"
           data-testid="select-trigger"
           disabled={disabledProp || select?.disabled}
         >
           {children}
-        </button>
+        </Button>
       );
     },
     SelectValue: ({ children }: { children: React.ReactNode }) => (

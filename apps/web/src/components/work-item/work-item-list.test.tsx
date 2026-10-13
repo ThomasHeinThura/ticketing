@@ -180,6 +180,9 @@ describe("WorkItemList", () => {
     expect(loading).toHaveAttribute("aria-busy", "true");
     expect(loading).toHaveAttribute("aria-live", "polite");
     expect(
+      document.querySelector("[data-primary-content-ready='true']"),
+    ).not.toBeInTheDocument();
+    expect(
       screen.queryByTestId("work-item-list-populated"),
     ).not.toBeInTheDocument();
   });
@@ -196,6 +199,7 @@ describe("WorkItemList", () => {
 
     const errorState = screen.getByTestId("work-item-list-error");
     expect(errorState).toBeInTheDocument();
+    expect(errorState).toHaveAttribute("data-primary-content-ready", "true");
     screen.getByRole("button", { name: /retry/i }).click();
     expect(baseProps.onRetry).toHaveBeenCalled();
   });
@@ -210,7 +214,9 @@ describe("WorkItemList", () => {
       />,
     );
 
-    expect(screen.getByTestId("work-item-list-empty")).toBeInTheDocument();
+    const emptyState = screen.getByTestId("work-item-list-empty");
+    expect(emptyState).toBeInTheDocument();
+    expect(emptyState).toHaveAttribute("data-primary-content-ready", "true");
   });
 
   it("renders the populated state with a table row per work item", () => {
@@ -225,6 +231,7 @@ describe("WorkItemList", () => {
     );
 
     const table = screen.getByTestId("work-item-list-populated");
+    expect(table).toHaveAttribute("data-primary-content-ready", "true");
     expect(table).toBeInTheDocument();
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.getAllByText("PROJ-123").length).toBeGreaterThan(0);

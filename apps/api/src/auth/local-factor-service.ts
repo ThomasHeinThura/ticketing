@@ -14,17 +14,16 @@ export type LocalFactorState = {
   personSide: "staff" | "customer";
 };
 
+export class InactiveFactorIdentityError extends Error {
+  constructor() {
+    super("Identity is inactive for factor policy evaluation");
+    this.name = "InactiveFactorIdentityError";
+  }
+}
+
 export async function loadLocalFactorState(
   userId: string,
 ): Promise<LocalFactorState> {
-  const [setting] = await db
-    .select({ policy: schema.instanceSettingTable.localFactorPolicy })
-    .from(schema.instanceSettingTable)
-    .where(eq(schema.instanceSettingTable.id, "singleton"))
-    .limit(1);
-  if (!setting) throw new Error("Instance factor policy is unavailable");
-  const policy = parseLocalFactorPolicy(setting.policy);
-
   const [person] = await db
     .select({
       id: schema.personTable.id,
@@ -45,10 +44,31 @@ export async function loadLocalFactorState(
     )
     .limit(1);
   if (!person || (person.side !== "staff" && person.side !== "customer")) {
+    const [inactivePerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(
+        and(
+          eq(schema.personTable.userId, userId),
+          eq(schema.personTable.active, false),
+        ),
+      )
+      .limit(1);
+    if (inactivePerson) throw new InactiveFactorIdentityError();
     throw new Error(
       "Active identity is unavailable for factor policy evaluation",
     );
   }
+
+  // Resolve the person first so an inactive identity is denied as such even when the
+  // instance setting row is missing or the stored policy does not parse.
+  const [setting] = await db
+    .select({ policy: schema.instanceSettingTable.localFactorPolicy })
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
+    .limit(1);
+  if (!setting) throw new Error("Instance factor policy is unavailable");
+  const policy = parseLocalFactorPolicy(setting.policy);
 
   const memberships = await db
     .select({ roleId: schema.membershipTable.roleId })

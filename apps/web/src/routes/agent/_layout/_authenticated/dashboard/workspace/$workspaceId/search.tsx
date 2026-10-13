@@ -116,7 +116,8 @@ function SearchComponent() {
                     })}
                   </p>
                   {results.map((result) => (
-                    <button
+                    <Button
+                      variant="ghost"
                       key={result.id}
                       type="button"
                       onClick={() => {
@@ -160,7 +161,7 @@ function SearchComponent() {
                           {result.status}
                         </span>
                       )}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               ) : (

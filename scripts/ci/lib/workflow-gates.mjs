@@ -69,6 +69,7 @@
  * "there was nothing there", which is the whole lesson of this file's predecessors.
  */
 
+import { createHash } from "node:crypto";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { readText, repoRoot } from "./repo.mjs";
@@ -91,12 +92,305 @@ export const KINDS = {
   unprovenSchedule: "unproven-schedule",
   unprovenShape: "unproven-shape",
   prContext: "pr-context",
+  scopeGated: "scope-gated",
   executes: "executes",
 };
 
-/** Which kinds actually gate a pull request. Fail closed: the list is short on purpose. */
+/**
+ * Which kinds actually gate a pull request. Fail closed: the list is short on purpose.
+ *
+ * `scopeGated` is the one deliberate exception to "runs on every pull request": the gate runs
+ * on every pull request the MERGE BASE's classifier does not prove policy-only, and on every
+ * non-pull-request run (ci-cd.md § Applicability). It is accepted only in the exact shape
+ * `proveScopeStep` and SCOPE_STEP_CONDITION below define — see the A9 note there.
+ */
 export function isExecuting(kind) {
-  return kind === KINDS.executes || kind === KINDS.prContext;
+  return (
+    kind === KINDS.executes ||
+    kind === KINDS.prContext ||
+    kind === KINDS.scopeGated
+  );
+}
+
+/**
+ * **A9 — one reviewed, step-level shape for change-scope applicability.**
+ *
+ * Thomas authorized policy-only pull requests to skip product re-measurement (decision log
+ * 2026-10-09, "Opus policy-repair conductor"). The mechanism must not change what a required
+ * check means in any other situation, so it lives INSIDE each gated job rather than in the
+ * job graph: every gated job still starts on every run, exactly as before. Its first steps
+ * check out the history and run `uses: ./.github/actions/change-scope` with `id: scope`; every
+ * later step carries `if: ${{ steps.scope.outputs.full != 'false' }}`.
+ *
+ *   - A policy-only answer skips the job's steps and the job SUCCEEDS — the intended skip.
+ *   - A failing scope step fails the job (later steps keep the implicit `success()`), so a
+ *     broken classifier is a red required check, not a silent skip.
+ *   - A cancelled run cancels the job, which is a red required check, as it was before.
+ *     An earlier draft gated whole jobs through `needs: scope` and `!cancelled()`; whether
+ *     GitHub then reports a never-started job as skipped or cancelled is not proven, so that
+ *     shape was withdrawn. `needs` stays refused by presence (A7b).
+ *
+ * A gate step counts (`scopeGated`) only when ALL of these hold, each an ALLOWLIST (the third
+ * review round found head-controlled redirection of the scope mechanism again, so the proof
+ * enumerates what may exist rather than what may not):
+ *   - its condition is exactly SCOPE_STEP_CONDITION — no extra atom, no `||`;
+ *   - its job runs none of the always-run gates (ALWAYS_RUN_GATES: the PR template and
+ *     security review, `check:policy`, the registers, the checker tests, the reconciliation,
+ *     the secret scan) and is not one of ALWAYS_RUN_JOBS — keyed by gate as well as by id, so
+ *     renaming a job does not move an always-run gate under the scope switch;
+ *   - the job's steps BEFORE the scope step are exactly `actions/checkout` pinned to the one
+ *     reviewed commit (PINNED_CHECKOUT_SHA — any other SHA could resolve to a fork) whose
+ *     only input is `fetch-depth: 0`, optionally followed — only in a job running the pinned
+ *     Playwright container — by the one exact `git config … safe.directory` step. Nothing
+ *     else can run first, so nothing can rewrite the action on disk, write `$GITHUB_ENV` or
+ *     `$GITHUB_PATH`, or swap `git`/`node` before the classifier runs;
+ *   - the job sets no `env`, `defaults` or `services` (a service container starts before any
+ *     step and could rewrite the workspace), and any `container` is exactly PINNED_CONTAINER;
+ *   - the workflow's top-level `env`, if any, is one plain block mapping of the inert
+ *     ALLOWED_WORKFLOW_ENV keys — a flow mapping, a commented key line or any other key is
+ *     refused;
+ *   - exactly one step has `id: scope`; its only keys are `id`, `uses:
+ *     ./.github/actions/change-scope` and optionally `name`;
+ *   - the action file's SHA-256 equals SCOPE_ACTION_SHA256. The pull request controls both
+ *     the file and this constant, so the pin is a tripwire for review, not a boundary.
+ *
+ * The action runs the classifier taken from the MERGE BASE with the default branch and
+ * answers `full=true` on any doubt (ci-cd.md § Applicability).
+ */
+export const SCOPE_STEP_ID = "scope";
+export const SCOPE_ACTION = "./.github/actions/change-scope";
+export const SCOPE_ACTION_PATH = ".github/actions/change-scope/action.yml";
+export const SCOPE_ACTION_SHA256 =
+  "03c31f8040b0195ceb7d416ce29c87e5a0ed8b7803c341893f591f26150f3039";
+export const SCOPE_STEP_CONDITION = "steps.scope.outputs.full != 'false'";
+export const ALWAYS_RUN_JOBS = new Set([
+  "registers",
+  "pull-request",
+  "ci-scripts",
+  "gates-declared",
+  "secret-scan",
+]);
+export const ALWAYS_RUN_GATES = new Set([
+  "pnpm check:pr-template",
+  "pnpm check:policy",
+  "pnpm check:reviews",
+  "pnpm check:env",
+  "pnpm check:vocabulary",
+  "pnpm check:events",
+  "pnpm check:skips",
+  "pnpm check:overrides",
+  "pnpm test:ci-scripts",
+  "pnpm test:all",
+]);
+const ALWAYS_RUN_ACTION_PREFIXES = ["gitleaks/"];
+const ALLOWED_WORKFLOW_ENV = new Set([
+  "TURBO_TELEMETRY_DISABLED",
+  "DO_NOT_TRACK",
+]);
+const SCOPE_STEP_KEYS = new Set(["id", "uses", "name"]);
+export const PINNED_CHECKOUT_SHA = "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09";
+const PINNED_CHECKOUT = [
+  new RegExp(`^- uses: actions\\/checkout@${PINNED_CHECKOUT_SHA}$`),
+  /^with:$/,
+  /^fetch-depth: 0$/,
+];
+const SAFE_DIRECTORY_STEP = [
+  "- name: Trust the checked-out repository inside the Playwright container",
+  'run: git config --global --add safe.directory "$GITHUB_WORKSPACE"',
+];
+export const PINNED_CONTAINER = [
+  "container:",
+  "image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
+  "options: --ipc=host",
+];
+
+/** Lines [from, to) of a file, comments and blank lines removed, each line trimmed. */
+function meaningful(lines, from, to) {
+  const out = [];
+  for (let i = from; i < to && i < lines.length; i += 1) {
+    const text = lines[i].replace(/\s+#.*$/, "").trim();
+    if (text === "" || text.startsWith("#")) continue;
+    out.push(text);
+  }
+  return out;
+}
+
+/**
+ * Is the workflow's top-level `env` absent, or one plain block of the inert keys?
+ *
+ * @returns {{ok: boolean, reason: string}}
+ */
+export function workflowEnvShape(source) {
+  const lines = source.split("\n");
+  const starts = lines
+    .map((line, i) => (/^env\b/.test(line) ? i : -1))
+    .filter((i) => i >= 0);
+  if (starts.length === 0) return { ok: true, reason: "no workflow env" };
+  if (starts.length > 1) {
+    return {
+      ok: false,
+      reason: "the workflow declares top-level `env` more than once",
+    };
+  }
+  const [start] = starts;
+  if (lines[start].trimEnd() !== "env:") {
+    return {
+      ok: false,
+      reason: `the workflow's \`${lines[start].trim()}\` is not a plain block mapping`,
+    };
+  }
+  for (let i = start + 1; i < lines.length; i += 1) {
+    if (isBlank(lines[i])) continue;
+    if (indentOf(lines[i]) === 0) break;
+    const entry =
+      /^ {2}([A-Za-z_]\w*):\s*("[^"$`]*"|'[^'$`]*'|[^\s#$'"`{}[\]]+)\s*$/.exec(
+        lines[i],
+      );
+    if (!entry || !ALLOWED_WORKFLOW_ENV.has(entry[1])) {
+      return {
+        ok: false,
+        reason:
+          `the workflow env line \`${lines[i].trim()}\` is not one of ` +
+          `${[...ALLOWED_WORKFLOW_ENV].join(", ")} with a constant value`,
+      };
+    }
+  }
+  return { ok: true, reason: "inert workflow env" };
+}
+
+/**
+ * Is this gate step's change-scope condition backed by the canonical scope step?
+ *
+ * @param {object} step the gate step (as collected by parseWorkflowFile)
+ * @param {{jobSteps: object[], lines: string[], envShape: {ok: boolean, reason: string}, actionDigest: string|null}} context
+ * @returns {{proven: boolean, reason: string}}
+ */
+export function proveScopeStep(step, context) {
+  const strip = (value) =>
+    String(value ?? "")
+      .replace(/\s+#.*$/, "")
+      .trim();
+  const jobSteps = [...(context?.jobSteps ?? [])].sort(
+    (a, b) => a.line - b.line,
+  );
+  const lines = context?.lines ?? [];
+  const runsAlwaysRunGate = jobSteps.some(
+    (candidate) =>
+      candidate.observations.gates.some((gate) =>
+        ALWAYS_RUN_GATES.has(gate.name),
+      ) ||
+      candidate.observations.uses.some((uses) =>
+        ALWAYS_RUN_ACTION_PREFIXES.some((prefix) => uses.startsWith(prefix)),
+      ),
+  );
+  if (ALWAYS_RUN_JOBS.has(step.job) || runsAlwaysRunGate) {
+    return {
+      proven: false,
+      reason: `job "${step.job}" runs an always-run gate; it may not be scope-gated`,
+    };
+  }
+  for (const key of ["env", "defaults", "services"]) {
+    if (step.jobKeys?.has(key)) {
+      return {
+        proven: false,
+        reason: `the job sets \`${key}\`, which could redirect the scope action`,
+      };
+    }
+  }
+  let pinnedContainer = false;
+  if (step.jobKeys?.has("container")) {
+    const header = lines.findIndex(
+      (line) => line.replace(/\s+#.*$/, "").trimEnd() === `  ${step.job}:`,
+    );
+    const start = lines.findIndex(
+      (line, i) => i > header && /^ {4}container:/.test(line),
+    );
+    let end = start + 1;
+    while (
+      end < lines.length &&
+      (isBlank(lines[end]) || indentOf(lines[end]) > 4)
+    )
+      end += 1;
+    pinnedContainer =
+      header !== -1 &&
+      start !== -1 &&
+      meaningful(lines, start, end).join("\n") === PINNED_CONTAINER.join("\n");
+    if (!pinnedContainer) {
+      return {
+        proven: false,
+        reason:
+          "the job's `container` is not the pinned Playwright image (it would supply its own " +
+          "`git` and `node`)",
+      };
+    }
+  }
+  if (!context?.envShape?.ok) {
+    return {
+      proven: false,
+      reason: context?.envShape?.reason ?? "the workflow env could not be read",
+    };
+  }
+  if (context?.actionDigest !== SCOPE_ACTION_SHA256) {
+    return {
+      proven: false,
+      reason: `${SCOPE_ACTION_PATH} is missing or differs from the reviewed version (SHA-256 ${context?.actionDigest ?? "none"})`,
+    };
+  }
+  const scopeSteps = jobSteps.filter(
+    (candidate) => strip(candidate.keys.id) === SCOPE_STEP_ID,
+  );
+  if (scopeSteps.length !== 1) {
+    return {
+      proven: false,
+      reason: `the job has ${scopeSteps.length} step(s) with \`id: ${SCOPE_STEP_ID}\`; exactly one is required`,
+    };
+  }
+  const [scope] = scopeSteps;
+  if (!(scope.line < step.line)) {
+    return {
+      proven: false,
+      reason: "the scope step does not come before the gate step",
+    };
+  }
+  const extraKeys = Object.keys(scope.keys).filter(
+    (key) => !SCOPE_STEP_KEYS.has(key),
+  );
+  if (extraKeys.length > 0 || strip(scope.keys.uses) !== SCOPE_ACTION) {
+    return {
+      proven: false,
+      reason:
+        `the scope step must be exactly \`id: ${SCOPE_STEP_ID}\` + \`uses: ${SCOPE_ACTION}\` ` +
+        `(optionally \`name\`)${extraKeys.length > 0 ? `; it also declares ${extraKeys.join(", ")}` : ""}`,
+    };
+  }
+  const before = jobSteps.filter((candidate) => candidate.line < scope.line);
+  const texts = before.map((candidate, index) =>
+    meaningful(
+      lines,
+      candidate.line - 1,
+      (before[index + 1]?.line ?? scope.line) - 1,
+    ),
+  );
+  const checkoutOk =
+    texts.length >= 1 &&
+    texts[0].length === PINNED_CHECKOUT.length &&
+    texts[0].every((text, i) => PINNED_CHECKOUT[i].test(text));
+  const safeDirectoryOk =
+    texts.length === 1 ||
+    (texts.length === 2 &&
+      pinnedContainer &&
+      texts[1].join("\n") === SAFE_DIRECTORY_STEP.join("\n"));
+  if (!checkoutOk || !safeDirectoryOk) {
+    return {
+      proven: false,
+      reason:
+        `the steps before the scope step must be exactly \`actions/checkout@${PINNED_CHECKOUT_SHA}\` with ` +
+        "only `fetch-depth: 0` (plus, in the pinned Playwright container, the exact " +
+        "`safe.directory` step); anything else could rewrite the action or redirect `git` or " +
+        "`node` before it runs",
+    };
+  }
+  return { proven: true, reason: "canonical change-scope step" };
 }
 
 /**
@@ -546,6 +840,12 @@ function parseStepSequence(lines, stepsLine, stepsIndent, origin) {
     // that INTRODUCES it (`env`, `with`) is the one that matters, and that is recorded.
     if (keyIndent === null) keyIndent = indent;
     if (indent > keyIndent) continue;
+    if (Object.hasOwn(current.keys, pair[1])) {
+      throw new WorkflowGatesUnavailableError(
+        `${origin}:${i + 1} repeats the step key \`${pair[1]}\`. A duplicate key makes the ` +
+          "step ambiguous (A9); write it once.",
+      );
+    }
     const scalar = classifyScalar(pair[1], pair[2], origin, i + 1);
     current.keys[pair[1]] = scalar.value;
     if (pair[1] === "run") current.plainRun = scalar.kind === "plain";
@@ -853,7 +1153,17 @@ export function parseWorkflowFile(source, origin) {
       if (indent !== stepsIndent) continue;
       const pair = /^\s*([A-Za-z][\w.-]*):\s*(.*)$/.exec(lines[j]);
       if (!pair) continue;
-      if (!jobKeys.has(pair[1])) jobKeys.set(pair[1], pair[2]);
+      // A9: a repeated job key is refused, not resolved. `jobKeys` kept the first value
+      // while `jobIf` kept the last, so `if: false` above `if: <scope condition>` was read
+      // two different ways. YAML forbids duplicate keys; which one GitHub honours is not
+      // something this scanner should have to guess.
+      if (jobKeys.has(pair[1])) {
+        throw new WorkflowGatesUnavailableError(
+          `${origin}:${j + 1} repeats the job key \`${pair[1]}\` in job "${job}". A duplicate ` +
+            "key makes the job's condition ambiguous; write it once.",
+        );
+      }
+      jobKeys.set(pair[1], pair[2]);
       if (pair[1] === "if") jobIf = pair[2];
       if (pair[1] === "continue-on-error") jobContinue = pair[2];
       if (pair[1] === "name") jobName = pair[2];
@@ -890,7 +1200,7 @@ export function parseWorkflowFile(source, origin) {
  * Order matters: the reasons a step cannot gate a pull request are checked before the
  * reasons it merely might not run.
  */
-function classify(step, triggers) {
+function classify(step, triggers, scopeContext = null) {
   const conditions = [
     ["job", step.jobIf],
     ["step", step.stepIf],
@@ -1050,10 +1360,27 @@ function classify(step, triggers) {
     };
   }
 
+  // A9: the change-scope step condition counts only with its canonical scope step.
+  let scoped = false;
+  if (
+    typeof step.stepIf === "string" &&
+    normaliseCondition(step.stepIf) === SCOPE_STEP_CONDITION
+  ) {
+    const proof = proveScopeStep(step, scopeContext);
+    if (!proof.proven) {
+      return {
+        kind: KINDS.unprovenSchedule,
+        reason: `step condition \`${step.stepIf.trim()}\` is the change-scope condition, but ${proof.reason} (A9)`,
+      };
+    }
+    scoped = true;
+  }
+
   // A6: the default is NOT "unknown means it runs". A condition counts only when every
   // part of it is on the proven list, and the first one that is not is named.
   const unproven = conditions.filter(
-    ([, expression]) => !provenInPullRequestContext(expression),
+    ([level, expression]) =>
+      !(scoped && level === "step") && !provenInPullRequestContext(expression),
   );
   if (unproven.length > 0) {
     const [level, expression] = unproven[0];
@@ -1067,6 +1394,15 @@ function classify(step, triggers) {
         "an escape hatch all read as ordinary conditions. If this one genuinely always " +
         "holds on a pull request, add it to PR_CONTEXT_PROVEN in " +
         "scripts/ci/lib/workflow-gates.mjs with the argument for why",
+    };
+  }
+
+  if (scoped) {
+    return {
+      kind: KINDS.scopeGated,
+      reason:
+        "step runs unless the merge base's classifier proved this pull request policy-only " +
+        "(change-scope step, A9 — ci-cd.md § Applicability)",
     };
   }
 
@@ -1136,6 +1472,14 @@ export async function readWorkflowGates() {
   const occurrences = new Map();
   const triggers = new Map();
   const read = [];
+  let actionDigest = null;
+  try {
+    actionDigest = createHash("sha256")
+      .update(await readText(path.join(repoRoot, SCOPE_ACTION_PATH)))
+      .digest("hex");
+  } catch {
+    actionDigest = null; // absent: no step can be scope-gated (A9)
+  }
 
   const record = (name, entry) => {
     if (!occurrences.has(name)) occurrences.set(name, []);
@@ -1164,6 +1508,8 @@ export async function readWorkflowGates() {
     }
 
     const parsed = parseWorkflowFile(source, relative);
+    const lines = source.split("\n");
+    const envShape = workflowEnvShape(source);
     if (inheritedTriggers === null) {
       triggers.set(relative, {
         names: parsed.triggers,
@@ -1180,7 +1526,14 @@ export async function readWorkflowGates() {
     }
 
     for (const step of parsed.steps) {
-      const { kind, reason } = classify(step, effective);
+      const { kind, reason } = classify(step, effective, {
+        jobSteps: parsed.steps.filter(
+          (candidate) => candidate.job === step.job,
+        ),
+        lines,
+        envShape,
+        actionDigest,
+      });
       const entry = {
         kind,
         reason,

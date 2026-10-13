@@ -14,19 +14,22 @@ See docs/04-engineering/definition-of-done.md and docs/04-engineering/ci-cd.md.
 
 ## Implemented by
 
-**Model:** <!-- e.g. GPT-6 Luna -->
+**Model:** <!-- as the platform reports it, e.g. GPT-6 Luna or Claude Opus 5.5 (claude-opus-5-5) -->
 **Session:** <!-- session id -->
 
 ## Reviewed by
 
-**Model:** <!-- normally GPT-6 Luna; must be a different model or session from Implemented by -->
+**Model:** <!-- as the platform reports it; see agent-workflow.md § Model policy -->
 **Session:** <!-- must differ from Implemented by's session -->
 
-Ordinary review normally uses **GPT-6 Luna**.
+Ordinary review uses a model the [model policy](../docs/04-engineering/agent-workflow.md#model-policy)
+assigns, in a context independent of the author. Never record a report under a model that did
+not produce it.
 
 ## Security review
 
-**Model:** <!-- must be exactly GPT-6 Sol -->
+**Model:** <!-- exactly one label from the security-review model list in
+agent-workflow.md § Model policy, as it stands on the merge base (main) -->
 **Session:** <!-- session id -->
 **Surfaces examined:** <!-- list them, or state explicitly "no security surface touched" -->
 **Note:** <!--
@@ -42,21 +45,20 @@ See ci-cd.md.
 ## Sampled big review (optional)
 
 <!--
-Non-gating random/sample audit. When selected, GPT-6 Luna or GPT-6 Sol prepares the packet
-before Opus 5.5 runs. Include the PR/issue/stage and exact SHA(s); what changed and why;
+Non-gating random/sample audit. When selected, another context prepares the packet before
+the sampled auditor runs. Include the PR/issue/stage and exact SHA(s); what changed and why;
 changed files and highest-risk files; relevant specs, ADRs and rules; risk classification
-and why that tier applies; ordinary Luna verdicts and unresolved findings; the Sol verdict
+and why that tier applies; ordinary review verdicts and unresolved findings; the security verdict
 when the change is security-scope; tests actually run with suite/file/test counts and
 notable negative tests; residuals, waivers, exceptions and ## Not done items; recurring
 defect classes or invariants to challenge; and explicit spot-check questions. See
-CLAUDE.md's "Opus 5.5 — sampled big reviewer" and AGENTS.md's "Sampled big review" for the
-full packet contract. This sample is optional evidence and never satisfies or delays a
-required GPT-6 Sol review.
+agent-workflow.md § Sampled big review for the full packet contract. This sample is
+optional evidence and never satisfies or delays a required security review.
 -->
 
 **Selected:** <!-- yes / no -->
-**Model:** <!-- Opus 5.5, or n/a if not selected -->
-**Packet author:** <!-- GPT-6 Luna or GPT-6 Sol; n/a if not selected -->
+**Model:** <!-- as the platform reports it, or n/a if not selected -->
+**Packet author:** <!-- the context that prepared the packet (never the auditor); n/a if not selected -->
 **Packet:** <!-- link to the structured packet; n/a if not selected -->
 **Verdict:** <!-- clear / findings / n/a if not selected -->
 

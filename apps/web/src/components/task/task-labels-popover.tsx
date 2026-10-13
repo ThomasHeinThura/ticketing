@@ -1,5 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Input, Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
+import {
+  Button,
+  Input,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@taskdesk/ui";
 import { Check, Plus, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -217,7 +223,8 @@ export default function TaskLabelsPopover({
           </span>
         )}
         {filteredLabels.map((label) => (
-          <button
+          <Button
+            variant="ghost"
             key={label.id}
             type="button"
             className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent/50 text-left"
@@ -235,14 +242,15 @@ export default function TaskLabelsPopover({
               }}
             />
             <span className="max-w-20 truncate">{label.name}</span>
-          </button>
+          </Button>
         ))}
 
         {canCreate && isCreatingNewLabel && filteredLabels.length > 0 && (
           <div className="border-t border-border my-1" />
         )}
         {canCreate && isCreatingNewLabel && (
-          <button
+          <Button
+            variant="ghost"
             type="button"
             className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent/50 text-left"
             onClick={handleCreateNewClick}
@@ -261,7 +269,7 @@ export default function TaskLabelsPopover({
             <span className="truncate">
               {t("tasks:popover.labels.create", { name: searchValue })}
             </span>
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -273,18 +281,20 @@ export default function TaskLabelsPopover({
         <span className="text-xs font-medium">
           {t("tasks:popover.labels.chooseColor")}
         </span>
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={() => setStep("select")}
           className="w-4 h-4 flex items-center justify-center hover:bg-accent/50 rounded"
         >
           <X className="h-3 w-3" />
-        </button>
+        </Button>
       </div>
 
       <div className="py-1">
         {labelColors.map((color) => (
-          <button
+          <Button
+            variant="ghost"
             key={color.value}
             type="button"
             className={cn(
@@ -303,7 +313,7 @@ export default function TaskLabelsPopover({
             {selectedColor === color.value && (
               <Check className="w-3 h-3 ml-auto" />
             )}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

@@ -20,7 +20,15 @@
  * `schema.ts` against the last committed snapshot, never touches a real connection.
  */
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,8 +49,32 @@ afterEach(async () => {
 });
 
 /**
+ * The schema files the real `apps/api/drizzle.config.ts` hands to drizzle-kit, read from that
+ * file so this test can never drift from it (it once listed only `schema.ts` and broke when
+ * the config gained `migration-schema.ts` and `shadow-schema.ts`). Throws rather than falling
+ * back, so a config shape this parser does not understand fails loudly.
+ */
+async function realConfigSchemaFiles(): Promise<string[]> {
+  const source = await readFile(resolve(apiDir, "drizzle.config.ts"), "utf8");
+  const match = source.match(/schema:\s*(\[[^\]]*\]|"[^"]*")/);
+  if (!match?.[1]) {
+    throw new Error(
+      "apps/api/drizzle.config.ts: could not find its `schema:` entry",
+    );
+  }
+  const entries = [...match[1].matchAll(/"([^"]+)"/g)].map(
+    (m) => m[1] as string,
+  );
+  if (entries.length === 0) {
+    throw new Error("apps/api/drizzle.config.ts: `schema:` lists no files");
+  }
+  return entries.map((entry) => resolve(apiDir, entry));
+}
+
+/**
  * A throwaway copy of `apps/api/drizzle/` (migrations + `meta/` snapshots) plus a config
- * that points `schema` at the REAL, unmodified `schema.ts` and `out` at the copy. `generate`
+ * that points `schema` at the same REAL, unmodified schema files as `drizzle.config.ts` and `out` at the
+ * copy. `generate`
  * only ever writes into `out`, so the real migration history is never touched.
  */
 async function scratchDrizzleConfig(): Promise<string> {
@@ -55,13 +87,14 @@ async function scratchDrizzleConfig(): Promise<string> {
   // "/tmp/x" to ".//tmp/x" and then failing to find its own journal) — resolved against the
   // spawned process's cwd, which is set to `scratchDir` below. `schema` is absolute, which
   // resolves correctly regardless of cwd.
+  const schemaFiles = await realConfigSchemaFiles();
   const configPath = join(scratchDir, "drizzle.config.mjs");
   await writeFile(
     configPath,
     `import { defineConfig } from "drizzle-kit";
 export default defineConfig({
   out: "./drizzle",
-  schema: ${JSON.stringify(resolve(apiDir, "src/database/schema.ts"))},
+  schema: ${JSON.stringify(schemaFiles)},
   dialect: "postgresql",
   dbCredentials: { url: "postgresql://user:pass@localhost:5432/unused" },
 });

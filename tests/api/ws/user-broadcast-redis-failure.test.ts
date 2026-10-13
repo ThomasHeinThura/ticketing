@@ -6,8 +6,14 @@ vi.mock("../../../apps/api/src/events", () => ({
 }));
 
 const { logTaskDesk } = vi.hoisted(() => ({ logTaskDesk: vi.fn() }));
-const { handleNativeAuthorizationInvalidation } = vi.hoisted(() => ({
-  handleNativeAuthorizationInvalidation: vi.fn(),
+const { handleNativeAuthorizationInvalidation, reloadAuthConfiguration } =
+  vi.hoisted(() => ({
+    handleNativeAuthorizationInvalidation: vi.fn(),
+    reloadAuthConfiguration: vi.fn().mockResolvedValue(true),
+  }));
+vi.mock("../../../apps/api/src/auth", () => ({
+  reloadAuthConfiguration: (...args: unknown[]) =>
+    reloadAuthConfiguration(...args),
 }));
 vi.mock("../../../apps/api/src/instance/observability/runtime", () => ({
   logTaskDesk: (...args: unknown[]) => logTaskDesk(...args),
@@ -60,6 +66,7 @@ import {
   broadcastNativeWorkItemHint,
   broadcastToUser,
   initializeWebSocketAdapter,
+  publishAuthReload,
   removeUserConnection,
   shutdownWebSocketAdapter,
 } from "../../../apps/api/src/ws/index";
@@ -95,6 +102,7 @@ describe("broadcastToUser with the redis adapter", () => {
     logTaskDesk.mockClear();
     consoleError.mockClear();
     handleNativeAuthorizationInvalidation.mockReset();
+    reloadAuthConfiguration.mockReset().mockResolvedValue(true);
     listeners.length = 0;
     messageListeners.length = 0;
     await initializeWebSocketAdapter();
@@ -106,11 +114,11 @@ describe("broadcastToUser with the redis adapter", () => {
 
   it("delivers to local sockets without waiting on redis", async () => {
     const ws = makeFakeWs();
-    const conn = addUserConnection("user-1", ws);
+    const conn = addUserConnection("user-1", ws, async () => true);
 
     broadcastToUser("user-1", { type: "NOTIFICATION_CREATED" });
 
-    expect(sendMock(ws)).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(sendMock(ws)).toHaveBeenCalledTimes(1));
     const [firstSend] = sendMock(ws).mock.calls;
     if (firstSend === undefined) {
       throw new Error("expected send() to have been called at least once");
@@ -125,7 +133,7 @@ describe("broadcastToUser with the redis adapter", () => {
     publish.mockRejectedValue(sensitiveFailure);
 
     const ws = makeFakeWs();
-    const conn = addUserConnection("user-1", ws);
+    const conn = addUserConnection("user-1", ws, async () => true);
 
     broadcastToUser("user-1", { type: "NOTIFICATION_CREATED" });
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -180,6 +188,21 @@ describe("broadcastToUser with the redis adapter", () => {
     expect(consoleError).not.toHaveBeenCalled();
   });
 
+  it("publishes and consumes auth.reload control messages", async () => {
+    await publishAuthReload();
+    expect(publish).toHaveBeenCalledWith(
+      "taskdesk:control",
+      JSON.stringify({ type: "auth.reload" }),
+    );
+
+    for (const listener of [...messageListeners]) {
+      listener("taskdesk:control", JSON.stringify({ type: "auth.reload" }));
+    }
+    await vi.waitFor(() =>
+      expect(reloadAuthConfiguration).toHaveBeenCalledTimes(1),
+    );
+  });
+
   it("contains rejected async authorization invalidation handlers", async () => {
     handleNativeAuthorizationInvalidation.mockRejectedValue(
       new Error("session-cookie=do-not-log"),
@@ -203,7 +226,7 @@ describe("broadcastToUser with the redis adapter", () => {
 
   it("ignores its own echo so the socket is written once", async () => {
     const ws = makeFakeWs();
-    const conn = addUserConnection("user-1", ws);
+    const conn = addUserConnection("user-1", ws, async () => true);
 
     broadcastToUser("user-1", { type: "NOTIFICATION_CREATED" });
     expect(publish).toHaveBeenCalledTimes(1);
@@ -217,6 +240,9 @@ describe("broadcastToUser with the redis adapter", () => {
 
     emitUserBroadcast(published);
 
+    // Wait for the local event's authority check and any erroneously queued echo.
+    await conn.authorization.check();
+
     expect(sendMock(ws)).toHaveBeenCalledTimes(1);
 
     removeUserConnection("user-1", conn);
@@ -224,7 +250,7 @@ describe("broadcastToUser with the redis adapter", () => {
 
   it("delivers a broadcast published by another instance", async () => {
     const ws = makeFakeWs();
-    const conn = addUserConnection("user-1", ws);
+    const conn = addUserConnection("user-1", ws, async () => true);
 
     emitUserBroadcast({
       userId: "user-1",
@@ -232,14 +258,14 @@ describe("broadcastToUser with the redis adapter", () => {
       origin: "some-other-instance",
     });
 
-    expect(sendMock(ws)).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(sendMock(ws)).toHaveBeenCalledTimes(1));
 
     removeUserConnection("user-1", conn);
   });
 
   it("drops a message whose payload disagrees with its channel", async () => {
     const ws = makeFakeWs();
-    const conn = addUserConnection("user-1", ws);
+    const conn = addUserConnection("user-1", ws, async () => true);
 
     emitUserBroadcast(
       {

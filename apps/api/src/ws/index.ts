@@ -12,6 +12,7 @@ import type {
   UserBroadcast,
   UserBroadcastMessage,
 } from "./broadcast-adapter";
+import { createLegacyConnectionAuthorization } from "./legacy-connection-authorization";
 import { logRealtimeFailure } from "./log-realtime-failure";
 import {
   deliverNativeBroadcast,
@@ -34,10 +35,12 @@ type ProjectConnection = {
   ws: WSContext;
   userId: string;
   initiatorId: string;
+  authorization: ReturnType<typeof createLegacyConnectionAuthorization>;
 };
 
 type UserConnection = {
   ws: WSContext;
+  authorization: ReturnType<typeof createLegacyConnectionAuthorization>;
 };
 
 /**
@@ -46,16 +49,26 @@ type UserConnection = {
  */
 const userConnections = new Map<string, Set<UserConnection>>();
 
-export function addUserConnection(userId: string, ws: WSContext) {
+export function addUserConnection(
+  userId: string,
+  ws: WSContext,
+  authorize: () => Promise<boolean> = async () => false,
+) {
   if (!userConnections.has(userId)) {
     userConnections.set(userId, new Set());
   }
-  const conn: UserConnection = { ws };
+  const conn: UserConnection = {
+    ws,
+    authorization: createLegacyConnectionAuthorization(ws, authorize, () =>
+      removeUserConnection(userId, conn),
+    ),
+  };
   userConnections.get(userId)?.add(conn);
   return conn;
 }
 
 export function removeUserConnection(userId: string, conn: UserConnection) {
+  conn.authorization.dispose();
   const connections = userConnections.get(userId);
   if (connections) {
     connections.delete(conn);
@@ -86,11 +99,7 @@ function deliverToLocalUserConnections(
 
   const payload = JSON.stringify(message);
   for (const conn of connections) {
-    try {
-      conn.ws.send(payload);
-    } catch {
-      connections.delete(conn);
-    }
+    void conn.authorization.check(payload);
   }
   if (connections.size === 0) {
     userConnections.delete(userId);
@@ -149,9 +158,16 @@ export async function initializeWebSocketAdapter(
     });
     await nextAdapter.subscribeToNative((msg) => deliverNativeBroadcast(msg));
     await nextAdapter.subscribeToControl((message) => {
+      if (message.type === "auth.reload") {
+        void import("../auth")
+          .then(({ reloadAuthConfiguration }) => reloadAuthConfiguration())
+          .catch(() => logRealtimeFailure());
+        return;
+      }
       void handleNativeAuthorizationInvalidation(message).catch(() =>
         logRealtimeFailure(),
       );
+      void reauthorizeLegacyConnections(message);
     });
   } catch {
     logRealtimeFailure();
@@ -175,13 +191,28 @@ export async function invalidateNativeAuthorization(
     ...target,
   };
   if (!adapter) {
-    await handleNativeAuthorizationInvalidation(message);
+    await Promise.all([
+      handleNativeAuthorizationInvalidation(message),
+      reauthorizeLegacyConnections(message),
+    ]);
     return;
   }
   try {
     await adapter.publishControl(message);
   } catch {
     // The 60-second native authorization refresh is the recovery floor.
+    logRealtimeFailure();
+  }
+}
+
+/** Publish a stored-auth configuration change after its transaction commits. */
+export async function publishAuthReload(): Promise<void> {
+  const message = { type: "auth.reload" } as const;
+  if (!adapter) return;
+  try {
+    await adapter.publishControl(message);
+  } catch {
+    // The documented 10-second DB poll remains the recovery path.
     logRealtimeFailure();
   }
 }
@@ -247,11 +278,7 @@ function deliverToLocalConnections(
   const payload = JSON.stringify(message);
   for (const conn of connections) {
     if (excludeInitiatorId && conn.initiatorId === excludeInitiatorId) continue;
-    try {
-      conn.ws.send(payload);
-    } catch {
-      connections.delete(conn);
-    }
+    void conn.authorization.check(payload);
   }
   if (connections.size === 0) {
     projectConnections.delete(projectId);
@@ -263,16 +290,25 @@ export function addConnection(
   ws: WSContext,
   userId: string,
   initiatorId: string,
+  authorize: () => Promise<boolean> = async () => false,
 ) {
   if (!projectConnections.has(projectId)) {
     projectConnections.set(projectId, new Set());
   }
-  const conn: ProjectConnection = { ws, userId, initiatorId };
+  const conn: ProjectConnection = {
+    ws,
+    userId,
+    initiatorId,
+    authorization: createLegacyConnectionAuthorization(ws, authorize, () =>
+      removeConnection(projectId, conn),
+    ),
+  };
   projectConnections.get(projectId)?.add(conn);
   return conn;
 }
 
 export function removeConnection(projectId: string, conn: ProjectConnection) {
+  conn.authorization.dispose();
   const connections = projectConnections.get(projectId);
   if (connections) {
     connections.delete(conn);
@@ -280,6 +316,24 @@ export function removeConnection(projectId: string, conn: ProjectConnection) {
       projectConnections.delete(projectId);
     }
   }
+}
+
+async function reauthorizeLegacyConnections(
+  target: NativeAuthorizationInvalidation,
+) {
+  const checks: Array<Promise<void>> = [];
+  for (const [userId, connections] of userConnections) {
+    if (target.userId && target.userId !== userId) continue;
+    for (const conn of connections) checks.push(conn.authorization.check());
+  }
+  for (const [projectId, connections] of projectConnections) {
+    if (target.projectId && target.projectId !== projectId) continue;
+    for (const conn of connections) {
+      if (target.userId && target.userId !== conn.userId) continue;
+      checks.push(conn.authorization.check());
+    }
+  }
+  await Promise.all(checks);
 }
 
 export function broadcastToProject(

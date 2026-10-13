@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { can, defaultRolePayloads } from "@taskdesk/permissions";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import type { createApp } from "../../apps/api/src/index";
@@ -608,5 +608,48 @@ describe("native project read reach", () => {
         routeKey,
       ).toBe(true);
     }
+
+    const foreignWorkspace = await createWorkspaceMember({ role: "owner" });
+    const { project: foreignProject } = await createProjectFixture({
+      workspaceId: foreignWorkspace.workspace.id,
+    });
+    const missingProjectId = randomUUID();
+    const [auditBefore] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.auditLogTable);
+    const [outboxBefore] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.outboxTable);
+    fresh.mockUser(owner.user);
+    for (const route of PROJECT_READ_ROUTES) {
+      const foreign = await app.request(route(foreignProject.id));
+      const missing = await app.request(route(missingProjectId));
+      const malformed = await app.request(
+        route(encodeURIComponent("malformed\u0000project")),
+      );
+
+      expect(foreign.status, route(foreignProject.id)).toBe(404);
+      expect(missing.status, route(missingProjectId)).toBe(404);
+      expect(malformed.status, route("NUL project ID")).toBe(400);
+      expect(await foreign.text(), route(foreignProject.id)).toBe(
+        "Project not found",
+      );
+      expect(await missing.text(), route(missingProjectId)).toBe(
+        "Project not found",
+      );
+    }
+    const [auditAfter] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.auditLogTable);
+    const [outboxAfter] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.outboxTable);
+    expect([
+      Number(auditAfter?.count ?? 0),
+      Number(outboxAfter?.count ?? 0),
+    ]).toEqual([
+      Number(auditBefore?.count ?? 0),
+      Number(outboxBefore?.count ?? 0),
+    ]);
   });
 });

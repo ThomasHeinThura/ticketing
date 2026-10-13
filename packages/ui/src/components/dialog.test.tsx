@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { expectNoA11yViolations } from "../test/a11y";
 import {
   Dialog,
@@ -71,6 +71,69 @@ describe("Dialog", () => {
     fireEvent.keyDown(screen.getByText("Settings"), { key: "Escape" });
     expect(screen.queryByText("Settings")).not.toBeInTheDocument();
     await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it("uses the caller-selected final-focus target when the dialog closes", async () => {
+    let currentTarget: HTMLButtonElement | null = null;
+    const resolveFinalFocus = vi.fn(() => currentTarget ?? false);
+
+    render(
+      <>
+        <button type="button">Original project trigger</button>
+        <button
+          type="button"
+          ref={(node) => {
+            currentTarget = node;
+          }}
+        >
+          Current project trigger
+        </button>
+        <button type="button">Updated project trigger</button>
+        <Dialog defaultOpen>
+          <DialogPopup closeLabel="Close" finalFocus={resolveFinalFocus}>
+            <DialogTitle>Create work item</DialogTitle>
+          </DialogPopup>
+        </Dialog>
+      </>,
+    );
+
+    const currentTrigger = screen.getByRole("button", {
+      name: "Current project trigger",
+      hidden: true,
+    });
+    currentTarget = screen.getByRole("button", {
+      name: "Updated project trigger",
+      hidden: true,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    await waitFor(() => {
+      expect(resolveFinalFocus).toHaveBeenCalled();
+      expect(document.activeElement).toBe(currentTarget);
+    });
+    expect(currentTrigger).not.toBe(document.activeElement);
+  });
+
+  it("does not fall back to a stale default trigger when finalFocus rejects it", async () => {
+    const resolveFinalFocus = vi.fn(() => false);
+
+    render(
+      <Dialog>
+        <DialogTrigger>Stale project trigger</DialogTrigger>
+        <DialogPopup closeLabel="Close" finalFocus={resolveFinalFocus}>
+          <DialogTitle>Create work item</DialogTitle>
+        </DialogPopup>
+      </Dialog>,
+    );
+
+    const staleTrigger = screen.getByRole("button", {
+      name: "Stale project trigger",
+    });
+    fireEvent.click(staleTrigger);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    await waitFor(() => expect(resolveFinalFocus).toHaveBeenCalled());
+    expect(document.activeElement).not.toBe(staleTrigger);
   });
 
   it("does not render a close button when showCloseButton is false", () => {

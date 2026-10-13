@@ -2,14 +2,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Input } from "@taskdesk/ui";
 import { Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import BoardToolbar from "@/components/board/board-toolbar";
 import ProjectLayout from "@/components/common/project-layout";
 import KanbanBoard from "@/components/kanban-board";
-import ListView from "@/components/list-view";
 import PageTitle from "@/components/page-title";
-import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import TaskDetailsSheet from "@/components/task/task-details-sheet";
 import { shortcuts } from "@/constants/shortcuts";
 import { hasPendingTaskUpdate } from "@/hooks/mutations/task/use-update-task";
@@ -22,6 +27,8 @@ import { useTaskFiltersWithLabelsSupport } from "@/hooks/use-task-filters-with-l
 import { sortTasks } from "@/lib/sort-tasks";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
+
+const ListView = lazy(() => import("@/components/list-view"));
 
 type BoardSearchParams = {
   taskId?: string;
@@ -88,7 +95,6 @@ function RouteComponent() {
   const queryClient = useQueryClient();
   const { project, setProject } = useProjectStore();
   const { viewMode, setViewMode } = useUserPreferencesStore();
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [boardSearchQuery, setBoardSearchQuery] = useState("");
   const [isBoardSearchMounted, setIsBoardSearchMounted] = useState(false);
   const [isBoardSearchVisible, setIsBoardSearchVisible] = useState(false);
@@ -267,21 +273,17 @@ function RouteComponent() {
                 disableDragDrop={sort.field !== "position"}
               />
             ) : (
-              <ListView
-                project={sortedProject}
-                disableDragDrop={sort.field !== "position"}
-              />
+              <Suspense fallback={<BoardSkeleton />}>
+                <ListView
+                  project={sortedProject}
+                  disableDragDrop={sort.field !== "position"}
+                />
+              </Suspense>
             )
           ) : (
             <BoardSkeleton />
           )}
         </div>
-
-        <CreateTaskModal
-          open={isTaskModalOpen}
-          projectId={projectId}
-          onClose={() => setIsTaskModalOpen(false)}
-        />
 
         <TaskDetailsSheet
           taskId={taskId}

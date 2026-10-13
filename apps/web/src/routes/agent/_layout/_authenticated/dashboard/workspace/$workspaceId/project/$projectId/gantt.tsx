@@ -427,7 +427,8 @@ function RouteComponent() {
                       >
                         {showTaskRail ? (
                           <div className="sticky left-0 z-[11] h-full border-r border-border bg-background">
-                            <button
+                            <Button
+                              variant="ghost"
                               type="button"
                               className="flex min-h-[44px] w-full min-w-0 flex-col items-start justify-center gap-0.5 px-2 py-2 text-left transition-colors hover:bg-muted sm:min-h-0 sm:px-3 sm:py-1.5"
                               onClick={() =>
@@ -456,7 +457,7 @@ function RouteComponent() {
                                   ? ` • ${task.assigneeName}`
                                   : ""}
                               </p>
-                            </button>
+                            </Button>
                           </div>
                         ) : null}
 

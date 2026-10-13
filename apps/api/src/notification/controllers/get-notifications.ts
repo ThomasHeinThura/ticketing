@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
 import db from "../../database";
 import {
   notificationTable,
@@ -7,8 +7,13 @@ import {
   workspaceTable,
 } from "../../database/schema";
 import { isCurrentInstanceAdmin } from "../../instance/observability/audit-failure-notifier";
+import { approvalNotificationReadable } from "../approval-reach";
+import { reachableTaskNotificationPredicate } from "../task-reach";
 
-async function getNotifications(userId: string) {
+async function getNotifications(
+  userId: string,
+  credentialCanReadTask: boolean,
+) {
   const canReadInstanceAlerts = await isCurrentInstanceAdmin(userId);
   const visibleToUser = canReadInstanceAlerts
     ? eq(notificationTable.userId, userId)
@@ -32,7 +37,17 @@ async function getNotifications(userId: string) {
     )
     .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
     .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
-    .where(visibleToUser)
+    .where(
+      and(
+        visibleToUser,
+        approvalNotificationReadable(userId),
+        or(
+          isNull(notificationTable.resourceType),
+          ne(notificationTable.resourceType, "task"),
+          reachableTaskNotificationPredicate(userId, credentialCanReadTask),
+        ),
+      ),
+    )
     .orderBy(desc(notificationTable.createdAt))
     .limit(50);
 

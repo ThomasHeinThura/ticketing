@@ -170,8 +170,10 @@ the application port unpublished so nothing else can reach the container.
 That last clause is the load-bearing one. Compose *concatenates* `ports:` across
 files, so the base `compose.yml` publishes nothing and only
 `deploy/compose.local.yml` publishes 5173. `scripts/deploy.sh production`
-asserts it: `docker compose port taskdesk 5173` must fail, and the deploy stops
-if it succeeds. If the port were published, a client could reach the container
+asserts it from the Docker engine's record of every `taskdesk` container
+(`docker inspect`: no host or container-shared networking, no `PublishAllPorts`, no port binding, no live
+host port mapping; no container at all also stops the deploy). It does not rely on
+`docker compose port`, whose exit code is 0 for an exposed but unpublished port. If the port were published, a client could reach the container
 directly and set `X-Forwarded-For` to anything at all, and `1` would be a hole
 rather than a setting.
 

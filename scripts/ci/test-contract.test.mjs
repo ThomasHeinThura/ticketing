@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 import {
   hasStableV2Tag,
@@ -14,10 +18,63 @@ import {
   partitionApprovedRedoclyFindings,
   readBaseApprovedBreaks,
   readBaseApprovedRedoclyFindings,
+  readGitFile,
   redoclyApprovedFindingIdentity,
   stableV2ReleaseExists,
   unapprovedProblems,
 } from "./test-contract.mjs";
+
+test("readGitFile streams a byte-faithful Git object larger than 1 MiB", async () => {
+  const cwd = await fs.mkdtemp(
+    path.join(os.tmpdir(), "taskdesk-git-contract-"),
+  );
+  try {
+    const expected = Buffer.from(
+      JSON.stringify({
+        openapi: "3.1.0",
+        padding: "π".repeat(600_000),
+      }),
+    );
+    const blob = path.join(cwd, "contract.json");
+    await fs.writeFile(blob, expected);
+    for (const args of [
+      ["init", "-q"],
+      ["config", "user.email", "test@example.invalid"],
+      ["config", "user.name", "Contract test"],
+      ["add", "contract.json"],
+      ["commit", "-qm", "large contract fixture"],
+    ]) {
+      const setup = spawnSync("git", args, { cwd, encoding: "utf8" });
+      assert.equal(setup.status, 0, setup.stderr);
+    }
+
+    const result = await readGitFile("HEAD", "contract.json", cwd);
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(Buffer.from(result.stdout, "utf8"), expected);
+    assert.ok(expected.length > 1_048_576);
+  } finally {
+    await fs.rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("readGitFile preserves Git failures so missing paths and refs fail closed", async () => {
+  const missingPath = await readGitFile(
+    "HEAD",
+    "scripts/ci/definitely-missing.json",
+  );
+  assert.notEqual(missingPath.status, 0);
+  assert.match(missingPath.stderr, /does not exist|exists on disk, but not/i);
+
+  const missingRef = await readGitFile(
+    "definitely-missing-ref",
+    "contract.json",
+  );
+  assert.notEqual(missingRef.status, 0);
+  assert.match(
+    missingRef.stderr,
+    /unknown revision|invalid object name|ambiguous argument/i,
+  );
+});
 
 const problem = (severity, ruleId, pointer) => ({
   severity,

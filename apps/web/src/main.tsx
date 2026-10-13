@@ -1,5 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { Button } from "@taskdesk/ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
@@ -101,13 +102,14 @@ function RootCrashFallback({
         <p className="mt-2 text-sm text-muted-foreground">
           {t("common:error.description")}
         </p>
-        <button
+        <Button
+          variant="default"
           type="button"
           onClick={resetError}
           className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           {t("common:error.refreshPage")}
-        </button>
+        </Button>
       </div>
     </div>
   );

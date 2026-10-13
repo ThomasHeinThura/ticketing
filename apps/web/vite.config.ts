@@ -29,6 +29,20 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve its agent route chunk or index.html.",
           );
 
+        const workItemsPanelChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith("/components/work-item/work-items-panel.tsx"),
+            ),
+        );
+        if (workItemsPanelChunk?.type !== "chunk")
+          throw new Error(
+            "G11 work-route preload could not resolve the work-items panel chunk.",
+          );
+
         const files = new Set<string>();
         const addChunkAndImports = (fileName: string) => {
           if (files.has(fileName)) return;
@@ -38,6 +52,11 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             for (const imported of chunk.imports) addChunkAndImports(imported);
         };
         addChunkAndImports(routeChunk.fileName);
+        // The panel supplies the route's first content and heading readiness
+        // boundary, but is dynamically imported by beforeLoad only after the
+        // route code executes. Fetch its static closure alongside the route so
+        // this user-visible chunk does not begin at the end of the LCP window.
+        addChunkAndImports(workItemsPanelChunk.fileName);
 
         const localeAssets = Object.values(bundle).flatMap((item) => {
           if (item.type !== "chunk") return [];

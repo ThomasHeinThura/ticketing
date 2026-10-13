@@ -185,7 +185,10 @@ describe("GPT-F1 — security-review scope is the union of merge base and HEAD",
         `names a non-canonical security reviewer.\n${run.output}`,
     );
     assert.match(run.output, /## Security review/);
-    assert.match(run.output, /\*\*Model:\*\* must be exactly GPT-6 Sol/);
+    assert.match(
+      run.output,
+      /\*\*Model:\*\* must be exactly one of "GPT-6 Sol"/,
+    );
     assert.doesNotMatch(
       run.output,
       /no security-review path touched/,

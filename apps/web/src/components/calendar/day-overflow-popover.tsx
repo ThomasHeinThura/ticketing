@@ -1,4 +1,4 @@
-import { Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
+import { Button, Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
 import { type JSX, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatDate, formatDateShort } from "@/lib/format";
@@ -49,7 +49,8 @@ export default function DayOverflowPopover({
           </p>
           <div className="max-h-64 space-y-0.5 overflow-y-auto">
             {tasks.map((task) => (
-              <button
+              <Button
+                variant="ghost"
                 key={task.id}
                 type="button"
                 onClick={() => handleSelectTask(task.id)}
@@ -67,7 +68,7 @@ export default function DayOverflowPopover({
                   {formatDateShort(task.scheduleStart)} –{" "}
                   {formatDateShort(task.scheduleEnd)}
                 </span>
-              </button>
+              </Button>
             ))}
           </div>
         </div>

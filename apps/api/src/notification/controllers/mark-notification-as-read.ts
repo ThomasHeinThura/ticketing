@@ -1,8 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, ne, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { notificationTable } from "../../database/schema";
 import { isCurrentInstanceAdmin } from "../../instance/observability/audit-failure-notifier";
+import { approvalNotificationReadable } from "../approval-reach";
+import { reachableTaskNotificationPredicate } from "../task-reach";
 
 async function markNotificationAsRead(id: string, userId: string) {
   const [existing] = await db
@@ -22,7 +24,16 @@ async function markNotificationAsRead(id: string, userId: string) {
     .update(notificationTable)
     .set({ isRead: true })
     .where(
-      and(eq(notificationTable.id, id), eq(notificationTable.userId, userId)),
+      and(
+        eq(notificationTable.id, id),
+        eq(notificationTable.userId, userId),
+        approvalNotificationReadable(userId),
+        or(
+          isNull(notificationTable.resourceType),
+          ne(notificationTable.resourceType, "task"),
+          reachableTaskNotificationPredicate(userId),
+        ),
+      ),
     )
     .returning();
 

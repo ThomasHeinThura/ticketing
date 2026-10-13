@@ -7,6 +7,7 @@ import {
 import {
   type AuditFailureOperation,
   createTaskDeskMetrics,
+  type RegisteredHttpRoute,
   registeredRouteKey,
   UNMATCHED_ROUTE,
 } from "../../observability/metrics.js";
@@ -19,18 +20,29 @@ import { policyRegistry } from "../../policy-registry";
 import { createObservabilityConfigRefresher } from "./config-refresh-version";
 import { parseLogLevels } from "./settings";
 
-const routeKeys = policyRegistry.entries.flatMap(({ routeKey }) => {
-  const match = /^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) (\/[^?#]*)$/u.exec(
-    routeKey,
-  );
-  if (!match) return [];
-  const method = match[1];
-  const pathname = match[2];
-  return method && pathname ? [registeredRouteKey(method, pathname)] : [];
-});
+const routeSourceEntries = policyRegistry.entries.flatMap(
+  ({ routeKey, source }): Array<readonly [RegisteredHttpRoute, string]> => {
+    const match = /^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) (\/[^?#]*)$/u.exec(
+      routeKey,
+    );
+    if (!match) return [];
+    const method = match[1];
+    const pathname = match[2];
+    return method && pathname
+      ? [[registeredRouteKey(method, pathname), source]]
+      : [];
+  },
+);
+const routeKeys = routeSourceEntries.map(([route]) => route);
 const trustedRoutes = new Set(routeKeys);
+const trustedPolicySourceByRoute = new Map(routeSourceEntries);
 const metrics = createTaskDeskMetrics(routeKeys);
-const logger = createTaskDeskLogger(defaultLogLevels(), trustedRoutes);
+const logger = createTaskDeskLogger(
+  defaultLogLevels(),
+  trustedRoutes,
+  process.stdout,
+  trustedPolicySourceByRoute,
+);
 let listener: ReturnType<typeof createMetricsListener> | undefined;
 let refreshTimer: ReturnType<typeof setInterval> | undefined;
 let refreshController:
@@ -50,6 +62,8 @@ export function observeRequest(input: {
   route?: string;
   status: number;
   durationMs: number;
+  requestId: string;
+  strictPolicyWitness?: TaskDeskLogEvent["strictPolicyWitness"];
 }): void {
   metrics.recordHttpRequest({
     method: input.method,
@@ -70,12 +84,23 @@ export function observeRequest(input: {
     statusClass:
       `${Math.floor(input.status / 100)}xx` as TaskDeskLogEvent["statusClass"],
     durationMs: input.durationMs,
-    route,
+    route: input.strictPolicyWitness?.route ?? route,
+    traceId: input.requestId,
+    ...(input.strictPolicyWitness
+      ? { strictPolicyWitness: input.strictPolicyWitness }
+      : {}),
   });
 }
 
 export function beginObservedRequest(): () => void {
   return metrics.beginHttpRequest();
+}
+
+export function recordAuthReload(
+  outcome: "ok" | "failed",
+  configVersion: number,
+): void {
+  metrics.recordAuthReload(outcome, configVersion);
 }
 
 export function recordAuditWriteFailure(

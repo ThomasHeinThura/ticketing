@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { selectTaskDetailsSummary } from "@/components/task/task-details-content";
+import { selectTaskDescription } from "./select-task-description";
 import useGetTask from "./use-get-task";
 
 const mocks = vi.hoisted(() => ({ getTask: vi.fn() }));
@@ -78,6 +79,46 @@ describe("useGetTask cancellation", () => {
     });
 
     expect(result.current.data).toBe(summary);
+    queryClient.clear();
+  });
+
+  it("keeps a description-only observer stable when task properties change", () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    queryClient.setQueryData(["task", "task-1"], {
+      id: "task-1",
+      title: "Stable title",
+      description: "Stable description",
+      status: "todo",
+      userId: null,
+    });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    let renders = 0;
+    const { result } = renderHook(
+      () => {
+        renders += 1;
+        return useGetTask("task-1", selectTaskDescription, false).data;
+      },
+      { wrapper },
+    );
+    const description = result.current;
+    const renderCount = renders;
+
+    act(() => {
+      queryClient.setQueryData(["task", "task-1"], {
+        id: "task-1",
+        title: "Stable title",
+        description: "Stable description",
+        status: "in-progress",
+        userId: "assignee-2",
+      });
+    });
+
+    expect(result.current).toBe(description);
+    expect(renders).toBe(renderCount);
     queryClient.clear();
   });
 });

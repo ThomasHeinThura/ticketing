@@ -160,29 +160,30 @@ export function SignUpForm({
                 <FormLabel className="text-sm font-medium">
                   {t("auth:forms.password")}
                 </FormLabel>
-                <FormControl>
-                  <div className="relative">
+                <div className="relative">
+                  <FormControl>
                     <Input
                       placeholder={t("auth:forms.passwordPlaceholder")}
                       type={showPassword ? "text" : "password"}
                       autoComplete="new-password"
                       {...field}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      aria-label={
-                        showPassword
-                          ? t("auth:forms.hidePassword")
-                          : t("auth:forms.showPassword")
-                      }
-                      aria-pressed={showPassword}
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </FormControl>
+                  </FormControl>
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={
+                      showPassword
+                        ? t("auth:forms.hidePassword")
+                        : t("auth:forms.showPassword")
+                    }
+                    aria-pressed={showPassword}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </Button>
+                </div>
                 <FormMessage>{fieldState.error?.message}</FormMessage>
               </FormItem>
             )}

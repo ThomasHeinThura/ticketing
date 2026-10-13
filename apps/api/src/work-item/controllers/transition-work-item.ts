@@ -2,6 +2,7 @@ import {
   asStateTemplateId,
   type BlockReason,
   filterOfferableForType,
+  isGateSatisfied,
   legalTransitions,
   offerTransition,
   resolveAutomaticEffects,
@@ -11,8 +12,11 @@ import {
 } from "@taskdesk/domain";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { lockApprovalsForWorkItemTransition } from "../../approval/repository";
+import { closePendingApprovalsOnTransition } from "../../approval/service";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
+import { slaPauseTable } from "../../database/migration-schema";
 import {
   commentTable,
   scheduledTransitionTable,
@@ -21,6 +25,8 @@ import {
   workItemTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { dbClockUtc } from "../../utils/db-time";
+import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import {
   assertProjectStillLive,
@@ -53,8 +59,14 @@ export type TransitionedWorkItem = {
  * fails `AS-5`'s roster/active eligibility check blocks the whole transition the same way
  * an unsatisfied guard does, rather than silently writing an ineligible assignee.
  */
+export type PendingApprovalBlockDetail = {
+  approverName: string | null;
+  requestedAt: string;
+  expiresAt: string;
+};
+
 export type TransitionBlockReason =
-  | BlockReason
+  | (BlockReason & { pendingApprovals?: PendingApprovalBlockDetail[] })
   | {
       kind: "assignee";
       reasonCode: `assignee.${"not_on_roster" | "not_active"}`;
@@ -72,11 +84,14 @@ export class NoMatchingTransitionError extends Error {
 }
 
 /** Thrown for the 422 "the edge exists but is not available right now" case: a guard,
- * the (always-unsatisfied, interim) approval/CAB gate, a missing required note, or an
- * ineligible `set_assignee` target (B2). */
+ * an unsatisfied approval/CAB gate, a missing required note, or an ineligible
+ * `set_assignee` target (B2). */
 export class TransitionBlockedError extends Error {
-  constructor(public readonly blockedBy: TransitionBlockReason[]) {
-    super("This transition is not currently available");
+  constructor(
+    public readonly blockedBy: TransitionBlockReason[],
+    message = "This transition is not currently available",
+  ) {
+    super(message);
     this.name = "TransitionBlockedError";
   }
 }
@@ -88,6 +103,14 @@ export class TransitionConflictError extends Error {
   constructor(public readonly currentStateId: string) {
     super("The work item's state changed while this request was in flight");
     this.name = "TransitionConflictError";
+  }
+}
+
+/** A waiting-customer pause already exists for at least one SLA metric. */
+export class SlaPauseConflictError extends Error {
+  constructor() {
+    super("An SLA pause is already open for this work item");
+    this.name = "SlaPauseConflictError";
   }
 }
 
@@ -150,6 +173,22 @@ async function runTransactionCatchingDeadlock<T>(
   }
 }
 
+async function runTransactionCatchingSlaPauseConflict<T>(
+  currentStateId: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await runTransactionCatchingDeadlock(currentStateId, run);
+  } catch (error) {
+    if (
+      isUniqueViolation(error, "sla_pause_one_open_per_work_item_metric_unique")
+    ) {
+      throw new SlaPauseConflictError();
+    }
+    throw error;
+  }
+}
+
 /**
  * `set_assignee`'s `'default'` (`WF-19`), resolved against what this schema can
  * ACTUALLY answer today: neither `project.default_assignee_id` nor a request-type
@@ -202,20 +241,18 @@ function resolveSetAssigneePersonId(
  * with the same activity/audit/event shape `assign-work-item.ts`'s own write path uses
  * (`work_item.assigned`/`work_item.unassigned`), not a narrower inline copy.
  *
- * INTERIM, until #36 (approvals) lands: `requiresApproval`/`requiresCab` are read
- * correctly from the transition row, but `approvalSatisfied`/`cabSatisfied` are always
- * `false` when either flag is set -- there is no `approval` table yet to check against.
- * A transition carrying either flag can never complete through this route today. This is
- * a documented interim state (issue #442's own instruction), not a design decision made
- * here.
+ * APPROVAL GATES (AP-5, AP-15, AP-16): while the work item is locked, this route loads
+ * the approvals for that item and evaluates only rows whose transition id matches the
+ * selected immutable transition. The approval mutation routes take the same work-item
+ * lock first, so a decision or withdrawal cannot race the gate between its read and the
+ * state write. `requires_cab` evaluates the same policy against CAB approvals only.
  *
- * EFFECTS THIS FUNCTION CANNOT EXECUTE, DISCLOSED (no schema to write to yet):
- * `pause_sla`/`resume_sla` (no `sla_pause` table) and `set_field` (no custom-field/
- * satellite value store) are silently no-ops here -- reading `transition.effects` for
- * either kind and doing nothing, rather than failing the whole transition over a gap in
- * unrelated, not-yet-built infrastructure. `WF-17`/`WF-18`'s automatic mechanism only
- * sets/clears `work_item.resolved_at` for the identical reason -- the `sla_pause` row a
- * real "resolved"/"resumed" write implies does not exist to write.
+ * `pause_sla`/`resume_sla` implement only SLA-10/11's automatic
+ * `waiting_customer` lifecycle. Manual pauses and `resolved` pause continuity remain
+ * unavailable under the current owner hold; they are not inferred from state groups.
+ * `set_field` is held because its field namespace and value rules have not been defined.
+ * A stored edge containing it is refused individually; supported sibling edges in a
+ * historical mixed version remain usable.
  * `set_assignee`/`clear_assignee` and `schedule_transition` ARE fully wired.
  *
  * `WF-21` (customer-initiated reopen, executed as a system actor): the three call sites
@@ -265,6 +302,12 @@ export async function transitionWorkItem(
       "No transition matches the requested target for this actor from the work item's current state",
     );
   }
+  if (match.effects.some((effect) => effect.kind === "set_field")) {
+    throw new TransitionBlockedError(
+      [],
+      "This stored transition contains the unavailable set_field effect",
+    );
+  }
 
   const resolution = resolveStateTemplateForProject(
     match.toStateTemplateId,
@@ -289,6 +332,7 @@ export async function transitionWorkItem(
   const automaticEffects = resolveAutomaticEffects(ctx.currentGroup, toGroup);
 
   let assigneeIdPatch: string | null | undefined;
+  const waitingCustomerEffects: ("pause" | "resume")[] = [];
   const scheduleEffects: { afterMinutes: number; toStateTemplateId: string }[] =
     [];
   for (const effect of authoredEffects) {
@@ -301,9 +345,11 @@ export async function transitionWorkItem(
         afterMinutes: effect.afterMinutes,
         toStateTemplateId: effect.toStateTemplateId,
       });
+    } else if (effect.kind === "pause_sla") {
+      waitingCustomerEffects.push("pause");
+    } else if (effect.kind === "resume_sla") {
+      waitingCustomerEffects.push("resume");
     }
-    // `pause_sla`/`resume_sla`/`set_field`: no backing table yet -- disclosed no-op,
-    // see this function's own doc comment.
   }
 
   let resolvedAtPatch: Date | null | undefined;
@@ -320,7 +366,7 @@ export async function transitionWorkItem(
     event: Awaited<ReturnType<typeof recordWorkItemEvent>>;
     customerVisible: boolean;
   }[] = [];
-  const result = await runTransactionCatchingDeadlock(fromStateId, () =>
+  const result = await runTransactionCatchingSlaPauseConflict(fromStateId, () =>
     db.transaction(async (tx) => {
       // B1: lock the row FIRST, before deciding anything guard-shaped. Every fact below is
       // read from THIS locked row, never from `ctx`'s earlier, unlocked read.
@@ -418,9 +464,65 @@ export async function transitionWorkItem(
         cabSatisfied: false,
         hasNote,
       };
+      let approvalRows: Awaited<
+        ReturnType<typeof lockApprovalsForWorkItemTransition>
+      > = [];
+      if (match.requiresApproval || match.requiresCab) {
+        // The work-item row is already locked FOR UPDATE. Approval mutations take the
+        // same parent-first lock, so a concurrent decision/withdrawal cannot change the
+        // gate between this read and the transition write.
+        approvalRows = await lockApprovalsForWorkItemTransition(
+          tx,
+          ctx.workItem.id,
+          ctx.workItem.workspaceId,
+        );
+        const approvals = approvalRows.map((row) => ({
+          ...row,
+          kind: row.kind as "customer" | "cab",
+          state: row.state as
+            | "pending"
+            | "approved"
+            | "rejected"
+            | "expired"
+            | "withdrawn",
+        }));
+        const approvalPolicy = match.approvalPolicy ?? "any";
+        offerContext.approvalSatisfied = match.requiresApproval
+          ? isGateSatisfied(approvals, {
+              transitionId: match.id,
+              policy: approvalPolicy,
+            })
+          : true;
+        offerContext.cabSatisfied = match.requiresCab
+          ? isGateSatisfied(approvals, {
+              transitionId: match.id,
+              kind: "cab",
+              policy: approvalPolicy,
+            })
+          : true;
+      }
       const offer = offerTransition(match, offerContext);
       if (!offer.available) {
-        throw new TransitionBlockedError(offer.blockedBy);
+        const blockedBy = offer.blockedBy.map((reason) => {
+          if (reason.kind !== "approval" && reason.kind !== "cab")
+            return reason;
+          const pendingApprovals = approvalRows
+            .filter(
+              (row) =>
+                row.transitionId === match.id &&
+                row.state === "pending" &&
+                (reason.kind !== "cab" || row.kind === "cab"),
+            )
+            .map((row) => ({
+              approverName: row.approverName,
+              requestedAt: row.createdAt.toISOString(),
+              expiresAt: row.expiresAt.toISOString(),
+            }));
+          return pendingApprovals.length > 0
+            ? { ...reason, pendingApprovals }
+            : reason;
+        });
+        throw new TransitionBlockedError(blockedBy);
       }
 
       // B2: a `set_assignee` target must pass the SAME roster/active eligibility check
@@ -493,6 +595,38 @@ export async function transitionWorkItem(
         throw new TransitionConflictError(current?.stateId ?? fromStateId);
       }
 
+      for (const effect of waitingCustomerEffects) {
+        if (effect === "pause") {
+          const startedAt = sql`clock_timestamp()`;
+          await tx.insert(slaPauseTable).values([
+            {
+              workItemId: ctx.workItem.id,
+              metric: "first_response",
+              startedAt,
+              reason: "waiting_customer",
+            },
+            {
+              workItemId: ctx.workItem.id,
+              metric: "resolution",
+              startedAt,
+              reason: "waiting_customer",
+            },
+          ]);
+        } else {
+          const endedAt = sql`clock_timestamp()`;
+          await tx
+            .update(slaPauseTable)
+            .set({ endedAt })
+            .where(
+              and(
+                eq(slaPauseTable.workItemId, ctx.workItem.id),
+                eq(slaPauseTable.reason, "waiting_customer"),
+                isNull(slaPauseTable.endedAt),
+              ),
+            );
+        }
+      }
+
       for (const schedule of scheduleEffects) {
         const scheduleResolution = resolveStateTemplateForProject(
           asStateTemplateId(schedule.toStateTemplateId),
@@ -535,9 +669,25 @@ export async function transitionWorkItem(
           verb: "transitioned",
           oldValue: fromStateId,
           newValue: toStateId,
+          // Durable record of which edge ran: approvals are single use, so an approval
+          // created before this run no longer counts (owner decision 2026-10-10).
+          payload: { transitionId: match.id },
           workflowVersionId: ctx.activeVersion?.id ?? null,
+          // The database clock under the work-item lock (see approval `created_at`).
+          createdAt: dbClockUtc(),
         },
       ]);
+      if (match.requiresApproval || match.requiresCab) {
+        // Owner decision 2026-10-10: the run closes the other still-pending approvals.
+        await closePendingApprovalsOnTransition(tx, {
+          workspaceId: ctx.workItem.workspaceId,
+          projectId: ctx.workItem.projectId,
+          workItemId: ctx.workItem.id,
+          transitionId: match.id,
+          actorId,
+          actorType,
+        });
+      }
 
       // `assigneeEventKind` decides which of `work_item.assigned`/`work_item.unassigned`
       // (AS-16/AS-17) to publish after commit, mirroring `assign-work-item.ts`'s own

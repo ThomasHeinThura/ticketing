@@ -219,7 +219,7 @@ function ObservabilitySettings() {
   return (
     <>
       <PageTitle title="Observability" />
-      <main className="mx-auto max-w-4xl space-y-6">
+      <main className="mx-auto max-w-4xl space-y-6 bg-background">
         <header className="space-y-2">
           <h1 className="text-2xl font-semibold">Observability</h1>
           <p className="text-muted-foreground">
@@ -409,16 +409,27 @@ function ObservabilitySettings() {
               >
                 Fresh factor proof
               </label>
-              <select
-                className="rounded-md border bg-background px-3 py-2"
+              <Select
                 value={codeMethod}
-                onChange={(event) =>
-                  setCodeMethod(event.target.value as "totp" | "backup_code")
+                onValueChange={(value) =>
+                  setCodeMethod(value as "totp" | "backup_code")
                 }
               >
-                <option value="totp">Authenticator code</option>
-                <option value="backup_code">Backup code</option>
-              </select>
+                <SelectTrigger
+                  aria-label="Factor proof type"
+                  className="rounded-md border bg-background px-3 py-2"
+                >
+                  <SelectValue>
+                    {codeMethod === "totp"
+                      ? "Authenticator code"
+                      : "Backup code"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="totp">Authenticator code</SelectItem>
+                  <SelectItem value="backup_code">Backup code</SelectItem>
+                </SelectContent>
+              </Select>
               <Input
                 id="observability-code"
                 value={code}

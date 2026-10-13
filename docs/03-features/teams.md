@@ -18,7 +18,7 @@ specs all depending on a teams model that no document defined.
 | Concept | Meaning |
 | --- | --- |
 | **Team** | A workspace-scoped group of staff. Not a security boundary; a grouping |
-| **Lead** | A team member flagged `is_lead`; may edit the team's shared views and roster |
+| **Lead** | A team member flagged `is_lead`; may manage the team's roster. Shared-view editing is held for a later release |
 | **Capacity** | `capacity_days_per_week`, used by the Capacity report and resource planning |
 | **CAB** | Exactly one team per workspace may be flagged `is_cab`; its members may decide CAB approvals |
 | **Ownership** | A project may name an `owner_team_id`; every member of that team is in reach of the project |
@@ -33,9 +33,9 @@ specs all depending on a teams model that no document defined.
 - `TM-1` A team belongs to one workspace; a person may belong to many teams.
 - `TM-2` Only staff-side people may be team members. Adding a customer-side person is
   refused.
-- `TM-3` A team may have zero or more leads. A lead may add and remove members and edit
-  the team's shared saved views (`SV-17`); a lead may not change capacity or the CAB flag
-  — that is `workspace:manage_settings`.
+- `TM-3` A team may have zero or more leads. A lead may add and remove members; editing
+  the team's shared saved views is held for a later release. A lead may not change capacity
+  or the CAB flag — that is `workspace:manage_settings`.
 - `TM-4` `owner_team_id` on a project grants **reach only** to the team's members — step 5
   of the reach resolution in [RBAC](../01-architecture/rbac.md). It grants no capability.
   Because it *is* a reach grant, setting or changing it requires `project:manage_members`
@@ -48,8 +48,8 @@ specs all depending on a teams model that no document defined.
 - `TM-7` Deleting a team is refused while it owns a project, owns a shared view, or is the
   CAB. Reassign first.
 - `TM-8` A deactivated person is removed from every team's *active* roster but stays in
-  history; ownership of their shared views transfers to a lead, else to the workspace
-  (`SV-17` edge case).
+  history. Shared-view ownership transfer is held for a later release; current owner and
+  workspace-manager access rules remain in force.
 - `TM-9` Notifications may target a team ("send a notification" action in
   [automations.md](automations.md)); every active member receives it per their own
   preferences.

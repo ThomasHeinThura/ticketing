@@ -80,15 +80,23 @@ vi.mock("@taskdesk/ui", () => {
       onItemHighlighted?: (value: unknown, details: { reason: string }) => void;
     }>) => (
       <>
-        <button
-          type="button"
-          data-testid="highlight-project-command"
-          onClick={() =>
-            onItemHighlighted?.({ value: "projects" }, { reason: "keyboard" })
-          }
-        >
-          Highlight Projects with keyboard
-        </button>
+        {(() => {
+          return (
+            // ui-exempt: this test control triggers the command palette's keyboard callback.
+            <button
+              type="button"
+              data-testid="highlight-project-command"
+              onClick={() =>
+                onItemHighlighted?.(
+                  { value: "projects" },
+                  { reason: "keyboard" },
+                )
+              }
+            >
+              Highlight Projects with keyboard
+            </button>
+          );
+        })()}
         {children}
       </>
     ),

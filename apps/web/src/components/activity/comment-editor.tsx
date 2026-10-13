@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@taskdesk/ui";
-import type { Editor } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Table } from "@tiptap/extension-table";
@@ -82,7 +82,8 @@ type CommentEditorProps = {
   className?: string;
   contentClassName?: string;
   proseClassName?: string;
-  autoFocus?: boolean;
+  /** `true`/`"start"` focus the start, `"end"` the end of the content. */
+  autoFocus?: boolean | "start" | "end";
   disabled?: boolean;
   readOnly?: boolean;
   showBubbleMenu?: boolean;
@@ -94,6 +95,20 @@ type CommentEditorProps = {
   ensureTaskId?: () => Promise<string | null>;
   showQuickAttachButton?: boolean;
   onAttachActionChange?: (attach: (() => void) | null) => void;
+  /** Native work-item comments store the editor's Tiptap document, not Markdown. */
+  documentValue?: unknown;
+  onDocumentChange?: (value: unknown) => void;
+  /** A text/document pair emitted together for callers that persist a draft. */
+  onContentChange?: (value: CommentContentSnapshot) => void;
+  /** Enable @mention insertion when the caller has a scoped candidate source. */
+  enableMentions?: boolean;
+  /** Native work-item comments supply person ids from the scoped mention API. */
+  mentionMembers?: MentionMember[];
+};
+
+export type CommentContentSnapshot = {
+  text: string;
+  document: unknown;
 };
 
 type SlashRange = { from: number; to: number };
@@ -122,6 +137,12 @@ type HoveredCodeBlock = {
   top: number;
   left: number;
 };
+
+/** React layout cleanup can destroy the Tiptap editor before passive effects for
+ * the same commit run. Its command manager and view are no longer usable then. */
+function isLiveEditor(editor: Editor | null | undefined): editor is Editor {
+  return Boolean(editor && !editor.isDestroyed);
+}
 
 const CODE_LANG_VALUES = [
   "bash",
@@ -188,6 +209,11 @@ export default function CommentEditor({
   ensureTaskId,
   showQuickAttachButton = true,
   onAttachActionChange,
+  documentValue,
+  onDocumentChange,
+  onContentChange,
+  enableMentions = true,
+  mentionMembers,
 }: CommentEditorProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder =
@@ -197,7 +223,7 @@ export default function CommentEditor({
     activeWorkspace?.id ?? "",
   );
   const mentionMembersRef = useRef<MentionMember[]>([]);
-  mentionMembersRef.current = useMemo(
+  const defaultMentionMembers = useMemo(
     () =>
       (workspaceUsers?.members ?? []).map((member) => ({
         id: member.userId,
@@ -206,13 +232,20 @@ export default function CommentEditor({
       })),
     [workspaceUsers],
   );
+  const resolvedMentionMembers = mentionMembers ?? defaultMentionMembers;
+  mentionMembersRef.current = resolvedMentionMembers;
   const editorShellRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const dragDepthRef = useRef(0);
   const isSyncingRef = useRef(false);
   const hasHydratedRef = useRef(false);
   const latestValueRef = useRef(normalizeMarkdown(value || ""));
+  const onContentChangeRef = useRef(onContentChange);
+  onContentChangeRef.current = onContentChange;
   const lastEditorRef = useRef<Editor | null>(null);
+  const disposedEditorRef = useRef<Editor | null>(null);
+  const [editorGeneration, setEditorGeneration] = useState(0);
+  const syncGenerationRef = useRef(0);
   const taskIdRef = useRef(taskId);
   const ensureTaskIdRef = useRef(ensureTaskId);
   const uploadSurfaceRef = useRef(uploadSurface);
@@ -302,6 +335,7 @@ export default function CommentEditor({
       asset: Awaited<ReturnType<typeof uploadTaskImage>>,
       range?: SlashRange,
     ) => {
+      if (!isLiveEditor(activeEditor)) return;
       const chain = activeEditor.chain().focus();
 
       if (range) {
@@ -344,7 +378,7 @@ export default function CommentEditor({
       const resolvedTaskId =
         taskIdRef.current ?? (await ensureTaskIdRef.current?.());
 
-      if (!activeEditor || !resolvedTaskId) {
+      if (!isLiveEditor(activeEditor) || !resolvedTaskId) {
         toast.error(t("activity:comment.editor.uploadsOnlyOnSavedTasks"));
         return;
       }
@@ -577,13 +611,16 @@ export default function CommentEditor({
 
   const filteredSlashCommands = useMemo(() => {
     const query = slashMenu?.query.trim().toLowerCase() || "";
-    if (!query) return slashCommands;
-    return slashCommands.filter(
+    const availableCommands = canUploadFiles
+      ? slashCommands
+      : slashCommands.filter((command) => command.id !== "file");
+    if (!query) return availableCommands;
+    return availableCommands.filter(
       (command) =>
         command.label.toLowerCase().includes(query) ||
         command.search.includes(query),
     );
-  }, [slashCommands, slashMenu?.query]);
+  }, [canUploadFiles, slashCommands, slashMenu?.query]);
 
   const editor = useEditor(
     {
@@ -617,9 +654,13 @@ export default function CommentEditor({
         AttachmentCard,
         TaskDeskIssueLink,
         TaskDeskMention,
-        MentionSuggestion.configure({
-          getMembers: () => mentionMembersRef.current,
-        }),
+        ...(enableMentions
+          ? [
+              MentionSuggestion.configure({
+                getMembers: () => mentionMembersRef.current,
+              }),
+            ]
+          : []),
         TaskList,
         Image.configure({
           HTMLAttributes: {
@@ -654,6 +695,7 @@ export default function CommentEditor({
           const pastedFile = pastedFiles[0];
 
           if (pastedFile) {
+            if (!canUploadFiles) return false;
             event.preventDefault();
             void handleAssetFileUpload(pastedFile, editor);
             return true;
@@ -733,7 +775,7 @@ export default function CommentEditor({
           return false;
         },
         handleDrop: (view, event) => {
-          if (readOnly || disabled) return false;
+          if (readOnly || disabled || !canUploadFiles) return false;
 
           const droppedFiles = Array.from(event.dataTransfer?.files || []);
           const droppedFile = droppedFiles[0];
@@ -822,7 +864,7 @@ export default function CommentEditor({
               filteredSlashCommands.length
             ) {
               event.preventDefault();
-              if (!editor) return true;
+              if (!isLiveEditor(editor)) return true;
               const command =
                 filteredSlashCommands[
                   Math.min(
@@ -886,14 +928,38 @@ export default function CommentEditor({
         },
       },
       onUpdate: ({ editor: activeEditor }) => {
-        if (readOnly || disabled || !onChange || isSyncingRef.current) return;
+        if (readOnly || disabled || isSyncingRef.current) return;
         const markdown = normalizeMarkdown(activeEditor.getMarkdown());
+        const document = activeEditor.getJSON();
         latestValueRef.current = markdown;
-        onChange(markdown);
+        onChange?.(markdown);
+        onDocumentChange?.(document);
+        onContentChangeRef.current?.({ text: markdown, document });
       },
     },
-    [handleAssetFileUpload, resolvedPlaceholder, toShikiLanguage],
+    [
+      enableMentions,
+      editorGeneration,
+      handleAssetFileUpload,
+      resolvedPlaceholder,
+      toShikiLanguage,
+    ],
   );
+
+  // Tiptap can dispose an instance during a React layout transition before the
+  // editor's passive hydration effects run. Recreate that instance once so the
+  // editor does not remain a permanently inert shell after being disposed.
+  useEffect(() => {
+    if (!editor) return;
+    if (editor.isDestroyed) {
+      if (disposedEditorRef.current !== editor) {
+        disposedEditorRef.current = editor;
+        setEditorGeneration((generation) => generation + 1);
+      }
+      return;
+    }
+    disposedEditorRef.current = null;
+  }, [editor]);
 
   const shikiHighlighter = useShikiHighlighterForCode(editor);
   shikiHighlighterRef.current = shikiHighlighter;
@@ -908,15 +974,33 @@ export default function CommentEditor({
     };
   }, [editor, onAttachActionChange, openImagePicker]);
 
+  // Candidates can arrive (or change with visibility) after the user has
+  // already typed `@`; Tiptap only evaluates `items()` on query changes, so ask
+  // the active suggestion to re-evaluate against the latest candidates. Keyed by
+  // content (ids + labels, in order) so a parent re-render with an equal array
+  // does not reset the highlighted row.
+  const mentionMembersKey = JSON.stringify(
+    resolvedMentionMembers.map((member) => [member.id, member.label]),
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh only when candidate content changes
   useEffect(() => {
-    if (!editor || !shikiHighlighter) return;
+    if (!isLiveEditor(editor) || !enableMentions) return;
+    (
+      editor.storage as
+        | { taskdeskMentionSuggestion?: { refresh?: () => void } }
+        | undefined
+    )?.taskdeskMentionSuggestion?.refresh?.();
+  }, [editor, enableMentions, mentionMembersKey]);
+
+  useEffect(() => {
+    if (!isLiveEditor(editor) || !shikiHighlighter) return;
     editor.view.dispatch(
       editor.state.tr.setMeta(SHIKI_CODEBLOCK_REFRESH_META, true),
     );
   }, [editor, shikiHighlighter]);
 
   useEffect(() => {
-    if (!editor || typeof document === "undefined") return;
+    if (!isLiveEditor(editor) || typeof document === "undefined") return;
 
     const root = document.documentElement;
     const refreshShikiTheme = () => {
@@ -941,7 +1025,7 @@ export default function CommentEditor({
   }, [editor]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!isLiveEditor(editor)) return;
 
     const handleImagePreviewClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
@@ -965,7 +1049,7 @@ export default function CommentEditor({
 
   const updateSlashMenu = useCallback(
     (activeEditor: Editor) => {
-      if (readOnly || disabled) {
+      if (!isLiveEditor(activeEditor) || readOnly || disabled) {
         setSlashMenu(null);
         return;
       }
@@ -1017,7 +1101,7 @@ export default function CommentEditor({
   );
 
   useEffect(() => {
-    if (!editor) return;
+    if (!isLiveEditor(editor)) return;
     const syncSlash = () => updateSlashMenu(editor);
     editor.on("selectionUpdate", syncSlash);
     editor.on("update", syncSlash);
@@ -1029,12 +1113,12 @@ export default function CommentEditor({
   }, [editor, updateSlashMenu]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!isLiveEditor(editor)) return;
     editor.setEditable(!readOnly && !disabled);
   }, [disabled, editor, readOnly]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!isLiveEditor(editor)) return;
     if (lastEditorRef.current !== editor) {
       hasHydratedRef.current = false;
       lastEditorRef.current = editor;
@@ -1048,9 +1132,16 @@ export default function CommentEditor({
         emitUpdate: false,
         contentType: "markdown",
       });
+      onContentChangeRef.current?.({
+        text: incoming,
+        document: editor.getJSON(),
+      });
       hasHydratedRef.current = true;
+      const generation = ++syncGenerationRef.current;
       queueMicrotask(() => {
-        isSyncingRef.current = false;
+        if (generation === syncGenerationRef.current) {
+          isSyncingRef.current = false;
+        }
       });
       return;
     }
@@ -1062,13 +1153,44 @@ export default function CommentEditor({
       contentType: "markdown",
     });
     latestValueRef.current = incoming;
+    onContentChangeRef.current?.({
+      text: incoming,
+      document: editor.getJSON(),
+    });
+    const generation = ++syncGenerationRef.current;
     queueMicrotask(() => {
-      isSyncingRef.current = false;
+      if (generation === syncGenerationRef.current) {
+        isSyncingRef.current = false;
+      }
     });
   }, [editor, value]);
 
+  useEffect(() => {
+    if (!isLiveEditor(editor) || documentValue === undefined) return;
+    if (!documentValue || typeof documentValue !== "object") return;
+    if (JSON.stringify(editor.getJSON()) === JSON.stringify(documentValue))
+      return;
+    isSyncingRef.current = true;
+    editor.commands.setContent(documentValue as JSONContent, {
+      emitUpdate: false,
+    });
+    const markdown = normalizeMarkdown(editor.getMarkdown());
+    latestValueRef.current = markdown;
+    onChange?.(markdown);
+    onContentChangeRef.current?.({
+      text: markdown,
+      document: editor.getJSON(),
+    });
+    const generation = ++syncGenerationRef.current;
+    queueMicrotask(() => {
+      if (generation === syncGenerationRef.current) {
+        isSyncingRef.current = false;
+      }
+    });
+  }, [documentValue, editor, onChange]);
+
   const setLink = useCallback(() => {
-    if (readOnly || disabled || !editor) return;
+    if (readOnly || disabled || !isLiveEditor(editor)) return;
     const previousUrl = editor.getAttributes("link").href as string | undefined;
     const url = window.prompt(
       t("activity:comment.editor.enterUrl"),
@@ -1084,7 +1206,7 @@ export default function CommentEditor({
 
   const resolveCodeBlockNodeData = useCallback(
     (pos: number) => {
-      if (!editor) return null;
+      if (!isLiveEditor(editor)) return null;
       const resolvedPos = editor.state.doc.resolve(
         Math.max(0, Math.min(pos, editor.state.doc.content.size)),
       );
@@ -1105,7 +1227,7 @@ export default function CommentEditor({
 
   const updateHoveredCodeBlockFromElement = useCallback(
     (element: HTMLElement | null) => {
-      if (!editor || !element) {
+      if (!isLiveEditor(editor) || !element) {
         if (!isCodeLanguageMenuOpen) {
           hoveredCodeBlockElementRef.current = null;
           setHoveredCodeBlock(null);
@@ -1152,7 +1274,7 @@ export default function CommentEditor({
 
   const setCodeLanguage = useCallback(
     (language: string) => {
-      if (!editor || !hoveredCodeBlock) return;
+      if (!isLiveEditor(editor) || !hoveredCodeBlock) return;
       const resolvedLanguage = language === "auto" ? "" : language;
       const { nodePos } = hoveredCodeBlock;
       const node = editor.state.doc.nodeAt(nodePos);
@@ -1235,7 +1357,7 @@ export default function CommentEditor({
 
   const submitEmbedComposer = useCallback(
     (mode: "embed" | "link") => {
-      if (!editor || !embedComposer) return;
+      if (!isLiveEditor(editor) || !embedComposer) return;
       const url = normalizeUrl(embedComposer.url);
       if (!url) {
         setEmbedComposerError("embedErrorInvalidUrl");
@@ -1401,7 +1523,7 @@ export default function CommentEditor({
   }, []);
 
   const copyHoveredCodeBlock = useCallback(async () => {
-    if (!editor || !hoveredCodeBlock) return;
+    if (!isLiveEditor(editor) || !hoveredCodeBlock) return;
     const node = editor.state.doc.nodeAt(hoveredCodeBlock.nodePos);
     if (node?.type.name !== "codeBlock") return;
 
@@ -1443,10 +1565,14 @@ export default function CommentEditor({
       onDrop={handleShellDrop}
     >
       {!readOnly && !disabled && (
-        <input
+        <Input
           ref={imageInputRef}
           type="file"
           className="sr-only"
+          // Opened only programmatically (slash menu / paste); an unlabelled,
+          // invisible Tab stop in front of the editor is a keyboard defect.
+          tabIndex={-1}
+          aria-hidden="true"
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (!file) return;
@@ -1472,7 +1598,8 @@ export default function CommentEditor({
             position: slashMenuPosition,
           }}
         >
-          <button
+          <Button
+            variant="ghost"
             type="button"
             className="taskdesk-codeblock-language-trigger taskdesk-codeblock-copy-trigger"
             aria-label={
@@ -1497,20 +1624,21 @@ export default function CommentEditor({
                 ? t("activity:comment.editor.copied")
                 : t("activity:comment.editor.copy")}
             </span>
-          </button>
+          </Button>
           {!readOnly && (
             <DropdownMenu
               open={isCodeLanguageMenuOpen}
               onOpenChange={setIsCodeLanguageMenuOpen}
             >
               <DropdownMenuTrigger asChild>
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   className="taskdesk-codeblock-language-trigger"
                 >
                   <span className="truncate">{activeCodeLanguageLabel}</span>
                   <ChevronDown className="size-3.5 opacity-70" />
-                </button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
@@ -1774,7 +1902,8 @@ export default function CommentEditor({
                       (candidate) => candidate.id === command.id,
                     );
                     return (
-                      <button
+                      <Button
+                        variant="ghost"
                         key={command.id}
                         type="button"
                         className={cn(
@@ -1790,7 +1919,7 @@ export default function CommentEditor({
                         }
                         onMouseDown={(event) => {
                           event.preventDefault();
-                          if (!editor) return;
+                          if (!isLiveEditor(editor)) return;
                           command.run(editor, {
                             from: slashMenu.from,
                             to: slashMenu.to,
@@ -1806,7 +1935,7 @@ export default function CommentEditor({
                             {command.shortcut}
                           </span>
                         )}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -1830,8 +1959,10 @@ export default function CommentEditor({
         >
           {embedComposer.mode === "choice" ? (
             <div className="taskdesk-embed-choice-menu">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 className="taskdesk-embed-choice-item is-primary"
                 onMouseDown={(event) => {
                   event.preventDefault();
@@ -1842,9 +1973,11 @@ export default function CommentEditor({
                 <span className="taskdesk-embed-choice-hint">
                   {t("activity:comment.editor.hintTab")}
                 </span>
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 className="taskdesk-embed-choice-item"
                 onMouseDown={(event) => {
                   event.preventDefault();
@@ -1856,7 +1989,7 @@ export default function CommentEditor({
                 <span className="taskdesk-embed-choice-hint">
                   {t("activity:comment.editor.hintEsc")}
                 </span>
-              </button>
+              </Button>
             </div>
           ) : (
             <form
@@ -1918,8 +2051,10 @@ export default function CommentEditor({
         onMouseLeave={handleEditorMouseLeave}
       />
       {!readOnly && !disabled && showQuickAttachButton && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           className="taskdesk-editor-quick-attach"
           onMouseDown={(event) => {
             event.preventDefault();
@@ -1928,7 +2063,7 @@ export default function CommentEditor({
           aria-label={t("activity:comment.attachFile")}
         >
           <Paperclip className="size-3.5" />
-        </button>
+        </Button>
       )}
       {isDragActive && (
         <div className="taskdesk-editor-drop-indicator">

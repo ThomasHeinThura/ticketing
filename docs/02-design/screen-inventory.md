@@ -14,6 +14,17 @@ and portal route metadata. Not-started rows are planned URLs; they do not claim 
 implemented. The checker reports planned and inherited-route counts separately. This
 prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-planning/decision-log.md#2026-09-28--10s-gate-scope-semantics-decided-applicable-now-gates-required-future-stage-gates-activate-with-their-prerequisite).
 
+**P0 screen sign-off — 2026-10-10.** No P0 row is marked ✅. The Definition of Done asks for
+a human screen review (PG1, deferred to the integrated P4 review), a manual screen-reader
+pass (PG2), a keyboard-only session (PG3), a fresh-eyes test (PG4), a four-browser check
+(PG5), the full and reduced-motion E2E suites, and a realistic-data run (PG6)
+([definition-of-done.md](../04-engineering/definition-of-done.md#stage-completion)). No stage
+evidence is recorded for them. PG1 stays deferred to the integrated P4 review (2026-10-02
+decision). Thomas deferred the rest to before `2.0.0` (issue #626) in the
+[2026-10-10 decision](../07-planning/decision-log.md) (recorded by PR #624). The 🟡 and ⬜
+rows above therefore stay as they are. This is a deferral, not an approval. See the
+[P0 stage review](../07-planning/p0-stage-review.md).
+
 ---
 
 ## Agent — core
@@ -28,7 +39,6 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
 | Inbox | `/agent/inbox` | route | P1 | ⬜ |
 | My work | `/agent/my-work` | route | P1 | ⬜ |
-| Triage | `/agent/triage` | route | P2 | ⬜ |
 | Command palette | — | overlay | P1 | ⬜ |
 | Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | ⬜ |
 | Global search results | `/agent/search` | route | P1 | ⬜ |
@@ -73,8 +83,7 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Intake queue | `/agent/triage?tab=intake` | route | P2 | ⬜ |
-| Submission detail | `/agent/submissions/{ref}` | route | P2 | ⬜ |
+| Intake queue and submission detail | `/agent/triage?state=new&ref={ref}` | route | P2 | 🟡 |
 | Approvals inbox | `/agent/my-work?lens=approvals` | route | P2 | ⬜ |
 | Services list | `/agent/service-management/services` | route | P5 | ⬜ |
 | Service detail | `/agent/service-management/services/{id}` | route | P5 | ⬜ |
@@ -105,7 +114,8 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | ⬜ |
 | Profile — notifications | `/agent/settings/profile/notifications` | route | P4 | ⬜ |
 | Profile — security & sessions | `/agent/settings/profile/security` | route | P3 | ⬜ |
-| Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/agent/settings/profile/pending-actions` | route | P4 | ⬜ |
+| Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/agent/settings/profile/pending-actions` | route | P4 | 🟡 |
+| Profile — pending action detail | `/agent/settings/profile/pending-actions/{id}` | route | P4 | 🟡 |
 | Profile — API keys | `/agent/settings/profile/api-keys` | route | P4 | ⬜ |
 | Workspace — general | `/agent/settings` | route | P1 | ⬜ |
 | Workspace — terminology | `/agent/settings/terminology` | route | P4 | ⬜ |
@@ -121,8 +131,7 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | ⬜ |
 | SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | ⬜ |
 | Workspace — service calendars | `/agent/settings/calendars` | route | P2 | ⬜ |
-| Workspace — request types | `/agent/settings/request-types` | route | P2 | ⬜ |
-| Request type editor / form builder | `/agent/settings/request-types/{id}` | route | P2 | ⬜ |
+| Workspace request types and selected editor | `/agent/settings/request-types?requestTypeId={id}` | route | P2 | 🟡 |
 | Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ⬜ |
 | Custom field editor | `/agent/settings/custom-fields/{id}` | route | P4 | ⬜ |
 | Section manager (reorder sections, move fields between them — [custom-fields.md](../03-features/custom-fields.md)) | — | section | P4 | ⬜ |
@@ -170,14 +179,14 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | MCP usage | `/agent/god-mode/mcp` | route | P4 | ⬜ |
 | Audit log | `/agent/god-mode/audit` | route | P2 | ⬜ |
 | Import runs | `/agent/god-mode/import` | route | P6 | ⬜ |
-| Users | `/agent/god-mode/users` | route | P4 | ⬜ |
+| Users | `/agent/god-mode/users` | route | P4 | 🟡 |
 
 ## Portal
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Portal unavailable notice (P0 interim state) | `/` | route | P0 | 🟡 |
-| Sign in | `/portal/sign-in` | route | P3 | ⬜ |
+| Sign in | `/sign-in` | route | P3 | 🟡 |
 | Accept invitation | `/portal/invite` | route | P3 | ⬜ |
 | Home | `/portal` | route | P3 | ⬜ |
 | My requests | `/portal/requests` | route | P3 | ⬜ |
@@ -185,6 +194,8 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Submission page (pre-acceptance, same URL) | `/portal/requests/{ref}` | section | P3 | ⬜ |
 | Catalogue | `/portal/new` | route | P3 | ⬜ |
 | Request form | `/portal/new/{typeKey}` | route | P3 | ⬜ |
+| Customer portal — request catalogue and selected form | `/catalogue?q=no-match&key=access` | route | P3 | 🟡 |
+| Customer portal — submission detail | `/submissions/{ref}` | route | P3 | 🟡 |
 | Approvals | `/portal/approvals` | route | P3 | ⬜ |
 | Projects list | `/portal/projects` | route | P3 | ⬜ |
 | Project detail | `/portal/projects/{key}` | route | P3 | ⬜ |
@@ -203,10 +214,10 @@ build if it drifts.
 
 | Stage | Screens |
 | --- | --- |
-| P0 Foundation | 7 |
+| P0 Foundation | 8 |
 | P1 Core work | 33 |
-| P2 Service desk | 18 |
-| P3 Portal & identity | 21 |
+| P2 Service desk | 15 |
+| P3 Portal & identity | 23 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |

@@ -659,11 +659,19 @@ test("workspace aliases and tsconfig paths resolve to package targets and matrix
   const messages = violations.join("\n");
   assert.match(
     messages,
-    /@taskdesk\/web\/package\.json.*outside the documented workspace edge matrix/s,
+    /@taskdesk\/web\/package\.json.*runtime workspace dependency "@taskdesk\/email".*outside the documented workspace edge matrix/s,
+  );
+  assert.doesNotMatch(
+    messages,
+    /@taskdesk\/web\/package\.json.*runtime workspace dependency "@taskdesk\/domain"/s,
   );
   assert.match(
     messages,
-    /apps\/web\/src\/edge\.ts.*outside the documented workspace edge matrix/s,
+    /apps\/web\/src\/edge\.ts.*workspace "@taskdesk\/email".*outside the documented workspace edge matrix/s,
+  );
+  assert.doesNotMatch(
+    messages,
+    /apps\/web\/src\/edge\.ts.*workspace "@taskdesk\/domain"/s,
   );
   assert.match(messages, /packages\/libs\/src\/edge\.ts.*from apps\/\*\*/s);
 });

@@ -114,7 +114,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("measures a colored descendant against its nearest opaque ancestor", async () => {
-    const fixture = `scripts/ci/.contrast-inheritance-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-inheritance-${process.pid}.test.tsx`;
     await writeFile(
       fixture,
       '<div className="bg-card"><p className="text-destructive">Card error</p></div><div className="bg-popover"><p className="text-destructive">Popover error</p></div><div className="bg-background"><p className="text-destructive">Body error</p></div>',
@@ -162,7 +162,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("keeps supported ancestor hover surfaces as a distinct measured context", async () => {
-    const fixture = `scripts/ci/.contrast-hover-ancestor-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-hover-ancestor-${process.pid}.test.tsx`;
     await writeFile(
       fixture,
       '<main className="bg-background"><div className="bg-card hover:bg-muted"><p className="text-muted-foreground">Muted</p></div></main>',
@@ -186,7 +186,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("binds reachable data-state ancestor backgrounds without losing the opaque fallback", async () => {
-    const fixture = `scripts/ci/.contrast-data-state-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-data-state-${process.pid}.test.tsx`;
     await writeFile(
       fixture,
       '<main className="bg-background"><div className="bg-background data-[task-dragging=true]:bg-card data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50" data-task-dragging={dragging ? "true" : undefined} data-task-selected={selected ? "true" : undefined}><span className="text-muted-foreground">Selected</span></div></main>',
@@ -218,7 +218,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("keeps unsupported state background variants unresolved", async () => {
-    const fixture = `scripts/ci/.contrast-unknown-state-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-unknown-state-${process.pid}.test.tsx`;
     await writeFile(
       fixture,
       '<main className="bg-background"><div className="data-[mystery=true]:bg-card"><span className="text-muted-foreground">Unknown</span></div></main>',
@@ -241,7 +241,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("enumerates a supported backdrop-filter background override with its fallback", async () => {
-    const fixture = `scripts/ci/.contrast-supports-state-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-supports-state-${process.pid}.test.tsx`;
     await writeFile(
       fixture,
       '<main className="bg-background"><div className="bg-card/80 supports-[backdrop-filter]:bg-card/70"><span className="text-muted-foreground">Card</span></div></main>',
@@ -496,7 +496,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("fails closed for a colored text node without a supported surface context", async () => {
-    const fixture = `scripts/ci/.contrast-unresolved-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-unresolved-${process.pid}.test.tsx`;
     await writeFile(fixture, '<p className="text-destructive">Invalid</p>');
     try {
       const result = observeInheritedForegroundSurfaces(
@@ -513,7 +513,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("deduplicates class-combination derivations without merging distinct JSX contexts", async () => {
-    const fixture = `scripts/ci/.contrast-occurrence-contexts-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-occurrence-contexts-${process.pid}.test.tsx`;
     await writeFile(
       fixture,
       '<><p className={cn("text-primary bg-card", "bg-card")}>One</p><p className={cn("text-primary bg-card", "bg-card")}>Two</p></>',
@@ -560,8 +560,8 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("traces default memo exports through their actual painted caller", async () => {
-    const component = `scripts/ci/.contrast-memo-leaf-${process.pid}.tsx`;
-    const caller = `scripts/ci/.contrast-memo-caller-${process.pid}.tsx`;
+    const component = `apps/web/src/components/.contrast-memo-leaf-${process.pid}.tsx`;
+    const caller = `apps/web/src/components/.contrast-memo-caller-${process.pid}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -598,7 +598,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("follows JSX values returned through object properties to every real use", async () => {
-    const fixture = `scripts/ci/.contrast-returned-icon-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-returned-icon-${process.pid}.test.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -782,7 +782,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("binds imported surfaces to the current caller tag and rejects caller overrides", async () => {
-    const fixture = `scripts/ci/.contrast-wrapper-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-wrapper-${process.pid}.test.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -828,8 +828,8 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("resolves local named export aliases to their painted implementation", async () => {
-    const component = `scripts/ci/contrast-alias-surface-${process.pid}.tsx`;
-    const caller = `scripts/ci/contrast-alias-caller-${process.pid}.tsx`;
+    const component = `apps/web/src/components/contrast-alias-surface-${process.pid}.tsx`;
+    const caller = `apps/web/src/components/contrast-alias-caller-${process.pid}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -868,9 +868,9 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("resolves conditional alpha caller surfaces against the next opaque ancestor", async () => {
-    const leaf = `scripts/ci/contrast-branch-leaf-${process.pid}.tsx`;
-    const branch = `scripts/ci/contrast-branch-owner-${process.pid}.tsx`;
-    const root = `scripts/ci/contrast-branch-root-${process.pid}.tsx`;
+    const leaf = `apps/web/src/components/contrast-branch-leaf-${process.pid}.tsx`;
+    const branch = `apps/web/src/components/contrast-branch-owner-${process.pid}.tsx`;
+    const root = `apps/web/src/components/contrast-branch-root-${process.pid}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -945,9 +945,9 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("does not treat test renderer mounts as additional product surfaces", async () => {
-    const component = `scripts/ci/.contrast-leaf-${process.pid}.tsx`;
-    const product = `scripts/ci/.contrast-product-${process.pid}.tsx`;
-    const testRenderer = `scripts/ci/.contrast-renderer-${process.pid}.test.tsx`;
+    const component = `apps/web/src/components/.contrast-leaf-${process.pid}.tsx`;
+    const product = `apps/web/src/components/.contrast-product-${process.pid}.tsx`;
+    const testRenderer = `apps/web/src/components/.contrast-renderer-${process.pid}.test.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -1071,7 +1071,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("binds button descendants to the caller's declared button variant", async () => {
-    const fixture = `scripts/ci/.contrast-button-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-button-${process.pid}.test.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -1111,6 +1111,174 @@ describe("G3 contrast inventory and math", () => {
         ),
         false,
       );
+    } finally {
+      await rm(fixture, { force: true });
+    }
+  });
+
+  it("binds button state colors to explicit overrides and proven backdrops", async () => {
+    const helper = `apps/web/src/lib/.contrast-button-state-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-button-state-caller-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    const foreground = "--color-foreground";
+    try {
+      await writeFile(
+        helper,
+        'export function IconFunction(){ return <span className="text-foreground">Save</span>; }',
+      );
+      await writeFile(
+        fixture,
+        `import { Button } from "@taskdesk/ui"; import { IconFunction } from "@/lib/.contrast-button-state-${process.pid}"; export function Fixture(){ return <main className="bg-card"><Button variant="secondary" className="bg-background hover:bg-accent/60 active:bg-accent/50">{IconFunction()}</Button></main>; }`,
+      );
+      const overridden = observeInheritedForegroundSurfaces(
+        [helper, fixture],
+        tokenNames,
+      );
+      assert.ok(
+        overridden.pairs.has(
+          `${foreground}|--color-background|bg-background|light`,
+        ),
+      );
+      assert.ok(
+        overridden.pairs.has(
+          `${foreground}|--color-accent|hover:bg-accent/60|light|backdrop:bg-background`,
+        ),
+      );
+      assert.ok(
+        overridden.pairs.has(
+          `${foreground}|--color-accent|active:bg-accent/50|light|backdrop:bg-background`,
+        ),
+      );
+      assert.equal(overridden.unresolved.size, 0);
+
+      await writeFile(
+        fixture,
+        `import { Button } from "@taskdesk/ui"; import { IconFunction } from "@/lib/.contrast-button-state-${process.pid}"; export function Fixture(){ return <main className="bg-card"><Button variant="ghost" className="hover:bg-accent/60 active:bg-accent/50">{IconFunction()}</Button></main>; }`,
+      );
+      const ancestorBackdrop = observeInheritedForegroundSurfaces(
+        [helper, fixture],
+        tokenNames,
+      );
+      assert.ok(
+        ancestorBackdrop.pairs.has(
+          `${foreground}|--color-accent|hover:bg-accent/60|light|backdrop:bg-card`,
+        ),
+      );
+      assert.ok(
+        ancestorBackdrop.pairs.has(
+          `${foreground}|--color-accent|active:bg-accent/50|light|backdrop:bg-card`,
+        ),
+      );
+      assert.equal(ancestorBackdrop.unresolved.size, 0);
+
+      await writeFile(
+        fixture,
+        `import { Button } from "@taskdesk/ui"; import { IconFunction } from "@/lib/.contrast-button-state-${process.pid}"; export function Fixture(){ return <Button variant="ghost" className="hover:bg-accent/60 active:bg-accent/50">{IconFunction()}</Button>; }`,
+      );
+      const missingBackdrop = observeInheritedForegroundSurfaces(
+        [helper, fixture],
+        tokenNames,
+      );
+      assert.ok(missingBackdrop.unresolved.size > 0);
+      assert.equal(
+        missingBackdrop.pairs.has(
+          `${foreground}|--color-accent|hover:bg-accent/60|light|backdrop:bg-background`,
+        ),
+        false,
+      );
+
+      await writeFile(
+        fixture,
+        `import { Button } from "@taskdesk/ui"; import { IconFunction } from "@/lib/.contrast-button-state-${process.pid}"; export function Fixture(){ return <main className="bg-card"><Button variant="secondary" className="bg-background bg-popover hover:bg-accent/60">{IconFunction()}</Button></main>; }`,
+      );
+      const ambiguousBackdrop = observeInheritedForegroundSurfaces(
+        [helper, fixture],
+        tokenNames,
+      );
+      assert.ok(ambiguousBackdrop.unresolved.size > 0);
+      assert.equal(
+        ambiguousBackdrop.pairs.has(
+          `${foreground}|--color-accent|hover:bg-accent/60|light|backdrop:bg-background`,
+        ),
+        false,
+      );
+    } finally {
+      await Promise.all(
+        [helper, fixture].map((file) => rm(file, { force: true })),
+      );
+    }
+  });
+
+  it("binds returned helper icons to their real trigger and portal contexts, including selected state", async () => {
+    const fixture = `apps/web/src/components/.contrast-helper-portal-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        fixture,
+        `import { Button, HoverCardContent } from "@taskdesk/ui"; export function Fixture(){ const getStatus = () => { return { icon: <svg className="text-success-foreground" /> }; }; return <div data-task-selected={selected ? "true" : undefined} data-task-dragging={dragging ? "true" : undefined} className="bg-background data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50"><Button variant="ghost" className="bg-muted/55">{getStatus().icon}</Button><HoverCardContent>{getStatus().icon}</HoverCardContent></div>; }`,
+      );
+      const observed = observeInheritedForegroundSurfaces(
+        [fixture],
+        tokenNames,
+      );
+      const selectedTrigger =
+        "--color-success-foreground|--color-muted|bg-muted/55|light|backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50>bg-background";
+      assert.ok(
+        observed.pairs.has(selectedTrigger),
+        "the translucent trigger surface is composited over the selected card state",
+      );
+      assert.ok(
+        observed.pairs.has(
+          "--color-success-foreground|--color-popover|bg-popover|light",
+        ),
+        "the returned icon inside portal content uses the popup surface",
+      );
+      const popupUses = observed.uses.occurrences
+        .get("--color-success-foreground|--color-popover|bg-popover|light")
+        ?.filter((item) => item.usage === fixture);
+      assert.equal(popupUses.length, 1);
+      assert.equal(
+        popupUses[0].chain.some((item) => item.includes("task-selected")),
+        false,
+        "portal content does not inherit the trigger card's selected backdrop",
+      );
+      const selectedTriggerUses =
+        observed.uses.occurrences.get(selectedTrigger);
+      assert.equal(
+        selectedTriggerUses.filter((item) => item.usage === fixture).length,
+        1,
+        "the selected-state pair is bound to this fixture's actual trigger call",
+      );
+
+      await writeFile(
+        fixture,
+        `import { Button } from "@taskdesk/ui"; export function Fixture(){ const getStatus = () => { return { icon: <svg className="text-success-foreground" /> }; }; return <div data-task-selected={selected ? "true" : undefined} className="bg-background data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50"><Button variant="ghost" className="bg-muted/55">{getStatus().icon}</Button></div>; }`,
+      );
+      const unsupported = observeInheritedForegroundSurfaces(
+        [fixture],
+        tokenNames,
+      );
+      assert.ok(
+        unsupported.unresolved.size > 0,
+        "the selected backdrop stays unresolved when its negated data-state cannot be proven",
+      );
+      assert.equal(observed.unresolved.size, 0);
     } finally {
       await rm(fixture, { force: true });
     }

@@ -1,7 +1,7 @@
 import { APIError } from "better-auth/api";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { authForHost, portalForHost } from "../auth";
+import { authForHost, hasCustomerPortalIdentity, portalForHost } from "../auth";
 import { verifyApiKey } from "./verify-api-key";
 
 function isAuthRejection(error: unknown) {
@@ -18,8 +18,13 @@ async function getSession(headers: Headers) {
   if (!auth || !portal) return null;
   try {
     const result = await auth.api.getSession({ headers });
-    if (result?.session && result.session.portal !== portal) {
-      throw new HTTPException(403, { message: "Forbidden" });
+    if (
+      result?.session &&
+      (result.session.portal !== portal ||
+        (portal === "customer" &&
+          !(await hasCustomerPortalIdentity(result.user.id))))
+    ) {
+      throw new HTTPException(401, { message: "Unauthorized" });
     }
     return result;
   } catch (error) {
@@ -70,6 +75,13 @@ export async function authenticateApiRequest(c: Context): Promise<void> {
   const { token } = parseBearerToken(authorization);
   if (hasInvalidExplicitCredential(authorization, apiKeyHeader)) {
     throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
+  if (
+    portalForHost(c.req.header("host")) === "customer" &&
+    (token !== null || apiKeyHeader !== undefined)
+  ) {
+    throw new HTTPException(403, { message: "session_required" });
   }
 
   const normalizedApiKey = apiKeyHeader?.trim();

@@ -30,12 +30,18 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   // Second factor enrolled; reset by an administrator (with the verification note).
   "auth.mfa_enrolled",
   "auth.mfa_reset",
+  "auth.user_suspended",
+  "auth.user_unsuspended",
+  "auth.sessions_revoked",
+  "auth.instance_admin_granted",
   "auth.step_up_issued",
   "auth.step_up_consumed",
   "auth.step_up_denied",
   // GM-7, GM-11.
   "impersonation.started",
   "impersonation.ended",
+  // A pending approval closed by a run of its transition (owner decision 2026-10-10).
+  "approval.closed",
   // Authority and reach changes.
   "role.created",
   "role.updated",
@@ -44,6 +50,15 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "membership.sees_all_granted",
   // `owner_team_id` or `parent_id` changed (rbac.md#reach).
   "project.reach_changed",
+  "sla_policy.created",
+  "sla_policy.updated",
+  "sla_policy.published",
+  "request_type.created",
+  "request_type.updated",
+  "request_type.published",
+  "request_type.unpublished",
+  "submission.claimed",
+  "submission.duplicate",
   // Invitations.
   "invitation.sent",
   "invitation.redeemed",

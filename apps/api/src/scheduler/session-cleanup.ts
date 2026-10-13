@@ -10,8 +10,9 @@ import { withJobLease } from "./leader-lock";
  * their window — **the soft-delete purge skips any row whose organisation or person is
  * under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts."
  *
- * **Only the expired-sessions half is implemented here, deliberately and visibly.** The
- * other three cannot be built correctly yet, and each for a concrete, checkable reason:
+ * The expired-session and expired-notification-reservation purges are implemented here.
+ * The other three cleanup families cannot be built correctly yet, each for a concrete,
+ * checkable reason:
  *
  * - **Soft-deleted rows past their window.** Hold-awareness needs to know a row's
  *   *organisation*, and for the two tables that actually carry `deleted_at`/`purge_after`
@@ -33,7 +34,9 @@ import { withJobLease } from "./leader-lock";
  *
  * None of this is a silent omission: it is tracked on issue #198, and the exclusion
  * helper below is written so that adding the remaining halves is a matter of giving each one
- * a scope, not of re-deriving the hold rule.
+ * a scope, not of re-deriving the hold rule. Expired reservations are deliberately exempt
+ * from holds: they contain only short-lived coordination identifiers, and lease takeover is
+ * governed by the lease timestamp before this daily physical cleanup runs.
  */
 
 // background-jobs.md's table: `session-cleanup`, cadence daily 03:15, lease TTL 5 minutes.
@@ -42,6 +45,7 @@ const LEASE_MS = 5 * 60 * 1000;
 
 export type SessionCleanupOutcome = {
   sessionsDeleted: number;
+  notificationReservationsDeleted: number;
 };
 
 /**
@@ -112,6 +116,21 @@ export async function deleteExpiredSessions(): Promise<number> {
 }
 
 /**
+ * Physically removes expired dedupe reservations. `lease_expires_at` is a UTC wall clock
+ * stored in `timestamp without time zone`, so compare it with PostgreSQL's current UTC wall
+ * clock directly. This purge is intentionally not filtered by legal holds; ownership and
+ * delivery history live in their separate retained rows.
+ */
+export async function deleteExpiredNotificationReservations(): Promise<number> {
+  const result = await db.execute(sql`
+    DELETE FROM "outbox_dedupe_reservation"
+    WHERE "lease_expires_at" <= clock_timestamp() AT TIME ZONE 'UTC';
+  `);
+
+  return result.rowCount ?? 0;
+}
+
+/**
  * The registered job body. Leader-locked: every replica runs the cron, one does the work
  * (`background-jobs.md` § Leasing). Idempotent by construction — a second run finds nothing
  * left to delete, which is what a lease's at-least-once guarantee requires.
@@ -149,13 +168,22 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
   try {
     const outcome = await withJobLease(
       LEASE_NAME,
-      async () => ({ sessionsDeleted: await deleteExpiredSessions() }),
+      async () => {
+        const sessionsDeleted = await deleteExpiredSessions();
+        const notificationReservationsDeleted =
+          await deleteExpiredNotificationReservations();
+        return { sessionsDeleted, notificationReservationsDeleted };
+      },
       // Held elsewhere: not an error, and not this replica's work to do.
-      () => ({ sessionsDeleted: 0 }),
+      () => ({ sessionsDeleted: 0, notificationReservationsDeleted: 0 }),
       LEASE_MS,
     );
 
-    logRun(startedAt, outcome.sessionsDeleted, "ok");
+    logRun(
+      startedAt,
+      outcome.sessionsDeleted + outcome.notificationReservationsDeleted,
+      "ok",
+    );
     return outcome;
   } catch (error) {
     // The scheduler's own wrapper logs the failure too; this line is not a duplicate of it but

@@ -8,14 +8,9 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
 
-// Pinned literally against apps/web/src/hooks/use-workspace-permission.ts's
-// own (private, unexported, hand-copied here once and verified) CAPABILITIES
-// map. A1-P5's equivalence tests re-derive their "expected" answer from
-// CAPABILITY_CHECKS itself, so they cannot catch a capability being pointed
-// at the WRONG permission (both sides of that comparison would move
-// together). This is the test that actually catches that: an edit to
-// capability-checks.ts that changes what any of the 16 keys checks, without
-// updating the client to match, fails here first.
+// Pinned literally against the existing client permission keys and the two
+// optional comment-choice response names. This prevents either side from
+// silently renaming the API used by the single composer.
 const EXPECTED_CAPABILITY_CHECKS: Record<string, Record<string, string[]>> = {
   manageProjects: { project: ["create", "update", "delete"] },
   createProjects: { project: ["create"] },
@@ -33,9 +28,11 @@ const EXPECTED_CAPABILITY_CHECKS: Record<string, Record<string, string[]>> = {
   inviteUsers: { invitation: ["create"] },
   manageTeam: { member: ["update", "delete"] },
   removeMembers: { member: ["delete"] },
+  createPublicComments: { comment: ["create"] },
+  createInternalComments: { comment: ["create_internal"] },
 };
 
-// GET /api/capabilities -- one call replacing the client's 16-way
+// GET /api/capabilities -- one call replacing the client's legacy
 // has-permission fan-out (retrofit plan, S2 row / matrix row 15, issue
 // #6). Scope tests: it must never answer for a workspace other than the
 // one asked about.
@@ -69,13 +66,116 @@ beforeEach(async () => {
   await resetTestDatabase();
 });
 
-describe("the 16-key capability vocabulary matches the client's fan-out exactly (A1-P5)", () => {
-  it("checks the exact same permission map per key as apps/web/src/hooks/use-workspace-permission.ts", () => {
+describe("the capability vocabulary matches the client helpers exactly (A1-P5)", () => {
+  it("keeps legacy and comment choice keys aligned with server checks", () => {
     expect(CAPABILITY_CHECKS).toEqual(EXPECTED_CAPABILITY_CHECKS);
   });
 });
 
 describe("GET /api/capabilities", () => {
+  it("reports public and internal comment choices from the caller's exact built-in role", async () => {
+    const member = await createWorkspaceMember({ role: "member" });
+    const admin = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const memberResponse = await app.request(
+      `/api/capabilities?workspaceId=${member.workspace.id}`,
+    );
+    const memberCaps = (await memberResponse.json()) as Record<string, boolean>;
+    expect(memberResponse.status).toBe(200);
+    expect(memberCaps.createPublicComments).toBe(true);
+    expect(memberCaps.createInternalComments).toBe(true);
+
+    mockAuthenticatedSession(admin.user);
+    const adminResponse = await app.request(
+      `/api/capabilities?workspaceId=${admin.workspace.id}`,
+    );
+    const adminCaps = (await adminResponse.json()) as Record<string, boolean>;
+    expect(adminResponse.status).toBe(200);
+    expect(adminCaps.createPublicComments).toBe(true);
+    expect(adminCaps.createInternalComments).toBe(true);
+  });
+
+  it("returns false for malformed role membership and denies duplicate membership rows", async () => {
+    const malformed = await createWorkspaceMember({ role: "not-a-built-in" });
+    mockAuthenticatedSession(malformed.user);
+    const { app } = createApp();
+    const malformedResponse = await app.request(
+      `/api/capabilities?workspaceId=${malformed.workspace.id}`,
+    );
+    const malformedCaps = (await malformedResponse.json()) as Record<
+      string,
+      boolean
+    >;
+    expect(malformedResponse.status).toBe(200);
+    expect(malformedCaps.createPublicComments).toBe(false);
+    expect(malformedCaps.createInternalComments).toBe(false);
+
+    await addMembership(malformed.user.id, malformed.workspace.id, "member");
+    const duplicateResponse = await app.request(
+      `/api/capabilities?workspaceId=${malformed.workspace.id}`,
+    );
+    expect(duplicateResponse.status).toBe(403);
+  });
+
+  it("does not let instance-admin reach replace workspace membership", async () => {
+    const { workspace } = await createWorkspaceMember();
+    const outsider = await createWorkspaceMember();
+    mockAuthenticatedSession({ ...outsider.user, role: "admin" });
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/capabilities?workspaceId=${workspace.id}`,
+    );
+    expect(response.status).toBe(403);
+  });
+
+  it("reports exact service-calendar management for an admin", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(admin.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/capabilities?workspaceId=${admin.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).manageServiceCalendars).toBe(true);
+  });
+
+  it("denies service-calendar management to a viewer", async () => {
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    mockAuthenticatedSession(viewer.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/capabilities?workspaceId=${viewer.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).manageServiceCalendars).toBe(false);
+  });
+
+  it("reports the canonical saved-view audience capabilities", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const ownerResponse = await app.request(
+      `/api/capabilities?workspaceId=${owner.workspace.id}`,
+    );
+    const ownerCapabilities = await ownerResponse.json();
+    expect(ownerCapabilities.shareSavedViews).toBe(true);
+    expect(ownerCapabilities.manageWorkspaceSettings).toBe(true);
+
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    mockAuthenticatedSession(viewer.user);
+    const viewerResponse = await app.request(
+      `/api/capabilities?workspaceId=${viewer.workspace.id}`,
+    );
+    const viewerCapabilities = await viewerResponse.json();
+    expect(viewerCapabilities.shareSavedViews).toBe(false);
+    expect(viewerCapabilities.manageWorkspaceSettings).toBe(false);
+  });
+
   it("scopes to the requested workspace -- same user, different roles in two workspaces, different answers (A1-P4)", async () => {
     const owner = await createWorkspaceMember({
       workspaceName: "Workspace Owner-side",

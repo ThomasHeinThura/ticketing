@@ -223,10 +223,16 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | --- | --- |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
 | `auth.mfa_enrolled` · `auth.mfa_reset` | Second-factor enrollment and administrator reset (with the required verification note); never record the secret, TOTP, backup codes, or proof |
+| `auth.user_suspended` · `auth.user_unsuspended` | God Mode account suspension changes; record target user id, outcome, and whether a finite expiry was set, but never the ban reason text or exact expiry |
+| `auth.sessions_revoked` | God Mode force sign-out; one summary row with target user id and count, never session ids, tokens, IP addresses or user agents |
+| `auth.instance_admin_granted` | God Mode grant-admin; record actor and target user ids plus `granted` or `already_admin`; never record step-up proof, token, or request body |
 | `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
 | `project.reach_changed` | `owner_team_id` or `parent_id` changed ([rbac.md](../01-architecture/rbac.md#reach)) |
+| `request_type.created` · `request_type.updated` · `request_type.published` · `request_type.unpublished` | Request-type lifecycle. Record safe request type/workspace identifiers and a closed changed-field list; never store the form schema, labels, customer answers, or raw request body. Audit-only; no outbox event. |
+| `submission.claimed` | A triager claims a submission; record submission reference and the actor id. Audit-only; no outbox event. |
+| `submission.duplicate` | A triager links a submission to a same-organisation work item; record submission reference and linked work-item id/key. Audit-only; no outbox event. |
 | `invitation.sent` · `invitation.redeemed` · `invitation.revoked` | Invitations |
 | `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |
 | `feature_flag.changed` | Any level |
@@ -243,6 +249,7 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | `audit.read` · `audit.exported` · `audit.purged` | `AU-13`; the purge audits itself |
 | `instance.restored` | A restore completed ([backup-and-restore.md](../05-operations/backup-and-restore.md)) |
 | `pending_action.viewed` | The one pending-action transition that is not an event (`PA-11`) |
+| `sla_policy.created` · `sla_policy.updated` · `sla_policy.published` | SLA policy creation, draft edits and publication |
 
 ## Permissions
 

@@ -10,7 +10,7 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-No code has been released yet. Planning is complete — see
+Three signed prereleases exist (`2.0.0-alpha.1` to `2.0.0-alpha.3`, below). See
 [status.md](docs/07-planning/status.md) for the live picture and
 [accelerated-delivery-plan.md](docs/07-planning/accelerated-delivery-plan.md) for the
 current target calendar.
@@ -57,6 +57,20 @@ This file starts recording real entries from the first change merged in
 this file as the promise of where product-facing entries will live once there is a product
 to log.
 
+### Fixed
+
+- **Installer re-run (#623, `f4f6b011`, merged 2026-10-10, not yet in a release).** A
+  first production install writes `TASKDESK_FILES_HOST=files.<domain>` into `.env`. On the
+  next run of `install.sh`, `2.0.0-alpha.3` checked that name in DNS and stopped with "DNS
+  name files.<domain> does not resolve", even when the S3 profile was not in use. The
+  installer now checks the files host only with `--profile s3` or an explicit
+  `--files-host`. Nothing was changed when the old behaviour stopped; it failed safe. The
+  published installer hash changed to `ab4e319e…`. The same change corrects the documented
+  `/api/public/health/live` response (`{"status":"ok"}`) and adds a runbook note about
+  re-signing in after the cookie rename. Evidence:
+  `p0-installer-proof-4-20261010T115535Z` (re-run and S3 cases pass; see the
+  [P0 stage review](docs/07-planning/p0-stage-review.md)).
+
 <!--
 Entries from here on follow this shape, oldest section at the bottom:
 
@@ -70,6 +84,94 @@ Entries from here on follow this shape, oldest section at the bottom:
   that generated the entry didn't say "security" — see
   docs/01-architecture/security-model.md.
 -->
+
+## [2.0.0-alpha.3] - 2026-10-10
+
+Signed prerelease, source `b704f707`. The P0 claim binds to this release
+([P0 stage review](docs/07-planning/p0-stage-review.md)).
+
+### Added
+- Database migrations 0088 to 0118 (#618) and 0119 (#620), taking a fresh schema to 120
+  migration rows. They are additive, apart from some constraint changes. 0119 adds
+  tenant-composite foreign keys for saved views and notification deliveries.
+
+### Changed
+- File and attachment URLs are now built from the configured public origin, not from the
+  request's Host or forwarded headers (#619).
+- `deploy.sh` now decides whether a port is published from the container engine's own
+  data, and reads image digests from registry bytes (#621).
+
+### Fixed
+- `deploy.sh` no longer aborts in production on a Docker Compose that prints `:0` for an
+  exposed but unpublished port (#621). This stopped the `2.0.0-alpha.2` deploy.
+
+### Security
+- `deploy.sh` now takes the image digest from the registry's own bytes and judges port
+  publication from the container engine, so a wrong digest or a published port is rejected
+  from what the engine and registry report, not from parsed tool text (#621). The
+  release-tag binding of the signature check (`--annotations "tag=${tag}"`) is older than
+  #621; it was already in `deploy.sh` at `3096cb04`.
+
+### Known issues
+- Running `install.sh` a second time on a default production install (no S3 profile, no
+  `files.<domain>` DNS record) stops with a DNS error. Nothing is changed. Fixed in #623
+  (see Unreleased).
+- `/api/public/health/live` returns `{"status":"ok"}`. The container-image doc said it also
+  returned version and SHA. Corrected in #623.
+- No release-to-release rollback is proven. Proof 3 rolled back to the edge image
+  `sha-8ddb9de8` (schema 80, boot and reads only; old-image writes were not tested).
+  `2.0.0-alpha.1` and `2.0.0-alpha.2` cannot complete a production install, so they are not
+  a rollback target.
+
+## [2.0.0-alpha.2] - 2026-10-10
+
+Signed prerelease, source `511c917f`. **Superseded; do not install.** A production deploy
+still fails at the port check (see Known issues).
+
+### Fixed
+- `deploy.sh` no longer fails on the padded `Digest:` line that newer `docker buildx`
+  prints. It now stops on malformed output instead of continuing (#617).
+
+### Changed
+- Repository policy and the pull-request template check were reworked (#615, #616). These
+  change how reviews are recorded, not product behaviour.
+
+### Known issues
+- A production deploy stops at the port check on Docker Compose versions that print `:0`
+  for an unpublished port. Fixed in `2.0.0-alpha.3`.
+
+## [2.0.0-alpha.1] - 2026-10-10
+
+First signed prerelease, source `b64f8062` (#602 merge). **Superseded; do not install.**
+`deploy.sh` fails on the digest line (see Known issues). Container image published to GHCR
+with signature and provenance.
+
+### Added
+- The P0 foundation: CI gate matrix, policy registry with route-coverage test, Docker
+  image, Compose files, `scripts/deploy.sh` and the one-line `install.sh`, observability
+  and health endpoints, seed profiles, a PostgreSQL RLS prototype, and the shared UI
+  foundation. See the pull-request list in the
+  [GitHub release](https://github.com/ThomasHeinThura/ticketing/releases/tag/v2.0.0-alpha.1)
+  (#394 to #602).
+- Two entry points served by one image: the agent app on the agent host, and on the portal
+  host only a "portal unavailable" notice (customer portal is disabled in this release).
+- Pending actions: persisted deletion approvals with self-read, deny, cancel and expiry
+  routes.
+- Work-item, comment, attachment, workflow-transition and project-plan API routes.
+
+### Changed
+- **Sessions: the agent session cookie is now `__Host-tdk_agent_session` (Secure,
+  host-only).** Sessions from an earlier image are not accepted after an upgrade. Users
+  must sign in again. Cookies are not interchangeable after a rollback. (The portal
+  cookie is `__Host-tdk_portal_session`.)
+- Anonymous sign-in, account linking and the cookie cache are off.
+
+### Known issues
+- `deploy.sh` fails on the padded `Digest:` line from newer `docker buildx`. Fixed in
+  `2.0.0-alpha.2`.
+- No full E2E, screen-reader, keyboard, cross-browser, realistic-data, load or restore
+  evidence exists. Thomas deferred these to before `2.0.0` on 2026-10-10 (see the
+  [decision log](docs/07-planning/decision-log.md) and the P0 stage review).
 
 ## Related
 

@@ -36,6 +36,19 @@ export type LogResult = (typeof LOG_RESULTS)[number];
 export const HTTP_STATUS_CLASSES = ["1xx", "2xx", "3xx", "4xx", "5xx"] as const;
 export type HttpStatusClass = (typeof HTTP_STATUS_CLASSES)[number];
 
+export type StrictPolicyWitness = {
+  readonly requestId: string;
+  readonly route: RegisteredHttpRoute;
+  readonly policySource: string;
+  readonly decisionCategory: "allowed" | "denied";
+  readonly provenanceValidationResult:
+    | "complete"
+    | "missing"
+    | "ambiguous"
+    | "failed"
+    | "not_applicable";
+};
+
 export interface TaskDeskLogEvent {
   module: ObservabilityModule;
   message: LogMessage;
@@ -46,6 +59,7 @@ export interface TaskDeskLogEvent {
   durationMs?: number;
   route?: RegisteredHttpRoute | typeof UNMATCHED_ROUTE;
   auditOperation?: AuditFailureOperation;
+  strictPolicyWitness?: StrictPolicyWitness;
 }
 
 export interface TaskDeskLogger {
@@ -65,6 +79,7 @@ const allowedEventKeys = new Set([
   "durationMs",
   "route",
   "auditOperation",
+  "strictPolicyWitness",
 ]);
 const validModules = new Set<string>(OBSERVABILITY_MODULES);
 const validAuditOperations = new Set<string>(AUDIT_FAILURE_OPERATIONS);
@@ -90,54 +105,181 @@ function isRegisteredRoute(value: unknown): value is RegisteredHttpRoute {
   }
 }
 
+const strictWitnessKeys = new Set([
+  "requestId",
+  "route",
+  "policySource",
+  "decisionCategory",
+  "provenanceValidationResult",
+]);
+
+function snapshotPlainDataObject(
+  value: unknown,
+  allowedKeys: ReadonlySet<string>,
+  requiredKeys: ReadonlySet<string> = new Set(),
+): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError("Invalid structured log event");
+  }
+
+  let prototype: object | null;
+  let descriptors: PropertyDescriptorMap;
+  try {
+    prototype = Object.getPrototypeOf(value);
+    descriptors = Object.getOwnPropertyDescriptors(value);
+  } catch {
+    throw new TypeError("Invalid structured log event");
+  }
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError("Invalid structured log event");
+  }
+
+  const snapshot: Record<string, unknown> = Object.create(null);
+  const present = new Set<string>();
+  for (const key of Reflect.ownKeys(descriptors)) {
+    if (typeof key !== "string" || !allowedKeys.has(key)) {
+      throw new TypeError("Invalid structured log event");
+    }
+    const descriptor = descriptors[key];
+    if (!descriptor?.enumerable || !Object.hasOwn(descriptor, "value")) {
+      throw new TypeError("Invalid structured log event");
+    }
+    snapshot[key] = descriptor.value;
+    present.add(key);
+  }
+  for (const key of requiredKeys) {
+    if (!present.has(key)) throw new TypeError("Invalid structured log event");
+  }
+  return snapshot;
+}
+
 function validateEvent(
-  event: TaskDeskLogEvent,
+  event: unknown,
   registeredRoutes: ReadonlySet<RegisteredHttpRoute>,
-): void {
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
-    throw new TypeError("Invalid structured log event");
-  }
-  if (Object.keys(event).some((key) => !allowedEventKeys.has(key))) {
-    throw new TypeError("Invalid structured log event");
-  }
+  registeredPolicySourceByRoute: ReadonlyMap<RegisteredHttpRoute, string>,
+): TaskDeskLogEvent {
+  const input = snapshotPlainDataObject(event, allowedEventKeys);
+  const module = input.module;
+  const message = input.message;
+  const level = input.level;
+  const traceId = input.traceId;
+  const result = input.result;
+  const statusClass = input.statusClass;
+  const durationMs = input.durationMs;
+  const route = input.route;
+  const auditOperation = input.auditOperation;
   if (
-    !validModules.has(event.module) ||
-    !validMessages.has(event.message) ||
-    !validLevels.has(event.level)
-  ) {
-    throw new TypeError("Invalid structured log event");
-  }
-  if (event.traceId !== undefined && !safeTraceId.test(event.traceId)) {
-    throw new TypeError("Invalid structured log event");
-  }
-  if (event.result !== undefined && !validResults.has(event.result)) {
-    throw new TypeError("Invalid structured log event");
-  }
-  if (
-    event.statusClass !== undefined &&
-    !validStatusClasses.has(event.statusClass)
+    typeof module !== "string" ||
+    typeof message !== "string" ||
+    typeof level !== "string" ||
+    !validModules.has(module) ||
+    !validMessages.has(message) ||
+    !validLevels.has(level)
   ) {
     throw new TypeError("Invalid structured log event");
   }
   if (
-    event.durationMs !== undefined &&
-    (!Number.isFinite(event.durationMs) || event.durationMs < 0)
+    traceId !== undefined &&
+    (typeof traceId !== "string" || !safeTraceId.test(traceId))
   ) {
     throw new TypeError("Invalid structured log event");
   }
   if (
-    event.route !== undefined &&
-    event.route !== UNMATCHED_ROUTE &&
-    (!isRegisteredRoute(event.route) || !registeredRoutes.has(event.route))
+    result !== undefined &&
+    (typeof result !== "string" || !validResults.has(result))
   ) {
     throw new TypeError("Invalid structured log event");
   }
   if (
-    event.auditOperation !== undefined &&
-    !validAuditOperations.has(event.auditOperation)
+    statusClass !== undefined &&
+    (typeof statusClass !== "string" || !validStatusClasses.has(statusClass))
   ) {
     throw new TypeError("Invalid structured log event");
   }
+  if (
+    durationMs !== undefined &&
+    (typeof durationMs !== "number" ||
+      !Number.isFinite(durationMs) ||
+      durationMs < 0)
+  ) {
+    throw new TypeError("Invalid structured log event");
+  }
+  if (
+    route !== undefined &&
+    route !== UNMATCHED_ROUTE &&
+    (typeof route !== "string" ||
+      !isRegisteredRoute(route) ||
+      !registeredRoutes.has(route))
+  ) {
+    throw new TypeError("Invalid structured log event");
+  }
+  if (
+    auditOperation !== undefined &&
+    (typeof auditOperation !== "string" ||
+      !validAuditOperations.has(auditOperation))
+  ) {
+    throw new TypeError("Invalid structured log event");
+  }
+  const safeEvent = Object.create(null) as TaskDeskLogEvent;
+  safeEvent.module = module as ObservabilityModule;
+  safeEvent.message = message as LogMessage;
+  safeEvent.level = level as LogLevel;
+  if (traceId !== undefined) safeEvent.traceId = traceId as string;
+  if (result !== undefined) safeEvent.result = result as LogResult;
+  if (statusClass !== undefined)
+    safeEvent.statusClass = statusClass as HttpStatusClass;
+  if (durationMs !== undefined) safeEvent.durationMs = durationMs as number;
+  if (route !== undefined)
+    safeEvent.route = route as RegisteredHttpRoute | typeof UNMATCHED_ROUTE;
+  if (auditOperation !== undefined)
+    safeEvent.auditOperation = auditOperation as AuditFailureOperation;
+
+  if (input.strictPolicyWitness !== undefined) {
+    const witness = snapshotPlainDataObject(
+      input.strictPolicyWitness,
+      strictWitnessKeys,
+      strictWitnessKeys,
+    );
+    const requestId = witness.requestId;
+    const witnessRoute = witness.route;
+    const policySource = witness.policySource;
+    const decisionCategory = witness.decisionCategory;
+    const provenanceValidationResult = witness.provenanceValidationResult;
+    if (
+      message !== "http.request" ||
+      typeof requestId !== "string" ||
+      !/^[0-9a-f]{32}$/.test(requestId) ||
+      traceId !== requestId ||
+      typeof witnessRoute !== "string" ||
+      !registeredRoutes.has(witnessRoute as RegisteredHttpRoute) ||
+      route !== witnessRoute ||
+      typeof policySource !== "string" ||
+      registeredPolicySourceByRoute.get(witnessRoute as RegisteredHttpRoute) !==
+        policySource ||
+      (decisionCategory !== "allowed" && decisionCategory !== "denied") ||
+      typeof provenanceValidationResult !== "string" ||
+      ![
+        "complete",
+        "missing",
+        "ambiguous",
+        "failed",
+        "not_applicable",
+      ].includes(provenanceValidationResult)
+    ) {
+      throw new TypeError("Invalid structured log event");
+    }
+    const canonicalWitness = Object.freeze(
+      Object.assign(Object.create(null) as StrictPolicyWitness, {
+        requestId,
+        route: witnessRoute,
+        policySource,
+        decisionCategory,
+        provenanceValidationResult,
+      }),
+    );
+    safeEvent.strictPolicyWitness = canonicalWitness;
+  }
+  return safeEvent;
 }
 
 /**
@@ -148,6 +290,10 @@ export function createTaskDeskLogger(
   initialLevels: unknown,
   trustedRoutes: ReadonlySet<RegisteredHttpRoute>,
   destination: DestinationStream = process.stdout,
+  trustedPolicySourceByRoute: ReadonlyMap<
+    RegisteredHttpRoute,
+    string
+  > = new Map(),
 ): TaskDeskLogger {
   let levels: LogLevels = validateLogLevels(initialLevels);
   const registeredRoutes = new Set<RegisteredHttpRoute>();
@@ -160,6 +306,7 @@ export function createTaskDeskLogger(
     }
     registeredRoutes.add(route);
   }
+  const registeredPolicySourceByRoute = new Map(trustedPolicySourceByRoute);
   const root: Logger = pino(
     {
       level: "trace",
@@ -201,30 +348,37 @@ export function createTaskDeskLogger(
       applyLevels(next);
     },
     log(event) {
-      validateEvent(event, registeredRoutes);
-      let logger = moduleLoggers.get(event.module);
+      const safeEvent = validateEvent(
+        event,
+        registeredRoutes,
+        registeredPolicySourceByRoute,
+      );
+      let logger = moduleLoggers.get(safeEvent.module);
       if (!logger) {
-        logger = root.child(
-          { module: event.module },
-          { level: logLevelFor(event.module, levels) },
-        );
-        moduleLoggers.set(event.module, logger);
+        const moduleBinding = { module: safeEvent.module };
+        logger = root.child(moduleBinding, {
+          level: logLevelFor(safeEvent.module, levels),
+        });
+        moduleLoggers.set(safeEvent.module, logger);
       }
-      if (!logger.isLevelEnabled(event.level)) return;
+      if (!logger.isLevelEnabled(safeEvent.level)) return;
 
-      const fields: Record<string, string | number> = {
-        module: event.module,
-        messageKey: event.message,
+      const fields: Record<string, unknown> = {
+        module: safeEvent.module,
+        messageKey: safeEvent.message,
       };
-      if (event.traceId !== undefined) fields.traceId = event.traceId;
-      if (event.result !== undefined) fields.result = event.result;
-      if (event.statusClass !== undefined)
-        fields.statusClass = event.statusClass;
-      if (event.durationMs !== undefined) fields.durationMs = event.durationMs;
-      if (event.route !== undefined) fields.route = event.route;
-      if (event.auditOperation !== undefined)
-        fields.auditOperation = event.auditOperation;
-      logger[event.level](fields, event.message);
+      if (safeEvent.traceId !== undefined) fields.traceId = safeEvent.traceId;
+      if (safeEvent.result !== undefined) fields.result = safeEvent.result;
+      if (safeEvent.statusClass !== undefined)
+        fields.statusClass = safeEvent.statusClass;
+      if (safeEvent.durationMs !== undefined)
+        fields.durationMs = safeEvent.durationMs;
+      if (safeEvent.route !== undefined) fields.route = safeEvent.route;
+      if (safeEvent.auditOperation !== undefined)
+        fields.auditOperation = safeEvent.auditOperation;
+      if (safeEvent.strictPolicyWitness !== undefined)
+        fields.strictPolicyWitness = safeEvent.strictPolicyWitness;
+      logger[safeEvent.level](fields, safeEvent.message);
     },
   };
 }

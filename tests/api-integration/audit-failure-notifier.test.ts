@@ -123,7 +123,7 @@ describe("AU-14 durable audit-failure notification", () => {
           Object.keys(eventData).sort().join(",") === "occurredAt,operation",
       ),
     ).toBe(true);
-    expect(await getNotifications(activeAdmin.id)).toHaveLength(1);
+    expect(await getNotifications(activeAdmin.id, true)).toHaveLength(1);
     expect(await isCurrentInstanceAdmin(laterRevokedAdmin.id)).toBe(true);
 
     await db
@@ -131,8 +131,8 @@ describe("AU-14 durable audit-failure notification", () => {
       .set({ role: "member" })
       .where(eq(schema.userTable.id, laterRevokedAdmin.id));
     expect(await isCurrentInstanceAdmin(laterRevokedAdmin.id)).toBe(false);
-    expect(await getNotifications(laterRevokedAdmin.id)).toHaveLength(0);
-    expect(await getNotifications(inactiveAdmin.id)).toHaveLength(0);
-    expect(await getNotifications(ordinaryUser.id)).toHaveLength(0);
+    expect(await getNotifications(laterRevokedAdmin.id, true)).toHaveLength(0);
+    expect(await getNotifications(inactiveAdmin.id, true)).toHaveLength(0);
+    expect(await getNotifications(ordinaryUser.id, true)).toHaveLength(0);
   });
 });

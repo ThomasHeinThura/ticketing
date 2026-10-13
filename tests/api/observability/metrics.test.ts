@@ -23,6 +23,8 @@ describe("bounded TaskDesk metrics", () => {
     });
     metrics.recordAuditWriteFailure("mutation");
     metrics.recordAuditWriteFailure("audit_read");
+    metrics.recordAuthReload("ok", 5);
+    metrics.recordAuthReload("failed", 5);
 
     const exposition = await metrics.metrics();
     expect(exposition).toContain(
@@ -33,9 +35,12 @@ describe("bounded TaskDesk metrics", () => {
     );
     expect(exposition).toContain('operation="mutation"');
     expect(exposition).toContain('operation="audit_read"');
+    expect(exposition).toContain('outcome="ok"');
+    expect(exposition).toContain('outcome="failed"');
+    expect(exposition).toContain("taskdesk_auth_config_version 5");
     expect(exposition).not.toContain("private-customer-key");
     expect(exposition).not.toContain("nodejs_");
-    expect(exposition.match(/^# HELP /gm)).toHaveLength(4);
+    expect(exposition.match(/^# HELP /gm)).toHaveLength(6);
     expect(AUDIT_FAILURE_OPERATIONS).toEqual([
       "mutation",
       "pending_action_decision",

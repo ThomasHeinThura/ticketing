@@ -22,17 +22,39 @@ validate_local_certificate_domain() {
   done
 }
 
+validate_local_certificate_host() {
+  local hostname="$1" label
+  local -a labels
+  if [[ ! "$hostname" =~ ^[A-Za-z0-9.-]+$ ]] ||
+    ((${#hostname} > 253)) ||
+    [[ "$hostname" == .* || "$hostname" == *. || "$hostname" == *..* ]]; then
+    printf 'certificate route host must be a DNS name containing only letters, digits, dots and hyphens.\n' >&2
+    return 1
+  fi
+  IFS=. read -r -a labels <<< "$hostname"
+  for label in "${labels[@]}"; do
+    if ((${#label} == 0 || ${#label} > 63)) ||
+      [[ ! "$label" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$ ]]; then
+      printf 'certificate route host has an invalid DNS label.\n' >&2
+      return 1
+    fi
+  done
+}
+
 local_certificate_covers_routes() {
   local certificate="$1"
   local private_key="$2"
   local domain="$3"
   local hostname
   local check_result
+  local agent_host="${4:-ticket.${domain}}"
+  local portal_host="${5:-portal.${domain}}"
+  local files_host="${6:-files.${domain}}"
 
   [ -f "$certificate" ] || return 1
   local_certificate_key_matches "$certificate" "$private_key" || return 1
   openssl x509 -in "$certificate" -noout -checkend 2592000 >/dev/null 2>&1 || return 1
-  for hostname in "ticket.${domain}" "portal.${domain}" "mail.${domain}" "files.${domain}"; do
+  for hostname in "$agent_host" "$portal_host" "mail.${domain}" "$files_host"; do
     check_result="$(openssl x509 -in "$certificate" -noout -checkhost "$hostname" 2>/dev/null)" || return 1
     [[ "$check_result" == *" does match certificate"* ]] || return 1
   done
@@ -53,13 +75,19 @@ local_certificate_key_matches() {
 prepare_local_certificate() {
   local cert_dir="$1"
   local domain="$2"
+  local agent_host="${3:-ticket.${domain}}"
+  local portal_host="${4:-portal.${domain}}"
+  local files_host="${5:-files.${domain}}"
   local temp_dir
   local backup_dir
   local cert_path="$cert_dir/local.crt"
   local key_path="$cert_dir/local.key"
 
   validate_local_certificate_domain "$domain" || return 1
-  if local_certificate_covers_routes "$cert_path" "$key_path" "$domain"; then
+  validate_local_certificate_host "$agent_host" || return 1
+  validate_local_certificate_host "$portal_host" || return 1
+  validate_local_certificate_host "$files_host" || return 1
+  if local_certificate_covers_routes "$cert_path" "$key_path" "$domain" "$agent_host" "$portal_host" "$files_host"; then
     return 0
   fi
 
@@ -67,7 +95,7 @@ prepare_local_certificate() {
   temp_dir="$(mktemp -d "$cert_dir/.taskdesk-cert.XXXXXX")"
   if ! openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
     -subj "/CN=*.${domain}" \
-    -addext "subjectAltName=DNS:*.${domain},DNS:${domain},DNS:ticket.${domain},DNS:portal.${domain},DNS:mail.${domain},DNS:files.${domain}" \
+    -addext "subjectAltName=DNS:*.${domain},DNS:${domain},DNS:${agent_host},DNS:${portal_host},DNS:mail.${domain},DNS:${files_host}" \
     -addext "basicConstraints=critical,CA:FALSE" \
     -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
     -addext "extendedKeyUsage=serverAuth" \

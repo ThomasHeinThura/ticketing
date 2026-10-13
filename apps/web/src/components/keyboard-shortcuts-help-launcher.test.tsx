@@ -23,9 +23,14 @@ vi.mock("./keyboard-shortcuts-help", () => {
     }) =>
       open ? (
         <div role="dialog">
-          <button type="button" onClick={() => onOpenChange(false)}>
-            Close shortcuts
-          </button>
+          {(() => {
+            return (
+              // ui-exempt: this mock exposes the dialog's close callback.
+              <button type="button" onClick={() => onOpenChange(false)}>
+                Close shortcuts
+              </button>
+            );
+          })()}
         </div>
       ) : null,
   };

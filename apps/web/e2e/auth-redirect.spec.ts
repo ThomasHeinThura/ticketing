@@ -50,6 +50,13 @@ test("logged-out protected navigation redirects to sign-in with its target @a11y
   await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("auth-redirect.png") });
 
+  const password = page.locator('input[autocomplete="current-password"]');
+  await expect(password).toHaveAttribute("type", "password");
+  await page.getByRole("button", { name: "Show password" }).click();
+  await expect(password).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Hide password" }).click();
+  await expect(password).toHaveAttribute("type", "password");
+
   await page.addScriptTag({ content: axeCoreSource });
   const seriousOrCriticalViolations = await page.evaluate(async () => {
     type BrowserAxe = {

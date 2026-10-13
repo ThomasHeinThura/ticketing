@@ -3,6 +3,14 @@ import base from "./playwright.config";
 
 export default defineConfig({
   ...base,
+  use: {
+    ...base.use,
+    // Chromium's partial raster blends the anti-aliased corner pixels of translucent
+    // rounded borders a second time whenever a screenshot invalidates part of a
+    // tile, so an unchanged page alternates between two renderings. Full raster
+    // makes every frame a pure function of the DOM and CSS.
+    launchOptions: { args: ["--disable-partial-raster"] },
+  },
   webServer: [
     base.webServer!,
     {

@@ -18,8 +18,8 @@
  * `tests/api-integration/helpers/auth.ts`) is applied per dynamically-imported instance, not
  * the statically-imported one this file also uses for the "off" baseline.
  */
-import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { createHash, randomUUID } from "node:crypto";
+import { and, eq, inArray } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db from "../../apps/api/src/database";
 import type { createApp } from "../../apps/api/src/index";
@@ -33,6 +33,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 
@@ -399,6 +400,96 @@ describe("request-sourced scope is evaluated with request provenance", () => {
           row.outcome === "legacy_allow_policy_deny" &&
           row.reasonCode === "scope_source_mismatch",
       ),
+    ).toBe(false);
+  });
+});
+
+describe("API-key identity is built from the stored scope in shadow mode", () => {
+  it("records agreement for a key whose stored scope includes the route capability", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    const now = new Date();
+    await db.insert(fresh.schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: createHash("sha256")
+        .update(rawKey)
+        .digest()
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/u, ""),
+      name: "shadow scoped project read key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ project: ["read"] }),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const response = await fresh.app.request(
+      `/api/project?workspaceId=${member.workspace.id}`,
+      { headers: { authorization: `Bearer ${rawKey}` } },
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Before the shared request identity, shadow resolved every key with no capability
+    // subset, so a correctly scoped key recorded `legacy_allow_policy_deny`.
+    const tallies = await shadowTalliesFor(LIST_PROJECTS_ROUTE_KEY);
+    expect(tallies.find((row) => row.outcome === "agree")?.count).toBe(1);
+    expect(
+      tallies.some((row) => row.outcome === "legacy_allow_policy_deny"),
+    ).toBe(false);
+  });
+});
+
+describe("shadow mode honours a key's stored scope when it denies", () => {
+  it("records an agreeing denial, not a policy allow, for a key lacking the route capability", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember({ role: "owner" });
+    await backfillPersons();
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    const now = new Date();
+    await db.insert(fresh.schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: createHash("sha256")
+        .update(rawKey)
+        .digest()
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/u, ""),
+      name: "shadow out-of-scope key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ task: ["read"] }),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const response = await fresh.app.request(
+      `/api/project?workspaceId=${member.workspace.id}`,
+      { headers: { authorization: `Bearer ${rawKey}` } },
+    );
+    expect(response.status).toBe(403);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // The owner holds project:read, so an unclamped shadow identity would allow while the
+    // legacy layer denies (`legacy_deny_policy_allow`).
+    const tallies = await shadowTalliesFor(LIST_PROJECTS_ROUTE_KEY);
+    expect(tallies.find((row) => row.outcome === "agree")?.count).toBe(1);
+    expect(
+      tallies.some((row) => row.outcome === "legacy_deny_policy_allow"),
     ).toBe(false);
   });
 });
@@ -1162,6 +1253,607 @@ const INVITATION_PENDING_ROUTE_KEY = "GET /api/invitation/pending";
 const INVITATION_BY_ID_ROUTE_KEY = "GET /api/invitation/{id}";
 const WS_USER_ROUTE_KEY = "GET /api/ws/user";
 const WS_PROJECT_ROUTE_KEY = "GET /api/ws/{projectId}";
+
+describe("#8 notification self-read shadow evidence", () => {
+  it("returns only the caller's notifications and records the self-policy agreement", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const other = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const [ownNotification] = await fresh.db
+      .insert(fresh.schema.notificationTable)
+      .values({ userId: caller.user.id, type: "info", title: "Own" })
+      .returning();
+    await fresh.db.insert(fresh.schema.notificationTable).values({
+      userId: other.user.id,
+      type: "info",
+      title: "Other user's private notification",
+    });
+    if (!ownNotification)
+      throw new Error("notification insert returned no row");
+
+    const response = await fresh.app.request("/api/notification");
+    expect(response.status).toBe(200);
+    const notifications = (await response.json()) as Array<{
+      id: string;
+      title: string | null;
+    }>;
+    expect(notifications).toEqual([
+      expect.objectContaining({ id: ownNotification.id, title: "Own" }),
+    ]);
+
+    const agreeTally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor("GET /api/notification");
+      return rows.find((row) => row.outcome === "agree");
+    });
+    expect(agreeTally.count).toBe(1);
+    expect(
+      await shadowEventsFor(
+        "GET /api/notification",
+        "legacy_deny_policy_allow",
+      ),
+    ).toEqual([]);
+    expect(
+      await shadowEventsFor(
+        "GET /api/notification",
+        "legacy_allow_policy_deny",
+      ),
+    ).toEqual([]);
+  });
+
+  it("keeps only reachable task links and metadata in a caller's own notifications", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const other = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    // Task reach on main is project-scoped (a workspace role alone is insufficient), so
+    // the caller needs an explicit project read grant on every project it should reach.
+    async function createTask(
+      workspaceId: string,
+      title: string,
+      readerUserId?: string,
+    ) {
+      const { project, columns } = await createProjectFixture({ workspaceId });
+      if (readerUserId) {
+        await grantProjectRole(readerUserId, project.id, ["work_item:read"]);
+      }
+      const task = await fresh.db
+        .insert(fresh.schema.taskTable)
+        .values({
+          projectId: project.id,
+          title,
+          description: title,
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning();
+      if (!task[0]) throw new Error("createTask: insert returned no row");
+      return { task: task[0], project };
+    }
+
+    async function createOwnNotification(
+      taskId: string,
+      title: string,
+      eventData: Record<string, unknown> = { taskTitle: title },
+      content = `Sensitive content for ${title}`,
+    ) {
+      const response = await fresh.app.request("/api/notification", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title,
+          message: content,
+          type: "info",
+          eventData,
+          relatedEntityId: taskId,
+          relatedEntityType: "task",
+        }),
+      });
+      expect(response.status).toBe(200);
+      return (await response.json()) as { id: string };
+    }
+
+    const { task: privateTask, project: privateProject } = await createTask(
+      other.workspace.id,
+      "Other workspace task",
+    );
+    const { task: ownTask, project: ownProject } = await createTask(
+      caller.workspace.id,
+      "Caller workspace task",
+      caller.user.id,
+    );
+    const { task: deletedTask, project: deletedProject } = await createTask(
+      caller.workspace.id,
+      "Deleted task",
+      caller.user.id,
+    );
+    const { task: softDeletedProjectTask, project: softDeletedProject } =
+      await createTask(
+        caller.workspace.id,
+        "Soft-deleted project task",
+        caller.user.id,
+      );
+    const [privateNotification] = await fresh.db
+      .insert(fresh.schema.notificationTable)
+      .values({
+        userId: caller.user.id,
+        title: "Private task notification",
+        content: "Sensitive private task content",
+        type: "info",
+        eventData: {
+          taskTitle: "Private task notification",
+          projectId: privateProject.id,
+          workspaceId: other.workspace.id,
+          marker: "must-not-leak",
+        },
+        resourceId: privateTask.id,
+        resourceType: "task",
+      })
+      .returning();
+    if (!privateNotification)
+      throw new Error("notification insert returned no row");
+    const unreachableCreateResponse = await fresh.app.request(
+      "/api/notification",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: "Unreachable task attempt",
+          message: "Must not be stored",
+          type: "info",
+          relatedEntityId: privateTask.id,
+          relatedEntityType: "task",
+        }),
+      },
+    );
+    expect(unreachableCreateResponse.status).toBe(200);
+    expect(await unreachableCreateResponse.json()).toBeNull();
+    const ownNotification = await createOwnNotification(
+      ownTask.id,
+      "Own task notification",
+    );
+    const deletedTaskNotification = await createOwnNotification(
+      deletedTask.id,
+      "Deleted task notification",
+      {
+        taskTitle: "Deleted task notification",
+        projectId: deletedProject.id,
+        workspaceId: caller.workspace.id,
+      },
+    );
+    const softDeletedProjectNotification = await createOwnNotification(
+      softDeletedProjectTask.id,
+      "Soft-deleted project notification",
+      {
+        taskTitle: "Soft-deleted project notification",
+        projectId: softDeletedProject.id,
+        workspaceId: caller.workspace.id,
+      },
+    );
+    await fresh.db
+      .delete(fresh.schema.taskTable)
+      .where(eq(fresh.schema.taskTable.id, deletedTask.id));
+    await fresh.db
+      .update(fresh.schema.projectTable)
+      .set({
+        deletedAt: new Date(),
+        purgeAfter: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      })
+      .where(eq(fresh.schema.projectTable.id, softDeletedProject.id));
+    const hiddenTaskCreateResponse = await fresh.app.request(
+      "/api/notification",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: "Hidden project task attempt",
+          message: "Must not be stored",
+          type: "info",
+          relatedEntityId: softDeletedProjectTask.id,
+          relatedEntityType: "task",
+        }),
+      },
+    );
+    expect(hiddenTaskCreateResponse.status).toBe(200);
+    expect(await hiddenTaskCreateResponse.json()).toBeNull();
+
+    const response = await fresh.app.request("/api/notification");
+    expect(response.status).toBe(200);
+    const notifications = (await response.json()) as Array<{
+      id: string;
+      resourceId: string | null;
+      resourceType: string | null;
+      eventData: Record<string, unknown> | null;
+    }>;
+
+    expect(notifications).toHaveLength(1);
+    expect(notifications.map((notification) => notification.id)).toEqual([
+      ownNotification.id,
+    ]);
+
+    const readAllResponse = await fresh.app.request(
+      "/api/notification/read-all",
+      { method: "PATCH" },
+    );
+    expect(readAllResponse.status).toBe(200);
+    expect(await readAllResponse.json()).toEqual({ success: true });
+    const readAllRows = await fresh.db.query.notificationTable.findMany({
+      where: inArray(fresh.schema.notificationTable.id, [
+        privateNotification.id,
+        ownNotification.id,
+        deletedTaskNotification.id,
+        softDeletedProjectNotification.id,
+      ]),
+    });
+    expect(
+      readAllRows.find((notification) => notification.id === ownNotification.id)
+        ?.isRead,
+    ).toBe(true);
+    expect(
+      readAllRows.find(
+        (notification) => notification.id === privateNotification.id,
+      )?.isRead,
+    ).toBe(false);
+    expect(
+      readAllRows.find(
+        (notification) => notification.id === deletedTaskNotification.id,
+      )?.isRead,
+    ).toBe(false);
+    expect(
+      readAllRows.find(
+        (notification) => notification.id === softDeletedProjectNotification.id,
+      )?.isRead,
+    ).toBe(false);
+
+    const readResponse = await fresh.app.request(
+      `/api/notification/${privateNotification.id}/read`,
+      { method: "PATCH" },
+    );
+    expect(readResponse.status).toBe(404);
+    const inaccessibleReadBody = await readResponse.text();
+    const privateNotificationAfterRead =
+      await fresh.db.query.notificationTable.findFirst({
+        where: eq(fresh.schema.notificationTable.id, privateNotification.id),
+      });
+    expect(privateNotificationAfterRead?.isRead).toBe(false);
+    const softDeletedProjectReadResponse = await fresh.app.request(
+      `/api/notification/${softDeletedProjectNotification.id}/read`,
+      { method: "PATCH" },
+    );
+    expect(softDeletedProjectReadResponse.status).toBe(404);
+    expect(await softDeletedProjectReadResponse.text()).toBe(
+      inaccessibleReadBody,
+    );
+    const softDeletedProjectNotificationAfterRead =
+      await fresh.db.query.notificationTable.findFirst({
+        where: eq(
+          fresh.schema.notificationTable.id,
+          softDeletedProjectNotification.id,
+        ),
+      });
+    expect(softDeletedProjectNotificationAfterRead?.isRead).toBe(false);
+    const missingReadResponse = await fresh.app.request(
+      "/api/notification/nonexistent-notification/read",
+      { method: "PATCH" },
+    );
+    expect(missingReadResponse.status).toBe(404);
+    expect(await missingReadResponse.text()).toBe(inaccessibleReadBody);
+    const reachableReadResponse = await fresh.app.request(
+      `/api/notification/${ownNotification.id}/read`,
+      { method: "PATCH" },
+    );
+    expect(reachableReadResponse.status).toBe(200);
+    expect(await reachableReadResponse.json()).toEqual(
+      expect.objectContaining({
+        id: ownNotification.id,
+        title: "Own task notification",
+        content: "Sensitive content for Own task notification",
+        eventData: {
+          taskTitle: "Own task notification",
+        },
+        resourceId: ownTask.id,
+        resourceType: "task",
+      }),
+    );
+    expect(notifications).toContainEqual(
+      expect.objectContaining({
+        id: ownNotification.id,
+        title: "Own task notification",
+        content: "Sensitive content for Own task notification",
+        resourceId: ownTask.id,
+        resourceType: "task",
+        eventData: {
+          taskTitle: "Own task notification",
+          projectId: ownProject.id,
+          workspaceId: caller.workspace.id,
+        },
+      }),
+    );
+    expect(notifications).not.toContainEqual(
+      expect.objectContaining({ id: deletedTaskNotification.id }),
+    );
+
+    const agreeTally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor("GET /api/notification");
+      return rows.find((row) => row.outcome === "agree");
+    });
+    expect(agreeTally.count).toBe(1);
+    expect(
+      await shadowEventsFor(
+        "GET /api/notification",
+        "legacy_allow_policy_deny",
+      ),
+    ).toEqual([]);
+    expect(
+      await shadowEventsFor(
+        "GET /api/notification",
+        "legacy_deny_policy_allow",
+      ),
+    ).toEqual([]);
+  });
+
+  it("rechecks task reach at notification creation, read, delivery, and preference read", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("off");
+    const recipient = await createWorkspaceMember();
+    const actor = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(recipient.user);
+
+    const { project, columns } = await createProjectFixture({
+      workspaceId: recipient.workspace.id,
+    });
+    await grantProjectRole(recipient.user.id, project.id, ["work_item:read"]);
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Reach-gated task",
+        description: "Reach-gated task",
+        status: "to-do",
+        columnId: columns.todo.id,
+        priority: "medium",
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task) throw new Error("task insert returned no row");
+
+    await fresh.db.insert(fresh.schema.userNotificationPreferenceTable).values({
+      userId: recipient.user.id,
+      webhookEnabled: false,
+    });
+    await fresh.db
+      .insert(fresh.schema.userNotificationWorkspaceRuleTable)
+      .values({
+        userId: recipient.user.id,
+        workspaceId: recipient.workspace.id,
+        isActive: true,
+        webhookEnabled: false,
+      });
+
+    const { publishEvent } = await import("../../apps/api/src/events");
+    await publishEvent("task.status_changed", {
+      taskId: task.id,
+      userId: actor.user.id,
+      assigneeId: recipient.user.id,
+      oldStatus: "to-do",
+      newStatus: "in-progress",
+      title: task.title,
+      projectId: project.id,
+      type: "status_changed",
+    });
+
+    const findTaskNotifications = () =>
+      fresh.db
+        .select()
+        .from(fresh.schema.notificationTable)
+        .where(
+          and(
+            eq(fresh.schema.notificationTable.userId, recipient.user.id),
+            eq(fresh.schema.notificationTable.resourceId, task.id),
+            eq(fresh.schema.notificationTable.resourceType, "task"),
+          ),
+        );
+    const initialDeadline = Date.now() + 5_000;
+    let taskNotifications = await findTaskNotifications();
+    while (taskNotifications.length === 0 && Date.now() < initialDeadline) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      taskNotifications = await findTaskNotifications();
+    }
+    expect(taskNotifications).toHaveLength(1);
+    const queuedNotification = taskNotifications[0];
+    if (!queuedNotification)
+      throw new Error("status notification insert returned no row");
+
+    // Let the fire-and-forget first delivery observe the disabled preference.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await fresh.db
+      .update(fresh.schema.userNotificationPreferenceTable)
+      .set({
+        webhookEnabled: true,
+        webhookUrl: "https://8.8.8.8/notifications",
+      })
+      .where(
+        eq(
+          fresh.schema.userNotificationPreferenceTable.userId,
+          recipient.user.id,
+        ),
+      );
+    await fresh.db
+      .update(fresh.schema.userNotificationWorkspaceRuleTable)
+      .set({ webhookEnabled: true })
+      .where(
+        and(
+          eq(
+            fresh.schema.userNotificationWorkspaceRuleTable.userId,
+            recipient.user.id,
+          ),
+          eq(
+            fresh.schema.userNotificationWorkspaceRuleTable.workspaceId,
+            recipient.workspace.id,
+          ),
+        ),
+      );
+
+    const { project: softDeletedProject, columns: softDeletedColumns } =
+      await createProjectFixture({ workspaceId: recipient.workspace.id });
+    await grantProjectRole(recipient.user.id, softDeletedProject.id, [
+      "work_item:read",
+    ]);
+    const [softDeletedTask] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: softDeletedProject.id,
+        title: "Soft-deleted project task",
+        description: "Soft-deleted project task",
+        status: "to-do",
+        columnId: softDeletedColumns.todo.id,
+        priority: "medium",
+        number: 2,
+        position: 2,
+      })
+      .returning();
+    if (!softDeletedTask)
+      throw new Error("soft-deleted project task insert returned no row");
+    const [softDeletedProjectNotification] = await fresh.db
+      .insert(fresh.schema.notificationTable)
+      .values({
+        userId: recipient.user.id,
+        title: "Soft-deleted project notification",
+        content: "Must not be delivered",
+        type: "info",
+        resourceId: softDeletedTask.id,
+        resourceType: "task",
+      })
+      .returning();
+    if (!softDeletedProjectNotification)
+      throw new Error(
+        "soft-deleted project notification insert returned no row",
+      );
+    await fresh.db
+      .update(fresh.schema.projectTable)
+      .set({
+        deletedAt: new Date(),
+        purgeAfter: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      })
+      .where(eq(fresh.schema.projectTable.id, softDeletedProject.id));
+
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const { deliverNotification } = await import(
+      "../../apps/api/src/notification-preferences/delivery"
+    );
+    await deliverNotification(softDeletedProjectNotification.id);
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    // Reach is revoked at both layers: the project grant (task reach) and the workspace
+    // membership (workspace-scoped preference rules and workspace delivery contexts).
+    const [recipientPerson] = await fresh.db
+      .select({ id: fresh.schema.personTable.id })
+      .from(fresh.schema.personTable)
+      .where(eq(fresh.schema.personTable.userId, recipient.user.id))
+      .limit(1);
+    if (!recipientPerson) throw new Error("recipient person was not seeded");
+    await fresh.db
+      .delete(fresh.schema.membershipTable)
+      .where(
+        and(
+          eq(fresh.schema.membershipTable.personId, recipientPerson.id),
+          eq(fresh.schema.membershipTable.scope, "project"),
+          eq(fresh.schema.membershipTable.scopeId, project.id),
+        ),
+      );
+    await fresh.db
+      .delete(fresh.schema.workspaceUserTable)
+      .where(
+        and(
+          eq(fresh.schema.workspaceUserTable.userId, recipient.user.id),
+          eq(
+            fresh.schema.workspaceUserTable.workspaceId,
+            recipient.workspace.id,
+          ),
+        ),
+      );
+
+    await publishEvent("task.status_changed", {
+      taskId: task.id,
+      userId: actor.user.id,
+      assigneeId: recipient.user.id,
+      oldStatus: "in-progress",
+      newStatus: "done",
+      title: task.title,
+      projectId: project.id,
+      type: "status_changed",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    taskNotifications = await findTaskNotifications();
+    expect(taskNotifications.map((notification) => notification.id)).toEqual([
+      queuedNotification.id,
+    ]);
+
+    await deliverNotification(queuedNotification.id);
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    const listResponse = await fresh.app.request("/api/notification");
+    expect(listResponse.status).toBe(200);
+    expect(await listResponse.json()).toEqual([]);
+
+    const readResponse = await fresh.app.request(
+      `/api/notification/${queuedNotification.id}/read`,
+      { method: "PATCH" },
+    );
+    expect(readResponse.status).toBe(404);
+    const inaccessibleReadBody = await readResponse.text();
+    const missingReadResponse = await fresh.app.request(
+      "/api/notification/nonexistent-notification/read",
+      { method: "PATCH" },
+    );
+    expect(missingReadResponse.status).toBe(404);
+    expect(await missingReadResponse.text()).toBe(inaccessibleReadBody);
+
+    expect(
+      await fresh.db.query.userNotificationWorkspaceRuleTable.findFirst({
+        where: eq(
+          fresh.schema.userNotificationWorkspaceRuleTable.workspaceId,
+          recipient.workspace.id,
+        ),
+      }),
+    ).toBeDefined();
+
+    const { getNotificationPreferences } = await import(
+      "../../apps/api/src/notification-preferences/service"
+    );
+    const directPreferences = await getNotificationPreferences(
+      recipient.user.id,
+      recipient.user.email,
+    );
+    expect(directPreferences.workspaces).toEqual([]);
+
+    const preferenceResponse = await fresh.app.request(
+      "/api/notification-preferences",
+    );
+    const preferenceText = await preferenceResponse.text();
+    expect(preferenceResponse.status, preferenceText).toBe(200);
+    const preferences = JSON.parse(preferenceText) as {
+      workspaces: Array<{ workspaceId: string; workspaceName: string }>;
+    };
+    expect(preferences.workspaces).toEqual([]);
+  });
+});
 
 describe("#323 Opus S1 — a request-sourced workspace route fully evaluates to agree", () => {
   it("an allowed member on GET /api/label/workspace/{workspaceId} records agree, never legacy_allow_policy_deny", {

@@ -56,7 +56,7 @@ layer never knows or cares how someone logged in.
 | Magic link | ✅ inherited |
 | Email OTP | ✅ inherited |
 | Passkeys | **Planned after P0; not enabled in current API source**; integration and verification remain future work |
-| Arbitrary OIDC | ✅ genericOAuth — **configurable at runtime** |
+| Arbitrary OIDC | **Not enabled in the first release.** Microsoft Entra has a connection-bound implementation; other OIDC providers need their own specified protocol and admission profile. |
 | API keys | ✅ apiKey plugin |
 | Impersonation | ✅ admin plugin — kept **only as a session primitive**; the authority check is ours (see the plugin table) |
 | TypeScript-native, Drizzle adapter | ✅ |
@@ -65,6 +65,19 @@ layer never knows or cares how someone logged in.
 Keycloak is **not** a dependency. It is one OIDC provider among many, added through
 God Mode if a deployment wants it. That is the difference between "we support Keycloak"
 and "we require Keycloak".
+
+**Runtime limitation of better-auth `genericOAuth`.** The generic plugin is present in the
+installed library, but its current runtime implementation is not the Entra connection
+protocol. Its profile path decodes ID-token claims before mapping and does not provide the
+connection-specific signature, immutable `oid`/`tid`, exact app-role/`acct` admission,
+portal/organisation binding, profile-only mapping, or source-isolated grant reconciliation
+required by IP-7/IP-27. Its generic profile/error handling can also surface upstream
+response details through the auth error path. TaskDesk therefore uses a custom Better Auth
+plugin endpoint for the Entra authorization-code flow, with tenant-pinned discovery, PKCE,
+single-use state/nonce, bounded upstream responses, native RS256/JWKS validation and generic
+browser failure redirects. Upstream response bodies, claims, codes, tokens, state, and client
+secrets are never included in TaskDesk logs or public errors. Generic OAuth remains disabled
+for connection sign-in until a separate provider contract and verifier are implemented.
 
 ### The better-auth plugin set — inherited, removed, added
 
@@ -82,7 +95,7 @@ registered in [inherited-features.md](inherited-features.md).
 | `emailOTP` | inherited — kept | `auth.email-otp` |
 | `genericOAuth` | inherited — kept | the protocol implementation every `auth.oidc` connection is built on |
 | `apiKey` | inherited — kept | the credential only; our `api_key` table owns everything else |
-| `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **not mounted**. The application's identity resolver reads the stored `user.role = 'admin'` field as the current source for the instance-scope `instance_admin` grant; authority does not come from a plugin endpoint. `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy` |
+| `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **refused**: a `hooks.before` in `createAuth` (`apps/api/src/auth.ts`) rejects every `/api/auth/admin/*` endpoint (`set-role`, `create-user`, `set-user-password`, `impersonate-user`, `remove-user`, `ban-user`, `unban-user`, `revoke-user-sessions`, `list-users`, ...) with 404 before it runs, even for an instance-admin session, guarded by `tests/api-integration/auth-admin-routes-refused.test.ts`. The application's identity resolver reads the stored `user.role = 'admin'` field as the current source for the instance-scope `instance_admin` grant; authority does not come from a plugin endpoint. `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy` |
 | `openAPI` | **removed at fork** | listed here as *"kept — development only"* until 2026-09-07. It mounts an unauthenticated `/api/auth/reference` that pulls an **unpinned** `cdn.jsdelivr.net/npm/@scalar/api-reference` bundle into the API's own cookie origin — **H19** of the [#13 security review](../07-planning/security-reviews/13-kaneo-import.md), which put it on issue #6's removal list. Removed in #6's inherited-defaults slice. The API's **own** OpenAPI document is `@hono/zod-openapi` at `GET /api/openapi` and is untouched by this |
 | `lastLoginMethod` | inherited — kept | |
 | `anonymous` | **removed at fork** | guest sign-in, on by default in kaneo. An ephemeral-identity surface does not ship dormant |
@@ -90,6 +103,7 @@ registered in [inherited-features.md](inherited-features.md).
 | `bearer` | **removed at fork** | a second token-bearing authentication surface |
 | `organization` | **removed at fork — P0 step 1b** | see below |
 | `twoFactor` | **candidate P0 integration** | TOTP and backup codes use Better Auth's verifier; candidate login/session/policy wiring is not accepted until the full runtime and browser evidence passes |
+| `taskdesk-identity-oidc` | **added — P3 identity integration** | TaskDesk's native OIDC plugin enforces the documented issuer, signature, nonce, audience, and identity-connection contracts; it uses Better Auth's adapter/session infrastructure and does not grant roles or instance authority |
 | `passkey` | **planned later; not enabled in current API source** | Integration and verification remain future work |
 
 **The organization plugin is kaneo's workspace model, not a dormant feature.** In kaneo it
@@ -373,6 +387,19 @@ code; only the credential check reuses the platform. Budget it as such.
   closed during authenticated request resolution and at the realtime boundary, requiring
   a fresh sign-in. The selected host's portal must match `session.portal` even if a cookie
   value is copied into the other portal's cookie name.
+- Native OIDC-issued sessions also carry nullable `identity_connection_id` referencing
+  `identity_connection.id` with `ON DELETE CASCADE`. Only a validated native OIDC callback
+  may set it; local sign-in, impersonation and other-connection sessions remain null or keep
+  their original connection provenance. The callback revalidates the enabled connection
+  under the `IP-22` connection lock before issuing a session. Disabling a connection deletes
+  only sessions whose provenance equals that connection id, in the same serialized
+  configuration transaction that retires its grants. The forward migration does not infer
+  provenance for pre-migration sessions. Because those older OIDC sessions cannot be
+  distinguished from local sessions, rollout must occur before enabling this source-scoped
+  revocation guarantee; any persistent runtime with such sessions requires an explicit
+  operator reconciliation before the migration is applied. The FK cascade is only a
+  source-specific final deletion guard; production deletion still uses its pending-action,
+  audit and authority-invalidation lifecycle.
 - **Server-side sessions in Postgres, and this is the honest revocation SLA.**
   better-auth's `session.cookieCache` is **disabled** at the fork — kaneo enables it for
   five minutes, which serves a session from a signed cookie with no database read. Every
@@ -574,6 +601,46 @@ If every administrator is locked out, recovery is the CLI (`grant-instance-admin
 [runbook](../05-operations/runbook.md)), which must be run **inside the container**, writes
 an audit row with `actor_type = 'system'`, and emails every existing administrator that it
 was used. Break-glass is loud by design.
+
+### P4 God Mode Users — selected implementation contracts
+
+The browser `grant-admin` route is authorized by the current administrator's person and
+session (any future recovery CLI must reuse its target eligibility and serialization). It requires a real, non-anonymous, unbanned target user with exactly one active staff person;
+it refuses unlinked, inactive, customer-side, or otherwise ineligible targets. It changes
+only the existing `user.role = 'admin'` source and never creates or links an identity. It
+takes the shared `pg_advisory_xact_lock(2026)`, locks the target user and eligible person,
+then re-reads setup state, target eligibility, current administrator state, and target role
+before mutation. An already-admin target is an audited idempotent result. Suspending or
+deactivating an account (including approving a deactivation) is refused when the actor is
+the target or when it would leave no active, unbanned instance administrator, under the same
+`pg_advisory_xact_lock(2026)` (decision log 2026-10-10). The workspace-role rank guardrails
+remain deferred as recorded in `rbac.md`.
+
+The operation is `instance_admin_grant`, fixed version `1`, on
+`POST /api/instance/users/{id}/grant-admin`. Its strict JSON body is `{}`. The one-use PA-15
+proof binds the acting user, active person, session, target user id, fixed route, operation
+key/version and canonical empty body. The route consumes that proof in the transaction that
+locks/revalidates the target and writes the role change. The role change, `auth.instance_admin_granted`
+audit append, and durable in-app security alerts commit atomically; audit or alert failure
+means no role change. The alert goes to every current instance administrator and the target,
+with a closed payload that contains no identity-provider data, credentials, or secrets.
+
+God Mode suspension uses the existing Better Auth `user.banned`, `banReason`, and
+`banExpires` fields, not `person.active`. Suspending blocks login and API-key authentication,
+revokes all existing sessions and all personal keys in the current native Better Auth
+`apikey` store, and preserves the person's identity and memberships. There is no separate
+MCP credential store in this implementation. Unsuspending clears the ban fields only. It
+never restores sessions or keys. Force sign-out deletes all current sessions, including any
+impersonation session, and leaves account state and API keys unchanged. Deactivation is
+the separate IP-15 identity-provisioning lifecycle and is not a suspension alias.
+
+Suspending a target whose locked `user.role` is `admin` requires the operation
+`instance_admin_suspend`, version `1`, on `POST /api/instance/users/{id}/suspend`. Its one-use
+PA-15 proof binds the acting user, active staff person, current agent session, target user id,
+route, and canonical suspension request (`reason` and `expiresAt`). The route rechecks the
+actor's admin role, active staff person, and session while holding the shared instance-admin
+serialization lock; it consumes the proof and applies suspension in the same transaction.
+Ordinary-user suspension remains session-only.
 
 ## Threat notes
 

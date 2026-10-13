@@ -56,3 +56,19 @@ The `7011e83e` delta extends that existing shared mechanism and aligns dependent
 - This note records the independent Sol verdict only. It does not assert overall PR readiness or current CI status.
 
 **Reviewed head:** `7011e83e816334c2afe69a8cad590ede9de0184e`
+
+## Later P3 contract-owner disposition — 2026-10-04
+
+The separate P3 SCIM/identity contract batch was independently reviewed at exact head
+`09ace3548ed15fa886ef7a5634571da94948fde6`. Ordinary reviewers A and B recorded CLEAR for
+their respective exact-delta and whole two-commit scopes. A fresh independent GPT-6 Sol found
+no specification blockers and concluded the owner controls for findings 81–82 are sufficiently
+specified to begin implementation. The owner has recorded only that specification-level
+disposition in the historical finding register and the current P3 owning-findings handoff.
+
+This later disposition does not rewrite this review's exact-head scope or its contemporaneous
+statement that runtime implementation and findings 81–82 verification remained open. It does
+not close those security findings, approve ADR-0015, claim that the 25 named tests ran, or
+complete P3. Detailed Sol prose was not retained: its report file was overwritten by the CLI's
+final response; the exact-source execution record preserves the scope, model, verdict and
+limitation. See the private evidence directory named in the P3 owning-findings handoff.

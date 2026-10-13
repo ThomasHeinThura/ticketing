@@ -14,6 +14,7 @@ vi.mock("@/components/activity/comment-editor", () => ({
   }) => {
     mocks.editorRender();
     return (
+      // ui-exempt: this test double exposes the editor's controlled textarea role.
       <textarea
         aria-label="Comment"
         value={value}
@@ -49,6 +50,7 @@ vi.mock("@taskdesk/ui", () => {
     children,
     ...props
   }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    // ui-exempt: this test double represents the design-system Button primitive.
     <button {...props}>{children}</button>
   );
   return {

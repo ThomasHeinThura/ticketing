@@ -18,6 +18,7 @@ const session = {
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     image: null,
+    role: "admin",
   },
 };
 
@@ -47,6 +48,33 @@ const project = {
   archivedTasks: [],
   plannedTasks: [],
   columns: [],
+};
+
+const visualRequestType = {
+  id: "visual-request-type",
+  key: "visual-access",
+  name: "Access request",
+  description: "Request access to a support workspace.",
+  group: "Access",
+  workItemTypeId: "visual-work-item-type",
+  defaultProjectId: "visual-project",
+  formSchema: {
+    fields: [
+      {
+        key: "title",
+        label: "Summary",
+        type: "text",
+        required: true,
+        mapsTo: { field: "title" },
+      },
+    ],
+  },
+  published: true,
+  version: 3,
+  autoAccept: false,
+  customerVisible: true,
+  forcePrivate: false,
+  position: 0,
 };
 
 const workItem = {
@@ -86,7 +114,109 @@ async function installAuthenticatedFixture(page: Page) {
     let body: unknown = [];
 
     if (path.endsWith("/api/auth/get-session")) body = session;
-    else if (path.endsWith("/api/config")) {
+    else if (path.endsWith("/api/submissions/SUB-7")) {
+      body = {
+        submission: {
+          state: "new",
+          formData: { title: "Request access to the support workspace" },
+          requesterId: "visual-requester",
+          organisationId: "visual-workspace",
+          workItemId: null,
+        },
+        requestType: { name: "Access request" },
+        version: {
+          defaultProjectId: project.id,
+          workItemTypeId: "visual-work-item-type",
+          formSchema: { fields: visualRequestType.formSchema.fields },
+        },
+        messages: [],
+      };
+    } else if (path.endsWith("/api/submissions")) {
+      body = {
+        submissions: [
+          {
+            ref: "SUB-7",
+            summary: "Request access to the support workspace",
+            submission: { state: "new", createdAt: "2026-09-15T00:00:00.000Z" },
+            requestType: { name: "Access request" },
+            requester: { displayName: "Ada Example" },
+            organisation: { name: "Northstar Support" },
+          },
+        ],
+        page: { hasMore: false, nextCursor: null },
+      };
+    } else if (path.endsWith("/api/request-types/visual-request-type")) {
+      body = visualRequestType;
+    } else if (path.endsWith("/api/request-types")) {
+      body = { requestTypes: [visualRequestType] };
+    } else if (path.endsWith("/api/portal/catalogue/access")) {
+      body = {
+        key: "access",
+        name: "Access request",
+        description: "Request access to a support workspace.",
+        formSchema: {
+          fields: [
+            { key: "title", label: "Summary", type: "text", required: true },
+          ],
+        },
+        version: 3,
+      };
+    } else if (path.endsWith("/api/portal/catalogue")) {
+      const hasNoCatalogueMatches = url.search === "?q=no-match";
+      body = {
+        defaultCustomerVisibility: "organisation",
+        requestTypes: hasNoCatalogueMatches
+          ? []
+          : [
+              {
+                key: "access",
+                name: "Access request",
+                description: "Request access to a support workspace.",
+                icon: null,
+                group: "Access",
+                position: 0,
+                forcePrivate: false,
+                formSchema: {
+                  fields: [
+                    {
+                      key: "title",
+                      label: "Summary",
+                      type: "text",
+                      required: true,
+                    },
+                  ],
+                },
+                version: 3,
+              },
+            ],
+      };
+    } else if (path.endsWith("/api/portal/submissions/SUB-7")) {
+      body = {
+        submission: {
+          state: "new",
+          formData: { title: "Request access to the support workspace" },
+          workItemId: null,
+        },
+        canWithdraw: true,
+        workItem: null,
+        requestType: { name: "Access request" },
+        version: {
+          formSchema: {
+            fields: [
+              { key: "title", label: "Summary", type: "text" },
+              { key: "evidence", label: "Evidence", type: "file" },
+            ],
+          },
+        },
+        messages: [],
+      };
+    } else if (path.endsWith("/api/portal/submissions/SUB-7/attachments")) {
+      body = [];
+    } else if (path.endsWith("/api/submissions/SUB-7/attachments")) {
+      body = [];
+    } else if (path.endsWith("/api/submissions/SUB-7/duplicates")) {
+      body = { suggestions: [] };
+    } else if (path.endsWith("/api/config")) {
       body = {
         disableRegistration: true,
         disablePasswordRegistration: false,
@@ -121,9 +251,95 @@ async function installAuthenticatedFixture(page: Page) {
         page: { hasMore: false, nextCursor: null },
         meta: {},
       };
+    } else if (path.endsWith("/api/work-items/HELP-7/activity")) {
+      // The native activity timeline reads a paged envelope; the generic `[]`
+      // default has no `data` array and crashes the detail route.
+      body = { data: [], page: { nextCursor: null, hasMore: false } };
     } else if (path.endsWith("/api/work-items/HELP-7")) body = workItem;
     else if (path.endsWith("/api/me/security/factors")) {
       body = { enabled: false, required: false, policyMode: "optional" };
+    } else if (path.endsWith("/api/me/pending-actions")) {
+      body = {
+        data: [
+          {
+            id: "visual-pending-action",
+            action: "delete",
+            origin: "api",
+            targetType: "user",
+            targetIds: ["visual-target-user"],
+            summary: { email: "casey.staff@example.test" },
+            confirmation: "typed_name_step_up",
+            approvalSupported: true,
+            state: "pending",
+            createdAt: "2026-10-01T12:00:00.000Z",
+            expiresAt: "2026-10-01T12:15:00.000Z",
+          },
+        ],
+        page: { nextCursor: null, hasMore: false },
+        meta: { total: 1 },
+      };
+    } else if (path.endsWith("/api/me/pending-actions/visual-pending-action")) {
+      body = {
+        id: "visual-pending-action",
+        action: "delete",
+        origin: "api",
+        targetType: "user",
+        targetIds: ["visual-target-user"],
+        summary: { email: "casey.staff@example.test" },
+        confirmation: "typed_name_step_up",
+        approvalSupported: true,
+        state: "pending",
+        createdAt: "2026-10-01T12:00:00.000Z",
+        expiresAt: "2026-10-01T12:15:00.000Z",
+        invalidationReason: null,
+      };
+    } else if (path.endsWith("/api/instance/users/visual-target-user")) {
+      body = {
+        id: "visual-target-user",
+        name: "Casey Staff",
+        email: "casey.staff@example.test",
+        emailVerified: true,
+        createdAt: "2026-09-01T12:00:00.000Z",
+        locale: "en-GB",
+        isInstanceAdmin: false,
+        isSuspended: false,
+        suspensionExpiresAt: null,
+        twoFactorEnabled: false,
+        person: {
+          id: "visual-target-person",
+          side: "staff",
+          organisationId: null,
+          organisationName: null,
+          active: true,
+          isPlaceholder: false,
+        },
+      };
+    } else if (path === "/api/instance/users") {
+      body = {
+        data: [
+          {
+            id: "visual-directory-user",
+            name: "Taylor Staff",
+            email: "taylor@example.test",
+            emailVerified: true,
+            createdAt: "2026-10-01T12:00:00.000Z",
+            locale: "en-GB",
+            isInstanceAdmin: false,
+            isSuspended: false,
+            suspensionExpiresAt: null,
+            twoFactorEnabled: true,
+            person: {
+              id: "visual-directory-person",
+              side: "staff",
+              organisationId: null,
+              organisationName: null,
+              active: true,
+              isPlaceholder: false,
+            },
+          },
+        ],
+        page: { nextCursor: null, hasMore: false },
+      };
     } else if (path.endsWith("/api/instance/observability")) {
       body = {
         version: 1,
@@ -289,6 +505,86 @@ test("two-factor authenticator challenge screen @visual", async ({ page }) => {
   });
 });
 
+test("intake triage queue @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/triage?state=new&ref=SUB-7");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByText("SUB-7", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Submission SUB-7" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("intake-queue.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("request type catalogue editor @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto(
+    "/agent/settings/request-types?requestTypeId=visual-request-type",
+  );
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Edit Access request", level: 2 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "New request type" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("request-types.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("portal catalogue selected form @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("http://127.0.0.1:4179/catalogue?q=no-match&key=access");
+  await expect(
+    page.getByRole("heading", { name: "Access request", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Summary" })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-catalogue-selected-form.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("portal submission detail @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("http://127.0.0.1:4179/submissions/SUB-7");
+  await expect(
+    page.getByRole("heading", { name: "Request SUB-7", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Your answers" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-submission-detail.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
 test("observability settings screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/god-mode/observability");
@@ -303,6 +599,96 @@ test("observability settings screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("No token is configured.")).toBeVisible();
   await expect(page).toHaveScreenshot("observability-settings.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("portal sign-in email stage @visual", async ({ page }) => {
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: path.endsWith("/api/auth/get-session") ? "null" : "{}",
+    });
+  });
+  await page.goto("http://127.0.0.1:4179/sign-in");
+  await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-sign-in-email.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("instance users directory screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/god-mode/users");
+  await expect(
+    page.getByRole("heading", { name: "Instance users", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Taylor Staff", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("taylor@example.test", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("instance-users-directory.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("pending actions list screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/profile/pending-actions");
+  await expect(
+    page.getByRole("heading", { name: "My pending actions", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Deactivate person · casey.staff@example.test", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("pending-actions-list.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("pending action detail screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto(
+    "/agent/settings/profile/pending-actions/visual-pending-action",
+  );
+  await expect(
+    page.getByRole("heading", {
+      name: "Approve person deactivation",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Type the exact current email")).toBeVisible();
+  await expect(page.getByLabel("Account password")).toBeVisible();
+  await expect(page).toHaveScreenshot("pending-action-detail.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

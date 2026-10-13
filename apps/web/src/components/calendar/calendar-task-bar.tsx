@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import type { JSX } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
@@ -58,7 +59,8 @@ export default function CalendarTaskBar({
   )}`;
 
   return (
-    <button
+    <Button
+      variant="ghost"
       type="button"
       style={{
         gridColumn: `${columnStart} / ${columnEnd}`,
@@ -86,6 +88,6 @@ export default function CalendarTaskBar({
       )}
     >
       <span className="truncate">{task.title}</span>
-    </button>
+    </Button>
   );
 }

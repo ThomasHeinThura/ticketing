@@ -1,4 +1,5 @@
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -96,13 +97,14 @@ function ActiveFilterChip({
       <span className="h-full w-px bg-border" />
       <span className="flex px-2 text-foreground">{value}</span>
       <span className="h-full w-px bg-border" />
-      <button
+      <Button
+        variant="ghost"
         className="inline-flex h-full w-7 items-center justify-center rounded-r-md text-foreground hover:bg-accent/70 hover:text-foreground"
         onClick={onClear}
         type="button"
       >
         <X className="h-3.5 w-3.5" />
-      </button>
+      </Button>
     </div>
   );
 }
@@ -259,7 +261,8 @@ export default function BoardToolbar({
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <button
+                  <Button
+                    variant="ghost"
                     type="button"
                     className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-foreground text-xs font-medium outline-none ring-0 hover:bg-accent/60"
                   />
@@ -282,7 +285,8 @@ export default function BoardToolbar({
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-72">
                     <div className="grid grid-cols-1 gap-1 p-1">
-                      <button
+                      <Button
+                        variant="ghost"
                         className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                           selectedStatusIds.length === 0
                             ? "bg-accent text-accent-foreground"
@@ -293,9 +297,10 @@ export default function BoardToolbar({
                       >
                         <CheckSlot checked={selectedStatusIds.length === 0} />
                         {t("tasks:boardFilters.allStatuses")}
-                      </button>
+                      </Button>
                       {project?.columns?.map((column) => (
-                        <button
+                        <Button
+                          variant="ghost"
                           key={column.id}
                           className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                             selectedStatusIds.includes(column.id)
@@ -312,7 +317,7 @@ export default function BoardToolbar({
                             {getStatusIcon(column.id)}
                           </span>
                           <span className="truncate">{column.name}</span>
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </DropdownMenuSubContent>
@@ -324,7 +329,8 @@ export default function BoardToolbar({
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-72">
                     <div className="grid grid-cols-1 gap-1 p-1">
-                      <button
+                      <Button
+                        variant="ghost"
                         className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                           selectedPriorityIds.length === 0
                             ? "bg-accent text-accent-foreground"
@@ -335,9 +341,10 @@ export default function BoardToolbar({
                       >
                         <CheckSlot checked={selectedPriorityIds.length === 0} />
                         {t("tasks:boardFilters.allPriorities")}
-                      </button>
+                      </Button>
                       {["urgent", "high", "medium", "low"].map((priority) => (
-                        <button
+                        <Button
+                          variant="ghost"
                           key={priority}
                           className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                             selectedPriorityIds.includes(priority)
@@ -356,7 +363,7 @@ export default function BoardToolbar({
                           <span className="truncate capitalize">
                             {getPriorityDisplayName(priority)}
                           </span>
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </DropdownMenuSubContent>
@@ -368,7 +375,8 @@ export default function BoardToolbar({
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-64">
                     <div className="grid grid-cols-1 gap-1 p-1">
-                      <button
+                      <Button
+                        variant="ghost"
                         className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                           selectedAssigneeIds.length === 0
                             ? "bg-accent text-accent-foreground"
@@ -379,9 +387,10 @@ export default function BoardToolbar({
                       >
                         <CheckSlot checked={selectedAssigneeIds.length === 0} />
                         {t("tasks:boardFilters.allAssignees")}
-                      </button>
+                      </Button>
                       {users?.members?.map((member) => (
-                        <button
+                        <Button
+                          variant="ghost"
                           key={member.userId}
                           className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                             selectedAssigneeIds.includes(member.userId)
@@ -408,7 +417,7 @@ export default function BoardToolbar({
                             </Avatar>
                             <span>{member.user?.name}</span>
                           </span>
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </DropdownMenuSubContent>
@@ -420,7 +429,8 @@ export default function BoardToolbar({
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-56">
                     <div className="grid grid-cols-1 gap-1 p-1">
-                      <button
+                      <Button
+                        variant="ghost"
                         className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                           selectedDueDateFilters.length === 0
                             ? "bg-accent text-accent-foreground"
@@ -433,13 +443,14 @@ export default function BoardToolbar({
                           checked={selectedDueDateFilters.length === 0}
                         />
                         {t("tasks:boardFilters.allDueDates")}
-                      </button>
+                      </Button>
                       {[
                         DUE_DATE_FILTER_VALUES.dueThisWeek,
                         DUE_DATE_FILTER_VALUES.dueNextWeek,
                         DUE_DATE_FILTER_VALUES.noDueDate,
                       ].map((dueDate) => (
-                        <button
+                        <Button
+                          variant="ghost"
                           key={dueDate}
                           className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                             selectedDueDateFilters.includes(dueDate)
@@ -461,7 +472,7 @@ export default function BoardToolbar({
                                   : "noDueDate"
                             }`,
                           )}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </DropdownMenuSubContent>
@@ -642,7 +653,8 @@ export default function BoardToolbar({
           </div>
 
           <div className="inline-flex items-center gap-1">
-            <button
+            <Button
+              variant="ghost"
               type="button"
               className={`inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors ${
                 viewMode === "board"
@@ -653,8 +665,9 @@ export default function BoardToolbar({
             >
               <PanelsTopLeft className="h-3 w-3" />
               {t("tasks:view.board")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               type="button"
               className={`inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors ${
                 viewMode === "list"
@@ -665,7 +678,7 @@ export default function BoardToolbar({
             >
               <Rows3 className="h-3 w-3" />
               {t("tasks:view.list")}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

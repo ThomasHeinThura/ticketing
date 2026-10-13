@@ -1,3 +1,4 @@
+import { expandCapabilities } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import db from "../database";
 import { projectTable, taskTable } from "../database/schema";
@@ -9,6 +10,8 @@ import {
   jsonResponse,
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
+import { requireSessionOnly } from "../utils/require-session-only";
 import clearNotifications from "./controllers/clear-notifications";
 import createNotification from "./controllers/create-notification";
 import getNotifications from "./controllers/get-notifications";
@@ -27,7 +30,8 @@ const listNotificationsRoute = createRoute({
   path: "/",
   tags: ["Notifications"],
   summary: "List notifications",
-  description: "Get every notification for the current user, read and unread.",
+  description:
+    "Get read and unread notifications for the current user. Task notifications are included only while the task is reachable; missing or unreachable task notifications are omitted.",
   responses: {
     200: jsonResponse("List of notifications", notificationListSchema),
   },
@@ -40,7 +44,8 @@ const createNotificationRoute = createRoute({
   tags: ["Notifications"],
   summary: "Create notification",
   description:
-    "Create a notification for the current user. Most notifications are raised by the server from task and workspace events; this exists for integrations. Returns null when the user has turned off this notification category in their preferences.",
+    "Create a notification for the current user. Most notifications are raised by the server from task and workspace events; this exists for integrations. Task notifications are suppressed unless the recipient currently reaches the task. Returns null when the category is muted or the task is unreachable.",
+  middleware: [requireSessionOnly()] as const,
   request: {
     body: {
       required: true,
@@ -49,10 +54,11 @@ const createNotificationRoute = createRoute({
   },
   responses: {
     200: jsonResponse(
-      "The created notification, or null when the user has muted this notification type",
+      "The created notification, or null when the category is muted or the task is unreachable",
       notificationSchema.nullable(),
     ),
     400: errorResponse("Invalid request"),
+    403: errorResponse("A browser session is required"),
   },
 });
 
@@ -63,10 +69,12 @@ const markAsReadRoute = createRoute({
   tags: ["Notifications"],
   summary: "Mark notification read",
   description:
-    "Mark one notification as read. Scoped to the current user, so another user's notification is not found.",
+    "Mark one notification as read. Scoped to the current user and current task reach; another user's, missing, or unreachable-task notification is not found.",
+  middleware: [requireSessionOnly()] as const,
   request: { params: notificationParam },
   responses: {
     200: jsonResponse("The updated notification", notificationSchema),
+    403: errorResponse("A browser session is required"),
     404: errorResponse("Notification not found"),
   },
 });
@@ -77,9 +85,12 @@ const markAllAsReadRoute = createRoute({
   path: "/read-all",
   tags: ["Notifications"],
   summary: "Mark all read",
-  description: "Mark every notification for the current user as read.",
+  description:
+    "Mark every notification the current user can currently reach as read. Task notifications for unreachable or deleted tasks stay unread and stay hidden.",
+  middleware: [requireSessionOnly()] as const,
   responses: {
     200: jsonResponse("All notifications marked as read", bulkResultSchema),
+    403: errorResponse("A browser session is required"),
   },
 });
 
@@ -91,14 +102,23 @@ const clearAllRoute = createRoute({
   summary: "Clear all",
   description:
     "Permanently delete every notification for the current user. This cannot be undone.",
+  middleware: [requireSessionOnly()] as const,
   responses: {
     200: jsonResponse("All notifications cleared", bulkResultSchema),
+    403: errorResponse("A browser session is required"),
   },
 });
 
 const notification = apiRouter()
   .openapi(listNotificationsRoute, async (c) => {
-    const notifications = await getNotifications(c.get("userId"));
+    const apiKey = c.get("apiKey");
+    const credentialCanReadTask =
+      !apiKey ||
+      expandCapabilities(apiKeyCapabilitySubset(apiKey)).has("work_item:read");
+    const notifications = await getNotifications(
+      c.get("userId"),
+      credentialCanReadTask,
+    );
     // This route's completed query filters by the authenticated caller's userId.
     // Record only this proven self-read boundary; a failed query remains unknown.
     setShadowLegacyAuthorization(c, "allowed");

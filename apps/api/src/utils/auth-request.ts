@@ -37,7 +37,11 @@ export function trustProxyDepth(): number {
  * @param extraHeaders optional headers to merge in (one call site rewrites a
  *        bearer token into `x-api-key`); the internal IP header always wins.
  */
-export function buildAuthRequest(c: Context, extraHeaders?: Headers): Request {
+export function buildAuthRequest(
+  c: Context,
+  extraHeaders?: Headers,
+  sourceRequest: Request = c.req.raw,
+): Request {
   const headers = new Headers(extraHeaders ?? c.req.raw.headers);
 
   // Never let an inbound value survive, under any casing.
@@ -63,5 +67,5 @@ export function buildAuthRequest(c: Context, extraHeaders?: Headers): Request {
     headers.set(TRUSTED_CLIENT_IP_HEADER, clientIp);
   }
 
-  return new Request(c.req.raw, { headers });
+  return new Request(sourceRequest, { headers });
 }

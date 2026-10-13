@@ -4,6 +4,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { requireApiKeyCapabilityScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -28,6 +29,7 @@ const listInstanceAuditRoute = createRoute({
   summary: "List the instance-wide audit log",
   description:
     "Instance administrators see every audit row (AU-11). Reading the log is itself audited as one `audit.read` row per request (AU-13); a failed audit-read write never fails the read (AU-14). Filters: dotted-action prefix, inclusive `since`, exclusive `until`, bounded `limit`.",
+  middleware: [requireApiKeyCapabilityScope("instance:read_audit")] as const,
   request: { query: auditQuery },
   responses: {
     200: jsonResponse("Audit rows, newest first by sequence", auditListSchema),

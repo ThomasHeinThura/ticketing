@@ -36,6 +36,25 @@ function parsePermissions(raw: string | null): Record<string, string[]> | null {
   return permissions;
 }
 
+async function apiKeyOwnerIsActive(ownerId: string): Promise<boolean> {
+  if (!ownerId) return false;
+  const [owner] = await db
+    .select({
+      banned: schema.userTable.banned,
+      personActive: schema.personTable.active,
+    })
+    .from(schema.userTable)
+    .leftJoin(
+      schema.personTable,
+      eq(schema.personTable.userId, schema.userTable.id),
+    )
+    .where(eq(schema.userTable.id, ownerId))
+    .limit(1);
+  return (
+    owner !== undefined && owner.banned !== true && owner.personActive === true
+  );
+}
+
 export async function verifyApiKey(key: string) {
   const hashedKey = await hashApiKey(key);
 
@@ -55,6 +74,16 @@ export async function verifyApiKey(key: string) {
     .limit(1);
 
   if (!apiKey) {
+    return null;
+  }
+
+  // The shared key-verification point also checks the owner's current state, so every route
+  // family (agent, project reach, instance admin, pending action, realtime, assets) refuses a
+  // banned or deactivated owner's still-enabled key even when strict policy enforcement is
+  // off. This is the same refusal `resolveIdentity` applies in strict mode: a missing user or
+  // person, an inactive person, or a banned user has no authority, so the key gets a 401.
+  const ownerId = apiKey.referenceId ?? apiKey.userId ?? "";
+  if (!(await apiKeyOwnerIsActive(ownerId))) {
     return null;
   }
 

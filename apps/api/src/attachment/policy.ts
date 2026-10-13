@@ -3,11 +3,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
 /**
  * Attachment route policies (issue #28, `attachments.md`).
  *
- * Scope for this slice: WORK-ITEM attachments only. `attachments.md` AT-1 also names
- * attaching to a comment or to a submission, but neither the new-model `comment` table
- * (`data-model.md` §4) nor `submission` exist in `apps/api/src/database/schema.ts` yet
- * -- see `attachmentTable`'s own comment there. Those two parents are therefore out of
- * this slice entirely, not merely unimplemented at the route level.
+ * Work-item routes retain their attachment policies. IQ-9 adds submission parent routes
+ * under the existing `intake:triage` and `own_submission` policies.
  *
  * Every route below runs the SAME transitional shape `comment/policy.ts`/
  * `work-item/policy.ts` already document: the declared capability is the TARGET
@@ -32,6 +29,34 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * entry does not decide.
  */
 export const attachmentPolicies = {
+  "POST /api/portal/submissions/{ref}/attachments/presign": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
+  "POST /api/portal/submissions/{ref}/attachments/{id}/complete": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
+  "GET /api/portal/submissions/{ref}/attachments": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
+  "GET /api/portal/submissions/{ref}/attachments/{id}": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
+  "GET /api/submissions/{ref}/attachments": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/submissions/{ref}/attachments/{id}": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
   // AT-2: mints a presigned direct-PUT for a new attachment on this work item.
   "POST /api/work-items/{key}/attachments/presign": {
     capability: "attachment:create",

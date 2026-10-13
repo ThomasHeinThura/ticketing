@@ -31,13 +31,18 @@ vi.mock("@dnd-kit/core", () => {
       mocks.dndContext();
       return (
         <div data-testid="project-dnd-context">
-          <button
-            type="button"
-            data-testid="start-project-drag"
-            onClick={() => onDragStart({ active: { id: "project-1" } })}
-          >
-            Start drag
-          </button>
+          {(() => {
+            return (
+              // ui-exempt: this mock control emits the drag-start event under test.
+              <button
+                type="button"
+                data-testid="start-project-drag"
+                onClick={() => onDragStart({ active: { id: "project-1" } })}
+              >
+                Start drag
+              </button>
+            );
+          })()}
           {children}
         </div>
       );
@@ -91,6 +96,7 @@ vi.mock("@taskdesk/ui", () => {
     <div>{children}</div>
   );
   const button = ({ children }: { children: React.ReactNode }) => (
+    // ui-exempt: test double for shared design-system button components.
     <button type="button">{children}</button>
   );
   return {

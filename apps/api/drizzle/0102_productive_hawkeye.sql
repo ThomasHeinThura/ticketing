@@ -1,0 +1,1 @@
+ALTER TABLE "attachment" ADD COLUMN "submission_field_key" text;

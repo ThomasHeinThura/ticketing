@@ -34,7 +34,14 @@ The native work-item subscription transport is `GET /api/ws` on the agent origin
 one socket and explicit `subscribe` / `unsubscribe` frames for work-item topics. The legacy
 `/api/ws/user` notification socket and `/api/ws/{projectId}` Task-model socket remain for
 their existing clients; they are not sources for native work-item event delivery. Their
-retirement requires migrating those consumers separately. The native handshake authenticates
+retirement requires migrating those consumers separately. Both legacy sockets reauthenticate
+before every event and on the 60-second floor, including private identity invalidation
+signals. The project socket also rereads its project's current workspace reach before
+delivery. Loss of the original credential, an inactive or banned identity, or lost project
+reach closes that legacy connection without sending the queued event. A failed authority
+lookup fails closed. Event checks are ordered per connection; disconnecting discards in-flight
+delivery, and an exhausted bounded authorization queue closes the connection so the client
+can reconnect and refetch. The native handshake authenticates
 and checks the configured agent Host, exact Origin, and stored session portal before upgrade
 using the rules above. API keys remain subject to their stored capability subset. This
 endpoint is delegated to the WebSocket handshake in the route-policy registry; authorization
@@ -155,17 +162,21 @@ The one exception is presence, which has no REST equivalent and is sent whole.
 useRealtime({
   topic: `project:${projectId}`,
   onMessage: (msg) => {
-    if (seenEventIds.has(msg.eventId)) return;
-    seenEventIds.add(msg.eventId);
-    queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
-    if (msg.payload.key) {
-      queryClient.invalidateQueries({ queryKey: ['work-item', msg.payload.key] });
-    }
+    // The native hook deduplicates affected query keys per event and socket.
+    // It batches the resulting invalidations for 150 ms.
   },
 });
 ```
 
-Invalidation is debounced at 150 ms so a bulk update produces one refetch, not fifty.
+The native client invalidates the affected list, detail, or activity query keys from the
+key-only event envelope and debounces them for 150 ms. If one event arrives under more than
+one subscribed topic, a later frame can contribute an affected key absent from the first;
+duplicate keys are invalidated once on that socket. Independent sockets maintain separate
+deduplication state. Cleanup flushes queued keys as stale without refetching unmounted queries,
+and ignores late frames from a disposed or replaced socket. Comment events refresh activity;
+item mutations refresh detail and the project list when its projection may change. Reconnect
+and outage polling remain active until subscription acknowledgement and while the socket is
+unavailable.
 
 ## Scaling across replicas
 

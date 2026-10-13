@@ -24,12 +24,15 @@ import {
   type WorkItemDetailField,
   type WorkItemDetailRow,
 } from "@/types/work-item";
+import WorkItemActivity, { type ActivityFilter } from "./work-item-activity";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 
 export type WorkItemDetailProps = {
   item: WorkItemDetailRow | undefined;
   /** The `{key}` from the URL -- shown by the not-found state, where there is no row. */
   workItemKey: string;
+  activityFilter: ActivityFilter;
+  onActivityFilterChange: (filter: ActivityFilter) => void;
   /** Best-effort: resolved client-side from the workspace's project list. Absent until
    * that list loads; the details section simply omits the row rather than showing a raw
    * project id. */
@@ -97,6 +100,8 @@ function UnavailableField({
 function WorkItemDetail({
   item,
   workItemKey,
+  activityFilter,
+  onActivityFilterChange,
   project,
   isLoading,
   isNotFound,
@@ -120,16 +125,18 @@ function WorkItemDetail({
 
   if (isError) {
     return (
-      <Alert variant="error" data-testid="work-item-detail-error">
-        <TriangleAlert />
-        <AlertTitle>{t("workItems:detail.errorTitle")}</AlertTitle>
-        <AlertDescription>
-          <p>{t("workItems:detail.errorDescription")}</p>
-          <Button variant="outline" size="sm" onClick={onRetry}>
-            {t("workItems:detail.retry")}
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <div className="bg-background">
+        <Alert variant="error" data-testid="work-item-detail-error">
+          <TriangleAlert />
+          <AlertTitle>{t("workItems:detail.errorTitle")}</AlertTitle>
+          <AlertDescription>
+            <p>{t("workItems:detail.errorDescription")}</p>
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              {t("workItems:detail.retry")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
@@ -151,7 +158,10 @@ function WorkItemDetail({
       : (item.assigneeName ?? t("workItems:detail.inactiveAssignee"));
 
   return (
-    <div className="flex flex-col gap-6" data-testid="work-item-detail">
+    <div
+      className="flex flex-col gap-6 bg-background"
+      data-testid="work-item-detail"
+    >
       {hasPartialFailure && (
         <Alert variant="warning" data-testid="work-item-detail-partial-notice">
           <Info />
@@ -238,6 +248,16 @@ function WorkItemDetail({
           </p>
         )}
       </section>
+
+      <Separator />
+
+      <WorkItemActivity
+        workItemKey={workItemKey}
+        workspaceId={item.workspaceId}
+        defaultVisibility={item.defaultCommentVisibility}
+        filter={activityFilter}
+        onFilterChange={onActivityFilterChange}
+      />
 
       <Separator />
 

@@ -2,8 +2,14 @@
 // Do not edit by hand; check:inventory verifies this file against both trees.
 export const generatedRouteMetadata = {
   agent: [
+    // Canonical full paths for this surface.
     "/",
+    "/agent/god-mode/users",
     "/agent/projects/$projectKey/work",
+    "/agent/settings/profile/pending-actions",
+    "/agent/settings/profile/pending-actions/$id",
+    "/agent/settings/request-types",
+    "/agent/triage",
     "/agent/work-items/$key",
     "/auth",
     "/auth/check-email",
@@ -46,5 +52,11 @@ export const generatedRouteMetadata = {
     "/profile-setup",
     "/test-error",
   ],
-  portal: ["/"],
+  portal: [
+    // Canonical full paths for this surface.
+    "/",
+    "/catalogue",
+    "/sign-in",
+    "/submissions/$ref",
+  ],
 } as const;

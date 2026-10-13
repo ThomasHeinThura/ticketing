@@ -21,6 +21,7 @@ import {
   validateTaskAssetUploadInput,
 } from "../storage";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
+import { requirePublicAppOrigin } from "../utils/request-origin";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -94,15 +95,8 @@ const listTasksRoute = createRoute({
   request: { params: projectIdParam, query: listTasksQuery },
   responses: {
     200: jsonResponse("The project board", boardSchema),
-    // #290: an out-of-reach project now gets this identical 400 too, not the 403
-    // `workspaceAccess.fromProject` used to answer for it (#202's own precedent).
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
-    // #202: a soft-deleted project's board is frozen; a nonexistent or
-    // out-of-reach project answers the 400 above instead (`workspaceAccess.
-    // fromProject` fails before the handler runs).
-    404: errorResponse("Project not found"),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
@@ -394,12 +388,8 @@ const exportTasksRoute = createRoute({
   request: { params: projectIdParam },
   responses: {
     200: jsonResponse("The exported project and tasks", taskExportSchema),
-    // #290: an out-of-reach project now gets this identical 400 too, not the 403
-    // `workspaceAccess.fromProject` used to answer for it (#202's own precedent).
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
-    404: errorResponse("Project not found"),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
@@ -885,7 +875,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
           surface,
           filename,
           contentType,
-          apiBaseUrl: process.env.KANEO_API_URL || new URL(c.req.url).origin,
+          apiBaseUrl: requirePublicAppOrigin(c.get("appPublicOrigin")),
         });
       });
 
@@ -978,7 +968,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     }
 
     const apiBaseUrl = normalizeApiServerUrl(
-      process.env.KANEO_API_URL || new URL(c.req.url).origin,
+      requirePublicAppOrigin(c.get("appPublicOrigin")),
     );
     return c.json(
       {

@@ -35,7 +35,9 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
 
-vi.mock("@taskdesk/ui", () => {
+vi.mock("@taskdesk/ui", async () => {
+  const { Button } =
+    await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const passthrough = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   );
@@ -47,7 +49,7 @@ vi.mock("@taskdesk/ui", () => {
     AlertDialogFooter: passthrough,
     AlertDialogHeader: passthrough,
     AlertDialogTitle: passthrough,
-    Button: passthrough,
+    Button,
     HoverCard: passthrough,
     HoverCardContent: passthrough,
     HoverCardTrigger: passthrough,

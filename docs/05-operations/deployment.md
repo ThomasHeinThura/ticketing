@@ -140,8 +140,13 @@ Compose *concatenates* `ports:` across files — an overlay can add a published 
 cannot take one away — so a base file that published 5173 would publish it in production
 too, and the "never published" premise that `TASKDESK_TRUST_PROXY=1` rests on
 ([traefik-and-domains.md](traefik-and-domains.md)) would be false. `scripts/deploy.sh
-production` asserts it: `docker compose port taskdesk 5173` must fail, and the deploy stops
-if it succeeds.
+production` asserts it from the Docker engine's own record of every `taskdesk` container
+(`docker inspect`, stopped ones and every replica included), not from `docker compose
+port`, whose exit code does not separate "published" from "exposed but not published"
+(Compose v5.6.0 and 2.40.3 print `:0` with exit 0 for the latter). The deploy stops if any
+`taskdesk` container uses host or container-shared networking (`network_mode: service:<name>` included), has `PublishAllPorts` set, declares any port
+binding or shows any live host port mapping, and also if there is no container to check.
+The check runs on the created-but-not-started containers and again once the stack is up.
 
 These are the paths; every command in [environments.md](environments.md),
 [one-line-install.md](one-line-install.md) and the [runbook](runbook.md) uses them.

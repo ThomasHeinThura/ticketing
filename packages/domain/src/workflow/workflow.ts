@@ -526,11 +526,12 @@ export function rolesWithNoLegalTransition(
 // ---------------------------------------------------------------------------
 
 /**
- * `WF-19`'s six authored effect kinds — the only ones a workflow designer may write into
- * `workflow_transition.effects jsonb`. Kept in sync with `Effect`'s own union by hand,
- * exactly as `evaluateGuard`'s switch above is kept in sync with `Guard`'s five: there is
- * no runtime reflection over a TypeScript union, so this list and `Effect` must be edited
- * together. Typed as `readonly EffectKind[]` only at construction, so a typo here is a
+ * `WF-19`'s available authored effect kinds — the only ones a workflow designer may write
+ * into `workflow_transition.effects jsonb`. The held `set_field` member remains in
+ * `Effect` so historical JSON is recognized, but is intentionally absent here. Kept in
+ * sync with `Effect`'s own union by hand, exactly as `evaluateGuard`'s switch above is
+ * kept in sync with `Guard`'s five: there is no runtime reflection over a TypeScript
+ * union, so this list and `Effect` must be edited together. Typed as `readonly EffectKind[]` only at construction, so a typo here is a
  * compile error; the `Set` itself is widened to `string` because the whole point of the
  * check below is comparing against a `kind` TypeScript believes (from `Effect`'s own
  * declared shape) can never be anything else — exactly the belief a `jsonb` column does
@@ -541,7 +542,6 @@ const AUTHORED_EFFECT_KIND_LIST: readonly EffectKind[] = [
   "clear_assignee",
   "pause_sla",
   "resume_sla",
-  "set_field",
   "schedule_transition",
 ];
 const AUTHORED_EFFECT_KINDS: ReadonlySet<string> = new Set(
@@ -570,8 +570,8 @@ const AUTOMATIC_EFFECT_KINDS: ReadonlySet<string> = new Set(
  * exists, no two transitions share the same `(fromStateTemplateId, toStateTemplateId,
  * roleId)` tuple, at most one transition is marked `isReopen` (`WF-21`, otherwise enforced
  * only by the database's partial unique index — this catches it before a version is even
- * persisted), and every effect on every transition names one of `WF-19`'s six authored
- * kinds. A version with no state templates at all is rejected outright: a workflow that
+ * persisted), and every effect on every transition names one of `WF-19`'s available
+ * authored kinds. A version with no state templates at all is rejected outright: a workflow that
  * can hold no work item is malformed, not merely empty.
  *
  * **The effect-kind check is `WF-22`** (Thomas's decision, 2026-09-10; spec text at
@@ -628,12 +628,18 @@ export function validateWorkflowVersion(
       reopenCount++;
     }
     for (const effect of t.effects) {
-      // Widened to `string`, deliberately: `effect` is typed `Effect`, so TypeScript
-      // believes `kind` can only be one of the six authored values already. That belief
-      // holds for hand-authored TypeScript; it does not hold for a `jsonb` row read back
-      // from the database, which is exactly the case this check exists to catch.
+      // Widened to `string`, deliberately: `effect` is typed `Effect`, which includes the
+      // held `set_field` shape for historical rows. That type still cannot account for a
+      // `jsonb` row read back from the database carrying a kind unknown to this build,
+      // which is exactly the case the check below exists to catch.
       const kind: string = effect.kind;
       if (AUTHORED_EFFECT_KINDS.has(kind)) {
+        continue;
+      }
+      if (kind === "set_field") {
+        errors.push(
+          `transition ${t.id} uses the held set_field effect, which is unavailable in this release`,
+        );
         continue;
       }
       if (AUTOMATIC_EFFECT_KINDS.has(kind)) {

@@ -18,5 +18,10 @@ export const capabilitiesResponseSchema = z
     inviteUsers: z.boolean(),
     manageTeam: z.boolean(),
     removeMembers: z.boolean(),
+    manageServiceCalendars: z.boolean(),
+    shareSavedViews: z.boolean(),
+    manageWorkspaceSettings: z.boolean(),
+    createPublicComments: z.boolean().optional(),
+    createInternalComments: z.boolean().optional(),
   })
   .openapi("Capabilities");

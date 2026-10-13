@@ -54,9 +54,13 @@ import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import db, { schema } from "../database";
 import { policyRegistry } from "../policy-registry";
-import { resolveIdentity } from "./resolve-identity";
+import {
+  type AuthenticatedApiKey,
+  resolveRequestIdentity,
+} from "./resolve-request-identity";
 import { policyShadowEnabled } from "./shadow-config";
 import {
+  ensurePolicyRequestId,
   type ShadowLegacyAuthorization,
   workspaceIdForShadowEvidence,
 } from "./shadow-context";
@@ -73,9 +77,7 @@ import {
 } from "./shadow-store";
 
 /** `c.get("apiKey")`'s shape, as `authenticate-api-request.ts` sets it. */
-type ApiKeyContextValue =
-  | { readonly id: string; readonly userId: string }
-  | undefined;
+type ApiKeyContextValue = AuthenticatedApiKey | undefined;
 
 function credentialKindFor(apiKey: ApiKeyContextValue): CredentialKind {
   // Known gap (resolve-identity.ts KNOWN GAP 2, S315): `mcp_key` cannot be distinguished
@@ -290,13 +292,9 @@ export function attributedRouteKey(c: Context): string | null {
 }
 
 /**
- * #323 Opus S3: the `x-request-id` header is caller-controlled and unbounded (an 8,007-
- * character probe value landed verbatim) and correlates with nothing server-side, so it
- * cannot serve as attribution the addendum treats it as. Accept the header only when it
- * matches `^[A-Za-z0-9._-]{1,128}$`; otherwise (including when absent) generate a
- * server-side id. **The trace id is untrusted even when it passes** — a well-formed forged
- * value still passes — it identifies a request within this evidence store and joins no
- * server log.
+ * Legacy correlation helper for consumers outside policy shadow. Strict witness and
+ * shadow-event correlation use `ensurePolicyRequestId`: one server-generated value shared
+ * with the request log and response header, never an inbound header.
  */
 export function normaliseTraceId(header: string | undefined): string {
   if (header !== undefined && /^[A-Za-z0-9._-]{1,128}$/.test(header)) {
@@ -310,7 +308,7 @@ async function runShadowEvaluation(
   legacy: LegacyOutcome,
   routeKey: string,
 ): Promise<void> {
-  const traceId = normaliseTraceId(c.req.header("x-request-id"));
+  const traceId = ensurePolicyRequestId(c);
   const entry = policyRegistry.get(routeKey);
   const policy = policyFactsFor(entry);
   const routerGroup = routerGroupFor(entry?.source);
@@ -372,12 +370,12 @@ async function runShadowEvaluation(
     }
 
     const identity = userId
-      ? await resolveIdentity({
+      ? await resolveRequestIdentity({
           userId,
-          credential,
-          apiKey: apiKey
-            ? { enabled: true, ownerUserId: apiKey.userId }
-            : undefined,
+          apiKey,
+          impersonatedBy: (
+            c.get("session") as { impersonatedBy?: string | null } | null
+          )?.impersonatedBy,
         })
       : null;
 

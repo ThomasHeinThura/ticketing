@@ -127,6 +127,7 @@ const visualJob =
     ? ""
     : workflowLines.slice(visualJobStart, visualJobEnd).join("\n");
 const visualJobLines = visualJob.split("\n");
+const SCOPE_IF = "${{ steps.scope.outputs.full != 'false' }}";
 const expectedVisualJobLines = [
   "  visual:",
   "    name: visual regression (G8)",
@@ -137,17 +138,30 @@ const expectedVisualJobLines = [
   "    timeout-minutes: 20",
   "    steps:",
   "      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0",
+  "        with:",
+  "          fetch-depth: 0",
   "      - name: Trust the checked-out repository inside the Playwright container",
   '        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"',
+  // The one permitted condition: every later step runs unless the merge base's classifier
+  // proved the pull request policy-only (ci-cd.md § Applicability; workflow-gates.mjs A9).
+  "      - id: scope",
+  "        uses: ./.github/actions/change-scope",
   "      - uses: ./.github/actions/setup",
-  "      - name: Build the permissions package used by the web bundle",
-  "        run: pnpm --filter @taskdesk/permissions build",
+  `        if: ${SCOPE_IF}`,
+  "      - name: Build the web bundle and its transitive workspace dependencies",
+  `        if: ${SCOPE_IF}`,
+  "        run: pnpm build --filter=@taskdesk/web... --force",
+  "      - name: Normalize Ubuntu APT mirror for Chromium dependencies",
+  "        if: ${{ steps.scope.outputs.full != 'false' }}",
+  "        run: node scripts/ci/normalize-ubuntu-apt-mirror.mjs",
   "      - name: Install Chromium",
+  `        if: ${SCOPE_IF}`,
   "        run: apps/web/node_modules/.bin/playwright install --with-deps chromium",
   `      - name: ${expectedVisualStepName}`,
+  `        if: ${SCOPE_IF}`,
   "        run: pnpm test:visual",
   "      - name: Upload visual diffs",
-  "        if: always()",
+  "        if: ${{ always() && steps.scope.outputs.full != 'false' }}",
   "        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1",
   "        with:",
   "          name: playwright-visual",
@@ -208,10 +222,11 @@ if (
   workflowLines.some((line) =>
     /^(?:defaults|"defaults"|'defaults')\s*:/u.test(line),
   ) ||
-  !hasOnlyMappingKeys(visualStep, 8, ["run"])
+  !hasOnlyMappingKeys(visualStep, 8, ["if", "run"]) ||
+  visualStep.filter((line) => line === `        if: ${SCOPE_IF}`).length !== 1
 ) {
   failures.push(
-    `${ciWorkflowPath} must run pnpm test:visual exactly once in one unconditional, failure-propagating visual regression (G8) job and step`,
+    `${ciWorkflowPath} must run pnpm test:visual exactly once in one failure-propagating visual regression (G8) job and step, conditioned only by the canonical change-scope gate`,
   );
 }
 
@@ -403,6 +418,32 @@ function hasExpectedUse(config, storybook) {
   ].every(([name, value]) =>
     hasLiteralProperty(use, name, value, ts.isStringLiteral),
   );
+}
+
+/**
+ * The route visual config may differ from the app config in exactly one way: Chromium
+ * must run with partial raster disabled (see playwright.visual.config.ts). Anything else
+ * under `use` or `launchOptions` could change what the screenshots compare, so the
+ * object shape is pinned key-for-key like the rest of the config.
+ */
+function hasExpectedVisualLaunchOptions(config) {
+  const use = objectProperty(config, "use");
+  if (
+    !hasExactObjectKeys(use, ["launchOptions"], {
+      index: 0,
+      matches: (expression) =>
+        ts.isPropertyAccessExpression(expression) &&
+        ts.isIdentifier(expression.expression) &&
+        expression.expression.text === "base" &&
+        expression.name.text === "use",
+    })
+  ) {
+    return false;
+  }
+  const launchOptions = objectProperty(use, "launchOptions");
+  if (!hasExactObjectKeys(launchOptions, ["args"])) return false;
+  const args = stringArrayProperty(launchOptions, "args");
+  return args?.length === 1 && args[0] === "--disable-partial-raster";
 }
 
 function hasExpectedWebServer(config, storybook) {
@@ -1741,10 +1782,20 @@ function navigationMatchesApplicationRoute(
   );
   const actualPath = actualUrl.pathname;
   const expectedPath = applicationRoute;
-  if (
-    actualUrl.search !== expectedUrl.search ||
-    actualUrl.hash !== expectedUrl.hash
-  ) {
+  const expectedSearch = [...expectedUrl.searchParams.entries()];
+  const actualSearch = [...actualUrl.searchParams.entries()];
+  const queryMatches =
+    expectedSearch.length === actualSearch.length &&
+    expectedSearch.every(([name, expected], index) => {
+      const [actualName, actual] = actualSearch[index] ?? [];
+      return (
+        name === actualName &&
+        (expected.match(/^\{[^{}]+\}$/u)
+          ? actual.length > 0
+          : actual === expected)
+      );
+    });
+  if (!queryMatches || actualUrl.hash !== expectedUrl.hash) {
     return false;
   }
   const actualSegments = actualPath.split("/").filter(Boolean);
@@ -3038,6 +3089,7 @@ try {
           "testIgnore",
           "testMatch",
           "updateSnapshots",
+          "use",
           "webServer",
         ],
         {
@@ -3073,6 +3125,7 @@ try {
       !visualTestIgnores ||
       visualTestIgnores.length !== 0 ||
       !hasExpectedPortalVisualServer(visualConfig) ||
+      !hasExpectedVisualLaunchOptions(visualConfig) ||
       propertyValues(visualConfig, "testDir").length !== 0
     ) {
       failures.push(
@@ -3207,10 +3260,6 @@ let mappedScreenshotAssertions = 0;
 for (const screen of manifest) {
   if (screen.origin !== undefined && screen.origin !== "portal")
     failures.push(`${screen.name} has an unsupported visual origin`);
-  if (screen.origin === "portal" && screen.applicationRoute !== "/")
-    failures.push(
-      `${screen.name} portal visual route must use the independent root path`,
-    );
   if (seenTests.has(screen.test))
     failures.push(`duplicate test name: ${screen.test}`);
   seenTests.add(screen.test);

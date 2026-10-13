@@ -4,10 +4,15 @@ import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
+import type { ActivityFilter } from "@/components/work-item/work-item-activity";
 import WorkItemDetailLoading from "@/components/work-item/work-item-detail-loading";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import { HttpError } from "@/lib/http-error";
+import {
+  parseWorkItemDetailSearch,
+  type WorkItemDetailSearch,
+} from "@/lib/routes";
 
 const WorkItemDetail = lazy(loadWorkItemDetail);
 
@@ -26,6 +31,7 @@ const WorkItemDetail = lazy(loadWorkItemDetail);
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/work-items/$key",
 )({
+  validateSearch: parseWorkItemDetailSearch,
   component: WorkItemDetailRouteComponent,
   pendingComponent: WorkItemDetailLoading,
   pendingMs: 0,
@@ -34,6 +40,17 @@ export const Route = createFileRoute(
 
 function WorkItemDetailRouteComponent() {
   const { key } = Route.useParams();
+  const { activity: activityFilter } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const setActivityFilter = (filter: ActivityFilter) => {
+    void navigate({
+      search: (previous: WorkItemDetailSearch) => ({
+        ...previous,
+        activity: filter === "everything" ? undefined : filter,
+      }),
+      replace: true,
+    });
+  };
   const { t } = useTranslation();
 
   const {
@@ -52,7 +69,7 @@ function WorkItemDetailRouteComponent() {
   return (
     <>
       <PageTitle title={item?.title ? `${item.title} · ${key}` : key} />
-      <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
+      <div className="flex h-full flex-col gap-4 overflow-y-auto bg-background p-6">
         {item && isRealtimeUnavailable && (
           <Alert
             variant="warning"
@@ -69,6 +86,8 @@ function WorkItemDetailRouteComponent() {
             <WorkItemDetailWithProject
               item={item}
               workItemKey={key}
+              activityFilter={activityFilter ?? "everything"}
+              onActivityFilterChange={setActivityFilter}
               isNotFound={isNotFound}
               isError={isError && !isNotFound}
               onRetry={refetch}
@@ -82,6 +101,8 @@ function WorkItemDetailRouteComponent() {
             <WorkItemDetail
               item={undefined}
               workItemKey={key}
+              activityFilter={activityFilter ?? "everything"}
+              onActivityFilterChange={setActivityFilter}
               project={undefined}
               isLoading={isLoading}
               isNotFound={isNotFound}
@@ -98,12 +119,16 @@ function WorkItemDetailRouteComponent() {
 function WorkItemDetailWithProject({
   item,
   workItemKey,
+  activityFilter,
+  onActivityFilterChange,
   isNotFound,
   isError,
   onRetry,
 }: {
   item: NonNullable<ReturnType<typeof useGetWorkItem>["data"]>;
   workItemKey: string;
+  activityFilter: ActivityFilter;
+  onActivityFilterChange: (filter: ActivityFilter) => void;
   isNotFound: boolean;
   isError: boolean;
   onRetry: () => void;
@@ -117,6 +142,8 @@ function WorkItemDetailWithProject({
     <WorkItemDetail
       item={item}
       workItemKey={workItemKey}
+      activityFilter={activityFilter}
+      onActivityFilterChange={onActivityFilterChange}
       project={project ? { name: project.name, slug: project.slug } : undefined}
       isLoading={false}
       isNotFound={isNotFound}

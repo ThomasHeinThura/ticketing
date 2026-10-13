@@ -26,7 +26,9 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("@taskdesk/ui", () => {
+vi.mock("@taskdesk/ui", async () => {
+  const { Button } =
+    await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const passthrough = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   );
@@ -40,7 +42,7 @@ vi.mock("@taskdesk/ui", () => {
       children,
       ...props
     }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-      <button {...props}>{children}</button>
+      <Button {...props}>{children}</Button>
     ),
     KbdSequence: passthrough,
     Tooltip: passthrough,

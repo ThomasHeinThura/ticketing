@@ -58,7 +58,8 @@ export default function MobileProjectNav({
               View
             </p>
             <div className="grid grid-cols-4 gap-1">
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={onSelectBacklog}
                 className={cn(
@@ -69,8 +70,9 @@ export default function MobileProjectNav({
                 )}
               >
                 Backlog
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={onSelectBoard}
                 className={cn(
@@ -82,8 +84,9 @@ export default function MobileProjectNav({
               >
                 <SquareKanban className="size-3.5" />
                 Board
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={onSelectCalendar}
                 className={cn(
@@ -95,8 +98,9 @@ export default function MobileProjectNav({
               >
                 <CalendarRange className="size-3.5" />
                 {t("tasks:calendar.title")}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={onSelectGantt}
                 className={cn(
@@ -108,7 +112,7 @@ export default function MobileProjectNav({
               >
                 <CalendarDays className="size-3.5" />
                 Gantt
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -123,7 +127,8 @@ export default function MobileProjectNav({
                 const isCurrentProject = project.id === projectId;
 
                 return (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={project.id}
                     type="button"
                     onClick={() => onSelectProject(project.id)}
@@ -137,20 +142,21 @@ export default function MobileProjectNav({
                     <Icon className="size-3.5" />
                     <span className="flex-1 truncate">{project.name}</span>
                     {isCurrentProject && <Check className="size-3.5" />}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
           </div>
 
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={onAddProject}
             className="flex w-full items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
           >
             <Plus className="size-3.5" />
             Add project
-          </button>
+          </Button>
         </div>
       </PopoverContent>
     </Popover>

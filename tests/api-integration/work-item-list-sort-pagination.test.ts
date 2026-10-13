@@ -622,7 +622,7 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
 
   it("reach is unchanged: a caller without workspace membership still can't reach the list, whatever filters/sort are supplied", async () => {
     // #290/#307 (merged into `main` after this test was first written): an
-    // out-of-reach project now answers the SAME 400 an unknown project id gets,
+    // out-of-reach project now answers the SAME 404 an unknown project id gets,
     // rather than a distinguishing 403 -- closing the cross-workspace existence
     // oracle `workspaceAccess.fromProject()` otherwise leaves open (`workspace-
     // access-middleware.ts`'s own file comment has the full incident). 403 stays
@@ -640,7 +640,7 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
       project.id,
       "sort=priority&dir=desc&limit=5&state=anything&assignee=me",
     );
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(404);
   });
 
   it("visibility is unchanged: filtering/sorting cannot surface a work item from a DIFFERENT project", async () => {

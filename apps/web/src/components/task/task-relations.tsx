@@ -248,7 +248,8 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <CollapsibleTrigger asChild>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
@@ -258,7 +259,7 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
                   <ChevronRight className="size-4" />
                 )}
                 <span>{t("tasks:relations.title")}</span>
-              </button>
+              </Button>
             </CollapsibleTrigger>
             {totalCount > 0 && (
               <span className="text-xs text-muted-foreground">
@@ -299,7 +300,8 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
                             tasks={[taskObj]}
                             projectId={projectId}
                           >
-                            <button
+                            <Button
+                              variant="ghost"
                               type="button"
                               className="shrink-0 flex items-center justify-center rounded p-0.5 transition-colors outline-none [&_svg]:text-muted-foreground hover:[&_svg]:text-foreground"
                             >
@@ -308,10 +310,11 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
                                 finalStatusSlugs.has(item.task.status),
                                 columnIconBySlug.get(item.task.status),
                               )}
-                            </button>
+                            </Button>
                           </SubtaskStatusPopover>
 
-                          <button
+                          <Button
+                            variant="ghost"
                             type="button"
                             className="flex-1 min-w-0 text-left outline-none"
                             onClick={() => handleNavigateToTask(item.task.id)}
@@ -321,13 +324,14 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
                             >
                               {item.task.title}
                             </span>
-                          </button>
+                          </Button>
 
                           <SubtaskAssigneePopover
                             tasks={[taskObj]}
                             workspaceId={workspaceId}
                           >
-                            <button
+                            <Button
+                              variant="ghost"
                               type="button"
                               className="shrink-0 flex items-center justify-center rounded p-0.5 transition-colors outline-none"
                             >
@@ -351,7 +355,7 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
                                   </span>
                                 </div>
                               )}
-                            </button>
+                            </Button>
                           </SubtaskAssigneePopover>
                         </div>
                       </ContextMenuTrigger>
@@ -443,22 +447,24 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
             </CommandPanel>
             <CommandFooter>
               <div className="flex items-center gap-3">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-md transition-colors ${selectedRelationType === "related" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   onClick={() => setSelectedRelationType("related")}
                 >
                   <Link2 className="size-3" />
                   {t("tasks:relations.related")}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
                   type="button"
                   className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-md transition-colors ${selectedRelationType === "blocks" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   onClick={() => setSelectedRelationType("blocks")}
                 >
                   <X className="size-3" />
                   {t("tasks:relations.blocks")}
-                </button>
+                </Button>
               </div>
               <span className="text-muted-foreground">
                 {t("tasks:relations.selectTask")}

@@ -19,6 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useNavigate } from "@tanstack/react-router";
+import { Button } from "@taskdesk/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import { produce } from "immer";
 import { Archive, ChevronRight, Clock, Flag, Plus } from "lucide-react";
@@ -319,7 +320,8 @@ function BacklogListView({
         )}
       >
         <div className="flex items-center justify-between py-2 px-4 bg-muted/60 border-b border-border/50">
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => toggleSection(sectionId)}
             className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground transition-colors"
@@ -343,11 +345,12 @@ function BacklogListView({
                 </span>
               </div>
             </div>
-          </button>
+          </Button>
 
           <div className="flex items-center gap-1">
             {showAddButton && (
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={() => {
                   setIsTaskModalOpen(true);
@@ -357,7 +360,7 @@ function BacklogListView({
                 title={t("tasks:backlog.addTask")}
               >
                 <Plus className="w-3 h-3" />
-              </button>
+              </Button>
             )}
           </div>
         </div>

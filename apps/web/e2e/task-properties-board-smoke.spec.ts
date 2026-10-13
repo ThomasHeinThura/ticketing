@@ -100,6 +100,22 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
         page.getByText("Seeded legacy task 200", { exact: true }),
       ).toBeVisible();
 
+      await page.evaluate(() => document.fonts.ready);
+      const terminalCard = page.locator('[data-task-id="legacy-task-200"]');
+      const cardGeometry = await terminalCard.evaluate((card) => ({
+        height: card.getBoundingClientRect().height,
+        columnOffset: card.offsetTop,
+      }));
+      await terminalCard.scrollIntoViewIfNeeded();
+      await expect
+        .poll(() =>
+          terminalCard.evaluate((card) => ({
+            height: card.getBoundingClientRect().height,
+            columnOffset: card.offsetTop,
+          })),
+        )
+        .toEqual(cardGeometry);
+
       const addTask = page.getByTitle("Add task").first();
       await addTask.focus();
       await addTask.click();
@@ -108,6 +124,14 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
       await page.keyboard.press("Escape");
       await expect(createTaskDialog).toBeHidden();
       await expect(addTask).toBeFocused();
+
+      await page.getByRole("button", { name: "List", exact: true }).click();
+      const listAddTask = page.getByTitle("Add task").first();
+      await listAddTask.click();
+      await expect(page.getByRole("dialog")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toBeHidden();
+      await page.getByRole("button", { name: "Board", exact: true }).click();
 
       const keyboardCard = page.locator(
         '[data-task-id="legacy-task-1"][role="button"][aria-describedby^="DndDescribedBy"]',

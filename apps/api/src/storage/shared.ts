@@ -48,11 +48,10 @@ export type TaskImageUploadContext = {
   filename: string;
   contentType: string;
   /**
-   * The caller's own public API origin — the `KANEO_API_URL` environment variable when set,
-   * else the request's own origin — the same source `finalizeTaskImageUploadRoute` reads
-   * before normalizing it for the asset URL it returns. NOT expected to already be
-   * normalized (no guaranteed `/api` suffix, may have a trailing slash): the driver that
-   * uses this value normalizes it itself, so a caller does not need to know that contract.
+   * The caller's validated configured public API origin. It is not derived from the
+   * internal request URL, forwarded headers, or an unvalidated Host value. NOT expected to
+   * already be normalized (no guaranteed `/api` suffix, may have a trailing slash): the
+   * driver that uses this value normalizes it itself.
    *
    * `storage.s3` ignores this: a presigned S3 URL points at the S3 endpoint, never at this
    * API. `storage.filesystem` needs it, because its "presigned URL" is a route on this API

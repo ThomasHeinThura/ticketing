@@ -1,4 +1,5 @@
 import { Cron } from "croner";
+import { scanApprovalReminders } from "../approval/reminder-scan";
 import { checkDueDateReminders } from "./due-date-reminders";
 import { expirePendingActions } from "./pending-action-expire";
 import { runSessionCleanup } from "./session-cleanup";
@@ -64,6 +65,11 @@ export function initializeScheduler(): void {
       pattern: "* * * * *",
       handler: expirePendingActions,
     },
+    {
+      name: "reminder-scan",
+      pattern: "*/15 * * * *",
+      handler: scanApprovalReminders,
+    },
   ];
 
   for (const definition of definitions) {
@@ -76,7 +82,7 @@ export function initializeScheduler(): void {
   }
 
   console.log(
-    "⏰ Scheduler started (due-date reminders every 5 minutes, session cleanup daily 03:15, pending-action expiry every minute)",
+    "⏰ Scheduler started (due-date reminders every 5 minutes, session cleanup daily 03:15, pending-action expiry every minute, reminder scan every 15 minutes)",
   );
 }
 

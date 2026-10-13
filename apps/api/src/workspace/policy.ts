@@ -155,9 +155,10 @@ export const workspacePolicies = {
   },
 
   // Reads one workspace (plus its members and pending invitations) by path id.
-  // `workspaceAccess.fromParam` resolves membership first; the controller re-loads the
-  // workspace row itself and 404s if it is gone (`get-workspace-detail.ts`), so the scope id
-  // is read from that same loaded row — `scopeSource: "row"`.
+  // `workspaceAccess.fromParam` applies the native reach check. The strict endpoint
+  // boundary then loads this exact workspace row before evaluating the policy; the
+  // controller independently re-loads it and 404s if it is gone. The evaluator therefore
+  // receives row-derived scope evidence, not the path id relabelled as a row.
   "GET /api/workspace/{workspaceId}": {
     capability: "workspace:read",
     scope: "workspace",
@@ -180,8 +181,9 @@ export const workspacePolicies = {
   },
 
   // Issue #8 — a workspace's member list, with roles. See the file comment above for why this
-  // reuses `workspace:read` / `scope: "workspace"` / `scopeSource: "row"` from its two siblings
-  // immediately above, even though its own query loads no `workspace` row directly.
+  // reuses `workspace:read` / `scope: "workspace"` / `scopeSource: "row"` from its siblings.
+  // The strict endpoint boundary loads the addressed workspace row before evaluation even
+  // though this list query itself only reads membership/user rows.
   // `requireSessionOnly()` is wired into this route's own middleware
   // (`apps/api/src/workspace/index.ts`, `getWorkspaceMembersRoute`) specifically so runtime
   // enforcement would not lag this declaration — see that route's own doc comment.
@@ -214,9 +216,10 @@ export const workspacePolicies = {
   },
 
   // Updates one workspace's own fields (name, slug, logo, description) by path id.
-  // `workspaceAccess.fromParam` resolves membership and loads the row; the update controller
-  // re-checks existence itself and 404s if it is gone, so the scope id is read from that same
-  // loaded row — `scopeSource: "row"`, same as the read route above.
+  // `workspaceAccess.fromParam` applies the native reach check. The strict endpoint boundary
+  // loads the addressed workspace row before policy evaluation; the update controller
+  // independently re-checks existence and 404s if it is gone. The policy scope therefore
+  // uses row-derived evidence, matching the read route above.
   "PATCH /api/workspace/{workspaceId}": {
     capability: "workspace:update",
     scope: "workspace",

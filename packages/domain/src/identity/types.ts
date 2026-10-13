@@ -16,11 +16,14 @@ export type VerifiedEntraClaims = {
   oid: string;
   email?: unknown;
   email_verified?: unknown;
+  name?: unknown;
   preferred_username?: unknown;
   upn?: unknown;
   groups?: unknown;
   _claim_names?: unknown;
   _claim_sources?: unknown;
+  roles?: unknown;
+  acct?: unknown;
 };
 
 export type IdentityDomainOwner = {
@@ -35,11 +38,16 @@ export type IdentityConnectionContext = Pick<
   identityConnectionId: string;
 };
 
+export type EntraGroupClaimEvidence =
+  | { kind: "complete"; objectIds: readonly string[] }
+  | { kind: "missing" | "malformed" | "overage" };
+
 export type NormalisedEntraIdentity = {
   subject: { oid: string; tid: string };
   address: string;
   addressUsed: "email" | "preferred_username" | "upn";
-  groupObjectIds: readonly string[] | "overage";
+  groupObjectIds: EntraGroupClaimEvidence;
+  displayName?: string;
 };
 
 export type IdentityRejectionReason =
@@ -50,7 +58,11 @@ export type IdentityRejectionReason =
   | "no_usable_address"
   | "unverified_address"
   | "domain_bound_elsewhere"
-  | "ambiguous_domain_binding";
+  | "ambiguous_domain_binding"
+  | "invalid_claim_mapping"
+  | "invalid_admission_policy"
+  | "missing_app_role"
+  | "guest_account";
 
 export type IdentityClaimResult =
   | { ok: true; identity: NormalisedEntraIdentity }
@@ -82,9 +94,26 @@ export type ScimPersonAttributes = {
   userName?: string;
   email?: string;
   active?: boolean;
+  displayName?: string;
   name?: { givenName?: string; familyName?: string; formatted?: string };
   title?: string;
   preferredLanguage?: string;
+  locale?: string;
+};
+
+export type ScimProfileAttributeMapping = {
+  version: 1;
+  name: "displayName" | "name.formatted";
+  email: "emails.primary.value" | "userName";
+  jobTitle: "title" | "unmapped";
+  locale: "preferredLanguage" | "locale" | "unmapped";
+};
+
+export type ScimProfile = {
+  name: string;
+  email: string;
+  jobTitle?: string;
+  locale?: string;
 };
 
 export type ScimResult<T> =

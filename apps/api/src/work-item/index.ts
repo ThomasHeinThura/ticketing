@@ -13,11 +13,13 @@ import {
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
 import {
   assertCallerHasCapability,
   assertCallerHasCapabilityOrSelf,
   builtInRoleHasCapability,
+  capabilityCredential,
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
@@ -43,6 +45,7 @@ import deleteComment from "./controllers/delete-comment";
 import deleteWorkItem from "./controllers/delete-work-item";
 import detachWorkItemParent from "./controllers/detach-work-item-parent";
 import getWorkItemByKey from "./controllers/get-work-item";
+import { getWorkItemSla } from "./controllers/get-work-item-sla";
 import getWorkItemTree from "./controllers/get-work-item-tree";
 import listAssignablePeople from "./controllers/list-assignable-people";
 import listWorkItemActivity from "./controllers/list-work-item-activity";
@@ -53,6 +56,7 @@ import rankWorkItem from "./controllers/rank-work-item";
 import setWorkItemParent from "./controllers/set-work-item-parent";
 import transitionWorkItem, {
   NoMatchingTransitionError,
+  SlaPauseConflictError,
   TransitionBlockedError,
   TransitionConflictError,
 } from "./controllers/transition-work-item";
@@ -62,12 +66,18 @@ import updateWorkItem, {
   WorkItemVersionConflictError,
 } from "./controllers/update-work-item";
 import { unwatchWorkItem, watchWorkItem } from "./controllers/watch-work-item";
+import {
+  classifyWorkItemMentionPeople,
+  findWorkItemMentionContext,
+} from "./mention-access";
 import { requireCommentReach } from "./require-comment-reach";
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
   assignablePeopleSchema,
   assignWorkItemResponseSchema,
   bulkWorkItemsResponseSchema,
+  commentMentionCandidatesSchema,
+  commentMentionPreflightResponseSchema,
   deletedWorkItemSchema,
   rankWorkItemResponseSchema,
   transitionedWorkItemSchema,
@@ -87,6 +97,8 @@ import {
 import {
   assignWorkItemBody,
   bulkWorkItemsBody,
+  commentMentionCandidatesQuery,
+  commentMentionPreflightBody,
   createWorkItemBody,
   ifMatchHeader,
   listWorkItemActivityQuery,
@@ -99,6 +111,12 @@ import {
   workItemKeyParam,
   workspaceIdParam,
 } from "./schema";
+import {
+  SEARCH_BODY_MAX_BYTES,
+  validateWorkItemSearchQuery,
+} from "./search/query";
+import { searchWorkItems } from "./search/repository";
+import { workItemSlaSchema } from "./sla-response";
 
 /**
  * #23's first slice: minimal create + read + list for `work_item`
@@ -233,21 +251,91 @@ const listWorkItemsRoute = createRoute({
       "A page of the project's work items",
       workItemListResponseSchema,
     ),
-    // #290: an unknown project 400s via `workspaceAccess.fromProject()`; an existing
-    // project beyond canonical project reach is masked as 404 by the same middleware
-    // before this route's own permission check runs -- folded
-    // into the same 400 alongside #310's own query-validation cases (unknown sort
-    // field, out-of-range limit, malformed cursor, NUL byte, etc.).
     400: errorResponse(
-      "Unknown project or its workspace could not be determined, or an invalid " +
-        "query parameter (unknown sort field, out-of-range limit, malformed cursor, " +
-        "NUL byte, etc.)",
+      "Malformed project ID or invalid query parameter (unknown sort field, out-of-range limit, malformed cursor, NUL byte, etc.)",
     ),
     403: errorResponse("Missing work_item:read permission"),
     // #202 / PR #204's freeze invariant (independent Opus security review of PR #271,
     // S2): a soft-deleted project's work-item list now 404s, matching every other
     // project-scoped route's convention for a soft-deleted subject.
-    404: errorResponse("Project not found"),
+    404: errorResponse("Project not found or out of reach"),
+  },
+});
+
+const searchWorkItemsRoute = createRoute({
+  method: "post",
+  operationId: "searchWorkItems",
+  path: "/work-items/search",
+  tags: ["Work items"],
+  summary: "Search work items",
+  description:
+    "Bounded structured work-item filtering. See api-design.md § Work-item search v1.",
+  middleware: [
+    async (c, next) => {
+      const body = await c.req.raw.clone().arrayBuffer();
+      if (body.byteLength > SEARCH_BODY_MAX_BYTES)
+        throw new HTTPException(400, {
+          message: "Request body exceeds 32 KiB",
+        });
+      await next();
+    },
+    async (c, next) => {
+      try {
+        await workspaceAccess.fromBody("workspaceId")(c, next);
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 403) {
+          throw new HTTPException(404, { message: "Workspace not found" });
+        }
+        throw error;
+      }
+    },
+  ] as const,
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              workspaceId: z.string().min(1),
+              query: z
+                .object({
+                  entity: z.string(),
+                  filter: z.unknown().optional(),
+                  sort: z
+                    .array(
+                      z
+                        .object({ field: z.string(), order: z.string() })
+                        .strict(),
+                    )
+                    .max(1)
+                    .optional(),
+                  columns: z.array(z.string()).optional(),
+                  groupBy: z.unknown().optional(),
+                  aggregate: z.unknown().optional(),
+                })
+                .strict(),
+              limit: z.number().int().min(1).max(200).optional(),
+              cursor: z.string().max(4096).nullable().optional(),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "A page of reachable matching work items",
+      workItemListResponseSchema,
+    ),
+    400: errorResponse(
+      "Malformed or over-limit search document, scope, or cursor",
+    ),
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Workspace not found or unreachable"),
+    422: errorResponse(
+      "Unsupported entity, unavailable filter field, or unreadable field",
+    ),
   },
 });
 
@@ -257,7 +345,10 @@ const getWorkItemRoute = createRoute({
   path: "/work-items/{key}",
   tags: ["Work items"],
   summary: "Get work item",
-  description: "Get a single work item by its permanent key, e.g. PROJ-123.",
+  description:
+    "Get a single work item by its permanent key, e.g. PROJ-123. The detail response " +
+    "includes the project's CA-2 `defaultCommentVisibility`; creating a comment still " +
+    "requires the caller to submit an explicit visibility.",
   middleware: [
     requireWorkItemReach("key", { requireProjectReach: true }),
   ] as const,
@@ -266,6 +357,29 @@ const getWorkItemRoute = createRoute({
     200: jsonResponse("The work item", workItemDetailSchema),
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const getWorkItemSlaRoute = createRoute({
+  method: "get",
+  operationId: "getWorkItemSla",
+  path: "/work-items/{key}/sla",
+  tags: ["Work items"],
+  summary: "Evaluate a work item's pinned SLA policy version",
+  middleware: [
+    requireWorkItemReach("key", { requireProjectReach: true }),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse(
+      "The work item's current SLA evaluation",
+      workItemSlaSchema,
+    ),
+    403: errorResponse(
+      "No workspace access or missing work_item:read permission",
     ),
     404: errorResponse("Work item not found"),
   },
@@ -361,11 +475,9 @@ const listAssignablePeopleRoute = createRoute({
       "The people the caller may assign to",
       assignablePeopleSchema,
     ),
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
     403: errorResponse("Missing work_item:read permission"),
-    404: errorResponse("Project not found"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
@@ -717,15 +829,16 @@ const transitionWorkItemRoute = createRoute({
   description:
     "Move a work item to a new state through its type's active workflow version " +
     "(`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see " +
-    "`GET .../transitions`). INTERIM, until issue #36 (approvals) lands: a transition " +
-    "whose `requires_approval` or `requires_cab` is set can never complete through this " +
-    "route -- both gates are treated as permanently unsatisfied. Guard resolution is " +
+    "`GET .../transitions`). Approval and CAB gates use persisted matching approval " +
+    "rows. Guard resolution is " +
     "also partial today: `no_open_blockers` (no `work_item_relation` table yet), " +
     "`field_required` (no custom-field/satellite value store yet) and " +
     "`change_risk_at_most` (no change-risk column yet) always fail closed (blocked), " +
-    "never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are " +
-    "silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves " +
-    "to no assignee (no project/type default-assignee column yet).",
+    "never fabricated as satisfied. `pause_sla`/`resume_sla` apply the automatic " +
+    "`waiting_customer` lifecycle; manual and resolved-pause continuity remain held. " +
+    "`set_field` is held for this release; a previously stored transition containing it " +
+    "is refused with 422 before any work-item mutation. `set_assignee`'s `'default'` " +
+    "always resolves to no assignee (no project/type default-assignee column yet).",
   middleware: [
     requireWorkItemReach(),
     requireWorkspaceCapability("work_item:transition"),
@@ -750,7 +863,7 @@ const transitionWorkItemRoute = createRoute({
     ),
     422: jsonResponse(
       "The matched transition is legal but not currently available (a guard, the " +
-        "approval/CAB gate, or a missing required note)",
+        "approval/CAB gate, a missing required note, or a held stored effect)",
       workItemTransitionBlockedSchema,
     ),
   },
@@ -811,6 +924,64 @@ const createCommentRoute = createRoute({
       "No workspace access, or missing comment:create/comment:create_internal " +
         "(depending on the chosen visibility)",
     ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const commentMentionCandidatesRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemCommentMentionCandidates",
+  path: "/work-items/{key}/comments/mention-candidates",
+  tags: ["Comments"],
+  summary: "List work-item comment mention candidates",
+  description:
+    "List people in this work item's workspace who can be considered for a comment mention. " +
+    "Customer candidates are available only for public comments and only when they currently " +
+    "reach this work item.",
+  middleware: [
+    requireWorkItemReach("key", { requireProjectReach: true }),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    query: commentMentionCandidatesQuery,
+  },
+  responses: {
+    200: jsonResponse(
+      "Scoped comment mention candidates",
+      commentMentionCandidatesSchema,
+    ),
+    400: errorResponse("Invalid comment visibility"),
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const commentMentionPreflightRoute = createRoute({
+  method: "post",
+  operationId: "preflightWorkItemCommentMentions",
+  path: "/work-items/{key}/comments/mention-preflight",
+  tags: ["Comments"],
+  summary: "Check work-item comment mention reach",
+  description:
+    "Return selected person ids split by current work-item reach. Unknown, inactive, " +
+    "non-member and out-of-scope ids are indistinguishable from inaccessible people.",
+  middleware: [
+    requireWorkItemReach("key", { requireProjectReach: true }),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: commentMentionPreflightBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "Mention reach preflight",
+      commentMentionPreflightResponseSchema,
+    ),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Missing work_item:read permission"),
     404: errorResponse("Work item not found"),
   },
 });
@@ -900,11 +1071,34 @@ const workItem = apiRouter<
     );
     return c.json(result, 200);
   })
+  .openapi(searchWorkItemsRoute, async (c) => {
+    const body = c.req.valid("json");
+    const query = validateWorkItemSearchQuery(body.query);
+    const session = c.get("session") as
+      | { impersonatedBy?: string | null }
+      | null
+      | undefined;
+    const result = await searchWorkItems({
+      userId: c.get("userId"),
+      apiKey: c.get("apiKey"),
+      impersonatedBy: session?.impersonatedBy,
+      workspaceId: c.get("workspaceId"),
+      query,
+      limit: body.limit ?? 50,
+      cursor: body.cursor ?? undefined,
+    });
+    return c.json(result, 200);
+  })
   .openapi(getWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const item = await getWorkItemByKey(key, workspaceId);
     return c.json(item, 200);
+  })
+  .openapi(getWorkItemSlaRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const item = await getWorkItemSla(key, c.get("workspaceId"));
+    return c.json(workItemSlaSchema.parse(item), 200);
   })
   .openapi(listWorkItemTypesRoute, async (c) => {
     const { workspaceId } = c.req.valid("param");
@@ -930,6 +1124,7 @@ const workItem = apiRouter<
         workspaceId,
         c.get("userId"),
         "work_item:set_priority",
+        capabilityCredential(c.get("apiKey")),
       );
     }
 
@@ -1054,6 +1249,7 @@ const workItem = apiRouter<
       "work_item:assign",
       "work_item:update",
       callerPerson !== undefined && callerPerson.id === assigneeId,
+      c.get("apiKey"),
     );
 
     const { actorId, actorType } = resolveActor(
@@ -1187,6 +1383,7 @@ const workItem = apiRouter<
       workspaceId,
       userId,
       operation === "delete" ? "work_item:delete" : "work_item:assign",
+      capabilityCredential(c.get("apiKey")),
     );
 
     const { actorId, actorType } = resolveActor(
@@ -1259,6 +1456,7 @@ const workItem = apiRouter<
       callerPerson !== undefined &&
         current.assigneeId !== null &&
         callerPerson.id === current.assigneeId,
+      c.get("apiKey"),
     );
 
     const { actorId, actorType } = resolveActor(
@@ -1321,6 +1519,9 @@ const workItem = apiRouter<
       if (error instanceof TransitionConflictError) {
         throw new HTTPException(409, { message: error.message });
       }
+      if (error instanceof SlaPauseConflictError) {
+        throw new HTTPException(409, { message: error.message });
+      }
       if (error instanceof TransitionBlockedError) {
         return c.json(
           { message: error.message, blockedBy: error.blockedBy },
@@ -1334,13 +1535,14 @@ const workItem = apiRouter<
     const workItemId = c.get("workItemId");
     const userId = c.get("userId");
     const [callerPerson] = await db
-      .select({ id: personTable.id })
+      .select({ id: personTable.id, side: personTable.side })
       .from(personTable)
       .where(eq(personTable.userId, userId))
       .limit(1);
     const offers = await listWorkItemTransitions(
       workItemId,
       callerPerson?.id ?? null,
+      callerPerson?.side ?? null,
     );
     return c.json(offers, 200);
   })
@@ -1358,8 +1560,58 @@ const workItem = apiRouter<
       actorId,
       actorType,
       { body, visibility },
+      c.get("apiKey"),
     );
     return c.json(created, 200);
+  })
+  .openapi(commentMentionCandidatesRoute, async (c) => {
+    const { visibility } = c.req.valid("query");
+    const candidates = await db.transaction(async (tx) => {
+      const context = await findWorkItemMentionContext(tx, c.get("workItemId"));
+      if (!context || context.workspaceId !== c.get("workspaceId")) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
+      return classifyWorkItemMentionPeople(tx, context, undefined, visibility);
+    });
+    return c.json(
+      candidates.map(({ personId, name, image, side, reachable }) => ({
+        personId,
+        name,
+        image,
+        side,
+        reachable,
+      })),
+      200,
+    );
+  })
+  .openapi(commentMentionPreflightRoute, async (c) => {
+    const { personIds, visibility } = c.req.valid("json");
+    const requestedIds = [...new Set(personIds)];
+    const candidates = await db.transaction(async (tx) => {
+      const context = await findWorkItemMentionContext(tx, c.get("workItemId"));
+      if (!context || context.workspaceId !== c.get("workspaceId")) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
+      return classifyWorkItemMentionPeople(
+        tx,
+        context,
+        requestedIds,
+        visibility,
+        { includeUnreachableCustomers: true },
+      );
+    });
+    const reachable = new Set(
+      candidates
+        .filter((candidate) => candidate.reachable)
+        .map((candidate) => candidate.personId),
+    );
+    return c.json(
+      {
+        reachablePersonIds: requestedIds.filter((id) => reachable.has(id)),
+        unreachablePersonIds: requestedIds.filter((id) => !reachable.has(id)),
+      },
+      200,
+    );
   })
   .openapi(updateCommentRoute, async (c) => {
     const { id } = c.req.valid("param");

@@ -1,4 +1,11 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { shortcuts } from "@/constants/shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import type { CommandPaletteIntent, CommandPaletteRequest } from "./index";
@@ -10,17 +17,36 @@ const CommandPalette = lazy(async () => {
 
 let nextRequestId = 0;
 
+type IdleWindow = Window & {
+  requestIdleCallback?: (callback: () => void) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
+
 /** Small eager shortcut boundary; the command UI and its queries load on intent. */
 export default function CommandPaletteLauncher() {
   const [requested, setRequested] = useState(false);
   const [open, setOpen] = useState(false);
   const [request, setRequest] = useState<CommandPaletteRequest | null>(null);
   const [keepMounted, setKeepMounted] = useState(false);
+  const requestedRef = useRef(false);
+  const idleMountRef = useRef<number | undefined>(undefined);
 
-  const dispatch = useCallback((intent: CommandPaletteIntent) => {
-    setRequested(true);
-    setRequest({ id: ++nextRequestId, intent });
+  const cancelIdleMount = useCallback(() => {
+    const handle = idleMountRef.current;
+    if (handle === undefined) return;
+    (window as IdleWindow).cancelIdleCallback?.(handle);
+    idleMountRef.current = undefined;
   }, []);
+
+  const dispatch = useCallback(
+    (intent: CommandPaletteIntent) => {
+      cancelIdleMount();
+      requestedRef.current = true;
+      setRequested(true);
+      setRequest({ id: ++nextRequestId, intent });
+    },
+    [cancelIdleMount],
+  );
   const togglePalette = useCallback(() => {
     setOpen((current) => {
       const next = !current;
@@ -56,8 +82,8 @@ export default function CommandPaletteLauncher() {
 
   useEffect(() => {
     // On the heavy work and board screens, wait for their real primary content
-    // commit before warming the closed palette. This avoids competing with the
-    // list/board's first render while retaining immediate shortcut intent.
+    // paint before warming the closed palette. Explicit shortcut intent still
+    // loads immediately through `requested`.
     const path = window.location.pathname;
     const waitsForPrimaryContent =
       (path.includes("/agent/projects/") && path.endsWith("/work")) ||
@@ -66,11 +92,28 @@ export default function CommandPaletteLauncher() {
     let secondFrame: number | undefined;
     let observer: MutationObserver | undefined;
     let cancelled = false;
+    const idleWindow = window as IdleWindow;
     const mountAfterCommit = () => {
-      if (cancelled || firstFrame !== undefined || secondFrame !== undefined)
+      if (
+        cancelled ||
+        requestedRef.current ||
+        firstFrame !== undefined ||
+        secondFrame !== undefined
+      )
         return;
       firstFrame = requestAnimationFrame(() => {
-        secondFrame = requestAnimationFrame(() => setKeepMounted(true));
+        if (cancelled || requestedRef.current) return;
+        secondFrame = requestAnimationFrame(() => {
+          if (cancelled || requestedRef.current) return;
+          if (typeof idleWindow.requestIdleCallback !== "function") {
+            setKeepMounted(true);
+            return;
+          }
+          idleMountRef.current = idleWindow.requestIdleCallback(() => {
+            idleMountRef.current = undefined;
+            if (!cancelled) setKeepMounted(true);
+          });
+        });
       });
     };
     if (waitsForPrimaryContent) {
@@ -78,6 +121,10 @@ export default function CommandPaletteLauncher() {
         mountAfterCommit();
       } else {
         observer = new MutationObserver(() => {
+          if (requestedRef.current) {
+            observer?.disconnect();
+            return;
+          }
           if (document.querySelector("[data-primary-content-ready='true']")) {
             observer?.disconnect();
             mountAfterCommit();
@@ -93,8 +140,9 @@ export default function CommandPaletteLauncher() {
       observer?.disconnect();
       if (firstFrame !== undefined) cancelAnimationFrame(firstFrame);
       if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
+      cancelIdleMount();
     };
-  }, []);
+  }, [cancelIdleMount]);
 
   if (!requested && !keepMounted) return null;
   return (

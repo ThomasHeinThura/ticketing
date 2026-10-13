@@ -1,6 +1,11 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@taskdesk/ui";
+import {
+  Button,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@taskdesk/ui";
 import { format } from "date-fns";
 import type { TFunction } from "i18next";
 import {
@@ -12,6 +17,7 @@ import {
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { memo, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { cn } from "@/lib/cn";
 import { dueDateStatusColors, getDueDateStatus } from "@/lib/due-date-status";
@@ -56,14 +62,12 @@ function TaskRow({
     isDragging,
   } = useSortable({ id: task.id });
 
-  const toggleSelection = useBulkSelectionStore(
-    (state) => state.toggleSelection,
-  );
-  const selected = useBulkSelectionStore((state) =>
-    state.selectedTaskIds.has(task.id),
-  );
-  const focused = useBulkSelectionStore(
-    (state) => state.focusedTaskId === task.id,
+  const { toggleSelection, selected, focused } = useBulkSelectionStore(
+    useShallow((state) => ({
+      toggleSelection: state.toggleSelection,
+      selected: state.selectedTaskIds.has(task.id),
+      focused: state.focusedTaskId === task.id,
+    })),
   );
   const {
     showAssignees,
@@ -179,7 +183,8 @@ function TaskRow({
               {pullRequests.length === 1 && (
                 <HoverCard openDelay={200} closeDelay={100}>
                   <HoverCardTrigger asChild>
-                    <button
+                    <Button
+                      variant="ghost"
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -189,7 +194,7 @@ function TaskRow({
                     >
                       {getPRInfo(pullRequests[0]).icon}
                       <span>#{pullRequests[0].externalId}</span>
-                    </button>
+                    </Button>
                   </HoverCardTrigger>
                   <HoverCardContent
                     className="w-72 p-3"
@@ -228,7 +233,8 @@ function TaskRow({
                   return (
                     <HoverCard openDelay={200} closeDelay={100}>
                       <HoverCardTrigger asChild>
-                        <button
+                        <Button
+                          variant="ghost"
                           type="button"
                           onClick={(e) => e.stopPropagation()}
                           className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border bg-sidebar text-[10px] font-medium text-muted-foreground"
@@ -239,7 +245,7 @@ function TaskRow({
                               count: pullRequests.length,
                             })}
                           </span>
-                        </button>
+                        </Button>
                       </HoverCardTrigger>
                       <HoverCardContent
                         className="w-auto min-w-56 max-w-96 p-1"
@@ -257,7 +263,8 @@ function TaskRow({
                               {index > 0 && (
                                 <hr className="border-border my-1" />
                               )}
-                              <button
+                              <Button
+                                variant="ghost"
                                 type="button"
                                 onClick={() => window.open(pr.url, "_blank")}
                                 className="w-full px-2 py-1.5 text-left hover:bg-muted/50 rounded transition-colors"
@@ -274,7 +281,7 @@ function TaskRow({
                                 <span className="text-[10px] text-muted-foreground">
                                   {prInfo.status}
                                 </span>
-                              </button>
+                              </Button>
                             </div>
                           );
                         })}

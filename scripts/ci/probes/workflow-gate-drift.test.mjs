@@ -76,6 +76,7 @@ function repoWithWorkflows(name, mutate = () => {}) {
   // executes in there and nowhere else. A harness missing it would be testing a repository
   // that could not run.
   installFromRepo(dir, ".github/actions/setup/action.yml");
+  installFromRepo(dir, ".github/actions/change-scope/action.yml");
   mutate(dir);
   return dir;
 }
@@ -203,6 +204,29 @@ describe("M2 — three-way gate reconciliation", () => {
     assert.equal(result.status, 0, result.output);
   });
 
+  it("G1a: the raw-element check is declared, enabled, and required to execute", () => {
+    const shipped = repoWithWorkflows("ui-raw-elements");
+    const green = runChecker(shipped, "test-all.mjs", ["--list"]);
+    assert.equal(green.status, 0, green.output);
+
+    const missing = repoWithWorkflows("ui-raw-elements-missing", (repo) => {
+      write(
+        repo,
+        ".github/workflows/ci-fast.yml",
+        readWorkflow(repo)
+          .split("\n")
+          .filter((line) => !line.includes("check:ui:raw-elements"))
+          .join("\n"),
+      );
+    });
+    const red = runChecker(missing, "test-all.mjs", ["--list"]);
+    assert.equal(red.status, 1, red.output);
+    assert.match(
+      red.output,
+      /marks "pnpm check:ui:raw-elements" ENABLED and NO workflow executes it/,
+    );
+  });
+
   it("an unreadable workflow set fails CLOSED", () => {
     const dir = repoWithWorkflows("no-workflows", (repo) => {
       write(repo, ".github/workflows/ci-fast.yml", "# no run steps at all\n");
@@ -261,7 +285,11 @@ describe("G11 — the performance suite is an enabled full-stage gate", () => {
   });
 });
 
-/** Wrap the job that runs `gate` in a condition, by inserting a job-level key. */
+/**
+ * Wrap the job that runs `gate` in a condition, by setting a job-level key. A key the job
+ * already declares (the change-scope `if:`) is replaced, not duplicated — a duplicate is
+ * refused outright by the scanner (A9).
+ */
 function withJobKey(source, gateLine, key) {
   const lines = source.split("\n");
   const step = lines.findIndex((line) => line.includes(gateLine));
@@ -270,6 +298,14 @@ function withJobKey(source, gateLine, key) {
   let job = step;
   while (job >= 0 && !/^ {2}[a-z0-9_-]+:\s*$/.test(lines[job])) job -= 1;
   assert.ok(job >= 0, "no job header above the step");
+  const name = key.split(":")[0];
+  for (let i = job + 1; i < step; i += 1) {
+    if (lines[i].startsWith(`    ${name}:`)) {
+      return [...lines.slice(0, i), `    ${key}`, ...lines.slice(i + 1)].join(
+        "\n",
+      );
+    }
+  }
   return [
     ...lines.slice(0, job + 1),
     `    ${key}`,

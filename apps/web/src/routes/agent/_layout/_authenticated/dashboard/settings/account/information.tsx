@@ -289,7 +289,7 @@ function RouteComponent() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <input
+                <Input
                   ref={avatarInputRef}
                   type="file"
                   accept={ACCEPTED_AVATAR_TYPES}
@@ -299,7 +299,8 @@ function RouteComponent() {
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
-                      <button
+                      <Button
+                        variant="ghost"
                         type="button"
                         aria-label={t("settings:informationPage.avatar.edit")}
                         disabled={isUploadingAvatar || isRemovingAvatar}

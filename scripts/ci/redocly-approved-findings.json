@@ -1,1 +1,18 @@
-[]
+[
+	{
+		"operation": "GET /portal/submissions/{ref}/attachments/{id}",
+		"rule": "operation-2xx-response",
+		"pointer": "#/paths/~1portal~1submissions~1{ref}~1attachments~1{id}/get/responses",
+		"reason": "Redirect-only attachment download matching the existing AT-5/AT-6 contract: after the route-specific authorization check it returns 302 to the five-minute presigned URL. The redirect-only false-positive is covered by the existing 2026-09-28 mechanism; no 200 response or protocol change is intended.",
+		"decision": "docs/07-planning/decision-log.md#2026-09-28--redocly-lint-finding-allowlist-added-scriptsciredocly-approved-findingsjson-for-get-attachmentsids-redirect-only-response",
+		"pr": 664
+	},
+	{
+		"operation": "GET /submissions/{ref}/attachments/{id}",
+		"rule": "operation-2xx-response",
+		"pointer": "#/paths/~1submissions~1{ref}~1attachments~1{id}/get/responses",
+		"reason": "Redirect-only attachment download matching the existing AT-5/AT-6 contract: after the route-specific authorization check it returns 302 to the five-minute presigned URL. The redirect-only false-positive is covered by the existing 2026-09-28 mechanism; no 200 response or protocol change is intended.",
+		"decision": "docs/07-planning/decision-log.md#2026-09-28--redocly-lint-finding-allowlist-added-scriptsciredocly-approved-findingsjson-for-get-attachmentsids-redirect-only-response",
+		"pr": 664
+	}
+]

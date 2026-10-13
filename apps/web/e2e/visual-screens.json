@@ -49,5 +49,64 @@
 		"applicationRoute": "/god-mode/observability",
 		"test": "observability settings screen @visual",
 		"screenshot": "observability-settings.png"
+	},
+	{
+		"name": "instance-users-directory",
+		"inventoryRoute": "/agent/god-mode/users",
+		"applicationRoute": "/agent/god-mode/users",
+		"test": "instance users directory screen @visual",
+		"screenshot": "instance-users-directory.png"
+	},
+	{
+		"name": "pending-actions-list",
+		"inventoryRoute": "/agent/settings/profile/pending-actions",
+		"applicationRoute": "/agent/settings/profile/pending-actions",
+		"test": "pending actions list screen @visual",
+		"screenshot": "pending-actions-list.png"
+	},
+	{
+		"name": "pending-action-detail",
+		"inventoryRoute": "/agent/settings/profile/pending-actions/{id}",
+		"applicationRoute": "/agent/settings/profile/pending-actions/$id",
+		"test": "pending action detail screen @visual",
+		"screenshot": "pending-action-detail.png"
+	},
+	{
+		"name": "intake-queue",
+		"inventoryRoute": "/agent/triage?state=new&ref={ref}",
+		"applicationRoute": "/agent/triage",
+		"test": "intake triage queue @visual",
+		"screenshot": "intake-queue.png"
+	},
+	{
+		"name": "request-types",
+		"inventoryRoute": "/agent/settings/request-types?requestTypeId={id}",
+		"applicationRoute": "/agent/settings/request-types",
+		"test": "request type catalogue editor @visual",
+		"screenshot": "request-types.png"
+	},
+	{
+		"name": "portal-catalogue-selected-form",
+		"inventoryRoute": "/catalogue?q=no-match&key=access",
+		"applicationRoute": "/catalogue",
+		"origin": "portal",
+		"test": "portal catalogue selected form @visual",
+		"screenshot": "portal-catalogue-selected-form.png"
+	},
+	{
+		"name": "portal-submission-detail",
+		"inventoryRoute": "/submissions/{ref}",
+		"applicationRoute": "/submissions/$ref",
+		"origin": "portal",
+		"test": "portal submission detail @visual",
+		"screenshot": "portal-submission-detail.png"
+	},
+	{
+		"name": "portal-sign-in-email",
+		"inventoryRoute": "/sign-in",
+		"applicationRoute": "/sign-in",
+		"origin": "portal",
+		"test": "portal sign-in email stage @visual",
+		"screenshot": "portal-sign-in-email.png"
 	}
 ]

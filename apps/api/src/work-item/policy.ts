@@ -37,6 +37,14 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * work item mints no fresh authority.
  */
 export const workItemPolicies = {
+  // Bounded structured search is workspace-addressed for scope validation, then each
+  // candidate row is evaluated against the same work_item:read project reach as detail.
+  "POST /api/work-items/search": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
   // Create a work item in a project. There is no `work_item` row yet -- the scope id is
   // the project the item is being created IN, read from the request path
   // (`scopeSource: "request"`), the same shape `POST /api/workspace/{workspaceId}/members`
@@ -66,6 +74,13 @@ export const workItemPolicies = {
   // `work_item.key` before the handler runs, and the controller (`get-work-item.ts`)
   // re-loads it itself -- `scopeSource: "row"`.
   "GET /api/work-items/{key}": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  "GET /api/work-items/{key}/sla": {
     capability: "work_item:read",
     scope: "work_item",
     scopeSource: "row",
@@ -228,6 +243,18 @@ export const workItemPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  "GET /api/work-items/{key}/comments/mention-candidates": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/work-items/{key}/comments/mention-preflight": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
 
   // Re-rank a work item (`WI-11`-`WI-13`). `WI-13`'s customer-organisation-scoped
   // restriction is NOT enforced here -- see `controllers/rank-work-item.ts`'s own doc
@@ -286,6 +313,12 @@ export const workItemPolicies = {
   // row's visibility (`CA-7`) is filtered by this route today; see
   // `controllers/list-work-item-activity.ts`'s own doc comment for why.
   "GET /api/work-items/{key}/activity": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/work-items/{key}/comments/{id}/versions": {
     capability: "work_item:read",
     scope: "work_item",
     scopeSource: "row",

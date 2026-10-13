@@ -50,6 +50,8 @@ describe("API integration: API key bearer authentication", () => {
       name: "api key bearer test",
       start: rawKey.slice(0, 12),
       prefix: "taskdesk",
+      // Key capability subsets are explicit; a null stored scope clamps to nothing.
+      permissions: JSON.stringify({ project: ["read"] }),
       createdAt: now,
       updatedAt: now,
     });

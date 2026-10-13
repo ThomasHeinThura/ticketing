@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Timeline } from "@taskdesk/ui";
+import { Button, Timeline } from "@taskdesk/ui";
 import { ArrowUpRight } from "lucide-react";
 import { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -89,7 +89,8 @@ function TaskDetailsContent({
     <div className={`${className} gap-4`} data-testid={dataTestId}>
       <div className="flex flex-col gap-2.5">
         {parentTask && (
-          <button
+          <Button
+            variant="ghost"
             type="button"
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-fit"
             onClick={() =>
@@ -108,7 +109,7 @@ function TaskDetailsContent({
               {t("tasks:detail.subtaskOf")}{" "}
               <span className="font-medium">{parentTask.title}</span>
             </span>
-          </button>
+          </Button>
         )}
         <p className="text-xs font-semibold text-foreground">
           {project?.slug}-{currentTask?.number}

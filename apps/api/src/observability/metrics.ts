@@ -64,6 +64,7 @@ export interface TaskDeskMetrics {
   beginHttpRequest(): () => void;
   recordHttpRequest(request: HttpRequestMetric): void;
   recordAuditWriteFailure(operation: AuditFailureOperation): void;
+  recordAuthReload(outcome: "ok" | "failed", configVersion: number): void;
   metrics(): Promise<string>;
   contentType: string;
 }
@@ -108,6 +109,17 @@ export function createTaskDeskMetrics(
     labelNames: ["operation"] as const,
     registers: [registry],
   });
+  const authReloads = new Counter({
+    name: "taskdesk_auth_reload_total",
+    help: "Auth configuration reloads by outcome.",
+    labelNames: ["outcome"] as const,
+    registers: [registry],
+  });
+  const authConfigVersion = new Gauge({
+    name: "taskdesk_auth_config_version",
+    help: "Auth configuration version currently served by this replica.",
+    registers: [registry],
+  });
 
   return {
     registry,
@@ -147,6 +159,16 @@ export function createTaskDeskMetrics(
         throw new TypeError("Invalid audit metric operation");
       }
       auditFailures.inc({ operation });
+    },
+    recordAuthReload(outcome, configVersion) {
+      if (outcome !== "ok" && outcome !== "failed") {
+        throw new TypeError("Invalid auth reload outcome");
+      }
+      if (!Number.isInteger(configVersion) || configVersion < 0) {
+        throw new TypeError("Invalid auth configuration version");
+      }
+      authReloads.inc({ outcome });
+      if (outcome === "ok") authConfigVersion.set(configVersion);
     },
     metrics: () => registry.metrics(),
     contentType: registry.contentType,
