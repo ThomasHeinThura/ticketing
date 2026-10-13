@@ -27,12 +27,15 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 - Security rebind: CLEAR at `49298316`. N1 and N3 are fixed and re-probed.
 - Light security rebind: CLEAR at `8bf67c9c`. The R1 tests, the adopt-time generation check and the ST-16 wording are in. Mutating each guard makes its own test fail.
 - Ordinary delta review by the reviewer-B context: APPROVE at `8bf67c9c`. The tests match its recipes, and mutations of the generation and user clauses each make a test fail.
+- Security rebind: CLEAR at `65ffd467`. The render-safety fix (`d7b4c019`) fails closed, because malformed settings bodies become failed reads and the user checks stay outside the try/catch. The commit is a clean merge of `main` `66565b2c` (#710).
+- Ordinary delta review by the reviewer-B context: APPROVE at `65ffd467`. Mutating the try/catch and the fetcher validation makes the tests fail, and the e2e approval-withdrawal spec passes 3/3 locally.
 
 **Reviewed head:** `beedd219a6d7634254fc66cf3033bd5ba3f54f7c`
 **Reviewed head:** `7a32a0f337b8a195b0054bbd5516a6c88a9ae1f4`
 **Reviewed head:** `569aea448f509c583f4735652d0ae6bfc3ed361b`
 **Reviewed head:** `49298316eea9f330cf086c5a1b0e1b664b6acdcb`
 **Reviewed head:** `8bf67c9cf1349cda549ae3f8ecfe598d5ec6b306`
+**Reviewed head:** `65ffd4675f711fab39e3ed334cf1b82758d18858`
 
 ## Context index
 
@@ -48,6 +51,8 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 6 | `719-4929-ordinary-b-sonnet.md` | Ordinary delta review B (beedd219..49298316) | Claude Sonnet 5.5 | `49298316` | APPROVE | `d6b3c293e5099d8a4ae01a139b9f512030cb3a6e5ff7d07a46f269b69bd76457` |
 | 7 | `719-8bf6-security-rebind-opus.md` | Security rebind (49298316..8bf67c9c) | Claude Opus 5.5 | `8bf67c9c` | CLEAR | `cc1bdca13e309581c7338577f1ad3ddaaa9b8eb36efcc9915ec7edc4daf2825c` |
 | 8 | `719-8bf6-ordinary-b-sonnet.md` | Ordinary delta review B (49298316..8bf67c9c) | Claude Sonnet 5.5 | `8bf67c9c` | APPROVE | `379f33f0e63117581efdf08d1019ac5ad200dab2544984c42627bd927af56f69` |
+| 9 | `719-65ff-security-rebind-opus.md` | Security rebind (8bf67c9c..65ffd467) | Claude Opus 5.5 | `65ffd467` | CLEAR | `be54809a3804c3ec08c510df50e632e6148c8e8cb7b0e79c50e18b7fbfb84695` |
+| 10 | `719-65ff-ordinary-b-sonnet.md` | Ordinary delta review B (8bf67c9c..65ffd467) | Claude Sonnet 5.5 | `65ffd467` | APPROVE | `2a77b093e6d193efbfeac268231fea67ee70d828cbeafab960c33a50220eab32` |
 
 ## Embedded reports
 
@@ -703,3 +708,170 @@ Mocks only, no real browser sign-in sequence. Security rebind and API-side delta
 ## Verdict
 APPROVE
 <!-- END REPORT (sha256 379f33f0e63117581efdf08d1019ac5ad200dab2544984c42627bd927af56f69) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-65ff-security-rebind-opus.md; Claude Opus 5.5; sha256 be54809a3804c3ec08c510df50e632e6148c8e8cb7b0e79c50e18b7fbfb84695) -->
+# PR #719 security rebind (sampled big reviewer, Opus 5.5)
+
+- **Model / context:** Claude Opus 5.5 (`claude-opus-5-5`), the same reviewer context as the
+  CLEARs at 569aea44, 49298316 and 8bf67c9c. I did not author, direct or remediate the new
+  commits. I made no edits, pushes, comments or merges on the branch.
+- **Reviewed head:** 65ffd4675f711fab39e3ed334cf1b82758d18858
+- **Previous reviewed head:** 8bf67c9cf1349cda549ae3f8ecfe598d5ec6b306 (CLEAR)
+- **Merge base:** 66565b2c2eade2378b5a1d1fd518054b2e298238, the new origin/main (#710 merge).
+  The head is a merge with parents d7b4c019 and 66565b2c.
+- **Remote state:** `git ls-remote` (HTTPS), checked at the start and at the end:
+  - `refs/heads/main` = 66565b2c… Main moved from 9a8e84cf as expected; it is the merge's
+    second parent.
+  - `refs/pull/719/head` = `refs/heads/codex/user-preference-routes` = 65ffd467….
+- **Scratch worktree:** `/Users/heinthura/.codex/worktrees/review-719-65ff`, detached at the
+  head. I installed and built it, confirmed it was clean after the mutations, and then removed it.
+
+## Commits since 8bf67c9c
+
+1. `bb1f21d3` (review note only). It adds one file,
+   `docs/07-planning/security-reviews/719-profile-settings-routes.md` (+705). There are no code
+   changes.
+2. `d7b4c019`, the fix. It touches four code and test files:
+   - `fetchers/user-settings/user-settings.ts` (+21/-1);
+   - `fetchers/user-settings/user-settings.test.ts` (new, 38 lines);
+   - `hooks/use-density-preference.ts`, where the reconcile body is wrapped in `try/catch` and
+     re-indented;
+   - `components/providers/user-preferences-sync.test.tsx` (new, 74 lines).
+
+   `8bf67c9c..d7b4c019` changes 5 files: these four plus the bb1f21d3 note.
+3. `65ffd467`, the merge of origin/main 66565b2c, which brings in #710.
+
+## Merge integrity
+
+`git merge-tree --write-tree d7b4c019 66565b2c` gives tree `0f33f84c507643a562ce2562194001ef9ca78a5e`.
+That is identical to `65ffd467^{tree}`. The merge is clean and adds no conductor edits.
+
+## The fix fails closed
+
+**The fetcher.** `getUserSettings` (`user-settings.ts`, `parseUserSettings`) accepts only a body
+whose `settings` is a non-null, non-array object. Anything else throws `HttpError(502)`: `[]`,
+`{}`, `null`, `{settings: []}`, `{settings: "x"}`, or HTML that fails to parse.
+
+- **The query errors.** `data` stays undefined, so the reconcile effect returns at its
+  `!data` guard before reading or writing anything.
+- **No redirect.** A 502 is not 401, so `handleUnauthorized` never fires.
+- **Prototype keys do nothing.** A JSON `__proto__` key inside `settings` becomes an own
+  property, not the prototype, so it cannot supply `density`.
+- **Bad values are rejected.** `parseDensity` still accepts only `comfortable` or `compact`.
+- **Same-user writes only.** A well-formed `{settings:{}}` from a stub can at most trigger the
+  existing one-time migration. That writes this user's own local value under this user's own
+  session.
+
+**The `try/catch`** (`use-density-preference.ts`, reconcile effect) wraps only the synchronous
+reconcile. All the security-relevant user and generation checks live in `writeDensity`'s promise
+callbacks:
+
+- the send-time `activeUserId` check;
+- the success, terminal and adopt checks.
+
+Those callbacks run asynchronously, outside the try, and handle their own rejections, so the
+catch cannot reach or swallow them. The only side effect that can happen before a throw is the
+existing foreign-cache reset to the default. That reset leaves the user in the safer state.
+
+**Tests and mutations** (scratch copy, restored each time):
+
+- The new provider test covers 404, 401, network error, `[]`, `{}`, `null` and a hang. For each
+  case it asserts that the app still renders, `compactMode` is unchanged, and no PATCH is sent.
+- Removing the `try/catch` makes the `[]` and `{}` cases fail (2 of 7). The `null` case is
+  covered by the `!data` guard.
+- Returning the raw body from the fetcher makes 5 of the 7 fetcher tests fail.
+- The user and generation guards in `writeDensity` are byte-identical to 8bf67c9c. The same hook
+  tests that pinned them there pass here.
+
+## #710 and #719 coexist
+
+- `index.ts` mounts `capabilities` at `/capabilities` (line 1492) and `userPreference` at `/me`
+  (line 1512), and both are in the route union.
+- Each route has its own policy file: `capabilities/policy.ts` declares
+  `GET /api/capabilities`, and `user-preference/policy.ts` declares GET and PATCH
+  `/api/me/settings`.
+- The matrix fixture has all three route keys.
+- OpenAPI lists `/capabilities` [get] and `/me/settings` [get, patch].
+
+## Runs at this head
+
+| Run | Result |
+| --- | --- |
+| `pnpm check:openapi` | passed, **284 operations** |
+| `pnpm check:route-policy` | passed |
+| `pnpm test:permissions` | 14 files / 88 tests passed |
+| `CI=true` integration (one at a time): user-preference, capabilities-scope, strict-runtime-enforcement, api-key-self-mutations | 4 files / 60 tests passed |
+| Web sync set: density hook, sync lib, fetcher, provider, preferences page | 5 files / 37 tests passed |
+| Full web vitest (`apps/web`) | **164 files / 793 tests passed** |
+| Mutations (try/catch, fetcher validation) | caught as above |
+
+I did not re-run the e2e or G8 visual harnesses. The implementer reports `approval-withdrawal`
+3/3 locally and visual screens rendering up to the Linux-baseline comparison. Hosted CI at this
+head is the authority for those.
+
+**Docker.** I snapshotted the running container IDs before the integration run and compared
+them after. No new container remained. Testcontainers stopped its own, and I removed nothing by
+hand.
+
+## Findings
+
+No blocking findings. No new findings.
+
+- R2, N2 and N4 from the earlier reports are unchanged and remain non-blocking:
+  - R2: a cookie switch made from another tab can race a queued send.
+  - N2: an API key can read layout ids through GET.
+  - N4: a non-JSON content type gets 422, not 415.
+
+## Residual risk / not checked
+
+- I did not run the e2e, visual, image-build or deployment checks.
+- The review note added in bb1f21d3 was not reviewed for content. It is documentation only.
+
+## Verdict
+
+**CLEAR** for 65ffd4675f711fab39e3ed334cf1b82758d18858. This sampled Opus 5.5 review does not
+replace the required GPT-6 Sol security review at this head.
+<!-- END REPORT (sha256 be54809a3804c3ec08c510df50e632e6148c8e8cb7b0e79c50e18b7fbfb84695) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-65ff-ordinary-b-sonnet.md; Claude Sonnet 5.5; sha256 2a77b093e6d193efbfeac268231fea67ee70d828cbeafab960c33a50220eab32) -->
+# PR #719 delta ordinary review B (8bf67c9c -> 65ffd467), web
+
+- Model/context: Claude Sonnet 5.5, fresh independent reviewer B (did not author or direct the change)
+- **Reviewed head:** 65ffd4675f711fab39e3ed334cf1b82758d18858
+- Previous approval head: 8bf67c9cf1349cda549ae3f8ecfe598d5ec6b306
+- Scratch worktree /Users/heinthura/.codex/worktrees/review-719-b4 (removed afterwards; all mutations reverted, git status clean). No Docker containers created (e2e used the mocked Playwright spec, no Testcontainers).
+
+## Delta examined
+d7b4c019: fetchers/user-settings/user-settings.ts (new parseUserSettings), hooks/use-density-preference.ts (reconcile effect wrapped in try/catch), new tests user-settings.test.ts and providers/user-preferences-sync.test.tsx. bb1f21d3 is a review note only. 65ffd467 is the main merge (#710), not reviewed beyond the suites passing.
+
+## Is the fix correct and minimal?
+Yes. Root cause: a catch-all stub returned `[]` with a 200, the fetcher cast it to `UserSettings`, and the effect read `data.settings[...]` from `undefined`, throwing in an effect and reaching the error boundary. The fetcher now accepts only `{settings: <non-null, non-array object>}` and throws HttpError 502 otherwise, so the query errors, `data` stays undefined, and the cached value keeps serving. The same validated fetcher feeds the terminal-rejection `fetchQuery` path in `writeDensity`, so `fresh.settings` is safe there too. `patchUserSettings` is unvalidated but its result is unused. The effect's try/catch is defence in depth and the diff is mostly re-indentation.
+
+## Does the try/catch hide real bugs?
+Mild risk, non-blocking. It swallows everything silently, including genuine programming errors (a bad store call, a typo in the reconcile logic), which would then show up only as "density not syncing". With the fetcher validation in place the catch should be unreachable for bad responses. Recommend logging in the catch (a dev-only `console.warn` or the app's existing reporting hook) so an unexpected throw is visible, and keeping `reconciledFor.current = data` before the try as is (a throwing payload is not retried every render). I found no existing `console.*` usage in non-test web code, so match whatever error reporter the app uses rather than introducing console calls.
+
+## Commands and results
+- Full web vitest: 164 files / 793 tests PASS. web typecheck PASS (libs built first). Touched files: 29/29 PASS.
+- Mutations (each reverted):
+  - M1 try/catch replaced by `finally` (errors propagate): the hook-level "empty array body" and "empty object body" cases FAIL (2) plus an unhandled error. The test is non-vacuous for the catch.
+  - M2 fetcher validation bypassed (plain cast): 5 fetcher tests FAIL (empty array, empty object, null, settings array, settings string).
+  - M3 `Array.isArray(settings)` check removed: "settings as an array" FAILS (1).
+  - M4 both removed: 7 tests FAIL.
+- E2E: `VITE_API_URL="" pnpm build` then `playwright test e2e/approval-withdrawal.spec.ts`: 3/3 PASS (requester withdrawal, instance-admin withdrawal, terminal-approval 409). I did not run the other mocked or G8 specs, nor reproduce the original CI failure on the pre-fix commit.
+- gitleaks --no-git on a copy of this report: no leaks found.
+
+## Test quality
+Non-vacuous as shown above. The hook-level test mocks the fetcher and the fetcher test mocks the client, so the pairing (real fetcher through real hook) is covered only by the e2e spec; acceptable. The "hanging request" and "404/401/network" cases pass trivially (the sync never acts on errors) but pin the no-throw, no-write, cache-kept contract.
+
+## Findings
+1. NON-BLOCKING: the silent `catch {}` at the end of the reconcile effect in use-density-preference.ts should report (see above).
+2. NON-BLOCKING: no test for a well-formed body whose `density` value is invalid (for example `{settings:{density:"huge"}}`); `parseDensity` already ignores it, so it is a pin only.
+
+No blocking findings.
+
+## Residual risk
+Only the approval-withdrawal e2e spec was run; other mocked/G8 harness specs, visual specs and container checks were not. The Sol security rebind (recorded CLEAR) is separate and not substituted by this report.
+
+## Verdict
+APPROVE
+<!-- END REPORT (sha256 2a77b093e6d193efbfeac268231fea67ee70d828cbeafab960c33a50220eab32) -->
