@@ -1,5 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import {
   Button,
   DropdownMenu,
@@ -18,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import BacklogListView from "@/components/backlog-list-view";
 import ProjectLayout from "@/components/common/project-layout";
+import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
 import SortControl from "@/components/common/sort-control";
 import PageTitle from "@/components/page-title";
 import CreateTaskModal from "@/components/shared/modals/create-task-modal";
@@ -32,10 +37,29 @@ import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { DUE_DATE_FILTER_VALUES } from "@/hooks/use-task-filters";
+import { authClient } from "@/lib/auth-client";
+import { filterProjectTasks } from "@/lib/filter-project-tasks";
 import { getInitials } from "@/lib/get-initials";
 import { getPriorityLabel } from "@/lib/i18n/domain";
 import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
+import {
+  type ProjectBacklogSearch,
+  parseProjectBacklogSearch,
+} from "@/lib/project-board-search";
+import {
+  projectViewFiltersFromSearch,
+  projectViewSortFromSearch,
+  withProjectBoardTask,
+  withProjectViewFilters,
+  withProjectViewSort,
+  withProjectViewState,
+} from "@/lib/project-board-search-state";
+import { createProjectViewShortcutHandlers } from "@/lib/project-layout-navigation";
+import {
+  getProjectLayoutStorage,
+  writeProjectLayoutPreference,
+} from "@/lib/project-layout-preference";
 import type { SortConfig } from "@/lib/sort-tasks";
 import { sortTasks } from "@/lib/sort-tasks";
 import { toast } from "@/lib/toast";
@@ -43,112 +67,140 @@ import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type Task from "@/types/task";
 
-type BacklogSearchParams = {
-  taskId?: string;
-};
-
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog",
 )({
   component: RouteComponent,
-  validateSearch: (search: Record<string, unknown>): BacklogSearchParams => ({
-    taskId: typeof search.taskId === "string" ? search.taskId : undefined,
-  }),
+  validateSearch: parseProjectBacklogSearch,
 });
 
 function RouteComponent() {
   const { t } = useTranslation();
   const { projectId, workspaceId } = Route.useParams();
-  const { taskId } = Route.useSearch();
+  const search = Route.useSearch();
+  const { taskId } = search;
   const navigate = useNavigate();
+  const location = useLocation();
+  const { data: session } = authClient.useSession();
   const { data } = useGetTasks(projectId);
   const { project, setProject } = useProjectStore();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const { mutate: updateTask } = useUpdateTask();
-  const [sort, setSort] = useState<SortConfig>({
-    field: "position",
-    direction: "asc",
-  });
+  const sort = projectViewSortFromSearch(search);
+  const filters = projectViewFiltersFromSearch(search);
 
   const { data: users } = useGetActiveWorkspaceUsers(workspaceId);
   const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(workspaceId);
   const queryClient = useQueryClient();
+  const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
+
+  const setSort = useCallback(
+    (nextSort: SortConfig) => {
+      navigate({
+        to: ".",
+        search: (previous: ProjectBacklogSearch) =>
+          withProjectViewSort(previous, nextSort),
+      });
+    },
+    [navigate],
+  );
+
+  const updateFilters = useCallback(
+    (nextFilters: ReturnType<typeof projectViewFiltersFromSearch>) => {
+      navigate({
+        to: ".",
+        search: (previous: ProjectBacklogSearch) =>
+          withProjectViewFilters(previous, nextFilters),
+      });
+    },
+    [navigate],
+  );
+
+  const updateQuery = useCallback(
+    (q: string) => {
+      navigate({
+        to: ".",
+        search: (previous: ProjectBacklogSearch) =>
+          withProjectViewState(previous, { q: q || undefined }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
   const handleCloseTaskSheet = useCallback(() => {
     navigate({
       to: ".",
-      search: {},
+      search: (previous: ProjectBacklogSearch) =>
+        withProjectBoardTask(previous, undefined),
       replace: true,
     });
   }, [navigate]);
 
-  const { setViewMode } = useUserPreferencesStore();
+  const viewShortcutHandlers = createProjectViewShortcutHandlers(
+    { workspaceId, projectId },
+    location.searchStr,
+    (href) => navigate({ href }),
+    (layout) =>
+      writeProjectLayoutPreference(
+        getProjectLayoutStorage(),
+        session?.user.id,
+        projectId,
+        layout,
+      ),
+  );
 
   useRegisterShortcuts({
     sequentialShortcuts: {
       [shortcuts.view.prefix]: {
-        [shortcuts.view.board]: () => {
-          setViewMode("board");
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
-            params: { workspaceId, projectId },
-          });
-        },
-        [shortcuts.view.list]: () => {
-          setViewMode("list");
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
-            params: { workspaceId, projectId },
-          });
-        },
-        [shortcuts.view.calendar]: () => {
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
-            params: { workspaceId, projectId },
-          });
-        },
-        [shortcuts.view.gantt]: () => {
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/gantt",
-            params: { workspaceId, projectId },
-          });
-        },
+        [shortcuts.view.board]: viewShortcutHandlers.board,
+        [shortcuts.view.list]: viewShortcutHandlers.list,
+        [shortcuts.view.calendar]: viewShortcutHandlers.calendar,
+        [shortcuts.view.gantt]: viewShortcutHandlers.gantt,
         [shortcuts.view.backlog]: () => {},
       },
     },
   });
 
-  const [filters, setFilters] = useState({
-    priority: null as string | null,
-    assignee: null as string | null,
-    dueDate: null as string | null,
-    labels: [] as string[],
-  });
-
-  const updateFilter = (key: string, value: string | null) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const updateLabelFilter = (labelId: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      labels: prev.labels.includes(labelId)
-        ? prev.labels.filter((id) => id !== labelId)
-        : [...prev.labels, labelId],
-    }));
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      priority: null,
-      assignee: null,
-      dueDate: null,
-      labels: [],
+  const updateFilter = (
+    key: "priority" | "assignee" | "dueDate",
+    value: string | null,
+    checked = true,
+  ) => {
+    const currentValues = filters[key] ?? [];
+    const nextValues = value
+      ? checked
+        ? [...new Set([...currentValues, value])]
+        : currentValues.filter((item) => item !== value)
+      : [];
+    updateFilters({
+      ...filters,
+      [key]: nextValues.length ? nextValues : null,
     });
   };
 
-  const hasActiveFilters = Object.values(filters).some((filter) =>
-    Array.isArray(filter) ? filter.length > 0 : filter !== null,
+  const updateLabelFilter = (labelId: string) => {
+    const labels = filters.labels ?? [];
+    updateFilters({
+      ...filters,
+      labels: labels.includes(labelId)
+        ? labels.filter((id) => id !== labelId)
+        : [...labels, labelId],
+    });
+  };
+
+  const clearFilters = () => {
+    updateFilters({
+      status: null,
+      priority: null,
+      assignee: null,
+      dueDate: null,
+      labels: null,
+    });
+  };
+
+  const hasActiveFilters = Object.values(filters).some(
+    (filter) => filter?.length,
   );
 
   useEffect(() => {
@@ -176,83 +228,26 @@ function RouteComponent() {
   const filteredProject = useMemo(() => {
     if (!project) return null;
 
-    const filterTasks = (tasks: Task[]) => {
-      return tasks.filter((task) => {
-        if (filters.priority && task.priority !== filters.priority) {
-          return false;
-        }
-
-        if (filters.assignee && task.userId !== filters.assignee) {
-          return false;
-        }
-
-        if (filters.dueDate && task.dueDate) {
-          const today = new Date();
-          const taskDate = new Date(task.dueDate);
-
-          switch (filters.dueDate) {
-            case DUE_DATE_FILTER_VALUES.dueThisWeek: {
-              const weekStart = new Date(
-                today.getFullYear(),
-                today.getMonth(),
-                today.getDate() - today.getDay(),
-              );
-              const weekEnd = new Date(
-                weekStart.getTime() + 6 * 24 * 60 * 60 * 1000,
-              );
-              if (taskDate < weekStart || taskDate > weekEnd) {
-                return false;
-              }
-              break;
-            }
-            case DUE_DATE_FILTER_VALUES.dueNextWeek: {
-              const nextWeekStart = new Date(
-                today.getFullYear(),
-                today.getMonth(),
-                today.getDate() - today.getDay() + 7,
-              );
-              const nextWeekEnd = new Date(
-                nextWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000,
-              );
-              if (taskDate < nextWeekStart || taskDate > nextWeekEnd) {
-                return false;
-              }
-              break;
-            }
-            case DUE_DATE_FILTER_VALUES.noDueDate: {
-              return false;
-            }
-          }
-        }
-
-        if (
-          filters.dueDate === DUE_DATE_FILTER_VALUES.noDueDate &&
-          task.dueDate
-        ) {
-          return false;
-        }
-
-        if (filters.labels.length > 0) {
-          const taskLabels = getTaskLabels(task.id);
-          const taskLabelIds = taskLabels.map((label) => label.id);
-          const hasMatchingLabel = filters.labels.some((filterLabelId) =>
-            taskLabelIds.includes(filterLabelId),
-          );
-          if (!hasMatchingLabel) {
-            return false;
-          }
-        }
-
-        return true;
+    const filterTasks = (tasks: Task[]) =>
+      filterProjectTasks(tasks, {
+        filters: { ...filters, labels: null },
+        query: search.q,
+        projectSlug: project.slug,
+        weekStartsOn,
+      }).filter((task) => {
+        if (!filters.labels?.length) return true;
+        const taskLabelIds = getTaskLabels(task.id).map((label) => label.id);
+        return filters.labels.some((filterLabelId) =>
+          taskLabelIds.includes(filterLabelId),
+        );
       });
-    };
 
     return {
       ...project,
       plannedTasks: filterTasks(project.plannedTasks || []),
       archivedTasks: filterTasks(project.archivedTasks || []),
     };
-  }, [project, filters, getTaskLabels]);
+  }, [project, filters, getTaskLabels, search.q, weekStartsOn]);
 
   const uniqueLabels = workspaceLabels.reduce(
     (
@@ -364,6 +359,14 @@ function RouteComponent() {
       projectId={projectId}
       workspaceId={workspaceId}
       activeView="backlog"
+      headerActions={
+        <ProjectTaskSearchInput
+          value={search.q ?? ""}
+          onValueChange={updateQuery}
+          placeholder={t("tasks:boardSearchPlaceholder")}
+          clearLabel={t("common:actions.clearAll")}
+        />
+      }
     >
       <PageTitle
         title={t("tasks:backlog.pageTitle", { name: project?.name })}
@@ -394,16 +397,17 @@ function RouteComponent() {
                   {t("tasks:backlog.moveAll")}
                 </Button>
 
-                {filters.priority && (
+                {filters.priority?.map((priority) => (
                   <Button
+                    key={priority}
                     variant="secondary"
                     size="xs"
                     className="h-7 rounded-md px-2 text-xs font-medium gap-1.5"
                   >
-                    {getPriorityIcon(filters.priority)}
+                    {getPriorityIcon(priority)}
                     <span>
                       {t("tasks:backlog.filters.priority", {
-                        name: getPriorityLabel(filters.priority),
+                        name: getPriorityLabel(priority),
                       })}
                     </span>
                     <Button
@@ -412,16 +416,17 @@ function RouteComponent() {
                       className="h-4 w-4 p-0 ml-1 hover:bg-destructive-strong hover:text-destructive-strong-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
-                        updateFilter("priority", null);
+                        updateFilter("priority", priority, false);
                       }}
                     >
                       <X className="h-2.5 w-2.5" />
                     </Button>
                   </Button>
-                )}
+                ))}
 
-                {filters.assignee && (
+                {filters.assignee?.map((assigneeId) => (
                   <Button
+                    key={assigneeId}
                     variant="secondary"
                     size="xs"
                     className="h-7 rounded-md px-2 text-xs font-medium gap-1.5"
@@ -429,7 +434,7 @@ function RouteComponent() {
                     <User className="h-3 w-3" />
                     <span>
                       {t("tasks:backlog.filters.assignee", {
-                        name: getAssigneeDisplayName(filters.assignee),
+                        name: getAssigneeDisplayName(assigneeId),
                       })}
                     </span>
                     <Button
@@ -438,16 +443,17 @@ function RouteComponent() {
                       className="h-4 w-4 p-0 ml-1 hover:bg-destructive-strong hover:text-destructive-strong-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
-                        updateFilter("assignee", null);
+                        updateFilter("assignee", assigneeId, false);
                       }}
                     >
                       <X className="h-2.5 w-2.5" />
                     </Button>
                   </Button>
-                )}
+                ))}
 
-                {filters.dueDate && (
+                {filters.dueDate?.map((dueDate) => (
                   <Button
+                    key={dueDate}
                     variant="secondary"
                     size="xs"
                     className="h-7 rounded-md px-2 text-xs font-medium gap-1.5"
@@ -456,13 +462,12 @@ function RouteComponent() {
                     <span>
                       {t("tasks:backlog.filters.due", {
                         date: t(
-                          filters.dueDate === DUE_DATE_FILTER_VALUES.dueThisWeek
+                          dueDate === DUE_DATE_FILTER_VALUES.dueThisWeek
                             ? "tasks:backlog.filters.dueThisWeek"
-                            : filters.dueDate ===
-                                DUE_DATE_FILTER_VALUES.dueNextWeek
+                            : dueDate === DUE_DATE_FILTER_VALUES.dueNextWeek
                               ? "tasks:backlog.filters.dueNextWeek"
                               : "tasks:backlog.filters.noDueDate",
-                          { defaultValue: filters.dueDate },
+                          { defaultValue: dueDate },
                         ),
                       })}
                     </span>
@@ -472,13 +477,13 @@ function RouteComponent() {
                       className="h-4 w-4 p-0 ml-1 hover:bg-destructive-strong hover:text-destructive-strong-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
-                        updateFilter("dueDate", null);
+                        updateFilter("dueDate", dueDate, false);
                       }}
                     >
                       <X className="h-2.5 w-2.5" />
                     </Button>
                   </Button>
-                )}
+                ))}
 
                 {filters.labels &&
                   filters.labels.length > 0 &&
@@ -568,9 +573,9 @@ function RouteComponent() {
                     {["urgent", "high", "medium", "low"].map((priority) => (
                       <DropdownMenuCheckboxItem
                         key={priority}
-                        checked={filters.priority === priority}
+                        checked={filters.priority?.includes(priority)}
                         onCheckedChange={(checked) =>
-                          updateFilter("priority", checked ? priority : null)
+                          updateFilter("priority", priority, checked)
                         }
                         className="h-8 rounded-md text-sm [&_svg]:text-sidebar-foreground"
                       >
@@ -592,12 +597,9 @@ function RouteComponent() {
                     {users?.members?.map((member) => (
                       <DropdownMenuCheckboxItem
                         key={member.userId}
-                        checked={filters.assignee === member.userId}
+                        checked={filters.assignee?.includes(member.userId)}
                         onCheckedChange={(checked) =>
-                          updateFilter(
-                            "assignee",
-                            checked ? member.userId : null,
-                          )
+                          updateFilter("assignee", member.userId, checked)
                         }
                         className="h-8 rounded-md text-sm"
                       >
@@ -636,9 +638,9 @@ function RouteComponent() {
                     ].map((item) => (
                       <DropdownMenuCheckboxItem
                         key={item.label}
-                        checked={filters.dueDate === item.label}
+                        checked={filters.dueDate?.includes(item.label)}
                         onCheckedChange={(checked) =>
-                          updateFilter("dueDate", checked ? item.label : null)
+                          updateFilter("dueDate", item.label, checked)
                         }
                         className="h-8 rounded-md text-sm"
                       >
