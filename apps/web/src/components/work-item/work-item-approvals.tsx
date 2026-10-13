@@ -7,6 +7,7 @@ import {
   Skeleton,
 } from "@taskdesk/ui";
 import { TriangleAlert } from "lucide-react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import type { WorkItemApproval } from "@/fetchers/approval/get-work-item-approvals";
@@ -58,6 +59,22 @@ function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
     (user as { role?: string | null } | null | undefined)?.role === "admin";
   const approvalsQuery = useGetWorkItemApprovals({ key: workItemKey });
   const withdraw = useWithdrawApproval();
+  // The Withdraw button unmounts once the refetch lands, which would drop focus to <body>.
+  // After any settled withdrawal focus moves to the section heading, a stable target.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // Polite status for a successful withdrawal; failure is announced by role="alert".
+  const [announcement, setAnnouncement] = useState("");
+  const startWithdraw = (id: string) => {
+    setAnnouncement("");
+    withdraw.mutate(
+      { id, asInstanceAdmin: isInstanceAdmin },
+      {
+        onSuccess: () =>
+          setAnnouncement(t("workItems:detail.approvals.withdrawn")),
+        onSettled: () => headingRef.current?.focus(),
+      },
+    );
+  };
 
   const approvals = approvalsQuery.data?.approvals ?? [];
 
@@ -67,9 +84,21 @@ function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
       aria-labelledby="work-item-approvals-heading"
       data-testid="work-item-approvals"
     >
-      <h2 id="work-item-approvals-heading" className="font-medium text-lg">
+      <h2
+        id="work-item-approvals-heading"
+        ref={headingRef}
+        tabIndex={-1}
+        className="font-medium text-lg"
+      >
         {t("workItems:detail.approvals.heading")}
       </h2>
+      <p
+        role="status"
+        className="sr-only"
+        data-testid="approval-withdraw-status"
+      >
+        {announcement}
+      </p>
 
       {withdraw.isError && (
         <Alert
@@ -174,12 +203,14 @@ function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
                   variant="outline"
                   size="sm"
                   disabled={withdraw.isPending}
-                  onClick={() =>
-                    withdraw.mutate({
-                      id: approval.id,
-                      asInstanceAdmin: isInstanceAdmin,
-                    })
+                  aria-label={
+                    withdraw.isPending && withdraw.variables?.id === approval.id
+                      ? undefined
+                      : t("workItems:detail.approvals.withdrawFor", {
+                          label: `${t(`workItems:detail.approvals.kind.${approval.kind}`)}, ${approval.approver.displayName ?? t("workItems:detail.approvals.unknownPerson")}`,
+                        })
                   }
+                  onClick={() => startWithdraw(approval.id)}
                 >
                   {withdraw.isPending && withdraw.variables?.id === approval.id
                     ? t("workItems:detail.approvals.withdrawing")

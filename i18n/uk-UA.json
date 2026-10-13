@@ -2309,7 +2309,9 @@
 				"withdrawErrorTitle": "Couldn't withdraw the approval",
 				"withdrawConflict": "This approval is no longer pending. The list has been refreshed.",
 				"withdrawForbidden": "You can no longer withdraw this approval. The list has been refreshed.",
-				"withdrawFailed": "Something went wrong while withdrawing the approval. Try again."
+				"withdrawFailed": "Something went wrong while withdrawing the approval. Try again.",
+				"withdrawn": "Approval request withdrawn.",
+				"withdrawFor": "Withdraw request — {{label}}"
 			}
 		},
 		"list": {

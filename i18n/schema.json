@@ -9659,6 +9659,12 @@
 								},
 								"withdrawFailed": {
 									"type": "string"
+								},
+								"withdrawn": {
+									"type": "string"
+								},
+								"withdrawFor": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -9681,7 +9687,9 @@
 								"withdrawErrorTitle",
 								"withdrawConflict",
 								"withdrawForbidden",
-								"withdrawFailed"
+								"withdrawFailed",
+								"withdrawn",
+								"withdrawFor"
 							]
 						}
 					},
