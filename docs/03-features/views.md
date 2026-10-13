@@ -2,8 +2,15 @@
 
 - **Stage:** P1
 - **Status:** ⬜
-- **Feature flag:** per layout — `feature.calendar`, `feature.timeline` (was `feature.gantt`; the UI says Timeline)
-- **Depends on:** work items, states
+- **Feature flag:** per layout — `feature.calendar`, `feature.timeline` (Board, List and Table are always on).
+  `feature.timeline` was `feature.gantt`; the UI says Timeline. The flag identifier is owned by
+  [plugin-architecture.md](../01-architecture/plugin-architecture.md) and is not renamed here.
+- **Depends on:** work items, states ([work items](work-items.md)); the structured filter and saved views
+  ([search and saved views](search-and-saved-views.md)). **Later-phase inputs, each unavailable until
+  its stage lands:** SLA state for the `VW-16` badge and the `VW-31` SLA filter (P2,
+  [sla.md](sla.md)); custom fields for `VW-19`/`VW-31` custom-field columns and filters (P4,
+  [custom-fields.md](custom-fields.md)); cycle, module and epic for `VW-27` grouping and the
+  `VW-31` filters (P5, [agile.md](agile.md)); Calendar and Timeline themselves (P5).
 
 ## Purpose
 
@@ -37,7 +44,8 @@ Backlog is a separate destination rather than a layout, because it has different
 **Shared across layouts**
 
 - `VW-1` Filter, sort, grouping and search live in the URL and survive a layout switch.
-- `VW-2` Layout choice is remembered per project per user, and the URL always wins.
+- `VW-2` Layout choice is remembered per project per user, and the URL always wins. See
+  [Per-user preferences](#per-user-preferences).
 - `VW-3` Every layout supports multi-select and the same bulk action bar.
 - `VW-4` Every layout opens the detail side pane on selection, and the pane's route is
   addressable.
@@ -45,6 +53,33 @@ Backlog is a separate destination rather than a layout, because it has different
 - `VW-6` Every layout honours the comfortable/compact density preference.
 - `VW-7` Empty, loading and error states are designed per layout — a board skeleton has
   columns, a table skeleton has rows.
+
+### Per-user preferences
+
+`VW-2` (layout), `VW-6` (density), `VW-15` (collapsed groups), `VW-19` (chosen columns) and
+`VW-21` (column widths) are per-user interface preferences, not shared query state, so none
+of them lives in `saved_view` (a shared query object). Their authoritative home in the data
+model is `user_preference` (`person_id`, `scope`, `scope_id`, `key`, `value jsonb` —
+[data model](../01-architecture/data-model.md)); no new table is needed.
+
+The contract is that these preferences persist in `user_preference`, so they follow the
+person across devices and browsers. No route on `main` reads or writes `user_preference` for
+these keys yet. The only route that touches that table is `POST /api/views/{id}/pin`
+(`SV-20`). Until that route exists, the current implementation is interim and falls short of
+the contract:
+
+- `VW-2` is stored in browser `localStorage` as `taskdesk:project-layout:<userId>:<projectId>`
+  (`board` or `list` in P1). It is written only for a signed-in user, the URL layout always
+  overrides it, and it is not synced across devices.
+  - This interim storage is a reversible conductor decision (decision log 2026-10-13, "#609
+    successor URL state"), not an owner decision. It lasts until the user-preference route
+    exists.
+- `VW-6` is today the browser-persisted `user-preferences` store's `compactMode` flag. It is
+  one value per browser, not per project, and not synced.
+- `VW-15`, `VW-19` and `VW-21` are not implemented on `main`.
+
+Moving these onto `user_preference` needs a self-scoped preference route. That route does not
+yet exist and must be specified with its policy before it is built.
 
 **Board**
 
@@ -79,6 +114,10 @@ Backlog is a separate destination rather than a layout, because it has different
   through `POST /api/work-items/export` with `work_item:export` — a server-side route with a
   policy, because a bulk-egress path with no declared capability is the class of hole the
   route-coverage test exists to prevent. Exports are audited (`work_item.exported`).
+  `work_item:export` is the capability [rbac.md](../01-architecture/rbac.md) defines for
+  exporting "a view or list"; `report:export` guards report exports and does not apply.
+  **The route does not exist on `main` yet.** Its row bound and delivery contract are an
+  open question below, which blocks `VW-23` only.
 - `VW-24` Virtualised rows and columns.
 
 **Calendar**
@@ -100,31 +139,99 @@ Backlog is a separate destination rather than a layout, because it has different
 The filter bar composes into the structured filter grammar described in
 [API design](../01-architecture/api-design.md).
 
-- `VW-31` Filters available: state, state group, type, assignee, requester, priority,
-  label, cycle, module, epic, due date range, created date range, SLA state, watcher,
-  organisation, any custom field.
+- `VW-31` Filters available, by phase. The P1 whitelist, operators and value types are the
+  table in [API design](../01-architecture/api-design.md#work-item-search-v1-post-api-work-itemssearch):
+  state group, type, assignee, priority, due date, created date, watcher and project. The
+  rest are part of this rule but unavailable until their owning stage — a recognised
+  field that is not yet backed returns `422` naming it, never an empty or unfiltered result:
+  - **No backing store yet:** label (needs the `work_item_label` join), requester, any
+    custom field (`cf.<key>`, P4).
+  - **P2:** SLA state — see [SLA filtering](#sla-filtering).
+  - **P5:** cycle, module, epic ([agile.md](agile.md)).
+  - **`organisation`** is not a `work_item` column. It resolves through the project join,
+    `work_item.project_id → project.organisation_id` (API design, "Fields are whitelisted per
+    entity"); an internal project has a null organisation and matches no organisation value.
 - `VW-32` `@me` is a first-class value for assignee, requester and watcher, so a saved
   view can be personal without being per-person.
 - `VW-33` Filters combine with AND by default; an advanced editor exposes OR and nesting.
 - `VW-34` The active filter is always visible as removable chips. A view that is filtered
   must never look unfiltered — that is how people conclude their data is missing.
 
+### SLA filtering
+
+`VW-16` (the SLA badge on list rows) and the `VW-31` SLA-state filter depend on SLA (P2).
+Authoritative SLA state is never stored ([ADR 0009](../01-architecture/adr/0009-lazy-sla-evaluation.md),
+[sla.md](sla.md)), so the mechanism is already decided and this spec adopts it:
+
+- **Badge:** computed on read by the shared `packages/domain/src/sla/` function, the same
+  one the detail endpoint uses. The computed value always wins.
+- **Filter and sort:** `sla.state` and `sla.due_at` compile against `work_item_sla_cache`
+  ([data model](../01-architecture/data-model.md)), refreshed by `sla-scan` every five
+  minutes and therefore **eventually consistent**. A list filtered by SLA can disagree
+  with a row's freshly computed badge by up to that interval, and the UI says so beside the
+  filter.
+- **Today:** the cache table and loader do not exist on `main`, so P1 returns `422` naming
+  `sla.state`/`sla.due_at` (API design, Work-item search v1). SLA filtering is not
+  available until P2 builds them.
+
 ## Saving
 
 Any filter plus layout plus grouping plus columns can be saved as a view. See
 [search and saved views](search-and-saved-views.md).
 
+## Data
+
+No table is owned here. Views read `work_item` (and its joins) through the search route;
+saved configurations are `saved_view` ([search and saved views](search-and-saved-views.md));
+per-user preferences are covered under [Per-user preferences](#per-user-preferences).
+
 ## Permissions
 
 Reading a view requires `work_item:read` and reach on the project. Each action within a
-layout requires its own capability — drag-to-transition needs `work_item:transition`, and
-where the actor lacks it, cards are not draggable and the reason is available on hover.
+layout requires its own capability, as below (capabilities and the routes' policies are
+authoritative in [rbac.md](../01-architecture/rbac.md) and `apps/api/src/work-item/policy.ts`).
+Where the actor lacks the capability, the control is disabled or the card is not draggable, and
+the reason is available on hover.
+
+| Action | Rule | Capability | Route on `main` |
+| --- | --- | --- | --- |
+| Read any layout | `VW-1`, `VW-4` | `work_item:read` plus project reach | `POST /api/work-items/search` |
+| Drag card between columns, inline state edit | `VW-9`, `VW-17`, `VW-22` | `work_item:transition` | `POST /api/work-items/{key}/transition` |
+| Drag within a column (rank) | `VW-10` | `work_item:rank` | `POST /api/work-items/{key}/rank` |
+| Inline assignee edit; drag to an assignee group | `VW-13`, `VW-17` | `work_item:assign` | `POST`/`DELETE /api/work-items/{key}/assign` |
+| Inline priority edit; drag to a priority group | `VW-13`, `VW-17` | `work_item:set_priority` (field-level check on the `PATCH`) | `PATCH /api/work-items/{key}` |
+| Drag to another label or custom-field group | `VW-13` | `work_item:update` | `PATCH /api/work-items/{key}`; label and custom-field values have no store yet |
+| Inline edit of other fields | `VW-22` | `work_item:update` | `PATCH /api/work-items/{key}` |
+| Calendar date drag; Timeline bar and edge drag; date editor | `VW-26`, `VW-29`, `VW-30` | `work_item:update` | `PATCH /api/work-items/{key}` (P5) |
+| Bulk action bar | `VW-3` | The capability of each operation, checked per item; the route itself declares `work_item:read` | `POST /api/work-items/bulk` |
+| Export | `VW-23` | `work_item:export` | `POST /api/work-items/export` — **not on `main`** |
+| Save as a view | Saving | `saved_view:create`; sharing per `SV-15`–`SV-18` | `POST /api/views` |
+
+## Screens
+
+`/agent/projects/{key}/work?layout=board|list|table|calendar|timeline` — see the
+[screen inventory](../02-design/screen-inventory.md). Board, List and Table are P1; Calendar
+and Timeline are P5.
 
 ## API
 
-All layouts read from `POST /api/work-items/search` with the structured filter. Layout is
-purely presentational and never reaches the server, except that the table's chosen columns
-determine which fields are requested.
+Views add no routes of their own beyond export. Layout is presentational and never reaches
+the server, except that the table's chosen columns determine which fields are requested.
+
+| Route | Policy | Used for |
+| --- | --- | --- |
+| `POST /api/work-items/search` | `work_item:read`, workspace from the body, project reach | Every layout's read, with the structured filter ([API design](../01-architecture/api-design.md#work-item-search-v1-post-api-work-itemssearch)) |
+| `POST /api/work-items/{key}/transition` | `work_item:transition` | `VW-9`, `VW-17`, `VW-22` |
+| `POST /api/work-items/{key}/rank` | `work_item:rank` | `VW-10` |
+| `POST /api/work-items/{key}/assign` | `work_item:assign` (or self-target with `work_item:update`) | `VW-13`, `VW-17` |
+| `PATCH /api/work-items/{key}` | `work_item:update`; `priority` also needs `work_item:set_priority` | `VW-13`, `VW-22`, `VW-26`, `VW-29` |
+| `POST /api/work-items/bulk` | `work_item:read` at the route, per-operation capability inside | `VW-3` |
+| `POST /api/work-items/export` | `work_item:export`, audited `work_item.exported` | `VW-23` — **not implemented; see Open questions** |
+
+No route persists layout, density, column or width choices yet. They are browser-local for now,
+an interim state short of the `user_preference` contract (see
+[Per-user preferences](#per-user-preferences)). Saving a view uses the routes in
+[search and saved views](search-and-saved-views.md).
 
 ## Edge cases
 
@@ -145,20 +252,60 @@ determine which fields are requested.
 
 ## Testing
 
-Unit: filter grammar compilation; grouping; rank arithmetic.
+Each test is named for the rule it proves. Existing tests are cited by file; the rest are
+owed by the implementing PR and use the quoted name.
 
-Integration: search returns only items within reach; an illegal drag-transition is
-refused with a reason.
+Unit:
 
-E2E: switch layout and confirm filters persist; keyboard-only board drag; two browser
-contexts see each other's drag.
+- `VW-1` URL state round-trips through a layout switch — `router-search-codec.test.ts`,
+  `project-board-search.test.ts`, `project-layout-navigation.test.ts` (PR #688).
+- `VW-2` "isolates the remembered layout by user and project" and "ignores invalid and
+  unavailable storage values" — `project-layout-preference.test.ts` (PR #688); the URL layout
+  beating the remembered one is in the board route test below.
+- `VW-31` "round-trips nested in/OR terms through the canonical AST" and "rejects arbitrary
+  entities, unknown fields, and unavailable backing fields" —
+  `tests/api/work-item-search-query.test.ts`.
+- `VW-31` "organisation resolves through the project join" — owed, with the field.
+- `VW-20`/`VW-10` sort order and rank arithmetic —
+  `tests/api-integration/work-item-list-sort-pagination.test.ts`,
+  `tests/api-integration/work-item-rank.test.ts` ("WI-11: ranking between two neighbours
+  lands strictly in between and bumps version").
+- `VW-13` "grouping by a non-state field disables drag-to-transition" — owed.
+
+Integration:
+
+- `VW-1`/`VW-31` search returns only items within reach, and an unavailable field is `422` —
+  `tests/api-integration/work-item-structured-search.test.ts`.
+- `VW-9` "an illegal drag-transition is refused with a reason" —
+  `tests/api-integration/work-item-transition.test.ts` ("409s when no transition matches the
+  requested target from the current state", "GET /transitions returns only the legal edge,
+  disabled with a reason when blocked").
+- `VW-10` "permissions: a caller without work_item:rank is refused 403" —
+  `tests/api-integration/work-item-rank.test.ts`.
+- `VW-23` "export without work_item:export is 403" and "export writes work_item.exported" —
+  owed with the route, once the open question below is settled.
+
+Web route tests (PR #688, branch `codex/nav-url-state-successor`): `board.test.tsx` ("lets
+the URL layout win over the remembered and profile layouts"), `backlog.test.tsx` and
+`calendar.test.tsx` for `VW-1`/`VW-2`/`VW-4`.
+
+Realtime: `VW-5` "refreshes active list, detail, and activity queries once per socket event
+burst" — `apps/web/src/hooks/use-native-work-item-realtime.test.tsx`.
+
+E2E: `VW-1` switch layout and confirm filters persist; `VW-14` keyboard-only board drag;
+`VW-5` two browser contexts see each other's drag.
 
 Performance: board with 200 items under 500 ms; table with 500 rows under 500 ms; no
 dropped frames during drag.
 
 ## Open questions
 
-None.
+- **`VW-23` export bound and delivery** — owner: Thomas, before `POST /api/work-items/export`
+  is built. The capability (`work_item:export`), the route and the audit action are decided
+  above; what is not is how the server bounds a large export: a maximum row count, whether
+  the response streams, and any rate or time limit. The route must not accumulate every
+  reachable match in memory, so none of these is invented here. **This blocks `VW-23` only.**
+  Every other rule in this spec is unaffected.
 
 ## Related
 
