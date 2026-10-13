@@ -27,6 +27,29 @@ function serverHas(density?: "comfortable" | "compact") {
   mocks.get.mockResolvedValue({ settings: density ? { density } : {} });
 }
 
+function switchableWrapper(initial: string | null) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const current = { userId: initial };
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <AuthContext.Provider
+          value={{
+            user: current.userId ? ({ id: current.userId } as never) : null,
+            isLoading: false,
+            refetchUser: async () => {},
+          }}
+        >
+          {children}
+        </AuthContext.Provider>
+      </QueryClientProvider>
+    );
+  }
+  return { Wrapper, current };
+}
+
 function wrapper(userId = "user-1") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -242,5 +265,67 @@ describe("density preference sync (VW-6, ST-17)", () => {
     expect(
       localStorage.getItem("taskdesk:preference-cache-owner:density"),
     ).toBe("user-b");
+  });
+
+  it("never writes user A's queued density to user B's account after a mid-flight sign-out and sign-in", async () => {
+    // B's server state is empty; A's first write hangs, a second toggle is queued behind it.
+    serverHas(undefined);
+    let finishFirst: (value: unknown) => void = () => {};
+    mocks.put.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishFirst = resolve;
+        }),
+    );
+    const { Wrapper, current } = switchableWrapper("user-a");
+    const { result, rerender } = renderHook(
+      () => {
+        useDensityPreferenceSync();
+        return useDensityPreference();
+      },
+      { wrapper: Wrapper },
+    );
+    act(() => result.current.setDensity("compact"));
+    act(() => result.current.setDensity("comfortable"));
+    await waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(1));
+
+    // A signs out mid-flight, B signs in on the same tab (no reload).
+    current.userId = null;
+    rerender();
+    current.userId = "user-b";
+    rerender();
+    await waitFor(() => expect(mocks.get).toHaveBeenCalled());
+
+    // A's in-flight write finishes; its queued follow-up must be dropped, not sent as B.
+    await act(async () => finishFirst({}));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    });
+    expect(mocks.put).toHaveBeenCalledTimes(1);
+    // B's session never carried A's value, and B does not show A's choice.
+    expect(useUserPreferencesStore.getState().compactMode).toBe(false);
+    // A's unsent change stays attributed to A, not B.
+    expect(
+      localStorage.getItem("taskdesk:preference-dirty:user-b:density"),
+    ).toBeNull();
+  });
+
+  it("does not apply a terminal-rejection adopt to a different signed-in user", async () => {
+    serverHas("compact");
+    mocks.put.mockRejectedValueOnce(new HttpError(422, "rejected"));
+    const { Wrapper, current } = switchableWrapper("user-a");
+    const { result, rerender } = renderHook(() => useDensityPreference(), {
+      wrapper: Wrapper,
+    });
+    act(() => result.current.setDensity("comfortable"));
+    current.userId = "user-b";
+    // B's own choice is applied before A's rejection handler would run.
+    rerender();
+    act(() => useUserPreferencesStore.getState().setCompactMode(false));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    });
+    // A's refetch would have adopted "compact"; B's state must be untouched.
+    expect(useUserPreferencesStore.getState().compactMode).toBe(false);
   });
 });

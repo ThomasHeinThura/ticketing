@@ -1,5 +1,5 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { getUserSettings } from "@/fetchers/user-settings/user-settings";
 import { usePatchUserSettings } from "@/hooks/mutations/user-settings/use-patch-user-settings";
@@ -34,8 +34,33 @@ function toDensity(compactMode: boolean): Density {
 // Writes are sent one at a time, in order, so an older toggle can never land after a newer one
 // on the server. Only the most recent write may clear the "unsent" mark or adopt server state,
 // so an earlier success cannot hide a later change that is still in flight or failed.
-let writeChain: Promise<unknown> = Promise.resolve();
-let latestWrite = 0;
+//
+// The queue and generation are kept PER USER, and every send and every adopt re-checks that the
+// signed-in user is still the one who made the change. Sign-out does not reload the page, so a
+// write queued for user A must never be sent (with B's session) or applied after B signs in.
+const writeStates = new Map<
+  string,
+  { chain: Promise<unknown>; latest: number }
+>();
+let activeUserId: string | undefined;
+
+function writeStateFor(userId: string) {
+  let state = writeStates.get(userId);
+  if (!state) {
+    state = { chain: Promise.resolve(), latest: 0 };
+    writeStates.set(userId, state);
+  }
+  return state;
+}
+
+/** Records who is signed in so queued writes for anyone else are dropped, not sent. */
+function useActiveUser(userId: string | undefined) {
+  useLayoutEffect(() => {
+    activeUserId = userId;
+  }, [userId]);
+}
+
+class SupersededByUserChange extends Error {}
 
 type DensityWriter = (patch: Record<string, unknown>) => Promise<unknown>;
 
@@ -46,15 +71,22 @@ function writeDensity(input: {
   queryClient: QueryClient;
 }) {
   const { userId, density, patchSettings, queryClient } = input;
-  const generation = ++latestWrite;
+  const state = writeStateFor(userId);
+  const generation = ++state.latest;
   const storage = getPreferenceMarkerStorage();
-  const send = () => patchSettings({ [DENSITY_SETTING_KEY]: density });
-  const result = writeChain.then(send, send);
-  writeChain = result.catch(() => undefined);
+  // Send-time check: the session cookie belongs to whoever is signed in NOW. A change made
+  // by another user is dropped (it stays unsent under that user's marker) instead of being
+  // written to this user's account.
+  const send = () =>
+    activeUserId === userId
+      ? patchSettings({ [DENSITY_SETTING_KEY]: density })
+      : Promise.reject(new SupersededByUserChange());
+  const result = state.chain.then(send, send);
+  state.chain = result.catch(() => undefined);
 
   result.then(
     () => {
-      if (generation !== latestWrite) return;
+      if (generation !== state.latest || activeUserId !== userId) return;
       setPreferenceCacheOwner(storage, DENSITY_SETTING_KEY, userId);
       setPreferenceMarker(
         storage,
@@ -70,7 +102,12 @@ function writeDensity(input: {
     },
     async (error: unknown) => {
       // Offline or transient: stay dirty and retry on the next successful load.
-      if (generation !== latestWrite || !isTerminalWriteRejection(error))
+      if (
+        error instanceof SupersededByUserChange ||
+        generation !== state.latest ||
+        activeUserId !== userId ||
+        !isTerminalWriteRejection(error)
+      )
         return;
       // The server permanently refuses this value: drop it and adopt the server state.
       setPreferenceMarker(storage, "dirty", userId, DENSITY_SETTING_KEY, false);
@@ -80,6 +117,8 @@ function writeDensity(input: {
           queryFn: getUserSettings,
           staleTime: 0,
         });
+        // Adopt-time check: the user may have changed while the refetch was in flight.
+        if (activeUserId !== userId) return;
         useUserPreferencesStore
           .getState()
           .setCompactMode(
@@ -117,6 +156,7 @@ export function useDensityPreferenceSync() {
   const { mutateAsync: patchSettings } = usePatchUserSettings();
   const queryClient = useQueryClient();
   const reconciledFor = useRef<unknown>(null);
+  useActiveUser(userId);
 
   useEffect(() => {
     if (!userId || !data || reconciledFor.current === data) return;
@@ -183,6 +223,7 @@ export function useDensityPreference() {
     (state) => state.setCompactMode,
   );
   const { mutateAsync: patchSettings } = usePatchUserSettings();
+  useActiveUser(userId);
 
   const setDensity = useCallback(
     (density: Density) => {
