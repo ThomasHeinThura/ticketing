@@ -865,6 +865,8 @@
 			"descriptionLabel": "Description",
 			"descriptionHint": "A brief description of your project",
 			"descriptionPlaceholder": "Enter project description",
+			"defaultCommentVisibilityLabel": "Default comment visibility",
+			"defaultCommentVisibilityHint": "Who can see a new comment by default. The composer starts on this choice; staff can still change it per comment.",
 			"dangerZone": "Danger zone",
 			"dangerZoneSubtitle": "Irreversible and destructive actions.",
 			"deleteProject": "Delete project",

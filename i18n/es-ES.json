@@ -600,6 +600,8 @@
 			"descriptionLabel": "Descripción",
 			"descriptionHint": "Una breve descripción de tu proyecto",
 			"descriptionPlaceholder": "Introduce la descripción de tu proyecto",
+			"defaultCommentVisibilityLabel": "Visibilidad predeterminada de comentarios",
+			"defaultCommentVisibilityHint": "Quién puede ver un comentario nuevo de forma predeterminada. El editor comienza con esta opción; el personal puede cambiarla en cada comentario.",
 			"dangerZone": "Zona peligrosa",
 			"dangerZoneSubtitle": "Acciones irreversibles y destructivas.",
 			"deleteProject": "Eliminar proyecto",

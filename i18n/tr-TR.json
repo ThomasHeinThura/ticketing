@@ -703,6 +703,8 @@
 			"descriptionLabel": "Açıklama",
 			"descriptionHint": "Projenizin kısa bir açıklaması",
 			"descriptionPlaceholder": "Proje açıklamasını girin",
+			"defaultCommentVisibilityLabel": "Varsayılan yorum görünürlüğü",
+			"defaultCommentVisibilityHint": "Yeni bir yorumu varsayılan olarak kimlerin görebileceği. Düzenleyici bu seçimle başlar; personel her yorum için değiştirebilir.",
 			"dangerZone": "Tehlikeli bölge",
 			"dangerZoneSubtitle": "Geri alınamaz ve yıkıcı işlemler.",
 			"deleteProject": "Projeyi sil",

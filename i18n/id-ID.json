@@ -703,6 +703,8 @@
 			"descriptionLabel": "Deskripsi",
 			"descriptionHint": "Deskripsi singkat proyek Anda",
 			"descriptionPlaceholder": "Masukkan deskripsi proyek",
+			"defaultCommentVisibilityLabel": "Visibilitas komentar default",
+			"defaultCommentVisibilityHint": "Siapa yang dapat melihat komentar baru secara default. Editor dimulai dengan pilihan ini; staf tetap dapat mengubahnya per komentar.",
 			"dangerZone": "Zona berbahaya",
 			"dangerZoneSubtitle": "Tindakan destruktif dan tidak dapat dibatalkan.",
 			"deleteProject": "Hapus proyek",

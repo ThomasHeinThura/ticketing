@@ -276,7 +276,8 @@ const updateProjectRoute = createRoute({
   tags: ["Projects"],
   summary: "Update project",
   description:
-    "Replace a project's name, icon, slug, description, and visibility.",
+    "Replace a project's name, icon, slug, description, and visibility. " +
+    "defaultCommentVisibility (CA-2) is optional and needs project:manage_settings.",
   middleware: [
     workspaceAccess.fromProject(),
     requireWorkspacePermission({ project: ["update"] }),
@@ -291,7 +292,9 @@ const updateProjectRoute = createRoute({
   responses: {
     200: jsonResponse("The updated project", projectSchema),
     400: errorResponse("Invalid body, or unknown/unreachable project"),
-    403: errorResponse("Missing project:update permission"),
+    403: errorResponse(
+      "Missing project:update permission, or defaultCommentVisibility was sent without the project:manage_settings capability",
+    ),
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
     ),
@@ -901,6 +904,26 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
     const body = c.req.valid("json");
     const { name, icon, slug, description } = body;
     const workspaceId = c.get("workspaceId");
+    // CA-2: `defaultCommentVisibility` is a project setting, so sending it needs the
+    // STRICT canonical `project:manage_settings` capability -- never the legacy
+    // better-auth map this route's `project:update` middleware reads (#708: that map
+    // grants more than rbac.md's matrix). The check runs after body validation (route
+    // middleware runs before the validators) and BEFORE any read or write, so a caller
+    // without it changes nothing. An API key must also carry the `project:manage_settings`
+    // scope; `assertCallerHasCapability` intersects the role with the key. A caller who
+    // omits the field is not asked for the capability, so today's update behaviour stands.
+    if (body.defaultCommentVisibility !== undefined) {
+      const userId = c.get("userId");
+      if (!workspaceId || !userId) {
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
+      await assertCallerHasCapability(
+        workspaceId,
+        userId,
+        "project:manage_settings",
+        capabilityCredential(c.get("apiKey")),
+      );
+    }
     const [current] = await db
       .select({
         kind: projectTable.kind,
@@ -928,6 +951,7 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
         body.serviceCalendarId === undefined
           ? current.serviceCalendarId
           : body.serviceCalendarId,
+      defaultCommentVisibility: body.defaultCommentVisibility,
     };
     assertManagedServiceConfiguration(configuration);
     await assertProjectCalendar(workspaceId, configuration.serviceCalendarId);

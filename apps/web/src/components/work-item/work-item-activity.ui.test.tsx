@@ -228,12 +228,15 @@ vi.mock("@/hooks/use-shiki-highlighter-for-code", () => ({
 
 import WorkItemActivity from "./work-item-activity";
 
-function renderActivity(workspaceId = "workspace-1") {
+function renderActivity(
+  workspaceId = "workspace-1",
+  defaultVisibility: "public" | "internal" = "internal",
+) {
   return render(
     <WorkItemActivity
       workItemKey="OPS-17"
       workspaceId={workspaceId}
-      defaultVisibility="internal"
+      defaultVisibility={defaultVisibility}
       filter="everything"
       onFilterChange={() => undefined}
     />,
@@ -288,6 +291,24 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     expect(
       within(visibility as HTMLElement).getByRole("option"),
     ).toHaveTextContent("Public");
+  });
+
+  it.each(["internal", "public"] as const)(
+    "starts the composer on the project's %s default comment visibility (CA-2)",
+    (defaultVisibility) => {
+      const view = renderActivity("workspace-1", defaultVisibility);
+      const [, visibility] = within(view.container).getAllByRole("combobox");
+
+      expect(visibility).toHaveValue(defaultVisibility);
+    },
+  );
+
+  it("falls back to an allowed visibility when the project default is outside the caller's capability", () => {
+    mocks.permissions = { public: false, internal: true, checking: false };
+    const view = renderActivity("workspace-1", "public");
+    const [, visibility] = within(view.container).getAllByRole("combobox");
+
+    expect(visibility).toHaveValue("internal");
   });
 
   it("opens a legacy string-bodied comment with editable Markdown and saves a document", async () => {

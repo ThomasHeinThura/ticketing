@@ -106,6 +106,46 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canDeleteLabels()).toBe(false);
   });
 
+  it("reads manageProjectSettings strictly, independent of the legacy project flags", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({
+          manageProjects: true,
+          updateProjects: true,
+          manageProjectSettings: false,
+        }),
+    });
+
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(result.current.canManageProjects()).toBe(true);
+    expect(result.current.canManageProjectSettings()).toBe(false);
+  });
+
+  it("reports canManageProjectSettings when the server grants the strict flag", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap({ manageProjectSettings: true }),
+    });
+
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(result.current.canManageProjectSettings()).toBe(true);
+  });
+
   it("calls GET /api/capabilities with the active workspace id, once", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,
