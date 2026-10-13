@@ -15,6 +15,7 @@ import { UserPreferencesEffects } from "./components/providers/user-preferences-
 import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { captureCheckoutIntent } from "./lib/checkout-intent";
 import { AppI18nProvider } from "./lib/i18n/provider";
+import { createRouterParseSearch } from "./lib/project-board-search";
 import { parseWorkItemListSearchFromQueryString } from "./lib/routes";
 import { routeTree } from "./routeTree.agent.gen";
 
@@ -45,6 +46,9 @@ console.log(`
 
 const router = createRouter({
   routeTree,
+  parseSearch: createRouterParseSearch(() =>
+    typeof window === "undefined" ? undefined : window.location.pathname,
+  ),
   defaultPreload: "intent",
   defaultPreloadStaleTime: 0,
   context: {

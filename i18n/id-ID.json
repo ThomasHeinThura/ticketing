@@ -101,7 +101,14 @@
 				"keyHint": "Digunakan untuk ID tiket (contoh, {{example}}-123)",
 				"createButton": "Buat Proyek",
 				"successToast": "Proyek berhasil dibuat",
-				"errorToast": "Gagal membuat proyek"
+				"errorToast": "Gagal membuat proyek",
+				"organisationLabel": "Organisasi pelanggan",
+				"organisationLoading": "Memuat organisasi pelanggan...",
+				"organisationError": "Organisasi pelanggan tidak dapat dimuat.",
+				"organisationRetry": "Coba lagi",
+				"organisationEmpty": "Belum ada organisasi pelanggan yang aktif. Proyek ini akan bersifat internal.",
+				"organisationNone": "Tidak ada (proyek internal)",
+				"organisationHint": "Opsional. Dipilih sekarang dan tidak dapat diubah setelah proyek dibuat."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -778,6 +785,8 @@
 			"doneColumnTooltip": "Perlakukan ini sebagai kolom selesai",
 			"doneColumn": "Kolom selesai",
 			"markDoneAria": "Tandai {{name}} sebagai kolom selesai",
+			"nameAria": "Nama kolom",
+			"deleteAria": "Hapus kolom {{name}}",
 			"on": "Aktif",
 			"off": "Nonaktif",
 			"newColumnPlaceholder": "Nama kolom baru...",
@@ -1394,6 +1403,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Proyek"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Navigasi proyek"
 		},
 		"keyboardShortcuts": {
 			"title": "Pintasan Keyboard",

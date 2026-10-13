@@ -177,6 +177,19 @@
           "manageWorkspaceSettings": {
             "type": "boolean"
           },
+          "transitionTasks": {
+            "type": "boolean"
+          },
+          "rankTasks": {
+            "type": "boolean"
+          },
+          "manageProjectSettings": {
+            "type": "boolean"
+          },
+          "bindProjectOrganisation": {
+            "type": "boolean",
+            "description": "Strict project:create (owner/admin/manager): may list customer organisations and bind a new project to one."
+          },
           "createPublicComments": {
             "type": "boolean"
           },
@@ -203,8 +216,30 @@
           "removeMembers",
           "manageServiceCalendars",
           "shareSavedViews",
-          "manageWorkspaceSettings"
+          "manageWorkspaceSettings",
+          "transitionTasks",
+          "rankTasks",
+          "manageProjectSettings",
+          "bindProjectOrganisation"
         ]
+      },
+      "ProjectCustomerOrganisationList": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ]
+        }
       },
       "ProjectListItem": {
         "allOf": [
@@ -562,6 +597,13 @@
               "null"
             ]
           },
+          "organisationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The customer organisation this project serves; null for an internal project."
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -610,6 +652,7 @@
           "health",
           "supportLevel",
           "serviceCalendarId",
+          "organisationId",
           "createdAt",
           "archivedAt",
           "deletedAt",
@@ -789,6 +832,44 @@
           "title",
           "customerVisible",
           "createdAt"
+        ]
+      },
+      "ProjectState": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "stateTemplateId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "backlog",
+              "unstarted",
+              "started",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "position": {
+            "type": "integer"
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "stateTemplateId",
+          "name",
+          "group",
+          "position",
+          "isDefault"
         ]
       },
       "BoardResponse": {
@@ -4462,6 +4543,9 @@
           "toStateTemplateId": {
             "type": "string"
           },
+          "toStateName": {
+            "type": "string"
+          },
           "toStateId": {
             "type": "string"
           },
@@ -4502,6 +4586,7 @@
         "required": [
           "transitionId",
           "toStateTemplateId",
+          "toStateName",
           "toStateId",
           "notePolicy",
           "noteVisibility",
@@ -5296,6 +5381,61 @@
         }
       }
     },
+    "/project/organisations": {
+      "get": {
+        "operationId": "listProjectCustomerOrganisations",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List customer organisations a new project may serve",
+        "description": "Active, live customer organisations (never the internal one), for the create-project selector. Requires project:create in the workspace.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer organisations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectCustomerOrganisationList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing project:create permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/project": {
       "get": {
         "operationId": "listProjects",
@@ -5415,6 +5555,14 @@
                       "null"
                     ],
                     "minLength": 1
+                  },
+                  "organisationId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "description": "The customer organisation this project serves. Omit or null for an internal project. Chosen at creation only: it must be an active customer organisation and cannot be changed by a later update."
                   }
                 },
                 "required": [
@@ -5472,7 +5620,7 @@
             }
           },
           "422": {
-            "description": "PR-9 or same-workspace service calendar validation failed",
+            "description": "PR-9, same-workspace service calendar, or customer organisation validation failed",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7336,6 +7484,74 @@
           },
           "404": {
             "description": "Project or document link not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/states": {
+      "get": {
+        "operationId": "listProjectStates",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List a project's active states",
+        "description": "Returns every active concrete project state, including empty board columns, in project order. An archived state template remains represented while its concrete project state is active.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The project's active states",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectState"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project ID (including a NUL byte)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:read capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -19968,6 +20184,7 @@
               "type": "string",
               "enum": [
                 "key",
+                "position",
                 "title",
                 "priority",
                 "dueDate"

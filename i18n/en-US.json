@@ -101,7 +101,14 @@
 				"keyHint": "Used for ticket IDs (e.g., {{example}}-123)",
 				"createButton": "Create Project",
 				"successToast": "Project created successfully",
-				"errorToast": "Failed to create project"
+				"errorToast": "Failed to create project",
+				"organisationLabel": "Customer organisation",
+				"organisationLoading": "Loading customer organisations...",
+				"organisationError": "Could not load customer organisations.",
+				"organisationRetry": "Retry",
+				"organisationEmpty": "No active customer organisations yet. This project will be internal.",
+				"organisationNone": "None (internal project)",
+				"organisationHint": "Optional. Chosen now: it cannot be changed after the project is created."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -940,6 +947,8 @@
 			"doneColumnTooltip": "Treat this as a done column",
 			"doneColumn": "Done column",
 			"markDoneAria": "Mark {{name}} as done column",
+			"nameAria": "Column name",
+			"deleteAria": "Delete column {{name}}",
 			"on": "On",
 			"off": "Off",
 			"newColumnPlaceholder": "New column name...",
@@ -1395,6 +1404,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Project"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Project navigation"
 		},
 		"keyboardShortcuts": {
 			"title": "Keyboard Shortcuts",

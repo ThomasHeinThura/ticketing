@@ -101,7 +101,14 @@
 				"keyHint": "टिकट ID के लिए उपयोग (जैसे, {{example}}-123)",
 				"createButton": "प्रोजेक्ट बनाएँ",
 				"successToast": "प्रोजेक्ट सफलतापूर्वक बनाया गया",
-				"errorToast": "प्रोजेक्ट बनाने में विफल"
+				"errorToast": "प्रोजेक्ट बनाने में विफल",
+				"organisationLabel": "ग्राहक संगठन",
+				"organisationLoading": "ग्राहक संगठन लोड हो रहे हैं...",
+				"organisationError": "ग्राहक संगठन लोड नहीं हो सके।",
+				"organisationRetry": "पुनः प्रयास करें",
+				"organisationEmpty": "अभी तक कोई सक्रिय ग्राहक संगठन नहीं है। यह प्रोजेक्ट आंतरिक होगा।",
+				"organisationNone": "कोई नहीं (आंतरिक प्रोजेक्ट)",
+				"organisationHint": "वैकल्पिक। इसे अभी चुना जाता है और प्रोजेक्ट बनने के बाद बदला नहीं जा सकता।"
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -940,6 +947,8 @@
 			"doneColumnTooltip": "इसे Done कॉलम मानें",
 			"doneColumn": "Done कॉलम",
 			"markDoneAria": "{{name}} को Done कॉलम चिह्नित करें",
+			"nameAria": "कॉलम का नाम",
+			"deleteAria": "कॉलम {{name}} हटाएं",
 			"on": "चालू",
 			"off": "बंद",
 			"newColumnPlaceholder": "नया कॉलम नाम...",
@@ -1395,6 +1404,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "प्रोजेक्ट"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "प्रोजेक्ट नेविगेशन"
 		},
 		"keyboardShortcuts": {
 			"title": "कीबोर्ड शॉर्टकट",

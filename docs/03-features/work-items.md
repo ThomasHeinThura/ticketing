@@ -192,12 +192,14 @@ sections. v1's twenty-plus-field header is the specific mistake being avoided.
 ## API
 
 ```
-GET    /api/projects/{projectId}/work-items                            work_item:read
+GET    /api/projects/{projectId}/work-items                            work_item:read  — sort=key|position|title|priority|dueDate, dir=asc|desc; sort=position is the board's per-column rank order (WI-11); list endpoint only, structured search does not accept it
+GET    /api/projects/{projectId}/states                                project:read  — active concrete states, including empty board columns, in project order (VW-8)
 POST   /api/projects/{projectId}/work-items                            work_item:create
 POST   /api/work-items/search                                          work_item:read
 GET    /api/work-items/{key}                                            work_item:read
 PATCH  /api/work-items/{key}                                            work_item:update
 DELETE /api/work-items/{key}                                            work_item:delete
+GET    /api/work-items/{key}/transitions                                work_item:read  — legal offers for this actor now, each carrying toStateName
 POST   /api/work-items/{key}/transition                                 work_item:transition
 POST   /api/work-items/{key}/assign                                     work_item:assign
 POST   /api/work-items/{key}/rank                                       work_item:rank  — exempt from If-Match, last-write-wins (WI-7)

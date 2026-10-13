@@ -101,7 +101,14 @@
 				"keyHint": "Gebruikt voor ticket-ID's (bijv. {{example}}-123)",
 				"createButton": "Project aanmaken",
 				"successToast": "Project succesvol aangemaakt",
-				"errorToast": "Aanmaken van project mislukt"
+				"errorToast": "Aanmaken van project mislukt",
+				"organisationLabel": "Klantorganisatie",
+				"organisationLoading": "Klantorganisaties laden...",
+				"organisationError": "Klantorganisaties konden niet worden geladen.",
+				"organisationRetry": "Opnieuw proberen",
+				"organisationEmpty": "Er zijn nog geen actieve klantorganisaties. Dit project wordt intern.",
+				"organisationNone": "Geen (intern project)",
+				"organisationHint": "Optioneel. Wordt nu gekozen en kan na het aanmaken van het project niet meer worden gewijzigd."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -675,6 +682,8 @@
 			"doneColumnTooltip": "Behandel dit als een 'Gereed' kolom",
 			"doneColumn": "Gereed-kolom",
 			"markDoneAria": "Markeer {{name}} als gereed-kolom",
+			"nameAria": "Kolomnaam",
+			"deleteAria": "Kolom {{name}} verwijderen",
 			"on": "Aan",
 			"off": "Uit",
 			"newColumnPlaceholder": "Nieuwe kolomnaam...",
@@ -1395,6 +1404,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Project"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Projectnavigatie"
 		},
 		"keyboardShortcuts": {
 			"title": "Sneltoetsen",

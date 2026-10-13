@@ -101,7 +101,14 @@
 				"keyHint": "Używany w identyfikatorach zadań (np. {{example}}-123)",
 				"createButton": "Utwórz projekt",
 				"successToast": "Projekt został utworzony",
-				"errorToast": "Nie udało się utworzyć projektu"
+				"errorToast": "Nie udało się utworzyć projektu",
+				"organisationLabel": "Organizacja klienta",
+				"organisationLoading": "Ładowanie organizacji klientów...",
+				"organisationError": "Nie udało się załadować organizacji klientów.",
+				"organisationRetry": "Spróbuj ponownie",
+				"organisationEmpty": "Brak aktywnych organizacji klientów. Ten projekt będzie wewnętrzny.",
+				"organisationNone": "Brak (projekt wewnętrzny)",
+				"organisationHint": "Opcjonalne. Wybierane teraz i nie można go zmienić po utworzeniu projektu."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -452,6 +459,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Projekt"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Nawigacja projektu"
 		},
 		"keyboardShortcuts": {
 			"title": "Skróty klawiszowe",
@@ -950,6 +960,8 @@
 			"doneColumnTooltip": "Traktuj tę kolumnę jako kolumnę ukończonych zadań",
 			"loading": "Ładowanie kolumn...",
 			"markDoneAria": "Oznacz {{name}} jako kolumnę ukończonych zadań",
+			"nameAria": "Nazwa kolumny",
+			"deleteAria": "Usuń kolumnę {{name}}",
 			"newColumnPlaceholder": "Nazwa nowej kolumny...",
 			"off": "Wyłączone",
 			"on": "Włączone",

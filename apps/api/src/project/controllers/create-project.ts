@@ -1,9 +1,11 @@
-import { eq, max, sql } from "drizzle-orm";
+import { and, eq, isNull, max, sql } from "drizzle-orm";
 import db from "../../database";
 import {
   columnTable,
+  organisationTable,
   projectSlugClaimTable,
   projectTable,
+  workspaceTable,
 } from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { seedProjectStates } from "../../utils/seed-project-states";
@@ -36,16 +38,33 @@ export class ProjectSlugTakenError extends Error {
   }
 }
 
+/**
+ * Decision log 2026-10-13 "Recovered record: Bind customer-serving projects at creation":
+ * `project.organisation_id` is chosen explicitly at creation and never rebound by a general
+ * update. Thrown for EVERY way the choice can be invalid -- unknown id, internal
+ * organisation, inactive, soft-deleted, or a workspace that is not an internal-organisation
+ * workspace -- with one message, so the 422 never reveals which of those an id is.
+ */
+export class InvalidProjectOrganisationError extends Error {
+  constructor() {
+    super("organisation_must_be_an_active_customer_organisation");
+    this.name = "InvalidProjectOrganisationError";
+  }
+}
+
+type ProjectConfiguration = {
+  kind: "project" | "managed_service";
+  supportLevel: "L1" | "L2" | "L3" | null;
+  serviceCalendarId: string | null;
+  organisationId: string | null;
+};
+
 async function createProject(
   workspaceId: string,
   name: string,
   icon: string,
   slug: string,
-  configuration: {
-    kind: "project" | "managed_service";
-    supportLevel: "L1" | "L2" | "L3" | null;
-    serviceCalendarId: string | null;
-  },
+  configuration: ProjectConfiguration,
 ) {
   try {
     return await createProjectRow(workspaceId, name, icon, slug, configuration);
@@ -68,18 +87,64 @@ async function createProject(
   }
 }
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * The binding rule, evaluated in the creating transaction. The organisation row is locked
+ * `FOR SHARE` so a concurrent deactivation or delete cannot slip between this check and the
+ * insert. A customer organisation is instance-level (no workspace-to-customer link exists in
+ * `data-model.md`), so "servable from this workspace" is: the organisation is a live, active
+ * customer organisation, and the workspace is one of the internal organisation's own
+ * (`multi-tenancy.md`: the internal organisation's staff work across the customer ones).
+ */
+async function assertServableCustomerOrganisation(
+  tx: Tx,
+  workspaceId: string,
+  organisationId: string,
+) {
+  const [organisation] = await tx
+    .select({ id: organisationTable.id })
+    .from(organisationTable)
+    .where(
+      and(
+        eq(organisationTable.id, organisationId),
+        eq(organisationTable.active, true),
+        eq(organisationTable.isInternal, false),
+        isNull(organisationTable.deletedAt),
+      ),
+    )
+    .for("share")
+    .limit(1);
+  if (!organisation) throw new InvalidProjectOrganisationError();
+
+  const [workspaceOwner] = await tx
+    .select({ isInternal: organisationTable.isInternal })
+    .from(workspaceTable)
+    .innerJoin(
+      organisationTable,
+      eq(organisationTable.id, workspaceTable.organisationId),
+    )
+    .where(eq(workspaceTable.id, workspaceId))
+    .limit(1);
+  if (!workspaceOwner?.isInternal) throw new InvalidProjectOrganisationError();
+}
+
 async function createProjectRow(
   workspaceId: string,
   name: string,
   icon: string,
   slug: string,
-  configuration: {
-    kind: "project" | "managed_service";
-    supportLevel: "L1" | "L2" | "L3" | null;
-    serviceCalendarId: string | null;
-  },
+  configuration: ProjectConfiguration,
 ) {
   return db.transaction(async (tx) => {
+    if (configuration.organisationId !== null) {
+      await assertServableCustomerOrganisation(
+        tx,
+        workspaceId,
+        configuration.organisationId,
+      );
+    }
+
     // Serialize ordering writes per workspace: without this, two concurrent
     // creates can read the same max(position) and land on the same slot, and a
     // create can interleave with a reorder's renumber. `reorderProjects` takes
@@ -120,6 +185,7 @@ async function createProjectRow(
         kind: configuration.kind,
         supportLevel: configuration.supportLevel,
         serviceCalendarId: configuration.serviceCalendarId,
+        organisationId: configuration.organisationId,
         position: maxPosition === null ? 0 : maxPosition + 1,
       })
       .returning();

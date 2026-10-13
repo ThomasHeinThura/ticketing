@@ -101,7 +101,14 @@
 				"keyHint": "Используется для идентификаторов задач (например, {{example}}-123)",
 				"createButton": "Создать проект",
 				"successToast": "Проект успешно создан",
-				"errorToast": "Не удалось создать проект"
+				"errorToast": "Не удалось создать проект",
+				"organisationLabel": "Организация клиента",
+				"organisationLoading": "Загрузка организаций клиентов...",
+				"organisationError": "Не удалось загрузить организации клиентов.",
+				"organisationRetry": "Повторить",
+				"organisationEmpty": "Активных организаций клиентов пока нет. Этот проект будет внутренним.",
+				"organisationNone": "Нет (внутренний проект)",
+				"organisationHint": "Необязательно. Выбирается сейчас и не может быть изменена после создания проекта."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -778,6 +785,8 @@
 			"doneColumnTooltip": "Считать эту колонку завершающей",
 			"doneColumn": "Колонка завершения",
 			"markDoneAria": "Отметить {{name}} как колонку завершения",
+			"nameAria": "Название колонки",
+			"deleteAria": "Удалить колонку {{name}}",
 			"on": "Вкл",
 			"off": "Выкл",
 			"newColumnPlaceholder": "Название новой колонки...",
@@ -1405,6 +1414,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Проект"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Навигация по проекту"
 		},
 		"keyboardShortcuts": {
 			"title": "Сочетания клавиш",

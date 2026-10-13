@@ -1,3 +1,4 @@
+import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import {
   contextFor,
   expect,
@@ -6,6 +7,12 @@ import {
   test,
   withApprovalRuntime,
 } from "./helpers/approval-runtime";
+
+test.use({ trace: "off", video: "off", screenshot: "off" });
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test("approval responses do not leak the approver email", async () => {
   await withApprovalRuntime(async (_app, fixture) => {

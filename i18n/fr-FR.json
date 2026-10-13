@@ -101,7 +101,14 @@
 				"keyHint": "Utilisée pour les ID de tickets (par ex. {{example}}-123)",
 				"createButton": "Créer le projet",
 				"successToast": "Projet créé avec succès",
-				"errorToast": "Échec de la création du projet"
+				"errorToast": "Échec de la création du projet",
+				"organisationLabel": "Organisation cliente",
+				"organisationLoading": "Chargement des organisations clientes...",
+				"organisationError": "Impossible de charger les organisations clientes.",
+				"organisationRetry": "Réessayer",
+				"organisationEmpty": "Aucune organisation cliente active pour le moment. Ce projet sera interne.",
+				"organisationNone": "Aucune (projet interne)",
+				"organisationHint": "Facultatif. Choisie maintenant, elle ne peut plus être modifiée après la création du projet."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -778,6 +785,8 @@
 			"doneColumnTooltip": "Considérer ceci comme une colonne terminée",
 			"doneColumn": "Colonne terminée",
 			"markDoneAria": "Marquer {{name}} comme colonne terminée",
+			"nameAria": "Nom de la colonne",
+			"deleteAria": "Supprimer la colonne {{name}}",
 			"on": "On",
 			"off": "Off",
 			"newColumnPlaceholder": "Nouveau nom de colonne...",
@@ -1396,6 +1405,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Projet"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Navigation du projet"
 		},
 		"keyboardShortcuts": {
 			"title": "Raccourcis clavier",

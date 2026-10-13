@@ -43,7 +43,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
   const [newIconPickerOpen, setNewIconPickerOpen] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const dragPreviewRef = useRef<HTMLDivElement | null>(null);
+  const dragPreviewRef = useRef<HTMLLIElement | null>(null);
 
   useEffect(() => {
     return () => {
@@ -129,7 +129,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
   };
 
   const handleDragStart = (
-    e: React.DragEvent<HTMLDivElement>,
+    e: React.DragEvent<HTMLLIElement>,
     index: number,
   ) => {
     setDraggedIndex(index);
@@ -140,7 +140,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
     const sourceRect = sourceElement.getBoundingClientRect();
 
     // Use an isolated clone so the drag image only captures the selected row.
-    const dragPreview = sourceElement.cloneNode(true) as HTMLDivElement;
+    const dragPreview = sourceElement.cloneNode(true) as HTMLLIElement;
 
     dragPreview.setAttribute("aria-hidden", "true");
     dragPreview.inert = true;
@@ -205,12 +205,10 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1">
+      <ul className="space-y-1">
         {columns?.map((col, index) => (
-          // biome-ignore lint/a11y/useSemanticElements: false positive for role="listitem"
-          <div
+          <li
             key={col.id}
-            role="listitem"
             draggable={canEdit}
             onDragStart={(e) => handleDragStart(e, index)}
             onDragOver={(e) => handleDragOver(e, index)}
@@ -233,6 +231,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
                   size="sm"
                   className="h-8 w-8 p-0 shrink-0"
                   title={t("settings:columnEditor.pickIconTitle")}
+                  aria-label={t("settings:columnEditor.pickIconTitle")}
                   disabled={!canEdit}
                 >
                   {getColumnIcon(col.slug, col.isFinal, col.icon)}
@@ -244,6 +243,9 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
                     value={iconSearch}
                     onChange={(e) => setIconSearch(e.target.value)}
                     placeholder={t(
+                      "settings:columnEditor.searchIconsPlaceholder",
+                    )}
+                    aria-label={t(
                       "settings:columnEditor.searchIconsPlaceholder",
                     )}
                     className="h-8 text-xs"
@@ -270,6 +272,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
                                 "bg-sidebar-accent text-sidebar-accent-foreground",
                             )}
                             title={iconName}
+                            aria-label={iconName}
                           >
                             <Icon className="h-4 w-4" />
                           </Button>
@@ -282,6 +285,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
             </Popover>
             <Input
               defaultValue={col.name}
+              aria-label={t("settings:columnEditor.nameAria")}
               className="h-8 text-sm flex-1"
               disabled={!canEdit}
               onBlur={(e) => {
@@ -334,14 +338,17 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
                   size="sm"
                   className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                   onClick={() => handleDelete(col.id)}
+                  aria-label={t("settings:columnEditor.deleteAria", {
+                    name: col.name,
+                  })}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               )}
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
 
       {canEdit && (
         <div className="flex items-center gap-2">
@@ -360,6 +367,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
                 size="sm"
                 className="h-8 w-8 p-0 shrink-0"
                 title={t("settings:columnEditor.pickIconTitle")}
+                aria-label={t("settings:columnEditor.pickIconTitle")}
               >
                 {getColumnIcon("", false, newColumnIcon)}
               </Button>
@@ -372,6 +380,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
                   placeholder={t(
                     "settings:columnEditor.searchIconsPlaceholder",
                   )}
+                  aria-label={t("settings:columnEditor.searchIconsPlaceholder")}
                   className="h-8 text-xs"
                 />
                 <div className="max-h-[280px] overflow-y-auto pr-1">
@@ -395,6 +404,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
                               "bg-sidebar-accent text-sidebar-accent-foreground",
                           )}
                           title={iconName}
+                          aria-label={iconName}
                         >
                           <Icon className="h-4 w-4" />
                         </Button>
@@ -408,6 +418,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
           <Input
             placeholder={t("settings:columnEditor.newColumnPlaceholder")}
             value={newColumnName}
+            aria-label={t("settings:columnEditor.newColumnPlaceholder")}
             onChange={(e) => setNewColumnName(e.target.value)}
             className="h-8 text-sm flex-1"
             onKeyDown={(e) => {

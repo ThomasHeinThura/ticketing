@@ -101,7 +101,14 @@
 				"keyHint": "Се користи за ID на тикети (пр. {{example}}-123)",
 				"createButton": "Креирај проект",
 				"successToast": "Проектот е успешно креиран",
-				"errorToast": "Неуспешно креирање на проект"
+				"errorToast": "Неуспешно креирање на проект",
+				"organisationLabel": "Организација на клиент",
+				"organisationLoading": "Се вчитуваат организациите на клиенти...",
+				"organisationError": "Организациите на клиенти не може да се вчитаат.",
+				"organisationRetry": "Обиди се повторно",
+				"organisationEmpty": "Сè уште нема активни организации на клиенти. Овој проект ќе биде интерен.",
+				"organisationNone": "Нема (интерен проект)",
+				"organisationHint": "Опционално. Се избира сега и не може да се промени откако ќе се создаде проектот."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -778,6 +785,8 @@
 			"doneColumnTooltip": "Третирај ја како завршна колона",
 			"doneColumn": "Завршна колона",
 			"markDoneAria": "Означи {{name}} како завршна колона",
+			"nameAria": "Име на колоната",
+			"deleteAria": "Избриши ја колоната {{name}}",
 			"on": "Вклучено",
 			"off": "Исклучено",
 			"newColumnPlaceholder": "Име на нова колона...",
@@ -1395,6 +1404,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Проект"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Навигација на проектот"
 		},
 		"keyboardShortcuts": {
 			"title": "Кратенки на тастатура",

@@ -101,7 +101,14 @@
 				"keyHint": "Dùng cho mã số phiếu (ví dụ: {{example}}-123)",
 				"createButton": "Tạo dự án",
 				"successToast": "Tạo dự án thành công",
-				"errorToast": "Không thể tạo dự án"
+				"errorToast": "Không thể tạo dự án",
+				"organisationLabel": "Tổ chức khách hàng",
+				"organisationLoading": "Đang tải các tổ chức khách hàng...",
+				"organisationError": "Không thể tải các tổ chức khách hàng.",
+				"organisationRetry": "Thử lại",
+				"organisationEmpty": "Chưa có tổ chức khách hàng đang hoạt động. Dự án này sẽ là dự án nội bộ.",
+				"organisationNone": "Không có (dự án nội bộ)",
+				"organisationHint": "Tùy chọn. Được chọn ngay bây giờ và không thể thay đổi sau khi dự án được tạo."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -939,6 +946,8 @@
 			"doneColumnTooltip": "Xem đây là cột hoàn thành",
 			"doneColumn": "Cột hoàn thành",
 			"markDoneAria": "Đánh dấu {{name}} là cột hoàn thành",
+			"nameAria": "Tên cột",
+			"deleteAria": "Xóa cột {{name}}",
 			"on": "Bật",
 			"off": "Tắt",
 			"newColumnPlaceholder": "Tên cột mới...",
@@ -1394,6 +1403,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Dự án"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Điều hướng dự án"
 		},
 		"keyboardShortcuts": {
 			"title": "Phím tắt",

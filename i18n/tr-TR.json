@@ -101,7 +101,14 @@
 				"keyHint": "Talep kimlikleri için kullanılır (örn. {{example}}-123)",
 				"createButton": "Proje Oluştur",
 				"successToast": "Proje başarıyla oluşturuldu",
-				"errorToast": "Proje oluşturulamadı"
+				"errorToast": "Proje oluşturulamadı",
+				"organisationLabel": "Müşteri kuruluşu",
+				"organisationLoading": "Müşteri kuruluşları yükleniyor...",
+				"organisationError": "Müşteri kuruluşları yüklenemedi.",
+				"organisationRetry": "Yeniden dene",
+				"organisationEmpty": "Henüz etkin müşteri kuruluşu yok. Bu proje dahili olacak.",
+				"organisationNone": "Yok (dahili proje)",
+				"organisationHint": "İsteğe bağlı. Şimdi seçilir ve proje oluşturulduktan sonra değiştirilemez."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -778,6 +785,8 @@
 			"doneColumnTooltip": "Bunu tamamlandı sütunu olarak işaretle",
 			"doneColumn": "Tamamlandı sütunu",
 			"markDoneAria": "{{name}} sütununu tamamlandı olarak işaretle",
+			"nameAria": "Sütun adı",
+			"deleteAria": "{{name}} sütununu sil",
 			"on": "Açık",
 			"off": "Kapalı",
 			"newColumnPlaceholder": "Yeni sütun adı...",
@@ -1395,6 +1404,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Proje"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Proje gezinmesi"
 		},
 		"keyboardShortcuts": {
 			"title": "Klavye Kısayolları",
