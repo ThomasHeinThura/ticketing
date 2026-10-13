@@ -864,6 +864,8 @@
 			"descriptionLabel": "Mô tả",
 			"descriptionHint": "Mô tả ngắn gọn về dự án của bạn",
 			"descriptionPlaceholder": "Nhập mô tả dự án",
+			"defaultCommentVisibilityLabel": "Chế độ hiển thị bình luận mặc định",
+			"defaultCommentVisibilityHint": "Ai có thể thấy bình luận mới theo mặc định. Trình soạn thảo bắt đầu với lựa chọn này; nhân viên vẫn có thể đổi cho từng bình luận.",
 			"dangerZone": "Vùng nguy hiểm",
 			"dangerZoneSubtitle": "Các hành động không thể hoàn tác và mang tính phá hủy.",
 			"deleteProject": "Xóa dự án",
