@@ -785,6 +785,8 @@
 			"doneColumnTooltip": "Perlakukan ini sebagai kolom selesai",
 			"doneColumn": "Kolom selesai",
 			"markDoneAria": "Tandai {{name}} sebagai kolom selesai",
+			"nameAria": "Nama kolom",
+			"deleteAria": "Hapus kolom {{name}}",
 			"on": "Aktif",
 			"off": "Nonaktif",
 			"newColumnPlaceholder": "Nama kolom baru...",
@@ -1401,6 +1403,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Proyek"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Navigasi proyek"
 		},
 		"keyboardShortcuts": {
 			"title": "Pintasan Keyboard",

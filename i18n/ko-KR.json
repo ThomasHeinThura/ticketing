@@ -785,6 +785,8 @@
 			"doneColumnTooltip": "이를 완료 컬럼으로 처리",
 			"doneColumn": "완료 컬럼",
 			"markDoneAria": "{{name}}을(를) 완료 컬럼으로 표시",
+			"nameAria": "컬럼 이름",
+			"deleteAria": "컬럼 {{name}} 삭제",
 			"on": "켜짐",
 			"off": "꺼짐",
 			"newColumnPlaceholder": "새 컬럼 이름...",
@@ -1401,6 +1403,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "프로젝트"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "프로젝트 탐색"
 		},
 		"keyboardShortcuts": {
 			"title": "키보드 단축키",

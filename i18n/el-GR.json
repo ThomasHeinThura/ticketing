@@ -785,6 +785,8 @@
 			"doneColumnTooltip": "Αντιμετώπιση αυτής ως στήλη ολοκλήρωσης",
 			"doneColumn": "Στήλη ολοκλήρωσης",
 			"markDoneAria": "Επισήμανση του {{name}} ως στήλη ολοκλήρωσης",
+			"nameAria": "Όνομα στήλης",
+			"deleteAria": "Διαγραφή στήλης {{name}}",
 			"on": "Ενεργό",
 			"off": "Ανενεργό",
 			"newColumnPlaceholder": "Όνομα νέας στήλης...",
@@ -1402,6 +1404,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Έργο"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Πλοήγηση έργου"
 		},
 		"keyboardShortcuts": {
 			"title": "Συντομεύσεις πληκτρολογίου",

@@ -45,6 +45,7 @@ export default function MobileProjectNav({
           <Button
             variant="ghost"
             size="icon-xs"
+            aria-label={t("navigation:mobileProjectNav.menuLabel")}
             className="size-7 border border-transparent"
           />
         }

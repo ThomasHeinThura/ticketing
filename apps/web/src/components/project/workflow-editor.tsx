@@ -5,6 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@taskdesk/ui";
+import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpsertWorkflowRule } from "@/hooks/mutations/workflow-rule/use-upsert-workflow-rule";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
@@ -25,6 +26,7 @@ type WorkflowEditorProps = {
 
 export default function WorkflowEditor({ projectId }: WorkflowEditorProps) {
   const { t } = useTranslation();
+  const idPrefix = useId();
   const { data: columns, isLoading: columnsLoading } = useGetColumns(projectId);
   const { data: rules, isLoading: rulesLoading } =
     useGetWorkflowRules(projectId);
@@ -50,81 +52,90 @@ export default function WorkflowEditor({ projectId }: WorkflowEditorProps) {
     integrationType: "github" | "gitea",
     headingKey: "githubHeading" | "giteaHeading",
     hintKey: "githubHint" | "giteaHint",
-  ) => (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <h3 className="text-sm font-medium">
-          {t(`settings:workflowEditor.${headingKey}`)}
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          {t(`settings:workflowEditor.${hintKey}`)}
-        </p>
-      </div>
+  ) => {
+    const sectionId = `${idPrefix}-${integrationType}-heading`;
+    return (
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h3 id={sectionId} className="text-sm font-medium">
+            {t(`settings:workflowEditor.${headingKey}`)}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {t(`settings:workflowEditor.${hintKey}`)}
+          </p>
+        </div>
 
-      <div className="space-y-2">
-        {GITHUB_EVENT_TYPES.map((eventType) => {
-          const currentRule = rules?.find(
-            (r) =>
-              r.integrationType === integrationType &&
-              r.eventType === eventType,
-          );
+        <div className="space-y-2">
+          {GITHUB_EVENT_TYPES.map((eventType) => {
+            const currentRule = rules?.find(
+              (r) =>
+                r.integrationType === integrationType &&
+                r.eventType === eventType,
+            );
 
-          return (
-            <div
-              key={`${integrationType}-${eventType}`}
-              className="flex items-center justify-between gap-4 p-3 border border-border rounded-md bg-sidebar"
-            >
-              <span className="text-sm">
-                {t(`settings:workflowEditor.events.${eventType}`)}
-              </span>
-              <Select
-                value={currentRule?.columnId ?? ""}
-                onValueChange={async (value) => {
-                  if (!value) return;
-                  try {
-                    await upsertRule({
-                      projectId,
-                      data: {
-                        integrationType,
-                        eventType,
-                        columnId: value,
-                      },
-                    });
-                    toast.success(t("settings:workflowEditor.toastUpdated"));
-                  } catch (error) {
-                    toast.error(
-                      error instanceof Error
-                        ? error.message
-                        : t("settings:workflowEditor.toastError"),
-                    );
-                  }
-                }}
+            const rowId = `${idPrefix}-${integrationType}-${eventType}`;
+            return (
+              <div
+                key={`${integrationType}-${eventType}`}
+                className="flex items-center justify-between gap-4 p-3 border border-border rounded-md bg-sidebar"
               >
-                <SelectTrigger className="w-48 h-8 text-sm">
-                  <SelectValue
-                    placeholder={t(
-                      "settings:workflowEditor.selectColumnPlaceholder",
-                    )}
+                <span id={`${rowId}-event`} className="text-sm">
+                  {t(`settings:workflowEditor.events.${eventType}`)}
+                </span>
+                <Select
+                  value={currentRule?.columnId ?? ""}
+                  onValueChange={async (value) => {
+                    if (!value) return;
+                    try {
+                      await upsertRule({
+                        projectId,
+                        data: {
+                          integrationType,
+                          eventType,
+                          columnId: value,
+                        },
+                      });
+                      toast.success(t("settings:workflowEditor.toastUpdated"));
+                    } catch (error) {
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : t("settings:workflowEditor.toastError"),
+                      );
+                    }
+                  }}
+                >
+                  <SelectTrigger
+                    // Name = section + event + the visible value (WCAG 2.5.3).
+                    aria-labelledby={`${sectionId} ${rowId}-event ${rowId}-value`}
+                    className="w-48 h-8 text-sm"
                   >
-                    {columns.find((c) => c.id === currentRule?.columnId)
-                      ?.name ??
-                      t("settings:workflowEditor.selectColumnPlaceholder")}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {columns.map((col) => (
-                    <SelectItem key={col.id} value={col.id}>
-                      {col.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          );
-        })}
+                    <SelectValue
+                      id={`${rowId}-value`}
+                      placeholder={t(
+                        "settings:workflowEditor.selectColumnPlaceholder",
+                      )}
+                    >
+                      {columns.find((c) => c.id === currentRule?.columnId)
+                        ?.name ??
+                        t("settings:workflowEditor.selectColumnPlaceholder")}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {columns.map((col) => (
+                      <SelectItem key={col.id} value={col.id}>
+                        {col.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-10">

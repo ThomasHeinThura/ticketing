@@ -460,6 +460,9 @@
 		"projectSettings": {
 			"projectLabel": "Projekt"
 		},
+		"mobileProjectNav": {
+			"menuLabel": "Nawigacja projektu"
+		},
 		"keyboardShortcuts": {
 			"title": "Skróty klawiszowe",
 			"subtitle": "Przyspiesz pracę dzięki skrótom klawiszowym",
@@ -957,6 +960,8 @@
 			"doneColumnTooltip": "Traktuj tę kolumnę jako kolumnę ukończonych zadań",
 			"loading": "Ładowanie kolumn...",
 			"markDoneAria": "Oznacz {{name}} jako kolumnę ukończonych zadań",
+			"nameAria": "Nazwa kolumny",
+			"deleteAria": "Usuń kolumnę {{name}}",
 			"newColumnPlaceholder": "Nazwa nowej kolumny...",
 			"off": "Wyłączone",
 			"on": "Włączone",

@@ -785,6 +785,8 @@
 			"doneColumnTooltip": "Считать эту колонку завершающей",
 			"doneColumn": "Колонка завершения",
 			"markDoneAria": "Отметить {{name}} как колонку завершения",
+			"nameAria": "Название колонки",
+			"deleteAria": "Удалить колонку {{name}}",
 			"on": "Вкл",
 			"off": "Выкл",
 			"newColumnPlaceholder": "Название новой колонки...",
@@ -1412,6 +1414,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Проект"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Навигация по проекту"
 		},
 		"keyboardShortcuts": {
 			"title": "Сочетания клавиш",

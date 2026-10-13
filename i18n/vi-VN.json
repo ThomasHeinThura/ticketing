@@ -946,6 +946,8 @@
 			"doneColumnTooltip": "Xem đây là cột hoàn thành",
 			"doneColumn": "Cột hoàn thành",
 			"markDoneAria": "Đánh dấu {{name}} là cột hoàn thành",
+			"nameAria": "Tên cột",
+			"deleteAria": "Xóa cột {{name}}",
 			"on": "Bật",
 			"off": "Tắt",
 			"newColumnPlaceholder": "Tên cột mới...",
@@ -1401,6 +1403,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Dự án"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Điều hướng dự án"
 		},
 		"keyboardShortcuts": {
 			"title": "Phím tắt",

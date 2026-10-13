@@ -682,6 +682,8 @@
 			"doneColumnTooltip": "Behandel dit als een 'Gereed' kolom",
 			"doneColumn": "Gereed-kolom",
 			"markDoneAria": "Markeer {{name}} als gereed-kolom",
+			"nameAria": "Kolomnaam",
+			"deleteAria": "Kolom {{name}} verwijderen",
 			"on": "Aan",
 			"off": "Uit",
 			"newColumnPlaceholder": "Nieuwe kolomnaam...",
@@ -1402,6 +1404,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Project"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Projectnavigatie"
 		},
 		"keyboardShortcuts": {
 			"title": "Sneltoetsen",
