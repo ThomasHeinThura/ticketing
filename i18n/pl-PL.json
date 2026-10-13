@@ -2285,7 +2285,40 @@
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
 			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
-			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open.",
+			"approvals": {
+				"heading": "Approvals",
+				"loading": "Loading approvals…",
+				"empty": "No approvals on this work item.",
+				"errorTitle": "Couldn't load approvals",
+				"errorDescription": "Something went wrong while loading approvals for this work item.",
+				"retry": "Retry",
+				"kind": {
+					"customer": "Customer approval",
+					"cab": "Change advisory board approval"
+				},
+				"approverLabel": "Approver",
+				"requesterLabel": "Requested by",
+				"expiresLabel": "Expires",
+				"decidedLabel": "Decided",
+				"unknownPerson": "Unknown",
+				"state": {
+					"pending": "Pending",
+					"approved": "Approved",
+					"rejected": "Rejected",
+					"expired": "Expired",
+					"withdrawn": "Withdrawn"
+				},
+				"reachLost": "The approver no longer has access to this work item. Withdraw the request and ask again.",
+				"withdraw": "Withdraw request",
+				"withdrawing": "Withdrawing…",
+				"withdrawErrorTitle": "Couldn't withdraw the approval",
+				"withdrawConflict": "This approval is no longer pending. The list has been refreshed.",
+				"withdrawForbidden": "You can no longer withdraw this approval. The list has been refreshed.",
+				"withdrawFailed": "Something went wrong while withdrawing the approval. Try again.",
+				"withdrawn": "Approval request withdrawn.",
+				"withdrawFor": "Withdraw request — {{label}}"
+			}
 		},
 		"list": {
 			"columnAssignee": "Assignee",

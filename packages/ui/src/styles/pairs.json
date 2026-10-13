@@ -6766,6 +6766,11 @@
       "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#1",
       "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[1]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[2]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[3]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0"
     ],
@@ -8821,6 +8826,72 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated.tsx:SessionRouteError",
           "jsx:div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[1]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[2]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[3]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
         ],
         "backdropLayers": []
       },
@@ -9023,6 +9094,11 @@
       "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#1",
       "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[1]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[2]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[3]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0"
     ],
@@ -11078,6 +11154,72 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated.tsx:SessionRouteError",
           "jsx:div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[1]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[2]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[3]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
         ],
         "backdropLayers": []
       },
