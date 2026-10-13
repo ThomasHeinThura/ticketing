@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
@@ -54,7 +55,15 @@ function WorkItemDetailRouteComponent() {
   const { t } = useTranslation();
   // Set when a mutation answers 404 (access loss). Scoped to the key it happened on.
   const [accessLostKey, setAccessLostKey] = useState<string | null>(null);
-  const onAccessLost = useCallback(() => setAccessLostKey(key), [key]);
+  const queryClient = useQueryClient();
+  const onAccessLost = useCallback(() => {
+    setAccessLostKey(key);
+    // Drop everything cached for this item: returning to the same key must not show the
+    // old row while the refetch is in flight.
+    for (const scope of ["detail", "transitions", "activity"]) {
+      queryClient.removeQueries({ queryKey: ["work-items", scope, key] });
+    }
+  }, [key, queryClient]);
   useEffect(() => {
     setAccessLostKey((current) => (current === key ? current : null));
   }, [key]);

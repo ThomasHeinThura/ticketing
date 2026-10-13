@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -69,15 +70,22 @@ const item = {
   projectId: "proj_1",
 };
 
+let queryClient = new QueryClient();
+
 function Page() {
   const Component = (Route as unknown as { component: ComponentType })
     .component;
-  return <Component />;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Component />
+    </QueryClientProvider>
+  );
 }
 
 const lastTitle = () => mocks.titles[mocks.titles.length - 1];
 
 beforeEach(() => {
+  queryClient = new QueryClient();
   mocks.params = { key: "WLP-1" };
   mocks.titles = [];
   mocks.projectLookups = [];
@@ -151,5 +159,28 @@ describe("work-item detail route access loss", () => {
     expect(await screen.findByTestId("stub-item")).toHaveTextContent("Other");
     expect(screen.getByTestId("stub-not-found")).toHaveTextContent("false");
     expect(lastTitle()).toBe("Other · WLP-2");
+  });
+
+  it("removes the item's cached queries on access loss so returning to the key cannot show the old row", async () => {
+    queryClient.setQueryData(["work-items", "detail", "WLP-1"], item);
+    queryClient.setQueryData(["work-items", "transitions", "WLP-1"], []);
+    queryClient.setQueryData(["work-items", "activity", "WLP-1"], {});
+    queryClient.setQueryData(["work-items", "detail", "WLP-2"], item);
+    render(<Page />);
+    fireEvent.click(await screen.findByRole("button", { name: "lose access" }));
+
+    expect(
+      queryClient.getQueryData(["work-items", "detail", "WLP-1"]),
+    ).toBeUndefined();
+    expect(
+      queryClient.getQueryData(["work-items", "transitions", "WLP-1"]),
+    ).toBeUndefined();
+    expect(
+      queryClient.getQueryData(["work-items", "activity", "WLP-1"]),
+    ).toBeUndefined();
+    // Another item's cache is untouched.
+    expect(
+      queryClient.getQueryData(["work-items", "detail", "WLP-2"]),
+    ).toBeDefined();
   });
 });

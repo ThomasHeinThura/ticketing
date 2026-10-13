@@ -30,12 +30,16 @@ import {
 import { extractDescription, type WorkItemDetailRow } from "@/types/work-item";
 
 /**
- * A date input is a calendar date; the API stores UTC instants and requires an ISO
- * date-time. Represent the chosen day at UTC midnight so the browser's local timezone
- * never shifts it.
+ * The API's `startDate`/`dueDate` are UTC instants (`work-items.md` does not define them
+ * as bare calendar dates; the schema is an ISO date-time). The form edits only the
+ * calendar day, so a CHANGED day keeps the stored time of day (UTC) and only moves the
+ * date; a date set where none existed lands on UTC midnight. An unchanged date is never
+ * sent at all, so an item due at 17:00Z is not silently rewritten to 00:00Z.
  */
-function dateInputToIso(value: string) {
-  return value ? `${value}T00:00:00.000Z` : null;
+function dateInputToIso(value: string, original: string | null) {
+  if (!value) return null;
+  const timeOfDay = original?.slice(10) ?? "T00:00:00.000Z";
+  return `${value}${timeOfDay}`;
 }
 
 export type WorkItemJourneyProps = {
@@ -131,6 +135,12 @@ function EditSection({ item, onAccessLost }: WorkItemJourneyProps) {
     description.kind === "text" ? description.text : "",
   );
   const [descriptionChanged, setDescriptionChanged] = useState(false);
+  // The item values the draft was seeded from, so only real changes are sent.
+  const [baseline, setBaseline] = useState({
+    title: item.title,
+    startDate: item.startDate,
+    dueDate: item.dueDate,
+  });
   const [startDate, setStartDate] = useState(
     item.startDate?.slice(0, 10) ?? "",
   );
@@ -143,6 +153,11 @@ function EditSection({ item, onAccessLost }: WorkItemJourneyProps) {
 
   const seedDraft = () => {
     setEditVersion(item.version);
+    setBaseline({
+      title: item.title,
+      startDate: item.startDate,
+      dueDate: item.dueDate,
+    });
     setTitle(item.title);
     setDescriptionText(description.kind === "text" ? description.text : "");
     setDescriptionChanged(false);
@@ -169,17 +184,25 @@ function EditSection({ item, onAccessLost }: WorkItemJourneyProps) {
     wasEditing.current = editing;
   }, [editing]);
 
+  const titleChanged = title !== baseline.title;
+  const startChanged = startDate !== (baseline.startDate?.slice(0, 10) ?? "");
+  const dueChanged = dueDate !== (baseline.dueDate?.slice(0, 10) ?? "");
+  const hasChanges =
+    titleChanged || descriptionChanged || startChanged || dueChanged;
+
   const editMutation = useMutation({
     mutationFn: () =>
       updateWorkItem({
         key: item.key,
         version: editVersion,
-        title,
-        description: descriptionChanged
-          ? descriptionText || null
-          : item.description,
-        startDate: dateInputToIso(startDate),
-        dueDate: dateInputToIso(dueDate),
+        ...(titleChanged ? { title } : {}),
+        ...(descriptionChanged ? { description: descriptionText || null } : {}),
+        ...(startChanged
+          ? { startDate: dateInputToIso(startDate, baseline.startDate) }
+          : {}),
+        ...(dueChanged
+          ? { dueDate: dateInputToIso(dueDate, baseline.dueDate) }
+          : {}),
       }),
     onSuccess: async () => {
       stopEditing();
@@ -311,7 +334,11 @@ function EditSection({ item, onAccessLost }: WorkItemJourneyProps) {
           <div className="flex gap-2">
             <Button
               type="submit"
-              disabled={editMutation.isPending || title.trim().length === 0}
+              disabled={
+                editMutation.isPending ||
+                title.trim().length === 0 ||
+                !hasChanges
+              }
             >
               {editMutation.isPending
                 ? t("workItems:journey.saving")
@@ -554,6 +581,18 @@ function AssignmentSection({ item, onAccessLost }: WorkItemJourneyProps) {
   );
   const [confirmReassign, setConfirmReassign] = useState(false);
   const [error, setError] = useState("");
+  // The holder this section last saw. When a refetch (or a concurrent change) moves it:
+  // a pending take-over confirmation was for the OLD holder and must not carry over
+  // (AS-3 -- the second click would otherwise assert the new holder blind), and the
+  // picker follows the item unless the user has already picked someone else.
+  const [seenHolder, setSeenHolder] = useState(item.assigneeId);
+  if (seenHolder !== item.assigneeId) {
+    setSeenHolder(item.assigneeId);
+    setConfirmReassign(false);
+    if (selectedAssignee === (seenHolder ?? "")) {
+      setSelectedAssignee(item.assigneeId ?? "");
+    }
+  }
 
   const assigneesError = assignees.error;
   useEffect(() => {

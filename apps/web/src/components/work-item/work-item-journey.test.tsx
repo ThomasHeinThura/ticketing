@@ -147,6 +147,12 @@ function pickOption(option: HTMLElement) {
   fireEvent.click(option);
 }
 
+function changeTitle(value: string) {
+  fireEvent.change(screen.getByLabelText("workItems:journey.title"), {
+    target: { value },
+  });
+}
+
 function openEdit() {
   fireEvent.click(
     screen.getByRole("button", { name: "workItems:journey.edit" }),
@@ -181,13 +187,11 @@ describe("WorkItemJourney edit (WI-7, WI-8)", () => {
       "My draft",
     );
     expect(updateWorkItem).toHaveBeenCalledTimes(1);
+    // Only the changed field is sent (PATCH is partial).
     expect(updateWorkItem).toHaveBeenCalledWith({
       key: "WLP-1",
       version: 7,
       title: "My draft",
-      description: "Notes",
-      startDate: null,
-      dueDate: null,
     });
 
     // The refreshed server row arrives; the draft is NOT replaced by it.
@@ -253,12 +257,13 @@ describe("WorkItemJourney edit (WI-7, WI-8)", () => {
       "Server update",
     );
     updateWorkItem.mockResolvedValue({});
+    changeTitle("Mine again");
     fireEvent.click(
       screen.getByRole("button", { name: "workItems:journey.save" }),
     );
     await waitFor(() =>
       expect(updateWorkItem).toHaveBeenLastCalledWith(
-        expect.objectContaining({ version: 8, title: "Server update" }),
+        expect.objectContaining({ version: 8, title: "Mine again" }),
       ),
     );
   });
@@ -296,12 +301,11 @@ describe("WorkItemJourney edit (WI-7, WI-8)", () => {
     );
 
     await waitFor(() => expect(updateWorkItem).toHaveBeenCalledTimes(1));
+    // The unchanged start date is not sent; the changed due date keeps its time of day.
     expect(updateWorkItem).toHaveBeenCalledWith({
       key: "WLP-1",
       version: 7,
       title: "Updated title",
-      description: "Notes",
-      startDate: "2026-09-20T00:00:00.000Z",
       dueDate: "2026-12-31T00:00:00.000Z",
     });
   });
@@ -345,6 +349,7 @@ describe("WorkItemJourney edit (WI-7, WI-8)", () => {
       ),
     );
     openEdit();
+    changeTitle("Edited");
     fireEvent.click(
       screen.getByRole("button", { name: "workItems:journey.save" }),
     );
@@ -870,6 +875,7 @@ describe("WorkItemJourney access loss (decision log 2026-10-13: a 404 from any w
       ),
     );
     openEdit();
+    changeTitle("Edited");
     fireEvent.click(
       screen.getByRole("button", { name: "workItems:journey.save" }),
     );
@@ -965,6 +971,7 @@ describe("WorkItemJourney access loss (decision log 2026-10-13: a 404 from any w
       ),
     );
     openEdit();
+    changeTitle("Edited");
     fireEvent.click(
       screen.getByRole("button", { name: "workItems:journey.save" }),
     );
@@ -972,5 +979,201 @@ describe("WorkItemJourney access loss (decision log 2026-10-13: a 404 from any w
       "workItems:journey.saveError",
     );
     expect(onAccessLost).not.toHaveBeenCalled();
+  });
+});
+
+describe("WorkItemJourney partial edits keep untouched timestamps", () => {
+  const due = "2026-10-10T17:00:00.000Z";
+
+  it("a title-only edit sends only the title, so a 17:00Z due date is not rewritten to midnight", async () => {
+    updateWorkItem.mockResolvedValue({});
+    render(
+      wrap(
+        newClient(),
+        <WorkItemJourney
+          item={makeItem({
+            dueDate: due,
+            startDate: "2026-09-01T08:30:00.000Z",
+          })}
+          onAccessLost={vi.fn()}
+        />,
+      ),
+    );
+    openEdit();
+    changeTitle("Only the title");
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.save" }),
+    );
+    await waitFor(() => expect(updateWorkItem).toHaveBeenCalledTimes(1));
+    expect(updateWorkItem).toHaveBeenCalledWith({
+      key: "WLP-1",
+      version: 7,
+      title: "Only the title",
+    });
+    const sent = updateWorkItem.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect("dueDate" in sent).toBe(false);
+    expect("startDate" in sent).toBe(false);
+  });
+
+  it("moving a date keeps its original UTC time of day; a newly set date lands on midnight UTC", async () => {
+    updateWorkItem.mockResolvedValue({});
+    render(
+      wrap(
+        newClient(),
+        <WorkItemJourney
+          item={makeItem({ dueDate: due })}
+          onAccessLost={vi.fn()}
+        />,
+      ),
+    );
+    openEdit();
+    fireEvent.change(screen.getByLabelText("workItems:journey.dueDate"), {
+      target: { value: "2026-11-02" },
+    });
+    fireEvent.change(screen.getByLabelText("workItems:journey.startDate"), {
+      target: { value: "2026-10-01" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.save" }),
+    );
+    await waitFor(() => expect(updateWorkItem).toHaveBeenCalledTimes(1));
+    expect(updateWorkItem).toHaveBeenCalledWith({
+      key: "WLP-1",
+      version: 7,
+      dueDate: "2026-11-02T17:00:00.000Z",
+      startDate: "2026-10-01T00:00:00.000Z",
+    });
+  });
+
+  it("does not allow saving an unchanged form", () => {
+    render(
+      wrap(
+        newClient(),
+        <WorkItemJourney item={makeItem()} onAccessLost={vi.fn()} />,
+      ),
+    );
+    openEdit();
+    expect(
+      screen.getByRole("button", { name: "workItems:journey.save" }),
+    ).toBeDisabled();
+  });
+});
+
+describe("WorkItemJourney assignment follows the item's holder", () => {
+  const people = [
+    { personId: "person-a", name: "Person A", roleName: "Member" },
+    { personId: "person-b", name: "Person B", roleName: "Member" },
+    { personId: "person-c", name: "Person C", roleName: "Member" },
+  ];
+
+  it("drops a pending take-over confirmation when the holder changes underneath it", async () => {
+    getAssignablePeople.mockResolvedValue(people);
+    const client = newClient();
+    const view = render(
+      wrap(
+        client,
+        <WorkItemJourney
+          item={makeItem({ assigneeId: "person-a" })}
+          onAccessLost={vi.fn()}
+        />,
+      ),
+    );
+    fireEvent.click(
+      await screen.findByRole("combobox", {
+        name: "workItems:journey.assignee",
+      }),
+    );
+    pickOption(
+      await screen.findByRole("option", { name: "Person C · Member" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.assign" }),
+    );
+    expect(
+      screen.getByText("workItems:journey.confirmReassign"),
+    ).toBeInTheDocument();
+
+    // Someone else takes it before the user confirms.
+    view.rerender(
+      wrap(
+        client,
+        <WorkItemJourney
+          item={makeItem({ assigneeId: "person-b", version: 8 })}
+          onAccessLost={vi.fn()}
+        />,
+      ),
+    );
+    expect(
+      screen.queryByText("workItems:journey.confirmReassign"),
+    ).not.toBeInTheDocument();
+    expect(assignWorkItem).not.toHaveBeenCalled();
+
+    // A fresh, explicit confirmation is required against the new holder.
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.assign" }),
+    );
+    expect(assignWorkItem).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "workItems:journey.confirmAssignment",
+      }),
+    );
+    await waitFor(() =>
+      expect(assignWorkItem).toHaveBeenCalledWith({
+        key: "WLP-1",
+        assigneeId: "person-c",
+        expectedCurrentAssigneeId: "person-b",
+      }),
+    );
+  });
+
+  it("re-syncs the picker to a new holder unless the user has picked someone", async () => {
+    getAssignablePeople.mockResolvedValue(people);
+    const client = newClient();
+    const view = render(
+      wrap(
+        client,
+        <WorkItemJourney
+          item={makeItem({ assigneeId: "person-a" })}
+          onAccessLost={vi.fn()}
+        />,
+      ),
+    );
+    const picker = await screen.findByRole("combobox", {
+      name: "workItems:journey.assignee",
+    });
+    expect(picker).toHaveTextContent("Person A");
+    view.rerender(
+      wrap(
+        client,
+        <WorkItemJourney
+          item={makeItem({ assigneeId: "person-b", version: 8 })}
+          onAccessLost={vi.fn()}
+        />,
+      ),
+    );
+    expect(
+      screen.getByRole("combobox", { name: "workItems:journey.assignee" }),
+    ).toHaveTextContent("Person B");
+
+    // A pending user pick survives a later holder change.
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "workItems:journey.assignee" }),
+    );
+    pickOption(
+      await screen.findByRole("option", { name: "Person C · Member" }),
+    );
+    view.rerender(
+      wrap(
+        client,
+        <WorkItemJourney
+          item={makeItem({ assigneeId: "person-a", version: 9 })}
+          onAccessLost={vi.fn()}
+        />,
+      ),
+    );
+    expect(
+      screen.getByRole("combobox", { name: "workItems:journey.assignee" }),
+    ).toHaveTextContent("Person C");
   });
 });

@@ -5,10 +5,12 @@ import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 export type UpdateWorkItemInput = {
   key: string;
   version: number;
-  title: string;
-  description: unknown;
-  startDate: string | null;
-  dueDate: string | null;
+  // PATCH is partial: send only the fields that changed. An omitted field is left alone
+  // by the server; an explicit null clears it.
+  title?: string;
+  description?: unknown;
+  startDate?: string | null;
+  dueDate?: string | null;
 };
 
 export default async function updateWorkItem({
