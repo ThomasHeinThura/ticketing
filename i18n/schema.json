@@ -5232,9 +5232,6 @@
 						"selectColumnPlaceholder": {
 							"type": "string"
 						},
-						"targetColumnAria": {
-							"type": "string"
-						},
 						"toastUpdated": {
 							"type": "string"
 						},
@@ -5278,7 +5275,6 @@
 						"giteaHeading",
 						"giteaHint",
 						"selectColumnPlaceholder",
-						"targetColumnAria",
 						"toastUpdated",
 						"toastError",
 						"events"

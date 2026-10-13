@@ -946,7 +946,7 @@
 			"doneColumnTooltip": "Xem đây là cột hoàn thành",
 			"doneColumn": "Cột hoàn thành",
 			"markDoneAria": "Đánh dấu {{name}} là cột hoàn thành",
-			"nameAria": "Tên cột {{name}}",
+			"nameAria": "Tên cột",
 			"deleteAria": "Xóa cột {{name}}",
 			"on": "Bật",
 			"off": "Tắt",
@@ -1303,7 +1303,6 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Khi một sự kiện webhook Gitea xảy ra, di chuyển công việc liên kết đến một cột.",
 			"selectColumnPlaceholder": "Chọn cột...",
-			"targetColumnAria": "{{section}}: cột đích cho {{event}}",
 			"toastUpdated": "Đã cập nhật quy tắc quy trình làm việc",
 			"toastError": "Không thể cập nhật quy tắc",
 			"events": {

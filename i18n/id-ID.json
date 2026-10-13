@@ -785,7 +785,7 @@
 			"doneColumnTooltip": "Perlakukan ini sebagai kolom selesai",
 			"doneColumn": "Kolom selesai",
 			"markDoneAria": "Tandai {{name}} sebagai kolom selesai",
-			"nameAria": "Nama kolom {{name}}",
+			"nameAria": "Nama kolom",
 			"deleteAria": "Hapus kolom {{name}}",
 			"on": "Aktif",
 			"off": "Nonaktif",
@@ -1142,7 +1142,6 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Saat event webhook Gitea terjadi, pindahkan tugas tertaut ke kolom.",
 			"selectColumnPlaceholder": "Pilih kolom...",
-			"targetColumnAria": "{{section}}: kolom tujuan untuk {{event}}",
 			"toastUpdated": "Aturan alur kerja diperbarui",
 			"toastError": "Gagal memperbarui aturan",
 			"events": {

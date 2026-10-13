@@ -785,7 +785,7 @@
 			"doneColumnTooltip": "Третирај ја како завршна колона",
 			"doneColumn": "Завршна колона",
 			"markDoneAria": "Означи {{name}} како завршна колона",
-			"nameAria": "Име на колоната {{name}}",
+			"nameAria": "Име на колоната",
 			"deleteAria": "Избриши ја колоната {{name}}",
 			"on": "Вклучено",
 			"off": "Исклучено",
@@ -1140,7 +1140,6 @@
 			"githubHeading": "GitHub",
 			"githubHint": "Кога ќе се случи GitHub настан, премести ја поврзаната задача во колона.",
 			"selectColumnPlaceholder": "Избери колона...",
-			"targetColumnAria": "{{section}}: целна колона за {{event}}",
 			"toastUpdated": "Правилото за работен тек е ажурирано",
 			"toastError": "Неуспешно ажурирање на правило",
 			"events": {

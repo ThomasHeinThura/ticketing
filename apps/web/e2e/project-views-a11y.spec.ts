@@ -125,9 +125,14 @@ for (const [name, path] of [
         }),
       ).toBeVisible();
     }
+    // WCAG 2.5.3: the Select trigger name contains its visible text.
+    if (name === "project settings general")
+      await expect(
+        page.getByRole("combobox", { name: /Project.*Performance fixture/ }),
+      ).toBeVisible();
     if (name.endsWith("workflow"))
       await expect(
-        page.locator('[role="listitem"], [data-slot="input"]').first(),
+        page.locator('ul > li [data-slot="input"]').first(),
       ).toBeVisible();
     expect(await seriousOrCriticalViolations(page)).toEqual([]);
   });

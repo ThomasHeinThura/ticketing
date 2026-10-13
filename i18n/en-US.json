@@ -947,7 +947,7 @@
 			"doneColumnTooltip": "Treat this as a done column",
 			"doneColumn": "Done column",
 			"markDoneAria": "Mark {{name}} as done column",
-			"nameAria": "Name of column {{name}}",
+			"nameAria": "Column name",
 			"deleteAria": "Delete column {{name}}",
 			"on": "On",
 			"off": "Off",
@@ -1304,7 +1304,6 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "When a Gitea webhook event occurs, move the linked task to a column.",
 			"selectColumnPlaceholder": "Select column...",
-			"targetColumnAria": "{{section}}: target column for {{event}}",
 			"toastUpdated": "Workflow rule updated",
 			"toastError": "Failed to update rule",
 			"events": {

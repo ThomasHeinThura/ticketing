@@ -15,7 +15,16 @@ vi.mock("@/hooks/queries/column/use-get-columns", () => ({
 }));
 
 vi.mock("@/hooks/queries/workflow-rule/use-get-workflow-rules", () => ({
-  useGetWorkflowRules: () => ({ data: [], isLoading: false }),
+  useGetWorkflowRules: () => ({
+    data: [
+      {
+        integrationType: "gitea",
+        eventType: "pr_merged",
+        columnId: "column-1",
+      },
+    ],
+    isLoading: false,
+  }),
 }));
 
 vi.mock("@/hooks/mutations/workflow-rule/use-upsert-workflow-rule", () => ({
@@ -25,14 +34,25 @@ vi.mock("@/hooks/mutations/workflow-rule/use-upsert-workflow-rule", () => ({
 afterEach(cleanup);
 
 describe("WorkflowEditor accessibility", () => {
-  it("gives every rule its own accessible column picker name", () => {
+  it("names each column picker with section, event and its visible value", () => {
     render(<WorkflowEditor projectId="project-1" />);
 
     const pickers = screen.getAllByRole("combobox");
     expect(pickers).toHaveLength(10);
-    const names = pickers.map((picker) => picker.getAttribute("aria-label"));
-    expect(names).toContain("GitHub: target column for PR Merged");
-    expect(names).toContain("Gitea: target column for PR Merged");
-    expect(new Set(names).size).toBe(10);
+    // Visible text is "Backlog" (the selected rule column) or the placeholder.
+    expect(
+      screen.getByRole("combobox", {
+        name: "GitHub Branch Push Select column...",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", {
+        name: "Gitea PR Merged Backlog",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      new Set(pickers.map((picker) => picker.getAttribute("aria-labelledby")))
+        .size,
+    ).toBe(10);
   });
 });

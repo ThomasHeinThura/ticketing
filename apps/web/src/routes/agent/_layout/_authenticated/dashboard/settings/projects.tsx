@@ -17,7 +17,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@taskdesk/ui";
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import SettingsSidebar from "@/components/SettingsSidebar";
@@ -35,6 +35,8 @@ export const Route = createFileRoute(
 
 function RouteComponent() {
   const { t } = useTranslation();
+  const projectLabelId = useId();
+  const projectValueId = useId();
   const { workspace, role } = useWorkspacePermission();
   const location = useLocation();
   const navigate = useNavigate();
@@ -99,7 +101,10 @@ function RouteComponent() {
           </div>
 
           <SidebarGroup className="gap-1 p-1">
-            <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
+            <SidebarGroupLabel
+              id={projectLabelId}
+              className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground"
+            >
               {t("navigation:projectSettings.projectLabel")}
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -118,11 +123,14 @@ function RouteComponent() {
                 }}
               >
                 <SelectTrigger
-                  aria-label={t("navigation:projectSettings.projectLabel")}
+                  aria-labelledby={`${projectLabelId} ${projectValueId}`}
                   className="h-8 text-sm font-normal text-foreground"
                   size="sm"
                 >
-                  <span className="truncate font-normal text-foreground">
+                  <span
+                    id={projectValueId}
+                    className="truncate font-normal text-foreground"
+                  >
                     {selectedProject?.name ||
                       (projects?.length
                         ? t("settings:projectSwitcher.selectProject")

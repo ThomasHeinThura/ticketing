@@ -1,4 +1,10 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 import ColumnEditor from "./column-editor";
@@ -47,8 +53,8 @@ describe("ColumnEditor accessibility", () => {
     render(<ColumnEditor projectId="project-1" />);
 
     expect(
-      screen.getByRole("textbox", { name: "Name of column Backlog" }),
-    ).toBeInTheDocument();
+      screen.getAllByRole("textbox", { name: "Column name" }),
+    ).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: "Delete column Backlog" }),
     ).toBeInTheDocument();
@@ -61,5 +67,17 @@ describe("ColumnEditor accessibility", () => {
     expect(
       screen.getAllByRole("button", { name: "Pick column icon" }),
     ).toHaveLength(3);
+  });
+
+  it("keeps a stable name for the column input after an in-place edit", () => {
+    render(<ColumnEditor projectId="project-1" />);
+
+    const [input] = screen.getAllByRole("textbox", { name: "Column name" });
+    fireEvent.change(input, { target: { value: "Renamed" } });
+
+    expect(input).toHaveAccessibleName("Column name");
+    expect(
+      screen.queryByRole("textbox", { name: /Renamed/ }),
+    ).not.toBeInTheDocument();
   });
 });

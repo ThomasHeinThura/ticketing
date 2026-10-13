@@ -960,7 +960,7 @@
 			"doneColumnTooltip": "Traktuj tę kolumnę jako kolumnę ukończonych zadań",
 			"loading": "Ładowanie kolumn...",
 			"markDoneAria": "Oznacz {{name}} jako kolumnę ukończonych zadań",
-			"nameAria": "Nazwa kolumny {{name}}",
+			"nameAria": "Nazwa kolumny",
 			"deleteAria": "Usuń kolumnę {{name}}",
 			"newColumnPlaceholder": "Nazwa nowej kolumny...",
 			"off": "Wyłączone",
@@ -1630,7 +1630,6 @@
 			"githubHint": "Gdy wystąpi zdarzenie GitHub, przenieś powiązane zadanie do kolumny.",
 			"loading": "Ładowanie...",
 			"selectColumnPlaceholder": "Wybierz kolumnę...",
-			"targetColumnAria": "{{section}}: kolumna docelowa dla {{event}}",
 			"toastError": "Nie udało się zaktualizować reguły",
 			"toastUpdated": "Zaktualizowano regułę obiegu pracy"
 		},

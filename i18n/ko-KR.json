@@ -785,7 +785,7 @@
 			"doneColumnTooltip": "이를 완료 컬럼으로 처리",
 			"doneColumn": "완료 컬럼",
 			"markDoneAria": "{{name}}을(를) 완료 컬럼으로 표시",
-			"nameAria": "컬럼 {{name}} 이름",
+			"nameAria": "컬럼 이름",
 			"deleteAria": "컬럼 {{name}} 삭제",
 			"on": "켜짐",
 			"off": "꺼짐",
@@ -1142,7 +1142,6 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Gitea 웹훅 이벤트가 발생하면 연결된 작업을 컬럼으로 이동합니다.",
 			"selectColumnPlaceholder": "컬럼 선택...",
-			"targetColumnAria": "{{section}}: {{event}}의 대상 컬럼",
 			"toastUpdated": "워크플로 규칙이 업데이트되었습니다",
 			"toastError": "규칙 업데이트에 실패했습니다",
 			"events": {

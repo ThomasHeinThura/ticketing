@@ -682,7 +682,7 @@
 			"doneColumnTooltip": "Tratar esta como una columna finalizada",
 			"doneColumn": "Columna finalizada",
 			"markDoneAria": "Marcar columna {{name}} como finalizada",
-			"nameAria": "Nombre de la columna {{name}}",
+			"nameAria": "Nombre de la columna",
 			"deleteAria": "Eliminar la columna {{name}}",
 			"on": "Activado",
 			"off": "Desactivado",
@@ -915,7 +915,6 @@
 			"githubHeading": "GitHub",
 			"githubHint": "Cuando ocurre un evento de GitHub, mueve las tareas vinculadas a una columna.",
 			"selectColumnPlaceholder": "Selecciona una columna...",
-			"targetColumnAria": "{{section}}: columna de destino para {{event}}",
 			"toastUpdated": "Regla del flujo de trabajo actualizada",
 			"toastError": "Error al actualizar regla",
 			"events": {

@@ -285,9 +285,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
             </Popover>
             <Input
               defaultValue={col.name}
-              aria-label={t("settings:columnEditor.nameAria", {
-                name: col.name,
-              })}
+              aria-label={t("settings:columnEditor.nameAria")}
               className="h-8 text-sm flex-1"
               disabled={!canEdit}
               onBlur={(e) => {

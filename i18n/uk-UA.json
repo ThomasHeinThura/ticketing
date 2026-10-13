@@ -785,7 +785,7 @@
 			"doneColumnTooltip": "Вважати цю колонку колонкою готовності",
 			"doneColumn": "Колонка готовності",
 			"markDoneAria": "Позначити {{name}} як колонку готовності",
-			"nameAria": "Назва колонки {{name}}",
+			"nameAria": "Назва колонки",
 			"deleteAria": "Видалити колонку {{name}}",
 			"on": "Увімк.",
 			"off": "Вимк.",
@@ -1142,7 +1142,6 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Коли відбувається подія вебхука Gitea, переміщувати пов'язане завдання до колонки.",
 			"selectColumnPlaceholder": "Обрати колонку...",
-			"targetColumnAria": "{{section}}: цільова колонка для {{event}}",
 			"toastUpdated": "Правило робочого процесу оновлено",
 			"toastError": "Не вдалося оновити правило",
 			"events": {

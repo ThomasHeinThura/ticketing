@@ -948,7 +948,7 @@
 			"doneColumnTooltip": "Tratar isto como uma coluna de concluído",
 			"doneColumn": "Coluna de concluído",
 			"markDoneAria": "Marcar {{name}} como coluna de concluído",
-			"nameAria": "Nome da coluna {{name}}",
+			"nameAria": "Nome da coluna",
 			"deleteAria": "Excluir a coluna {{name}}",
 			"on": "Ativado",
 			"off": "Desativado",
@@ -1305,7 +1305,6 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Quando um evento de webhook do Gitea ocorrer, mova a tarefa vinculada para uma coluna.",
 			"selectColumnPlaceholder": "Selecionar coluna...",
-			"targetColumnAria": "{{section}}: coluna de destino para {{event}}",
 			"toastUpdated": "Regra de fluxo de trabalho atualizada",
 			"toastError": "Falha ao atualizar regra",
 			"events": {

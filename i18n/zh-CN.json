@@ -946,7 +946,7 @@
 			"doneColumnTooltip": "将此列视为完成列",
 			"doneColumn": "完成列",
 			"markDoneAria": "将 {{name}} 标记为完成列",
-			"nameAria": "列 {{name}} 的名称",
+			"nameAria": "列名称",
 			"deleteAria": "删除列 {{name}}",
 			"on": "开",
 			"off": "关",
@@ -1303,7 +1303,6 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "当 Gitea Webhook 事件发生时，将关联任务移动到指定列。",
 			"selectColumnPlaceholder": "选择列…",
-			"targetColumnAria": "{{section}}：{{event}} 的目标列",
 			"toastUpdated": "工作流规则已更新",
 			"toastError": "更新规则失败",
 			"events": {

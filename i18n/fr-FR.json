@@ -785,7 +785,7 @@
 			"doneColumnTooltip": "Considérer ceci comme une colonne terminée",
 			"doneColumn": "Colonne terminée",
 			"markDoneAria": "Marquer {{name}} comme colonne terminée",
-			"nameAria": "Nom de la colonne {{name}}",
+			"nameAria": "Nom de la colonne",
 			"deleteAria": "Supprimer la colonne {{name}}",
 			"on": "On",
 			"off": "Off",
@@ -1142,7 +1142,6 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Lorsqu'un événement Gitea se produit, déplacez la tâche liée vers une colonne.",
 			"selectColumnPlaceholder": "Sélectionner une colonne...",
-			"targetColumnAria": "{{section}} : colonne cible pour {{event}}",
 			"toastUpdated": "Règle de workflow mise à jour",
 			"toastError": "Échec de la mise à jour de la règle",
 			"events": {

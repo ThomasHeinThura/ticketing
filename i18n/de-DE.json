@@ -785,7 +785,7 @@
 			"doneColumnTooltip": "Als fertige Spalte behandeln",
 			"doneColumn": "Fertige Spalte",
 			"markDoneAria": "{{name}} als fertige Spalte markieren",
-			"nameAria": "Name der Spalte {{name}}",
+			"nameAria": "Spaltenname",
 			"deleteAria": "Spalte {{name}} löschen",
 			"on": "Ein",
 			"off": "Aus",
@@ -1142,7 +1142,6 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Wenn ein Gitea-Webhook-Ereignis eintritt, verschiebe die verknüpfte Aufgabe in eine Spalte.",
 			"selectColumnPlaceholder": "Spalte auswählen...",
-			"targetColumnAria": "{{section}}: Zielspalte für {{event}}",
 			"toastUpdated": "Workflow-Regel aktualisiert",
 			"toastError": "Workflow-Regel konnte nicht aktualisiert werden",
 			"events": {

@@ -947,7 +947,7 @@
 			"doneColumnTooltip": "इसे Done कॉलम मानें",
 			"doneColumn": "Done कॉलम",
 			"markDoneAria": "{{name}} को Done कॉलम चिह्नित करें",
-			"nameAria": "कॉलम {{name}} का नाम",
+			"nameAria": "कॉलम का नाम",
 			"deleteAria": "कॉलम {{name}} हटाएं",
 			"on": "चालू",
 			"off": "बंद",
@@ -1304,7 +1304,6 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "जब Gitea वेबहुक इवेंट होता है, तो लिंक किए गए कार्य को कॉलम में ले जाएँ।",
 			"selectColumnPlaceholder": "कॉलम चुनें...",
-			"targetColumnAria": "{{section}}: {{event}} के लिए लक्ष्य कॉलम",
 			"toastUpdated": "वर्कफ़्लो नियम अपडेट किया गया",
 			"toastError": "नियम अपडेट करने में विफल",
 			"events": {

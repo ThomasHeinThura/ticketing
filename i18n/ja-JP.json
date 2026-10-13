@@ -946,7 +946,7 @@
 			"doneColumnTooltip": "これを完了カラムとして扱います",
 			"doneColumn": "完了カラム",
 			"markDoneAria": "{{name}} を完了カラムとして設定",
-			"nameAria": "カラム {{name}} の名前",
+			"nameAria": "カラム名",
 			"deleteAria": "カラム {{name}} を削除",
 			"on": "オン",
 			"off": "オフ",
@@ -1303,7 +1303,6 @@
 			"giteaHeading": "Gitea",
 			"giteaHint": "Gitea の Webhook イベントが発生したときに、リンクされたタスクをカラムに移動します。",
 			"selectColumnPlaceholder": "カラムを選択...",
-			"targetColumnAria": "{{section}}：{{event}} の移動先カラム",
 			"toastUpdated": "ワークフロールールを更新しました",
 			"toastError": "ルールの更新に失敗しました",
 			"events": {
