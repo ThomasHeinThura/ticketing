@@ -5577,6 +5577,9 @@
 						"addWorkspace": {
 							"type": "string"
 						},
+						"instanceUsers": {
+							"type": "string"
+						},
 						"selectWorkspace": {
 							"type": "string"
 						}
@@ -5585,6 +5588,7 @@
 						"workspaces",
 						"switching",
 						"addWorkspace",
+						"instanceUsers",
 						"selectWorkspace"
 					]
 				},

@@ -61,7 +61,17 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
   changes (`IQ-11`) and stays valid across sign-out/sign-in cycles for that requester —
   not that `SUB-n` alone is a credential. Knowing a reference grants nothing without a
   session scoped to it.
-- `IQ-4` A request type marked auto-accept skips intake entirely.
+- `IQ-4` A request type marked auto-accept skips intake entirely. It requires a pinned
+  default project that is active, in the request type's workspace, and serves the submitting
+  organisation. Publishing, submission, and acceptance revalidate this binding atomically;
+  the customer never chooses a project and the server never chooses one arbitrarily
+  (decision log: 2026-10-04 “Bind customer-serving projects at creation” and 2026-10-07
+  “Auto-accept actor attribution for intake acceptance”, recovered on 2026-10-13). Manual
+  acceptance remains governed by `IQ-7`. Its
+  `submission.accepted` audit and outbox event use the `system` actor with no person actor
+  id and display name `Request type auto-accept`; the customer remains the requester and
+  initiator. Manual acceptance uses the acting staff person's identity and name
+  ([request-types-and-catalogue.md](request-types-and-catalogue.md) `RT-15`).
 
 **Triage**
 

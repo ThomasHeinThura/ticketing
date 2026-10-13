@@ -42,7 +42,7 @@ const { mocks, translate } = vi.hoisted(() => ({
         "activity:timeline.everything": "Everything",
         "activity:timeline.comments": "Comments",
         "activity:timeline.edited": "Edited",
-        "common:unknown": "Unknown",
+        "common:people.unknown": "Unknown",
       }[key] ?? key
     );
   },

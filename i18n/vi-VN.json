@@ -1383,6 +1383,7 @@
 			"workspaces": "Không gian làm việc",
 			"switching": "Đang chuyển...",
 			"addWorkspace": "Thêm không gian làm việc",
+			"instanceUsers": "Người dùng phiên bản",
 			"selectWorkspace": "Chọn không gian làm việc"
 		},
 		"page": {

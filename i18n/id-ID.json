@@ -1383,6 +1383,7 @@
 			"workspaces": "Ruang kerja",
 			"switching": "Beralih...",
 			"addWorkspace": "Tambah ruang kerja",
+			"instanceUsers": "Pengguna instans",
 			"selectWorkspace": "Pilih ruang kerja"
 		},
 		"page": {
