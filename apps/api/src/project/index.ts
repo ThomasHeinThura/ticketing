@@ -1,7 +1,11 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import { projectTable, serviceCalendarTable } from "../database/schema";
+import {
+  organisationTable,
+  projectTable,
+  serviceCalendarTable,
+} from "../database/schema";
 import {
   apiRouter,
   type BaseVariables,
@@ -10,7 +14,11 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
-import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
+import {
+  assertCallerHasCapability,
+  capabilityCredential,
+  requireWorkspaceCapability,
+} from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import addDocumentLinkCtrl from "./controllers/add-document-link";
@@ -19,6 +27,7 @@ import archiveProjectCtrl from "./controllers/archive-project";
 import createMilestoneCtrl from "./controllers/create-milestone";
 import createPrerequisiteCtrl from "./controllers/create-prerequisite";
 import createProjectCtrl, {
+  InvalidProjectOrganisationError,
   ProjectSlugTakenError,
 } from "./controllers/create-project";
 import deleteDocumentLinkCtrl from "./controllers/delete-document-link";
@@ -40,6 +49,7 @@ import updatePrerequisiteCtrl from "./controllers/update-prerequisite";
 import updateProjectCtrl from "./controllers/update-project";
 import updateStakeholderCtrl from "./controllers/update-stakeholder";
 import {
+  customerOrganisationListSchema,
   documentLinkSchema,
   milestoneSchema,
   prerequisiteSchema,
@@ -151,9 +161,36 @@ const createProjectRoute = createRoute({
       "No workspace access, or missing project:create permission",
     ),
     422: errorResponse(
-      "PR-9 or same-workspace service calendar validation failed",
+      "PR-9, same-workspace service calendar, or customer organisation validation failed",
     ),
     409: errorResponse("That project slug is already taken"),
+  },
+});
+
+const listCustomerOrganisationsRoute = createRoute({
+  method: "get",
+  operationId: "listProjectCustomerOrganisations",
+  path: "/organisations",
+  tags: ["Projects"],
+  summary: "List customer organisations a new project may serve",
+  description:
+    "Active, live customer organisations (never the internal one), for the create-project " +
+    "selector. Requires project:create in the workspace.",
+  middleware: [
+    workspaceAccess.fromQuery(),
+    // STRICT capability check, not the legacy `requireWorkspacePermission`: the legacy
+    // statements give the default `member` role `project:create`, while the permission
+    // matrix (rbac.md) grants it to owner/admin/manager only. This list is instance-wide, so
+    // it must follow the matrix.
+    requireWorkspaceCapability("project:create"),
+  ] as const,
+  request: { query: workspaceIdQuery },
+  responses: {
+    200: jsonResponse("Customer organisations", customerOrganisationListSchema),
+    400: errorResponse("Workspace ID could not be determined"),
+    403: errorResponse(
+      "No workspace access, or missing project:create permission",
+    ),
   },
 });
 
@@ -741,6 +778,23 @@ const deleteDocumentLinkRoute = createRoute({
 });
 
 const project = apiRouter<BaseVariables & { workspaceId: string }>()
+  .openapi(listCustomerOrganisationsRoute, async (c) => {
+    const rows = await db
+      .select({
+        id: organisationTable.id,
+        name: organisationTable.name,
+      })
+      .from(organisationTable)
+      .where(
+        and(
+          eq(organisationTable.active, true),
+          eq(organisationTable.isInternal, false),
+          isNull(organisationTable.deletedAt),
+        ),
+      )
+      .orderBy(organisationTable.name);
+    return c.json(rows, 200);
+  })
   .openapi(listProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
     const { includeArchived } = c.req.valid("query");
@@ -751,9 +805,30 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
     return c.json(projects, 200);
   })
   .openapi(createProjectRoute, async (c) => {
-    const { name, icon, slug, kind, supportLevel, serviceCalendarId } =
-      c.req.valid("json");
+    const {
+      name,
+      icon,
+      slug,
+      kind,
+      supportLevel,
+      serviceCalendarId,
+      organisationId,
+    } = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
+    // Binding a project to a customer organisation needs the STRICT `project:create`
+    // capability (owner/admin/manager). The route's own legacy check also admits `member`;
+    // creating an internal project (no organisation) keeps that behaviour. Checked before any
+    // organisation lookup so a refused caller learns nothing about organisation ids.
+    if (organisationId != null) {
+      await assertCallerHasCapability(
+        workspaceId,
+        c.get("userId"),
+        "project:create",
+        capabilityCredential(
+          c.get("apiKey") as Parameters<typeof capabilityCredential>[0],
+        ),
+      );
+    }
     assertManagedServiceConfiguration({
       kind,
       supportLevel,
@@ -770,10 +845,14 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
           kind,
           supportLevel: supportLevel ?? null,
           serviceCalendarId: serviceCalendarId ?? null,
+          organisationId: organisationId ?? null,
         },
       );
       return c.json(newProject, 200);
     } catch (error) {
+      if (error instanceof InvalidProjectOrganisationError) {
+        throw new HTTPException(422, { message: error.message });
+      }
       if (error instanceof ProjectSlugTakenError) {
         throw new HTTPException(409, {
           message: "That project slug is already taken",

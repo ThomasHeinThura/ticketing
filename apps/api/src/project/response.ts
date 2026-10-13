@@ -23,6 +23,10 @@ export const projectSchema = z
       .nullable()
       .openapi({ enum: ["L1", "L2", "L3"] }),
     serviceCalendarId: z.string().nullable(),
+    organisationId: z.string().nullable().openapi({
+      description:
+        "The customer organisation this project serves; null for an internal project.",
+    }),
     createdAt: responseTimestamp,
     archivedAt: nullableResponseTimestamp.openapi({
       description:
@@ -149,3 +153,7 @@ export const documentLinkSchema = z
     createdAt: responseTimestamp,
   })
   .openapi("DocumentLink");
+
+export const customerOrganisationListSchema = z
+  .array(z.object({ id: z.string(), name: z.string() }))
+  .openapi("ProjectCustomerOrganisationList");

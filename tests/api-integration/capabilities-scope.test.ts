@@ -325,6 +325,26 @@ describe("GET /api/capabilities", () => {
     expect(response.status).toBeLessThan(500);
   });
 
+  it("reports bindProjectOrganisation from the strict project:create capability, not the legacy createProjects", async () => {
+    const member = await createWorkspaceMember({ role: "member" });
+    const admin = await createWorkspaceMember({ role: "admin" });
+    const { app } = createApp();
+
+    mockAuthenticatedSession(member.user);
+    const memberCaps = (await (
+      await app.request(`/api/capabilities?workspaceId=${member.workspace.id}`)
+    ).json()) as Record<string, boolean>;
+    // The legacy statement lets a member create projects; the strict capability does not.
+    expect(memberCaps.createProjects).toBe(true);
+    expect(memberCaps.bindProjectOrganisation).toBe(false);
+
+    mockAuthenticatedSession(admin.user);
+    const adminCaps = (await (
+      await app.request(`/api/capabilities?workspaceId=${admin.workspace.id}`)
+    ).json()) as Record<string, boolean>;
+    expect(adminCaps.bindProjectOrganisation).toBe(true);
+  });
+
   it("reports exact service-calendar management for an admin", async () => {
     const admin = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(admin.user);

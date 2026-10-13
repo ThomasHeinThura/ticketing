@@ -10,9 +10,17 @@ async function createProject({
   slug,
   workspaceId,
   icon,
+  organisationId,
 }: CreateProjectRequest) {
   const response = await client.project.$post({
-    json: { name, slug, icon, workspaceId },
+    json: {
+      name,
+      slug,
+      icon,
+      workspaceId,
+      // Omitted (not null) for an internal project: the API treats both as internal.
+      ...(organisationId ? { organisationId } : {}),
+    },
   });
 
   if (!response.ok) {

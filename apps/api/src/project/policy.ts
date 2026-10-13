@@ -84,6 +84,17 @@ export const projectPolicies = {
     reach: "required",
   },
 
+  // List the customer organisations a new project may serve (create-project selector).
+  // Same gate as the create itself: `workspaceAccess.fromQuery()` then
+  // `requireWorkspacePermission({ project: ["create"] })`. Registered ahead of
+  // `GET /api/project/{id}` in the router so "organisations" is never read as a project id.
+  "GET /api/project/organisations": {
+    capability: "project:create",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+
   // Reading one project. The scope is the project itself: reach decides whether this identity
   // can see it at all (404 if not), and authority decides whether they may read it (403).
   "GET /api/project/{id}": {

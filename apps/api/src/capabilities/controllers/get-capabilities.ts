@@ -18,6 +18,7 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   transitionTasks: boolean;
   rankTasks: boolean;
   manageProjectSettings: boolean;
+  bindProjectOrganisation: boolean;
 };
 
 /**
@@ -38,6 +39,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     transitionTasks,
     rankTasks,
     manageProjectSettings,
+    bindProjectOrganisation,
   ] = await Promise.all([
     Promise.all(
       entries.map(async ([name, permissions]) => {
@@ -70,6 +72,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasCanonicalCapability(c, "work_item:transition"),
     hasCanonicalCapability(c, "work_item:rank"),
     hasCanonicalCapability(c, "project:manage_settings"),
+    hasCanonicalCapability(c, "project:create"),
   ]);
   return {
     ...Object.fromEntries(results),
@@ -79,6 +82,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     transitionTasks,
     rankTasks,
     manageProjectSettings,
+    bindProjectOrganisation,
   } as CapabilityMap;
 }
 
@@ -89,7 +93,8 @@ async function hasCanonicalCapability(
     | "workspace:manage_settings"
     | "work_item:transition"
     | "work_item:rank"
-    | "project:manage_settings",
+    | "project:manage_settings"
+    | "project:create",
 ): Promise<boolean> {
   const workspaceId = c.get("workspaceId");
   const userId = c.get("userId");

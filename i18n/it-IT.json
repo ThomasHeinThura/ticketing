@@ -101,7 +101,14 @@
 				"keyHint": "Usata per gli ID dei ticket (es. {{example}}-123)",
 				"createButton": "Crea Progetto",
 				"successToast": "Progetto creato con successo",
-				"errorToast": "Creazione progetto fallita"
+				"errorToast": "Creazione progetto fallita",
+				"organisationLabel": "Organizzazione cliente",
+				"organisationLoading": "Caricamento delle organizzazioni cliente...",
+				"organisationError": "Impossibile caricare le organizzazioni cliente.",
+				"organisationRetry": "Riprova",
+				"organisationEmpty": "Nessuna organizzazione cliente attiva per ora. Questo progetto sarà interno.",
+				"organisationNone": "Nessuna (progetto interno)",
+				"organisationHint": "Facoltativo. Si sceglie ora e non può essere modificata dopo la creazione del progetto."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
