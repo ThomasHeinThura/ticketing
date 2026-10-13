@@ -11146,6 +11146,15 @@
 								}
 							},
 							"required": ["low", "medium", "high", "urgent"]
+						},
+						"calendarsError": {
+							"type": "string"
+						},
+						"calendarsEmpty": {
+							"type": "string"
+						},
+						"calendarsCreate": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -11190,7 +11199,10 @@
 						"published",
 						"required",
 						"metrics",
-						"priorities"
+						"priorities",
+						"calendarsError",
+						"calendarsEmpty",
+						"calendarsCreate"
 					]
 				}
 			},

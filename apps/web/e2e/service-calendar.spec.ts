@@ -756,9 +756,12 @@ test("calendar list and editor expose loading states and meet the G13 shift budg
     `/agent/settings/calendars/${loadingCalendarId}`,
   );
   await fixture.editorResponseHeldPromise;
-  await expect(
-    page.getByRole("status", { name: "Loading service calendar" }),
-  ).toBeAttached();
+  const editorLoading = page.getByRole("status", {
+    name: "Loading service calendar",
+  });
+  await expect(editorLoading).toBeVisible();
+  // The shell must fill the layout; a shrink-wrapped main hides the skeleton.
+  expect((await editorLoading.boundingBox())?.width ?? 0).toBeGreaterThan(300);
   fixture.releaseEditorResponse();
   await editorLoadingNavigation;
   fixture.holdEditorResponse = false;

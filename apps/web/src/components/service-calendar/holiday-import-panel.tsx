@@ -1,4 +1,11 @@
-import { Alert, AlertDescription, AlertTitle, Button } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Input,
+  Label,
+} from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Holiday, ServiceCalendar } from "@/fetchers/service-calendar";
@@ -120,15 +127,16 @@ export function HolidayImportPanel({
           {t("import.description")}
         </p>
       </div>
-      <label className="block space-y-1 text-sm">
-        <span>{t("import.file")}</span>
-        <input
+      <div className="space-y-1 text-sm">
+        <Label htmlFor="holiday-import-file">{t("import.file")}</Label>
+        <Input
+          id="holiday-import-file"
           type="file"
           accept=".ics,text/calendar"
           aria-label={t("import.file")}
           onChange={(event) => void handleFile(event.currentTarget.files?.[0])}
         />
-      </label>
+      </div>
       {error ? (
         <Alert variant="error" role="alert">
           <AlertTitle>{t("import.errorTitle")}</AlertTitle>

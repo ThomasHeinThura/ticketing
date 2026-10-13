@@ -105,9 +105,11 @@ export function SlaPolicyEditor({ id }: { id: string }) {
     isError,
     refetch,
   } = useSlaPolicy(id, !isNew);
-  const { data: calendars, isLoading: calendarsLoading } = useServiceCalendars(
-    workspace?.id ?? "",
-  );
+  const {
+    data: calendars,
+    isLoading: calendarsLoading,
+    isError: calendarsError,
+  } = useServiceCalendars(workspace?.id ?? "");
   const {
     data: types,
     isLoading: typesLoading,
@@ -257,7 +259,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <main className="flex h-full flex-col gap-4 overflow-y-auto p-6">
+      <main className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
         <PageTitle title={t("editor.title")} />
         <div role="status" aria-label={t("editor.loading")}>
           <Skeleton className="h-12 w-2/3" />
@@ -269,7 +271,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
 
   if (!isNew && (isError || !policy)) {
     return (
-      <main className="flex h-full flex-col gap-4 overflow-y-auto p-6">
+      <main className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
         <PageTitle title={t("editor.title")} />
         <Alert variant="error">
           <AlertTitle>{t("editor.loadErrorTitle")}</AlertTitle>
@@ -299,7 +301,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
           isNew ? t("editor.newTitle") : (policy?.name ?? t("editor.title"))
         }
       />
-      <main className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+      <main className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
             <Button
@@ -417,6 +419,23 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                     ))}
                   </SelectContent>
                 </Select>
+                {calendarsError ? (
+                  <FieldError role="alert">
+                    {t("editor.calendarsError")}
+                  </FieldError>
+                ) : !calendarsLoading &&
+                  (calendars?.data ?? []).length === 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    {t("editor.calendarsEmpty")}{" "}
+                    <Link
+                      className="underline underline-offset-4"
+                      to={routes.serviceCalendarEditor.path}
+                      params={{ id: "new" }}
+                    >
+                      {t("editor.calendarsCreate")}
+                    </Link>
+                  </p>
+                ) : null}
               </Field>
               <Field>
                 <FieldLabel htmlFor="sla-policy-threshold">
@@ -489,10 +508,15 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                       className="space-y-4 rounded-lg border border-border p-4"
                       aria-label={type?.name ?? typeId}
                     >
-                      <h3 className="font-medium">{type?.name ?? typeId}</h3>
+                      <h3 id={`sla-type-${typeId}`} className="font-medium">
+                        {type?.name ?? typeId}
+                      </h3>
                       {METRICS.map((metric) => (
                         <div key={metric} className="space-y-2">
-                          <h4 className="text-sm font-medium">
+                          <h4
+                            id={`sla-metric-${typeId}-${metric}`}
+                            className="text-sm font-medium"
+                          >
                             {t(`editor.metrics.${metric}`)}
                           </h4>
                           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -510,7 +534,10 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                               );
                               return (
                                 <Field key={priority}>
-                                  <FieldLabel htmlFor={inputId}>
+                                  <FieldLabel
+                                    id={`${inputId}-label`}
+                                    htmlFor={inputId}
+                                  >
                                     {t(`editor.priorities.${priority}`)}
                                   </FieldLabel>
                                   <Input
@@ -531,6 +558,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                                     disabled={
                                       !canManage || isCheckingPermissions
                                     }
+                                    aria-labelledby={`sla-type-${typeId} sla-metric-${typeId}-${metric} ${inputId}-label`}
                                     aria-describedby="sla-goal-unit"
                                     aria-invalid={invalid}
                                   />

@@ -2722,7 +2722,10 @@
 				"medium": "Medium",
 				"high": "High",
 				"urgent": "Urgent"
-			}
+			},
+			"calendarsError": "Service calendars could not be loaded. Reload to retry.",
+			"calendarsEmpty": "No service calendars exist yet.",
+			"calendarsCreate": "Create a calendar"
 		}
 	},
 	"serviceCalendars": {

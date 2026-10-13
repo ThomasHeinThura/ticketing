@@ -2695,7 +2695,10 @@
 			"title": "SLA policy",
 			"types": "Included work-item types",
 			"typesError": "Work-item types could not be loaded.",
-			"typesHelp": "Included types must have eight goals before you can publish."
+			"typesHelp": "Included types must have eight goals before you can publish.",
+			"calendarsError": "Service calendars could not be loaded. Reload to retry.",
+			"calendarsEmpty": "No service calendars exist yet.",
+			"calendarsCreate": "Create a calendar"
 		},
 		"list": {
 			"active": "Active version {{version}}",

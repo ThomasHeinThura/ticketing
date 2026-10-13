@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -29,22 +30,20 @@ export function CalendarSummaryCard({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between gap-4">
-        <div className="min-w-0 space-y-1">
-          <CardTitle className="truncate">
-            <Link
-              className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              to={routes.serviceCalendarEditor.path}
-              params={{ id: calendar.id }}
-            >
-              {calendar.name}
-            </Link>
-          </CardTitle>
-          <CardDescription className="break-all">
-            {calendar.timezone}
-          </CardDescription>
-        </div>
-        <div className="shrink-0 text-right">
+      <CardHeader>
+        <CardTitle className="truncate">
+          <Link
+            className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            to={routes.serviceCalendarEditor.path}
+            params={{ id: calendar.id }}
+          >
+            {calendar.name}
+          </Link>
+        </CardTitle>
+        <CardDescription className="break-all">
+          {calendar.timezone}
+        </CardDescription>
+        <CardAction className="shrink-0 flex-col text-right">
           <div className="font-medium tabular-nums">
             {t("list.weeklyHours", { hours: weeklyCoverHours(weeklyMinutes) })}
           </div>
@@ -53,7 +52,7 @@ export function CalendarSummaryCard({
               count: calendar.holidays?.length ?? 0,
             })}
           </p>
-        </div>
+        </CardAction>
       </CardHeader>
       <CardContent className="pt-0">
         <p className="text-xs text-muted-foreground">

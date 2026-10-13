@@ -11544,8 +11544,8 @@
       "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]::text-muted-foreground#0",
       "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[1]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardHeader[0]/div[1]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardHeader[0]/CardAction[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCounts::dl[0]/div[0]/dt[0]::text-muted-foreground#0",
@@ -11562,6 +11562,7 @@
       "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#1",
+      "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/Field[2]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::text-muted-foreground#0",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
@@ -11857,18 +11858,6 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardHeader[0]/div[1]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/service-calendar/calendar-summary-card.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/service-calendar/calendar-summary-card.tsx:CalendarSummaryCard",
-          "jsx:Card[0]/CardHeader[0]/div[1]/p[0]",
-          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/service-calendar/calendar-summary-card.tsx",
         "surfaceContext": "imported-opaque-wrapper",
@@ -11876,6 +11865,18 @@
         "chain": [
           "apps/web/src/components/service-calendar/calendar-summary-card.tsx:CalendarSummaryCard",
           "jsx:Card[0]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardHeader[0]/CardAction[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/calendar-summary-card.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/calendar-summary-card.tsx:CalendarSummaryCard",
+          "jsx:Card[0]/CardHeader[0]/CardAction[0]/p[0]",
           "Card->packages/ui/src/components/card.tsx:Card>bg-card"
         ],
         "backdropLayers": []
@@ -12062,6 +12063,18 @@
         "chain": [
           "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
           "jsx:main[0]/form[0]/Card[1]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/Field[2]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "jsx:main[0]/form[0]/Card[0]/CardContent[0]/Field[2]/p[0]",
           "Card->packages/ui/src/components/card.tsx:Card>bg-card"
         ],
         "backdropLayers": []
@@ -13943,8 +13956,8 @@
       "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]::text-muted-foreground#0",
       "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[1]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardHeader[0]/div[1]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardHeader[0]/CardAction[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCounts::dl[0]/div[0]/dt[0]::text-muted-foreground#0",
@@ -13961,6 +13974,7 @@
       "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#1",
+      "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/Field[2]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::text-muted-foreground#0",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx::InstanceUsersPage::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
@@ -14256,18 +14270,6 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardHeader[0]/div[1]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/service-calendar/calendar-summary-card.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/service-calendar/calendar-summary-card.tsx:CalendarSummaryCard",
-          "jsx:Card[0]/CardHeader[0]/div[1]/p[0]",
-          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/service-calendar/calendar-summary-card.tsx",
         "surfaceContext": "imported-opaque-wrapper",
@@ -14275,6 +14277,18 @@
         "chain": [
           "apps/web/src/components/service-calendar/calendar-summary-card.tsx:CalendarSummaryCard",
           "jsx:Card[0]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardHeader[0]/CardAction[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/calendar-summary-card.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/calendar-summary-card.tsx:CalendarSummaryCard",
+          "jsx:Card[0]/CardHeader[0]/CardAction[0]/p[0]",
           "Card->packages/ui/src/components/card.tsx:Card>bg-card"
         ],
         "backdropLayers": []
@@ -14461,6 +14475,18 @@
         "chain": [
           "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
           "jsx:main[0]/form[0]/Card[1]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/Field[2]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "jsx:main[0]/form[0]/Card[0]/CardContent[0]/Field[2]/p[0]",
           "Card->packages/ui/src/components/card.tsx:Card>bg-card"
         ],
         "backdropLayers": []
