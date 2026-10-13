@@ -13,10 +13,10 @@ import { UserPreferencesEffects } from "@/components/providers/user-preferences-
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import { Route } from "./preferences";
 
-const putUserPreference = vi.hoisted(() => vi.fn());
-vi.mock("@/fetchers/user-preference/user-preferences", () => ({
-  getUserPreferences: vi.fn(),
-  putUserPreference,
+const patchUserSettings = vi.hoisted(() => vi.fn());
+vi.mock("@/fetchers/user-settings/user-settings", () => ({
+  getUserSettings: vi.fn(),
+  patchUserSettings,
 }));
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => options,
@@ -42,8 +42,8 @@ function pick(option: HTMLElement) {
 describe("preferences page density setter (#673)", () => {
   beforeEach(() => {
     localStorage.clear();
-    putUserPreference.mockReset();
-    putUserPreference.mockResolvedValue({});
+    patchUserSettings.mockReset();
+    patchUserSettings.mockResolvedValue({});
     useUserPreferencesStore.setState({ compactMode: false });
     document.documentElement.classList.remove("compact-mode");
   });
@@ -81,11 +81,7 @@ describe("preferences page density setter (#673)", () => {
     expect(document.documentElement).toHaveClass("compact-mode");
     // VW-6: the change is also persisted server-side.
     await waitFor(() =>
-      expect(putUserPreference).toHaveBeenCalledWith({
-        scope: "global",
-        key: "appearance.density",
-        value: "compact",
-      }),
+      expect(patchUserSettings).toHaveBeenCalledWith({ density: "compact" }),
     );
 
     fireEvent.click(screen.getByTestId("density-select"));

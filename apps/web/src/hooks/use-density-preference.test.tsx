@@ -14,29 +14,17 @@ const mocks = vi.hoisted(() => ({
   put: vi.fn(),
 }));
 
-vi.mock("@/fetchers/user-preference/user-preferences", () => ({
-  getUserPreferences: mocks.get,
-  putUserPreference: mocks.put,
+vi.mock("@/fetchers/user-settings/user-settings", () => ({
+  getUserSettings: mocks.get,
+  patchUserSettings: mocks.put,
 }));
 
 const user = { id: "user-1" } as never;
-const migratedKey = "taskdesk:preference-migrated:user-1:appearance.density";
-const dirtyKey = "taskdesk:preference-dirty:user-1:appearance.density";
+const migratedKey = "taskdesk:preference-migrated:user-1:density";
+const dirtyKey = "taskdesk:preference-dirty:user-1:density";
 
 function serverHas(density?: "comfortable" | "compact") {
-  mocks.get.mockResolvedValue({
-    scope: "global",
-    scopeId: null,
-    preferences: density
-      ? [
-          {
-            key: "appearance.density",
-            value: density,
-            updatedAt: "2026-10-14T00:00:00.000Z",
-          },
-        ]
-      : [],
-  });
+  mocks.get.mockResolvedValue({ settings: density ? { density } : {} });
 }
 
 function wrapper() {
@@ -74,11 +62,7 @@ describe("density preference sync (VW-6, views.md PREF-8)", () => {
       wrapper: wrapper(),
     });
     await waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(1));
-    expect(mocks.put).toHaveBeenCalledWith({
-      scope: "global",
-      key: "appearance.density",
-      value: "compact",
-    });
+    expect(mocks.put).toHaveBeenCalledWith({ density: "compact" });
     await waitFor(() => expect(localStorage.getItem(migratedKey)).toBe("1"));
     first.unmount();
 
@@ -126,11 +110,7 @@ describe("density preference sync (VW-6, views.md PREF-8)", () => {
 
     renderHook(() => useDensityPreferenceSync(), { wrapper: wrapper() });
     await waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(2));
-    expect(mocks.put).toHaveBeenLastCalledWith({
-      scope: "global",
-      key: "appearance.density",
-      value: "compact",
-    });
+    expect(mocks.put).toHaveBeenLastCalledWith({ density: "compact" });
     expect(useUserPreferencesStore.getState().compactMode).toBe(true);
     await waitFor(() => expect(localStorage.getItem(dirtyKey)).toBeNull());
   });
@@ -142,13 +122,28 @@ describe("density preference sync (VW-6, views.md PREF-8)", () => {
     });
     act(() => result.current.setDensity("compact"));
     await waitFor(() =>
-      expect(mocks.put).toHaveBeenCalledWith({
-        scope: "global",
-        key: "appearance.density",
-        value: "compact",
-      }),
+      expect(mocks.put).toHaveBeenCalledWith({ density: "compact" }),
     );
     await waitFor(() => expect(localStorage.getItem(dirtyKey)).toBeNull());
     expect(localStorage.getItem(migratedKey)).toBe("1");
+  });
+
+  it("never uploads another user's local density for a different user on a shared browser", async () => {
+    // user-0 chose compact in this browser and the copy is attributed to them.
+    useUserPreferencesStore.setState({ compactMode: true });
+    localStorage.setItem("taskdesk:preference-cache-owner:density", "user-0");
+    serverHas(undefined);
+
+    renderHook(() => useDensityPreferenceSync(), { wrapper: wrapper() });
+    await waitFor(() => expect(mocks.get).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(mocks.put).not.toHaveBeenCalled();
+    // The foreign value is not shown to the new user either.
+    expect(useUserPreferencesStore.getState().compactMode).toBe(false);
+    expect(
+      localStorage.getItem("taskdesk:preference-cache-owner:density"),
+    ).toBe("user-1");
   });
 });

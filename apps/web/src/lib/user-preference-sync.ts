@@ -1,5 +1,5 @@
 /**
- * Local-cache bookkeeping for server-synced preferences (views.md PREF-8).
+ * Local-cache bookkeeping for server-synced preferences (settings-hierarchy.md ST-17).
  *
  * A preference's browser copy is only a first-paint cache. Two per-user markers decide how it
  * reconciles with the server value:
@@ -101,4 +101,48 @@ export function reconcilePreference(input: {
   )
     return "push-local";
   return "none";
+}
+
+/**
+ * Who the browser copy belongs to. The persisted store is per browser, not per user, so a value
+ * written by one person must never be uploaded as another person's. A copy with no recorded
+ * owner predates this attribution and is claimed by the first user who signs in.
+ */
+function cacheOwnerKey(preferenceKey: string) {
+  return `taskdesk:preference-cache-owner:${preferenceKey}`;
+}
+
+export function getPreferenceCacheOwner(
+  storage: PreferenceMarkerStorage | undefined,
+  preferenceKey: string,
+): string | null {
+  if (!storage) return null;
+  try {
+    return storage.getItem(cacheOwnerKey(preferenceKey));
+  } catch {
+    return null;
+  }
+}
+
+export function setPreferenceCacheOwner(
+  storage: PreferenceMarkerStorage | undefined,
+  preferenceKey: string,
+  userId: string,
+) {
+  if (!storage) return;
+  try {
+    storage.setItem(cacheOwnerKey(preferenceKey), userId);
+  } catch {
+    // Unavailable storage: no cache survives anyway.
+  }
+}
+
+/** True when the browser copy is known to belong to a different user than `userId`. */
+export function isCacheOwnedByAnotherUser(
+  storage: PreferenceMarkerStorage | undefined,
+  preferenceKey: string,
+  userId: string,
+): boolean {
+  const owner = getPreferenceCacheOwner(storage, preferenceKey);
+  return owner !== null && owner !== userId;
 }
