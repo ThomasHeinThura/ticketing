@@ -101,7 +101,14 @@
 				"keyHint": "Використовується для ID тікетів (напр., {{example}}-123)",
 				"createButton": "Створити проєкт",
 				"successToast": "Проєкт успішно створено",
-				"errorToast": "Не вдалося створити проєкт"
+				"errorToast": "Не вдалося створити проєкт",
+				"organisationLabel": "Організація клієнта",
+				"organisationLoading": "Завантаження організацій клієнтів...",
+				"organisationError": "Не вдалося завантажити організації клієнтів.",
+				"organisationRetry": "Повторити",
+				"organisationEmpty": "Активних організацій клієнтів ще немає. Цей проєкт буде внутрішнім.",
+				"organisationNone": "Немає (внутрішній проєкт)",
+				"organisationHint": "Необов’язково. Обирається зараз і не може бути змінена після створення проєкту."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",

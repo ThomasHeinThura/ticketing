@@ -101,7 +101,14 @@
 				"keyHint": "チケットIDに使用されます (例: {{example}}-123)",
 				"createButton": "プロジェクトを作成",
 				"successToast": "プロジェクトを作成しました",
-				"errorToast": "プロジェクトの作成に失敗しました"
+				"errorToast": "プロジェクトの作成に失敗しました",
+				"organisationLabel": "顧客組織",
+				"organisationLoading": "顧客組織を読み込んでいます...",
+				"organisationError": "顧客組織を読み込めませんでした。",
+				"organisationRetry": "再試行",
+				"organisationEmpty": "有効な顧客組織はまだありません。このプロジェクトは社内向けになります。",
+				"organisationNone": "なし (社内プロジェクト)",
+				"organisationHint": "任意です。今選択し、プロジェクト作成後は変更できません。"
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",

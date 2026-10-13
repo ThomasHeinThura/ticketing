@@ -101,7 +101,14 @@
 				"keyHint": "用于工单 ID（例如 {{example}}-123）",
 				"createButton": "创建项目",
 				"successToast": "项目创建成功",
-				"errorToast": "项目创建失败"
+				"errorToast": "项目创建失败",
+				"organisationLabel": "客户组织",
+				"organisationLoading": "正在加载客户组织...",
+				"organisationError": "无法加载客户组织。",
+				"organisationRetry": "重试",
+				"organisationEmpty": "暂无活跃的客户组织。此项目将为内部项目。",
+				"organisationNone": "无（内部项目）",
+				"organisationHint": "可选。现在选择，项目创建后无法更改。"
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",

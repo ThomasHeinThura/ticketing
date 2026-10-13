@@ -101,7 +101,14 @@
 				"keyHint": "티켓 ID에 사용됩니다 (예: {{example}}-123)",
 				"createButton": "프로젝트 만들기",
 				"successToast": "프로젝트가 생성되었습니다",
-				"errorToast": "프로젝트 생성에 실패했습니다"
+				"errorToast": "프로젝트 생성에 실패했습니다",
+				"organisationLabel": "고객 조직",
+				"organisationLoading": "고객 조직을 불러오는 중...",
+				"organisationError": "고객 조직을 불러오지 못했습니다.",
+				"organisationRetry": "다시 시도",
+				"organisationEmpty": "활성 고객 조직이 아직 없습니다. 이 프로젝트는 내부 프로젝트가 됩니다.",
+				"organisationNone": "없음 (내부 프로젝트)",
+				"organisationHint": "선택 사항입니다. 지금 선택하며 프로젝트를 만든 후에는 변경할 수 없습니다."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",

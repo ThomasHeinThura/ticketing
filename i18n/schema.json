@@ -382,6 +382,27 @@
 								},
 								"errorToast": {
 									"type": "string"
+								},
+								"organisationLabel": {
+									"type": "string"
+								},
+								"organisationLoading": {
+									"type": "string"
+								},
+								"organisationError": {
+									"type": "string"
+								},
+								"organisationRetry": {
+									"type": "string"
+								},
+								"organisationEmpty": {
+									"type": "string"
+								},
+								"organisationNone": {
+									"type": "string"
+								},
+								"organisationHint": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -396,7 +417,14 @@
 								"keyHint",
 								"createButton",
 								"successToast",
-								"errorToast"
+								"errorToast",
+								"organisationLabel",
+								"organisationLoading",
+								"organisationError",
+								"organisationRetry",
+								"organisationEmpty",
+								"organisationNone",
+								"organisationHint"
 							]
 						},
 						"createWorkspace": {

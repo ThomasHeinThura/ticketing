@@ -101,7 +101,14 @@
 				"keyHint": "Talep kimlikleri için kullanılır (örn. {{example}}-123)",
 				"createButton": "Proje Oluştur",
 				"successToast": "Proje başarıyla oluşturuldu",
-				"errorToast": "Proje oluşturulamadı"
+				"errorToast": "Proje oluşturulamadı",
+				"organisationLabel": "Müşteri kuruluşu",
+				"organisationLoading": "Müşteri kuruluşları yükleniyor...",
+				"organisationError": "Müşteri kuruluşları yüklenemedi.",
+				"organisationRetry": "Yeniden dene",
+				"organisationEmpty": "Henüz etkin müşteri kuruluşu yok. Bu proje dahili olacak.",
+				"organisationNone": "Yok (dahili proje)",
+				"organisationHint": "İsteğe bağlı. Şimdi seçilir ve proje oluşturulduktan sonra değiştirilemez."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
