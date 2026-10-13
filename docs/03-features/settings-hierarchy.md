@@ -211,7 +211,9 @@ here for `VW-2` (layout) and `VW-6` (density).
   the row or the project existed. No setting is ever written for a project the person cannot
   reach.
 - `ST-16` **Size limits.** The request body is at most 4 KiB (`413`, same plain-text error shape
-  as every other API error), a project id at most 128 characters, a `PATCH` at most 20 keys, and
+  as every other API error), a project id matching `[A-Za-z0-9_-]{1,128}` (any other id,
+  including one with a NUL or other control character, is `422` on both set and clear), a
+  `PATCH` at most 20 keys, and
   a person holds at most 500 stored settings rows (`422 settings_limit` when a request would
   create one more; replacing an existing row is always allowed). The bound is exact: one
   person's writes take a per-person transaction advisory lock around the count and the upsert.
