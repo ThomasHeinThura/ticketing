@@ -201,27 +201,18 @@ function PortalCatalogue() {
               defaultValue: "Could not load the request catalogue or form.",
             })}
           </AlertDescription>
-          {catalogue.isError && (
-            <Button variant="outline" onClick={() => void catalogue.refetch()}>
-              {t("common:actions.retry", { defaultValue: "Retry" })}
-            </Button>
-          )}
-          {selectedType.isError && (
-            <Button
-              variant="outline"
-              onClick={() => void selectedType.refetch()}
-            >
-              {t("common:actions.retry", { defaultValue: "Retry" })}
-            </Button>
-          )}
-          {needsSelectionMetadata && selectionMetadata.isError && (
-            <Button
-              variant="outline"
-              onClick={() => void selectionMetadata.refetch()}
-            >
-              {t("common:actions.retry", { defaultValue: "Retry" })}
-            </Button>
-          )}
+          {/* One retry for every failed load, so the alert never shows duplicate buttons. */}
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (catalogue.isError) void catalogue.refetch();
+              if (selectedType.isError) void selectedType.refetch();
+              if (needsSelectionMetadata && selectionMetadata.isError)
+                void selectionMetadata.refetch();
+            }}
+          >
+            {t("common:actions.retry", { defaultValue: "Retry" })}
+          </Button>
         </Alert>
       )}
       <label className="flex flex-col gap-1" htmlFor="catalogue-search">
