@@ -1,8 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 function settle<T>(promise: Promise<T>) {
   return promise.then(

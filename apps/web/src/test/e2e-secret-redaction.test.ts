@@ -27,31 +27,55 @@ function tsFiles(dir: string): string[] {
   });
 }
 const isSpec = (path: string) => /\.(spec|bench)\.ts$/u.test(path);
-const showsSecret = (path: string) =>
-  SECRET_SCREEN_MARKERS.some((marker) =>
-    readFileSync(path, "utf8").includes(marker),
-  );
 
-// A spec counts as rendering secrets when it contains a marker itself or imports
-// a non-spec e2e helper module that does (for example a shared enrollment helper).
+// The real-backend fixture signs users up with generated passwords. Playwright's
+// failure context prints form VALUES, so any spec using it can publish them.
+const REAL_BACKEND_FIXTURE = "mfa-csrf-app-fixture";
+
+// A password field filled from a variable (a generated or fixture credential).
+// The statement must name the password before `.fill(` and pass a non-literal
+// argument, so mocked specs that only render a password input, or fill a
+// hard-coded placeholder string, are not flagged.
+const PASSWORD_FILL = /password[^;]*?\.fill\(\s*[A-Za-z_$]/iu;
+
+const stem = (path: string) =>
+  path.replace(/\.ts$/u, "").split("/").pop() as string;
+const importsModule = (source: string, name: string) =>
+  new RegExp(`from\\s+"[^"]*/${name}(\\.ts)?"`, "u").test(source);
+
+const rendersSecret = (source: string) =>
+  SECRET_SCREEN_MARKERS.some((marker) => source.includes(marker)) ||
+  PASSWORD_FILL.test(source) ||
+  importsModule(source, REAL_BACKEND_FIXTURE);
+
+// A spec counts as rendering secrets when it does itself (an MFA marker, a
+// password fill, or an import of the real-backend fixture) or imports a non-spec
+// e2e helper that does, directly or through other helpers.
 function renderingSpecs(): string[] {
   const all = e2eRoots.flatMap(tsFiles);
-  const secretHelpers = all
-    .filter((path) => !isSpec(path) && showsSecret(path))
-    .map((path) => path.replace(/\.ts$/u, "").split("/").pop() as string);
+  const sources = new Map(
+    all.map((path) => [path, readFileSync(path, "utf8")]),
+  );
+  const secretHelpers = new Set<string>([REAL_BACKEND_FIXTURE]);
+  const usesSecret = (source: string) =>
+    rendersSecret(source) ||
+    [...secretHelpers].some((helper) => importsModule(source, helper));
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const path of all) {
+      if (isSpec(path) || secretHelpers.has(stem(path))) continue;
+      if (usesSecret(sources.get(path) as string)) {
+        secretHelpers.add(stem(path));
+        grew = true;
+      }
+    }
+  }
   return all.filter(
-    (path) =>
-      isSpec(path) &&
-      (showsSecret(path) ||
-        secretHelpers.some((helper) =>
-          new RegExp(`from\\s+"[^"]*/${helper}(\\.ts)?"`, "u").test(
-            readFileSync(path, "utf8"),
-          ),
-        )),
+    (path) => isSpec(path) && usesSecret(sources.get(path) as string),
   );
 }
 
-describe("end-to-end specs that render MFA secrets", () => {
+describe("end-to-end specs that render secrets (MFA codes or passwords)", () => {
   const rendering = renderingSpecs();
 
   it("are found, so the guard is not vacuous", () => {
@@ -59,6 +83,15 @@ describe("end-to-end specs that render MFA secrets", () => {
       expect.arrayContaining([
         "apps/web/e2e/instance-users-journey.spec.ts",
         "apps/web/e2e/mfa-csrf-journey.spec.ts",
+        "apps/web/e2e/realtime.spec.ts",
+        "apps/web/e2e/work-item-comments-journey.spec.ts",
+        "tests/e2e/approvals-primary-journey.spec.ts",
+        "tests/e2e/approver-email-not-leaked.spec.ts",
+        "tests/e2e/customer-cannot-request-cab.spec.ts",
+        "tests/e2e/intake-primary-journey.spec.ts",
+        "tests/e2e/requester-cannot-self-approve.spec.ts",
+        "tests/e2e/service-operations-primary-journey.spec.ts",
+        "tests/e2e/users-primary-journey.spec.ts",
       ]),
     );
   });
