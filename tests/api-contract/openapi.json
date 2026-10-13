@@ -7447,7 +7447,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing project:read permission",
+            "description": "Missing project:read capability",
             "content": {
               "text/plain": {
                 "schema": {

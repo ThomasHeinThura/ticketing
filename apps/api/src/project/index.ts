@@ -186,7 +186,9 @@ const listProjectStatesRoute = createRoute({
     "An archived state template remains represented while its concrete project state is active.",
   middleware: [
     workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
-    requireWorkspacePermission({ project: ["read"] }),
+    // Strict canonical check, matching the declared `project:read` policy; never the
+    // legacy better-auth statement map (#708).
+    requireWorkspaceCapability("project:read"),
   ] as const,
   request: { params: z.object({ projectId: z.string() }) },
   responses: {
@@ -195,7 +197,7 @@ const listProjectStatesRoute = createRoute({
       z.array(projectStateSchema),
     ),
     400: errorResponse("Malformed project ID (including a NUL byte)"),
-    403: errorResponse("Missing project:read permission"),
+    403: errorResponse("Missing project:read capability"),
     404: errorResponse("Project not found or out of reach"),
   },
 });

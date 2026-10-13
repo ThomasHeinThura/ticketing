@@ -331,6 +331,84 @@ describe("API integration: GET /api/projects/{projectId}/states (VW-8)", () => {
     expect([400, 404]).toContain(missing.status);
   });
 
+  // Strict `project:read` (canonical built-in roles), not the legacy statement map (#708).
+  it.each([
+    ["viewer", 200],
+    ["member", 200],
+    ["lead", 200],
+    ["admin", 200],
+    ["customer", 403],
+  ])(
+    "the %s role gets %i under the strict project:read check, with project reach granted",
+    async (role, expected) => {
+      const actor = await createWorkspaceMember({ role });
+      const now = new Date();
+      if (role === "lead" || role === "customer") {
+        await db.insert(schema.workspaceRoleTable).values({
+          workspaceId: actor.workspace.id,
+          role,
+          permission: JSON.stringify({}),
+          isSystem: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      const { project } = await createProjectFixture({
+        workspaceId: actor.workspace.id,
+      });
+      await grantProjectRole(actor.user.id, project.id, [
+        "project:read",
+        "work_item:read",
+      ]);
+      mockAuthenticatedSession(actor.user);
+      const { app } = createApp();
+
+      const response = await app.request(`/api/projects/${project.id}/states`);
+      expect(response.status).toBe(expected);
+    },
+  );
+
+  it("denies a customer-side identity whose stored legacy map claims project read", async () => {
+    // The legacy statement map would say yes; the canonical customer role holds no
+    // project:read, so the strict gate must still answer 403.
+    const customer = await createWorkspaceMember({ role: "customer" });
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: customer.workspace.id,
+      role: "customer",
+      permission: JSON.stringify({ project: ["read"] }),
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const { project } = await createProjectFixture({
+      workspaceId: customer.workspace.id,
+    });
+    await grantProjectRole(customer.user.id, project.id, ["project:read"]);
+    mockAuthenticatedSession(customer.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/projects/${project.id}/states`);
+    expect(response.status).toBe(403);
+  });
+
+  it("allows a viewer whose stored legacy map is empty, because the canonical viewer role holds project:read", async () => {
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    await db
+      .update(schema.workspaceRoleTable)
+      .set({ permission: JSON.stringify({}) })
+      .where(eq(schema.workspaceRoleTable.workspaceId, viewer.workspace.id));
+    const { project } = await createProjectFixture({
+      workspaceId: viewer.workspace.id,
+    });
+    await grantProjectRole(viewer.user.id, project.id, ["project:read"]);
+    mockAuthenticatedSession(viewer.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/projects/${project.id}/states`);
+    expect(response.status).toBe(200);
+  });
+
   it("requires authentication", async () => {
     const { project } = await reachableProject();
     mockAnonymousSession();
