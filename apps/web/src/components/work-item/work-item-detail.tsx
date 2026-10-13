@@ -27,6 +27,7 @@ import {
 import WorkItemActivity, { type ActivityFilter } from "./work-item-activity";
 import WorkItemApprovals from "./work-item-approvals";
 import WorkItemDetailLoading from "./work-item-detail-loading";
+import WorkItemJourney from "./work-item-journey";
 
 export type WorkItemDetailProps = {
   item: WorkItemDetailRow | undefined;
@@ -42,6 +43,9 @@ export type WorkItemDetailProps = {
   isNotFound: boolean;
   isError: boolean;
   onRetry: () => void;
+  /** A mutation (edit, state change, assignment) answered 404: the item is gone or no
+   * longer reachable. The owner of the data shows the not-found state. */
+  onAccessLost: () => void;
 };
 
 const FIELD_LABEL_KEYS: Record<WorkItemDetailField, string> = {
@@ -83,7 +87,9 @@ function UnavailableField({
  * assignee, priority and due date in the header; the description in the body; everything
  * else in a collapsible section. The spec's remaining sections (activity and comments,
  * relations, attachments, SLA, time entries) are separate
- * `screen-inventory.md` rows and separate slices; editing is likewise later work.
+ * `screen-inventory.md` rows and separate slices. Edit, state change and assignment
+ * (`WorkItemJourney`) sit under the description, each gated on the server's strict
+ * capability for the item's workspace.
  *
  * Four states, matching G6 with a record view's own shape of them: loading (skeleton),
  * error (retryable alert), not-found (the 404 the route deliberately distinguishes --
@@ -108,6 +114,7 @@ function WorkItemDetail({
   isNotFound,
   isError,
   onRetry,
+  onAccessLost,
 }: WorkItemDetailProps) {
   const { t } = useTranslation();
 
@@ -249,6 +256,8 @@ function WorkItemDetail({
           </p>
         )}
       </section>
+
+      <WorkItemJourney item={item} onAccessLost={onAccessLost} />
 
       <Separator />
 
