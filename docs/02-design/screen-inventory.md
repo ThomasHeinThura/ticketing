@@ -128,9 +128,10 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Workspace — states | `/agent/settings/states` | route | P1 | ⬜ |
 | Workspace — workflows | `/agent/settings/workflows` | route | P2 | ⬜ |
 | Workflow editor | `/agent/settings/workflows/{id}` | route | P2 | ⬜ |
-| Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | ⬜ |
-| SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | ⬜ |
-| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | ⬜ |
+| Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | 🟡 |
+| SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | 🟡 |
+| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | 🟡 |
+| Service calendar editor | `/agent/settings/calendars/{id}` | route | P2 | 🟡 |
 | Workspace request types and selected editor | `/agent/settings/request-types?requestTypeId={id}` | route | P2 | 🟡 |
 | Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ⬜ |
 | Custom field editor | `/agent/settings/custom-fields/{id}` | route | P4 | ⬜ |
@@ -216,12 +217,12 @@ build if it drifts.
 | --- | --- |
 | P0 Foundation | 8 |
 | P1 Core work | 33 |
-| P2 Service desk | 15 |
+| P2 Service desk | 16 |
 | P3 Portal & identity | 23 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **138** |
+| **Total** | **139** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see
