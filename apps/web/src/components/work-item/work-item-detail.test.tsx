@@ -48,6 +48,7 @@ vi.mock("./work-item-activity", () => ({
 
 vi.mock("./work-item-journey", () => ({
   default: ({ onAccessLost }: { onAccessLost: () => void }) => (
+    // ui-exempt: test double standing in for the journey panel's access-loss trigger
     <button
       type="button"
       data-testid="work-item-journey-stub"

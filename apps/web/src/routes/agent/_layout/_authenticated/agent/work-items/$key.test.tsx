@@ -55,9 +55,12 @@ vi.mock("@/components/work-item/load-work-item-detail", () => ({
             {props.project?.name ?? "none"}
           </span>
           <span data-testid="stub-not-found">{String(props.isNotFound)}</span>
-          <button type="button" onClick={props.onAccessLost}>
-            lose access
-          </button>
+          {
+            // ui-exempt: test double exposing the detail view's access-loss callback
+            <button type="button" onClick={props.onAccessLost}>
+              lose access
+            </button>
+          }
         </div>
       ),
     }),
