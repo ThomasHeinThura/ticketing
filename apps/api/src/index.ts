@@ -78,6 +78,7 @@ import {
 import resetMfa from "./instance/reset-mfa";
 import { ensureSetupToken } from "./instance/setup-token";
 import users from "./instance/users";
+import intake from "./intake";
 import invitation from "./invitation";
 import label from "./label";
 import { migrateColumns } from "./migrations/column-migration";
@@ -112,6 +113,7 @@ import { initializePlugins } from "./plugins";
 // refuses boot (#8 Slice 0). Keep the import even if its one use below moves: without a use,
 // the bundler drops it and the check silently stops running.
 import { policyRegistry } from "./policy-registry";
+import { isPortalClientRoute } from "./portal-client-routes";
 import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
@@ -340,6 +342,45 @@ function matchesPortalPolicyRoute(method: string, path: string): boolean {
   });
 }
 
+/**
+ * CP-19 carve-out: the filesystem driver's signed upload/download routes are admitted on
+ * the portal host ONLY for portal submission attachment objects. Presign (a `kind: portal`
+ * route) mints a URL on the requesting origin, so without this a customer's presigned PUT
+ * or download redirect would hit the portal host's blanket `/api` denial. The handler still
+ * verifies the HMAC token that binds the exact key, size ceiling and expiry; no session
+ * is involved. Agent/work-item keys (`.../work-item/...`) and any other key shape stay
+ * denied by host, and every other agent route stays unreachable.
+ */
+const PORTAL_SUBMISSION_ATTACHMENT_KEY =
+  /^workspace\/[A-Za-z0-9_-]+\/submission\/[A-Za-z0-9_-]+\/attachment\/[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+$/u;
+/**
+ * `complete` moves the object to `<pending dir>/final/<cuid2 token>-<file>`
+ * (`toFinalAttachmentObjectKey`), and the attachment row then points at that key, so a
+ * download redirect carries it. Downloads only: nothing ever mints an upload token for a
+ * finalized key.
+ */
+const PORTAL_SUBMISSION_FINAL_ATTACHMENT_KEY =
+  /^workspace\/[A-Za-z0-9_-]+\/submission\/[A-Za-z0-9_-]+\/attachment\/[A-Za-z0-9_-]+\/final\/[a-z0-9]+-[A-Za-z0-9_.-]+$/u;
+
+function isPortalSubmissionStorageRequest(
+  method: string,
+  path: string,
+  key: string | undefined,
+): boolean {
+  if (key === undefined || key.includes("..")) return false;
+  if (method === "PUT" && path === "/api/storage/filesystem-attachment-upload")
+    return PORTAL_SUBMISSION_ATTACHMENT_KEY.test(key);
+  if (
+    (method === "GET" || method === "HEAD") &&
+    path === "/api/storage/filesystem-download"
+  )
+    return (
+      PORTAL_SUBMISSION_ATTACHMENT_KEY.test(key) ||
+      PORTAL_SUBMISSION_FINAL_ATTACHMENT_KEY.test(key)
+    );
+  return false;
+}
+
 function isCustomerAuthEndpoint(method: string, path: string): boolean {
   if (CUSTOMER_AUTH_ENDPOINTS.has(`${method} ${path}`)) return true;
   if (isCustomerLocalAuthEndpoint(method, path)) return true;
@@ -565,7 +606,12 @@ function registerStaticServing(
 
     const lastSegment = c.req.path.split("/").pop() ?? "";
     if (lastSegment.includes(".")) return next();
-    if (surface === "portal") return c.notFound();
+    if (surface === "portal") {
+      // CP-19: only registered portal client routes get the portal shell; never agent files.
+      return isPortalClientRoute(c.req.path)
+        ? serveIndex(c, next)
+        : c.notFound();
+    }
     return serveIndex(c, next);
   };
   declareCatchAllMiddleware(serveStaticOrSpaShell);
@@ -669,19 +715,17 @@ export function createApp(
     c.set("appOrigin", selected);
     c.set("appPublicOrigin", publicOriginForKind(selected, origins));
     if (selected === "portal") {
-      if (isApiRequestPath(c.req.path)) {
-        if (
-          !isCustomerAuthEndpoint(c.req.method, c.req.path) &&
-          !matchesPortalPolicyRoute(c.req.method, c.req.path)
-        )
-          return denyByHost(c);
-      }
+      const portalAllowed =
+        isCustomerAuthEndpoint(c.req.method, c.req.path) ||
+        matchesPortalPolicyRoute(c.req.method, c.req.path) ||
+        isPortalSubmissionStorageRequest(
+          c.req.method,
+          c.req.path,
+          c.req.query("key"),
+        );
+      if (isApiRequestPath(c.req.path) && !portalAllowed) return denyByHost(c);
       if (c.req.method !== "GET" && c.req.method !== "HEAD")
-        if (
-          !isApiRequestPath(c.req.path) ||
-          (!isCustomerAuthEndpoint(c.req.method, c.req.path) &&
-            !matchesPortalPolicyRoute(c.req.method, c.req.path))
-        )
+        if (!isApiRequestPath(c.req.path) || !portalAllowed)
           return denyByHost(c);
     }
     return next();
@@ -1479,6 +1523,7 @@ export function createApp(
   const workItemApi = api.route("/", workItem);
   const workItemCommentVersionsApi = api.route("/", workItemCommentVersions);
   const approvalApi = api.route("/", approval);
+  const intakeApi = api.route("/", intake);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
   const viewApi = api.route("/views", view);
@@ -1856,6 +1901,7 @@ export function createApp(
     scimProtocolApi,
     invitationApi,
     invitationPublicApi,
+    intakeApi,
     oauthApi,
     labelApi,
     notificationApi,
@@ -2239,6 +2285,7 @@ const {
   scimProtocolApi,
   invitationApi,
   invitationPublicApi,
+  intakeApi,
   oauthApi,
   labelApi,
   notificationApi,
@@ -2339,6 +2386,7 @@ export type AppType =
   | typeof userApi
   | typeof viewApi
   | typeof invitationPublicApi
+  | typeof intakeApi
   | typeof oauthApi
   | typeof capabilitiesApi;
 

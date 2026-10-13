@@ -148,9 +148,9 @@ const expectedVisualJobLines = [
   "        uses: ./.github/actions/change-scope",
   "      - uses: ./.github/actions/setup",
   `        if: ${SCOPE_IF}`,
-  "      - name: Build the permissions package used by the web bundle",
+  "      - name: Build the web bundle and its transitive workspace dependencies",
   `        if: ${SCOPE_IF}`,
-  "        run: pnpm --filter @taskdesk/permissions build",
+  "        run: pnpm build --filter=@taskdesk/web... --force",
   "      - name: Normalize Ubuntu APT mirror for Chromium dependencies",
   "        if: ${{ steps.scope.outputs.full != 'false' }}",
   "        run: node scripts/ci/normalize-ubuntu-apt-mirror.mjs",
@@ -1782,10 +1782,20 @@ function navigationMatchesApplicationRoute(
   );
   const actualPath = actualUrl.pathname;
   const expectedPath = applicationRoute;
-  if (
-    actualUrl.search !== expectedUrl.search ||
-    actualUrl.hash !== expectedUrl.hash
-  ) {
+  const expectedSearch = [...expectedUrl.searchParams.entries()];
+  const actualSearch = [...actualUrl.searchParams.entries()];
+  const queryMatches =
+    expectedSearch.length === actualSearch.length &&
+    expectedSearch.every(([name, expected], index) => {
+      const [actualName, actual] = actualSearch[index] ?? [];
+      return (
+        name === actualName &&
+        (expected.match(/^\{[^{}]+\}$/u)
+          ? actual.length > 0
+          : actual === expected)
+      );
+    });
+  if (!queryMatches || actualUrl.hash !== expectedUrl.hash) {
     return false;
   }
   const actualSegments = actualPath.split("/").filter(Boolean);
@@ -3250,10 +3260,6 @@ let mappedScreenshotAssertions = 0;
 for (const screen of manifest) {
   if (screen.origin !== undefined && screen.origin !== "portal")
     failures.push(`${screen.name} has an unsupported visual origin`);
-  if (screen.origin === "portal" && screen.applicationRoute !== "/")
-    failures.push(
-      `${screen.name} portal visual route must use the independent root path`,
-    );
   if (seenTests.has(screen.test))
     failures.push(`duplicate test name: ${screen.test}`);
   seenTests.add(screen.test);

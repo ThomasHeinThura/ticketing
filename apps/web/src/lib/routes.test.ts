@@ -5,8 +5,12 @@ import {
   DEFAULT_WORK_ITEM_LIST_SEARCH,
   parseGeneratedRouteUrl,
   parseGodModeUsersSearch,
+  parseIntakeSearch,
   parsePendingActionsSearch,
   parsePendingActionsSearchFromQueryString,
+  parsePortalCatalogueSearch,
+  parsePortalSignInSearch,
+  parseRequestTypeEditorSearch,
   parseWorkItemDetailSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
@@ -109,7 +113,13 @@ describe("G5 route metadata", () => {
     expect(generatedRouteMetadata.agent).toContain(
       "/agent/projects/$projectKey/work",
     );
-    expect(generatedRouteMetadata.portal).toEqual(["/"]);
+    expect(generatedRouteMetadata.agent).toContain(
+      "/agent/settings/request-types",
+    );
+    expect(generatedRouteMetadata.agent).toContain("/agent/triage");
+    expect(generatedRouteMetadata.portal).toContain("/catalogue");
+    expect(generatedRouteMetadata.portal).toContain("/sign-in");
+    expect(generatedRouteMetadata.portal).toContain("/submissions/$ref");
   });
 
   it("round-trips the portal root URL through its route helper", () => {
@@ -163,6 +173,63 @@ describe("routes.workItemDetail", () => {
       activity: "comments",
     });
     expect(parseWorkItemDetailSearch({ activity: "unknown" })).toEqual({});
+  });
+});
+
+describe("canonical intake URLs", () => {
+  it("round-trips queue filters and selected submission through the URL", () => {
+    const url = routes.intakeQueue.build({
+      state: "clarifying",
+      ref: "SUB-12",
+    });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    const parsed = parseIntakeSearch(search);
+    expect(parsed).toEqual({ state: "clarifying", ref: "SUB-12" });
+    expect(routes.intakeQueue.build(parsed)).toBe(url);
+  });
+
+  it("round-trips request type selection through the editor URL", () => {
+    const url = routes.requestTypes.build({ requestTypeId: "type/with space" });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    const parsed = parseRequestTypeEditorSearch(search);
+    expect(parsed).toEqual({ requestTypeId: "type/with space" });
+    expect(routes.requestTypes.build(parsed)).toBe(url);
+  });
+
+  it("round-trips catalogue search and selected type through its URL", () => {
+    const url = routes.portalCatalogue.build({
+      q: "hardware help",
+      key: "printer",
+    });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    const parsed = parsePortalCatalogueSearch(search);
+    expect(parsed).toEqual({ q: "hardware help", key: "printer" });
+    expect(routes.portalCatalogue.build(parsed)).toBe(url);
+  });
+
+  it("round-trips sign-in stage and factor choice without placing credentials in the URL", () => {
+    const url = routes.portalSignIn.build({
+      stage: "factor",
+      factor: "backup",
+    });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    expect(parsePortalSignInSearch(search)).toEqual({
+      stage: "factor",
+      factor: "backup",
+    });
+    expect(routes.portalSignIn.build(parsePortalSignInSearch(search))).toBe(
+      url,
+    );
+    expect(url).not.toMatch(/@|password|code/iu);
+  });
+
+  it("preserves in-progress whitespace in catalogue search URLs", () => {
+    const url = routes.portalCatalogue.build({ q: "printer " });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    expect(parsePortalCatalogueSearch(search)).toEqual({ q: "printer " });
+    expect(
+      routes.portalCatalogue.build(parsePortalCatalogueSearch(search)),
+    ).toBe(url);
   });
 });
 

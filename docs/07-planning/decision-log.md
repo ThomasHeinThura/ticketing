@@ -11,6 +11,76 @@ immutable finding is added to `.gitleaksignore`. The required scanner still runs
 path/rule exemption, history rewrite, threshold change, report edit or scanner bypass. A
 changed-fingerprint positive control is recorded, and the change receives a fresh
 independent security rebind before merge.
+### 2026-10-12 · Owner approves serving the portal shell for registered portal client routes
+
+**Decision:** Thomas decided: "Serve app for known routes." The portal host serves its own
+`index.html` (for `GET` and `HEAD`) for its registered client routes, for example `/sign-in`,
+`/catalogue` and the request detail route. Every other extensionless portal path, every
+extension-bearing missing asset and every non-`GET`/`HEAD` request keeps its current 404
+behaviour, the 503 for a missing portal root stays, and the portal never falls back to agent
+files or the agent SPA. Host selection and the portal `/api` denial still run first, as
+CP-19 orders them.
+
+**Why:** the real Intake journey showed a customer could not open, reload or bookmark
+`portal.<host>/sign-in` because every non-asset portal path returned 404.
+
+**Supersedes (in operative effect):** the CP-19 sentence "unmatched portal paths are 404",
+now "registered portal client routes serve the portal shell; everything else is 404". The
+historical P0 two-entry host and static acceptance record is not rewritten. The allowlist is
+`apps/api/src/portal-client-routes.ts`, checked by test against the generated portal route
+tree. Reversal: restore `c.notFound()` for the portal surface.
+
+**Source:** Thomas, directly to the Claude Opus delivery conductor session, 2026-10-12.
+**Recorded by:** Claude Sonnet 5.5 (claude-sonnet-5-5), at the conductor's instruction.
+
+---
+
+### 2026-10-12 · Owner approves narrow customer local-password sign-in UI
+
+**Decision:** Thomas approves `/sign-in` asking for email, then password, using only the
+existing portal auth endpoints for already admitted customers. Complete existing TOTP and
+backup-code challenges, present one generic failure for credentials, customer admission or
+password-provider availability, and send successful users to `/catalogue`.
+
+**Limits:** Registration, invitations and typed-domain SSO remain held. The email-first
+step is local and supplies no discovery endpoint or provider/account inventory. No new
+backend endpoint, provider default, identity admission, session/cookie/Host/Origin authority,
+capability, schema, dependency or continuation redirect is approved. This settles the
+previously undefined local UI/redirect decision only; it does not settle the CP-11/CP-12
+admission adapter or CP-18/IP-29 typed-domain SSO contract, waive gates or establish browser,
+security, release, deployment or stage acceptance. Required-file/custom-field/God Mode
+intake assignment and the separate request-type deletion decision remain held/pending.
+
+**Exact answer:** “Approve this narrow customer sign-in scope (Recommended)”. The exact
+question and response are preserved in
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/664-portal-local-password-owner-decision.json`,
+with the approved proposal's SHA-256. The owning CP-18 specification records the bounded flow.
+
+**Source:** Thomas's direct reply in Codex conductor chat
+`01a12921-4863-7c42-ac59-1822c69b88cd`, 2026-10-12.
+**Recorded by:** root Codex conductor; platform-visible GPT-6 family.
+
+---
+
+### 2026-10-12 · Owner approves the internal web-domain workspace dependency
+
+**Decision:** Thomas approves adding the existing internal `@taskdesk/domain` workspace package as a dependency of `apps/web`, using `workspace:*` and the frozen-lockfile importer link `link:../../packages/domain`. Intake portal and editor validation/visibility must call the canonical domain implementation rather than duplicate its semantics.
+
+**Limits:** This approval covers this one internal workspace dependency only. It adds no third-party package, authority, feature, route, schema, migration or environment setting; it does not resolve required-file mappings, custom-field mappings or God Mode catalogue assignment. Intake remains default-off under the previously scoped D5 exception. This dependency decision is not feature, independent-review, browser, CI, release or stage acceptance.
+
+**Exact answer:** “Approve the internal workspace dependency”. The concrete package/lock importer patch and exact answer are preserved in `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/intake-web-domain-dependency-proposal.patch` and `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/intake-web-domain-dependency-owner-decision.json` (proposal SHA-256 `0225f18e8c0d1cfaf85d4ef7a8aa665be9b007cea4d774ade3fa555b8fea8141`).
+
+**Recorded by:** Codex delivery conductor, 2026-10-12.
+
+---
+
+### 2026-10-12 · Record intake attachment redirect-only findings under the existing Redocly exception mechanism
+
+**Factual integration record; not a new owner decision, product contract, or waiver.** The two selected intake attachment download operations, `GET /portal/submissions/{ref}/attachments/{id}` and `GET /submissions/{ref}/attachments/{id}`, currently declare and return only `302` to a presigned download URL after their respective authorization checks. This is consistent with the existing AT-5/AT-6 attachment download contract and the established 2026-09-28 `GET /attachments/{id}` redirect-only treatment above. The candidate records only their exact `operation-2xx-response` rule/pointer findings in `scripts/ci/redocly-approved-findings.json`, tied to this PR under the existing `(rule, pointer)` exception mechanism. It does not add a `200` response, change route behavior, suppress Redocly's own ignore mechanism, change thresholds, or approve other findings. The exact entries still require full independent GPT-6 Sol review before merge.
+
+**Recorded by:** intake lane, 2026-10-12; factual source is the existing route declarations in `apps/api/src/attachment/index.ts`, AT-5/AT-6 in `docs/03-features/attachments.md`, and the accepted 2026-09-28 allowlist decision above.
+
+---
 
 ### 2026-10-12 · Technical disposition: public review filenames secret-scan false positives
 
@@ -25,6 +95,7 @@ to `.gitleaksignore`. The required scanner still runs: no path/rule exemption, h
 threshold change, report edit or scanner bypass. A changed-fingerprint positive control and
 fresh independent ordinary plus full security review are required before merge. Original
 hosted/local failures, report bytes and source bindings remain preserved.
+
 
 ### 2026-10-11 · Owner approves bounded boot-refusal test deadlines
 
@@ -887,6 +958,8 @@ Apply the user's full-implementation-first cadence to the remaining measured sta
 Under Thomas's standing instruction to continue work and use three actual issue-free development/UAT observation dates, the orchestrator schedules two quiet thread heartbeat runs (`p0-remaining-evidence-dates`) for the remaining October 5/6 observations at local 21:30. Each must acquire actual source-bound traffic, compare tested policy behavior with the retained October 4 manifest, preserve immutable records, reconcile complete outcomes/events and eligible source coverage, and record explicit normative explanations. Current-day partial coverage is not a full-day or 72-hour claim. Time passing neither clears known failures nor authorizes protected merge, enforcement or stage completion. Required independent review, exact CI and the additional Sol finalizer remain. The follow-ups stay quiet unless there is a meaningful failure, a user-only blocker or completed acceptance; they do not create separate user-owned chats or message others.
 
 # Decision log
+
+
 
 Decisions too small for an [ADR](../01-architecture/adr/README.md) but worth recording:
 dependency choices, convention changes, scope calls, gate waivers.

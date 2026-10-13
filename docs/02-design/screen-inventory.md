@@ -39,7 +39,6 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
 | Inbox | `/agent/inbox` | route | P1 | ⬜ |
 | My work | `/agent/my-work` | route | P1 | ⬜ |
-| Triage | `/agent/triage` | route | P2 | ⬜ |
 | Command palette | — | overlay | P1 | ⬜ |
 | Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | ⬜ |
 | Global search results | `/agent/search` | route | P1 | ⬜ |
@@ -84,8 +83,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Intake queue | `/agent/triage?tab=intake` | route | P2 | ⬜ |
-| Submission detail | `/agent/submissions/{ref}` | route | P2 | ⬜ |
+| Intake queue and submission detail | `/agent/triage?state=new&ref={ref}` | route | P2 | 🟡 |
 | Approvals inbox | `/agent/my-work?lens=approvals` | route | P2 | ⬜ |
 | Services list | `/agent/service-management/services` | route | P5 | ⬜ |
 | Service detail | `/agent/service-management/services/{id}` | route | P5 | ⬜ |
@@ -133,8 +131,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | ⬜ |
 | SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | ⬜ |
 | Workspace — service calendars | `/agent/settings/calendars` | route | P2 | ⬜ |
-| Workspace — request types | `/agent/settings/request-types` | route | P2 | ⬜ |
-| Request type editor / form builder | `/agent/settings/request-types/{id}` | route | P2 | ⬜ |
+| Workspace request types and selected editor | `/agent/settings/request-types?requestTypeId={id}` | route | P2 | 🟡 |
 | Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ⬜ |
 | Custom field editor | `/agent/settings/custom-fields/{id}` | route | P4 | ⬜ |
 | Section manager (reorder sections, move fields between them — [custom-fields.md](../03-features/custom-fields.md)) | — | section | P4 | ⬜ |
@@ -189,7 +186,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Portal unavailable notice (P0 interim state) | `/` | route | P0 | 🟡 |
-| Sign in | `/portal/sign-in` | route | P3 | ⬜ |
+| Sign in | `/sign-in` | route | P3 | 🟡 |
 | Accept invitation | `/portal/invite` | route | P3 | ⬜ |
 | Home | `/portal` | route | P3 | ⬜ |
 | My requests | `/portal/requests` | route | P3 | ⬜ |
@@ -197,6 +194,8 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Submission page (pre-acceptance, same URL) | `/portal/requests/{ref}` | section | P3 | ⬜ |
 | Catalogue | `/portal/new` | route | P3 | ⬜ |
 | Request form | `/portal/new/{typeKey}` | route | P3 | ⬜ |
+| Customer portal — request catalogue and selected form | `/catalogue?q=no-match&key=access` | route | P3 | 🟡 |
+| Customer portal — submission detail | `/submissions/{ref}` | route | P3 | 🟡 |
 | Approvals | `/portal/approvals` | route | P3 | ⬜ |
 | Projects list | `/portal/projects` | route | P3 | ⬜ |
 | Project detail | `/portal/projects/{key}` | route | P3 | ⬜ |
@@ -215,14 +214,14 @@ build if it drifts.
 
 | Stage | Screens |
 | --- | --- |
-| P0 Foundation | 7 |
+| P0 Foundation | 8 |
 | P1 Core work | 33 |
-| P2 Service desk | 18 |
-| P3 Portal & identity | 21 |
+| P2 Service desk | 15 |
+| P3 Portal & identity | 23 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **139** |
+| **Total** | **138** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see

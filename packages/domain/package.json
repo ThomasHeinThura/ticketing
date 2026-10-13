@@ -9,6 +9,10 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
+		},
+		"./intake": {
+			"types": "./dist/intake/index.d.ts",
+			"default": "./dist/intake/index.js"
 		}
 	},
 	"license": "MIT",

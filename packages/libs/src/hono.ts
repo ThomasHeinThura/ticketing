@@ -20,6 +20,14 @@ const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 export interface ApiFetchOptions {
   /** Configured client base, including the API path; injectable for tests. */
   apiBaseUrl?: string;
+  /**
+   * Whether unsafe requests obtain and send the agent session CSRF token from
+   * `/me/csrf-token`. That issuer is an agent-only route (CP-19: the portal host
+   * returns 404 for it), so the customer portal build must not call it; portal
+   * unsafe requests are protected server-side by an exact portal Origin check.
+   * Defaults to false for the Vite `portal` mode and true otherwise.
+   */
+  agentCsrfToken?: boolean;
 }
 
 function resolvedUrl(input: RequestInfo | URL, baseUrl: URL): URL | undefined {
@@ -123,6 +131,8 @@ export function createApiFetch(
   options: ApiFetchOptions = {},
 ) {
   const baseUrlValue = options.apiBaseUrl ?? apiUrl;
+  const agentCsrfToken =
+    options.agentCsrfToken ?? import.meta.env.MODE !== "portal";
   const baseUrl = new URL(
     baseUrlValue,
     globalThis.location?.origin ?? "http://localhost",
@@ -163,7 +173,8 @@ export function createApiFetch(
     const isBetterAuthRoute =
       target.pathname === authBasePath ||
       target.pathname.startsWith(`${authBasePath}/`);
-    const needsCsrf = !safeMethods.has(method) && !isBetterAuthRoute;
+    const needsCsrf =
+      agentCsrfToken && !safeMethods.has(method) && !isBetterAuthRoute;
 
     const requestInit = needsCsrf
       ? { ...init, redirect: "error" as const }

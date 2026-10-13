@@ -1869,6 +1869,39 @@
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:RequestTypesPage",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -2979,6 +3012,39 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:RequestTypesPage",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -6539,7 +6605,24 @@
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/time[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#1",
-      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/details[0]/summary[0]::text-muted-foreground#0"
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/details[0]/summary[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/ul[0]/li[0]/Button[0]/span[3]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#1",
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/header[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#1",
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -8343,6 +8426,244 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/ul[0]/li[0]/Button[0]/span[3]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/catalogue.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:/catalogue",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/catalogue.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:/catalogue",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/routes/portal/catalogue.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:/catalogue",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/submissions/$ref.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/header[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/submissions/$ref.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/submissions/$ref.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/routes/portal/submissions/$ref.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/submissions/$ref.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:RequestTypesPage",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -8479,7 +8800,24 @@
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/time[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#1",
-      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/details[0]/summary[0]::text-muted-foreground#0"
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/details[0]/summary[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/ul[0]/li[0]/Button[0]/span[3]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#1",
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/header[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#1",
+      "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -10283,6 +10621,244 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/ul[0]/li[0]/Button[0]/span[3]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::main[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/catalogue.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:/catalogue",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/catalogue.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:/catalogue",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/routes/portal/catalogue.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:/catalogue",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/submissions/$ref.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/header[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/submissions/$ref.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/submissions/$ref.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/routes/portal/submissions/$ref.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionPage::main[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/submissions/$ref.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:RequestTypesPage",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -12774,6 +13350,39 @@
           "jsx:section[0]/div[1]/Alert[0]/AlertDescription[0]"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/sign-in.tsx:PortalSignIn",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:RequestTypesPage",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -14876,6 +15485,39 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
           "jsx:section[0]/div[1]/Alert[0]/AlertDescription[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/sign-in.tsx:PortalSignIn",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:RequestTypesPage",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
         "backdropLayers": []
       }
@@ -17348,7 +17990,8 @@
       "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
       "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/ol[0]/li[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -20151,6 +20794,18 @@
           "apps/web/src/components/activity/comment-version-history.tsx:CommentVersionHistory",
           "jsx:Popover[0]/PopoverContent[0]/p[0]",
           "PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/catalogue.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
+          "jsx:main[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]",
+          "Button->packages/ui/src/components/button.tsx:Button>bg-popover"
         ],
         "backdropLayers": []
       }
@@ -20337,7 +20992,8 @@
       "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
       "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/ol[0]/li[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -23140,6 +23796,18 @@
           "apps/web/src/components/activity/comment-version-history.tsx:CommentVersionHistory",
           "jsx:Popover[0]/PopoverContent[0]/p[0]",
           "PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/catalogue.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
+          "jsx:main[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]",
+          "Button->packages/ui/src/components/button.tsx:Button>bg-popover"
         ],
         "backdropLayers": []
       }
@@ -27920,7 +28588,12 @@
       "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/p[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/p[0]::text-destructive#1",
-      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/p[0]::text-destructive#0"
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#1",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#2",
+      "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0"
     ],
     "occurrences": [
       {
@@ -28059,6 +28732,69 @@
           "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx:/_layout/_authenticated/agent/settings/profile/pending-actions",
           "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
           "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#1",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#2",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/routes/portal/catalogue.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:/catalogue",
           "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
@@ -28088,7 +28824,12 @@
       "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/p[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/p[0]::text-destructive#1",
-      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/p[0]::text-destructive#0"
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#1",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#2",
+      "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0"
     ],
     "occurrences": [
       {
@@ -28227,6 +28968,69 @@
           "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx:/_layout/_authenticated/agent/settings/profile/pending-actions",
           "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
           "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#1",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx::RequestTypesPage::main[0]/div[0]/section[0]/p[0]::text-destructive#2",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:/_layout/_authenticated/agent/settings/request-types",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogue::main[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/routes/portal/catalogue.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/catalogue.tsx:/catalogue",
           "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
@@ -35744,6 +36548,51 @@
         "backdropLayers": [
           "bg-popover"
         ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:RequestTypesPage",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
       }
     ]
   },
@@ -36625,6 +37474,51 @@
           "packages/ui/src/components/select.tsx:SelectItem",
           "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
           "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:RequestTypesPage",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
           "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
         ],
         "backdropLayers": [
@@ -39231,6 +40125,28 @@
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:RequestTypesPage",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -39339,6 +40255,28 @@
         "category": "body",
         "chain": [
           "packages/ui/src/components/empty.stories.tsx:<module>",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx:RequestTypesPage",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
         "backdropLayers": []

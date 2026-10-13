@@ -44,6 +44,7 @@ import { commentPolicies } from "./comment/policy";
 import { configPolicies } from "./config/policy";
 import { externalLinkPolicies } from "./external-link/policy";
 import { instancePolicies } from "./instance/policy";
+import { intakePolicies } from "./intake/policy";
 import { invitationPolicies } from "./invitation/policy";
 import { labelPolicies } from "./label/policy";
 import { notificationPolicies } from "./notification/policy";
@@ -341,6 +342,7 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/comment/policy.ts", policies: commentPolicies },
   { name: "apps/api/src/activity/policy.ts", policies: activityPolicies },
   { name: "apps/api/src/approval/policy.ts", policies: approvalPolicies },
+  { name: "apps/api/src/intake/policy.ts", policies: intakePolicies },
   {
     name: "apps/api/src/canned-response/policy.ts",
     policies: cannedResponsePolicies,
