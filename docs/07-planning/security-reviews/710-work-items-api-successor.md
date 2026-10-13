@@ -21,11 +21,13 @@ Authorship: a Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 
 - Security rebind by the same context: BLOCK at `a51f4910`. The new customer test framed `rankTasks: true` as the intended contract.
 - Light security rebind: CLEAR at `cdc121ab`. The test is reworded to pin today's value; the assertions are unchanged.
 - Light security rebind by the same context: CLEAR at `5061424a`. A test-only commit derives the all-false capability-map check from the schema. Three mutations each fail 3 of 13.
+- Full security rebind by the same context: CLEAR at `69c3e903`. The commit merges `main` `f0964fd5` (#705), whose capability conflicts were resolved by hand. Each hunk is a pure union, the `Promise.all` order is mutation-checked, and the registry, matrix and runtime agree for all four new items.
 
 **Reviewed head:** `224cc555aa30bfcecbcb4a2439c3703ba1dd637f`
 **Reviewed head:** `a51f49107d7d870e6ae73e67d5afb53b90ab0875`
 **Reviewed head:** `cdc121abf2790cd8324cd0101ad4b6d016acaa3a`
 **Reviewed head:** `5061424a1087d54d6c2061dd3f06fc459bea1913`
+**Reviewed head:** `69c3e903ca91c7682227034adb0f367a46172a0a`
 
 ## Context index
 
@@ -40,6 +42,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 5 | `710-cdc1-security-rebind-opus.md` | Security rebind (a51f4910..cdc121ab) | Claude Opus 5.5 | `cdc121ab` | CLEAR | `b38eff4c57c285bb77b5db1e20de3c9ac644102dab8cba6bd1fa5ce48f23460b` |
 | 6 | `710-cdc1-ordinary-b-sonnet.md` | Ordinary delta review B (224cc555..cdc121ab) | Claude Sonnet 5.5 | `cdc121ab` | APPROVE | `b79c43d141d80d2efd4b2fcef0c1cbed7cfd5a05c66f52f2c662ec85a389f1e8` |
 | 7 | `../2026-10-14/710-5061-security-rebind-opus.md` | Security rebind (cdc121ab..5061424a) | Claude Opus 5.5 | `5061424a` | CLEAR | `14806183cf855ba53682b6d5ae414917dfd84fd5d91e1e824664a6f64e359285` |
+| 8 | `../2026-10-14/710-69c3-security-rebind-opus.md` | Security rebind (5061424a..69c3e903) | Claude Opus 5.5 | `69c3e903` | CLEAR | `20f02c392752208544ae8b8eb1e0c46b40c3a85d6fc5de4cb662f2badf175ccc` |
 
 ## Embedded reports
 
@@ -561,3 +564,141 @@ The same three tests fail every time (lines 242, 262 and 445), and they are the 
 
 **CLEAR** at 5061424a1087d54d6c2061dd3f06fc459bea1913. This review does not replace the required GPT-6 Sol review at this exact head.
 <!-- END REPORT (sha256 14806183cf855ba53682b6d5ae414917dfd84fd5d91e1e824664a6f64e359285) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-13/../2026-10-14/710-69c3-security-rebind-opus.md; Claude Opus 5.5; sha256 20f02c392752208544ae8b8eb1e0c46b40c3a85d6fc5de4cb662f2badf175ccc) -->
+# PR #710 security rebind (5061424a to 69c3e903, conflicted merge of main f0964fd5)
+
+**Model:** Claude Opus 5.5. Fresh, independent context. I did not author, direct or remediate this change, or resolve the merge. My previous CLEAR was at 5061424a (710-5061-security-rebind-opus.md).
+**Role:** a full exact-head security rebind requested by the orchestrator. It does not replace the GPT-6 Sol gate (CLAUDE.md).
+
+**Reviewed head:** 69c3e903ca91c7682227034adb0f367a46172a0a
+**Previous reviewed head:** 5061424a1087d54d6c2061dd3f06fc459bea1913
+**Main:** f0964fd5d0b63634e2d51e440713cfc1571956f1
+**Merge base of the two sides:** ee499594a90896fbb6edb61850b3f4e5001c5266
+
+## Identity checks
+
+- `git ls-remote origin`, before and after the run:
+  - refs/heads/codex/work-items-api-successor = refs/pull/710/head = 69c3e903.
+  - refs/heads/main = f0964fd5, so main has not moved.
+- The chain:
+  - b4fff8df has parent 5061424a, and `git diff --name-only` shows only `docs/07-planning/security-reviews/710-work-items-api-successor.md`. I did not audit that prose.
+  - 69c3e903 has parents b4fff8df and f0964fd5.
+- `git merge-tree --write-tree 5061424a f0964fd5` reports conflicts in exactly 5 files: get-capabilities.ts, capabilities/response.ts, project/policy.ts, capabilities-scope.test.ts and openapi.json.
+- `git diff <merge-tree output> 69c3e903 --name-only` lists those 5 files plus the review note from b4fff8df.
+- **So every auto-merged file is byte-identical to git's own result, and hand edits exist only in the conflicted files.**
+
+## Union check on the conflicted files
+
+For each file, I compared the sorted set of changed lines on each side against what the merge applied:
+
+- the main side: `ee499594..f0964fd5` against `b4fff8df..69c3e903`;
+- the #710 side: `ee499594..b4fff8df` against `f0964fd5..69c3e903`.
+
+| File | Main side applied exactly | #710 side applied exactly |
+| --- | --- | --- |
+| capabilities/response.ts | yes (hashes equal) | yes |
+| project/policy.ts | yes | yes |
+| capabilities-scope.test.ts | yes | yes |
+| get-capabilities.ts | line sets differ only where both sides edited the same lines; inspected below | as left |
+| openapi.json | regenerated; see below | regenerated |
+
+- **get-capabilities.ts** (full file inspected at 69c3e903):
+  - The type adds `transitionTasks`, `rankTasks`, `manageProjectSettings` (#710) and `bindProjectOrganisation` (#705).
+  - The destructure order is `results, manageServiceCalendars, shareSavedViews, manageWorkspaceSettings, transitionTasks, rankTasks, manageProjectSettings, bindProjectOrganisation`.
+  - The call order is `Promise.all(entries…), hasServiceCalendarManageCapability, saved_view:share, workspace:manage_settings, work_item:transition, work_item:rank, project:manage_settings, project:create`.
+  - **The two orders match one to one.**
+  - The return object lists the same eight fields. The `hasCanonicalCapability` union is the six capabilities.
+  - #705's `bindProjectOrganisation = project:create` is unchanged from f0964fd5, and #710's three checks are unchanged from 5061424a. No semantic change to either side.
+- **openapi.json:**
+  - `pnpm check:openapi` reports that it matches the API (282 operations, which is 281 + #705's route).
+  - Running `pnpm openapi:write` on the scratch tree produced **no diff**, so the committed file is exactly the generated one.
+
+## Policy registry and matrix
+
+- Registry, project/policy.ts:
+  - `GET /api/projects/{projectId}/states`: `project:read`, project scope, row source, reach required.
+  - `GET /api/project/organisations`: `project:create`, workspace scope, request source, reach required.
+- Matrix (`tests/permissions/matrix.fixture.json`), inReach per role:
+
+| Route | instance_admin | owner | admin | manager | lead | member | viewer | customer |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| states | 403 | allow | allow | allow | allow | allow | allow | 403 |
+| organisations | 403 | allow | allow | allow | 403 | 403 | 403 | 403 |
+
+- Runtime gates:
+  - The states route uses `fromProject(requireProjectReach)` and then strict `requireWorkspaceCapability("project:read")`.
+  - The organisations route uses `fromQuery()` and then strict `requireWorkspaceCapability("project:create")` (project/index.ts:179-185).
+  - Both agree with the matrix. My S1 probes, re-run at this head, confirm the states row.
+- Flags: compiled `BUILT_IN_ROLES` (expanded) gives `project:create` to owner/admin/manager only. So `bindProjectOrganisation` agrees with the organisations route's matrix row, and the three #710 flags agree with the role table (as in my earlier reports).
+- `test:permissions`: 14 files / 88 tests passed. `check:route-policy`: exit 0. So the registry, the generated matrix and route coverage are consistent.
+
+## Runs (scratch worktree at 69c3e903, removed afterwards)
+
+- `pnpm install --frozen-lockfile`, `turbo build --filter=@taskdesk/api^...`, and `tsc --noEmit` for apps/api: ok.
+- Integration (`CI=true`, serialized), **7 files / 131 tests passed**:
+  - capabilities-scope, multi-role-membership-remediation, project-organisation-binding, project, work-item-list-sort-pagination and work-item-transition;
+  - **plus my original #710 probe suite (S1-S5)**, re-run unchanged at this head.
+- **Promise.all order mutations.** Each swapped two adjacent call entries without touching the destructure, ran capabilities-scope + project-organisation-binding + multi-role (54 tests), then was reverted. The tree was clean afterwards.
+
+| Swap (calls) | Result |
+| --- | --- |
+| transition with rank | **1 failed** (the customer row) |
+| rank with project:manage_settings | **3 failed** |
+| workspace:manage_settings with transition | **2 failed** |
+| transition with project:create | **3 failed** |
+| project:manage_settings with project:create | 54 passed: **an equivalent mutant**. Every built-in role holds both or neither (owner/admin/manager 1/1, all others 0/0), so no built-in-role test can tell them apart. |
+| saved_view:share with project:create | 54 passed: **survives; a coverage gap (N2)**. `lead` holds `saved_view:share` but not `project:create`, but no test asserts both flags for `lead`. |
+
+- I verified by inspection that the merge's order is correct, so neither surviving swap exists at 69c3e903.
+- Docker: only Testcontainers Postgres and Ryuk, which exit on their own. Nothing was removed by hand, and the `taskdesk-*` containers were untouched.
+
+## Findings
+
+**N1 (non-blocking; a stale comment inherited from main/#705, not introduced by the merge).** The comment at `apps/api/src/project/policy.ts:87-90` (69c3e903) says the organisations route uses:
+
+> "Same gate as the create itself: `workspaceAccess.fromQuery()` then `requireWorkspacePermission({ project: ["create"] })`"
+
+That is wrong twice over:
+
+- The route actually uses the strict `requireWorkspaceCapability("project:create")` (project/index.ts:185), whose own comment explains why.
+- It is **not** the same gate as `POST /api/project`, which still uses the legacy `requireWorkspacePermission({ project: ["create"] })` (index.ts:149, the #708 defect that lets members create).
+
+The comment understates the real gate, so no runtime risk follows. It does misstate the gate, though, and invites someone to "align" the route back to the legacy check.
+
+Suggested wording:
+
+```
+// List the customer organisations a new project may serve (create-project selector).
+// workspaceAccess.fromQuery() then the STRICT requireWorkspaceCapability("project:create")
+// (owner/admin/manager per the matrix) -- deliberately not the legacy
+// requireWorkspacePermission that POST /api/project still uses (#708). Registered ahead of
+// GET /api/project/{id} in the router so "organisations" is never read as a project id.
+```
+
+It can be fixed here or in a main follow-up. The merge kept #705's text verbatim, which was correct for a union.
+
+**N2 (non-blocking; a test coverage gap).**
+
+- A swap of `shareSavedViews` and `bindProjectOrganisation` would go undetected.
+- Suggestion: extend capabilities-scope's per-role `STRICT_FLAGS` table to assert every strict/canonical flag per role (`shareSavedViews`, `manageWorkspaceSettings`, `manageServiceCalendars`, `bindProjectOrganisation`, plus the three #710 flags), including `lead` and `customer`.
+- The `project:manage_settings`/`project:create` swap is equivalent for built-in roles, so no test is needed for it.
+
+F1, the pre-existing work-item write-route reach defect, stays with its separate fix lane.
+
+## Residual risk
+
+- I did not audit the review-note prose (b4fff8df).
+- I did not run the full integration suite or the web suites; #705's web pieces arrive from main unchanged.
+- N2's gap means future reordering in `get-capabilities.ts` is only partly protected by tests.
+
+## Verdict
+
+**CLEAR** at 69c3e903ca91c7682227034adb0f367a46172a0a.
+
+- The merge is a faithful union with no semantic change to either side.
+- The destructuring matches the call order.
+- The registry, matrix and runtime agree for both new routes and all four new flags.
+- N1 and N2 are non-blocking.
+- This review does not replace the required GPT-6 Sol review at this exact head.
+<!-- END REPORT (sha256 20f02c392752208544ae8b8eb1e0c46b40c3a85d6fc5de4cb662f2badf175ccc) -->
