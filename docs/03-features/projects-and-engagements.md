@@ -92,6 +92,16 @@ Project configuration and health are available at the existing project detail/up
 routes. Health is nullable RAG (`red | amber | green`) and can be read or changed at
 `GET /api/project/{id}/health` and `PATCH /api/project/{id}/health`; it is set by a person,
 not computed. Project create/update accept `kind`, `supportLevel`, and `serviceCalendarId`.
+
+**Customer organisation binding.** `project.organisation_id` is chosen at creation only
+(decision log 2026-10-13, "Recovered record: Bind customer-serving projects at creation").
+`POST /api/project` accepts an optional `organisationId`: omitted or null leaves the project
+internal; otherwise it must name an active, non-deleted, non-internal organisation, and the
+workspace must be one of the internal organisation's own. Any other value is refused with one
+`422` (`organisation_must_be_an_active_customer_organisation`) that does not say which check
+failed. The general update route never accepts the field, so an existing project cannot be
+rebound, and existing projects are not backfilled. `GET /api/project/organisations` (gated by
+`project:create`) lists the organisations the create-project selector offers.
 - `PR-10` **(warning)** A project must have a start date; an end date is optional.
 
 Rule violations appear as a persistent banner on the project overview rather than blocking
