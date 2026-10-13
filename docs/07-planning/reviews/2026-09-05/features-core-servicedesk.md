@@ -19,24 +19,6 @@
 
 ## 2. `views.md` — P1
 
-**Verdict: ready-with-fixes** (behaviour is excellent; the template sections that guard security are the weak part)
-
-31 numbered rules, genuinely testable, with good accessibility detail (`VW-14` keyboard drag) and a correct restatement of ADR 0011 in `VW-9` (drag = transition, not field write). Edge cases are answered well.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| High | `VW-23` "Export the current view to CSV" has **no capability**. rbac.md defines `report:export`, and this spec's Permissions section says only that reading a view needs `work_item:read`. A bulk data-egress path with no declared capability is the exact class of hole the rbac route-coverage test exists to prevent. | Add `report:export` (or a new `work_item:export`) to the permissions table and to the export route; decide whether export is server-side (a route, hence a policy) or client-side from already-fetched rows, and say which. |
-| High | `VW-2` (layout per project per user), `VW-6` (density), `VW-15` (collapsed groups persist), `VW-19` (chosen columns persist per project per user), `VW-21` (column widths persist) all require **per-user UI preference storage that does not exist** in the data model. `saved_view` is a shared/query object, not a preference store. | Add a `user_preference (person_id, scope, scope_id, key, value jsonb)` table to the data model, or state explicitly that all five are `localStorage`-only and therefore not synced across devices. |
-| Medium | **No permissions table.** The template requires one ("Which capability guards which action. A table."); this spec has one prose paragraph. Per-layout actions (inline edit in `VW-17`/`VW-22`, drag-to-set-field in `VW-13`, calendar date drag in `VW-26`, timeline resize in `VW-29`) each need a capability and none is named. | Add the table: inline state edit → `work_item:transition`; inline assignee → `work_item:assign`; priority → `work_item:set_priority`; date drag → `work_item:update`; rank drag → `work_item:rank`; export → `report:export`. |
-| Medium | **No API section with policies.** The template requires "Endpoints, with their policies"; this spec says only "All layouts read from `POST /api/work-items/search`". The CSV export and the persistence of column/layout choices imply further routes that are never listed. | List every route the feature touches with its policy, including export and preference persistence, or state that none exists beyond `POST /api/work-items/search` (`work_item:read`). |
-| Medium | `VW-31` offers **"SLA state"** as a filter and `VW-16` an SLA badge in list rows, but the data model is explicit that "**SLA state is never stored** … computed on read". The spec never says how a computed value is filtered or sorted in SQL over 10,000 rows. This is the single hardest thing in the spec and it is unaddressed. | Specify the mechanism: a generated/denormalised `sla_due_at` column maintained on write, a SQL function the filter grammar compiles to, or a documented restriction that SLA filtering is post-fetch and therefore only valid inside a page. Cross-reference `sla.md`. |
-| Medium | `views.md` is P1 but `VW-16`/`VW-31` depend on SLA (P2), and `VW-31` also filters by cycle, module and epic (P5, `agile.md`). "Depends on: work items, states" omits both. | Split the filter list by phase, and update **Depends on**. |
-| Low | `VW-31` includes an `organisation` filter, but `work_item` has no `organisation_id`; it is reachable only via `project.organisation_id`. | Say the filter resolves through the project join, so the filter-grammar whitelist has a defined field path. |
-| Low | Feature flag is `feature.gantt` but the layout is called **Timeline** everywhere else. | Rename the flag `feature.timeline`. |
-| Low | Tests are described ("filter grammar compilation; grouping; rank arithmetic") rather than **named**, which the template asks for. Same pattern in every spec in this group. | Give each test an id/name that cites the rule it proves, e.g. `VW-9 illegal drag transition is refused`. |
-
----
-
 ## 3. `projects-and-engagements.md` — P1 (structure in P2)
 
 ## 4. `relations-and-hierarchy.md` — P1

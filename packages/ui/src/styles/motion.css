@@ -26,6 +26,20 @@
     transition-property: opacity !important;
   }
 
+  /* Positioners (popover, tooltip, select, menu, combobox, ...) animate
+     top/left/right/bottom/transform on reposition; that is movement, so drop
+     it. The popup's own opacity transition above is the feedback we keep. */
+  [data-slot$="-positioner"] {
+    transition-property: none !important;
+  }
+
+  /* Button press scale is movement. Keep the box-shadow (focus/hover) feedback
+     and drop the scale, including the active/pressed 0.97 state. */
+  [data-slot="button"] {
+    scale: none !important;
+    transition-property: box-shadow !important;
+  }
+
   [data-slot="sidebar-gap"],
   [data-slot="sidebar-container"],
   [data-slot="sidebar-group-content"],
