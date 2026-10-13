@@ -3,7 +3,10 @@
 export const generatedRouteMetadata = {
   agent: [
     "/",
+    "/agent/god-mode/users",
     "/agent/projects/$projectKey/work",
+    "/agent/settings/profile/pending-actions",
+    "/agent/settings/profile/pending-actions/$id",
     "/agent/work-items/$key",
     "/auth",
     "/auth/check-email",

@@ -24,6 +24,10 @@ export const BUDGETS_KB = Object.freeze({
 export const KB_BYTES = 1000;
 export const WORK_LIST_COMPONENT_SUFFIX =
   "/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component";
+export const INSTANCE_USERS_COMPONENT_SUFFIX =
+  "/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx?tsr-split=component";
+export const PENDING_ACTION_DETAIL_COMPONENT_SUFFIX =
+  "/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx?tsr-split=component";
 
 export function isWithinBudget(role, bytes) {
   return bytes < BUDGETS_KB[role] * KB_BYTES;
@@ -200,6 +204,23 @@ export async function checkBundleSizes({
           [key, workRouteKey],
           createFormKey,
         );
+        for (const [label, suffix] of [
+          ["God Mode Users", INSTANCE_USERS_COMPONENT_SUFFIX],
+          ["pending-action detail", PENDING_ACTION_DETAIL_COMPONENT_SUFFIX],
+        ]) {
+          const componentKey = Object.keys(manifest).find((candidate) =>
+            candidate.endsWith(suffix),
+          );
+          if (!componentKey)
+            throw new Error(
+              `G11 ${label} component is missing from the agent build manifest (expected a key ending in ${suffix}).`,
+            );
+          assertDynamicModuleOutsideInitialGraphs(
+            manifest,
+            [key, workRouteKey],
+            componentKey,
+          );
+        }
         const workListAssets = new Set([
           ...measurement.assets,
           ...collectInitialAssets(manifest, workRouteKey),

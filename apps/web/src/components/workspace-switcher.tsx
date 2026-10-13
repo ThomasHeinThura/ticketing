@@ -28,6 +28,7 @@ import {
 } from "@/hooks/use-keyboard-shortcuts";
 import { useUserWebSocket } from "@/hooks/use-user-websocket";
 import { authClient } from "@/lib/auth-client";
+import { routes } from "@/lib/routes";
 import type { Workspace } from "@/types/workspace";
 import CreateWorkspaceModal from "./shared/modals/create-workspace-modal";
 
@@ -191,6 +192,22 @@ export function WorkspaceSwitcher() {
                       <span>
                         {t("navigation:workspaceSwitcher.addWorkspace")}
                       </span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate({ to: routes.godModeUsers.build() as never });
+                      }}
+                      className="h-7 text-sm data-highlighted:bg-sidebar-accent data-highlighted:text-sidebar-accent-foreground"
+                    >
+                      {t("navigation:workspaceSwitcher.instanceUsers", {
+                        defaultValue: "Instance users",
+                      })}
                     </DropdownMenuItem>
                   </>
                 )}

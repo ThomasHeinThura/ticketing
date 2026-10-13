@@ -8,7 +8,9 @@ import {
   BUDGETS_KB,
   checkBundleSizes,
   collectInitialAssets,
+  INSTANCE_USERS_COMPONENT_SUFFIX,
   isWithinBudget,
+  PENDING_ACTION_DETAIL_COMPONENT_SUFFIX,
   resolveEntries,
   WORK_LIST_COMPONENT_SUFFIX,
 } from "./check-bundle-size.mjs";
@@ -61,6 +63,14 @@ test("G11: direct work-list budget includes its early-preloaded static graph", a
       "chunks/later.js": { file: "assets/later.js" },
       "src/components/work-item/create-work-item-dialog-form.tsx": {
         file: "assets/create-work-item-dialog-form.js",
+        isDynamicEntry: true,
+      },
+      [`src${INSTANCE_USERS_COMPONENT_SUFFIX}`]: {
+        file: "assets/instance-users-route.js",
+        isDynamicEntry: true,
+      },
+      [`src${PENDING_ACTION_DETAIL_COMPONENT_SUFFIX}`]: {
+        file: "assets/pending-action-detail-route.js",
         isDynamicEntry: true,
       },
     };
@@ -184,6 +194,65 @@ test("G11: create dialog form is dynamic and outside agent-entry and route start
   );
 });
 
+test("G11: Users and pending-action detail components stay out of initial graphs", () => {
+  const agentEntryKey = "src/entry.agent.tsx";
+  const workRouteKey = `src${WORK_LIST_COMPONENT_SUFFIX}`;
+  const componentKeys = [
+    `src${INSTANCE_USERS_COMPONENT_SUFFIX}`,
+    `src${PENDING_ACTION_DETAIL_COMPONENT_SUFFIX}`,
+  ];
+  const graph = {
+    [agentEntryKey]: {
+      file: "assets/agent.js",
+      isEntry: true,
+      imports: ["chunks/app-shell.js"],
+    },
+    "chunks/app-shell.js": { file: "assets/app-shell.js" },
+    [workRouteKey]: {
+      file: "assets/work.js",
+      imports: ["chunks/work-shell.js"],
+    },
+    "chunks/work-shell.js": { file: "assets/work-shell.js" },
+    [componentKeys[0]]: {
+      file: "assets/users.js",
+      isDynamicEntry: true,
+    },
+    [componentKeys[1]]: {
+      file: "assets/pending-action.js",
+      isDynamicEntry: true,
+    },
+  };
+
+  for (const componentKey of componentKeys) {
+    assert.doesNotThrow(() =>
+      assertDynamicModuleOutsideInitialGraphs(
+        graph,
+        [agentEntryKey, workRouteKey],
+        componentKey,
+      ),
+    );
+    assert.throws(
+      () =>
+        assertDynamicModuleOutsideInitialGraphs(
+          {
+            ...graph,
+            [workRouteKey]: {
+              ...graph[workRouteKey],
+              imports: [...graph[workRouteKey].imports, "chunks/retained.js"],
+            },
+            "chunks/retained.js": {
+              file: "assets/retained.js",
+              imports: [componentKey],
+            },
+          },
+          [agentEntryKey, workRouteKey],
+          componentKey,
+        ),
+      (error) => error.message.includes(`${workRouteKey} initial static graph`),
+    );
+  }
+});
+
 test("G11: unclassified additional entries fail closed", () => {
   assert.throws(
     () =>
@@ -269,6 +338,14 @@ test("G11: independently built agent and portal roots are measured from separate
         [workKey]: { file: "assets/work.js", imports: ["chunks/shared.js"] },
         "src/components/work-item/create-work-item-dialog-form.tsx": {
           file: "assets/create-work-item-dialog-form.js",
+          isDynamicEntry: true,
+        },
+        [`src${INSTANCE_USERS_COMPONENT_SUFFIX}`]: {
+          file: "assets/instance-users-route.js",
+          isDynamicEntry: true,
+        },
+        [`src${PENDING_ACTION_DETAIL_COMPONENT_SUFFIX}`]: {
+          file: "assets/pending-action-detail-route.js",
           isDynamicEntry: true,
         },
         "../../i18n/en-US.json": { file: "assets/en-US.js" },

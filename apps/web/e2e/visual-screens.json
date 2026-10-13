@@ -49,5 +49,26 @@
 		"applicationRoute": "/god-mode/observability",
 		"test": "observability settings screen @visual",
 		"screenshot": "observability-settings.png"
+	},
+	{
+		"name": "instance-users-directory",
+		"inventoryRoute": "/agent/god-mode/users",
+		"applicationRoute": "/agent/god-mode/users",
+		"test": "instance users directory screen @visual",
+		"screenshot": "instance-users-directory.png"
+	},
+	{
+		"name": "pending-actions-list",
+		"inventoryRoute": "/agent/settings/profile/pending-actions",
+		"applicationRoute": "/agent/settings/profile/pending-actions",
+		"test": "pending actions list screen @visual",
+		"screenshot": "pending-actions-list.png"
+	},
+	{
+		"name": "pending-action-detail",
+		"inventoryRoute": "/agent/settings/profile/pending-actions/{id}",
+		"applicationRoute": "/agent/settings/profile/pending-actions/$id",
+		"test": "pending action detail screen @visual",
+		"screenshot": "pending-action-detail.png"
 	}
 ]
