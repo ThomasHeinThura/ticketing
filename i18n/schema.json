@@ -232,6 +232,9 @@
 						"refreshPage": {
 							"type": "string"
 						},
+						"sessionUnavailable": {
+							"type": "string"
+						},
 						"messages": {
 							"type": "object",
 							"additionalProperties": false,
@@ -321,6 +324,7 @@
 						"tryAgain",
 						"viewDeploymentGuide",
 						"refreshPage",
+						"sessionUnavailable",
 						"messages",
 						"troubleshootingSteps"
 					]
@@ -2159,6 +2163,21 @@
 						"sidebarDefaultDescription": {
 							"type": "string"
 						},
+						"density": {
+							"type": "string"
+						},
+						"densityDescription": {
+							"type": "string"
+						},
+						"densityComfortable": {
+							"type": "string"
+						},
+						"densityCompact": {
+							"type": "string"
+						},
+						"selectDensity": {
+							"type": "string"
+						},
 						"displayOptions": {
 							"type": "string"
 						},
@@ -2224,6 +2243,11 @@
 						"gantt",
 						"sidebarDefault",
 						"sidebarDefaultDescription",
+						"density",
+						"densityDescription",
+						"densityComfortable",
+						"densityCompact",
+						"selectDensity",
 						"displayOptions",
 						"displayOptionsDescription",
 						"taskNumbers",
