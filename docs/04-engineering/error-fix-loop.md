@@ -369,6 +369,10 @@ Add to this as things are learned. It is the institutional memory that agents do
     and redacts the failure snapshot through the shared helper.
   - **Guard:** a unit test finds every such spec by the UI text the secret screens show
     and enforces both.
+  - **Form values count.** Playwright's error context prints form values (passwords),
+    not only visible text, so a real-backend spec that signs up or signs in leaks the
+    fixture password on failure. The guard also covers specs that import the real-backend
+    fixture or fill a password field from a variable.
   - **Before relying on any new capture mechanism,** look for it in every spec that can
     fail while a secret is on screen.
 
