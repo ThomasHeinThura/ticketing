@@ -609,11 +609,13 @@ GET    /api/projects/{projectId}
 PATCH  /api/projects/{projectId}
 DELETE /api/projects/{projectId}
 
+GET    /api/projects/{projectId}/states             ← active concrete states in project order, including empty ones
 GET    /api/projects/{projectId}/work-items
 POST   /api/projects/{projectId}/work-items
 
 GET    /api/work-items/{key}
 PATCH  /api/work-items/{key}
+GET    /api/work-items/{key}/transitions      ← legal offers, each with toStateName
 POST   /api/work-items/{key}/transition      ← action: state change with note
 POST   /api/work-items/{key}/assign
 POST   /api/work-items/{key}/watch
@@ -644,8 +646,8 @@ GET /api/projects/{projectId}/work-items
     &label=<id>
     &due_before=2026-10-01
     &q=printer
-    &sort=position|created_at|due_date|priority
-    &order=asc|desc
+    &sort=key|position|title|priority|dueDate   (list route only; position is the rank order)
+    &dir=asc|desc
 ```
 
 ```json

@@ -75,6 +75,15 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * existing, addressable resource at all; none of the eight routes below are that.
  */
 export const projectPolicies = {
+  // VW-8: read the project's active concrete states, including empty board columns.
+  // Reach is resolved from the named project row before project:read is enforced.
+  "GET /api/projects/{projectId}/states": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+
   // List the customer organisations a new project may serve (create-project selector).
   // Same gate as the create itself: `workspaceAccess.fromQuery()` then
   // `requireWorkspacePermission({ project: ["create"] })`. Registered ahead of

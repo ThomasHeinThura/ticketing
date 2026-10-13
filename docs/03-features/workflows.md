@@ -226,7 +226,8 @@ POST  /api/work-items/{key}/transition        work_item:transition
 ```
 
 `GET /transitions` returns exactly what this actor may do now, with reasons for anything
-blocked. The UI never computes legality client-side.
+blocked. Each offer carries `toStateName` (the target state's display name), so the UI never
+joins template names itself. The UI never computes legality client-side.
 
 ## Edge cases
 
