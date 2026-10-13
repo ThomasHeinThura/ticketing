@@ -32,7 +32,7 @@ import {
   workspaceMemberRoles,
 } from "../utils/workspace-member-roles";
 import type { ActivityActorType } from "./activity";
-import { workItemReachCheck } from "./bulk-reach";
+import { workItemBulkAuthoriser } from "./bulk-reach";
 import { commentSchema } from "./comment-response";
 import {
   commentIdParam,
@@ -1423,7 +1423,12 @@ const workItem = apiRouter<
         : // `assigneeId` is required by `bulkWorkItemsBody`'s own `.refine` whenever
           // `operation === "assign"`, so this is never actually undefined here.
           { operation: "assign", assigneeId: assigneeId as string },
-      await workItemReachCheck(c, userId, workspaceId),
+      await workItemBulkAuthoriser(
+        c,
+        userId,
+        workspaceId,
+        operation === "delete" ? "work_item:delete" : "work_item:assign",
+      ),
     );
     return c.json(result, 200);
   })

@@ -5,6 +5,12 @@ import {
   type WorkItemReachMark,
 } from "../../apps/api/src/utils/reach-mark";
 import { requireWorkItemReach } from "../../apps/api/src/work-item/require-work-item-reach";
+import {
+  ITEM_WRITE_ROUTE_KEYS,
+  LEGACY_WRITE_ROUTE_KEYS,
+  OTHER_COVERED_ROUTE_KEYS,
+  READ_ROUTE_KEYS,
+} from "../api-integration/helpers/reach-route-keys";
 import { loadApiApp, loadPolicyRegistry } from "./api-app";
 
 /**
@@ -92,6 +98,32 @@ function findReachProblems(
   return findings;
 }
 
+/**
+ * A marker is self-attested, so it proves declaration, not enforcement. Every route in the
+ * set must ALSO appear in a behavioural table (the integration suites drive the real
+ * middleware and assert 404/403/key outcomes), or carry a reasoned exemption.
+ */
+function findCoverageProblems(
+  itemRouteKeys: readonly string[],
+  covered: ReadonlySet<string>,
+  exempt: Readonly<Record<string, string>>,
+): string[] {
+  const problems: string[] = [];
+  for (const key of itemRouteKeys) {
+    if (!covered.has(key) && exempt[key] === undefined) {
+      problems.push(`${key}: marked but no behavioural test row`);
+    }
+  }
+  for (const key of covered) {
+    if (!itemRouteKeys.includes(key)) {
+      problems.push(
+        `${key}: behavioural row for a route outside the guard set`,
+      );
+    }
+  }
+  return problems;
+}
+
 function handlerWith(mark?: WorkItemReachMark): Handler {
   const fn = (() => undefined) as unknown as Handler;
   if (mark) Object.assign(fn, { [WORK_ITEM_REACH_MARK]: mark });
@@ -141,6 +173,18 @@ describe("work-item reach guard: the checker is not vacuous", () => {
     expect(
       findReachProblems(routes, [key], { "GET /gone": "why" }),
     ).toHaveLength(1);
+  });
+
+  it("flags a marked route that has no behavioural test row, and a stale row", () => {
+    const keys = ["PATCH /api/work-items/{key}"];
+    expect(findCoverageProblems(keys, new Set(), {})).toHaveLength(1);
+    expect(findCoverageProblems(keys, new Set(keys), {})).toEqual([]);
+    expect(
+      findCoverageProblems(keys, new Set([...keys, "GET /gone"]), {}),
+    ).toHaveLength(1);
+    expect(
+      findCoverageProblems(keys, new Set(), { [keys[0] as string]: "why" }),
+    ).toEqual([]);
   });
 
   it("requireWorkItemReach() defaults to project reach and records its opt-out reason", () => {
@@ -207,6 +251,18 @@ describe("work-item reach guard: the real router", () => {
 
     expect(
       findReachProblems(handlersByKey, itemRouteKeys, OTHER_REACH_MECHANISM),
+    ).toEqual([]);
+    expect(
+      findCoverageProblems(
+        itemRouteKeys,
+        new Set<string>([
+          ...ITEM_WRITE_ROUTE_KEYS,
+          ...LEGACY_WRITE_ROUTE_KEYS,
+          ...READ_ROUTE_KEYS,
+          ...OTHER_COVERED_ROUTE_KEYS,
+        ]),
+        OTHER_REACH_MECHANISM,
+      ),
     ).toEqual([]);
   });
 });

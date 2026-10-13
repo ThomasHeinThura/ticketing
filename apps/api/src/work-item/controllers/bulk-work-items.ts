@@ -2,6 +2,7 @@ import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import type { ActivityActorType } from "../activity";
+import type { BulkItemDecision } from "../bulk-reach";
 import { type AssignWorkItemInput, assignWorkItem } from "./assign-work-item";
 import { deleteWorkItem } from "./delete-work-item";
 
@@ -24,19 +25,13 @@ import { deleteWorkItem } from "./delete-work-item";
 // So this endpoint supports exactly `"delete"` and `"assign"` today; the rest are
 // deferred, named explicitly here and in the PR body, not silently dropped.
 //
-// PER-ITEM AUTHORIZATION (the task's own explicit ask: "the SAME authorization check
-// applied to every individual item in the batch, not just a check on the endpoint
-// itself"). This codebase's capability model (`requireWorkspaceCapability`) is
-// WORKSPACE-ROLE-based, not a per-row ACL -- a caller either holds `work_item:delete`/
-// `work_item:assign` in a workspace or does not, uniformly across every row in it. So
-// the capability half of "the same check" is genuinely a single check against the
-// caller's role in the ONE workspace this request is scoped to (`index.ts`'s handler
-// does this before calling into this module). The per-ITEM dimension that actually
-// varies row-by-row is REACH -- whether a given id is even IN that workspace at all --
-// and that check runs inside `assignWorkItem`/`deleteWorkItem` for every single id,
-// exactly like a single-item call would, giving the identical "not found" answer for a
-// nonexistent id and a real id from another workspace (`WI-25`: "a failure reason must
-// not reveal whether an inaccessible work item exists").
+// PER-ITEM AUTHORIZATION: every id gets the SAME two decisions a single-item call gets, from
+// the same source (`../bulk-reach.ts` -> `utils/caller-reach.ts`): project REACH (an
+// unreachable or missing id answers the identical "not found", `WI-25`: "a failure reason
+// must not reveal whether an inaccessible work item exists") and the operation's
+// project-level CAPABILITY (`work_item:delete` / `work_item:assign`; reachable but not
+// permitted is reported per item as "Insufficient permissions"). The workspace-role check in
+// `index.ts`'s handler still runs once, first, with the key-aware credential.
 //
 // TRANSACTION SHAPE (`WI-25`): "transactional per item, not per batch: 47 of 50
 // succeeding reports 3 failures with reasons rather than rolling everything back."
@@ -83,19 +78,24 @@ export async function bulkWorkItems(
   workItemKeys: string[],
   op: BulkWorkItemOperation,
   /**
-   * Per-item PROJECT reach, the same answer a single-item call gets from
-   * `requireWorkItemReach()`. An item outside the caller's project reach fails with the
-   * identical "not found" reason a nonexistent key gets (`WI-25`).
+   * Per-item PROJECT reach and project-level capability, decided from the same source the
+   * single-item routes use (`bulk-reach.ts`). An unreachable item fails with the identical
+   * "not found" reason a nonexistent key gets (`WI-25`); a reachable item the caller may not
+   * act on fails with "Insufficient permissions", as the single-item route would answer 403.
    */
-  isInReach: (key: string) => Promise<boolean>,
+  authorise: (key: string) => Promise<BulkItemDecision>,
 ): Promise<BulkWorkItemResult> {
   const succeeded: string[] = [];
   const failed: BulkWorkItemFailure[] = [];
 
   for (const key of workItemKeys) {
     try {
-      if (!(await isInReach(key))) {
+      const decision = await authorise(key);
+      if (decision === "not_found") {
         throw new HTTPException(404, { message: "Work item not found" });
+      }
+      if (decision === "forbidden") {
+        throw new HTTPException(403, { message: "Insufficient permissions" });
       }
       await runOne(key, workspaceId, actorId, actorType, op);
       succeeded.push(key);

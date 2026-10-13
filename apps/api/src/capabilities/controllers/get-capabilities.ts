@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import hasCommentCapability from "../../comment/has-comment-capability";
+import { isCustomerPrincipal } from "../../utils/is-customer-principal";
 import {
   assertCallerHasCapability,
   capabilityCredential,
@@ -74,13 +75,25 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasCanonicalCapability(c, "project:manage_settings"),
     hasCanonicalCapability(c, "project:create"),
   ]);
+  // The agent API refuses customer principals on item-scoped routes (403), so the UI must not
+  // be told it may rank or comment publicly there. Same predicate the routes use
+  // (`utils/is-customer-principal.ts`); customers act through the portal routes only.
+  const customer = await isCustomerPrincipal(
+    c.get("userId"),
+    c.get("workspaceId"),
+  );
+  const agentOnly = (value: boolean) => value && !customer;
+  const flags = Object.fromEntries(results) as Record<string, boolean>;
+  if (flags.createPublicComments !== undefined) {
+    flags.createPublicComments = agentOnly(flags.createPublicComments);
+  }
   return {
-    ...Object.fromEntries(results),
+    ...flags,
     manageServiceCalendars,
     shareSavedViews,
     manageWorkspaceSettings,
     transitionTasks,
-    rankTasks,
+    rankTasks: agentOnly(rankTasks),
     manageProjectSettings,
     bindProjectOrganisation,
   } as CapabilityMap;

@@ -508,3 +508,66 @@ export async function makeApiKey(userId: string, permissions: unknown) {
   });
   return raw;
 }
+
+export type Seed = {
+  taskId: string;
+  otherTaskId: string;
+  activityId: string;
+  relationId: string;
+  columnId: string;
+};
+export async function seedLegacy(
+  world: World,
+  memberUserId: string,
+): Promise<Seed> {
+  const [col] = await db
+    .select()
+    .from(schema.columnTable)
+    .where(eq(schema.columnTable.projectId, world.project.id))
+    .limit(1);
+  if (!col) throw new Error("no column");
+  const mk = async (n: number) => {
+    const [t] = await db
+      .insert(schema.taskTable)
+      .values({
+        projectId: world.project.id,
+        title: n === 1 ? "Confidential legacy task" : "Other task",
+        description: "d",
+        priority: "medium",
+        status: col.slug,
+        columnId: col.id,
+        number: n,
+        position: n,
+      })
+      .returning();
+    if (!t) throw new Error("task");
+    return t;
+  };
+  const task = await mk(1);
+  const other = await mk(2);
+  const [activity] = await db
+    .insert(schema.taskActivityTable)
+    .values({
+      taskId: task.id,
+      type: "comment",
+      userId: memberUserId,
+      content: "legacy comment",
+    })
+    .returning();
+  const [relation] = await db
+    .insert(schema.taskRelationTable)
+    .values({
+      sourceTaskId: task.id,
+      targetTaskId: other.id,
+      relationType: "blocks",
+    })
+    .returning();
+  if (!activity || !relation) throw new Error("seed");
+  return {
+    taskId: task.id,
+    otherTaskId: other.id,
+    activityId: activity.id,
+    relationId: relation.id,
+    columnId: col.id,
+  };
+}

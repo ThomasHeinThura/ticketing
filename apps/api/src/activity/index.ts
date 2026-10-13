@@ -112,9 +112,8 @@ const updateCommentRoute = createRoute({
   middleware: [
     workspaceAccess.fromActivity("activityId", {
       requireProjectReach: true,
-      // The legacy controller checks authorship only; the strict policy layer clamps a
-      // key to its stored scope when enabled (strict-runtime-enforcement.test.ts).
-      deferApiKeyCapability: true,
+      // No `deferApiKeyCapability`: the legacy controller checks authorship only, so an API
+      // key fails closed here (as on `PATCH /comments/{id}`).
     }),
   ] as const,
   request: {
@@ -141,9 +140,8 @@ const deleteCommentRoute = createRoute({
   middleware: [
     workspaceAccess.fromActivity("activityId", {
       requireProjectReach: true,
-      // The legacy controller checks authorship only; the strict policy layer clamps a
-      // key to its stored scope when enabled (strict-runtime-enforcement.test.ts).
-      deferApiKeyCapability: true,
+      // No `deferApiKeyCapability`: the legacy controller checks authorship only, so an API
+      // key fails closed here (as on `PATCH /comments/{id}`).
     }),
   ] as const,
   request: {

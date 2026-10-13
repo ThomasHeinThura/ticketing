@@ -23,6 +23,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
+import { ITEM_WRITE_ROUTE_KEYS } from "./helpers/reach-route-keys";
 import {
   createItem,
   type Fixture,
@@ -54,6 +55,12 @@ describe("API integration: project reach on item-scoped work-item routes", () =>
       process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
     }
     await rm(root, { recursive: true, force: true });
+  });
+
+  it("the table covers exactly the item write routes the guard requires", () => {
+    expect(ROUTES.map((route) => route.matrixKey).sort()).toEqual(
+      [...ITEM_WRITE_ROUTE_KEYS].sort(),
+    );
   });
 
   for (const route of ROUTES) {
@@ -152,6 +159,45 @@ describe("API integration: project reach on item-scoped work-item routes", () =>
         "Work item not found",
       ]);
       expect(await snapshot()).toBe(before);
+    });
+
+    it("applies the operation's project capability per item: a reachable item the caller may not act on is refused", async () => {
+      const world = await setupWorld();
+      const { app } = createApp();
+      const item = await createItem(app, world, TITLE);
+      const before = await snapshot();
+      mockAuthenticatedSession(world.readerLead.user);
+      for (const body of [
+        { operation: "delete" },
+        { operation: "assign", assigneeId: world.projectMember.personId },
+      ]) {
+        const response = await json(app, "POST", "/api/work-items/bulk", {
+          workspaceId: world.workspaceId,
+          workItemKeys: [item.key, "NOPE-9999"],
+          ...body,
+        });
+        const result = (await response.json()) as {
+          succeeded: string[];
+          failed: { id: string; reason: string }[];
+        };
+        expect(response.status).toBe(200);
+        expect(result.succeeded).toEqual([]);
+        expect(result.failed).toEqual([
+          { id: item.key, reason: "Insufficient permissions" },
+          { id: "NOPE-9999", reason: "Work item not found" },
+        ]);
+      }
+      expect(await snapshot()).toBe(before);
+
+      mockAuthenticatedSession(world.projectMember.user);
+      const allowed = await json(app, "POST", "/api/work-items/bulk", {
+        workspaceId: world.workspaceId,
+        workItemKeys: [item.key],
+        operation: "delete",
+      });
+      expect(
+        ((await allowed.json()) as { succeeded: string[] }).succeeded,
+      ).toEqual([item.key]);
     });
   });
 });

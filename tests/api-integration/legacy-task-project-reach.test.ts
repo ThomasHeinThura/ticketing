@@ -18,26 +18,24 @@ import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
+  createProjectFixture,
+  grantWorkItemProjectAccess,
+} from "./helpers/fixtures";
+import { LEGACY_WRITE_ROUTE_KEYS } from "./helpers/reach-route-keys";
+import {
+  addMember,
   json,
   MATRIX,
   makeApiKey,
   matrixStatus,
+  type Seed,
+  seedLegacy,
   setAmbientHeaders,
   setupWorld,
 } from "./helpers/reach-world";
 
-type World = Awaited<ReturnType<typeof setupWorld>>;
-type Seed = {
-  taskId: string;
-  otherTaskId: string;
-  activityId: string;
-  relationId: string;
-  columnId: string;
-};
 type LegacyRoute = {
   matrixKey: string;
-  /** Legacy controller checks authorship only, never the key's scope (pre-existing; the strict policy layer clamps keys when enabled). */
-  noLegacyKeyScope?: boolean;
   call: (
     app: ReturnType<typeof createApp>["app"],
     s: Seed,
@@ -50,59 +48,6 @@ const FULL_SCOPE = {
   work_item: ["read", "update", "delete", "assign"],
   comment: ["create", "create_internal", "update_own", "delete_own"],
 };
-
-async function seed(world: World, memberUserId: string): Promise<Seed> {
-  const [col] = await db
-    .select()
-    .from(schema.columnTable)
-    .where(eq(schema.columnTable.projectId, world.project.id))
-    .limit(1);
-  if (!col) throw new Error("no column");
-  const mk = async (n: number) => {
-    const [t] = await db
-      .insert(schema.taskTable)
-      .values({
-        projectId: world.project.id,
-        title: n === 1 ? "Confidential legacy task" : "Other task",
-        description: "d",
-        priority: "medium",
-        status: col.slug,
-        columnId: col.id,
-        number: n,
-        position: n,
-      })
-      .returning();
-    if (!t) throw new Error("task");
-    return t;
-  };
-  const task = await mk(1);
-  const other = await mk(2);
-  const [activity] = await db
-    .insert(schema.taskActivityTable)
-    .values({
-      taskId: task.id,
-      type: "comment",
-      userId: memberUserId,
-      content: "legacy comment",
-    })
-    .returning();
-  const [relation] = await db
-    .insert(schema.taskRelationTable)
-    .values({
-      sourceTaskId: task.id,
-      targetTaskId: other.id,
-      relationType: "blocks",
-    })
-    .returning();
-  if (!activity || !relation) throw new Error("seed");
-  return {
-    taskId: task.id,
-    otherTaskId: other.id,
-    activityId: activity.id,
-    relationId: relation.id,
-    columnId: col.id,
-  };
-}
 
 async function snapshot() {
   return JSON.stringify({
@@ -211,7 +156,6 @@ const ROUTES: LegacyRoute[] = [
   },
   {
     matrixKey: "PUT /api/activity/comment",
-    noLegacyKeyScope: true,
     call: (a, s) =>
       json(a, "PUT", "/api/activity/comment", {
         activityId: s.activityId,
@@ -220,7 +164,6 @@ const ROUTES: LegacyRoute[] = [
   },
   {
     matrixKey: "DELETE /api/activity/comment",
-    noLegacyKeyScope: true,
     call: (a, s) =>
       json(a, "DELETE", "/api/activity/comment", { activityId: s.activityId }),
   },
@@ -248,12 +191,18 @@ describe("API integration: project reach on the legacy task-keyed write routes",
     vi.restoreAllMocks();
   });
 
+  it("the table covers exactly the legacy write routes the guard requires", () => {
+    expect(ROUTES.map((route) => route.matrixKey).sort()).toEqual(
+      [...LEGACY_WRITE_ROUTE_KEYS].sort(),
+    );
+  });
+
   for (const route of ROUTES) {
     describe(route.matrixKey, () => {
       async function arrange() {
         const world = await setupWorld();
         const { app } = createApp();
-        const s = await seed(world, world.projectMember.user.id);
+        const s = await seedLegacy(world, world.projectMember.user.id);
         return { world, app, s };
       }
 
@@ -307,12 +256,10 @@ describe("API integration: project reach on the legacy task-keyed write routes",
         const { world, app, s } = await arrange();
         const before = await snapshot();
         mockAnonymousSession();
-        for (const permissions of route.noLegacyKeyScope
-          ? []
-          : [
-              { project: ["read"], task: ["read"], work_item: ["read"] },
-              null,
-            ]) {
+        for (const permissions of [
+          { project: ["read"], task: ["read"], work_item: ["read"] },
+          null,
+        ]) {
           setAmbientHeaders({
             "x-api-key": await makeApiKey(
               world.projectMember.user.id,
@@ -339,4 +286,93 @@ describe("API integration: project reach on the legacy task-keyed write routes",
       });
     });
   }
+
+  describe("task relations across projects", () => {
+    async function twoProjects() {
+      const world = await setupWorld();
+      const { app } = createApp();
+      const s = await seedLegacy(world, world.projectMember.user.id);
+      // A second project in the same workspace that the project member does NOT reach.
+      const hidden = await createProjectFixture({
+        workspaceId: world.workspaceId,
+      });
+      const [hiddenTask] = await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: hidden.project.id,
+          title: "Hidden project task",
+          description: "d",
+          priority: "high",
+          status: hidden.columns.todo.slug,
+          columnId: hidden.columns.todo.id,
+          number: 1,
+          position: 1,
+        })
+        .returning();
+      if (!hiddenTask) throw new Error("hidden task");
+      // A colleague who reaches BOTH projects (and so may legitimately link them).
+      const both = await addMember(world.workspaceId, "admin");
+      await grantWorkItemProjectAccess(both.user.id, world.project.id);
+      await grantWorkItemProjectAccess(both.user.id, hidden.project.id);
+      return { world, app, s, hiddenTask, both };
+    }
+    const relate = (
+      app: ReturnType<typeof createApp>["app"],
+      source: string,
+      target: string,
+    ) =>
+      json(app, "POST", "/api/task-relation", {
+        sourceTaskId: source,
+        targetTaskId: target,
+        relationType: "blocks",
+      });
+
+    it("creating a relation to a task the caller cannot reach answers exactly like a missing target", async () => {
+      const { world, app, s, hiddenTask } = await twoProjects();
+      mockAuthenticatedSession(world.projectMember.user);
+      const hiddenTarget = await relate(app, s.taskId, hiddenTask.id);
+      const missingTarget = await relate(app, s.taskId, "no-such-task-id");
+      const [hiddenBody, missingBody] = [
+        await hiddenTarget.text(),
+        await missingTarget.text(),
+      ];
+      expect(hiddenTarget.status).toBe(404);
+      expect(hiddenBody).toBe(missingBody);
+      expect(hiddenBody).toBe("Target task not found");
+      expect(await db.select().from(schema.taskRelationTable)).toHaveLength(1); // the seeded one only
+    });
+
+    it("listing relations omits a related task the caller cannot reach, and removing needs both ends", async () => {
+      const { world, app, s, hiddenTask, both } = await twoProjects();
+      mockAuthenticatedSession(both.user);
+      const created = await relate(app, s.taskId, hiddenTask.id);
+      expect(created.status, await created.clone().text()).toBe(200);
+      const { id: relationId } = (await created.json()) as { id: string };
+
+      mockAuthenticatedSession(world.projectMember.user);
+      const list = await json(app, "GET", `/api/task-relation/${s.taskId}`);
+      const text = await list.text();
+      expect(list.status, text).toBe(200);
+      expect(text).not.toContain("Hidden project task");
+      expect(text).not.toContain(hiddenTask.id);
+      expect(text).toContain(s.otherTaskId); // the visible seeded relation remains
+
+      const removed = await json(
+        app,
+        "DELETE",
+        `/api/task-relation/${relationId}`,
+      );
+      expect(removed.status, await removed.text()).toBe(404);
+      expect(
+        await db
+          .select()
+          .from(schema.taskRelationTable)
+          .where(eq(schema.taskRelationTable.id, relationId)),
+      ).toHaveLength(1);
+
+      mockAuthenticatedSession(both.user);
+      const listBoth = await json(app, "GET", `/api/task-relation/${s.taskId}`);
+      expect(await listBoth.text()).toContain("Hidden project task");
+    });
+  });
 });
