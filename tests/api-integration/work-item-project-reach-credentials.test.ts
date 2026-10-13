@@ -139,6 +139,39 @@ describe("API integration: project reach, capability and credential cases", () =
     });
   }
 
+  describe("POST /api/work-items/bulk", () => {
+    it("refuses a read-scoped API key owned by a capable project member and writes nothing", async () => {
+      const world = await setupWorld();
+      const { app } = createApp();
+      const item = await createItem(app, world, TITLE);
+      const before = await snapshot();
+      mockAnonymousSession();
+      for (const permissions of [
+        { project: ["read"], work_item: ["read"] },
+        null,
+      ]) {
+        setAmbientHeaders({
+          "x-api-key": await makeApiKey(
+            world.projectMember.user.id,
+            permissions,
+          ),
+        });
+        for (const body of [
+          { operation: "delete" },
+          { operation: "assign", assigneeId: world.projectMember.personId },
+        ]) {
+          const response = await json(app, "POST", "/api/work-items/bulk", {
+            workspaceId: world.workspaceId,
+            workItemKeys: [item.key],
+            ...body,
+          });
+          expect(response.status, await response.text()).toBe(403);
+        }
+      }
+      expect(await snapshot()).toBe(before);
+    });
+  });
+
   describe("POST /api/work-items/search", () => {
     it("refuses a customer principal and shows an outsider nothing", async () => {
       const world = await setupWorld();

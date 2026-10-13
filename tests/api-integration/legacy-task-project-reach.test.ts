@@ -19,6 +19,7 @@ import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  grantProjectRole,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 import { LEGACY_WRITE_ROUTE_KEYS } from "./helpers/reach-route-keys";
@@ -340,6 +341,26 @@ describe("API integration: project reach on the legacy task-keyed write routes",
       expect(hiddenBody).toBe(missingBody);
       expect(hiddenBody).toBe("Target task not found");
       expect(await db.select().from(schema.taskRelationTable)).toHaveLength(1); // the seeded one only
+    });
+
+    it("creating a relation to a target the caller reaches but may only read answers 404 and writes nothing", async () => {
+      const { world, app, s, hiddenTask } = await twoProjects();
+      // Full authority on the source's project, read-only on the target's project.
+      const mixed = await addMember(world.workspaceId, "admin");
+      await grantWorkItemProjectAccess(mixed.user.id, world.project.id);
+      const [hiddenProject] = await db
+        .select({ projectId: schema.taskTable.projectId })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.id, hiddenTask.id));
+      await grantProjectRole(mixed.user.id, hiddenProject?.projectId ?? "", [
+        "project:read",
+        "work_item:read",
+      ]);
+      const before = await db.select().from(schema.taskRelationTable);
+      mockAuthenticatedSession(mixed.user);
+      const response = await relate(app, s.taskId, hiddenTask.id);
+      expect(response.status, await response.text()).toBe(404);
+      expect(await db.select().from(schema.taskRelationTable)).toEqual(before);
     });
 
     it("listing relations omits a related task the caller cannot reach, and removing needs both ends", async () => {
