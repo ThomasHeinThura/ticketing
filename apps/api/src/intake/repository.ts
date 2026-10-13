@@ -565,7 +565,13 @@ export async function portalCatalogue(organisationId: string, query = "") {
           })
           .from(schema.workspaceFeatureFlagTable)
           .where(
-            inArray(schema.workspaceFeatureFlagTable.workspaceId, workspaceIds),
+            and(
+              inArray(
+                schema.workspaceFeatureFlagTable.workspaceId,
+                workspaceIds,
+              ),
+              eq(schema.workspaceFeatureFlagTable.featureKey, "feature.intake"),
+            ),
           )
       : Promise.resolve([]),
   ]);
@@ -1639,7 +1645,10 @@ export async function listOwnSubmissions(
       })
       .from(schema.workspaceFeatureFlagTable)
       .where(
-        inArray(schema.workspaceFeatureFlagTable.workspaceId, workspaceIds),
+        and(
+          inArray(schema.workspaceFeatureFlagTable.workspaceId, workspaceIds),
+          eq(schema.workspaceFeatureFlagTable.featureKey, "feature.intake"),
+        ),
       ),
   ]);
   const enabledWorkspaceIds = workspaceIds.filter(

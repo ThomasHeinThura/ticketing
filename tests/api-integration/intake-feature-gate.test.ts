@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
-import { listOwnSubmissions } from "../../apps/api/src/intake/repository";
+import {
+  listOwnSubmissions,
+  portalCatalogue,
+} from "../../apps/api/src/intake/repository";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
@@ -112,6 +116,20 @@ describe("intake feature-flag reach", () => {
       enabled: true,
       locked: false,
     });
+    // Rows for an unrelated feature are inserted first, with the opposite value, so a
+    // query that does not filter on the intake key reads the wrong row.
+    await db.insert(schema.workspaceFeatureFlagTable).values([
+      {
+        workspaceId: enabledMember.workspace.id,
+        featureKey: "feature.approvals",
+        enabled: false,
+      },
+      {
+        workspaceId: disabledMember.workspace.id,
+        featureKey: "feature.approvals",
+        enabled: true,
+      },
+    ]);
     await db.insert(schema.workspaceFeatureFlagTable).values([
       {
         workspaceId: enabledMember.workspace.id,
@@ -184,5 +202,76 @@ describe("intake feature-flag reach", () => {
     expect(secondPage.submissions[0]?.requestType.id).toBe(enabledType.id);
     expect(secondPage.page).toEqual({ nextCursor: null, hasMore: false });
     expect(secondPage.meta.total).toBe(2);
+  });
+
+  it("resolves the portal catalogue from the intake flag, not other workspace flags", async () => {
+    const enabledMember = await createWorkspaceMember({ role: "admin" });
+    const disabledMember = await createWorkspaceMember({ role: "admin" });
+    const organisation = requireRow(
+      await db
+        .insert(schema.organisationTable)
+        .values({ key: `customer-${randomUUID()}`, name: "Customer" })
+        .returning(),
+      "customer organisation",
+    );
+    const types = [];
+    for (const workspaceId of [
+      enabledMember.workspace.id,
+      disabledMember.workspace.id,
+    ]) {
+      const type = await createRequestType(workspaceId);
+      await db.insert(schema.requestTypeVersionTable).values({
+        workspaceId,
+        requestTypeId: type.id,
+        number: 1,
+        formSchema: { fields: [] },
+        workItemTypeId: type.workItemTypeId,
+      });
+      await db
+        .update(schema.requestTypeTable)
+        .set({ published: true, customerVisible: true })
+        .where(eq(schema.requestTypeTable.id, type.id));
+      await db.insert(schema.organisationRequestTypeTable).values({
+        organisationId: organisation.id,
+        requestTypeId: type.id,
+      });
+      types.push(type);
+    }
+    const [enabledType, disabledType] = types;
+    if (!enabledType || !disabledType) throw new Error("type fixtures missing");
+
+    await db.insert(schema.instanceFeatureFlagTable).values({
+      featureKey: "feature.intake",
+      enabled: true,
+      locked: false,
+    });
+    await db.insert(schema.workspaceFeatureFlagTable).values([
+      {
+        workspaceId: enabledMember.workspace.id,
+        featureKey: "feature.approvals",
+        enabled: false,
+      },
+      {
+        workspaceId: disabledMember.workspace.id,
+        featureKey: "feature.approvals",
+        enabled: true,
+      },
+    ]);
+    await db.insert(schema.workspaceFeatureFlagTable).values([
+      {
+        workspaceId: enabledMember.workspace.id,
+        featureKey: "feature.intake",
+        enabled: true,
+      },
+      {
+        workspaceId: disabledMember.workspace.id,
+        featureKey: "feature.intake",
+        enabled: false,
+      },
+    ]);
+
+    const catalogue = JSON.stringify(await portalCatalogue(organisation.id));
+    expect(catalogue).toContain(enabledType.id);
+    expect(catalogue).not.toContain(disabledType.id);
   });
 });
