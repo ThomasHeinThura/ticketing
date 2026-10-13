@@ -480,4 +480,26 @@ describe("API integration: GET/PATCH /api/me/settings (settings-hierarchy.md ST-
       await Promise.all([blocker.end(), observer.end()]);
     }
   });
+
+  it.each([
+    ["NUL", "p\u0000x"],
+    ["trailing NUL", "abc\u0000"],
+    ["control character", "p\u0007x"],
+    ["newline", "p\nx"],
+    ["space", "p x"],
+    ["slash", "a/b"],
+    ["non-ASCII", "pr\u00f6ject"],
+  ])(
+    "rejects a project id with %s with 422 on both set and clear",
+    async (_name, id) => {
+      const member = await createWorkspaceMember({ role: "owner" });
+      mockAuthenticatedSession(member.user);
+      const { app } = createApp();
+      const set = await patch(app, { [`layout.${id}`]: "list" });
+      expect(set.status, await set.clone().text()).toBe(422);
+      const clear = await patch(app, { [`layout.${id}`]: null });
+      expect(clear.status, await clear.clone().text()).toBe(422);
+      expect(await rowsFor(member.user.id)).toHaveLength(0);
+    },
+  );
 });

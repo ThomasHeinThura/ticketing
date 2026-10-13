@@ -31,6 +31,18 @@ export type SettingTarget =
       readonly schema: typeof LAYOUT_SCHEMA;
     };
 
+export const SETTING_SCOPE_ID_MAX_LENGTH = 128;
+
+/**
+ * Project ids are cuid2 (lowercase alphanumerics). The pattern is a little wider (letters,
+ * digits, `_`, `-`, at most `SETTING_SCOPE_ID_MAX_LENGTH`) so every id the repository has
+ * produced matches, while NUL, other control characters and non-ASCII never reach a query
+ * (Postgres rejects NUL in text, which used to surface as a 500).
+ */
+const PROJECT_ID_PATTERN = new RegExp(
+  `^[A-Za-z0-9_-]{1,${SETTING_SCOPE_ID_MAX_LENGTH}}$`,
+);
+
 const LAYOUT_PREFIX = "layout.";
 
 /** Returns the row a settings key addresses, or undefined for a key that is not whitelisted. */
@@ -46,11 +58,7 @@ export function parseSettingKey(key: string): SettingTarget | undefined {
   }
   if (key.startsWith(LAYOUT_PREFIX)) {
     const projectId = key.slice(LAYOUT_PREFIX.length);
-    if (
-      projectId.length === 0 ||
-      projectId.length > SETTING_SCOPE_ID_MAX_LENGTH
-    )
-      return undefined;
+    if (!PROJECT_ID_PATTERN.test(projectId)) return undefined;
     return {
       kind: "layout",
       scope: "project",
@@ -68,7 +76,6 @@ export function layoutSettingKey(projectId: string) {
 
 /** Size limits, settings-hierarchy.md `ST-16`. */
 export const SETTINGS_BODY_MAX_BYTES = 4096;
-export const SETTING_SCOPE_ID_MAX_LENGTH = 128;
 export const SETTINGS_MAX_KEYS_PER_REQUEST = 20;
 export const SETTINGS_MAX_ROWS_PER_PERSON = 500;
 /** Advisory-lock namespace serialising one person's settings writes (cap + upsert, ST-16). */
