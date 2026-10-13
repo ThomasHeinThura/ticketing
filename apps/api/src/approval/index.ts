@@ -1,4 +1,5 @@
 import type { Capability } from "@taskdesk/permissions";
+import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import {
@@ -7,7 +8,13 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { isCustomerSidePerson } from "../utils/is-customer-principal";
+import {
+  WORK_ITEM_REACH_MARK,
+  type WorkItemReachMark,
+} from "../utils/reach-mark";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { requireWorkItemReach } from "../work-item/require-work-item-reach";
 import {
   approvalIdEvidence,
   approvalWorkItemEvidence,
@@ -163,6 +170,22 @@ async function withdrawApprovalForIdentity(input: {
   return formatApproval(fresh, input.identity, target);
 }
 
+// Project reach FIRST (before request validation), so an out-of-reach staff caller gets the
+// same 404 for a real and a missing key instead of a 400 only a real key produces. Capability
+// and the approver predicates stay with the handler. Customer-side callers go straight to
+// the handler, which owns their addressed-approval rules (403 for requesting).
+const staffReach = requireWorkItemReach("key", { deferCapability: true });
+const approvalRequestReach = Object.assign(
+  async (c: Context, next: Next) => {
+    const userId = c.get("userId");
+    if (userId && (await isCustomerSidePerson(userId))) return next();
+    return staffReach(c, next);
+  },
+  {
+    [WORK_ITEM_REACH_MARK]: { projectReach: true } satisfies WorkItemReachMark,
+  },
+);
+
 const listWorkItemApprovalsRoute = createRoute({
   method: "get",
   operationId: "listWorkItemApprovals",
@@ -185,7 +208,7 @@ const createWorkItemApprovalRoute = createRoute({
   method: "post",
   operationId: "createWorkItemApproval",
   path: "/work-items/{key}/approvals",
-  middleware: [approvalWorkItemEvidence()] as const,
+  middleware: [approvalRequestReach, approvalWorkItemEvidence()] as const,
   tags: ["Approvals"],
   summary: "Request a work-item approval",
   request: {

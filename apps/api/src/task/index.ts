@@ -193,7 +193,10 @@ const moveTaskRoute = createRoute({
   description:
     "Move a task to another project, optionally into a named column. Both projects must be in the same workspace.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -304,7 +307,10 @@ const updateTaskRoute = createRoute({
     "for required optimistic concurrency or a single-field route for narrower edits.",
   middleware: [
     legacyTaskDeprecationHeaders,
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
     requireTaskAssigneePermission,
   ] as const,
@@ -351,7 +357,10 @@ const updateTaskV2Route = createRoute({
   description:
     "Replace every field of a task using its current quoted If-Match version. A mismatch returns 409 with asserted/current versions. Use the single-field routes for narrower edits.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
     requireTaskAssigneePermission,
   ] as const,
@@ -429,7 +438,10 @@ const deleteTaskRoute = createRoute({
   description:
     "Permanently delete a task and its comments, labels, and time entries.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["delete"] }),
   ] as const,
   request: { params: taskParam },
@@ -449,7 +461,10 @@ const updateTaskStatusRoute = createRoute({
   summary: "Update task status",
   description: "Move a task to another column in the same project.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -475,7 +490,10 @@ const updateTaskPriorityRoute = createRoute({
   summary: "Update task priority",
   description: "Set a task's priority.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -502,7 +520,10 @@ const updateTaskAssigneeRoute = createRoute({
   description:
     "Assign a task to a workspace member, or send null to unassign it.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["assign"] }),
   ] as const,
   request: {
@@ -530,7 +551,10 @@ const updateTaskDueDateRoute = createRoute({
   summary: "Update task due date",
   description: "Set or clear a task's due date.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -556,7 +580,10 @@ const updateTaskTitleRoute = createRoute({
   summary: "Update task title",
   description: "Rename a task.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -583,7 +610,10 @@ const createTaskImageUploadRoute = createRoute({
   description:
     "Get a presigned URL for uploading an image used in a task description or comment. PUT the bytes to it, then call the finalize route.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -611,7 +641,10 @@ const finalizeTaskImageUploadRoute = createRoute({
   description:
     "Record an uploaded image as a private asset and return the URL to reference it by.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -639,7 +672,10 @@ const updateTaskDescriptionRoute = createRoute({
   summary: "Update task description",
   description: "Replace a task's description.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {

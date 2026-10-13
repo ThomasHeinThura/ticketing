@@ -53,7 +53,10 @@ const createActivityRoute = createRoute({
   description:
     "Record a system-generated event on a task. Most events are written by the server itself; this exists for importers and integrations.",
   middleware: [
-    workspaceAccess.fromTaskId(),
+    workspaceAccess.fromTaskId("taskId", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -79,7 +82,10 @@ const createCommentRoute = createRoute({
   description:
     "Add a comment to a task. Equivalent to POST /comment/{taskId}, kept for the activity-feed client.",
   middleware: [
-    workspaceAccess.fromTaskId(),
+    workspaceAccess.fromTaskId("taskId", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -103,7 +109,14 @@ const updateCommentRoute = createRoute({
   tags: ["Activity"],
   summary: "Update comment",
   description: "Edit a comment. Only the comment's author may do this.",
-  middleware: [workspaceAccess.fromActivity("activityId")] as const,
+  middleware: [
+    workspaceAccess.fromActivity("activityId", {
+      requireProjectReach: true,
+      // The legacy controller checks authorship only; the strict policy layer clamps a
+      // key to its stored scope when enabled (strict-runtime-enforcement.test.ts).
+      deferApiKeyCapability: true,
+    }),
+  ] as const,
   request: {
     body: {
       required: true,
@@ -125,7 +138,14 @@ const deleteCommentRoute = createRoute({
   tags: ["Activity"],
   summary: "Delete comment",
   description: "Delete a comment. Only the comment's author may do this.",
-  middleware: [workspaceAccess.fromActivity("activityId")] as const,
+  middleware: [
+    workspaceAccess.fromActivity("activityId", {
+      requireProjectReach: true,
+      // The legacy controller checks authorship only; the strict policy layer clamps a
+      // key to its stored scope when enabled (strict-runtime-enforcement.test.ts).
+      deferApiKeyCapability: true,
+    }),
+  ] as const,
   request: {
     body: {
       required: true,

@@ -8,6 +8,11 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import { projectReadDecision } from "../utils/has-project-reach";
+import { isCustomerPrincipal } from "../utils/is-customer-principal";
+import {
+  WORK_ITEM_REACH_MARK,
+  type WorkItemReachMark,
+} from "../utils/reach-mark";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 
 /**
@@ -67,43 +72,21 @@ export type WorkItemReachOptions =
        * otherwise be refused on every write. Session callers are unaffected.
        */
       readonly deferApiKeyCapability?: boolean;
+      /**
+       * Decide REACH only; the handler owns the capability decision (approvals, whose
+       * named-approver and CAB predicates it evaluates itself). Used so reach is resolved
+       * before request validation without second-guessing those predicates.
+       */
+      readonly deferCapability?: boolean;
     }
   | {
       readonly requireProjectReach: false;
       readonly workspaceReachOnlyReason: string;
       readonly deferApiKeyCapability?: boolean;
+      readonly deferCapability?: boolean;
     };
 
-/** Marker read by the structural guard test; not used at runtime. */
-export const WORK_ITEM_REACH_MARK = Symbol.for("taskdesk.workItemReach");
-
-export type WorkItemReachMark = {
-  readonly projectReach: boolean;
-  readonly workspaceReachOnlyReason?: string;
-};
-
-async function isCustomerPrincipal(
-  userId: string,
-  workspaceId: string,
-): Promise<boolean> {
-  const [membership] = await db
-    .select({ role: schema.workspaceUserTable.role })
-    .from(schema.workspaceUserTable)
-    .where(
-      and(
-        eq(schema.workspaceUserTable.userId, userId),
-        eq(schema.workspaceUserTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
-  if (membership?.role === "customer") return true;
-  const [person] = await db
-    .select({ side: schema.personTable.side })
-    .from(schema.personTable)
-    .where(eq(schema.personTable.userId, userId))
-    .limit(1);
-  return person?.side === "customer";
-}
+export { WORK_ITEM_REACH_MARK, type WorkItemReachMark };
 
 export function requireWorkItemReach(
   idKey = "key",
@@ -268,6 +251,7 @@ export function requireWorkItemReach(
       }
       if (
         !decision.capable &&
+        options.deferCapability !== true &&
         !(options.deferApiKeyCapability === true && apiKey)
       ) {
         setShadowLegacyAuthorization(c, "denied");

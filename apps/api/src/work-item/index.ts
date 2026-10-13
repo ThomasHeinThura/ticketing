@@ -1,4 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
+import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
@@ -15,6 +16,11 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { isCustomerPrincipal } from "../utils/is-customer-principal";
+import {
+  WORK_ITEM_REACH_MARK,
+  type WorkItemReachMark,
+} from "../utils/reach-mark";
 import {
   assertCallerHasCapability,
   assertCallerHasCapabilityOrSelf,
@@ -263,6 +269,31 @@ const listWorkItemsRoute = createRoute({
   },
 });
 
+// Customers are portal-only (the matrix declares 403 in reach). Other callers' results are
+// reach-filtered per project inside the query itself, so this collection route needs no
+// per-item reach middleware.
+const searchCustomerRefusal = Object.assign(
+  async (c: Context, next: Next) => {
+    const userId = c.get("userId");
+    const workspaceId = c.get("workspaceId");
+    if (
+      userId &&
+      workspaceId &&
+      (await isCustomerPrincipal(userId, workspaceId))
+    ) {
+      throw new HTTPException(403, { message: "Insufficient permissions" });
+    }
+    await next();
+  },
+  {
+    [WORK_ITEM_REACH_MARK]: {
+      projectReach: false,
+      workspaceReachOnlyReason:
+        "collection route: results are filtered per project reach inside the query",
+    } satisfies WorkItemReachMark,
+  },
+);
+
 const searchWorkItemsRoute = createRoute({
   method: "post",
   operationId: "searchWorkItems",
@@ -290,6 +321,7 @@ const searchWorkItemsRoute = createRoute({
         throw error;
       }
     },
+    searchCustomerRefusal,
   ] as const,
   request: {
     body: {

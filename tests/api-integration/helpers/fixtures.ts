@@ -278,6 +278,11 @@ export const WORK_ITEM_PROJECT_CAPABILITIES = [
   "comment:create",
   "comment:create_internal",
   "attachment:create",
+  "attachment:delete_own",
+  "comment:update_own",
+  "comment:delete_own",
+  "comment:update_any",
+  "comment:delete_any",
 ] as const;
 
 export function grantWorkItemProjectAccess(userId: string, projectId: string) {
@@ -310,6 +315,40 @@ export async function grantProjectAccessForWorkspaceRole(
       ]);
     } else {
       await grantWorkItemProjectAccess(userId, project.id);
+    }
+  }
+}
+
+/**
+ * Give every existing member of `workspaceId` the project authority its workspace role
+ * implies on `projectId` (viewer: read only; every other role: the full item set). For tests
+ * of workspace-capability or legacy-write behaviour whose actor must still reach the project.
+ */
+export async function grantProjectAccessToWorkspaceMembers(
+  workspaceId: string,
+  projectId: string,
+) {
+  const members = await db
+    .select({
+      userId: schema.workspaceUserTable.userId,
+      role: schema.workspaceUserTable.role,
+    })
+    .from(schema.workspaceUserTable)
+    .where(eq(schema.workspaceUserTable.workspaceId, workspaceId));
+  for (const member of members) {
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, member.userId))
+      .limit(1);
+    if (!person) continue;
+    if (member.role === "viewer") {
+      await grantProjectRole(member.userId, projectId, [
+        "project:read",
+        "work_item:read",
+      ]);
+    } else {
+      await grantWorkItemProjectAccess(member.userId, projectId);
     }
   }
 }

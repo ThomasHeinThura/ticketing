@@ -1,18 +1,20 @@
 import { isCapabilityPolicy, normaliseRouteKey } from "@taskdesk/permissions";
 import { describe, expect, it } from "vitest";
 import {
-  requireWorkItemReach,
   WORK_ITEM_REACH_MARK,
   type WorkItemReachMark,
-} from "../../apps/api/src/work-item/require-work-item-reach";
+} from "../../apps/api/src/utils/reach-mark";
+import { requireWorkItemReach } from "../../apps/api/src/work-item/require-work-item-reach";
 import { loadApiApp, loadPolicyRegistry } from "./api-app";
 
 /**
  * Structural guard for the item-scoped work-item routes.
  *
- * Every `/api/work-items/{key}...` route whose policy is `reach: "required"` on the
- * `work_item` scope must be wired through `requireWorkItemReach()` in PROJECT-reach mode
- * (the default). Weaker workspace-only reach is possible only through an explicit opt-out
+ * Every route whose policy is `reach: "required"` on the `work_item` scope (work-item routes,
+ * attachment-id routes, comment-by-id, approvals and the legacy task-keyed routes) must carry
+ * a reach middleware (`requireWorkItemReach`, `requireAttachmentReach`, `workspaceAccess.*`,
+ * the task-relation/comment scopers) that resolves PROJECT reach (the default for the first
+ * two). Weaker workspace-only reach is possible only through an explicit opt-out
  * that names its reason. A new item-scoped route that forgets the middleware, or that opts
  * out silently, fails here instead of shipping with a weaker gate than its declared policy
  * and the permission matrix (the defect class tracked in #708).
@@ -32,9 +34,11 @@ function markOf(handler: Handler): WorkItemReachMark | undefined {
  */
 const OTHER_REACH_MECHANISM: Readonly<Record<string, string>> = {
   "GET /api/work-items/{key}/approvals":
-    "approval domain: row evidence via approvalWorkItemEvidence, decided by the approval handlers and strict policy enforcement; reviewed under the approval lane",
-  "POST /api/work-items/{key}/approvals":
-    "approval domain: row evidence via approvalWorkItemEvidence, decided by the approval handlers and strict policy enforcement; reviewed under the approval lane",
+    "approval domain: customers read the approvals addressed to them through this route; row evidence via approvalWorkItemEvidence and the handler's reach and addressed-approval checks decide",
+  "POST /api/approvals/{id}/decide":
+    "approval domain: row evidence via approvalIdEvidence resolves the approval's work item; named-approver, CAB and addressed-portal predicates are decided by the handler",
+  "POST /api/approvals/{id}/withdraw":
+    "approval domain: row evidence via approvalIdEvidence resolves the approval's work item; the requester/withdraw predicate is decided by the handler",
 };
 
 type ReachFinding = { readonly route: string; readonly problem: string };
@@ -178,19 +182,25 @@ describe("work-item reach guard: the real router", () => {
         (entry) =>
           isCapabilityPolicy(entry.policy) &&
           entry.policy.scope === "work_item" &&
-          entry.policy.reach === "required" &&
-          entry.routeKey.includes("/api/work-items/{key}"),
+          entry.policy.reach === "required",
       )
       .map((entry) => entry.routeKey);
 
     // Non-vacuous: the routes this guard exists for are in the set and carry the marker.
-    expect(itemRouteKeys.length).toBeGreaterThanOrEqual(20);
+    expect(itemRouteKeys.length).toBeGreaterThanOrEqual(50);
     for (const required of [
       "PATCH /api/work-items/{key}",
       "POST /api/work-items/{key}/rank",
       "POST /api/work-items/{key}/transition",
       "POST /api/work-items/{key}/comments",
       "POST /api/work-items/{key}/attachments/presign",
+      "POST /api/work-items/{key}/approvals",
+      "DELETE /api/attachments/{id}",
+      "POST /api/attachments/{id}/complete",
+      "PATCH /api/comments/{id}",
+      "PUT /api/task/status/{id}",
+      "POST /api/task-relation",
+      "POST /api/work-items/search",
     ]) {
       expect(itemRouteKeys).toContain(required);
     }

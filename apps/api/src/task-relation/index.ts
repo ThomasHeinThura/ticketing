@@ -10,6 +10,11 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { assertWorkItemProjectReach } from "../utils/assert-work-item-project-reach";
+import {
+  WORK_ITEM_REACH_MARK,
+  type WorkItemReachMark,
+} from "../utils/reach-mark";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
@@ -28,13 +33,21 @@ import {
 } from "./schema";
 
 async function workspaceIdOfTask(taskId: string) {
+  return (await taskReachRow(taskId))?.workspaceId ?? null;
+}
+
+async function taskReachRow(taskId: string) {
   const [task] = await db
-    .select({ workspaceId: projectTable.workspaceId })
+    .select({
+      workspaceId: projectTable.workspaceId,
+      projectId: taskTable.projectId,
+      taskId: taskTable.id,
+    })
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
     .where(eq(taskTable.id, taskId))
     .limit(1);
-  return task?.workspaceId ?? null;
+  return task ?? null;
 }
 
 function requireUserId(c: Context) {
@@ -86,6 +99,19 @@ async function scopeToSourceTask(c: Context, next: Next) {
   // the caller's request -- label it so shadow mode's evidence gate keeps it instead
   // of always nulling it.
   c.set("workspaceIdSource", "row");
+  const sourceTask = await taskReachRow(sourceTaskId);
+  if (sourceTask) {
+    await assertWorkItemProjectReach(
+      c,
+      userId,
+      {
+        projectId: sourceTask.projectId,
+        workspaceId: sourceTask.workspaceId,
+        workItemId: sourceTask.taskId,
+      },
+      { notFoundMessage: "Source task not found", deferApiKeyCapability: true },
+    );
+  }
   return next();
 }
 
@@ -130,6 +156,22 @@ async function scopeToRelation(c: Context, next: Next) {
   // never from the caller's request -- label it so shadow mode's evidence gate keeps
   // it instead of always nulling it.
   c.set("workspaceIdSource", "row");
+  const relationSource = await taskReachRow(rel.sourceTaskId);
+  if (relationSource) {
+    await assertWorkItemProjectReach(
+      c,
+      userId,
+      {
+        projectId: relationSource.projectId,
+        workspaceId: relationSource.workspaceId,
+        workItemId: relationSource.taskId,
+      },
+      {
+        notFoundMessage: "Task relation not found",
+        deferApiKeyCapability: true,
+      },
+    );
+  }
   return next();
 }
 
@@ -155,6 +197,13 @@ const getTaskRelationsRoute = createRoute({
     400: errorResponse("taskId must not contain a NUL (\\u0000) byte"),
     404: errorResponse("Task not found"),
   },
+});
+
+Object.assign(scopeToSourceTask, {
+  [WORK_ITEM_REACH_MARK]: { projectReach: true } satisfies WorkItemReachMark,
+});
+Object.assign(scopeToRelation, {
+  [WORK_ITEM_REACH_MARK]: { projectReach: true } satisfies WorkItemReachMark,
 });
 
 const createTaskRelationRoute = createRoute({

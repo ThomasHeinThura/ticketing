@@ -822,6 +822,8 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       joinedAt: new Date(),
     });
     await addPersonForUser(otherUser.id);
+    // In project reach (a staff colleague): the ownership check, not reach, must refuse.
+    await grantWorkItemProjectAccess(otherUser.id, project.id);
 
     mockAuthenticatedSession(otherUser);
     const deleteResponse = await app.request(

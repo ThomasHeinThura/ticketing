@@ -10,6 +10,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -68,6 +69,7 @@ describe("API integration: task image upload finalize", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
 
     const task = requireRow(
       await db
@@ -181,6 +183,7 @@ describe("API integration: task image upload finalize", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
 
     const task = requireRow(
       await db
@@ -231,6 +234,7 @@ describe("API integration: task image upload finalize", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
 
     const task = requireRow(
       await db
@@ -297,6 +301,7 @@ describe("API integration: task image upload finalize", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
 
     const task = requireRow(
       await db
@@ -351,6 +356,7 @@ describe("API integration: task image upload finalize", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
 
     const task = requireRow(
       await db
@@ -399,6 +405,7 @@ describe("API integration: task image upload finalize", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
 
     const task = requireRow(
       await db
@@ -461,6 +468,8 @@ describe("API integration: task image upload finalize", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+
+    await grantWorkItemProjectAccess(member.user.id, project.id);
 
     const task = requireRow(
       await db

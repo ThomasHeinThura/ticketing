@@ -12,6 +12,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectAccessToWorkspaceMembers,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -187,6 +188,7 @@ describe("the removed public project route", () => {
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
 
     const { app } = createApp();
     const response = await app.request(`/api/public-project/${project.id}`);
@@ -203,6 +205,7 @@ describe("task assignees stay inside the workspace", () => {
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
 
     mockAuthenticatedSession(user);
     const { app } = createApp();
@@ -228,6 +231,7 @@ describe("task assignees stay inside the workspace", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
 
     const task = requireRow(
       await db
@@ -266,6 +270,7 @@ describe("activity attribution", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
 
     const task = requireRow(
       await db
@@ -312,6 +317,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
 
     const task = requireRow(
       await db
@@ -362,6 +368,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
 
     mockAuthenticatedSession(user);
     const { app } = createApp();
@@ -398,6 +405,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
 
     mockAuthenticatedSession(user);
     const { app } = createApp();
@@ -432,6 +440,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
 
     mockAuthenticatedSession(user);
     const { app } = createApp();
@@ -469,6 +478,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
 
     const task = requireRow(
       await db
@@ -515,6 +525,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
 
     const task = requireRow(
       await db
@@ -561,6 +572,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
 
     const task = requireRow(
       await db
@@ -613,6 +625,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
@@ -666,6 +679,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
@@ -727,6 +741,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
@@ -797,6 +812,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
@@ -869,6 +885,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -920,6 +937,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -971,6 +989,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
@@ -1085,6 +1104,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const tasks = await db
       .insert(schema.taskTable)
       .values([
@@ -1165,6 +1185,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: member.workspace.id,
       userId: assignee.user.id,
@@ -1299,6 +1320,7 @@ describe("every assignee write path is workspace scoped", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: member.workspace.id,
       userId: assignee.user.id,

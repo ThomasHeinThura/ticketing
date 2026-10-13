@@ -11,6 +11,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectRole,
+  grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -123,10 +124,7 @@ describe("API integration: task update concurrency", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
-    await grantProjectRole(member.user.id, project.id, [
-      "project:read",
-      "work_item:read",
-    ]);
+    await grantWorkItemProjectAccess(member.user.id, project.id);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
@@ -237,10 +235,7 @@ describe("API integration: task update concurrency", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
-    await grantProjectRole(member.user.id, project.id, [
-      "project:read",
-      "work_item:read",
-    ]);
+    await grantWorkItemProjectAccess(member.user.id, project.id);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
@@ -320,10 +315,7 @@ describe("API integration: task update concurrency", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
-    await grantProjectRole(member.user.id, project.id, [
-      "project:read",
-      "work_item:read",
-    ]);
+    await grantWorkItemProjectAccess(member.user.id, project.id);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
