@@ -13,6 +13,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 import {
   raceProjectSoftDelete,
@@ -69,6 +70,7 @@ async function setupProjectWithDefaultState() {
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });
+  await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   const state = await makeDefaultState(creator.workspace.id, project.id);
   return { creator, project, type, state };

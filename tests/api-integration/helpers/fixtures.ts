@@ -259,3 +259,57 @@ export async function grantProjectRole(
   });
   return role;
 }
+
+/**
+ * Project-scoped authority for a staff test actor who must pass project reach and the
+ * registered capability on every item-scoped work-item route (`requireWorkItemReach()`
+ * evaluates the route's own capability against the caller's project role). The workspace
+ * role is a separate gate and is still checked by each route.
+ */
+export const WORK_ITEM_PROJECT_CAPABILITIES = [
+  "project:read",
+  "work_item:read",
+  "work_item:update",
+  "work_item:delete",
+  "work_item:assign",
+  "work_item:rank",
+  "work_item:transition",
+  "work_item:set_priority",
+  "comment:create",
+  "comment:create_internal",
+  "attachment:create",
+] as const;
+
+export function grantWorkItemProjectAccess(userId: string, projectId: string) {
+  return grantProjectRole(userId, projectId, [
+    ...WORK_ITEM_PROJECT_CAPABILITIES,
+  ]);
+}
+
+/**
+ * For a test actor added to a workspace that already holds its project(s): give the actor
+ * the project authority its workspace role implies, on every existing project, so a test of
+ * a workspace-capability decision still reaches that decision. A `viewer` gets read only
+ * (so write routes stay a capability refusal); every other role gets the full item set.
+ * Tests that need an actor OUTSIDE project reach must not call this.
+ */
+export async function grantProjectAccessForWorkspaceRole(
+  userId: string,
+  workspaceId: string,
+  role: string,
+) {
+  const projects = await db
+    .select({ id: schema.projectTable.id })
+    .from(schema.projectTable)
+    .where(eq(schema.projectTable.workspaceId, workspaceId));
+  for (const project of projects) {
+    if (role === "viewer") {
+      await grantProjectRole(userId, project.id, [
+        "project:read",
+        "work_item:read",
+      ]);
+    } else {
+      await grantWorkItemProjectAccess(userId, project.id);
+    }
+  }
+}
