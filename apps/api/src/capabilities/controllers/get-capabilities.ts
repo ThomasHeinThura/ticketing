@@ -12,6 +12,12 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   manageServiceCalendars: boolean;
   shareSavedViews: boolean;
   manageWorkspaceSettings: boolean;
+  // Strict canonical checks (rbac.md `work_item:transition`, `work_item:rank`,
+  // `project:manage_settings`): never derived from the legacy better-auth statement map,
+  // which grants members more than the permission matrix does (#708).
+  transitionTasks: boolean;
+  rankTasks: boolean;
+  manageProjectSettings: boolean;
   bindProjectOrganisation: boolean;
 };
 
@@ -30,6 +36,9 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     manageServiceCalendars,
     shareSavedViews,
     manageWorkspaceSettings,
+    transitionTasks,
+    rankTasks,
+    manageProjectSettings,
     bindProjectOrganisation,
   ] = await Promise.all([
     Promise.all(
@@ -60,6 +69,9 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasServiceCalendarManageCapability(c),
     hasCanonicalCapability(c, "saved_view:share"),
     hasCanonicalCapability(c, "workspace:manage_settings"),
+    hasCanonicalCapability(c, "work_item:transition"),
+    hasCanonicalCapability(c, "work_item:rank"),
+    hasCanonicalCapability(c, "project:manage_settings"),
     hasCanonicalCapability(c, "project:create"),
   ]);
   return {
@@ -67,6 +79,9 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     manageServiceCalendars,
     shareSavedViews,
     manageWorkspaceSettings,
+    transitionTasks,
+    rankTasks,
+    manageProjectSettings,
     bindProjectOrganisation,
   } as CapabilityMap;
 }
@@ -76,6 +91,9 @@ async function hasCanonicalCapability(
   capability:
     | "saved_view:share"
     | "workspace:manage_settings"
+    | "work_item:transition"
+    | "work_item:rank"
+    | "project:manage_settings"
     | "project:create",
 ): Promise<boolean> {
   const workspaceId = c.get("workspaceId");

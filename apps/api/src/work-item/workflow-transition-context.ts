@@ -60,6 +60,8 @@ export type WorkflowTransitionContext = {
   /** Every `state_template` row in this workspace, for resolving a transition's target
    * template group (`resolveAutomaticEffects`'s `toGroup`) without a second query per call. */
   templateGroups: Map<StateTemplateId, StateGroup>;
+  /** Workspace state-template names used to label legal targets in the UI. */
+  templateNames: Map<StateTemplateId, string>;
   /** This project's own adopted templates -> its concrete `state.id` (`WF-2`). */
   adoptedStates: ProjectStateAdoption;
 };
@@ -122,7 +124,11 @@ export async function loadWorkflowTransitionContext(
     .limit(1);
 
   const templateRows = await db
-    .select({ id: stateTemplateTable.id, group: stateTemplateTable.group })
+    .select({
+      id: stateTemplateTable.id,
+      group: stateTemplateTable.group,
+      name: stateTemplateTable.name,
+    })
     .from(stateTemplateTable)
     .where(eq(stateTemplateTable.workspaceId, item.workspaceId));
   const templateGroups = new Map<StateTemplateId, StateGroup>(
@@ -130,6 +136,9 @@ export async function loadWorkflowTransitionContext(
       asStateTemplateId(row.id),
       row.group as StateGroup,
     ]),
+  );
+  const templateNames = new Map<StateTemplateId, string>(
+    templateRows.map((row) => [asStateTemplateId(row.id), row.name]),
   );
 
   const stateRows = await db
@@ -167,6 +176,7 @@ export async function loadWorkflowTransitionContext(
     currentGroup: currentState.group as StateGroup,
     isChangeType: type?.isChange ?? false,
     templateGroups,
+    templateNames,
     adoptedStates,
   };
 

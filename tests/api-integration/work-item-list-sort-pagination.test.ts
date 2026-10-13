@@ -1278,3 +1278,155 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
     });
   });
 });
+
+describe("API integration: work item list sort=position (WI-11, WI-12, VW-10)", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  async function seedPositions(
+    app: ReturnType<typeof createApp>["app"],
+    projectId: string,
+    typeId: string,
+  ) {
+    const a = await createItem(app, projectId, typeId, "A");
+    const b = await createItem(app, projectId, typeId, "B");
+    const c = await createItem(app, projectId, typeId, "C");
+    const d = await createItem(app, projectId, typeId, "D");
+    const positions: Array<[string, string]> = [
+      [a.id, "5.5"],
+      [b.id, "-2"],
+      [c.id, "1.25"],
+      [d.id, "1.25"],
+    ];
+    for (const [id, position] of positions) {
+      await db
+        .update(schema.workItemTable)
+        .set({ position })
+        .where(eq(schema.workItemTable.id, id));
+    }
+    return { a, b, c, d };
+  }
+
+  it("orders by the stored rank position, with id ascending as the tie-break in both directions", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const { a, b, c, d } = await seedPositions(app, project.id, type.id);
+    const tied = [c.id, d.id].sort();
+
+    const asc = await list(app, project.id, "sort=position&dir=asc");
+    expect(asc.status).toBe(200);
+    expect((asc.body as ListBody).data.map((i) => i.id)).toEqual([
+      b.id,
+      ...tied,
+      a.id,
+    ]);
+
+    const desc = await list(app, project.id, "sort=position&dir=desc");
+    expect(desc.status).toBe(200);
+    expect((desc.body as ListBody).data.map((i) => i.id)).toEqual([
+      a.id,
+      ...tied,
+      b.id,
+    ]);
+  });
+
+  it("walks every row exactly once through the cursor, including a position tie, in both directions", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const { a, b, c, d } = await seedPositions(app, project.id, type.id);
+    const tied = [c.id, d.id].sort();
+
+    expect(await walkCursor(app, project.id, "position", "asc", 10)).toEqual([
+      b.id,
+      ...tied,
+      a.id,
+    ]);
+    expect(await walkCursor(app, project.id, "position", "desc", 10)).toEqual([
+      a.id,
+      ...tied,
+      b.id,
+    ]);
+  });
+
+  it("rejects a malformed position cursor with 400, never a 500", async () => {
+    const { creator, project } = await setupProject();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const cases = [
+      // a JSON number: the cursor carries the numeric(20,10) value as a string
+      `{"sort":"position","dir":"asc","v":1,"id":"x","isNull":false}`,
+      `{"sort":"position","dir":"asc","v":"abc","id":"x","isNull":false}`,
+      `{"sort":"position","dir":"asc","v":"1e5","id":"x","isNull":false}`,
+      `{"sort":"position","dir":"asc","v":"1.","id":"x","isNull":false}`,
+      `{"sort":"position","dir":"asc","v":"01","id":"x","isNull":false}`,
+      `{"sort":"position","dir":"asc","v":"12345678901","id":"x","isNull":false}`,
+      `{"sort":"position","dir":"asc","v":"1.12345678901","id":"x","isNull":false}`,
+      `{"sort":"position","dir":"asc","v":"1; drop table work_item","id":"x","isNull":false}`,
+      `{"sort":"position","dir":"asc","v":null,"id":"x","isNull":true}`,
+      `{"sort":"position","dir":"asc","v":"1","id":"x","isNull":true}`,
+    ];
+    for (const json of cases) {
+      const response = await list(
+        app,
+        project.id,
+        `sort=position&dir=asc&cursor=${encodeURIComponent(rawCursor(json))}`,
+      );
+      expect(response.status, json).toBe(400);
+    }
+  });
+
+  it("rejects a position cursor replayed under another sort, and accepts a well-formed one", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    await seedPositions(app, project.id, type.id);
+
+    const first = await list(app, project.id, "sort=position&dir=asc&limit=1");
+    const cursor = (first.body as ListBody).page.nextCursor;
+    expect(cursor).toBeTruthy();
+
+    const replayed = await list(
+      app,
+      project.id,
+      `sort=key&dir=asc&cursor=${encodeURIComponent(cursor ?? "")}`,
+    );
+    expect(replayed.status).toBe(400);
+
+    const next = await list(
+      app,
+      project.id,
+      `sort=position&dir=asc&limit=1&cursor=${encodeURIComponent(cursor ?? "")}`,
+    );
+    expect(next.status).toBe(200);
+  });
+
+  it("keeps position sorting scoped to the requested project", async () => {
+    const mine = await setupProject();
+    const other = await setupProject();
+    mockAuthenticatedSession(mine.creator.user);
+    const { app } = createApp();
+    await seedPositions(app, mine.project.id, mine.type.id);
+    mockAuthenticatedSession(other.creator.user);
+    const foreign = await createItem(
+      app,
+      other.project.id,
+      other.type.id,
+      "Foreign",
+    );
+
+    mockAuthenticatedSession(mine.creator.user);
+    const walked = await walkCursor(
+      app,
+      mine.project.id,
+      "position",
+      "asc",
+      10,
+    );
+    expect(walked).toHaveLength(4);
+    expect(walked).not.toContain(foreign.id);
+  });
+});
