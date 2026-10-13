@@ -127,6 +127,10 @@ export default function SortableProjectList({
 
   return (
     <DndContext
+      // dnd-kit renders its hidden instructions and live region as siblings
+      // of the children. Mounted in place they become non-<li> children of
+      // the sidebar <ul>, so portal them out of the list.
+      accessibility={{ container: document.body }}
       sensors={sensors}
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}

@@ -948,6 +948,8 @@
 			"doneColumnTooltip": "Considera questa come colonna di completamento",
 			"doneColumn": "Colonna completata",
 			"markDoneAria": "Segna {{name}} come colonna completata",
+			"nameAria": "Nome della colonna",
+			"deleteAria": "Elimina la colonna {{name}}",
 			"on": "Attivo",
 			"off": "Disattivo",
 			"newColumnPlaceholder": "Nuovo nome colonna...",
@@ -1403,6 +1405,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Progetto"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "Navigazione del progetto"
 		},
 		"keyboardShortcuts": {
 			"title": "Scorciatoie da Tastiera",

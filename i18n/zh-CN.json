@@ -946,6 +946,8 @@
 			"doneColumnTooltip": "将此列视为完成列",
 			"doneColumn": "完成列",
 			"markDoneAria": "将 {{name}} 标记为完成列",
+			"nameAria": "列名称",
+			"deleteAria": "删除列 {{name}}",
 			"on": "开",
 			"off": "关",
 			"newColumnPlaceholder": "新列名称…",
@@ -1401,6 +1403,9 @@
 		},
 		"projectSettings": {
 			"projectLabel": "Project"
+		},
+		"mobileProjectNav": {
+			"menuLabel": "项目导航"
 		},
 		"keyboardShortcuts": {
 			"title": "键盘快捷键",
