@@ -222,8 +222,10 @@ columns determine which fields are requested.
 | Route | Policy | Used for |
 | --- | --- | --- |
 | `POST /api/work-items/search` | `work_item:read`, workspace from the body, project reach | Every layout's read, with the structured filter ([API design](../01-architecture/api-design.md#work-item-search-v1-post-api-work-itemssearch)) |
+| `GET /api/projects/{projectId}/states` | `project:read`, project reach required | `VW-8`: the board's columns, including empty ones, in project order |
+| `GET /api/work-items/{key}/transitions` | `work_item:read` | `VW-9`: the legal offers the transition control shows, each with `toStateName`; the control itself is shown from the `transitionTasks` flag of `/api/capabilities` |
 | `POST /api/work-items/{key}/transition` | `work_item:transition` | `VW-9`, `VW-17`, `VW-22` |
-| `POST /api/work-items/{key}/rank` | `work_item:rank` | `VW-10` |
+| `POST /api/work-items/{key}/rank` | `work_item:rank` | `VW-10` (within-column order is read with `sort=position` on the list route; shown from the `rankTasks` flag) |
 | `POST /api/work-items/{key}/assign` | `work_item:assign` (or self-target with `work_item:update`) | `VW-13`, `VW-17` |
 | `PATCH /api/work-items/{key}` | `work_item:update`; `priority` also needs `work_item:set_priority` | `VW-13`, `VW-22`, `VW-26`, `VW-29` |
 | `POST /api/work-items/bulk` | `work_item:read` at the route, per-operation capability inside | `VW-3` |

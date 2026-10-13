@@ -177,6 +177,15 @@
           "manageWorkspaceSettings": {
             "type": "boolean"
           },
+          "transitionTasks": {
+            "type": "boolean"
+          },
+          "rankTasks": {
+            "type": "boolean"
+          },
+          "manageProjectSettings": {
+            "type": "boolean"
+          },
           "bindProjectOrganisation": {
             "type": "boolean",
             "description": "Strict project:create (owner/admin/manager): may list customer organisations and bind a new project to one."
@@ -208,6 +217,9 @@
           "manageServiceCalendars",
           "shareSavedViews",
           "manageWorkspaceSettings",
+          "transitionTasks",
+          "rankTasks",
+          "manageProjectSettings",
           "bindProjectOrganisation"
         ]
       },
@@ -820,6 +832,44 @@
           "title",
           "customerVisible",
           "createdAt"
+        ]
+      },
+      "ProjectState": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "stateTemplateId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "backlog",
+              "unstarted",
+              "started",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "position": {
+            "type": "integer"
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "stateTemplateId",
+          "name",
+          "group",
+          "position",
+          "isDefault"
         ]
       },
       "BoardResponse": {
@@ -4506,6 +4556,9 @@
           "toStateTemplateId": {
             "type": "string"
           },
+          "toStateName": {
+            "type": "string"
+          },
           "toStateId": {
             "type": "string"
           },
@@ -4546,6 +4599,7 @@
         "required": [
           "transitionId",
           "toStateTemplateId",
+          "toStateName",
           "toStateId",
           "notePolicy",
           "noteVisibility",
@@ -7443,6 +7497,74 @@
           },
           "404": {
             "description": "Project or document link not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/states": {
+      "get": {
+        "operationId": "listProjectStates",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List a project's active states",
+        "description": "Returns every active concrete project state, including empty board columns, in project order. An archived state template remains represented while its concrete project state is active.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The project's active states",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectState"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project ID (including a NUL byte)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:read capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -20185,6 +20307,7 @@
               "type": "string",
               "enum": [
                 "key",
+                "position",
                 "title",
                 "priority",
                 "dueDate"

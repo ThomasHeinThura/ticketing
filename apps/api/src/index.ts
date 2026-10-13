@@ -114,7 +114,7 @@ import { initializePlugins } from "./plugins";
 // the bundler drops it and the check silently stops running.
 import { policyRegistry } from "./policy-registry";
 import { isPortalClientRoute } from "./portal-client-routes";
-import project from "./project";
+import project, { projectStates } from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
 import serviceCalendar from "./service-calendar";
@@ -1491,6 +1491,7 @@ export function createApp(
   const oauthApi = api.route("/oauth", oauth);
   const capabilitiesApi = api.route("/capabilities", capabilities);
   const projectApi = api.route("/project", project);
+  const projectStatesApi = api.route("/projects", projectStates);
   const taskApi = api.route("/task", task);
   const taskV2Api = api.route("/v2/task", taskV2);
   const columnApi = api.route("/column", column);
@@ -1911,6 +1912,7 @@ export function createApp(
     pendingActionApi,
     userPreferenceApi,
     projectApi,
+    projectStatesApi,
     searchApi,
     serviceCalendarApi,
     slaPolicyApi,
@@ -2296,6 +2298,7 @@ const {
   pendingActionApi,
   userPreferenceApi,
   projectApi,
+  projectStatesApi,
   searchApi,
   serviceCalendarApi,
   slaPolicyApi,
@@ -2350,6 +2353,7 @@ if (isMainModule) {
 export type AppType =
   | typeof configApi
   | typeof projectApi
+  | typeof projectStatesApi
   | typeof taskApi
   | typeof taskV2Api
   | typeof columnApi
