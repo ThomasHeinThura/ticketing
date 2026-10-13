@@ -37,6 +37,7 @@ const EMPTY_CAPABILITIES = {
   inviteUsers: false,
   manageTeam: false,
   removeMembers: false,
+  manageServiceCalendars: false,
 } as const satisfies Record<string, boolean>;
 
 export function useWorkspacePermission(targetWorkspaceId?: string) {
@@ -99,6 +100,7 @@ export function useWorkspacePermission(targetWorkspaceId?: string) {
       canInviteUsers: () => can.inviteUsers,
       canManageTeam: () => can.manageTeam,
       canRemoveMembers: () => can.removeMembers,
+      canManageServiceCalendars: () => can.manageServiceCalendars,
       canCreatePublicComments: () => can.createPublicComments === true,
       canCreateInternalComments: () => can.createInternalComments === true,
     };

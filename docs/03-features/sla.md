@@ -153,6 +153,11 @@ an event once, and for list filtering. It is never the answer to "what is the st
 Policy list, policy editor (goal matrix by type × priority), calendar editor, SLA badge
 and bar primitives, SLA columns in list and table, SLA reports.
 
+Implemented: the policy list and the policy editor (a metric-by-priority goal grid per
+work item type, draft save with version check, publish) at `/agent/settings/sla-policies` and `/agent/settings/sla-policies/{id}`, and
+the calendar list and editor described in [service-calendars.md](service-calendars.md). The SLA
+badge and bar primitives, SLA columns and SLA reports are not implemented.
+
 The goal editor is a matrix, not a list of forms — service desk managers think in a grid
 of "for this type at this priority, this long", and giving them anything else makes
 authoring miserable.

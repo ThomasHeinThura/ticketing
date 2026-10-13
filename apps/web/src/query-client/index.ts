@@ -56,6 +56,12 @@ function captureCacheError(error: unknown, context: "query" | "mutation") {
   console.error(`[${area}]`, error);
 }
 
+export function shouldRetryQuery(failureCount: number, error: unknown) {
+  return isNetworkError(error) || isUnauthorizedError(error)
+    ? false
+    : failureCount < 2;
+}
+
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error) => {
@@ -73,10 +79,7 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       refetchOnMount: false,
-      retry: (failureCount, error) =>
-        isNetworkError(error) || isUnauthorizedError(error)
-          ? false
-          : failureCount < 2,
+      retry: shouldRetryQuery,
     },
     mutations: {
       retry: false,
