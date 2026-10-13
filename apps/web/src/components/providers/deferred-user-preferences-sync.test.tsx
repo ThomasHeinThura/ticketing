@@ -3,7 +3,10 @@ import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/components/providers/auth-provider";
 import { useUserPreferencesStore } from "@/store/user-preferences";
-import { DeferredUserPreferencesSync } from "./deferred-user-preferences-sync";
+import {
+  DeferredUserPreferencesSync,
+  loadUserPreferencesSync,
+} from "./deferred-user-preferences-sync";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }));
 
@@ -90,5 +93,13 @@ describe("DeferredUserPreferencesSync", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
     expect(mocks.get).not.toHaveBeenCalled();
+  });
+
+  it("renders nothing instead of crashing when the sync chunk fails to load", async () => {
+    const loaded = await loadUserPreferencesSync(() =>
+      Promise.reject(new Error("Failed to fetch dynamically imported module")),
+    );
+    const { container } = render(<loaded.default />);
+    expect(container.innerHTML).toBe("");
   });
 });
