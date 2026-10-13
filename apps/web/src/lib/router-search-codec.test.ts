@@ -236,6 +236,20 @@ describe("router-wide search codec guard", () => {
     ).toEqual({});
   });
 
+  it("keeps a project view's numeric-looking search when it was parsed for another route", () => {
+    // A programmatic navigate parses the destination search while the browser is still
+    // on the route being left, so a board URL can arrive through the default codec.
+    const parsedWhileOnUsers = createRouterParseSearch(
+      () => routes.godModeUsers.path,
+    )("?q=123&status=true&status=open&taskId=42");
+    expect(parsedWhileOnUsers.q).toBe(123);
+    expect(parseProjectBoardSearch(parsedWhileOnUsers)).toEqual({
+      q: "123",
+      status: ["true", "open"],
+      taskId: "42",
+    });
+  });
+
   it("recognises exactly the four project view routes", () => {
     for (const view of ["backlog", "board", "calendar", "gantt"]) {
       expect(

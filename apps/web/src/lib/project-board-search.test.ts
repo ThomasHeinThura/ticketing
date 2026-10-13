@@ -184,7 +184,8 @@ describe("project board URL state", () => {
       month: "2026-11",
       sort: "priority",
       dir: "desc",
-      status: ["todo", "doing"],
+      // A number or boolean is the string the project codec would have kept.
+      status: ["todo", "3", "doing"],
       dueDate: ["dueThisWeek", "noDueDate"],
       labels: ["label-1"],
       layout: "list",
@@ -201,7 +202,7 @@ describe("project board URL state", () => {
         layout: "calendar",
         extra: "discarded",
       }),
-    ).toEqual({});
+    ).toEqual({ q: "7", status: ["false"] });
   });
 
   it("round-trips repeated filters and escaped scalar URL state", () => {

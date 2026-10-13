@@ -58,17 +58,26 @@ const FILTER_KEYS = [
   "labels",
 ] as const;
 const SCALAR_KEYS = ["taskId", "month", "q", "sort", "dir"] as const;
+
+// A value the router's default codec typed as a number or boolean is read back as its
+// string form, so a project view never drops `q=123` when the search was parsed for
+// another route (see `createRouterParseSearch`). The exact text of forms such as `1e3`
+// is only kept when the project codec parsed the search.
+function searchString(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return String(value);
+  return undefined;
+}
+
 function parseStringList(
   value: unknown,
   dueDate = false,
 ): string[] | undefined {
   const values = new Set<string>();
-  for (const entry of Array.isArray(value) ? value : [value]) {
-    if (
-      typeof entry === "string" &&
-      entry &&
-      (!dueDate || Object.hasOwn(DUE_DATE_FILTER_VALUES, entry))
-    )
+  for (const raw of Array.isArray(value) ? value : [value]) {
+    const entry = searchString(raw);
+    if (entry && (!dueDate || Object.hasOwn(DUE_DATE_FILTER_VALUES, entry)))
       values.add(entry);
   }
   return values.size ? [...values] : undefined;
@@ -81,9 +90,8 @@ export function parseProjectViewSearch(
   const candidate = (raw ?? {}) as Record<string, unknown>;
   const search: ProjectViewSearch = {};
   for (const key of SCALAR_KEYS) {
-    const value = candidate[key];
+    const value = searchString(candidate[key]);
     if (
-      typeof value === "string" &&
       value &&
       (key !== "sort" || SORT_FIELDS.includes(value as SortField)) &&
       (key !== "dir" || SORT_DIRECTIONS.includes(value as SortDirection)) &&
@@ -157,8 +165,11 @@ export function isProjectViewPathname(pathname: string | undefined): boolean {
  * The router-wide `parseSearch`. Only the four legacy project view routes get the
  * string-preserving codec; every other route keeps TanStack's default parsing so its
  * search typing is unchanged (for example a numeric-looking `q` on another screen is
- * still the number the default codec produces). The router calls `parseSearch` after
- * the browser location has moved, so the current pathname identifies the route.
+ * still the number the default codec produces). The pathname is the current browser
+ * location: on initial load and history traversal that is the destination, but a
+ * programmatic `navigate` parses the destination search before the location moves, so
+ * the pathname can belong to the route being left. `parseProjectViewSearch` therefore
+ * also accepts numbers and booleans as their string form.
  */
 export function createRouterParseSearch(
   getPathname: () => string | undefined,
