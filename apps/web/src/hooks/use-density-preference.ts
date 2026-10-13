@@ -117,8 +117,9 @@ function writeDensity(input: {
           queryFn: getUserSettings,
           staleTime: 0,
         });
-        // Adopt-time check: the user may have changed while the refetch was in flight.
-        if (activeUserId !== userId) return;
+        // Adopt-time check: the user may have changed, or the same user may have toggled
+        // again, while the refetch was in flight; either makes this server state stale.
+        if (activeUserId !== userId || generation !== state.latest) return;
         useUserPreferencesStore
           .getState()
           .setCompactMode(

@@ -328,4 +328,85 @@ describe("density preference sync (VW-6, ST-17)", () => {
     // A's refetch would have adopted "compact"; B's state must be untouched.
     expect(useUserPreferencesStore.getState().compactMode).toBe(false);
   });
+
+  it("a terminal rejection that lands after a user switch touches nothing (R1a)", async () => {
+    serverHas("compact");
+    let rejectFirst: (error: unknown) => void = () => {};
+    mocks.put.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectFirst = reject;
+        }),
+    );
+    const { Wrapper, current } = switchableWrapper("user-a");
+    const { result, rerender } = renderHook(() => useDensityPreference(), {
+      wrapper: Wrapper,
+    });
+    act(() => result.current.setDensity("compact"));
+    await waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(1));
+
+    current.userId = "user-b";
+    rerender();
+    await act(async () => rejectFirst(new HttpError(422, "rejected")));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(mocks.get).not.toHaveBeenCalled();
+    expect(
+      localStorage.getItem("taskdesk:preference-dirty:user-a:density"),
+    ).toBe("1");
+  });
+
+  it("an adopt that resolves after a user switch is not applied (R1b)", async () => {
+    let resolveGet: (value: unknown) => void = () => {};
+    mocks.get.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveGet = resolve;
+        }),
+    );
+    mocks.put.mockRejectedValueOnce(new HttpError(422, "rejected"));
+    const { Wrapper, current } = switchableWrapper("user-a");
+    const { result, rerender } = renderHook(() => useDensityPreference(), {
+      wrapper: Wrapper,
+    });
+    act(() => result.current.setDensity("comfortable"));
+    await waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(1));
+
+    current.userId = "user-b";
+    rerender();
+    act(() => useUserPreferencesStore.getState().setCompactMode(false));
+    await act(async () => resolveGet({ settings: { density: "compact" } }));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(useUserPreferencesStore.getState().compactMode).toBe(false);
+  });
+
+  it("an adopt from an older rejection does not overwrite the same user's newer toggle", async () => {
+    let resolveGet: (value: unknown) => void = () => {};
+    mocks.get.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveGet = resolve;
+        }),
+    );
+    mocks.put
+      .mockRejectedValueOnce(new HttpError(422, "rejected"))
+      .mockImplementationOnce(() => new Promise(() => {}));
+    const { result } = renderHook(() => useDensityPreference(), {
+      wrapper: wrapper("user-a"),
+    });
+    act(() => result.current.setDensity("comfortable"));
+    await waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(1));
+
+    // The same user toggles again while the refetch is still in flight.
+    act(() => result.current.setDensity("compact"));
+    expect(useUserPreferencesStore.getState().compactMode).toBe(true);
+    await act(async () => resolveGet({ settings: { density: "comfortable" } }));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(useUserPreferencesStore.getState().compactMode).toBe(true);
+  });
 });
