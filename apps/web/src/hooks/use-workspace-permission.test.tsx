@@ -269,4 +269,29 @@ describe("useWorkspacePermission", () => {
     expect(result.current.isOwner).toBe(false);
     expect(result.current.isAdmin).toBe(false);
   });
+
+  it("exposes manageServiceCalendars as canManageServiceCalendars", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap({ manageServiceCalendars: true }),
+    });
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(result.current.canManageServiceCalendars()).toBe(true),
+    );
+
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap({ manageServiceCalendars: false }),
+    });
+    const denied = renderHook(() => useWorkspacePermission("workspace-2"), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(denied.result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(denied.result.current.canManageServiceCalendars()).toBe(false);
+  });
 });
