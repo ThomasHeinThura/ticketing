@@ -45,6 +45,12 @@
 						},
 						"clearAllFilters": {
 							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"tryAgain": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -57,7 +63,9 @@
 						"remove",
 						"reset",
 						"filter",
-						"clearAllFilters"
+						"clearAllFilters",
+						"retry",
+						"tryAgain"
 					]
 				},
 				"a11y": {
@@ -89,9 +97,12 @@
 					"properties": {
 						"loading": {
 							"type": "string"
+						},
+						"select": {
+							"type": "string"
 						}
 					},
-					"required": ["loading"]
+					"required": ["loading", "select"]
 				},
 				"pagination": {
 					"type": "object",
@@ -2148,6 +2159,21 @@
 						"sidebarDefaultDescription": {
 							"type": "string"
 						},
+						"density": {
+							"type": "string"
+						},
+						"densityDescription": {
+							"type": "string"
+						},
+						"densityComfortable": {
+							"type": "string"
+						},
+						"densityCompact": {
+							"type": "string"
+						},
+						"selectDensity": {
+							"type": "string"
+						},
 						"displayOptions": {
 							"type": "string"
 						},
@@ -2213,6 +2239,11 @@
 						"gantt",
 						"sidebarDefault",
 						"sidebarDefaultDescription",
+						"density",
+						"densityDescription",
+						"densityComfortable",
+						"densityCompact",
+						"selectDensity",
 						"displayOptions",
 						"displayOptionsDescription",
 						"taskNumbers",
@@ -9696,6 +9727,24 @@
 						},
 						"withdraw": {
 							"type": "string"
+						},
+						"noMatch": {
+							"type": "string"
+						},
+						"fieldRequired": {
+							"type": "string"
+						},
+						"completeUpload": {
+							"type": "string"
+						},
+						"completeUploadError": {
+							"type": "string"
+						},
+						"attachmentListError": {
+							"type": "string"
+						},
+						"downloadError": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -9721,7 +9770,13 @@
 						"conversation",
 						"reply",
 						"sendReply",
-						"withdraw"
+						"withdraw",
+						"noMatch",
+						"fieldRequired",
+						"completeUpload",
+						"completeUploadError",
+						"attachmentListError",
+						"downloadError"
 					]
 				}
 			},
@@ -10553,6 +10608,21 @@
 				},
 				"type": {
 					"type": "string"
+				},
+				"claimedAt": {
+					"type": "string"
+				},
+				"prefilledFromType": {
+					"type": "string"
+				},
+				"convertedWorkItem": {
+					"type": "string"
+				},
+				"retry": {
+					"type": "string"
+				},
+				"nextPage": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -10577,7 +10647,12 @@
 				"possibleDuplicates",
 				"linkDuplicate",
 				"download",
-				"type"
+				"type",
+				"claimedAt",
+				"prefilledFromType",
+				"convertedWorkItem",
+				"retry",
+				"nextPage"
 			]
 		},
 		"requestTypes": {
@@ -10734,9 +10809,6 @@
 				"unpublish": {
 					"type": "string"
 				},
-				"delete": {
-					"type": "string"
-				},
 				"published": {
 					"type": "string"
 				},
@@ -10816,7 +10888,6 @@
 				"publish",
 				"publishNew",
 				"unpublish",
-				"delete",
 				"published",
 				"draft",
 				"versions",

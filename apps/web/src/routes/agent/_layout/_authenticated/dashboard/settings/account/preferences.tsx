@@ -66,6 +66,8 @@ function RouteComponent() {
     resetDisplayPreferences,
     sidebarDefaultOpen,
     setSidebarDefaultOpen,
+    compactMode,
+    setCompactMode,
   } = useUserPreferencesStore();
 
   const themeLabels: Record<string, string> = {
@@ -83,6 +85,12 @@ function RouteComponent() {
     1: t("settings:preferencesPage.weekStartsOnMonday"),
     6: t("settings:preferencesPage.weekStartsOnSaturday"),
   };
+
+  const densityLabels: Record<"comfortable" | "compact", string> = {
+    comfortable: t("settings:preferencesPage.densityComfortable"),
+    compact: t("settings:preferencesPage.densityCompact"),
+  };
+  const density = compactMode ? "compact" : "comfortable";
 
   const selectedLocale: AppLocale = locale ?? defaultLocale;
 
@@ -251,6 +259,45 @@ function RouteComponent() {
                 <SelectItem value="list">
                   {t("settings:preferencesPage.list")}
                 </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Separator />
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">
+                {t("settings:preferencesPage.density")}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {t("settings:preferencesPage.densityDescription")}
+              </p>
+            </div>
+            <Select
+              value={density}
+              onValueChange={(value) => {
+                if (value) {
+                  setCompactMode(value === "compact");
+                }
+              }}
+            >
+              <SelectTrigger
+                size="sm"
+                className="w-full sm:w-40"
+                data-testid="density-select"
+              >
+                <SelectValue
+                  placeholder={t("settings:preferencesPage.selectDensity")}
+                >
+                  {densityLabels[density]}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="comfortable">
+                  {densityLabels.comfortable}
+                </SelectItem>
+                <SelectItem value="compact">{densityLabels.compact}</SelectItem>
               </SelectContent>
             </Select>
           </div>
