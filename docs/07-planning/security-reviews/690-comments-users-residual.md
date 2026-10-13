@@ -18,9 +18,11 @@ A Claude Sonnet 5.5 implementation lane wrote the code. The conductor (Claude Op
 - Ordinary review B (alignment, web, spec and #606/#608 absorption accounting) by Claude Sonnet 5.5: APPROVE at `bcf65d2b`.
 - Ordinary delta review by reviewer A's context: APPROVE for `bcf65d2b..5c6589dd`, the omitted-body refusal test added for A's finding F1.
 - Security review by Claude Opus 5.5: CLEAR at `5c6589dd`. Its non-blocking items are the duplicate `Comment` schema name in OpenAPI, which predates this PR, the strictness of the no-op body schema, and the optional extra cross-workspace and archived-parent tests.
+- Security rebind by the same Claude Opus 5.5 context: CLEAR at `456d5e77`. That commit is a clean GitHub update-branch merge of `main` `727fa8d2` (#686). `git merge-tree` reproduces its tree exactly, and nothing under `apps/api` changed.
 
 **Reviewed head:** `bcf65d2bbf42589137ef9de26800c072e52ad998`
 **Reviewed head:** `5c6589dd2a6f8e21e4c6ee4359dd0d7b07e33a2b`
+**Reviewed head:** `456d5e77895bcac6be8c9636ea9c073d97cd828c`
 
 ## Context index
 
@@ -32,6 +34,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 2 | `690-ordinary-b-sonnet.md` | Ordinary review B (31b98613..bcf65d2b) | Claude Sonnet 5.5 | `bcf65d2b` | APPROVE | `b47aafcdf24fa78360bdf7707b81f19d0b6726b4c42ce637abc04b07eb5065be` |
 | 3 | `690-5c65-ordinary-a-sonnet.md` | Ordinary delta review (bcf65d2b..5c6589dd) | Claude Sonnet 5.5 | `5c6589dd` | APPROVE | `dddb3d239d1f16bcf9f38644e05370a486013b470a2fa5bce5fd63c1edb85576` |
 | 4 | `690-security-opus.md` | Security review (31b98613..5c6589dd) | Claude Opus 5.5 | `5c6589dd` | CLEAR | `0e6c4f9fc3fb205f5ee54446108e27c6487b6370a2f5f41305e13bec95b34e6e` |
+| 5 | `690-456d-security-rebind-opus.md` | Security rebind (5c6589dd..456d5e77) | Claude Opus 5.5 | `456d5e77` | CLEAR | `66fb2a3ca61bf67ee7950842c6fd21311787cc52ad85b5f5150cca742599f4ee` |
 
 ## Embedded reports
 
@@ -344,3 +347,66 @@ There are no blocking findings.
 
 **CLEAR** at 5c6589dd2a6f8e21e4c6ee4359dd0d7b07e33a2b. There are no blocking findings. N1-N3 are non-blocking.
 <!-- END REPORT (sha256 0e6c4f9fc3fb205f5ee54446108e27c6487b6370a2f5f41305e13bec95b34e6e) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-13/690-456d-security-rebind-opus.md; Claude Opus 5.5; sha256 66fb2a3ca61bf67ee7950842c6fd21311787cc52ad85b5f5150cca742599f4ee) -->
+# PR #690 exact-head rebind (sampled independent, Opus)
+
+- **Model:** Claude Opus 5.5 (`claude-opus-5-5`), fresh independent context. I did not author, direct or remediate #690 or #686.
+- **Role note:** Opus 5.5 is the sampled "big reviewer" under `CLAUDE.md`. This rebind does not replace the mandatory GPT-6 Sol exact-head security review.
+- **Reviewed head:** 456d5e77895bcac6be8c9636ea9c073d97cd828c
+- **Prior Opus CLEAR:** 5c6589dd2a6f8e21e4c6ee4359dd0d7b07e33a2b (report `690-security-opus.md`, same directory).
+- **Merge base vs main:** 727fa8d203a930d3447a9b10e228587cc8a4fd76 (origin/main, the merge commit of PR #686).
+- **Method:** read-only git object inspection in the PR worktree after `git fetch`. No scratch worktree was needed, and nothing was modified.
+
+## Commit topology (verified)
+
+- `456d5e77` has parents `76d31bfd583bcb8cfda0d6d354e5b14882471c15` (branch) and `727fa8d203a930d3447a9b10e228587cc8a4fd76` (main). Its message is "Merge branch 'main' into codex/comments-users-residual".
+- The parent of `76d31bfd` is `5c6589dd`, the head I cleared before. It changes exactly one file: `docs/07-planning/security-reviews/690-comments-users-residual.md` (+346 lines).
+- The parents of `727fa8d2` are `31b98613` (the original #690 merge base) and `e14ba238` (the #686 head).
+
+## Checks run
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Clean-merge tree equality | `git merge-tree --write-tree 76d31bfd 727fa8d2` vs `git rev-parse 456d5e77^{tree}` | Both are `90ce568251e32b6335144a12e8edd38ac9471513`. merge-tree exits 0 and lists no conflicted paths, so there was no hand conflict resolution. |
+| No change to the reviewed API code | `git diff 5c6589dd 456d5e77 -- apps/api` | Empty (0 lines). |
+| Full delta since the cleared head | `git diff --name-only 5c6589dd 456d5e77` | 7 files, listed below. |
+| Main-side delta | `git diff --name-only 31b98613 727fa8d2` | The same 6 files as the #686 rows below. |
+| Overlap with #690 surfaces | `comm -12` of the main-side and #690 (`31b98613..5c6589dd`) file lists | Empty: no shared files. |
+| Branch-side delta after the merge | `git diff --stat 76d31bfd 456d5e77` | Exactly the 6 #686 files, +417/-14. |
+
+The 7 files changed between 5c6589dd and 456d5e77:
+
+| File | Source |
+| --- | --- |
+| `apps/web/e2e/helpers/redact-secret-error-context.ts` | #686 |
+| `apps/web/e2e/instance-users-journey.spec.ts` | #686 |
+| `apps/web/e2e/mfa-csrf-journey.spec.ts` | #686 |
+| `apps/web/src/test/e2e-secret-redaction.test.ts` | #686 |
+| `docs/04-engineering/error-fix-loop.md` | #686 |
+| `docs/07-planning/security-reviews/686-e2e-secret-redaction.md` | #686 |
+| `docs/07-planning/security-reviews/690-comments-users-residual.md` | 76d31bfd |
+
+## Interaction analysis
+
+The main-side changes are a Playwright e2e secret-redaction helper and its use in two e2e specs, a web-side static guard test, and two docs. None of them touches `apps/api`, the comment controllers, `work-item/index.ts`, the activity controller, the OpenAPI snapshot, i18n, or the web activity/list components changed by #690.
+
+The only matches for "comment" or "activity" in the main-side diff are prose inside the #686 review note. Those lines mention the existing `work-item-comments` e2e spec's trace, video and screenshot settings, and they change no code.
+
+The e2e helper runs only in the Playwright test harness and is not shipped API runtime. There is no shared contract and no shared file, so no semantic interaction with M1, M2 or M3 is possible.
+
+## Findings
+
+None. The non-blocking items N1-N3 from `690-security-opus.md` are unchanged and still non-blocking.
+
+## Residual risk / not checked
+
+- I did not re-run test suites at 456d5e77. The API code is byte-identical to the head I tested, and the main-side change touches only the web e2e and test tree.
+- I did not verify that the CI checks for 456d5e77 are green on GitHub. The orchestrator must check them before merging.
+- I did not review whether the embedded copy of my report in `690-comments-users-residual.md` is verbatim; that was outside this rebind's scope.
+- The GPT-6 Sol exact-head gate is still required.
+
+## Verdict
+
+**CLEAR** at 456d5e77895bcac6be8c9636ea9c073d97cd828c. The merge is a clean, conflict-free merge of 76d31bfd and 727fa8d2. The reviewed `apps/api` code is unchanged, and main's #686 changes do not interact with the #690 surfaces.
+<!-- END REPORT (sha256 66fb2a3ca61bf67ee7950842c6fd21311787cc52ad85b5f5150cca742599f4ee) -->
