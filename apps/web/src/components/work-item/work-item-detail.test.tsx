@@ -46,6 +46,18 @@ vi.mock("./work-item-activity", () => ({
   default: () => <div data-testid="work-item-activity" />,
 }));
 
+vi.mock("./work-item-journey", () => ({
+  default: ({ onAccessLost }: { onAccessLost: () => void }) => (
+    <button
+      type="button"
+      data-testid="work-item-journey-stub"
+      onClick={onAccessLost}
+    >
+      journey
+    </button>
+  ),
+}));
+
 function makeItem(
   overrides: Partial<WorkItemDetailRow> = {},
 ): WorkItemDetailRow {
@@ -91,6 +103,7 @@ const baseProps: WorkItemDetailProps = {
   isNotFound: false,
   isError: false,
   onRetry: vi.fn(),
+  onAccessLost: vi.fn(),
 };
 
 describe("WorkItemDetail", () => {
@@ -155,6 +168,29 @@ describe("WorkItemDetail", () => {
     fireEvent.click(detailsTrigger);
     expect(detailsTrigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Worklist")).toBeInTheDocument();
+  });
+
+  it("mounts the edit/state/assignment journey for a ready item and forwards access loss", () => {
+    const onAccessLost = vi.fn();
+    render(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem()}
+        onAccessLost={onAccessLost}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-journey-stub"));
+    expect(onAccessLost).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not mount the journey in the not-found state", () => {
+    render(
+      <WorkItemDetail {...baseProps} item={makeItem()} isNotFound={true} />,
+    );
+    expect(screen.queryByTestId("work-item-journey-stub")).toBeNull();
+    expect(
+      screen.getByTestId("work-item-detail-not-found"),
+    ).toBeInTheDocument();
   });
 
   it("AP-20 renders the approvals section on the ready detail", () => {
