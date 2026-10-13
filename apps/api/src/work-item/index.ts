@@ -17,10 +17,7 @@ import {
   z,
 } from "../openapi";
 import { isCustomerPrincipal } from "../utils/is-customer-principal";
-import {
-  WORK_ITEM_REACH_MARK,
-  type WorkItemReachMark,
-} from "../utils/reach-mark";
+import { markReach } from "../utils/reach-mark";
 import {
   assertCallerHasCapability,
   assertCallerHasCapabilityOrSelf,
@@ -272,7 +269,7 @@ const listWorkItemsRoute = createRoute({
 // Customers are portal-only (the matrix declares 403 in reach). Other callers' results are
 // reach-filtered per project inside the query itself, so this collection route needs no
 // per-item reach middleware.
-const searchCustomerRefusal = Object.assign(
+const searchCustomerRefusal = markReach(
   async (c: Context, next: Next) => {
     const userId = c.get("userId");
     const workspaceId = c.get("workspaceId");
@@ -286,11 +283,9 @@ const searchCustomerRefusal = Object.assign(
     await next();
   },
   {
-    [WORK_ITEM_REACH_MARK]: {
-      projectReach: false,
-      workspaceReachOnlyReason:
-        "collection route: results are filtered per project reach inside the query",
-    } satisfies WorkItemReachMark,
+    projectReach: false,
+    workspaceReachOnlyReason:
+      "collection route: results are filtered per project reach inside the query",
   },
 );
 

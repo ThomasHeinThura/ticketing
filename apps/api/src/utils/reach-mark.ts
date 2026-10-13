@@ -9,3 +9,11 @@ export type WorkItemReachMark = {
   readonly projectReach: boolean;
   readonly workspaceReachOnlyReason?: string;
 };
+
+/** Attach a reach mark to a hand-written middleware (keeps every mark set the same way). */
+export function markReach<T extends (...args: never[]) => unknown>(
+  middleware: T,
+  mark: WorkItemReachMark,
+): T & { readonly [WORK_ITEM_REACH_MARK]: WorkItemReachMark } {
+  return Object.assign(middleware, { [WORK_ITEM_REACH_MARK]: mark });
+}

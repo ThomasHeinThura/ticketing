@@ -694,6 +694,7 @@ the currently selected browser workspace. A missing or malformed id returns `400
 unreachable workspace is masked as `404`. The route returns only live work items in that
 workspace and in the actor's project reach. Search predicates are applied after that scope,
 and `meta.total` counts only those same reachable rows.
+A customer principal receives `403` from this route.
 
 The `query` object keeps the `{ entity, filter, sort, groupBy, columns, aggregate }`
 envelope. Its `entity` must be `work_item`. P1 accepts `filter`, `sort`, and `columns`;
@@ -861,7 +862,7 @@ Microsoft Entra parses those, not problem documents
 | **202** | **Accepted, not performed.** A user-initiated `DELETE` of an ordinary record — work item, comment, attachment, custom field, saved view, time entry, label — and every destructive MCP call returns `202` with `{ pendingActionId, action, summary, confirmation, expiresAt, approveUrl }`; the requesting human approves in the UI and the server executes — [pending-actions.md](pending-actions.md). A retry while pending is `409 pending_approval` with the same id, whether or not it carries an `Idempotency-Key`. **The elevated targets are the exception:** deleting a workspace, organisation, project, API key, webhook, identity connection or `auth.*` plugin carries `sessionOnly: true`, so on an API key, an MCP key or an impersonation session it is `403 session_required` **before the policy runs** — no 202, no pending action ([pending-actions.md](pending-actions.md) `PA-5`) |
 | 400 | Malformed request; missing workspace context; a SCIM or OIDC payload carrying a forbidden tenant/role/capability attribute (`forbidden_attribute`) |
 | 401 | No or invalid session |
-| 403 | In reach, missing capability. `capability` names what is missing. Also `session_required` (an API/MCP key or impersonation session on a session-only route) and `no_approver` (a service key requesting a deletion) |
+| 403 | In reach, missing capability. `capability` names what is missing. Customer principals also receive it on agent-API work-item routes. Also `session_required` (an API/MCP key or impersonation session on a session-only route) and `no_approver` (a service key requesting a deletion) |
 | 404 | Not found **or out of reach** — deliberately indistinguishable |
 | 409 | Conflict: version mismatch, duplicate key, illegal transition (`reason`), in-flight idempotent duplicate, `pending_approval` (a retry while a pending action is open), `target_changed` (a target's version moved between a pending action's request and its approval) |
 | 422 | Validation failed. `errors[]` gives field-level detail |

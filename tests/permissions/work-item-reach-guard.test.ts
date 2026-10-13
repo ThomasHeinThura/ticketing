@@ -17,7 +17,7 @@ import { loadApiApp, loadPolicyRegistry } from "./api-app";
  * two). Weaker workspace-only reach is possible only through an explicit opt-out
  * that names its reason. A new item-scoped route that forgets the middleware, or that opts
  * out silently, fails here instead of shipping with a weaker gate than its declared policy
- * and the permission matrix (the defect class tracked in #708).
+ * and the permission matrix (the defect class closed by #712; remaining routes are tracked in #720).
  */
 
 type Handler = (...args: never[]) => unknown;

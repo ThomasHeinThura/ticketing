@@ -11,10 +11,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import { assertWorkItemProjectReach } from "../utils/assert-work-item-project-reach";
-import {
-  WORK_ITEM_REACH_MARK,
-  type WorkItemReachMark,
-} from "../utils/reach-mark";
+import { markReach } from "../utils/reach-mark";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
@@ -199,12 +196,8 @@ const getTaskRelationsRoute = createRoute({
   },
 });
 
-Object.assign(scopeToSourceTask, {
-  [WORK_ITEM_REACH_MARK]: { projectReach: true } satisfies WorkItemReachMark,
-});
-Object.assign(scopeToRelation, {
-  [WORK_ITEM_REACH_MARK]: { projectReach: true } satisfies WorkItemReachMark,
-});
+markReach(scopeToSourceTask, { projectReach: true });
+markReach(scopeToRelation, { projectReach: true });
 
 const createTaskRelationRoute = createRoute({
   method: "post",

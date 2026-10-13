@@ -82,8 +82,9 @@ export type WorkItemReachOptions =
   | {
       readonly requireProjectReach: false;
       readonly workspaceReachOnlyReason: string;
-      readonly deferApiKeyCapability?: boolean;
-      readonly deferCapability?: boolean;
+      /** No project reach is resolved on this branch, so there is no capability to defer. */
+      readonly deferApiKeyCapability?: never;
+      readonly deferCapability?: never;
     };
 
 export { WORK_ITEM_REACH_MARK, type WorkItemReachMark };

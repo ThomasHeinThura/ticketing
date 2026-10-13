@@ -9,10 +9,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import { isCustomerSidePerson } from "../utils/is-customer-principal";
-import {
-  WORK_ITEM_REACH_MARK,
-  type WorkItemReachMark,
-} from "../utils/reach-mark";
+import { markReach } from "../utils/reach-mark";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkItemReach } from "../work-item/require-work-item-reach";
 import {
@@ -175,15 +172,13 @@ async function withdrawApprovalForIdentity(input: {
 // and the approver predicates stay with the handler. Customer-side callers go straight to
 // the handler, which owns their addressed-approval rules (403 for requesting).
 const staffReach = requireWorkItemReach("key", { deferCapability: true });
-const approvalRequestReach = Object.assign(
+const approvalRequestReach = markReach(
   async (c: Context, next: Next) => {
     const userId = c.get("userId");
     if (userId && (await isCustomerSidePerson(userId))) return next();
     return staffReach(c, next);
   },
-  {
-    [WORK_ITEM_REACH_MARK]: { projectReach: true } satisfies WorkItemReachMark,
-  },
+  { projectReach: true },
 );
 
 const listWorkItemApprovalsRoute = createRoute({

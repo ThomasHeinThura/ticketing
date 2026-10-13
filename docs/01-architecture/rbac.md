@@ -458,6 +458,10 @@ grant them away through the role editor:
 | Withdraw their own submission before triage | **Read any report or dashboard** |
 | Reopen a resolved request within the window | Delete anything — including their own attachment; the portal has no `DELETE` route |
 
+On the agent API, customers receive `403` on every item-scoped work-item and legacy task
+route even inside reach; the portal routes are their only surface. `POST /api/work-items/search`
+answers `403` to a customer principal.
+
 Modelled on Jira Service Management, which got these rules right.
 
 ## Reach
@@ -497,6 +501,11 @@ The route table marks these with a separate policy from the rest of `PATCH /api/
 the General screen sends them to `PATCH /api/projects/{id}/ownership`, so a single policy
 per route remains true. `owner-team-reach.test.ts` asserts a `lead` (holding
 `project:update` but not `project:manage_members`) cannot move either field.
+
+**Project reach is the default on item-scoped routes.** An out-of-reach item answers the
+same `404` as a missing one; in reach without the capability answers `403`. Workspace-only
+reach is an explicit opt-out that must state its reason, and `work-item-reach-guard.test.ts`
+fails any item-scoped route that omits project reach without one.
 
 **The 404 is constant-shape.** An out-of-reach id and a non-existent id return the same
 status and the same body, and both count against the same rate-limit bucket. The reach check
