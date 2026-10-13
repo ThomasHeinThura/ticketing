@@ -47,11 +47,70 @@ import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
  * its own middleware, and its identifier is newly guessable, so closing the gap here does
  * not require touching the shared `workspace-access-middleware.ts` other routes still use.
  */
+/**
+ * Reach mode for `requireWorkItemReach`. PROJECT reach is the DEFAULT: every
+ * item-scoped route declares `reach: "required"` on the `work_item` scope, so the caller
+ * must be able to reach the item's project (404 when not, 403 when reachable but lacking
+ * the registered capability), exactly as the policy and the permission matrix declare.
+ * Workspace-only reach is an explicit opt-out that must name its reason, so a new route
+ * cannot silently inherit the weaker check. `work-item-reach-guard.test.ts` fails on any
+ * opt-out without a reason.
+ */
+export type WorkItemReachOptions =
+  | {
+      readonly requireProjectReach?: true;
+      /**
+       * For WRITE routes whose next gate is the key-aware `requireWorkspaceCapability` /
+       * handler capability check: an API-key credential still needs project reach here
+       * (404), but its capability is decided by that downstream gate, because the key's
+       * identity carries no canonical capability subset yet (`resolveIdentity`) and would
+       * otherwise be refused on every write. Session callers are unaffected.
+       */
+      readonly deferApiKeyCapability?: boolean;
+    }
+  | {
+      readonly requireProjectReach: false;
+      readonly workspaceReachOnlyReason: string;
+      readonly deferApiKeyCapability?: boolean;
+    };
+
+/** Marker read by the structural guard test; not used at runtime. */
+export const WORK_ITEM_REACH_MARK = Symbol.for("taskdesk.workItemReach");
+
+export type WorkItemReachMark = {
+  readonly projectReach: boolean;
+  readonly workspaceReachOnlyReason?: string;
+};
+
+async function isCustomerPrincipal(
+  userId: string,
+  workspaceId: string,
+): Promise<boolean> {
+  const [membership] = await db
+    .select({ role: schema.workspaceUserTable.role })
+    .from(schema.workspaceUserTable)
+    .where(
+      and(
+        eq(schema.workspaceUserTable.userId, userId),
+        eq(schema.workspaceUserTable.workspaceId, workspaceId),
+      ),
+    )
+    .limit(1);
+  if (membership?.role === "customer") return true;
+  const [person] = await db
+    .select({ side: schema.personTable.side })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  return person?.side === "customer";
+}
+
 export function requireWorkItemReach(
   idKey = "key",
-  options: { readonly requireProjectReach?: boolean } = {},
+  options: WorkItemReachOptions = {},
 ) {
-  return async (c: Context, next: Next) => {
+  const projectReach = options.requireProjectReach !== false;
+  const middleware = async (c: Context, next: Next) => {
     markShadowLegacyAuthorizationUnknown(c);
     const userId = c.get("userId");
     if (!userId) {
@@ -108,7 +167,7 @@ export function requireWorkItemReach(
     // `apps/api/src/permissions/shadow-middleware.ts`; the legacy check below still reads
     // `workItem.workspaceId` alone, unchanged.
     const workItemQuery =
-      policyShadowEnabled || options.requireProjectReach
+      policyShadowEnabled || projectReach
         ? db
             .select({
               id: schema.workItemTable.id,
@@ -183,7 +242,7 @@ export function requireWorkItemReach(
       throw error;
     }
 
-    if (options.requireProjectReach) {
+    if (projectReach) {
       const organisationId =
         "organisationId" in workItem &&
         (typeof workItem.organisationId === "string" ||
@@ -207,7 +266,20 @@ export function requireWorkItemReach(
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(404, { message: "Work item not found" });
       }
-      if (!decision.capable) {
+      if (
+        !decision.capable &&
+        !(options.deferApiKeyCapability === true && apiKey)
+      ) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
+      // The `customer` role is organisation-scope and portal-only (`rbac.md` § "The
+      // customer role is special"); the permission matrix declares `403 forbidden` for it
+      // on every item-scoped agent route even inside reach, including re-ranking (`WI-13`:
+      // customers rank only their own organisation's backlog, which nothing here can yet
+      // express, so it fails closed). A `customer` workspace role or a customer-side
+      // person never acts through the agent API, whatever project role it was given.
+      if (await isCustomerPrincipal(userId, workItem.workspaceId)) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
@@ -216,4 +288,11 @@ export function requireWorkItemReach(
     setShadowLegacyAuthorization(c, "allowed");
     return next();
   };
+  const mark: WorkItemReachMark = {
+    projectReach,
+    ...(options.requireProjectReach === false
+      ? { workspaceReachOnlyReason: options.workspaceReachOnlyReason }
+      : {}),
+  };
+  return Object.assign(middleware, { [WORK_ITEM_REACH_MARK]: mark });
 }

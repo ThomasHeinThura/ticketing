@@ -81,7 +81,7 @@ const presignAttachmentRoute = createRoute({
     "AT-2: mints a presigned direct-PUT for a new attachment on this work item. The " +
     "API never proxies the bytes themselves.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -107,9 +107,7 @@ const listWorkItemAttachmentsRoute = createRoute({
   path: "/work-items/{key}/attachments",
   tags: ["Attachments"],
   summary: "List a work item's attachments",
-  middleware: [
-    requireWorkItemReach("key", { requireProjectReach: true }),
-  ] as const,
+  middleware: [requireWorkItemReach()] as const,
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse("The work item's attachments", attachmentListSchema),

@@ -49,6 +49,36 @@ export function evaluateProjectRead(
   };
 }
 
+/** The caller's resolved identity for this request's credential (session, key or impersonation). */
+export async function resolveCallerIdentity(
+  c: Context,
+  userId: string,
+): Promise<ResolvedIdentity | null> {
+  const apiKey = c.get("apiKey") as
+    | { enabled?: boolean; userId?: string }
+    | undefined;
+  const session = c.get("session") as
+    | { impersonatedBy?: string | null }
+    | null
+    | undefined;
+  return resolveIdentity({
+    userId,
+    credential: apiKey
+      ? "api_key"
+      : session?.impersonatedBy
+        ? "impersonation"
+        : "session",
+    ...(apiKey
+      ? {
+          apiKey: {
+            enabled: apiKey.enabled === true,
+            ownerUserId: apiKey.userId ?? "",
+          },
+        }
+      : {}),
+  });
+}
+
 /** Evaluate the registered project/work-item read policy against live persisted facts. */
 export async function projectReadDecision(
   c: Context,
@@ -75,33 +105,28 @@ export async function projectReadDecision(
     return null;
   }
 
-  const apiKey = c.get("apiKey") as
-    | { enabled?: boolean; userId?: string }
-    | undefined;
-  const session = c.get("session") as
-    | { impersonatedBy?: string | null }
-    | null
-    | undefined;
-  const identity = await resolveIdentity({
-    userId,
-    credential: apiKey
-      ? "api_key"
-      : session?.impersonatedBy
-        ? "impersonation"
-        : "session",
-    ...(apiKey
-      ? {
-          apiKey: {
-            enabled: apiKey.enabled === true,
-            ownerUserId: apiKey.userId ?? "",
-          },
-        }
-      : {}),
-  });
-  return evaluateProjectRead(
+  const policy = entry.policy;
+  // Narrowed by the guard above (project or work_item scope only).
+  const scope = policy.scope as "project" | "work_item";
+  const identity = await resolveCallerIdentity(c, userId);
+  const decision = evaluateProjectRead(
     identity,
     entry.policy.capability,
     entry.policy.scope,
     facts,
   );
+  if (!identity || !decision || decision.capable) return decision;
+  // `orSelfTarget` / `orOwner` are conjunctions the handler settles against the row or body
+  // (assign by self, clear own assignment). Reach is still decided here; the capability is
+  // satisfied at this layer when the caller holds the primary OR a declared branch
+  // capability, and the handler then applies the branch predicate. A caller holding neither
+  // is refused 403 here, exactly as before.
+  const branchCapabilities = [
+    entry.policy.orSelfTarget?.capability,
+    entry.policy.orOwner?.capability,
+  ].filter((cap): cap is Capability => cap !== undefined);
+  const capable = branchCapabilities.some((cap) =>
+    hasProjectReadCapability(identity, cap, scope, facts),
+  );
+  return { reachable: decision.reachable, capable };
 }

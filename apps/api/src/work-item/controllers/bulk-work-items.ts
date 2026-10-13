@@ -82,12 +82,21 @@ export async function bulkWorkItems(
   actorType: ActivityActorType,
   workItemKeys: string[],
   op: BulkWorkItemOperation,
+  /**
+   * Per-item PROJECT reach, the same answer a single-item call gets from
+   * `requireWorkItemReach()`. An item outside the caller's project reach fails with the
+   * identical "not found" reason a nonexistent key gets (`WI-25`).
+   */
+  isInReach: (key: string) => Promise<boolean>,
 ): Promise<BulkWorkItemResult> {
   const succeeded: string[] = [];
   const failed: BulkWorkItemFailure[] = [];
 
   for (const key of workItemKeys) {
     try {
+      if (!(await isInReach(key))) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
       await runOne(key, workspaceId, actorId, actorType, op);
       succeeded.push(key);
     } catch (error) {
