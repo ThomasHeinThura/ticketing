@@ -142,7 +142,7 @@ describe("IQ-16a: withdrawal races resolve to exactly one winner", () => {
 
   async function race(
     label: string,
-    triage: (s: IntakeSeed, ref: string) => Promise<Response>,
+    triage: (s: IntakeSeed, ref: string) => Promise<Response> | Response,
     triageWon: (ref: string) => Promise<boolean>,
   ) {
     const s = await seedIntake(label);
