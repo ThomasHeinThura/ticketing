@@ -1,3 +1,4 @@
+import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import {
   contextFor,
   expect,
@@ -5,6 +6,12 @@ import {
   test,
   withApprovalRuntime,
 } from "./helpers/approval-runtime";
+
+test.use({ trace: "off", video: "off", screenshot: "off" });
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test("customer cannot request CAB approval", async () => {
   await withApprovalRuntime(async (_app, fixture) => {

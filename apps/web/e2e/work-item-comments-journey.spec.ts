@@ -4,8 +4,13 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const apiRequire = createRequire(resolve(repoRoot, "apps/api/package.json"));
