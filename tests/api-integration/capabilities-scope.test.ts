@@ -210,12 +210,15 @@ describe("GET /api/capabilities", () => {
     },
   );
 
-  it("reports the customer role's strict flags exactly: rankTasks true (own backlog), transition and settings false", async () => {
-    // rbac.md's role table (line 408) gives `customer` `work_item:rank`, and § "The customer
-    // role is special" (line 452) limits it to re-ranking "their own" backlog; that limit
-    // is reach at the work-item route, not part of the capability. The role holds neither
-    // `work_item:transition` nor `project:manage_settings`. The flag reports the role's
-    // capability, so rankTasks is true here.
+  it("pins the customer role's strict flags as computed today: rankTasks true, transition and settings false", async () => {
+    // Pins TODAY's value, not the intended contract. The built-in `customer` role holds
+    // `work_item:rank` (rbac.md role table) but neither `work_item:transition` nor
+    // `project:manage_settings`, so the strict check reports rankTasks true. This matches
+    // the rank route's current runtime, which does NOT yet enforce rbac.md's "own backlog"
+    // limit (WI-13) and lets a customer-role member rank without project reach; the
+    // permission matrix declares customer -> 403 on POST /api/work-items/{key}/rank.
+    // When the work-item write-route reach fix lands, derive this flag from the same
+    // predicate the fixed route uses and update this row.
     const customer = await createWorkspaceMember({ role: "customer" });
     const now = new Date();
     await db.insert(schema.workspaceRoleTable).values({
