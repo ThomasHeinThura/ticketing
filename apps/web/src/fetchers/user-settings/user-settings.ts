@@ -15,7 +15,27 @@ export async function getUserSettings(): Promise<UserSettings> {
   if (!response.ok) {
     throw new HttpError(response.status, "Unable to load settings");
   }
-  return (await response.json()) as UserSettings;
+  return parseUserSettings(await response.json());
+}
+
+/**
+ * Only a `{ settings: {…} }` object is accepted. Anything else (an empty array from a stub, a
+ * proxy's HTML, a null) is a failed read, so the query errors and the local cache keeps
+ * serving instead of the sync reading a property of undefined.
+ */
+function parseUserSettings(body: unknown): UserSettings {
+  const settings =
+    typeof body === "object" && body !== null
+      ? (body as { settings?: unknown }).settings
+      : undefined;
+  if (
+    typeof settings !== "object" ||
+    settings === null ||
+    Array.isArray(settings)
+  ) {
+    throw new HttpError(502, "Unexpected settings response");
+  }
+  return { settings: settings as UserSettings["settings"] };
 }
 
 export async function patchUserSettings(

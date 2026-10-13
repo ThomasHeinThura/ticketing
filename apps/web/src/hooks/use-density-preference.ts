@@ -163,53 +163,59 @@ export function useDensityPreferenceSync() {
     if (!userId || !data || reconciledFor.current === data) return;
     reconciledFor.current = data;
 
-    const storage = getPreferenceMarkerStorage();
-    const state = useUserPreferencesStore.getState();
-    const foreignCache = isCacheOwnedByAnotherUser(
-      storage,
-      DENSITY_SETTING_KEY,
-      userId,
-    );
-    if (foreignCache) state.setCompactMode(false);
-    const compactMode = foreignCache ? false : state.compactMode;
-
-    const serverDensity = parseDensity(data.settings[DENSITY_SETTING_KEY]);
-    const localDensity = toDensity(compactMode);
-    const action = reconcilePreference({
-      serverValue: serverDensity,
-      localValue: localDensity,
-      localIsDefault: !compactMode,
-      migrated: hasPreferenceMarker(
+    // Preference sync is best effort: whatever the response looks like, it must never throw
+    // into the render tree. A failure leaves the cached or default density in place.
+    try {
+      const storage = getPreferenceMarkerStorage();
+      const state = useUserPreferencesStore.getState();
+      const foreignCache = isCacheOwnedByAnotherUser(
         storage,
-        "migrated",
-        userId,
         DENSITY_SETTING_KEY,
-      ),
-      dirty:
-        !foreignCache &&
-        hasPreferenceMarker(storage, "dirty", userId, DENSITY_SETTING_KEY),
-    });
-
-    if (action === "adopt-server" && serverDensity) {
-      state.setCompactMode(serverDensity === "compact");
-      setPreferenceCacheOwner(storage, DENSITY_SETTING_KEY, userId);
-      setPreferenceMarker(
-        storage,
-        "migrated",
         userId,
-        DENSITY_SETTING_KEY,
-        true,
       );
-    } else if (action === "push-local") {
-      writeDensity({
-        userId,
-        density: localDensity,
-        patchSettings,
-        queryClient,
+      if (foreignCache) state.setCompactMode(false);
+      const compactMode = foreignCache ? false : state.compactMode;
+
+      const serverDensity = parseDensity(data.settings[DENSITY_SETTING_KEY]);
+      const localDensity = toDensity(compactMode);
+      const action = reconcilePreference({
+        serverValue: serverDensity,
+        localValue: localDensity,
+        localIsDefault: !compactMode,
+        migrated: hasPreferenceMarker(
+          storage,
+          "migrated",
+          userId,
+          DENSITY_SETTING_KEY,
+        ),
+        dirty:
+          !foreignCache &&
+          hasPreferenceMarker(storage, "dirty", userId, DENSITY_SETTING_KEY),
       });
-    } else {
-      // Nothing to upload or adopt: the cache now reflects this user's (default) choice.
-      setPreferenceCacheOwner(storage, DENSITY_SETTING_KEY, userId);
+
+      if (action === "adopt-server" && serverDensity) {
+        state.setCompactMode(serverDensity === "compact");
+        setPreferenceCacheOwner(storage, DENSITY_SETTING_KEY, userId);
+        setPreferenceMarker(
+          storage,
+          "migrated",
+          userId,
+          DENSITY_SETTING_KEY,
+          true,
+        );
+      } else if (action === "push-local") {
+        writeDensity({
+          userId,
+          density: localDensity,
+          patchSettings,
+          queryClient,
+        });
+      } else {
+        // Nothing to upload or adopt: the cache now reflects this user's (default) choice.
+        setPreferenceCacheOwner(storage, DENSITY_SETTING_KEY, userId);
+      }
+    } catch {
+      // Keep the local cache; the next load retries.
     }
   }, [userId, data, patchSettings, queryClient]);
 }
