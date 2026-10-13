@@ -35,12 +35,14 @@ A Claude Sonnet 5.5 lane implemented the change. The conductor (Claude Opus 5.5)
 - Light security rebind: CLEAR at `7b97d249`. The N2 rows pin the mutations, and the N4 setup no longer depends on test order.
 - Mechanical security rebind at `510df528`: CLEAR. The merge tree is identical to `git merge-tree` of `7b97d249` and `28481af5` (#721), and no API or test path changed.
 - Mechanical security rebind at `eb660151`: CLEAR. This head merges `main` `417944ca` (#726). Its tree equals the merge-tree of `dc41b2a3` with `417944ca`, the changed files are exactly #726's, and there is no interaction with this PR's paths.
+- Mechanical security rebind at `a9b1de14`: CLEAR. This head merges `main` `aefb6888` (#722). Its tree equals the merge-tree of `4a70d9b4` with `aefb6888`, and the changed files are exactly #722's, with no interaction.
 
 **Reviewed head:** `aec692e94d681ca3aae1172f88615c42c1597f6b`
 **Reviewed head:** `edd4f91a85a9edd220ecc249febb0ab3f79da8b9`
 **Reviewed head:** `7b97d24923043fc6823ec7c462107afd18c21fcf`
 **Reviewed head:** `510df528d067d8a447ee31ac84a74395b97ee37b`
 **Reviewed head:** `eb6601511153430c444b8c814b85c4b5965ff30c`
+**Reviewed head:** `a9b1de142c3a71b68b3d62bee72cc7518cd58d24`
 
 ## Context index
 
@@ -57,6 +59,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 7 | `712-7b97-security-rebind-opus.md` | Security rebind (edd4f91a..7b97d249) | Claude Opus 5.5 | `7b97d249` | CLEAR | `ce8f30e514a2c4a082b7129e84a948a262935e47cb58b08e9f8ab94bbc5f7c49` |
 | 8 | `712-510d-security-rebind-opus.md` | Mechanical security rebind (7b97d249..510df528) | Claude Opus 5.5 | `510df528` | CLEAR | `7703fe57ef1a32f48026a8c6f1be6527af6fd5368b3b6882426371360d77a487` |
 | 9 | `712-eb66-security-rebind-opus.md` | Mechanical security rebind (dc41b2a3..eb660151) | Claude Opus 5.5 | `eb660151` | CLEAR | `2ce401440990e9832ff5ee278fe0b8dd816d1f40ab8e8c3a8f30cfbd29634271` |
+| 10 | `712-a9b1-security-rebind-opus.md` | Mechanical security rebind (4a70d9b4..a9b1de14) | Claude Opus 5.5 | `a9b1de14` | CLEAR | `877136729dc643cd86a8174d7a0f84270bfc18e46ac7d16f070983bd1403b9d3` |
 
 ## Embedded reports
 
@@ -985,3 +988,56 @@ $ comm -12 (#712 files vs main, 417944ca...eb660151) (#726 files)  -> empty (no 
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 2ce401440990e9832ff5ee278fe0b8dd816d1f40ab8e8c3a8f30cfbd29634271) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/712-a9b1-security-rebind-opus.md; Claude Opus 5.5; sha256 877136729dc643cd86a8174d7a0f84270bfc18e46ac7d16f070983bd1403b9d3) -->
+# PR #712 — security exact-head rebind (mechanical merge of main #722)
+
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This is a fresh, independent context. I did not author, direct or remediate #712 or #722.
+**Reviewed head:** a9b1de142c3a71b68b3d62bee72cc7518cd58d24
+**Prior CLEAR head:** eb6601511153430c444b8c814b85c4b5965ff30c
+**Pre-merge head:** 4a70d9b47484a47d521b118f6f74a6859d93d00d
+**Main merged in:** aefb6888f3d45ad3439c69133ac644f738a70a4a (merge of #722; parents 417944ca and 5864416a)
+**Method:** read-only. A blobless bare clone in the scratchpad. No tests were run and no Docker was used.
+
+## Commands and outputs
+```
+$ git ls-remote origin refs/heads/main refs/pull/712/head      (at the start and again at the end)
+aefb6888f3d45ad3439c69133ac644f738a70a4a  refs/heads/main
+a9b1de142c3a71b68b3d62bee72cc7518cd58d24  refs/pull/712/head
+
+$ git rev-list --parents -n1 a9b1de14
+a9b1de14... 4a70d9b47484a47d521b118f6f74a6859d93d00d aefb6888f3d45ad3439c69133ac644f738a70a4a
+
+$ git rev-parse a9b1de14^{tree}                     -> 816d1cf7675f11131ca306463dd86972a015771f
+$ git merge-tree --write-tree 4a70d9b4 aefb6888    -> 816d1cf7675f11131ca306463dd86972a015771f  (identical)
+
+$ git diff --name-only 4a70d9b4 a9b1de14  vs  git diff --name-only 417944ca aefb6888
+39 files each -> IDENTICAL; no overlap with #712's own files
+
+$ git log --oneline eb660151..4a70d9b4
+4a70d9b4 docs(security-reviews): bind the main-merge rebind
+$ git diff --name-only eb660151 4a70d9b4
+docs/07-planning/security-reviews/712-work-item-project-reach.md      (note-only)
+```
+
+## Interaction review
+1. **#722 touched no API or permissions code.** It changed no file under `apps/api/`, `tests/` or `packages/permissions`. Its 39 files are web components, fetchers, hooks, a route, web tests, two feature docs, i18n and `packages/ui/src/styles/pairs.json`. #712's server reach gates, its policy registry and `tests/permissions/work-item-reach-guard.test.ts` are therefore unchanged by the merge.
+2. **#712's new 404s need no web change.**
+   - #722's fetchers for assign, unassign, update, transition and transitions all go through `client["work-items"][":key"]...`, and each throws `HttpError(response.status, ...)` when the response is not OK.
+   - `apps/web/src/lib/work-item-errors.ts` defines `isWorkItemAccessLost` as `error instanceof HttpError && error.status === 404`. It looks only at the status, never the message text. #712 changes the 404 message for row-addressed resources, so the check still matches.
+   - The detail route and component (`$key.tsx`, `work-item-detail.tsx`) switch to the not-found state on a 404 from either a mutation (`accessLostKey`) or the query.
+   - The update fetcher still maps 409 separately to `WorkItemVersionConflictError`.
+   - No added web code matches on 404 message strings.
+3. **Capability flags.** #722 adds the optional `transitionTasks` and `rankTasks` flags, which fail closed when absent. At the reviewed head, `/api/capabilities` returns both, and #712 gates `rankTasks` with `agentOnly`.
+
+## Findings
+- Blocking: none.
+- Non-blocking observation: #712 passes `agentOnly` over `rankTasks` and `createPublicComments` but not `transitionTasks`. A customer principal reaching the agent UI could see a state control that the server then refuses with 403 from #712's customer gate. The server fails closed, so there is no security impact. At most this is a UI consistency follow-up.
+
+## Residual risk / not checked
+- No tests were run, by instruction. Hosted CI at a9b1de14 is the gate.
+- #712's own semantics were CLEARed earlier, and this review covers only the merge delta.
+- A further head change needs a new exact-head confirmation.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 877136729dc643cd86a8174d7a0f84270bfc18e46ac7d16f070983bd1403b9d3) -->
