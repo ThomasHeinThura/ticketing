@@ -3,12 +3,15 @@
  * portal request helpers that go through the real router. */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { vi } from "vitest";
+import { auth, portalAuth } from "../../../apps/api/src/auth";
 import db, { schema } from "../../../apps/api/src/database";
 import {
   addCustomer,
   buildTenant,
   json,
   type Member,
+  PORTAL_HOST,
   portalRequest,
   type Tenant,
 } from "./approval-fixtures";
@@ -143,3 +146,63 @@ export async function submissionRow(ref: string) {
 
 export const sortedKeys = (value: unknown) =>
   Object.keys(value as Record<string, unknown>).sort();
+
+type SessionUser = Member["user"];
+
+/**
+ * Concurrent requests as different people. `mockAuthenticatedSession` replaces one global
+ * session, so two in-flight requests would share it. This resolves the session per request
+ * from the `x-test-user` header, which `portalAs` and `staffAs` set.
+ */
+export function mockSessionsByHeader(
+  people: Array<{ user: SessionUser; portal?: "agent" | "customer" }>,
+) {
+  const byId = new Map(people.map((person) => [person.user.id, person]));
+  const resolve = async ({ headers }: { headers: Headers }) => {
+    const person = byId.get(headers.get("x-test-user") ?? "");
+    if (!person) return null;
+    const now = new Date();
+    return {
+      session: {
+        id: `session-${person.user.id}`,
+        token: `token-${person.user.id}`,
+        userId: person.user.id,
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+        createdAt: now,
+        updatedAt: now,
+        ipAddress: null,
+        userAgent: null,
+        portal: person.portal ?? "agent",
+      },
+      user: { ...person.user, twoFactorEnabled: false },
+    };
+  };
+  vi.spyOn(auth.api, "getSession").mockImplementation(resolve as never);
+  vi.spyOn(portalAuth.api, "getSession").mockImplementation(resolve as never);
+}
+
+export function staffAs(
+  t: Tenant,
+  user: SessionUser,
+  path: string,
+  init: { method?: string; body?: unknown } = {},
+) {
+  return t.app.request(path, {
+    method: init.method ?? "GET",
+    headers: { ...json, "x-test-user": user.id },
+    ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
+  });
+}
+
+export function portalAs(
+  t: Tenant,
+  user: SessionUser,
+  path: string,
+  init: { method?: string; body?: unknown } = {},
+) {
+  return t.app.request(`http://${PORTAL_HOST}${path}`, {
+    method: init.method ?? "GET",
+    headers: { host: PORTAL_HOST, ...json, "x-test-user": user.id },
+    ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
+  });
+}
