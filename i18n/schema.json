@@ -9411,6 +9411,15 @@
 						},
 						"partialNoticeDescription": {
 							"type": "string"
+						},
+						"layoutGroup": {
+							"type": "string"
+						},
+						"listLayout": {
+							"type": "string"
+						},
+						"boardLayout": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -9437,7 +9446,10 @@
 						"unavailable",
 						"unavailableFieldLabel",
 						"partialNoticeTitle",
-						"partialNoticeDescription"
+						"partialNoticeDescription",
+						"layoutGroup",
+						"listLayout",
+						"boardLayout"
 					]
 				},
 				"create": {
@@ -9795,9 +9807,281 @@
 						"realtimeUnavailable",
 						"approvals"
 					]
+				},
+				"board": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"noStatesTitle": {
+							"type": "string"
+						},
+						"noStatesDescription": {
+							"type": "string"
+						},
+						"emptyColumn": {
+							"type": "string"
+						},
+						"loadMore": {
+							"type": "string"
+						},
+						"loadingMore": {
+							"type": "string"
+						},
+						"selectColumn": {
+							"type": "string"
+						},
+						"columnCount": {
+							"type": "string"
+						},
+						"moveUpShort": {
+							"type": "string"
+						},
+						"moveDownShort": {
+							"type": "string"
+						},
+						"moveUp": {
+							"type": "string"
+						},
+						"moveDown": {
+							"type": "string"
+						},
+						"rankSaved": {
+							"type": "string"
+						},
+						"transitionSaved": {
+							"type": "string"
+						},
+						"transitionForbidden": {
+							"type": "string"
+						},
+						"transitionBlocked": {
+							"type": "string"
+						},
+						"transitionUnavailable": {
+							"type": "string"
+						},
+						"movedNotRanked": {
+							"type": "string"
+						},
+						"changeState": {
+							"type": "string"
+						},
+						"changeStateFor": {
+							"type": "string"
+						},
+						"chooseState": {
+							"type": "string"
+						},
+						"chooseStatePlaceholder": {
+							"type": "string"
+						},
+						"moveState": {
+							"type": "string"
+						},
+						"moveStateFor": {
+							"type": "string"
+						},
+						"loadingTransitions": {
+							"type": "string"
+						},
+						"transitionLoadError": {
+							"type": "string"
+						},
+						"currentState": {
+							"type": "string"
+						},
+						"failure": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"gone": {
+									"type": "string"
+								},
+								"conflict": {
+									"type": "string"
+								},
+								"rejected": {
+									"type": "string"
+								},
+								"invalid": {
+									"type": "string"
+								},
+								"forbidden": {
+									"type": "string"
+								},
+								"unknown": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"gone",
+								"conflict",
+								"rejected",
+								"invalid",
+								"forbidden",
+								"unknown"
+							]
+						}
+					},
+					"required": [
+						"loadErrorTitle",
+						"loadErrorDescription",
+						"retry",
+						"noStatesTitle",
+						"noStatesDescription",
+						"emptyColumn",
+						"loadMore",
+						"loadingMore",
+						"selectColumn",
+						"columnCount",
+						"moveUpShort",
+						"moveDownShort",
+						"moveUp",
+						"moveDown",
+						"rankSaved",
+						"transitionSaved",
+						"transitionForbidden",
+						"transitionBlocked",
+						"transitionUnavailable",
+						"movedNotRanked",
+						"changeState",
+						"changeStateFor",
+						"chooseState",
+						"chooseStatePlaceholder",
+						"moveState",
+						"moveStateFor",
+						"loadingTransitions",
+						"transitionLoadError",
+						"currentState",
+						"failure"
+					]
+				},
+				"bulk": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"toolbarLabel": {
+							"type": "string"
+						},
+						"selectAll": {
+							"type": "string"
+						},
+						"selectItem": {
+							"type": "string"
+						},
+						"selected_one": {
+							"type": "string"
+						},
+						"selected_zero": {
+							"type": "string"
+						},
+						"selected_two": {
+							"type": "string"
+						},
+						"selected_few": {
+							"type": "string"
+						},
+						"selected_many": {
+							"type": "string"
+						},
+						"selected_other": {
+							"type": "string"
+						},
+						"assigneeLabel": {
+							"type": "string"
+						},
+						"assigneePlaceholder": {
+							"type": "string"
+						},
+						"assign": {
+							"type": "string"
+						},
+						"clear": {
+							"type": "string"
+						},
+						"result": {
+							"type": "string"
+						},
+						"failedItem": {
+							"type": "string"
+						},
+						"reasonGone": {
+							"type": "string"
+						},
+						"failure": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"gone": {
+									"type": "string"
+								},
+								"conflict": {
+									"type": "string"
+								},
+								"rejected": {
+									"type": "string"
+								},
+								"invalid": {
+									"type": "string"
+								},
+								"forbidden": {
+									"type": "string"
+								},
+								"unknown": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"gone",
+								"conflict",
+								"rejected",
+								"invalid",
+								"forbidden",
+								"unknown"
+							]
+						},
+						"loadingPeople": {
+							"type": "string"
+						},
+						"unnamedPerson": {
+							"type": "string"
+						},
+						"peopleError": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"toolbarLabel",
+						"selectAll",
+						"selectItem",
+						"assigneeLabel",
+						"assigneePlaceholder",
+						"assign",
+						"clear",
+						"result",
+						"failedItem",
+						"reasonGone",
+						"failure",
+						"loadingPeople",
+						"unnamedPerson",
+						"peopleError",
+						"saving"
+					]
 				}
 			},
-			"required": ["list", "create", "detail"]
+			"required": ["list", "create", "detail", "board", "bulk"]
 		},
 		"portal": {
 			"type": "object",

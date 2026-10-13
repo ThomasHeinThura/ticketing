@@ -39,6 +39,21 @@ describe("routes.workItemList", () => {
     }
   });
 
+  it("round-trips the board layout and keeps sort=position", () => {
+    const url = routes.workItemList.build(
+      { projectKey: "PROJ" },
+      { layout: "board", sort: "position", dir: "asc" },
+    );
+    expect(url).toContain("layout=board");
+    expect(url).toContain("sort=position");
+    const [, queryString] = url.split("?");
+    expect(parseWorkItemListSearchFromQueryString(queryString)).toEqual({
+      layout: "board",
+      sort: "position",
+      dir: "asc",
+    });
+  });
+
   it("builds the path the screen inventory names, with the project key in it", () => {
     const url = routes.workItemList.build({ projectKey: "PROJ" });
     expect(url.startsWith("/agent/projects/PROJ/work?")).toBe(true);
@@ -84,7 +99,7 @@ describe("routes.workItemList", () => {
     it("never throws on malformed input, and falls back per-field", () => {
       expect(
         parseWorkItemListSearch({
-          layout: "board", // not built yet -- falls back to list
+          layout: "table", // not built yet -- falls back to list
           sort: "not-a-real-field",
           dir: "sideways",
         }),

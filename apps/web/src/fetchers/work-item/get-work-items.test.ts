@@ -127,4 +127,35 @@ describe("getWorkItems", () => {
     });
     expect(result.hasMore).toBe(true);
   });
+
+  it("board paging: forwards cursor and limit and exposes page.nextCursor", async () => {
+    mocks.get.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        makeEnvelope([makeItem()], { nextCursor: "next-1", hasMore: true }),
+    });
+
+    const result = await getWorkItems("proj_1", "position", "asc", {
+      cursor: "c0",
+      limit: 200,
+    });
+
+    expect(mocks.get).toHaveBeenCalledWith({
+      param: { projectId: "proj_1" },
+      query: { sort: "position", dir: "asc", cursor: "c0", limit: "200" },
+    });
+    expect(result.nextCursor).toBe("next-1");
+  });
+
+  it("omits cursor and limit when none are given", async () => {
+    mocks.get.mockResolvedValue({
+      ok: true,
+      json: async () => makeEnvelope([makeItem()]),
+    });
+    await getWorkItems("proj_1", "position", "asc", {});
+    expect(mocks.get).toHaveBeenCalledWith({
+      param: { projectId: "proj_1" },
+      query: { sort: "position", dir: "asc" },
+    });
+  });
 });

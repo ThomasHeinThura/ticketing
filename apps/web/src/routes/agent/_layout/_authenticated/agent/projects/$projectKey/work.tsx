@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import {
   lazy,
   Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -15,10 +17,13 @@ import PageTitle from "@/components/page-title";
 import WorkItemCreateDialogShell from "@/components/work-item/work-item-create-dialog-shell";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
+import useGetProjectStates from "@/hooks/queries/project/use-get-project-states";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
+import useGetBoardWorkItems from "@/hooks/queries/work-item/use-get-board-work-items";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 
 type WorkItemsPanelModule =
   typeof import("@/components/work-item/work-items-panel");
@@ -44,6 +49,17 @@ function preloadWorkItemsPanel() {
 const WorkItemsPanel = lazy(loadWorkItemsPanel);
 const WorkItemCreateTrigger = lazy(
   () => import("@/components/work-item/work-item-create-trigger"),
+);
+// Board layout and the bulk bar are loaded only when the URL or a selection asks for them,
+// so the default list route does not pay for either.
+const WorkItemBoard = lazy(
+  () => import("@/components/work-item/work-item-board"),
+);
+const BulkAssignToolbar = lazy(
+  () => import("@/components/work-item/bulk-assign-toolbar"),
+);
+const WorkItemListRealtime = lazy(
+  () => import("@/components/work-item/work-item-list-realtime"),
 );
 
 import {
@@ -79,9 +95,10 @@ function WorkItemsRouteComponent() {
 
 function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { t } = useTranslation();
-  const { sort, dir } = Route.useSearch();
+  const { layout, sort, dir } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [createIntentProjectContext, setCreateIntentProjectContext] =
     useState<string>();
   const createTriggerRef = useRef<HTMLButtonElement>(null);
@@ -98,6 +115,16 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     projectId: string;
     status: WorkItemRealtimeStatus;
   }>();
+  // The strict capability flags from /api/capabilities (the create trigger already reads the
+  // same cached query). They decide only which controls render; the server enforces each write.
+  const {
+    canAssignTasks,
+    canTransitionTasks,
+    canRankTasks,
+    isCheckingPermissions,
+  } = useWorkspacePermission();
+  const canBulkAssign = !isCheckingPermissions && canAssignTasks();
+
   const {
     data: workspace,
     isLoading: isWorkspaceLoading,
@@ -179,17 +206,39 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     projectId: project?.id,
     sort,
     dir,
+    enabled: layout === "list",
     realtimeStatus:
       realtimeStatus && realtimeStatus.projectId === project?.id
         ? realtimeStatus.status
         : "connecting",
   });
+  const boardItemsQuery = useGetBoardWorkItems({
+    projectId: project?.id,
+    realtimeStatus:
+      realtimeStatus && realtimeStatus.projectId === project?.id
+        ? realtimeStatus.status
+        : "connecting",
+    enabled: layout === "board",
+  });
+  const projectStates = useGetProjectStates(project?.id, layout === "board");
+  const boardWorkItems = useMemo(
+    () => boardItemsQuery.data?.pages.flatMap((page) => page.items),
+    [boardItemsQuery.data],
+  );
   const isLoading =
     isWorkspaceLoading ||
     isProjectsLoading ||
-    (!!project && isWorkItemsLoading);
+    (!!project &&
+      (layout === "board"
+        ? boardItemsQuery.isLoading || projectStates.isLoading
+        : isWorkItemsLoading));
   const isError =
-    isWorkspaceError || isProjectsError || isWorkItemsError || projectNotFound;
+    isWorkspaceError ||
+    isProjectsError ||
+    projectNotFound ||
+    (layout === "board"
+      ? boardItemsQuery.isError || projectStates.isError
+      : isWorkItemsError);
 
   useEffect(() => {
     if (!project?.id) return;
@@ -219,14 +268,77 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     [navigate],
   );
 
-  const handleRetryProjects = useCallback(() => {
-    refetchProjects();
-  }, [refetchProjects]);
+  const handleLayoutChange = useCallback(
+    (nextLayout: WorkItemListSearch["layout"]) => {
+      navigate({
+        search: (prev: WorkItemListSearch) => ({
+          ...prev,
+          layout: nextLayout,
+        }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
+  const refetchBoardItems = boardItemsQuery.refetch;
+  const refetchProjectStates = projectStates.refetch;
   const handleRetry = useCallback(() => {
-    handleRetryProjects();
-    if (project) refetchWorkItems();
-  }, [handleRetryProjects, project, refetchWorkItems]);
+    refetchProjects();
+    if (!project) return;
+    if (layout === "board") {
+      void refetchBoardItems();
+      void refetchProjectStates();
+    } else {
+      void refetchWorkItems();
+    }
+  }, [
+    layout,
+    project,
+    refetchBoardItems,
+    refetchProjects,
+    refetchProjectStates,
+    refetchWorkItems,
+  ]);
+
+  const handleSelectionChange = useCallback((key: string, checked: boolean) => {
+    setSelectedKeys((current) =>
+      checked
+        ? current.includes(key)
+          ? current
+          : [...current, key]
+        : current.filter((selected) => selected !== key),
+    );
+  }, []);
+
+  const visibleItems =
+    layout === "board" ? boardWorkItems : workItemsResult?.items;
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      const keys = (visibleItems ?? [])
+        .filter((item) => !item.unavailableFields.includes("key"))
+        .map((item) => item.key);
+      setSelectedKeys((current) =>
+        checked
+          ? [...new Set([...current, ...keys])]
+          : current.filter((key) => !keys.includes(key)),
+      );
+    },
+    [visibleItems],
+  );
+
+  // A selected item that has left the loaded set (deleted, moved out of reach, reassigned
+  // away) must not stay selected: the bulk bar would count and send a key the user can no
+  // longer see.
+  useEffect(() => {
+    if (!visibleItems) return;
+    const present = new Set(visibleItems.map((item) => item.key));
+    setSelectedKeys((current) =>
+      current.every((key) => present.has(key))
+        ? current
+        : current.filter((key) => present.has(key)),
+    );
+  }, [visibleItems]);
 
   return (
     <>
@@ -245,30 +357,135 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             {project ? project.name : projectKey} ·{" "}
             {t("workItems:list.heading")}
           </h1>
-          {project ? (
-            <Suspense fallback={null}>
-              <WorkItemCreateTrigger
-                buttonRef={createTriggerRef}
-                onClick={openCreateDialog}
+          <div className="flex items-center gap-2">
+            <fieldset
+              aria-label={t("workItems:list.layoutGroup")}
+              className="m-0 flex min-w-0 items-center gap-1 border-0 p-0"
+            >
+              <Button
+                variant={layout === "list" ? "secondary" : "outline"}
+                size="sm"
+                aria-pressed={layout === "list"}
+                onClick={() => handleLayoutChange("list")}
+              >
+                {t("workItems:list.listLayout")}
+              </Button>
+              <Button
+                variant={layout === "board" ? "secondary" : "outline"}
+                size="sm"
+                aria-pressed={layout === "board"}
+                onClick={() => handleLayoutChange("board")}
+              >
+                {t("workItems:list.boardLayout")}
+              </Button>
+            </fieldset>
+            {project ? (
+              <Suspense fallback={null}>
+                <WorkItemCreateTrigger
+                  buttonRef={createTriggerRef}
+                  onClick={openCreateDialog}
+                />
+              </Suspense>
+            ) : null}
+          </div>
+        </div>
+        {project && selectedKeys.length > 0 && canBulkAssign ? (
+          <Suspense fallback={null}>
+            <BulkAssignToolbar
+              projectId={project.id}
+              workspaceId={project.workspaceId}
+              selectedKeys={selectedKeys}
+              onAssigned={(succeeded) =>
+                setSelectedKeys((current) =>
+                  current.filter((key) => !succeeded.includes(key)),
+                )
+              }
+              onClear={() => setSelectedKeys([])}
+            />
+          </Suspense>
+        ) : null}
+        {layout === "list" ? (
+          <Suspense fallback={<WorkItemListLoading />}>
+            <WorkItemsPanel
+              project={project}
+              workItemsResult={workItemsResult as WorkItemsResult | undefined}
+              isLoading={isLoading}
+              isError={isError}
+              realtimeProjectId={realtimeProjectId}
+              realtimeStatus={realtimeStatus}
+              sort={sort}
+              dir={dir}
+              onSortChange={handleSortChange}
+              onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
+              onRetry={handleRetry}
+              selectedKeys={selectedKeys}
+              canBulkAssign={canBulkAssign}
+              onSelectionChange={handleSelectionChange}
+              onSelectAll={handleSelectAll}
+            />
+          </Suspense>
+        ) : project ? (
+          <>
+            {realtimeStatus?.projectId === project.id &&
+            realtimeStatus.status === "unavailable" ? (
+              <Alert
+                variant="warning"
+                role="status"
+                data-testid="realtime-unavailable"
+              >
+                <AlertDescription>
+                  {t("workItems:detail.realtimeUnavailable")}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            <Suspense fallback={<WorkItemListLoading />}>
+              <WorkItemBoard
+                projectId={project.id}
+                states={projectStates.data}
+                statesError={projectStates.isError}
+                workItems={boardWorkItems}
+                isLoading={isLoading}
+                isError={isError}
+                onRetry={handleRetry}
+                hasMore={boardItemsQuery.hasNextPage}
+                isLoadingMore={boardItemsQuery.isFetchingNextPage}
+                onLoadMore={() => {
+                  void boardItemsQuery.fetchNextPage();
+                }}
+                canSelect={canBulkAssign}
+                canTransition={!isCheckingPermissions && canTransitionTasks()}
+                canRank={!isCheckingPermissions && canRankTasks()}
+                selectedKeys={selectedKeys}
+                onSelectionChange={handleSelectionChange}
               />
             </Suspense>
-          ) : null}
-        </div>
-        <Suspense fallback={<WorkItemListLoading />}>
-          <WorkItemsPanel
-            project={project}
-            workItemsResult={workItemsResult as WorkItemsResult | undefined}
-            isLoading={isLoading}
-            isError={isError}
-            realtimeProjectId={realtimeProjectId}
-            realtimeStatus={realtimeStatus}
-            sort={sort}
-            dir={dir}
-            onSortChange={handleSortChange}
-            onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
-            onRetry={handleRetry}
-          />
-        </Suspense>
+            {!isLoading && realtimeProjectId === project.id ? (
+              <Suspense fallback={null}>
+                <WorkItemListRealtime
+                  key={project.id}
+                  projectId={project.id}
+                  onAvailabilityChange={handleRealtimeAvailabilityChange}
+                />
+              </Suspense>
+            ) : null}
+          </>
+        ) : (
+          <Suspense fallback={<WorkItemListLoading />}>
+            <WorkItemsPanel
+              project={project}
+              workItemsResult={undefined}
+              isLoading={isLoading}
+              isError={isError}
+              realtimeProjectId={realtimeProjectId}
+              realtimeStatus={realtimeStatus}
+              sort={sort}
+              dir={dir}
+              onSortChange={handleSortChange}
+              onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
+              onRetry={handleRetry}
+            />
+          </Suspense>
+        )}
         {project && isCreateOpenForProject ? (
           <WorkItemCreateDialogShell
             projectId={project.id}
