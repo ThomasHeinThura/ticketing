@@ -51,6 +51,8 @@ export const submissionWorkItemSchema = z.object({
   title: z.string(),
   projectId: z.string(),
   typeId: z.string(),
+  workspaceId: z.string(),
+  requesterId: z.string().nullable(),
 });
 
 export const staffQueueRowSchema = z.object({
@@ -156,6 +158,8 @@ export function toSubmissionWorkItem(row: {
   title: string;
   projectId: string;
   typeId: string;
+  workspaceId: string;
+  requesterId: string | null;
 }): z.infer<typeof submissionWorkItemSchema> {
   return {
     id: row.id,
@@ -163,5 +167,7 @@ export function toSubmissionWorkItem(row: {
     title: row.title,
     projectId: row.projectId,
     typeId: row.typeId,
+    workspaceId: row.workspaceId,
+    requesterId: row.requesterId,
   };
 }

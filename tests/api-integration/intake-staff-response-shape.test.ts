@@ -13,7 +13,15 @@ import {
 } from "./helpers/intake-http";
 
 const MESSAGE_KEYS = ["actorType", "authorId", "body", "createdAt", "id"];
-const WORK_ITEM_KEYS = ["id", "key", "projectId", "title", "typeId"];
+const WORK_ITEM_KEYS = [
+  "id",
+  "key",
+  "projectId",
+  "requesterId",
+  "title",
+  "typeId",
+  "workspaceId",
+];
 const VERSION_KEYS = [
   "autoAccept",
   "createdAt",

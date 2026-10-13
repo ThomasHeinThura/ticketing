@@ -25687,6 +25687,15 @@
                         },
                         "typeId": {
                           "type": "string"
+                        },
+                        "workspaceId": {
+                          "type": "string"
+                        },
+                        "requesterId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -25694,7 +25703,9 @@
                         "key",
                         "title",
                         "projectId",
-                        "typeId"
+                        "typeId",
+                        "workspaceId",
+                        "requesterId"
                       ]
                     }
                   },
@@ -25803,6 +25814,15 @@
                         },
                         "typeId": {
                           "type": "string"
+                        },
+                        "workspaceId": {
+                          "type": "string"
+                        },
+                        "requesterId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -25810,7 +25830,9 @@
                         "key",
                         "title",
                         "projectId",
-                        "typeId"
+                        "typeId",
+                        "workspaceId",
+                        "requesterId"
                       ]
                     }
                   },
