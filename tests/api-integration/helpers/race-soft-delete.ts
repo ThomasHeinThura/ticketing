@@ -1,7 +1,7 @@
 import { Client } from "pg";
 
 type FreezeTarget = {
-  table: "project" | "work_item";
+  table: "project" | "work_item" | "comment";
   id: string;
   freeze: "delete" | "archive";
 };
@@ -60,13 +60,15 @@ async function raceProjectOrItemFreeze<T>(
     await client.query("BEGIN");
     transactionOpen = true;
     const freeze =
-      target.freeze === "archive"
-        ? target.table === "project"
-          ? "UPDATE project SET archived_at = now() WHERE id = $1"
-          : "UPDATE work_item SET archived_at = now() WHERE id = $1"
-        : target.table === "project"
-          ? "UPDATE project SET deleted_at = now(), purge_after = now() WHERE id = $1"
-          : "UPDATE work_item SET deleted_at = now() WHERE id = $1";
+      target.table === "comment"
+        ? "UPDATE comment SET deleted_at = now(), body = NULL WHERE id = $1"
+        : target.freeze === "archive"
+          ? target.table === "project"
+            ? "UPDATE project SET archived_at = now() WHERE id = $1"
+            : "UPDATE work_item SET archived_at = now() WHERE id = $1"
+          : target.table === "project"
+            ? "UPDATE project SET deleted_at = now(), purge_after = now() WHERE id = $1"
+            : "UPDATE work_item SET deleted_at = now() WHERE id = $1";
     const frozen = await client.query(freeze, [target.id]);
     if (frozen.rowCount !== 1) {
       throw new Error("raceProjectOrItemFreeze: update matched no row");
@@ -149,6 +151,16 @@ export function raceWorkItemArchive<T>(
 ) {
   return raceProjectOrItemFreeze(
     { table: "work_item", id: workItemId, freeze: "archive" },
+    operation,
+  );
+}
+
+export function raceCommentTombstone<T>(
+  commentId: string,
+  operation: () => Promise<T>,
+) {
+  return raceProjectOrItemFreeze(
+    { table: "comment", id: commentId, freeze: "delete" },
     operation,
   );
 }

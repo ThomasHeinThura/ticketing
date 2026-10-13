@@ -4,7 +4,7 @@
  * `DELETE /api/comments/{id}`. `GET /api/work-items/{key}/activity` and the portal read
  * route are NOT covered here -- see this PR's own body.
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -16,10 +16,12 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 import {
+  raceCommentTombstone,
   raceProjectArchive,
   raceProjectSoftDelete,
   raceWorkItemSoftDelete,
@@ -172,6 +174,45 @@ function deleteComment(app: ReturnType<typeof createApp>["app"], id: string) {
   return app.request(`/api/comments/${id}`, { method: "DELETE" });
 }
 
+function commentVersions(
+  app: ReturnType<typeof createApp>["app"],
+  key: string,
+  commentId: string,
+) {
+  return app.request(`/api/work-items/${key}/comments/${commentId}/versions`);
+}
+
+function hashApiKeyForTest(key: string) {
+  return createHash("sha256")
+    .update(key)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function createApiKeyFor(
+  userId: string,
+  permissions: Record<string, string[]>,
+) {
+  const rawKey = `taskdesk_test_${randomUUID()}`;
+  const now = new Date();
+  await db.insert(schema.apikeyTable).values({
+    referenceId: userId,
+    userId,
+    key: hashApiKeyForTest(rawKey),
+    name: "work-item comment scope test key",
+    start: rawKey.slice(0, 12),
+    prefix: "taskdesk",
+    permissions: JSON.stringify(permissions),
+    enabled: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return rawKey;
+}
+
 describe("API integration: work-item comments (#27)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
@@ -275,6 +316,274 @@ describe("API integration: work-item comments (#27)", () => {
     if (!event) throw new Error("expected one recorded event");
     expect(event.type).toBe("work_item.commented");
     expect((event.data as { visibility: string }).visibility).toBe("internal");
+  });
+
+  it("CA-12: adds an accessible mention as watcher without unmuting and fans out to that person", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const recipient = await addWorkspaceMember(creator.workspace.id, "member");
+    const outOfReachUser = await addWorkspaceMember(
+      creator.workspace.id,
+      "member",
+    );
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, recipient.id));
+    if (!person) throw new Error("expected recipient person");
+    const [outOfReachPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, outOfReachUser.id));
+    if (!outOfReachPerson) throw new Error("expected out-of-reach person");
+    const [projectRole] = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "project",
+        workspaceId: creator.workspace.id,
+        key: `mention-project-${randomUUID()}`,
+        name: "Mention project reach fixture",
+        rank: 1,
+        capabilities: ["project:read", "work_item:read"],
+      })
+      .returning();
+    if (!projectRole) throw new Error("expected project reach role");
+    const [creatorPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, creator.user.id));
+    if (!creatorPerson) throw new Error("expected creator person");
+    await db.insert(schema.membershipTable).values({
+      personId: creatorPerson.id,
+      scope: "project",
+      scopeId: project.id,
+      roleId: projectRole.id,
+    });
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "project",
+      scopeId: project.id,
+      roleId: projectRole.id,
+    });
+
+    await db.insert(schema.watcherTable).values({
+      workItemId: workItem.id,
+      personId: person.id,
+      source: "explicit",
+      muted: true,
+    });
+
+    const candidatesResponse = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=public`,
+    );
+    expect(candidatesResponse.status).toBe(200);
+    const candidates = (await candidatesResponse.json()) as Array<{
+      personId: string;
+      reachable: boolean;
+      userId?: string;
+    }>;
+    expect(
+      candidates.find((candidate) => candidate.personId === person.id),
+    ).toMatchObject({ reachable: true });
+    expect(
+      candidates.find(
+        (candidate) => candidate.personId === outOfReachPerson.id,
+      ),
+    ).toMatchObject({ reachable: false });
+    expect(candidates.some((candidate) => candidate.userId !== undefined)).toBe(
+      false,
+    );
+
+    const preflightResponse = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-preflight`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          personIds: [person.id, outOfReachPerson.id],
+          visibility: "public",
+        }),
+      },
+    );
+    expect(preflightResponse.status).toBe(200);
+    expect(await preflightResponse.json()).toEqual({
+      reachablePersonIds: [person.id],
+      unreachablePersonIds: [outOfReachPerson.id],
+    });
+
+    const response = await postComment(app, workItem.key, {
+      body: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "taskdeskMention", attrs: { id: person.id } },
+              { type: "taskdeskMention", attrs: { id: outOfReachPerson.id } },
+            ],
+          },
+        ],
+      },
+      visibility: "public",
+    });
+
+    expect(response.status).toBe(200);
+    const [watcher] = await db
+      .select({
+        source: schema.watcherTable.source,
+        muted: schema.watcherTable.muted,
+      })
+      .from(schema.watcherTable)
+      .where(eq(schema.watcherTable.workItemId, workItem.id));
+    expect(watcher).toEqual({ source: "explicit", muted: true });
+
+    const notifications = await db
+      .select({
+        kind: schema.notificationTable.kind,
+        personId: schema.notificationTable.personId,
+      })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.kind, "work_item.mentioned"));
+    expect(notifications).toEqual([
+      { kind: "work_item.mentioned", personId: person.id },
+    ]);
+    const outOfReachWatchers = await db
+      .select({ personId: schema.watcherTable.personId })
+      .from(schema.watcherTable)
+      .where(eq(schema.watcherTable.personId, outOfReachPerson.id));
+    expect(outOfReachWatchers).toEqual([]);
+  });
+
+  it("a narrow owner-bound API key cannot create a comment or mention effects", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    await grantProjectRole(creator.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    const recipient = await addWorkspaceMember(creator.workspace.id, "member");
+    const recipientPerson = requireRow(
+      await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, recipient.id))
+        .limit(1),
+      "narrow-key mention recipient person",
+    );
+    await grantProjectRole(recipient.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+
+    const rawKey = await createApiKeyFor(creator.user.id, {
+      project: ["read"],
+      work_item: ["read"],
+    });
+    const denied = await app.request(
+      `/api/work-items/${workItem.key}/comments`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": rawKey,
+        },
+        body: JSON.stringify({
+          body: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [
+                  {
+                    type: "taskdeskMention",
+                    attrs: { id: recipientPerson.id },
+                  },
+                ],
+              },
+            ],
+          },
+          visibility: "internal",
+        }),
+      },
+    );
+
+    expect(denied.status).toBe(403);
+    expect(await denied.text()).toContain("Insufficient API key scope");
+    expect(
+      await db
+        .select({ id: schema.commentTable.id })
+        .from(schema.commentTable)
+        .where(eq(schema.commentTable.workItemId, workItem.id)),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ personId: schema.watcherTable.personId })
+        .from(schema.watcherTable)
+        .where(eq(schema.watcherTable.workItemId, workItem.id)),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "work_item.mentioned")),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ id: schema.notificationTable.id })
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.kind, "work_item.mentioned")),
+    ).toEqual([]);
+    expect(recordedEvents).toEqual([]);
+  });
+
+  it("a comment-scoped API key permits only its frozen public-comment subset", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    await grantProjectRole(creator.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    const rawKey = await createApiKeyFor(creator.user.id, {
+      project: ["read"],
+      work_item: ["read"],
+      comment: ["create"],
+    });
+    const headers = {
+      "content-type": "application/json",
+      "x-api-key": rawKey,
+    };
+
+    const publicResponse = await app.request(
+      `/api/work-items/${workItem.key}/comments`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          body: { type: "doc", content: [] },
+          visibility: "public",
+        }),
+      },
+    );
+    expect(publicResponse.status).toBe(200);
+
+    const internalResponse = await app.request(
+      `/api/work-items/${workItem.key}/comments`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          body: { type: "doc", content: [] },
+          visibility: "internal",
+        }),
+      },
+    );
+    expect(internalResponse.status).toBe(403);
+    expect(await internalResponse.text()).toContain(
+      "Insufficient API key scope",
+    );
+    expect(
+      await db
+        .select({ id: schema.commentTable.id })
+        .from(schema.commentTable)
+        .where(eq(schema.commentTable.workItemId, workItem.id)),
+    ).toHaveLength(1);
   });
 
   it("posts a public comment when the caller holds comment:create", async () => {
@@ -420,6 +729,62 @@ describe("API integration: work-item comments (#27)", () => {
       .from(schema.commentVersionTable)
       .where(eq(schema.commentVersionTable.commentId, id));
     expect(version?.number).toBe(1);
+  });
+
+  it("a concurrent comment tombstone cannot commit between history-parent and version reads", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    await grantProjectRole(creator.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    const created = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    expect(created.status).toBe(200);
+    const { id } = (await created.json()) as { id: string };
+    const historicalBody = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "retained private history" }],
+        },
+      ],
+    };
+    await db.insert(schema.commentVersionTable).values({
+      commentId: id,
+      number: 1,
+      body: historicalBody,
+      editedBy: creator.user.id,
+      createdAt: new Date(),
+    });
+
+    const race = await raceCommentTombstone(
+      id,
+      async () => await commentVersions(app, workItem.key, id),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+    expect(await race.operation.value.text()).not.toContain(
+      "retained private history",
+    );
+
+    const [tombstone] = await db
+      .select({
+        deletedAt: schema.commentTable.deletedAt,
+        body: schema.commentTable.body,
+      })
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    expect(tombstone?.deletedAt).not.toBeNull();
+    expect(tombstone?.body).toBeNull();
+    const retainedVersions = await db
+      .select({ body: schema.commentVersionTable.body })
+      .from(schema.commentVersionTable)
+      .where(eq(schema.commentVersionTable.commentId, id));
+    expect(retainedVersions).toEqual([{ body: historicalBody }]);
   });
 
   it("CA-17: refuses an edit outside the 15-minute window for comment:update_own", async () => {

@@ -24,12 +24,15 @@ import {
   type WorkItemDetailField,
   type WorkItemDetailRow,
 } from "@/types/work-item";
+import WorkItemActivity, { type ActivityFilter } from "./work-item-activity";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 
 export type WorkItemDetailProps = {
   item: WorkItemDetailRow | undefined;
   /** The `{key}` from the URL -- shown by the not-found state, where there is no row. */
   workItemKey: string;
+  activityFilter: ActivityFilter;
+  onActivityFilterChange: (filter: ActivityFilter) => void;
   /** Best-effort: resolved client-side from the workspace's project list. Absent until
    * that list loads; the details section simply omits the row rather than showing a raw
    * project id. */
@@ -97,6 +100,8 @@ function UnavailableField({
 function WorkItemDetail({
   item,
   workItemKey,
+  activityFilter,
+  onActivityFilterChange,
   project,
   isLoading,
   isNotFound,
@@ -243,6 +248,16 @@ function WorkItemDetail({
           </p>
         )}
       </section>
+
+      <Separator />
+
+      <WorkItemActivity
+        workItemKey={workItemKey}
+        workspaceId={item.workspaceId}
+        defaultVisibility={item.defaultCommentVisibility}
+        filter={activityFilter}
+        onFilterChange={onActivityFilterChange}
+      />
 
       <Separator />
 

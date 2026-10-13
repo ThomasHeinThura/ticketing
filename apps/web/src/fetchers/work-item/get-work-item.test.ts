@@ -28,6 +28,7 @@ function makeDetail(overrides: Record<string, unknown> = {}) {
     stateId: "state_1",
     stateName: "Backlog",
     stateCategory: "backlog",
+    defaultCommentVisibility: "internal",
     priority: "high",
     assigneeId: null,
     assigneeName: null,

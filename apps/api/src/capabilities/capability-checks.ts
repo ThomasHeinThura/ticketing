@@ -38,6 +38,8 @@ export const CAPABILITY_CHECKS = {
   inviteUsers: { invitation: ["create"] },
   manageTeam: { member: ["update", "delete"] },
   removeMembers: { member: ["delete"] },
+  createPublicComments: { comment: ["create"] },
+  createInternalComments: { comment: ["create_internal"] },
 } satisfies Record<string, Record<string, string[]>>;
 
 export type CapabilityName = keyof typeof CAPABILITY_CHECKS;

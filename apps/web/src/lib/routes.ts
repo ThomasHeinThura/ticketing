@@ -69,6 +69,17 @@ export type WorkItemSortField = (typeof WORK_ITEM_SORT_FIELDS)[number];
 
 export const WORK_ITEM_SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type WorkItemSortDirection = (typeof WORK_ITEM_SORT_DIRECTIONS)[number];
+export type WorkItemActivityFilter = "everything" | "comments" | "public";
+export type WorkItemDetailSearch = {
+  activity?: Exclude<WorkItemActivityFilter, "everything">;
+};
+
+export function parseWorkItemDetailSearch(raw: unknown): WorkItemDetailSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  return candidate.activity === "comments" || candidate.activity === "public"
+    ? { activity: candidate.activity }
+    : {};
+}
 
 export type GodModeUsersSearch = {
   q?: string;
@@ -242,8 +253,16 @@ export const routes = {
    */
   workItemDetail: {
     path: "/agent/work-items/$key" as const,
-    build: (params: { key: string }) =>
-      `/agent/work-items/${encodeURIComponent(params.key)}`,
+    build: (
+      params: { key: string },
+      search: Partial<WorkItemDetailSearch> = {},
+    ) => {
+      const resolved = parseWorkItemDetailSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.activity) query.set("activity", resolved.activity);
+      const suffix = query.toString();
+      return `/agent/work-items/${encodeURIComponent(params.key)}${suffix ? `?${suffix}` : ""}`;
+    },
   },
   /** God Mode Users directory and its query-string-backed selection/filters. */
   godModeUsers: {

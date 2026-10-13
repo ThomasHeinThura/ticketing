@@ -7,6 +7,7 @@ import {
   parseGodModeUsersSearch,
   parsePendingActionsSearch,
   parsePendingActionsSearchFromQueryString,
+  parseWorkItemDetailSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   routes,
@@ -152,6 +153,16 @@ describe("routes.workItemDetail", () => {
     expect(routes.workItemDetail.build({ key: "a/b" })).toBe(
       "/agent/work-items/a%2Fb",
     );
+  });
+
+  it("round-trips the activity filter and drops invalid values", () => {
+    expect(
+      routes.workItemDetail.build({ key: "PROJ-123" }, { activity: "public" }),
+    ).toBe("/agent/work-items/PROJ-123?activity=public");
+    expect(parseWorkItemDetailSearch({ activity: "comments" })).toEqual({
+      activity: "comments",
+    });
+    expect(parseWorkItemDetailSearch({ activity: "unknown" })).toEqual({});
   });
 });
 

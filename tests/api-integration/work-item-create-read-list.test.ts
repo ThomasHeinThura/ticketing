@@ -769,6 +769,7 @@ describe("API integration: work item create/read/list (#23)", () => {
     expect(readBody.id).toBe(createdBody.id);
     expect(readBody.key).toBe(createdBody.key);
     expect(readBody.title).toBe("Read me back");
+    expect(readBody.defaultCommentVisibility).toBe("internal");
 
     const missing = await app.request(`/api/work-items/${project.slug}-999999`);
     expect(missing.status).toBe(404);
