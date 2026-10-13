@@ -18,6 +18,7 @@ const session = {
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     image: null,
+    role: "admin",
   },
 };
 
@@ -128,6 +129,88 @@ async function installAuthenticatedFixture(page: Page) {
     } else if (path.endsWith("/api/work-items/HELP-7")) body = workItem;
     else if (path.endsWith("/api/me/security/factors")) {
       body = { enabled: false, required: false, policyMode: "optional" };
+    } else if (path.endsWith("/api/me/pending-actions")) {
+      body = {
+        data: [
+          {
+            id: "visual-pending-action",
+            action: "delete",
+            origin: "api",
+            targetType: "user",
+            targetIds: ["visual-target-user"],
+            summary: { email: "casey.staff@example.test" },
+            confirmation: "typed_name_step_up",
+            approvalSupported: true,
+            state: "pending",
+            createdAt: "2026-10-01T12:00:00.000Z",
+            expiresAt: "2026-10-01T12:15:00.000Z",
+          },
+        ],
+        page: { nextCursor: null, hasMore: false },
+        meta: { total: 1 },
+      };
+    } else if (path.endsWith("/api/me/pending-actions/visual-pending-action")) {
+      body = {
+        id: "visual-pending-action",
+        action: "delete",
+        origin: "api",
+        targetType: "user",
+        targetIds: ["visual-target-user"],
+        summary: { email: "casey.staff@example.test" },
+        confirmation: "typed_name_step_up",
+        approvalSupported: true,
+        state: "pending",
+        createdAt: "2026-10-01T12:00:00.000Z",
+        expiresAt: "2026-10-01T12:15:00.000Z",
+        invalidationReason: null,
+      };
+    } else if (path.endsWith("/api/instance/users/visual-target-user")) {
+      body = {
+        id: "visual-target-user",
+        name: "Casey Staff",
+        email: "casey.staff@example.test",
+        emailVerified: true,
+        createdAt: "2026-09-01T12:00:00.000Z",
+        locale: "en-GB",
+        isInstanceAdmin: false,
+        isSuspended: false,
+        suspensionExpiresAt: null,
+        twoFactorEnabled: false,
+        person: {
+          id: "visual-target-person",
+          side: "staff",
+          organisationId: null,
+          organisationName: null,
+          active: true,
+          isPlaceholder: false,
+        },
+      };
+    } else if (path === "/api/instance/users") {
+      body = {
+        data: [
+          {
+            id: "visual-directory-user",
+            name: "Taylor Staff",
+            email: "taylor@example.test",
+            emailVerified: true,
+            createdAt: "2026-10-01T12:00:00.000Z",
+            locale: "en-GB",
+            isInstanceAdmin: false,
+            isSuspended: false,
+            suspensionExpiresAt: null,
+            twoFactorEnabled: true,
+            person: {
+              id: "visual-directory-person",
+              side: "staff",
+              organisationId: null,
+              organisationName: null,
+              active: true,
+              isPlaceholder: false,
+            },
+          },
+        ],
+        page: { nextCursor: null, hasMore: false },
+      };
     } else if (path.endsWith("/api/instance/observability")) {
       body = {
         version: 1,
@@ -307,6 +390,73 @@ test("observability settings screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("No token is configured.")).toBeVisible();
   await expect(page).toHaveScreenshot("observability-settings.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("instance users directory screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/god-mode/users");
+  await expect(
+    page.getByRole("heading", { name: "Instance users", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Taylor Staff", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("taylor@example.test", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("instance-users-directory.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("pending actions list screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/profile/pending-actions");
+  await expect(
+    page.getByRole("heading", { name: "My pending actions", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Deactivate person · casey.staff@example.test", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("pending-actions-list.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("pending action detail screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto(
+    "/agent/settings/profile/pending-actions/visual-pending-action",
+  );
+  await expect(
+    page.getByRole("heading", {
+      name: "Approve person deactivation",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Type the exact current email")).toBeVisible();
+  await expect(page.getByLabel("Account password")).toBeVisible();
+  await expect(page).toHaveScreenshot("pending-action-detail.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

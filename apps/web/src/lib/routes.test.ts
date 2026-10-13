@@ -4,6 +4,9 @@ import {
   buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
   parseGeneratedRouteUrl,
+  parseGodModeUsersSearch,
+  parsePendingActionsSearch,
+  parsePendingActionsSearchFromQueryString,
   parseWorkItemDetailSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
@@ -160,5 +163,73 @@ describe("routes.workItemDetail", () => {
       activity: "comments",
     });
     expect(parseWorkItemDetailSearch({ activity: "unknown" })).toEqual({});
+  });
+});
+
+describe("God Mode Users and requester pending-action URLs", () => {
+  it("round-trips user filters and selected account through the URL", () => {
+    const search = {
+      q: "  Ada Lovelace  ",
+      side: "staff" as const,
+      active: "false" as const,
+      organisationId: "org/one",
+      cursor: "cursor/a+b",
+      user: "user/one",
+    };
+    const url = routes.godModeUsers.build(search);
+    const params = new URLSearchParams(url.split("?")[1]);
+    expect(parseGodModeUsersSearch(Object.fromEntries(params))).toEqual({
+      ...search,
+      q: "Ada Lovelace",
+    });
+    expect(url).toContain("organisationId=org%2Fone");
+  });
+
+  it("round-trips only an allowlisted action when a user is selected", () => {
+    const url = routes.godModeUsers.build({
+      user: "user/one",
+      action: "reset-mfa",
+      q: "Ada",
+    });
+    expect(url).toBe(
+      "/agent/god-mode/users?q=Ada&user=user%2Fone&action=reset-mfa",
+    );
+    expect(
+      parseGodModeUsersSearch(
+        Object.fromEntries(new URL(url, "https://taskdesk.test").searchParams),
+      ),
+    ).toEqual({
+      q: "Ada",
+      user: "user/one",
+      action: "reset-mfa",
+    });
+  });
+
+  it("drops unknown actions, actions without a target, and sensitive form values", () => {
+    expect(
+      parseGodModeUsersSearch({
+        user: "user/one",
+        action: "delete-everything",
+        secret: "never-in-url",
+        reason: "private reason",
+      }),
+    ).toEqual({ user: "user/one" });
+    expect(parseGodModeUsersSearch({ action: "suspend" })).toEqual({});
+    expect(routes.godModeUsers.build({ action: "suspend" })).toBe(
+      "/agent/god-mode/users",
+    );
+  });
+
+  it("round-trips requester pagination and encodes the detail id", () => {
+    const url = routes.pendingActions.build({ cursor: "cursor/a+b" });
+    expect(parsePendingActionsSearchFromQueryString(url.split("?")[1])).toEqual(
+      parsePendingActionsSearch({ cursor: "cursor/a+b" }),
+    );
+    expect(url).toBe(
+      "/agent/settings/profile/pending-actions?cursor=cursor%2Fa%2Bb",
+    );
+    expect(routes.pendingAction.build({ id: "action/one" })).toBe(
+      "/agent/settings/profile/pending-actions/action%2Fone",
+    );
   });
 });
