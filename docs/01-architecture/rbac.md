@@ -525,6 +525,8 @@ narrow: a project role overrides a workspace role for that project.
 
 ## Route policies — the anti-v1 mechanism
 
+The `transitionTasks`, `rankTasks` and `manageProjectSettings` flags of `GET /api/capabilities` are strict canonical checks for `work_item:transition`, `work_item:rank` and `project:manage_settings`, never derived from the legacy statement map. The capabilities route is session-only, so API keys never read these flags.
+
 **Every route declares its policy at definition time.** A policy is one of exactly five
 kinds — the specs may use no other form, and the route-coverage test rejects any other:
 

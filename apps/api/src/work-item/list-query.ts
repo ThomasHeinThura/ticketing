@@ -23,6 +23,7 @@ import {
  */
 export const WORK_ITEM_SORT_FIELDS = [
   "key",
+  "position",
   "title",
   "priority",
   "dueDate",
@@ -86,12 +87,14 @@ function priorityRankSql(dir: WorkItemSortDirection): SQL<number> {
  * human reading "key" actually expects.
  */
 function primaryExpression(
-  field: "key" | "title" | "priority",
+  field: "key" | "position" | "title" | "priority",
   dir: WorkItemSortDirection,
 ): SQL<PrimaryValue> {
   switch (field) {
     case "key":
       return sql<PrimaryValue>`${workItemTable.number}`;
+    case "position":
+      return sql<PrimaryValue>`${workItemTable.position}`;
     case "title":
       return sql<PrimaryValue>`${workItemTable.title}`;
     case "priority":
@@ -134,6 +137,14 @@ export function workItemOrderBy(
       dir === "asc"
         ? sql`${workItemTable.dueDate} asc`
         : sql`${workItemTable.dueDate} desc`,
+      sql`${workItemTable.id} asc`,
+    ];
+  }
+  if (field === "position") {
+    return [
+      dir === "asc"
+        ? sql`${workItemTable.position} asc`
+        : sql`${workItemTable.position} desc`,
       sql`${workItemTable.id} asc`,
     ];
   }
@@ -275,6 +286,16 @@ export function decodeWorkItemCursor(
       }
       break;
     }
+    case "position": {
+      if (
+        isNull ||
+        typeof v !== "string" ||
+        !/^-?(?:0|[1-9]\d{0,9})(?:\.\d{1,10})?$/.test(v)
+      ) {
+        invalidCursor("sort=position needs a numeric(20,10) position");
+      }
+      break;
+    }
     case "dueDate": {
       if (isNull) {
         if (v !== null) {
@@ -312,7 +333,7 @@ export function decodeWorkItemCursor(
  * boundary row in the requested direction, on the SAME `(primary, id)` tuple
  * `workItemOrderBy` orders by. */
 function nonDueDateCursorCondition(
-  field: "key" | "title" | "priority",
+  field: "key" | "position" | "title" | "priority",
   dir: WorkItemSortDirection,
   cursor: CursorPayload,
 ): SQL {
@@ -402,6 +423,7 @@ export function primaryValueForCursor(
   field: WorkItemSortField,
   row: {
     number: number;
+    position: string;
     title: string;
     priority: string | null;
     dueDate: Date | null;
@@ -413,6 +435,8 @@ export function primaryValueForCursor(
       return { v: row.number, isNull: false };
     case "title":
       return { v: row.title, isNull: false };
+    case "position":
+      return { v: row.position, isNull: false };
     case "priority": {
       const nullRank =
         dir === "asc" ? PRIORITY_NULL_RANK_ASC : PRIORITY_NULL_RANK_DESC;
