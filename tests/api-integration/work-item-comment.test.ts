@@ -1553,4 +1553,31 @@ describe("API integration: work-item comments (#27)", () => {
       .where(eq(schema.commentVersionTable.commentId, id));
     expect(versions).toHaveLength(0);
   });
+
+  it("CA-17: an omitted body is still refused for a non-author, outside the window, and on a deleted comment", async () => {
+    const { app, workItem, creator } = await setupWorkItem("member");
+    const post = async () => {
+      const created = await postComment(app, workItem.key, {
+        body: { type: "doc", content: [{ type: "paragraph" }] },
+        visibility: "internal",
+      });
+      return ((await created.json()) as { id: string }).id;
+    };
+    const nonAuthorTarget = await post();
+    const staleTarget = await post();
+    const deletedTarget = await post();
+
+    await db
+      .update(schema.commentTable)
+      .set({ createdAt: new Date(Date.now() - 16 * 60 * 1000) })
+      .where(eq(schema.commentTable.id, staleTarget));
+    expect((await patchComment(app, staleTarget, {})).status).toBe(403);
+
+    expect((await deleteComment(app, deletedTarget)).status).toBe(200);
+    expect((await patchComment(app, deletedTarget, {})).status).toBe(404);
+
+    const otherUser = await addWorkspaceMember(creator.workspace.id, "member");
+    mockAuthenticatedSession(otherUser);
+    expect((await patchComment(app, nonAuthorTarget, {})).status).toBe(403);
+  });
 });
