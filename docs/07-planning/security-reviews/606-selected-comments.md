@@ -23,7 +23,7 @@ GPT-6 Sol review plus two ordinary Luna delta reviews:
 Earlier BLOCKED and CHANGES-style reports are preserved below unmodified, including the
 privacy BLOCK on the real-journey test (traces could publish credentials) and the P2
 target-workspace permission-hint finding. The latest full security-tier delta clearance, over
-`60ca6721..5bd14fa0` (CI fixes, real-browser UI acceptance fixes and the merge of `main` `8d739bd6`), is by Claude Opus 5.5.
+`60ca6721..b14ce09a` (CI fixes, real-browser UI acceptance fixes, a test-only jsdom stub, and merges of `main` `8d739bd6` and `d9af1c83`), is by Claude Opus 5.5.
 
 **Scope of this record.** Only reviews of the selected Comments source (the real-journey test
 and the selected product, remediation and delta reviews from `201070b9` onward) are indexed.
@@ -56,6 +56,8 @@ script, never retyped. The SHA-256 in each marker is of the report file bytes.
 **Reviewed head:** `04965bd0ce4d44c3c07bfd28a2823ef5b99a99a5`
 **Reviewed head:** `96658f343686ef816abf712834bb6a58bb8af427`
 **Reviewed head:** `5bd14fa0c3409444c805664baad5d921b28137ed`
+**Reviewed head:** `c012bc2a708fd090de77f2f18023b72a95144a9c`
+**Reviewed head:** `b14ce09a8f519131c1dac022b7304baffbd6f827`
 
 ## Index
 
@@ -87,6 +89,9 @@ script, never retyped. The SHA-256 in each marker is of the report file bytes.
 | 24 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-114d-9665-ordinary-sonnet.md` | Claude Sonnet 5.5 (claude-sonnet-5-5) | Ordinary delta (114d8448..96658f34: UI acceptance fixes) | `96658f34` | APPROVE | `ad1d929dc3b3d535fe8edd412a5fd2250b92ccbca24c936f8eff50fb0c405a91` |
 | 25 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-9665-5bd1-ordinary-sonnet.md` | Claude Sonnet 5.5 (claude-sonnet-5-5) | Ordinary delta (96658f34..5bd14fa0: main merge) | `5bd14fa0` | APPROVE | `7ab672c14fdebe34b30e7e446786ac4447f47ea420dcc304ea43fb8e6f713be3` |
 | 26 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-5bd1-security-opus.md` | Claude Opus 5.5 (claude-opus-5-5) | Security delta (60ca6721..5bd14fa0) | `5bd14fa0` | CLEAR | `7ff9b5fc953bf043bad5cedc654bfc3ef52a219f1b8e44007c55a31bca9db611` |
+| 27 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-c012-review-opus.md` | Claude Opus 5.5 (claude-opus-5-5) | Ordinary and security confirmation (4ee657c0..c012bc2a: jsdom layout stubs, test-only) | `c012bc2a` | CLEAR | `393b1bd99232f0787a5c2215641b421bccd32edd3a65c722fabc3c47cdd18bc4` |
+| 28 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-b14c-merge-ordinary-sonnet.md` | Claude Sonnet 5.5 (claude-sonnet-5-5) | Ordinary (c012bc2a..b14ce09a: merge of main d9af1c83) | `b14ce09a` | APPROVE | `dcdeded1845de5fe603629552cb61f13c16c93c1dde1409e6abf3a2bd7e4f753` |
+| 29 | `/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-b14c-security-rebind-opus.md` | Claude Opus 5.5 (claude-opus-5-5) | Security rebind (c012bc2a..b14ce09a) | `b14ce09a` | CLEAR | `79ce8563d9b7fca4d790b70d7a2b7414db07c55b3a1696bd18a9af14da2160f9` |
 
 ## Reports
 
@@ -1137,3 +1142,206 @@ I did not run the Postgres-backed `tests/api-integration/*` files, because no pr
 
 Verdict: CLEAR
 <!-- END REPORT (sha256 7ff9b5fc953bf043bad5cedc654bfc3ef52a219f1b8e44007c55a31bca9db611) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-c012-review-opus.md; Claude Opus 5.5 (claude-opus-5-5); sha256 393b1bd99232f0787a5c2215641b421bccd32edd3a65c722fabc3c47cdd18bc4) -->
+# PR #672 (Comments) — review of test-only delta 4ee657c0..c012bc2a
+
+**Reviewer model:** Claude Opus 5.5 (fresh independent context; ordinary and security confirmation of a test-only delta)
+
+- Candidate head: `c012bc2a708fd090de77f2f18023b72a95144a9c` (confirmed via `git rev-parse HEAD` in the worktree)
+- Comparison base: `4ee657c04a69db5b07c991d3dec4ba7852675975` (the direct parent; a note-only commit on top of 5bd14fa0, which the previous Opus review cleared)
+- Merge base with origin/main (for the gitleaks range): `8d739bd6a393ad9db5de99c778ebada9d9287ee6`
+- Worktree: /Users/heinthura/.codex/worktrees/605-native-client-selected/Ticketing.v2
+- Mode: read-only. No edits, commits, pushes, Docker or browsers.
+
+## Files examined
+
+`git diff --stat 4ee657c0..HEAD` shows 4 files, +61/-23, all test-only:
+
+- `apps/web/src/test/jsdom-layout.ts` (new): `installJSDOMLayoutStubs`
+- `apps/web/src/test/jsdom-layout.test.ts` (new)
+- `apps/web/src/test/setup.ts` (installs the stubs after the localStorage fix)
+- `apps/web/src/components/work-item/work-item-activity.ui.test.tsx` (file-local stub removed)
+
+Also read for context: `apps/web/vitest.config.ts` (setupFiles is `./src/test/setup.ts`, environment jsdom). I grepped `apps/web/src` for `getClientRects`, `getBoundingClientRect` and any unhandled-error suppression (`unhandledRejection`, `uncaughtException`, `dangerouslyIgnoreUnhandledErrors`, `onUnhandled*`).
+
+## Analysis against the four checks
+
+1. **Correct and minimal; does not mask a product error.**
+   - The stub only defines `getClientRects` (returns `[]`) and `getBoundingClientRect` (returns a zero rect) on `Range.prototype` and `Text.prototype`. It does not touch product code. The delta has no product-code changes.
+   - The delta has no global error handler, no `dangerouslyIgnoreUnhandledErrors`, and no try/catch wrapping. The grep found none anywhere in `apps/web/src` or the vitest config. Unhandled errors still fail the run as before.
+   - Real browsers implement both methods on Range, and ProseMirror calls them on Text nodes. The missing methods are a jsdom gap, not a product defect. Product code calls `getBoundingClientRect` only on Elements, which jsdom already provides. The stub does not affect those calls.
+2. **Installs only when missing; other expectations unchanged.**
+   - Each property is guarded by `!(name in proto)`. I probed jsdom 30.0.1 directly. `Range` and `Text` lack both methods, and `Element` has `getClientRects`. So the stub installs on exactly the two missing prototypes and replaces no real implementation.
+   - The removed file-local stub also overwrote `Element.prototype`. The shared stub leaves Element at jsdom's native zero-size behaviour, which is functionally the same. `work-item-activity.ui.test.tsx` passes in the full suite.
+   - The stub uses `configurable: true, writable: true`, so a test can still override it locally.
+3. **The new test is meaningful.** It calls `getClientRects` and `getBoundingClientRect` on a real Range and `getClientRects` on a Text node. Without the setup stub these calls throw `TypeError ... is not a function` on jsdom 30.0.1 (confirmed by the prototype probe). So the test fails if the stub is removed or stops installing. It also removes the node it appends.
+4. **Test-only delta.** Confirmed. All 4 changed paths are under test files or `src/test/`.
+
+## Commands and counts
+
+All vitest runs used `apps/web/vitest.config.ts`. The sandbox blocked writes to `node_modules/.vite-temp` (EPERM), so the vitest runs were repeated unsandboxed. The first sandboxed attempt failed at config load, before any test ran, so it is not counted.
+
+| Command | Result |
+| --- | --- |
+| `npx vitest run --config vitest.config.ts src/components/activity/comment-editor.test.tsx` x10 | 10/10 exit 0. Each run: 1 file, 7/7 tests passed. **0** runs mentioned "unhandled" (case-insensitive) and **0** mentioned `getClientRects`. |
+| `npx vitest run --config vitest.config.ts` (full web suite, once) | exit 0. **126/126 files, 515/515 tests passed.** 0 unhandled errors and 0 `getClientRects` mentions. Duration 22.01s. |
+| `node` probe of jsdom 30.0.1 prototypes | Range has neither method, Text has no `getClientRects`, Element has `getClientRects` |
+| `gitleaks detect --redact --no-banner --log-opts="--no-merges --first-parent 8d739bd6..HEAD"` | 23 commits scanned, **no leaks found** |
+| `gitleaks detect --no-git --source <dir containing only this report>` | 0 findings (recorded below) |
+
+I formed my view before reading the conductor's evidence, `672-flaky-loop-c012bc2a-claude.txt`. That file records 20/20 single-file runs of 7/7 tests and two full-suite runs of 126 files / 515 tests. It is consistent with my results.
+
+## Findings
+
+- **Blocking:** none.
+- **Non-blocking N1 (evidence strength):** the original failure was intermittent. Zero errors in 10 local loops (and 20 from the conductor) does not prove the flake is gone. The fix is still deterministic in mechanism: the error was "method is not a function", and the method now always exists. The remaining confirmation is a green hosted `unit + component` run at this head.
+- **Non-blocking N2 (scope note):** the stub is now global to every web test. A future test that wants to assert real Range geometry would get zeros. Because jsdom has no layout, such a test could not be meaningful in jsdom anyway. No action needed.
+
+## Residual risk
+
+- Hosted CI behaviour at `c012bc2a` was not observed by this reviewer. I ran local runs only.
+- No security-relevant surface is touched. There are no auth, permission, migration, CI-gate or dependency changes. The security confirmation is lightweight and finds nothing.
+- The ProseMirror/Tiptap scroll-into-view path itself was not reviewed. It is unchanged third-party code.
+
+**Reviewed head:** `c012bc2a708fd090de77f2f18023b72a95144a9c`
+
+Verdict: CLEAR
+<!-- END REPORT (sha256 393b1bd99232f0787a5c2215641b421bccd32edd3a65c722fabc3c47cdd18bc4) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-b14c-merge-ordinary-sonnet.md; Claude Sonnet 5.5 (claude-sonnet-5-5); sha256 dcdeded1845de5fe603629552cb61f13c16c93c1dde1409e6abf3a2bd7e4f753) -->
+# PR #672 merge b14ce09a ordinary review
+
+Reviewer model: Claude Sonnet (fresh independent ordinary-review context)
+
+**Reviewed head:** b14ce09a8f519131c1dac022b7304baffbd6f827
+Parents: c012bc2a708fd090de77f2f18023b72a95144a9c (PR), d9af1c83306a0c752ca38c50e70d8f6cf713ce03 (main)
+Merge base of the parents: 8d739bd6a393ad9db5de99c778ebada9d9287ee6
+Worktree: /Users/heinthura/.codex/worktrees/605-native-client-selected/Ticketing.v2
+
+## Files examined
+- apps/web/src/lib/routes.test.ts (conflict), packages/ui/src/styles/pairs.json (conflict)
+- Auto-merged overlap files: apps/web/e2e/visual.spec.ts, apps/web/src/lib/routes.ts, 19 i18n locale files, i18n/schema.json
+- Whole-tree fileset comparison against the PR's own change set
+
+## Method and results
+1. Fileset: the files changed by the PR vs merge base equal the files changed by HEAD vs main (49 files, identical sets). No file of the PR was dropped.
+2. Reproduced the merge with `git merge-tree --write-tree c012bc2a d9af1c83`. Only two conflicts: routes.test.ts and pairs.json. Every other overlap (visual.spec.ts, routes.ts, 19 locales, schema.json) was auto-merged; spot-checked blob ids of visual.spec.ts, routes.ts, en-US, zh-CN and schema.json are identical to git's own auto-merge. `git diff HEAD <merge-tree tree>` lists only the two conflict files.
+3. routes.test.ts: `git diff c012bc2a HEAD` adds exactly main's (#670) imports and the God Mode Users / pending-actions describe block. `git diff d9af1c83 HEAD` adds exactly the PR's `parseWorkItemDetailSearch` import and the activity-filter test. Nothing lost either side; no duplicate imports.
+4. pairs.json: scripted per-entry three-way check (key = entry minus occurrenceIds, usage, occurrences; base 8d739bd6, sides c012bc2a and d9af1c83). For all 418 entries, HEAD occurrence set equals the three-way expectation (union of additions, honouring removals by either side). 0 missing, 0 extra, 0 duplicate keys, no unexpected entries. 2380 occurrence ids in total.
+5. Commands (run in the worktree; sandbox had to be lifted because vite and the build write temp files inside the worktree):
+   - `pnpm check:tokens`: pass (built CSS; check:contrast reports 418 declared, source-grounded pairs meet thresholds in light and dark).
+   - `pnpm check:visual-scope`: pass (10 screenshot cases, 9 active inventory route rows mapped).
+   - `pnpm check:inventory`: pass (extra check; G5 metadata matches 44 generated routes).
+   - `vitest run src/lib/routes.test.ts` in apps/web: 1 file, 18 tests passed.
+   - visual.spec.ts has 10 `@visual` tests and 10 Linux snapshot files.
+
+## Findings
+- Blocking: none.
+- Non-blocking: untracked file apps/web/e2e/zz-comments-ui-acceptance-probe.spec.ts exists in the worktree. It is not in the commit; make sure it is never added.
+
+## Residual risk
+- Playwright visual runs, other web test files, API and integration suites were not run (Docker and browsers out of scope). Auto-merged files were verified by identity with git's merge, not by semantic review of every locale key. pairs.json semantics (occurrence correctness against source) rely on check:tokens and check:contrast.
+
+Verdict: APPROVE
+<!-- END REPORT (sha256 dcdeded1845de5fe603629552cb61f13c16c93c1dde1409e6abf3a2bd7e4f753) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/672-b14c-security-rebind-opus.md; Claude Opus 5.5 (claude-opus-5-5); sha256 79ce8563d9b7fca4d790b70d7a2b7414db07c55b3a1696bd18a9af14da2160f9) -->
+# PR #672 (Comments) - security rebind review after main merge
+
+- **Reviewer model:** Claude Opus 5.5 (fresh independent security-review context)
+- **Role:** independent security reviewer. Did not author, direct or remediate this candidate.
+- **Date:** 2026-10-13
+- **Worktree:** /Users/heinthura/.codex/worktrees/605-native-client-selected/Ticketing.v2
+- **Candidate (merge) SHA:** `b14ce09a8f519131c1dac022b7304baffbd6f827`
+- **Parent 1 (PR branch, prior cleared head):** `c012bc2a708fd090de77f2f18023b72a95144a9c`
+- **Parent 2 (main, carries #670):** `d9af1c83306a0c752ca38c50e70d8f6cf713ce03`
+- **Merge base:** `8d739bd6a393ad9db5de99c778ebada9d9287ee6`
+- **Prior exact-head clearances:** Opus CLEAR at 5bd14fa0 (672-5bd1-security-opus.md), Opus CLEAR at c012bc2a (672-c012-review-opus.md).
+
+## Scope of this rebind
+
+The delta c012bc2a..b14ce09a is the merge only. Main moved by exactly one first-parent
+commit (the #670 merge). Git recorded two conflicts:
+`apps/web/src/lib/routes.test.ts` and `packages/ui/src/styles/pairs.json`.
+
+## Surfaces examined
+
+1. **What main brought in (c012bc2a..b14ce09a, 49 files).** These are web-only: the God Mode
+   Users route, the pending-action list and detail routes, their fetchers and query hooks,
+   `use-intent-lifecycle`, `workspace-switcher`, `routes.ts`, the route tree and metadata,
+   i18n, `pairs.json`, visual baselines, `check-bundle-size`, and the #670 review note.
+   Nothing under `apps/api`, `packages/domain`, `packages/db`, `tests/` or `.github` changed
+   from the PR's point of view. The server-side comment, mention, capability and
+   notification code that was cleared at c012bc2a is byte-identical.
+2. **The PR's own surface is unchanged by the merge.** For each of the 93 files in
+   d9af1c83..b14ce09a, I compared the +/- line set against the same file in
+   8d739bd6..c012bc2a. 91 of 93 files are identical. The two that differ are
+   `i18n/schema.json`, where only diff-alignment `"type": "string"` lines differ, and
+   `pairs.json`, the resolved conflict.
+3. **Conflict resolutions.**
+   - `routes.test.ts`: an import-list union. It keeps the PR's `parseWorkItemDetailSearch`
+     and #670's `parseGodModeUsersSearch`, `parsePendingActionsSearch` and
+     `parsePendingActionsSearchFromQueryString`. No logic changed.
+   - `pairs.json`: a union of contrast-pair caller chains. The #670 chains are kept, and the
+     `WorkItemActivity -> Select` popup chain is re-added as its own pair entry. This is
+     declarative contrast-gate data with no runtime or security effect.
+     `check-contrast` passes with 418 pairs.
+   - There are no conflict markers anywhere in the tree (`git grep` at b14ce09a). Every
+     i18n and `pairs.json` file parses, and no locale has duplicate keys.
+4. **Semantic interaction with #670.**
+   - *Query keys:* #670 uses `["me","pending-actions",cursor]` and the `instanceUsersKey`
+     family. #672 uses `["work-items","activity",key]` and
+     `["work-items","comment-versions",key,commentId]`. The namespaces are disjoint, and
+     neither side invalidates the other's keys.
+   - *Fetchers and hooks:* none of the #670 files import any module #672 changed
+     (`use-workspace-permission`, `use-native-work-item-realtime`, the work-item fetchers,
+     `test/jsdom-layout`).
+   - *`routes.ts`:* both sides add independent exports. The `workItemDetail.build`
+     `?activity=` parameter only accepts the `comments` or `public` allowlist and does not
+     touch the #670 search parsers.
+   - *Step-up proof paths:* #670 adds no server code. The step-up API and its route
+     registration in `apps/api/src/index.ts` are unchanged by this merge. The #672 changes
+     to `index.ts` are the same lines that were cleared at c012bc2a. Comment and mention
+     endpoints do not consume step-up proofs or pending-action operations.
+   - *`visual.spec.ts`:* auto-merged. The PR's only addition is a fixture stub for the
+     HELP-7 activity envelope (test-only).
+
+## Tests run (at b14ce09a)
+
+- **Web vitest:** 23 files, 138 tests, all passed. This covers every #672 web test file,
+  including `routes.test.ts`, the comment-editor, version-history, activity and detail
+  tests, `native-activity`, `use-workspace-permission`, realtime, `jsdom-layout` and the
+  work-item types. It also covers the #670 tests to probe the interaction: `users.test.tsx`,
+  `pending-actions/$id.test.tsx`, `pending-actions.test.ts` and
+  `own-pending-actions-query.test.ts`.
+- **`scripts/i18n/check.mjs`:** all locales are in sync with en-US.
+- **`check-contrast`:** 418 pairs meet thresholds.
+- **`check-openapi`:** the contract matches the API (253 operations).
+
+## Secret scanning
+
+- `gitleaks git` (v8.30.1, repo `.gitleaksignore`) over c012bc2a..b14ce09a scanned 27
+  commits: no leaks found.
+- The PR range d9af1c83..b14ce09a scanned 23 commits: no leaks found.
+- `gitleaks detect --no-git` on the two conflict-resolved files as merged: no leaks found.
+
+## Findings
+
+- **Blocking:** none.
+- **Non-blocking:** none new. Prior non-blocking notes in the 5bd1 and c012 reports stand
+  unchanged, because the PR surface is byte-identical.
+
+## Residual risk / not checked
+
+- No browser or Docker run. The real-browser and visual baselines were not re-executed.
+- I did not run API integration suites (they need a private Postgres). The API surface is
+  byte-identical to the cleared c012bc2a head, so the earlier integration evidence still
+  applies.
+- I did not run a full web typecheck or build. The vitest runs import the merged
+  `routes.ts` and route modules.
+
+**Reviewed head:** `b14ce09a8f519131c1dac022b7304baffbd6f827`
+
+Verdict: CLEAR
+<!-- END REPORT (sha256 79ce8563d9b7fca4d790b70d7a2b7414db07c55b3a1696bd18a9af14da2160f9) -->
