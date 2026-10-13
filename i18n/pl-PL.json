@@ -1420,6 +1420,8 @@
 			"descriptionHint": "Krótki opis projektu",
 			"descriptionLabel": "Opis",
 			"descriptionPlaceholder": "Wpisz opis projektu",
+			"defaultCommentVisibilityLabel": "Domyślna widoczność komentarzy",
+			"defaultCommentVisibilityHint": "Kto domyślnie widzi nowy komentarz. Edytor zaczyna od tego wyboru; pracownicy mogą zmienić go dla każdego komentarza.",
 			"iconHint": "Wyświetlana na pasku bocznym oraz w widokach projektu.",
 			"iconLabel": "Ikona",
 			"importExportTasks": "Importuj/Eksportuj",

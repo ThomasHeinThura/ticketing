@@ -16,6 +16,7 @@ async function updateProject(
     kind?: "project" | "managed_service";
     supportLevel?: "L1" | "L2" | "L3" | null;
     serviceCalendarId?: string | null;
+    defaultCommentVisibility?: "public" | "internal";
   },
 ) {
   // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
@@ -92,6 +93,12 @@ async function updateProject(
             : {}),
           ...(configuration.serviceCalendarId !== undefined
             ? { serviceCalendarId: configuration.serviceCalendarId }
+            : {}),
+          ...(configuration.defaultCommentVisibility !== undefined
+            ? {
+                defaultCommentVisibility:
+                  configuration.defaultCommentVisibility,
+              }
             : {}),
         })
         .where(eq(projectTable.id, id))

@@ -864,6 +864,8 @@
 			"descriptionLabel": "説明",
 			"descriptionHint": "プロジェクトの簡単な説明",
 			"descriptionPlaceholder": "プロジェクトの説明を入力",
+			"defaultCommentVisibilityLabel": "コメントの既定の公開範囲",
+			"defaultCommentVisibilityHint": "新しいコメントを既定で誰が見られるか。エディターはこの選択から始まり、スタッフはコメントごとに変更できます。",
 			"dangerZone": "危険な操作",
 			"dangerZoneSubtitle": "取り消し不可能な破壊的操作です。",
 			"deleteProject": "プロジェクトを削除",

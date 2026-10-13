@@ -31,6 +31,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import PageTitle from "@/components/page-title";
+import DefaultCommentVisibilitySetting from "@/components/project/default-comment-visibility-setting";
 import { TasksImportExport } from "@/components/project/tasks-import-export.tsx";
 import icons from "@/constants/project-icons";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
@@ -532,6 +533,12 @@ function RouteComponent() {
                 />
               </form>
             </Form>
+            {workspace?.id && project?.id && (
+              <DefaultCommentVisibilitySetting
+                projectId={project.id}
+                workspaceId={workspace.id}
+              />
+            )}
             <Separator />
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="space-y-0.5">
