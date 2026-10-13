@@ -14,7 +14,11 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
-import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
+import {
+  assertCallerHasCapability,
+  capabilityCredential,
+  requireWorkspaceCapability,
+} from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import addDocumentLinkCtrl from "./controllers/add-document-link";
@@ -172,7 +176,11 @@ const listCustomerOrganisationsRoute = createRoute({
     "selector. Requires project:create in the workspace.",
   middleware: [
     workspaceAccess.fromQuery(),
-    requireWorkspacePermission({ project: ["create"] }),
+    // STRICT capability check, not the legacy `requireWorkspacePermission`: the legacy
+    // statements give the default `member` role `project:create`, while the permission
+    // matrix (rbac.md) grants it to owner/admin/manager only. This list is instance-wide, so
+    // it must follow the matrix.
+    requireWorkspaceCapability("project:create"),
   ] as const,
   request: { query: workspaceIdQuery },
   responses: {
@@ -778,6 +786,20 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
       organisationId,
     } = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
+    // Binding a project to a customer organisation needs the STRICT `project:create`
+    // capability (owner/admin/manager). The route's own legacy check also admits `member`;
+    // creating an internal project (no organisation) keeps that behaviour. Checked before any
+    // organisation lookup so a refused caller learns nothing about organisation ids.
+    if (organisationId != null) {
+      await assertCallerHasCapability(
+        workspaceId,
+        c.get("userId"),
+        "project:create",
+        capabilityCredential(
+          c.get("apiKey") as Parameters<typeof capabilityCredential>[0],
+        ),
+      );
+    }
     assertManagedServiceConfiguration({
       kind,
       supportLevel,

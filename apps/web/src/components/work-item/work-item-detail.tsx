@@ -25,6 +25,7 @@ import {
   type WorkItemDetailRow,
 } from "@/types/work-item";
 import WorkItemActivity, { type ActivityFilter } from "./work-item-activity";
+import WorkItemApprovals from "./work-item-approvals";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 
 export type WorkItemDetailProps = {
@@ -81,7 +82,7 @@ function UnavailableField({
  * progressive-disclosure rule (`docs/03-features/work-items.md` § Screens): state,
  * assignee, priority and due date in the header; the description in the body; everything
  * else in a collapsible section. The spec's remaining sections (activity and comments,
- * relations, attachments, approvals, SLA, time entries) are separate
+ * relations, attachments, SLA, time entries) are separate
  * `screen-inventory.md` rows and separate slices; editing is likewise later work.
  *
  * Four states, matching G6 with a record view's own shape of them: loading (skeleton),
@@ -248,6 +249,10 @@ function WorkItemDetail({
           </p>
         )}
       </section>
+
+      <Separator />
+
+      <WorkItemApprovals workItemKey={workItemKey} />
 
       <Separator />
 

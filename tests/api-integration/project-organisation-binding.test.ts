@@ -7,6 +7,7 @@
 
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
+import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -165,6 +166,157 @@ describe("API integration: project customer-organisation binding", () => {
     await expect(db.select().from(schema.projectTable)).resolves.toHaveLength(
       0,
     );
+  });
+
+  // The legacy better-auth statements give `member` (and, for these seeded rows, `lead`)
+  // `project:create`; the permission matrix (rbac.md) grants it to owner/admin/manager only.
+  // Both the customer-organisation list and an organisation binding follow the matrix.
+  describe("strict project:create capability", () => {
+    async function memberWithRole(role: string) {
+      const member = await createWorkspaceMember({
+        role,
+        seedDefaultRoleRow: false,
+      });
+      const now = new Date();
+      await db.insert(schema.workspaceRoleTable).values({
+        workspaceId: member.workspace.id,
+        role,
+        permission: JSON.stringify({ project: ["create", "read"] }),
+        isSystem: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return member;
+    }
+
+    it.each(["member", "lead", "viewer"])(
+      "%s is refused (403) on the list and on create with an organisationId",
+      async (role) => {
+        const caller = await memberWithRole(role);
+        const organisation = await makeOrganisation({ name: "SecretCo" });
+        mockAuthenticatedSession(caller.user);
+        const { app } = createApp();
+
+        const list = await app.request(
+          `/api/project/organisations?workspaceId=${caller.workspace.id}`,
+        );
+        expect(list.status).toBe(403);
+        expect(await list.text()).not.toContain("SecretCo");
+
+        const bound = await createProjectRequest(caller.workspace.id, {
+          organisationId: organisation.id,
+        });
+        expect(bound.status).toBe(403);
+        // Refused before any organisation lookup: an unknown id gets the same answer.
+        const unknown = await createProjectRequest(caller.workspace.id, {
+          organisationId: `missing-${randomUUID()}`,
+        });
+        expect(unknown.status).toBe(403);
+        await expect(
+          db.select().from(schema.projectTable),
+        ).resolves.toHaveLength(0);
+      },
+    );
+
+    it.each(["owner", "admin", "manager"])(
+      "%s can list organisations and bind a project",
+      async (role) => {
+        const caller = await memberWithRole(role);
+        const organisation = await makeOrganisation();
+        mockAuthenticatedSession(caller.user);
+        const { app } = createApp();
+
+        const list = await app.request(
+          `/api/project/organisations?workspaceId=${caller.workspace.id}`,
+        );
+        expect(list.status).toBe(200);
+        const bound = await createProjectRequest(caller.workspace.id, {
+          organisationId: organisation.id,
+        });
+        expect(bound.status).toBe(200);
+        expect(((await bound.json()) as ProjectRow).organisationId).toBe(
+          organisation.id,
+        );
+      },
+    );
+
+    it("still lets a member create an internal project (no organisationId), as before", async () => {
+      const member = await memberWithRole("member");
+      mockAuthenticatedSession(member.user);
+      const omitted = await createProjectRequest(member.workspace.id);
+      expect(omitted.status).toBe(200);
+      expect(((await omitted.json()) as ProjectRow).organisationId).toBeNull();
+      const explicitNull = await createProjectRequest(member.workspace.id, {
+        organisationId: null,
+      });
+      expect(explicitNull.status).toBe(200);
+    });
+  });
+
+  it("serializes a concurrent organisation deactivation against the create (FOR SHARE)", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    const organisation = await makeOrganisation();
+    mockAuthenticatedSession(admin.user);
+    const writer = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const observer = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await writer.connect();
+    await observer.connect();
+    let open = false;
+    try {
+      // An uncommitted deactivation holds the organisation row.
+      await writer.query("BEGIN");
+      open = true;
+      await writer.query(
+        "UPDATE organisation SET active = false WHERE id = $1",
+        [organisation.id],
+      );
+      const writerPid = Number(
+        (await writer.query("SELECT pg_backend_pid() AS pid")).rows[0].pid,
+      );
+
+      const create = createProjectRequest(admin.workspace.id, {
+        organisationId: organisation.id,
+      });
+
+      // Deterministic: poll until a backend is lock-waiting on the writer for the
+      // organisation `FOR SHARE` select, instead of sleeping.
+      let blocked = false;
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline && !blocked) {
+        await observer.query("SELECT pg_stat_clear_snapshot()");
+        const result = await observer.query<{ waiting: boolean }>(
+          `SELECT EXISTS (
+             SELECT 1 FROM pg_stat_activity a
+             WHERE a.datname = current_database()
+               AND a.wait_event_type = 'Lock'
+               AND a.query ILIKE '%from "organisation"%'
+               AND a.query ILIKE '%for share%'
+               AND $1 = ANY (pg_blocking_pids(a.pid))
+           ) AS waiting`,
+          [writerPid],
+        );
+        blocked = result.rows[0]?.waiting === true;
+        if (!blocked) await new Promise((r) => setTimeout(r, 25));
+      }
+      expect(blocked).toBe(true);
+
+      await writer.query("COMMIT");
+      open = false;
+      // After the deactivation commits, the create sees it and is refused.
+      const response = await create;
+      expect(response.status).toBe(422);
+      await expect(db.select().from(schema.projectTable)).resolves.toHaveLength(
+        0,
+      );
+    } finally {
+      if (open) await writer.query("ROLLBACK").catch(() => undefined);
+      await writer.end();
+      await observer.end();
+    }
   });
 
   it("cannot rebind a project through the general update route", async () => {

@@ -9612,6 +9612,137 @@
 						},
 						"realtimeUnavailable": {
 							"type": "string"
+						},
+						"approvals": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								},
+								"loading": {
+									"type": "string"
+								},
+								"empty": {
+									"type": "string"
+								},
+								"errorTitle": {
+									"type": "string"
+								},
+								"errorDescription": {
+									"type": "string"
+								},
+								"retry": {
+									"type": "string"
+								},
+								"kind": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"customer": {
+											"type": "string"
+										},
+										"cab": {
+											"type": "string"
+										}
+									},
+									"required": ["customer", "cab"]
+								},
+								"approverLabel": {
+									"type": "string"
+								},
+								"requesterLabel": {
+									"type": "string"
+								},
+								"expiresLabel": {
+									"type": "string"
+								},
+								"decidedLabel": {
+									"type": "string"
+								},
+								"unknownPerson": {
+									"type": "string"
+								},
+								"state": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"pending": {
+											"type": "string"
+										},
+										"approved": {
+											"type": "string"
+										},
+										"rejected": {
+											"type": "string"
+										},
+										"expired": {
+											"type": "string"
+										},
+										"withdrawn": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"pending",
+										"approved",
+										"rejected",
+										"expired",
+										"withdrawn"
+									]
+								},
+								"reachLost": {
+									"type": "string"
+								},
+								"withdraw": {
+									"type": "string"
+								},
+								"withdrawing": {
+									"type": "string"
+								},
+								"withdrawErrorTitle": {
+									"type": "string"
+								},
+								"withdrawConflict": {
+									"type": "string"
+								},
+								"withdrawForbidden": {
+									"type": "string"
+								},
+								"withdrawFailed": {
+									"type": "string"
+								},
+								"withdrawn": {
+									"type": "string"
+								},
+								"withdrawFor": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"heading",
+								"loading",
+								"empty",
+								"errorTitle",
+								"errorDescription",
+								"retry",
+								"kind",
+								"approverLabel",
+								"requesterLabel",
+								"expiresLabel",
+								"decidedLabel",
+								"unknownPerson",
+								"state",
+								"reachLost",
+								"withdraw",
+								"withdrawing",
+								"withdrawErrorTitle",
+								"withdrawConflict",
+								"withdrawForbidden",
+								"withdrawFailed",
+								"withdrawn",
+								"withdrawFor"
+							]
 						}
 					},
 					"required": [
@@ -9642,7 +9773,8 @@
 						"unavailableFieldLabel",
 						"partialNoticeTitle",
 						"partialNoticeDescription",
-						"realtimeUnavailable"
+						"realtimeUnavailable",
+						"approvals"
 					]
 				}
 			},

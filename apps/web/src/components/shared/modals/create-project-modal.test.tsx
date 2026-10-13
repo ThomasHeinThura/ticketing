@@ -171,4 +171,55 @@ describe("CreateProjectModal customer organisation selector", () => {
     fillAndSubmit();
     await waitFor(() => expect(mocks.createProject).toHaveBeenCalledTimes(1));
   });
+
+  async function chooseGlobex() {
+    fireEvent.click(screen.getByRole("combobox"));
+    const option = await screen.findByRole("option", { name: "Globex" });
+    fireEvent.pointerDown(option);
+    fireEvent.mouseDown(option);
+    fireEvent.pointerUp(option);
+    fireEvent.mouseUp(option);
+    fireEvent.click(option);
+    await waitFor(() => expect(lastCreateArgs().organisationId).toBe("org-2"));
+  }
+
+  it("resets the selection to internal when the modal is closed", async () => {
+    const organisations = [
+      { id: "org-1", name: "Acme Ltd" },
+      { id: "org-2", name: "Globex" },
+    ];
+    mocks.organisations.mockReturnValue(loaded(organisations));
+    const onClose = vi.fn();
+    render(<CreateProjectModal open onClose={onClose} />);
+    await chooseGlobex();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "common:actions.cancel" }),
+    );
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(lastCreateArgs().organisationId).toBeNull());
+    expect(screen.getByRole("combobox").textContent).toContain(
+      "common:modals.createProject.organisationNone",
+    );
+  });
+
+  it("falls back to internal when the chosen organisation disappears", async () => {
+    const organisations = [
+      { id: "org-1", name: "Acme Ltd" },
+      { id: "org-2", name: "Globex" },
+    ];
+    mocks.organisations.mockReturnValue(loaded(organisations));
+    const view = render(<CreateProjectModal open onClose={vi.fn()} />);
+    await chooseGlobex();
+
+    // A refetch no longer lists Globex (deactivated meanwhile).
+    mocks.organisations.mockReturnValue(loaded([organisations[0]]));
+    view.rerender(<CreateProjectModal open onClose={vi.fn()} />);
+
+    await waitFor(() => expect(lastCreateArgs().organisationId).toBeNull());
+    expect(screen.getByRole("combobox").textContent).toContain(
+      "common:modals.createProject.organisationNone",
+    );
+  });
 });

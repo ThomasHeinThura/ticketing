@@ -101,7 +101,11 @@ workspace must be one of the internal organisation's own. Any other value is ref
 `422` (`organisation_must_be_an_active_customer_organisation`) that does not say which check
 failed. The general update route never accepts the field, so an existing project cannot be
 rebound, and existing projects are not backfilled. `GET /api/project/organisations` (gated by
-`project:create`) lists the organisations the create-project selector offers.
+`project:create`) lists the organisations the create-project selector offers. The list is
+instance-wide (customer organisations are not tied to a workspace), and both it and a create
+that carries an `organisationId` require the strict `project:create` capability, held by
+owner, admin and manager only; the legacy member permission does not suffice. Creating an
+internal project (no `organisationId`) keeps its existing check.
 - `PR-10` **(warning)** A project must have a start date; an end date is optional.
 
 Rule violations appear as a persistent banner on the project overview rather than blocking
