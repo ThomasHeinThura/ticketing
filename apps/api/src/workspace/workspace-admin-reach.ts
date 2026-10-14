@@ -131,6 +131,16 @@ async function ensureReachRole(
 }
 
 /**
+ * LOCK ORDER (checked for deadlocks against the audit chain). This function takes the
+ * person row `FOR UPDATE` first, then the grant rows, and only at the very end the audit
+ * chain advisory lock (`appendAuditLog`, held until commit). That is the repo-wide order:
+ * `invalidateAccountDeletionCredentials` locks the person row before it audits, the
+ * identity writers lock person before audit, and `withWorkspaceDeletionAccessLifecycle`
+ * audits only AFTER `mutate` (where the sync runs). No transaction here audits and then
+ * locks a person row, so person -> audit never meets audit -> person. A new caller must not
+ * call this after `appendAuditLog` in the same transaction without locking the person first
+ * (`lockPersonsInOrder`).
+ *
  * Make the person's `sees_all` grant on this workspace match their current legacy
  * `workspace_member` role: present for an unambiguous genuine `owner` / `admin`, absent
  * otherwise. Idempotent.
@@ -277,12 +287,16 @@ export async function lockPersonsInOrder(
  * Members who already hold any active direct grant are skipped (cheap, and the sync would
  * leave an admin-made grant alone anyway). Returns the number of members visited.
  */
-export async function reconcileWorkspaceAdminReach(): Promise<number> {
+export async function reconcileWorkspaceAdminReach(): Promise<{
+  visited: number;
+  failed: number;
+}> {
   const database = db;
   const candidates = await database
     .select({
       workspaceId: schema.workspaceUserTable.workspaceId,
       userId: schema.workspaceUserTable.userId,
+      personId: schema.personTable.id,
     })
     .from(schema.workspaceUserTable)
     .innerJoin(
@@ -312,10 +326,25 @@ export async function reconcileWorkspaceAdminReach(): Promise<number> {
         ),
       ),
     );
-  for (const { workspaceId, userId } of candidates) {
-    await database.transaction((tx) =>
-      syncWorkspaceAdminReach(tx, workspaceId, userId),
-    );
+  // Each member is fail-safe: one bad row (corrupt data, a failed audit write) must never
+  // abort API boot. A failure is logged with the workspace and person ids, counted, and
+  // the next member is tried; the member simply keeps no grant until the next boot or role
+  // change (fail closed: a failed sync never grants reach it could not complete).
+  let failed = 0;
+  for (const { workspaceId, userId, personId } of candidates) {
+    try {
+      await database.transaction((tx) =>
+        syncWorkspaceAdminReach(tx, workspaceId, userId),
+      );
+    } catch (error) {
+      failed += 1;
+      console.error(
+        `❌ Owner/admin reach reconcile failed for workspace ${workspaceId}, person ${personId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
-  return candidates.length;
+  console.log(
+    `✅ Owner/admin reach reconcile: ${candidates.length} member(s) visited, ${failed} failed.`,
+  );
+  return { visited: candidates.length, failed };
 }

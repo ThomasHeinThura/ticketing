@@ -9,8 +9,8 @@
  * membership writer; remove one call and exactly that writer's test goes red).
  */
 import { randomUUID } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
 import { projectMembershipKeys } from "../../apps/api/src/identity/membership-projection";
@@ -802,7 +802,10 @@ describe("workspace owner/admin explicit sees_all grant", () => {
         { seesAll: true, roleKey: "admin" },
       ]);
       // idempotent
-      expect(await reconcileWorkspaceAdminReach()).toBe(0);
+      expect(await reconcileWorkspaceAdminReach()).toEqual({
+        visited: 0,
+        failed: 0,
+      });
     });
 
     it("boot reconciliation grants an admin whose is_system row is healed by the default-role seed", async () => {
@@ -987,6 +990,64 @@ describe("workspace owner/admin explicit sees_all grant", () => {
         ),
       ]);
       expect([a.status, b.status]).toEqual([200, 200]);
+    });
+
+    it("one member whose sync throws is logged and counted without stopping the others", async () => {
+      const world = await newWorld();
+      await db
+        .update(schema.workspaceRoleTable)
+        .set({ isSystem: false })
+        .where(
+          and(
+            eq(schema.workspaceRoleTable.workspaceId, world.workspaceId),
+            eq(schema.workspaceRoleTable.role, "admin"),
+          ),
+        );
+      const first = await addMember(world, "admin");
+      const second = await addMember(world, "admin");
+      await seedDefaultWorkspaceRoles();
+      // A trigger makes the grant insert fail for ONE person only.
+      const badPersonId = await personIdOf(first.user.id);
+      await db.execute(
+        sql.raw(
+          `CREATE FUNCTION reach_boom() RETURNS trigger AS $$ BEGIN IF NEW.person_id = '${badPersonId}' THEN RAISE EXCEPTION 'boom'; END IF; RETURN NEW; END $$ LANGUAGE plpgsql`,
+        ),
+      );
+      await db.execute(
+        sql.raw(
+          "CREATE TRIGGER reach_boom BEFORE INSERT ON membership_grant FOR EACH ROW EXECUTE FUNCTION reach_boom()",
+        ),
+      );
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      const logs = vi.spyOn(console, "log").mockImplementation(() => {});
+      let result: Awaited<ReturnType<typeof reconcileWorkspaceAdminReach>>;
+      try {
+        result = await reconcileWorkspaceAdminReach();
+      } finally {
+        logs.mockRestore();
+        await db.execute(
+          sql.raw("DROP TRIGGER reach_boom ON membership_grant"),
+        );
+        await db.execute(sql.raw("DROP FUNCTION reach_boom()"));
+      }
+      const logged = errors.mock.calls.map((c) => String(c[0]));
+      errors.mockRestore();
+      expect(result).toEqual({ visited: 2, failed: 1 });
+      expect(logged).toHaveLength(1);
+      expect(logged[0]).toContain(world.workspaceId);
+      expect(logged[0]).toContain(badPersonId);
+      const counts = await Promise.all(
+        [first, second].map(
+          async (a) =>
+            (await reachRows(a.user.id, world.workspaceId)).membership.length,
+        ),
+      );
+      expect(counts).toEqual([0, 1]);
+      // The failed member is picked up by the next boot.
+      expect(await reconcileWorkspaceAdminReach()).toEqual({
+        visited: 1,
+        failed: 0,
+      });
     });
   });
 });

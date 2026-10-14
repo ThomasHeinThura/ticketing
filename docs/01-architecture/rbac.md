@@ -490,7 +490,7 @@ Resolution order for "may this person see project P?":
    transaction as the grant: `membership.sees_all_granted` when it is granted (or its role
    changes) and `membership.changed` when it is revoked, both as a system action (no acting
    person; `after` carries `source: workspace_role`, the workspace, `seesAll` and the role).
-   A re-sync that changes nothing writes nothing. The boot reconcile audits the grants it makes.
+   A re-sync that changes nothing writes nothing. The boot reconcile audits the grants it makes. The boot reconcile is fail-safe per member: a failing member is logged (workspace and person ids), counted in the boot summary line and retried on the next boot; it never aborts API boot.
    The one-shot backfill migration `0123` writes **no** audit rows (hash-chained audit rows
    cannot be written from SQL); it is recorded by the 2026-10-14 decision-log entry. These
    automatic grants are the exception to "never self-grantable" only in the sense that no
