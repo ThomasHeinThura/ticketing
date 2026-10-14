@@ -18,8 +18,10 @@ A Claude Sonnet 5.5 lane implemented the change. The reviewers below are fresh, 
 - Ordinary review A by Claude Sonnet 5.5: APPROVE at `9a1caeda`. Two mutants survived, the disabled origin check and the API-key credential check. Tests that kill both were added at `67feeb14`.
 - Ordinary review B by Claude Sonnet 5.5 (architecture, native socket, recheck design, docs): APPROVE at `67feeb14`. The native socket already enforces reach per topic. The full serialized suite passed 2830 tests.
 - Security review by Claude Opus 5.5: CLEAR at `3e5fd647`, which is `67feeb14` cleanly merged with `main` `9af1ed06`. All 14 bypass variants were refused, the 401s are identical in body, headers and timing, revocation delivers nothing, and 7 of 8 mutations were caught; the survivor is redundant. Capability, scope and connection-limit parity is tracked in #748.
+- Security rebind at `036d0ed7`: CLEAR. This head merges `main` `d7ab1a71` (#742). The one conflict, in `project-reach-route-keys.ts`, was resolved by keeping both sides' new key lists. Both guards pass on the merged tree, along with 107 permissions and 124 integration tests.
 
 **Reviewed head:** `3e5fd64735207ea0c26947ae3ec6d57fdb6bf23c`
+**Reviewed head:** `036d0ed7a516efe175d25e04c79008b97c858b1f`
 
 ## Context index
 
@@ -30,6 +32,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 1 | `745-ordinary-a-sonnet.md` | Ordinary review A (16234794..9a1caeda) | Claude Sonnet 5.5 | `9a1caeda` | APPROVE | `84437ebd5f9827ac9f89ed642c5857a53e0ce8e938f52af9a74960d6d0c1b109` |
 | 2 | `747-ordinary-b-sonnet.md` | Ordinary review B (16234794..67feeb14) | Claude Sonnet 5.5 | `67feeb14` | APPROVE | `09be088ccb91949a74a8dfd89a30dee6bdd57c7025e57a30dac268c598685d63` |
 | 3 | `747-security-opus.md` | Security review (9af1ed06..3e5fd647) | Claude Opus 5.5 | `3e5fd647` | CLEAR | `49ec6772f30393ab7b4170aef1e1c7bd43a4ccaa75f1643a1cee5b3effa43125` |
+| 4 | `747-036d-security-rebind-opus.md` | Security rebind (4ac27502..036d0ed7) | Claude Opus 5.5 | `036d0ed7` | CLEAR | `eeb9cb11fa626a11e9e97901dfc243367853a463e21422e65e63adac1943cfe7` |
 
 ## Embedded reports
 
@@ -382,3 +385,72 @@ See the tables above: 7 of 8 mutations killed; all requested suites green locall
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 49ec6772f30393ab7b4170aef1e1c7bd43a4ccaa75f1643a1cee5b3effa43125) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/747-036d-security-rebind-opus.md; Claude Opus 5.5; sha256 eeb9cb11fa626a11e9e97901dfc243367853a463e21422e65e63adac1943cfe7) -->
+# PR #747: exact-head security rebind
+
+**Reviewed head:** 036d0ed7a516efe175d25e04c79008b97c858b1f
+**Previous security-reviewed head:** 3e5fd64735207ea0c26947ae3ec6d57fdb6bf23c (CLEAR, `747-security-opus.md`, sha256 `49ec6772f30393ab7b4170aef1e1c7bd43a4ccaa75f1643a1cee5b3effa43125`)
+**Parents:** 4ac275021c4f564ab0da23ad98caf7b403935c04 (the note commit) and main d7ab1a7153a47f143b7d40d7e376bd59e1949ac3 (which merged #742)
+**Merge base:** 9af1ed063fdc86f2c96f999e7e7fd901c8e68c7b
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). Fresh independent role; I did not author, direct or remediate this change or its merge.
+**Date:** 2026-10-15
+
+This is a sampled Opus check. It does not replace the required GPT-6 Sol security gate.
+
+## Head and main identity
+
+- `gh pr view 747 --json headRefOid` returned `036d0ed7…`.
+- `git ls-remote origin refs/heads/main` returned `d7ab1a7153a47f143b7d40d7e376bd59e1949ac3`. Both values held at the start and at the end of this check.
+- `git log -1 --format=%P 036d0ed7` returned `4ac27502 d7ab1a71`.
+
+## Note commit 4ac27502 (3e5fd647..4ac27502)
+
+- It adds only `docs/07-planning/security-reviews/747-realtime-project-reach.md` (+384 lines). No code changed.
+- The note records my report's SHA-256 as `49ec6772…`. That matches `shasum -a 256` of the private report file.
+- The report text embedded in the note equals my report file, ignoring blank lines (`diff` exit 0).
+
+## Merge resolution
+
+- `git merge-tree --write-tree 4ac27502 d7ab1a71` gives tree `da73a0c3…` with one conflict, in `tests/api-integration/helpers/project-reach-route-keys.ts`.
+- `git diff --name-only da73a0c3 036d0ed7` lists only that same file. **No other file differs from the merge-tree.**
+- **The resolution only concatenates the two sides:**
+  - Against the #747 parent (4ac27502), the head adds exactly #742's three exports: `PROJECT_LIST_ROUTE_KEYS`, `PROJECT_BODY_TARGET_ROUTE_KEYS` and `SAVED_VIEW_BY_ID_ROUTE_KEYS`, with their doc comments. They are appended after `PROJECT_SOCKET_ROUTE_KEYS`.
+  - Against main (d7ab1a71), the head adds exactly #747's `PROJECT_SOCKET_ROUTE_KEYS` block. It is inserted before `PROJECT_LIST_ROUTE_KEYS`.
+  - No line from either side was changed or dropped.
+- **The file set from main matches.** `git diff --name-only 036d0ed7^1 036d0ed7` equals `git diff --name-only 9af1ed06 d7ab1a71`: 35 files, `diff` exit 0.
+
+## Interaction with #742
+
+- **`reach-mark.ts`.** #742 adds only an optional `reachFilteredList` field to the mark type. The legacy socket's `markReach(…, { projectReach: true, resources: ["project"] })` is unchanged and still valid.
+- **The socket route still satisfies #742's guard.**
+  - #742 adds a check over workspace-level GET collections, plus a list of reasoned exemptions.
+  - `GET /api/ws/{projectId}` is a `delegated: "websocket"` route addressed to one project, not a workspace-level list.
+  - Family 3 in `project-reach-guard.test.ts` (#747) still requires its project-reach mark.
+  - The full permissions suite passes on the merged tree (below), with the guard's list and body-target families present alongside family 3.
+
+## Commands and results (merged tree 036d0ed7, scratch worktree, private Postgres)
+
+The database was a private Testcontainers `postgres:18-alpine` (`taskdesk_test`, via `CI=true`). It cleaned itself up. I removed no container by hand.
+
+| Command | Result |
+| --- | --- |
+| `pnpm install --frozen-lockfile --offline` | ok |
+| `pnpm test:permissions --force` (no turbo cache) | **16 files, 107 tests passed**; matches the conductor's 107 |
+| `pnpm check:route-policy` | exit 0 (16 files, 107 tests passed) |
+| `CI=true vitest --config vitest.integration.config.ts ws- node-server-websocket project-reach-reads project-reach-writes` | **5 files, 124 tests passed**. The files: `ws-project-reach`, `node-server-websocket`, `project-reach-reads`, `project-reach-writes` and `work-item-project-reach-reads` |
+
+## Findings
+
+- **Blocking:** none.
+- **Non-blocking:** the items carried over from the CLEAR at 3e5fd647 still stand: N1 parity, recheck cost and the legacy connection cap (tracked in #748), and the survivor mutation M8. Nothing in #742 changes them.
+
+## Residual / not checked
+
+- I did not re-run the adversarial probes or the mutations. `git diff 3e5fd647 036d0ed7` shows no change to `apps/api/src/ws/`, `index.ts`, `has-project-reach.ts` or `resolve-identity.ts`.
+- The only dependency of the socket that changed is `workspace-access-middleware.ts`, from #742: it adds saved-view reach. The `reachableWorkspacePredicate` function body is byte-identical (both versions hash to `78d7e992…`).
+- Main's changes to `reach-mark.ts` add only a field.
+- No CI check for this head was read in this pass; the orchestrator must confirm green.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 eeb9cb11fa626a11e9e97901dfc243367853a463e21422e65e63adac1943cfe7) -->
