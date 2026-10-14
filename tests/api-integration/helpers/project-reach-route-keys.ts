@@ -101,6 +101,8 @@ export const PROJECT_BODY_TARGET_ROUTE_KEYS = [
   "POST /api/submissions/{ref}/accept",
   "POST /api/submissions/{ref}/duplicate",
   "GET /api/submissions/{ref}",
+  "GET /api/submissions/{ref}/attachments",
+  "GET /api/submissions/{ref}/attachments/{id}",
 ] as const;
 
 /**

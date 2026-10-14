@@ -40,6 +40,10 @@ import {
   findWorkspaceDefaultSlaPolicyQuery,
   findWorkspaceOwnedSlaPolicyQuery,
 } from "../work-item/repository";
+import {
+  type LinkedWorkItemReach,
+  reachableLinkedWorkItemId,
+} from "./submission-linked-work-item";
 
 type RequestTypeInput = {
   workspaceId: string;
@@ -1325,16 +1329,11 @@ export async function findSubmission(
   workspaceId?: string,
   requesterId?: string,
   /**
-   * Staff detail only (#740): whether the caller reaches the project of the converted work
-   * item. When it does not, the work item id and the comments carried over from it are left out,
-   * exactly as for a submission that was never converted. The portal requester's own view
-   * passes nothing and keeps its existing behaviour.
+   * Staff detail only (#740): the caller's reach. Without a reachable work item the id and the
+   * comments carried over from it are left out (`submission-linked-work-item.ts`). The portal
+   * requester's own view passes nothing and keeps its existing behaviour.
    */
-  canReachProject?: (project: {
-    id: string;
-    workspaceId: string;
-    organisationId: string | null;
-  }) => Promise<boolean>,
+  staffReach?: LinkedWorkItemReach,
 ) {
   const number = /^SUB-([1-9]\d{0,9})$/u.exec(ref)?.[1];
   if (!number)
@@ -1383,38 +1382,23 @@ export async function findSubmission(
     ...message,
     createdAt: message.createdAt.toISOString(),
   }));
-  let convertedVisible = true;
-  if (canReachProject && row.submission.workItemId) {
-    const [owner] = await db
-      .select({
-        id: schema.projectTable.id,
-        workspaceId: schema.projectTable.workspaceId,
-        organisationId: schema.projectTable.organisationId,
-      })
-      .from(schema.workItemTable)
-      .innerJoin(
-        schema.projectTable,
-        eq(schema.projectTable.id, schema.workItemTable.projectId),
-      )
-      .where(eq(schema.workItemTable.id, row.submission.workItemId))
-      .limit(1);
-    convertedVisible = owner ? await canReachProject(owner) : false;
+  let linkedWorkItemId = row.submission.workItemId;
+  if (staffReach) {
+    linkedWorkItemId = await reachableLinkedWorkItemId(
+      staffReach,
+      row.submission.workItemId,
+    );
+    if (linkedWorkItemId === null) {
+      row.submission = { ...row.submission, workItemId: null };
+    }
   }
-  if (!convertedVisible) {
-    return {
-      ...row,
-      submission: { ...row.submission, workItemId: null },
-      ref,
-      messages,
-    };
-  }
-  if (row.submission.state === "accepted" && row.submission.workItemId) {
+  if (row.submission.state === "accepted" && linkedWorkItemId) {
     const comments = await db
       .select()
       .from(schema.commentTable)
       .where(
         and(
-          eq(schema.commentTable.workItemId, row.submission.workItemId),
+          eq(schema.commentTable.workItemId, linkedWorkItemId),
           eq(schema.commentTable.visibility, "public"),
           isNull(schema.commentTable.deletedAt),
         ),

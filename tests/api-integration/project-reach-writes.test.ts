@@ -11,9 +11,14 @@ import { count, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { portalRequest } from "./helpers/approval-fixtures";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createProjectFixture, grantProjectRole } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  grantProjectRole,
+  requireRow,
+} from "./helpers/fixtures";
 import { seedIntake, staffRequest, submitAs } from "./helpers/intake-http";
 import { PROJECT_BODY_TARGET_ROUTE_KEYS } from "./helpers/project-reach-route-keys";
 import {
@@ -45,6 +50,8 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
   it("the file covers exactly the routes the guard requires of this family", () => {
     expect([...PROJECT_BODY_TARGET_ROUTE_KEYS].sort()).toEqual([
       "GET /api/submissions/{ref}",
+      "GET /api/submissions/{ref}/attachments",
+      "GET /api/submissions/{ref}/attachments/{id}",
       "POST /api/submissions/{ref}/accept",
       "POST /api/submissions/{ref}/duplicate",
       "POST /api/views",
@@ -539,6 +546,182 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
       const keyText = await viaKey.text();
       expect(keyText).not.toContain(item.workItem.id);
       expect(keyText).not.toContain(marker);
+    });
+  });
+
+  describe("staff submission attachments: an accepted submission's work item attachments are shown only within reach", () => {
+    async function arrange() {
+      const s = await seedIntake("reach-attachments");
+      const wsId = s.t.workspaceId;
+      const { project: second } = await createProjectFixture({
+        workspaceId: wsId,
+        name: "Second destination",
+      });
+      await db
+        .update(schema.projectTable)
+        .set({ organisationId: s.customer.orgId })
+        .where(eq(schema.projectTable.id, second.id));
+      await makeState(wsId, second.id, "backlog", true);
+      const secondStaff = await addMember(wsId, "admin");
+      await grantProjectRole(secondStaff.user.id, second.id, [
+        "project:read",
+        "work_item:read",
+        "work_item:create",
+      ]);
+      const ref = await submitAs(s, s.customer, "Attachment probe");
+      const accepted = await staffRequest(
+        s.t,
+        secondStaff,
+        `/api/submissions/${ref}/accept`,
+        {
+          method: "POST",
+          body: { projectId: second.id, workItemTypeId: s.t.type.id },
+        },
+      );
+      expect(accepted.status, await accepted.clone().text()).toBe(200);
+      const item = (await accepted.json()) as { workItem: { id: string } };
+      const submissionRow = (await db.select().from(schema.submissionTable))[0];
+      const make = async (
+        filename: string,
+        parent: { workItemId?: string; submissionId?: string },
+        customerVisible: boolean,
+      ) =>
+        requireRow(
+          await db
+            .insert(schema.attachmentTable)
+            .values({
+              workspaceId: wsId,
+              organisationId: s.customer.orgId,
+              ...parent,
+              objectKey: `workspace/${wsId}/${randomUUID()}/${filename}`,
+              filename,
+              mimeType: "application/pdf",
+              size: 5,
+              state: "ready",
+              customerVisible,
+              uploadedBy: s.customer.person.id,
+            })
+            .returning(),
+          "attachment",
+        );
+      const internal = await make(
+        "internal-escalation.pdf",
+        { workItemId: item.workItem.id },
+        false,
+      );
+      const visible = await make(
+        "customer-visible.pdf",
+        { workItemId: item.workItem.id },
+        true,
+      );
+      const own = await make(
+        "on-the-submission.pdf",
+        { submissionId: submissionRow?.id },
+        true,
+      );
+      return { s, secondStaff, ref, internal, visible, own };
+    }
+
+    const filenames = async (response: Response) =>
+      ((await response.json()) as { filename: string }[])
+        .map((x) => x.filename)
+        .sort();
+    const auditCount = async () =>
+      (await db.select().from(schema.auditLogTable)).length;
+
+    it("a triager who reaches the work item's project lists and downloads all of them, internal included", async () => {
+      const a = await arrange();
+      const list = await staffRequest(
+        a.s.t,
+        a.secondStaff,
+        `/api/submissions/${a.ref}/attachments`,
+      );
+      expect(list.status, await list.clone().text()).toBe(200);
+      expect(await filenames(list)).toEqual([
+        "customer-visible.pdf",
+        "internal-escalation.pdf",
+        "on-the-submission.pdf",
+      ]);
+      for (const att of [a.internal, a.visible, a.own]) {
+        const dl = await staffRequest(
+          a.s.t,
+          a.secondStaff,
+          `/api/submissions/${a.ref}/attachments/${att.id}`,
+        );
+        expect(dl.status, await dl.clone().text()).toBe(302);
+      }
+    });
+
+    it("a triager without reach sees only the submission's own attachment; the work item's are 404 and nothing is written", async () => {
+      const a = await arrange();
+      const before = await auditCount();
+      const list = await staffRequest(
+        a.s.t,
+        a.s.t.requester,
+        `/api/submissions/${a.ref}/attachments`,
+      );
+      const text = await list.clone().text();
+      expect(list.status, text).toBe(200);
+      expect(text).not.toContain("internal-escalation");
+      expect(text).not.toContain("customer-visible");
+      expect(await filenames(list)).toEqual(["on-the-submission.pdf"]);
+      const missing = await staffRequest(
+        a.s.t,
+        a.s.t.requester,
+        `/api/submissions/${a.ref}/attachments/missing-${randomUUID()}`,
+      );
+      const missingText = await missing.text();
+      expect(missing.status, missingText).toBe(404);
+      for (const att of [a.internal, a.visible]) {
+        const dl = await staffRequest(
+          a.s.t,
+          a.s.t.requester,
+          `/api/submissions/${a.ref}/attachments/${att.id}`,
+        );
+        const dlText = await dl.text();
+        expect(dl.status, dlText).toBe(404);
+        expect(dlText).toBe(missingText);
+      }
+      expect(await auditCount()).toBe(before);
+      const own = await staffRequest(
+        a.s.t,
+        a.s.t.requester,
+        `/api/submissions/${a.ref}/attachments/${a.own.id}`,
+      );
+      expect(own.status, await own.clone().text()).toBe(302);
+    });
+
+    it("API key: an outsider's key sees only the submission's own attachment; the reaching owner's key sees all", async () => {
+      const a = await arrange();
+      mockAnonymousSession();
+      const scope = { intake: ["triage"], workspace: ["read"] };
+      const outsiderKey = await makeApiKey(a.s.t.requester.user.id, scope);
+      const memberKey = await makeApiKey(a.secondStaff.user.id, scope);
+      const path = `/api/submissions/${a.ref}/attachments`;
+      setAmbientHeaders({ "x-api-key": outsiderKey });
+      const out = await json(a.s.t.app, "GET", path);
+      expect(await filenames(out)).toEqual(["on-the-submission.pdf"]);
+      const dl = await json(a.s.t.app, "GET", `${path}/${a.internal.id}`);
+      expect(dl.status).toBe(404);
+      setAmbientHeaders({ "x-api-key": memberKey });
+      const inn = await json(a.s.t.app, "GET", path);
+      expect(await filenames(inn)).toHaveLength(3);
+      const ok = await json(a.s.t.app, "GET", `${path}/${a.internal.id}`);
+      expect(ok.status).toBe(302);
+    });
+
+    it("the requester's own portal view is unchanged: customer-visible items only, internal never", async () => {
+      const a = await arrange();
+      const list = await portalRequest(
+        a.s.t,
+        a.s.customer,
+        `/api/portal/submissions/${a.ref}/attachments`,
+      );
+      expect(list.status, await list.clone().text()).toBe(200);
+      expect(await filenames(list)).toEqual([
+        "customer-visible.pdf",
+        "on-the-submission.pdf",
+      ]);
     });
   });
 });

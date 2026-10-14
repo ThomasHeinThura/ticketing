@@ -1027,17 +1027,11 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
     );
   })
   .openapi(submissionDetailRoute, async (c) => {
-    const reach = listReachOf(c);
     const detail = await findSubmission(
       c.req.valid("param").ref,
       c.get("workspaceId"),
       undefined,
-      (project) =>
-        reach.reaches({
-          projectId: project.id,
-          workspaceId: project.workspaceId,
-          organisationId: project.organisationId,
-        }),
+      listReachOf(c),
     );
     return c.json(
       {

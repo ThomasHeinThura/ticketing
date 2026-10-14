@@ -136,10 +136,6 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
   "GET /api/service-calendars/{id}/usage":
     "aggregate reference counts for deletion safety (sla_policy:read); no project or work item ids, names or titles",
   "GET /api/sla-policies/{id}": "one SLA policy definition; configuration row",
-  "GET /api/submissions/{ref}/attachments":
-    "the submission's own attachments; submissions are not project-bound until accepted",
-  "GET /api/submissions/{ref}/attachments/{id}":
-    "one attachment of the submission; not project-bound",
   "GET /api/workflows/{id}": "one workflow definition; configuration row",
   "GET /api/workspace/{workspaceId}": "the workspace row itself",
   "GET /api/workspace/{workspaceId}/invitations":
@@ -181,6 +177,51 @@ function findListReachProblems(
       problems.push(`${key}: stale exemption`);
     }
   }
+  return problems;
+}
+
+/**
+ * Staff routes under `/api/submissions` (#740). Once a submission is linked to a work item, any
+ * staff exposure of that work item's data (id, comments, attachments, fields) requires reach to
+ * its project through the ONE shared rule (`intake/submission-linked-work-item.ts`), and an
+ * out-of-reach link behaves as if absent. Every such route must therefore carry a reach
+ * declaration (a reach context, a reach-filtered list, or the attachment reach middleware) or
+ * state why it never touches linked work-item data. A route added later must do one or the
+ * other.
+ */
+const SUBMISSION_ROUTE_EXEMPT: Readonly<Record<string, string>> = {
+  "GET /api/submissions":
+    "the intake queue; rows carry no work item id, project or comment (list schema picks without workItemId)",
+  "POST /api/submissions/{ref}/claim":
+    "returns the claim fields only (id, ref, state, claimedBy, claimedAt); reads no work item",
+  "POST /api/submissions/{ref}/decline":
+    "acts on open submissions and returns ref, state and reason; reads no work item",
+  "POST /api/submissions/{ref}/messages":
+    "a staff clarification on an open submission; returns the message only; the customer-reply branch that reads the work item is the portal route",
+};
+
+/** Pure, so the negative cases can prove the check is not vacuous. */
+function findSubmissionRouteProblems(
+  routes: ReadonlyMap<string, readonly Handler[]>,
+  exempt: Readonly<Record<string, string>>,
+): string[] {
+  const problems: string[] = [];
+  const keys = [...routes.keys()].filter((key) =>
+    /^[A-Z]+ \/api\/submissions(\/|$)/.test(key),
+  );
+  for (const key of keys) {
+    const declared = (routes.get(key) ?? [])
+      .map(markOf)
+      .some((mark) => mark?.projectReach === true);
+    const reason = exempt[key];
+    const exempted = reason !== undefined && reason.trim() !== "";
+    if (!declared && !exempted)
+      problems.push(`${key}: staff submission route with no reach declaration`);
+    if (declared && reason !== undefined)
+      problems.push(`${key}: exempted but declares reach`);
+  }
+  for (const key of Object.keys(exempt))
+    if (!keys.includes(key)) problems.push(`${key}: stale exemption`);
   return problems;
 }
 
@@ -316,6 +357,29 @@ describe("project reach guard: the checker is not vacuous", () => {
     });
   });
 
+  it("the submission-route check flags an undeclared staff route and a bad exemption", () => {
+    const k = "GET /api/submissions/{ref}/thing";
+    const bare = new Map([[k, [handlerWith({ projectReach: false })]]]);
+    expect(findSubmissionRouteProblems(bare, {})).toHaveLength(1);
+    expect(findSubmissionRouteProblems(bare, { [k]: " " })).toHaveLength(1);
+    expect(findSubmissionRouteProblems(bare, { [k]: "why" })).toEqual([]);
+    const declared = new Map([[k, [handlerWith({ projectReach: true })]]]);
+    expect(findSubmissionRouteProblems(declared, {})).toEqual([]);
+    expect(findSubmissionRouteProblems(declared, { [k]: "why" })).toHaveLength(
+      1,
+    );
+    expect(
+      findSubmissionRouteProblems(declared, {
+        "GET /api/submissions/gone": "why",
+      }),
+    ).toHaveLength(1);
+    // Portal and request-type routes are not staff submission routes.
+    const portal = new Map([
+      ["GET /api/portal/submissions/{ref}", [handlerWith()]],
+    ]);
+    expect(findSubmissionRouteProblems(portal, {})).toEqual([]);
+  });
+
   it("the task-target middleware factories carry a project-reach mark", () => {
     for (const middleware of [
       requireBodyTaskReach(),
@@ -431,6 +495,17 @@ describe("project reach guard: the real router", () => {
     }
     expect(
       findReachProblems(handlersByKey, [...PROJECT_BODY_TARGET_ROUTE_KEYS], {}),
+    ).toEqual([]);
+
+    // Family 5 (#740): every staff submission route either carries reach for the linked work
+    // item or says why it never touches it.
+    expect(
+      [...handlersByKey.keys()].filter((key) =>
+        /^[A-Z]+ \/api\/submissions(\/|$)/.test(key),
+      ).length,
+    ).toBeGreaterThanOrEqual(10);
+    expect(
+      findSubmissionRouteProblems(handlersByKey, SUBMISSION_ROUTE_EXEMPT),
     ).toEqual([]);
 
     // Family 4 (#740): workspace-level LIST and SEARCH routes. The candidates are derived from
