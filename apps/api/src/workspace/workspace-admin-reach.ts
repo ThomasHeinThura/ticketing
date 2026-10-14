@@ -211,38 +211,6 @@ export async function syncWorkspaceAdminReach(
 }
 
 /**
- * Remove this workspace's reach rows before the workspace row itself is deleted.
- * `membership.role_id` and `membership_grant.role_id` are `ON DELETE RESTRICT`, so the
- * `role` rows that `workspace.id` cascades to cannot be deleted while a grant or membership
- * still references them. Only workspace-scoped DIRECT `system_backfill` grants and the
- * workspace-scoped memberships are removed; nothing outside these workspaces is touched.
- */
-export async function removeWorkspaceAdminReach(
-  tx: Tx,
-  workspaceIds: readonly string[],
-): Promise<void> {
-  if (workspaceIds.length === 0) return;
-  await tx
-    .delete(schema.membershipGrantTable)
-    .where(
-      and(
-        eq(schema.membershipGrantTable.scope, "workspace"),
-        inArray(schema.membershipGrantTable.scopeId, [...workspaceIds]),
-        eq(schema.membershipGrantTable.sourceKind, "direct"),
-        eq(schema.membershipGrantTable.directOrigin, "system_backfill"),
-      ),
-    );
-  await tx
-    .delete(schema.membershipTable)
-    .where(
-      and(
-        eq(schema.membershipTable.scope, "workspace"),
-        inArray(schema.membershipTable.scopeId, [...workspaceIds]),
-      ),
-    );
-}
-
-/**
  * Boot-time reconciliation (idempotent). The writers keep the grant current at every role
  * change, but two cases change the INPUTS to `syncWorkspaceAdminReach` without a role
  * change: a staff `person` created after the member joined (`ensureStaffPersonForUser`,

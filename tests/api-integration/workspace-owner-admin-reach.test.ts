@@ -18,10 +18,7 @@ import { createApp } from "../../apps/api/src/index";
 import deleteAccountData from "../../apps/api/src/user/controllers/delete-account-data";
 import { seedDefaultWorkspaceRoles } from "../../apps/api/src/utils/seed-default-workspace-roles";
 import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
-import {
-  reconcileWorkspaceAdminReach,
-  removeWorkspaceAdminReach,
-} from "../../apps/api/src/workspace/workspace-admin-reach";
+import { reconcileWorkspaceAdminReach } from "../../apps/api/src/workspace/workspace-admin-reach";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
@@ -604,7 +601,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
         .values({
           scope: "workspace",
           workspaceId: world.workspaceId,
-          key: "explicit-direct",
+          key: `explicit-direct-${randomUUID().slice(0, 8)}`,
           name: "Explicit direct",
           rank: 5,
           capabilities: [],
@@ -641,7 +638,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       expect(await canReadProject(world, member)).toBe(404);
       let rows = await reachRows(member.user.id, world.workspaceId);
       expect(rows.membership).toEqual([
-        { seesAll: false, roleKey: "explicit-direct" },
+        { seesAll: false, roleKey: expect.stringMatching(/^explicit-direct-/) },
       ]);
       expect(rows.grants).toHaveLength(1);
       await setRole(world, member, "viewer");
@@ -731,18 +728,48 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       ).toEqual([]);
     });
 
-    it("workspace cleanup removes only system_backfill grants and leaves admin-made ones", async () => {
+    it("revocation through remove and leave only touches system_backfill grants; an admin-made direct grant stays active", async () => {
       const world = await newWorld();
-      const member = await addMember(world, "viewer");
-      const grant = await explicitDirectGrant(world, member);
-      await db.transaction((tx) =>
-        removeWorkspaceAdminReach(tx, [world.workspaceId]),
-      );
-      const rows = await db
-        .select({ id: schema.membershipGrantTable.id })
-        .from(schema.membershipGrantTable)
-        .where(eq(schema.membershipGrantTable.scopeId, world.workspaceId));
-      expect(rows).toEqual([{ id: grant.id }]);
+      const removed = await addMember(world, "viewer");
+      const leaver = await addMember(world, "viewer");
+      const removedGrant = await explicitDirectGrant(world, removed);
+      const leaverGrant = await explicitDirectGrant(world, leaver);
+      await setRole(world, removed, "admin");
+      await setRole(world, leaver, "admin");
+      // The sync never created ours for them (an admin-made direct grant already exists).
+      expect(
+        (await reachRows(removed.user.id, world.workspaceId)).grants,
+      ).toHaveLength(1);
+      expect(
+        (
+          await call(
+            world.app,
+            world.owner.cookie,
+            "DELETE",
+            `/api/workspace/${world.workspaceId}/members/${removed.user.id}`,
+          )
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await call(
+            world.app,
+            leaver.cookie,
+            "POST",
+            `/api/workspace/${world.workspaceId}/leave`,
+          )
+        ).status,
+      ).toBe(200);
+      for (const grant of [removedGrant, leaverGrant]) {
+        const [row] = await db
+          .select({
+            revokedAt: schema.membershipGrantTable.revokedAt,
+            directOrigin: schema.membershipGrantTable.directOrigin,
+          })
+          .from(schema.membershipGrantTable)
+          .where(eq(schema.membershipGrantTable.id, grant.id));
+        expect(row).toEqual({ revokedAt: null, directOrigin: "admin" });
+      }
     });
 
     it("boot reconciliation grants an admin whose staff person is created after they joined", async () => {

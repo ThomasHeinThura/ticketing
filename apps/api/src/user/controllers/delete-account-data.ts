@@ -14,11 +14,9 @@ import {
   invalidateAccountDeletionCredentials,
   requestAccountDeletionRetry,
 } from "../../pending-action/credential-invalidation";
+import { deleteWorkspaceRoleDependents } from "../../workspace/controllers/delete-workspace-role-dependents";
 import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
-import {
-  removeWorkspaceAdminReach,
-  syncWorkspaceAdminReach,
-} from "../../workspace/workspace-admin-reach";
+import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
 
 type AccountDeletionTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
@@ -143,8 +141,9 @@ async function deleteAccountDataInTransaction(
       .delete(workflowTable)
       .where(inArray(workflowTable.workspaceId, plan.workspaceIdsToDelete));
 
-    // Owner/admin reach grants restrict deleting this workspace's `role` rows.
-    await removeWorkspaceAdminReach(tx, plan.workspaceIdsToDelete);
+    // Issue #180: RESTRICT role FKs (membership, grants, group mappings) must be
+    // cleared explicitly or the workspace delete below 500s.
+    await deleteWorkspaceRoleDependents(tx, plan.workspaceIdsToDelete);
 
     await tx
       .delete(workspaceTable)
