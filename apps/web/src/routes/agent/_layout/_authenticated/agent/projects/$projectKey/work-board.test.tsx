@@ -155,6 +155,10 @@ async function renderRoute() {
   return view;
 }
 
+function enterSelectionMode() {
+  fireEvent.click(screen.getByRole("button", { name: "Select items" }));
+}
+
 beforeEach(() => {
   state.search = { layout: "board", sort: "key", dir: "asc" };
   state.perms = {
@@ -247,6 +251,8 @@ describe("strict capability wiring", () => {
     cleanup();
     state.perms = { ...state.perms, transition: false, assign: true };
     await renderRoute();
+    expect(state.boardProps?.canSelect).toBe(false);
+    enterSelectionMode();
     expect(state.boardProps).toMatchObject({
       canRank: false,
       canTransition: false,
@@ -277,7 +283,37 @@ describe("strict capability wiring", () => {
     cleanup();
     state.perms = { ...state.perms, assign: true };
     await renderRoute();
+    expect(state.panelProps?.canBulkAssign).toBe(false);
+    enterSelectionMode();
     expect(state.panelProps?.canBulkAssign).toBe(true);
+  });
+});
+
+describe("selection mode (G11: no per-row controls until asked)", () => {
+  it("offers the Select items toggle only with assign capability", async () => {
+    await renderRoute();
+    expect(screen.queryByRole("button", { name: "Select items" })).toBeNull();
+    cleanup();
+    state.perms = { ...state.perms, assign: true };
+    await renderRoute();
+    expect(
+      screen.getByRole("button", { name: "Select items" }),
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("leaving selection mode removes the controls and clears the selection", async () => {
+    state.perms = { ...state.perms, assign: true };
+    await renderRoute();
+    enterSelectionMode();
+    act(() => {
+      callProp(state.boardProps, "onSelectionChange", "WLP-1", true);
+    });
+    expect(await screen.findByTestId("toolbar")).toBeInTheDocument();
+    enterSelectionMode();
+    expect(screen.queryByTestId("toolbar")).toBeNull();
+    expect(state.boardProps?.canSelect).toBe(false);
+    enterSelectionMode();
+    expect(state.boardProps?.selectedKeys).toEqual([]);
   });
 });
 
@@ -285,6 +321,7 @@ describe("bulk selection", () => {
   it("shows the toolbar only with assign capability and a non-empty selection", async () => {
     state.perms = { ...state.perms, assign: true };
     await renderRoute();
+    enterSelectionMode();
     expect(screen.queryByTestId("toolbar")).toBeNull();
     act(() => {
       callProp(state.boardProps, "onSelectionChange", "WLP-1", true);
@@ -308,6 +345,7 @@ describe("bulk selection", () => {
   it("drops a selected key that has left the loaded items and keeps the rest", async () => {
     state.perms = { ...state.perms, assign: true };
     const view = await renderRoute();
+    enterSelectionMode();
     act(() => {
       callProp(state.boardProps, "onSelectionChange", "WLP-1", true);
       callProp(state.boardProps, "onSelectionChange", "WLP-2", true);
@@ -322,6 +360,7 @@ describe("bulk selection", () => {
   it("clear and partial completion update the selection", async () => {
     state.perms = { ...state.perms, assign: true };
     await renderRoute();
+    enterSelectionMode();
     act(() => {
       callProp(state.boardProps, "onSelectionChange", "WLP-1", true);
       callProp(state.boardProps, "onSelectionChange", "WLP-2", true);
@@ -340,6 +379,7 @@ describe("bulk selection", () => {
       row("WLP-2", { unavailableFields: ["key"] }),
     ];
     await renderRoute();
+    enterSelectionMode();
     act(() => callProp(state.panelProps, "onSelectAll", true));
     expect(state.toolbarProps?.selectedKeys).toEqual(["WLP-1"]);
   });

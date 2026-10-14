@@ -10296,6 +10296,9 @@
 						},
 						"saving": {
 							"type": "string"
+						},
+						"selectMode": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -10313,7 +10316,8 @@
 						"loadingPeople",
 						"unnamedPerson",
 						"peopleError",
-						"saving"
+						"saving",
+						"selectMode"
 					]
 				}
 			},

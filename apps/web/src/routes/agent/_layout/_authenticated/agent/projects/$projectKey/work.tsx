@@ -44,6 +44,10 @@ function loadWorkItemsPanel(): Promise<WorkItemsPanelModule> {
 
 function preloadWorkItemsPanel() {
   void loadWorkItemsPanel().catch(() => undefined);
+  // The panel renders the list, which is its own chunk. Requesting it only once the panel
+  // mounts makes the list suspend behind the panel skeleton and lands the rows after React's
+  // 300 ms fallback throttle (G11 work-list render), so start it with the panel.
+  void import("@/components/work-item/work-item-list").catch(() => undefined);
 }
 
 const WorkItemsPanel = lazy(loadWorkItemsPanel);
@@ -99,6 +103,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  // Per-row selection controls cost 500 Base UI checkboxes on a full list (G11), so they exist
+  // only while the user is in selection mode.
+  const [selectionMode, setSelectionMode] = useState(false);
   const [createIntentProjectContext, setCreateIntentProjectContext] =
     useState<string>();
   const createTriggerRef = useRef<HTMLButtonElement>(null);
@@ -123,7 +130,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     canRankTasks,
     isCheckingPermissions,
   } = useWorkspacePermission();
-  const canBulkAssign = !isCheckingPermissions && canAssignTasks();
+  const canAssign = !isCheckingPermissions && canAssignTasks();
+  const canBulkAssign = canAssign && selectionMode;
 
   const {
     data: workspace,
@@ -387,6 +395,19 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                 {t("workItems:list.boardLayout")}
               </Button>
             </fieldset>
+            {project && canAssign ? (
+              <Button
+                variant={selectionMode ? "secondary" : "outline"}
+                size="sm"
+                aria-pressed={selectionMode}
+                onClick={() => {
+                  setSelectionMode((on) => !on);
+                  setSelectedKeys([]);
+                }}
+              >
+                {t("workItems:bulk.selectMode")}
+              </Button>
+            ) : null}
             {project ? (
               <Suspense fallback={null}>
                 <WorkItemCreateTrigger

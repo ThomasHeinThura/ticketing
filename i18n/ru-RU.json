@@ -2572,7 +2572,8 @@
 			"loadingPeople": "Loading people…",
 			"peopleError": "Couldn't load the people you can assign to.",
 			"saving": "Assigning…",
-			"unnamedPerson": "Unnamed person"
+			"unnamedPerson": "Unnamed person",
+			"selectMode": "Select items"
 		}
 	},
 	"portal": {
