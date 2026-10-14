@@ -11,13 +11,21 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import { loadWorkItemCreateDialogShell } from "@/components/work-item/work-item-create-dialog-shell-loader";
+import {
+  loadWorkItemCreateDialogShell,
+  preloadWorkItemCreateDialogShell,
+} from "@/components/work-item/work-item-create-dialog-shell-loader";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
+import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
+
+type CreateDialogShellComponent = Awaited<
+  ReturnType<typeof loadWorkItemCreateDialogShell>
+>["default"];
 
 type WorkItemsPanelModule =
   typeof import("@/components/work-item/work-items-panel");
@@ -41,9 +49,6 @@ function preloadWorkItemsPanel() {
 }
 
 const WorkItemsPanel = lazy(loadWorkItemsPanel);
-// The dialog composition is warmed by the create trigger once it is visible (G11), so create
-// intent opens it as soon as it is clicked; its query-heavy form is a further dynamic module.
-const WorkItemCreateDialogShell = lazy(loadWorkItemCreateDialogShell);
 const WorkItemCreateTrigger = lazy(
   () => import("@/components/work-item/work-item-create-trigger"),
 );
@@ -95,6 +100,10 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { layout, sort, dir } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // The dialog composition is warmed by the create trigger once it is visible (G11), so create
+  // intent opens it as soon as it is clicked; its query-heavy form is a further dynamic module.
+  const [CreateDialogShell, setCreateDialogShell] =
+    useState<CreateDialogShellComponent>();
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   // Per-row selection controls cost 500 Base UI checkboxes on a full list (G11), so they exist
   // only while the user is in selection mode.
@@ -102,6 +111,17 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const [createIntentProjectContext, setCreateIntentProjectContext] =
     useState<string>();
   const createTriggerRef = useRef<HTMLButtonElement>(null);
+  // Not needed to paint (G11), but create intent should open the dialog without a network wait,
+  // so fetch it as soon as the route has painted.
+  useEffect(() => {
+    let cancelled = false;
+    void afterFirstPaint().then(() => {
+      if (!cancelled) preloadWorkItemCreateDialogShell();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const focusRestoreGenerationRef = useRef(0);
   const pendingFocusRestoreRef = useRef<
     | {
@@ -190,6 +210,10 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     pendingFocusRestoreRef.current = undefined;
     setIsCreateOpen(true);
     setCreateIntentProjectContext(projectContext);
+    loadWorkItemCreateDialogShell().then(
+      (module) => setCreateDialogShell(() => module.default),
+      () => undefined,
+    );
   }, [project?.id, projectContext]);
 
   const {
@@ -453,15 +477,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             />
           </Suspense>
         )}
-        {project && isCreateOpenForProject ? (
-          <Suspense fallback={null}>
-            <WorkItemCreateDialogShell
-              projectId={project.id}
-              workspaceId={project.workspaceId}
-              onClose={closeCreateDialog}
-              finalFocus={getCreateDialogFinalFocus}
-            />
-          </Suspense>
+        {project && isCreateOpenForProject && CreateDialogShell ? (
+          <CreateDialogShell
+            projectId={project.id}
+            workspaceId={project.workspaceId}
+            onClose={closeCreateDialog}
+            finalFocus={getCreateDialogFinalFocus}
+          />
         ) : null}
       </div>
     </>
