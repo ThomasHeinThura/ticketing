@@ -427,7 +427,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         {createDialogLoad === "failed" ? (
           <div
             role="alert"
-            className="flex flex-wrap items-center gap-3 text-destructive-foreground text-sm"
+            className="flex flex-wrap items-center gap-3 text-sm"
           >
             <span>{t("workItems:create.loadFailed")}</span>
             {/* A failed dynamic import is remembered by the browser for this document, so a
