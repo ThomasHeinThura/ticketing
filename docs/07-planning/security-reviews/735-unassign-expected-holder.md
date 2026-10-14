@@ -15,10 +15,12 @@ A Claude Sonnet 5.5 lane implemented the change. The reviewers below are fresh, 
 - Security review by Claude Opus 5.5: CLEAR at `f59b68ca`. There is no disclosure to callers who can't already see the holder, no oracle, and the ordering is correct. Three mutations were all killed.
 - Mechanical security rebind at `722ee8b5`: CLEAR. It is a pure merge of `main` `82aecead` (#732).
 - Mechanical security rebind at `410e20e2`: CLEAR. This is a pure merge of `main` `1f1abe7c` (#733) and does not interact with this PR's surface.
+- Mechanical security rebind at `882eb1d8`: CLEAR. This is a pure merge of `main` `6015f016` (#738), with no interaction.
 
 **Reviewed head:** `f59b68ca1e02c69a1c87276965e53a7c84fded64`
 **Reviewed head:** `722ee8b59e6a240244a2959612b9323cf932706e`
 **Reviewed head:** `410e20e220a9e69412d4c6f77625b461a98cc16d`
+**Reviewed head:** `882eb1d8530ab3511d17333ac0a3e8024e5bf6fe`
 
 ## Context index
 
@@ -31,6 +33,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 3 | `735-security-opus.md` | Security review (0cc0ae12..f59b68ca) | Claude Opus 5.5 | `f59b68ca` | CLEAR | `12020b6bc53370fbd436d88f3798cdef9800777e7a1dfa717012b5ed83aeb7d6` |
 | 4 | `735-722e-security-rebind-opus.md` | Mechanical security rebind (f59b68ca..722ee8b5) | Claude Opus 5.5 | `722ee8b5` | CLEAR | `8332a98ebf3f8837bc8993484a92d9df7daaf366eb0f088ac558fcb4bc9faf8b` |
 | 5 | `735-410e-security-rebind-opus.md` | Mechanical security rebind (8b5f1406..410e20e2) | Claude Opus 5.5 | `410e20e2` | CLEAR | `4ba751db0b9f8707e6cc561a871e86f5d646b9029676d0f746c65e7d2957446b` |
+| 6 | `735-882e-security-rebind-opus.md` | Mechanical security rebind (3a37b329..882eb1d8) | Claude Opus 5.5 | `882eb1d8` | CLEAR | `e168df093dc5625ecd34cfe9c69f56f503052d302ecb14f6fc39f809398e6291` |
 
 ## Embedded reports
 
@@ -432,3 +435,62 @@ The f59b68ca findings carry over unchanged:
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 4ba751db0b9f8707e6cc561a871e86f5d646b9029676d0f746c65e7d2957446b) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/735-882e-security-rebind-opus.md; Claude Opus 5.5; sha256 e168df093dc5625ecd34cfe9c69f56f503052d302ecb14f6fc39f809398e6291) -->
+# PR #735 security review: exact-head rebind after merging main (#738)
+
+**Reviewed head:** 882eb1d8530ab3511d17333ac0a3e8024e5bf6fe
+**Prior CLEAR head:** 410e20e220a9e69412d4c6f77625b461a98cc16d (`735-410e-security-rebind-opus.md`; the substantive review is `735-security-opus.md` at f59b68ca)
+**Pre-merge head:** 3a37b329b5b65b5edd99360b5219a9a221334f22
+**Merged main:** 6015f0163f150dcb7f09e485ad0985a8d890db94 (#738, service-calendar delete request-time recheck)
+**Previous main:** 1f1abe7ca145d9a9749c869d4a4b94f4eb4d2537
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This is the same independent context as the prior #735 security reviews. It did not author, direct or remediate the change.
+**Scope:** a mechanical rebind. No tests were run, as the coordinator instructed.
+
+## Checks
+
+All checks ran against live git and GitHub.
+
+| Check | Result |
+| --- | --- |
+| `gh pr view 735` head | `882eb1d8…`: matches |
+| `origin/main` | `6015f016…`: main is unchanged |
+| Parents of 882eb1d8 | `3a37b329…` and `6015f016…`: matches |
+| Tree compared with `git merge-tree --write-tree 3a37b329 6015f016` | both `b7e716cc72988e5285ae35771fcdd422ed4eea85`. The merge is clean and adds no hand edits. |
+| `diff --name-only 3a37b329..882eb1d8` compared with `diff --name-only 1f1abe7c..6015f016` | identical, 4 files (below) |
+| 3a37b329 already contains 1f1abe7c | yes |
+| Commits after the prior CLEAR (`410e20e2..3a37b329`) | exactly one, `3a37b329 docs(security-reviews): bind the main-merge rebind`. Its parent is 410e20e2 and it changes only `docs/07-planning/security-reviews/735-unassign-expected-holder.md`, with 61 insertions. It is a note only. |
+
+The four files that came in from main:
+
+- `apps/api/src/pending-action/deletion-targets.ts`
+- `apps/api/src/service-calendar/index.ts`
+- `docs/07-planning/security-reviews/738-service-calendar-request-recheck.md`
+- `tests/api-integration/service-calendar-usage-delete.test.ts`
+
+## Interaction
+
+I grepped the #738 `apps/` diff for:
+
+- `assign` and `work-item/`;
+- `requireWorkItemReach` and `projectReadDecision`;
+- `require-workspace-capability`;
+- `apiKey`;
+- `openapi`.
+
+No changed line matched.
+
+`deletion-targets.ts` is imported only by:
+
+- `pending-action/index.ts`;
+- `service-calendar/index.ts`.
+
+Neither is on the unassign route's path. #735's surface is not affected: the unassign handler, the query schema, the controller, reach, the capability gate, the OpenAPI contract and the web fetcher.
+
+Prior findings carry over unchanged:
+
+- no blocking findings;
+- N1–N4 remain non-blocking or informational.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 e168df093dc5625ecd34cfe9c69f56f503052d302ecb14f6fc39f809398e6291) -->
