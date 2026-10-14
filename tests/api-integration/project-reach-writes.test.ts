@@ -1,0 +1,342 @@
+/**
+ * Project reach on two write routes whose target project is named in the body or chosen by the
+ * handler (#741): `POST /api/views` with a project scope, and `POST /api/submissions/{ref}/accept`.
+ *
+ * Triage and view scoping happen within reach. A same-workspace caller who does not reach the
+ * target project is answered exactly like a caller naming a project that does not exist, and
+ * nothing is created for them. Sessions and API keys decide the same way.
+ */
+import { randomUUID } from "node:crypto";
+import { count, eq } from "drizzle-orm";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import db, { schema } from "../../apps/api/src/database";
+import { createApp } from "../../apps/api/src/index";
+import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
+import { resetTestDatabase } from "./helpers/database";
+import { createProjectFixture, grantProjectRole } from "./helpers/fixtures";
+import { seedIntake, staffRequest, submitAs } from "./helpers/intake-http";
+import { PROJECT_BODY_TARGET_ROUTE_KEYS } from "./helpers/project-reach-route-keys";
+import {
+  grantSeesAll,
+  PROJECT_KEY_SCOPE,
+  setupProjectWorld,
+} from "./helpers/project-reach-world";
+import {
+  addMember,
+  json,
+  makeApiKey,
+  makeState,
+  setAmbientHeaders,
+} from "./helpers/reach-world";
+
+const rows = async (table: typeof schema.savedViewTable) =>
+  Number((await db.select({ n: count() }).from(table))[0]?.n);
+
+describe("API integration: project reach on body-targeted writes (#741)", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  afterEach(() => {
+    setAmbientHeaders({});
+    vi.restoreAllMocks();
+  });
+
+  it("the file covers exactly the routes the guard requires of this family", () => {
+    expect([...PROJECT_BODY_TARGET_ROUTE_KEYS].sort()).toEqual([
+      "POST /api/submissions/{ref}/accept",
+      "POST /api/views",
+    ]);
+  });
+
+  describe("POST /api/views with a project scope", () => {
+    const VIEW_KEY_SCOPE = {
+      ...PROJECT_KEY_SCOPE,
+      saved_view: ["read", "create"],
+    };
+
+    async function arrange() {
+      const world = await setupProjectWorld();
+      const { app } = createApp();
+      const seesAll = await addMember(world.workspaceId, "member");
+      await grantSeesAll(world.workspaceId, seesAll.personId);
+      const tenant = await setupProjectWorld();
+      return { world, app, seesAll, foreignProjectId: tenant.project.id };
+    }
+
+    const body = (workspaceId: string, projectId: string) => ({
+      workspaceId,
+      name: "Scoped view",
+      scope: "project",
+      scopeId: projectId,
+      layout: "list",
+      query: { entity: "work_item" },
+    });
+
+    it("an unreachable project is answered exactly like a missing one, and no view is created", async () => {
+      const a = await arrange();
+      mockAuthenticatedSession(a.world.projectAdmin.user);
+      const missing = await json(
+        a.app,
+        "POST",
+        "/api/views",
+        body(a.world.workspaceId, `missing-${randomUUID()}`),
+      );
+      const missingText = await missing.text();
+      expect(missing.status, missingText).toBe(400);
+      const before = await rows(schema.savedViewTable);
+
+      for (const outsider of [
+        a.world.outsiderAdmin,
+        a.world.outsiderLead,
+        a.world.outsiderMember,
+        a.world.otherProjectAdmin,
+      ]) {
+        mockAuthenticatedSession(outsider.user);
+        // The caller's own workspace, a project of the same workspace they do not reach, and
+        // another tenant's project: three answers, one body.
+        for (const projectId of [a.world.project.id, a.foreignProjectId]) {
+          const response = await json(
+            a.app,
+            "POST",
+            "/api/views",
+            body(a.world.workspaceId, projectId),
+          );
+          const text = await response.text();
+          expect(response.status, text).toBe(400);
+          expect(text).toBe(missingText);
+          expect(await rows(schema.savedViewTable)).toBe(before);
+        }
+      }
+    });
+
+    it("a member of the project, and a sees_all holder, create the view", async () => {
+      const a = await arrange();
+      for (const caller of [a.world.projectAdmin, a.seesAll]) {
+        mockAuthenticatedSession(caller.user);
+        const response = await json(
+          a.app,
+          "POST",
+          "/api/views",
+          body(a.world.workspaceId, a.world.project.id),
+        );
+        expect(response.status, await response.clone().text()).toBe(200);
+      }
+      expect(await rows(schema.savedViewTable)).toBe(2);
+      // sees_all reaches the project the member did not join, too.
+      mockAuthenticatedSession(a.seesAll.user);
+      const other = await json(
+        a.app,
+        "POST",
+        "/api/views",
+        body(a.world.workspaceId, a.world.otherProject.id),
+      );
+      expect(other.status, await other.clone().text()).toBe(200);
+    });
+
+    it("API key: an outsider's key gets the missing-project answer; a member's key succeeds", async () => {
+      const a = await arrange();
+      mockAnonymousSession();
+      const outsiderKey = await makeApiKey(
+        a.world.outsiderAdmin.user.id,
+        VIEW_KEY_SCOPE,
+      );
+      const memberKey = await makeApiKey(
+        a.world.projectAdmin.user.id,
+        VIEW_KEY_SCOPE,
+      );
+      setAmbientHeaders({ "x-api-key": memberKey });
+      const missing = await json(
+        a.app,
+        "POST",
+        "/api/views",
+        body(a.world.workspaceId, `missing-${randomUUID()}`),
+      );
+      const missingText = await missing.text();
+      expect(missing.status, missingText).toBe(400);
+      const before = await rows(schema.savedViewTable);
+
+      setAmbientHeaders({ "x-api-key": outsiderKey });
+      const outside = await json(
+        a.app,
+        "POST",
+        "/api/views",
+        body(a.world.workspaceId, a.world.project.id),
+      );
+      const outsideText = await outside.text();
+      expect(outside.status, outsideText).toBe(400);
+      expect(outsideText).toBe(missingText);
+      expect(await rows(schema.savedViewTable)).toBe(before);
+
+      setAmbientHeaders({ "x-api-key": memberKey });
+      const allowed = await json(
+        a.app,
+        "POST",
+        "/api/views",
+        body(a.world.workspaceId, a.world.project.id),
+      );
+      expect(allowed.status, await allowed.clone().text()).toBe(200);
+    });
+
+    it("a workspace-scoped view needs no project reach", async () => {
+      const a = await arrange();
+      mockAuthenticatedSession(a.world.outsiderAdmin.user);
+      const response = await json(a.app, "POST", "/api/views", {
+        workspaceId: a.world.workspaceId,
+        name: "Workspace scoped",
+        scope: "workspace",
+        scopeId: a.world.workspaceId,
+        layout: "list",
+        query: { entity: "work_item" },
+      });
+      expect(response.status, await response.clone().text()).toBe(200);
+    });
+  });
+
+  describe("POST /api/submissions/{ref}/accept", () => {
+    async function arrange() {
+      const s = await seedIntake("reach-accept");
+      const wsId = s.t.workspaceId;
+      // A second project of the same customer organisation, with a default state, so a
+      // destination guard that forgot reach would ACCEPT into it.
+      const { project: second } = await createProjectFixture({
+        workspaceId: wsId,
+        name: "Second destination",
+      });
+      await db
+        .update(schema.projectTable)
+        .set({ organisationId: s.customer.orgId })
+        .where(eq(schema.projectTable.id, second.id));
+      await makeState(wsId, second.id, "backlog", true);
+      const secondStaff = await addMember(wsId, "admin");
+      await grantProjectRole(secondStaff.user.id, second.id, [
+        "project:read",
+        "work_item:read",
+        "work_item:create",
+      ]);
+      const seesAll = await addMember(wsId, "admin");
+      await grantSeesAll(wsId, seesAll.personId);
+      // The tenant fixture already holds one work item; "created" means above this.
+      const baseline = (await db.select().from(schema.workItemTable)).length;
+      return { s, second, secondStaff, seesAll, baseline };
+    }
+
+    type A = Awaited<ReturnType<typeof arrange>>;
+
+    const acceptBody = (a: A, projectId: string) => ({
+      method: "POST",
+      body: { projectId, workItemTypeId: a.s.t.type.id },
+    });
+
+    async function snapshotOf(ref: string) {
+      const number = Number(ref.replace("SUB-", ""));
+      const submissions = await db.select().from(schema.submissionTable);
+      const submission = submissions.find((row) => row.number === number);
+      const items = await db.select().from(schema.workItemTable);
+      return {
+        state: submission?.state,
+        workItemId: submission?.workItemId,
+        claimedBy: submission?.claimedBy,
+        workItems: items.length,
+      };
+    }
+
+    it("an unreachable destination project is answered exactly like a missing one and creates no work item", async () => {
+      const a = await arrange();
+      const refMissing = await submitAs(a.s, a.s.customer, "Missing target");
+      const refOutside = await submitAs(a.s, a.s.customer, "Outside target");
+
+      // The tenant's requester reaches the first project only.
+      const missing = await staffRequest(
+        a.s.t,
+        a.s.t.requester,
+        `/api/submissions/${refMissing}/accept`,
+        acceptBody(a, `missing-${randomUUID()}`),
+      );
+      const missingText = await missing.text();
+      expect(missing.status, missingText).toBe(422);
+
+      const outside = await staffRequest(
+        a.s.t,
+        a.s.t.requester,
+        `/api/submissions/${refOutside}/accept`,
+        acceptBody(a, a.second.id),
+      );
+      const outsideText = await outside.text();
+      expect(outside.status, outsideText).toBe(422);
+      expect(outsideText).toBe(missingText);
+
+      // Same effect, and nothing was converted: the submission is still open, no item exists.
+      const m = await snapshotOf(refMissing);
+      const o = await snapshotOf(refOutside);
+      expect(o.state).toBe(m.state);
+      expect(o.workItemId).toBeNull();
+      expect(o.workItems).toBe(a.baseline);
+    });
+
+    it("the staff member who reaches the second project accepts into it; the requester cannot, and neither can they reach the first", async () => {
+      const a = await arrange();
+      const ref = await submitAs(a.s, a.s.customer, "Second project");
+      const denied = await staffRequest(
+        a.s.t,
+        a.secondStaff,
+        `/api/submissions/${ref}/accept`,
+        acceptBody(a, a.s.t.project.id),
+      );
+      expect(denied.status, await denied.clone().text()).toBe(422);
+      expect((await snapshotOf(ref)).workItems).toBe(a.baseline);
+
+      const accepted = await staffRequest(
+        a.s.t,
+        a.secondStaff,
+        `/api/submissions/${ref}/accept`,
+        acceptBody(a, a.second.id),
+      );
+      expect(accepted.status, await accepted.clone().text()).toBe(200);
+      expect((await snapshotOf(ref)).workItems).toBe(a.baseline + 1);
+    });
+
+    it("a sees_all holder accepts into any project of the workspace", async () => {
+      const a = await arrange();
+      const ref = await submitAs(a.s, a.s.customer, "Sees all");
+      const accepted = await staffRequest(
+        a.s.t,
+        a.seesAll,
+        `/api/submissions/${ref}/accept`,
+        acceptBody(a, a.second.id),
+      );
+      expect(accepted.status, await accepted.clone().text()).toBe(200);
+    });
+
+    it("API key: a key whose owner does not reach the project gets the missing-project answer; the reaching owner's key succeeds", async () => {
+      const a = await arrange();
+      mockAnonymousSession();
+      const scope = { intake: ["triage"], workspace: ["read"] };
+      const outsiderKey = await makeApiKey(a.s.t.requester.user.id, scope);
+      const memberKey = await makeApiKey(a.secondStaff.user.id, scope);
+      const refMissing = await submitAs(a.s, a.s.customer, "Key missing");
+      const refOutside = await submitAs(a.s, a.s.customer, "Key outside");
+      const refOk = await submitAs(a.s, a.s.customer, "Key ok");
+      const post = (ref: string, projectId: string) =>
+        json(a.s.t.app, "POST", `/api/submissions/${ref}/accept`, {
+          projectId,
+          workItemTypeId: a.s.t.type.id,
+        });
+
+      setAmbientHeaders({ "x-api-key": outsiderKey });
+      const missing = await post(refMissing, `missing-${randomUUID()}`);
+      const missingText = await missing.text();
+      expect(missing.status, missingText).toBe(422);
+      const outside = await post(refOutside, a.second.id);
+      const outsideText = await outside.text();
+      expect(outside.status, outsideText).toBe(422);
+      expect(outsideText).toBe(missingText);
+      expect((await snapshotOf(refOutside)).workItems).toBe(a.baseline);
+
+      setAmbientHeaders({ "x-api-key": memberKey });
+      const ok = await post(refOk, a.second.id);
+      setAmbientHeaders({});
+      expect(ok.status, await ok.clone().text()).toBe(200);
+    });
+  });
+});

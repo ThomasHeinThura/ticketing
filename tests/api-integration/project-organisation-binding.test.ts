@@ -515,6 +515,7 @@ describe("API integration: project customer-organisation binding", () => {
         staff.id,
         unbound.id,
         type.id,
+        async () => true,
       ),
     ).rejects.toMatchObject({ status: expect.any(Number) });
 
@@ -525,6 +526,7 @@ describe("API integration: project customer-organisation binding", () => {
       staff.id,
       bound.id,
       type.id,
+      async () => true,
     );
     expect(converted.workItem.projectId).toBe(bound.id);
   });

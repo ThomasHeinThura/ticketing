@@ -832,6 +832,15 @@ async function convertSubmissionInTransaction(
   typeId: string,
   requestSlaPolicyId: string | null,
   defaultAssigneeId: string | null,
+  /**
+   * #741: whether the triager's project reach includes the destination. Supplied by the staff
+   * accept route; a project outside it is answered exactly like a missing or foreign one.
+   */
+  canReachProject: (project: {
+    id: string;
+    workspaceId: string;
+    organisationId: string | null;
+  }) => Promise<boolean> = async () => true,
 ) {
   const actorId = actor.id;
   const actorName =
@@ -863,7 +872,11 @@ async function convertSubmissionInTransaction(
     // Match the counter UPDATE's lock mode so concurrent acceptors serialize without upgrades.
     .for("no key update")
     .limit(1);
-  if (!project || project.organisationId !== submission.organisationId)
+  if (
+    !project ||
+    project.organisationId !== submission.organisationId ||
+    !(await canReachProject(project))
+  )
     throw new HTTPException(422, {
       message: "Destination project is unavailable for this organisation",
     });
@@ -1141,6 +1154,11 @@ export async function acceptSubmission(
   actorId: string,
   projectId: string,
   typeId: string,
+  canReachProject: (project: {
+    id: string;
+    workspaceId: string;
+    organisationId: string | null;
+  }) => Promise<boolean>,
 ) {
   const number = parseSubmissionReference(ref);
   if (number === null)
@@ -1193,6 +1211,7 @@ export async function acceptSubmission(
       typeId,
       snapshot.slaPolicyId,
       snapshot.defaultAssigneeId,
+      canReachProject,
     );
     return { ref, state: "accepted" as const, workItem: item };
   });

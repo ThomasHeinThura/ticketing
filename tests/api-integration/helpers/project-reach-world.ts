@@ -3,7 +3,12 @@ import { eq } from "drizzle-orm";
 import { expect } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { mockAuthenticatedSession } from "./auth";
-import { createProjectFixture, grantProjectRole, requireRow } from "./fixtures";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+  grantProjectRole,
+  requireRow,
+} from "./fixtures";
 import { type App, addMember, json, setupWorld } from "./reach-world";
 
 /**
@@ -226,4 +231,53 @@ export async function projectSnapshot() {
       .orderBy(schema.timeEntryTable.id),
   };
   return JSON.stringify(tables);
+}
+
+/** A workspace-scoped `sees_all` grant: reach to every project in the workspace, no authority. */
+export async function grantSeesAll(workspaceId: string, personId: string) {
+  const now = new Date();
+  const role = requireRow(
+    await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "workspace",
+        workspaceId,
+        key: `role-${randomUUID()}`,
+        name: "Sees all",
+        rank: 1,
+        capabilities: ["workspace:read"],
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning(),
+    "sees_all role",
+  );
+  await db.insert(schema.membershipTable).values({
+    personId,
+    scope: "workspace",
+    scopeId: workspaceId,
+    roleId: role.id,
+    seesAll: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+/**
+ * A workspace member who also holds the workspace-scoped `sees_all` grant, for suites that
+ * exercise a list, search or reorder over projects they did not create and assert on the data
+ * itself, not on reach (#740: a plain member no longer lists projects it does not reach).
+ */
+export async function createSeesAllWorkspaceMember(
+  options: Parameters<typeof createWorkspaceMember>[0] = {},
+) {
+  const member = await createWorkspaceMember(options);
+  const [person] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, member.user.id))
+    .limit(1);
+  if (!person) throw new Error("createSeesAllWorkspaceMember: no person");
+  await grantSeesAll(member.workspace.id, person.id);
+  return member;
 }

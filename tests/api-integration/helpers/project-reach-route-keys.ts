@@ -77,3 +77,24 @@ export const TASK_TARGET_WORK_ITEM_ROUTE_KEYS = [
   "POST /api/time-entry",
   "PUT /api/time-entry/{id}",
 ] as const;
+
+/**
+ * Workspace-level LIST and SEARCH routes that return rows from more than one project (#740).
+ * Each declares `requireReachFilteredList` and restricts its rows to the caller's reachable
+ * projects in SQL; `project-reach-reads.test.ts` drives them for sessions and API keys.
+ */
+export const PROJECT_LIST_ROUTE_KEYS = [
+  "GET /api/label/workspace/{workspaceId}",
+  "GET /api/project",
+  "GET /api/search",
+] as const;
+
+/**
+ * Writes whose target project is named in the body or chosen by the handler, not addressed by
+ * a path id (#741). Each declares `requireReachContext`; an unreachable project is answered
+ * exactly like a missing one. `project-reach-writes.test.ts` drives them.
+ */
+export const PROJECT_BODY_TARGET_ROUTE_KEYS = [
+  "POST /api/views",
+  "POST /api/submissions/{ref}/accept",
+] as const;

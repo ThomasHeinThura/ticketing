@@ -10,6 +10,7 @@ import {
   createPendingAction,
   requirePendingActionRequesterIdentity,
 } from "../pending-action/service";
+import { listReachOf, requireReachContext } from "../utils/reach-filtered-list";
 import type { ApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -115,6 +116,7 @@ const createViewRoute = createRoute({
   middleware: [
     workspaceAccess.fromBody(),
     requireWorkspaceCapability("saved_view:create"),
+    requireReachContext,
   ] as const,
   request: {
     body: {
@@ -309,6 +311,7 @@ const view = apiRouter()
         userId,
         actor,
         c.get("apiKey") as ApiKeyPermissionScope | undefined,
+        listReachOf(c),
       ),
       200,
     );

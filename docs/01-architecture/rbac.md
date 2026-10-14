@@ -556,6 +556,23 @@ Reversal path for this decision: drop the reach requirement on the routes in the
 Creating a project does not grant its creator project reach or any project role; that is a
 separate grant (membership), exactly as for the existing reads.
 
+**Workspace-level lists and search return only what the caller reaches** (#740). A route that
+lists or searches rows from more than one project restricts them, in its own SQL, to the
+caller's reachable projects (`sees_all`, project membership, customer organisation, instance
+admin): the workspace label list drops task-bound labels of unreachable projects, search drops
+tasks, comments, activities and projects outside reach, and the project list drops unreachable
+projects and their rollups. Counts and pages are built from the filtered rows, so neither
+discloses a hidden project. Workspace-level label definitions, the workspace row and
+configuration lists are not project-bearing and stay workspace-scoped.
+`project-reach-guard.test.ts` derives the workspace-level collection routes from the policy
+registry and fails any that neither declares `requireReachFilteredList` nor gives a reason.
+
+**Two writes name their target project outside the path** (#741): a saved view with a project
+scope, and the destination project of `POST /api/submissions/{ref}/accept`. Triage happens
+within reach, so a project outside the caller's reach is answered exactly like a missing one
+(the same status and body), and no view or work item is created. Reversal path: drop
+`requireReachContext` and the reach check in the two handlers.
+
 **The 404 is constant-shape.** An out-of-reach id and a non-existent id return the same
 status and the same body, and both count against the same rate-limit bucket. The reach check
 is **always executed** — on a lookup miss against a synthesised row rather than a fetched one,

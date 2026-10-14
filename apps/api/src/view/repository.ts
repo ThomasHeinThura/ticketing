@@ -14,12 +14,17 @@ export type SavedViewTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
 >[0];
 
-export async function projectBelongsToWorkspace(
+/** The live project's reach facts when it belongs to the workspace, else null. */
+export async function findProjectInWorkspace(
   projectId: string,
   workspaceId: string,
-): Promise<boolean> {
+) {
   const [project] = await db
-    .select({ id: projectTable.id })
+    .select({
+      id: projectTable.id,
+      workspaceId: projectTable.workspaceId,
+      organisationId: projectTable.organisationId,
+    })
     .from(projectTable)
     .where(
       and(
@@ -28,7 +33,7 @@ export async function projectBelongsToWorkspace(
       ),
     )
     .limit(1);
-  return Boolean(project);
+  return project ?? null;
 }
 
 export async function teamMemberInWorkspace(

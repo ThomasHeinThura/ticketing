@@ -15,6 +15,10 @@ import {
   z,
 } from "../openapi";
 import {
+  listReachOf,
+  requireReachFilteredList,
+} from "../utils/reach-filtered-list";
+import {
   assertCallerHasCapability,
   capabilityCredential,
   requireWorkspaceCapability,
@@ -127,6 +131,7 @@ const listProjectsRoute = createRoute({
   middleware: [
     workspaceAccess.fromQuery(),
     requireWorkspaceCapability("project:read"),
+    requireReachFilteredList,
   ] as const,
   request: { query: listProjectsQuery },
   responses: {
@@ -846,6 +851,7 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
     const projects = await getProjectsCtrl(
       workspaceId,
       includeArchived === "true",
+      await listReachOf(c).reachableProjectIds([workspaceId]),
     );
     return c.json(projects, 200);
   })

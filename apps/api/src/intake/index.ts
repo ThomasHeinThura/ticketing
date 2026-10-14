@@ -12,6 +12,7 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { listReachOf, requireReachContext } from "../utils/reach-filtered-list";
 import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
@@ -620,6 +621,7 @@ const acceptRoute = createRoute({
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
+    requireReachContext,
   ] as const,
   request: {
     params: submissionRefParam,
@@ -1051,12 +1053,21 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
     );
   })
   .openapi(acceptRoute, async (c) => {
+    // #741: triage happens within reach. The destination project must be one the triager
+    // reaches; one they do not is answered exactly like a missing project.
+    const reach = listReachOf(c);
     const accepted = await acceptSubmission(
       c.req.valid("param").ref,
       c.get("workspaceId"),
       await triagerPersonId(c),
       c.req.valid("json").projectId,
       c.req.valid("json").workItemTypeId,
+      (project) =>
+        reach.reaches({
+          projectId: project.id,
+          workspaceId: project.workspaceId,
+          organisationId: project.organisationId,
+        }),
     );
     return c.json(
       {
