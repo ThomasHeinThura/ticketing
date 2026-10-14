@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Button } from "@taskdesk/ui";
 import {
   lazy,
   Suspense,
@@ -45,6 +46,17 @@ const WorkItemsPanel = lazy(loadWorkItemsPanel);
 const WorkItemCreateTrigger = lazy(
   () => import("@/components/work-item/work-item-create-trigger"),
 );
+// Board layout, the selection switch and the bulk bar are loaded only when the URL or a
+// capability asks for them, so the default list route's graph carries none of them (G11).
+const WorkItemBoardView = lazy(
+  () => import("@/components/work-item/work-item-board-view"),
+);
+const BulkAssignToolbar = lazy(
+  () => import("@/components/work-item/bulk-assign-toolbar"),
+);
+const WorkItemSelectionToggle = lazy(
+  () => import("@/components/work-item/work-item-selection-toggle"),
+);
 
 import {
   parseWorkItemListSearch,
@@ -79,9 +91,13 @@ function WorkItemsRouteComponent() {
 
 function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { t } = useTranslation();
-  const { sort, dir } = Route.useSearch();
+  const { layout, sort, dir } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  // Per-row selection controls cost 500 Base UI checkboxes on a full list (G11), so they exist
+  // only while the user is in selection mode.
+  const [selectionMode, setSelectionMode] = useState(false);
   const [createIntentProjectContext, setCreateIntentProjectContext] =
     useState<string>();
   const createTriggerRef = useRef<HTMLButtonElement>(null);
@@ -98,6 +114,11 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     projectId: string;
     status: WorkItemRealtimeStatus;
   }>();
+  // `assignTasks`, reported by the lazy selection toggle once capabilities are known. It only
+  // decides which controls render; the server enforces each bulk write.
+  const [canAssign, setCanAssign] = useState(false);
+  const canBulkAssign = canAssign && selectionMode;
+
   const {
     data: workspace,
     isLoading: isWorkspaceLoading,
@@ -179,6 +200,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     projectId: project?.id,
     sort,
     dir,
+    enabled: layout === "list",
     realtimeStatus:
       realtimeStatus && realtimeStatus.projectId === project?.id
         ? realtimeStatus.status
@@ -189,7 +211,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     isProjectsLoading ||
     (!!project && isWorkItemsLoading);
   const isError =
-    isWorkspaceError || isProjectsError || isWorkItemsError || projectNotFound;
+    isWorkspaceError || isProjectsError || projectNotFound || isWorkItemsError;
 
   useEffect(() => {
     if (!project?.id) return;
@@ -219,14 +241,80 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     [navigate],
   );
 
-  const handleRetryProjects = useCallback(() => {
-    refetchProjects();
-  }, [refetchProjects]);
+  const handleLayoutChange = useCallback(
+    (nextLayout: WorkItemListSearch["layout"]) => {
+      navigate({
+        search: (prev: WorkItemListSearch) => ({
+          ...prev,
+          layout: nextLayout,
+        }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
   const handleRetry = useCallback(() => {
-    handleRetryProjects();
+    refetchProjects();
     if (project) refetchWorkItems();
-  }, [handleRetryProjects, project, refetchWorkItems]);
+  }, [project, refetchProjects, refetchWorkItems]);
+
+  const handleSelectionChange = useCallback((key: string, checked: boolean) => {
+    setSelectedKeys((current) =>
+      checked
+        ? current.includes(key)
+          ? current
+          : [...current, key]
+        : current.filter((selected) => selected !== key),
+    );
+  }, []);
+
+  const visibleItems = layout === "list" ? workItemsResult?.items : undefined;
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      const keys = (visibleItems ?? [])
+        .filter((item) => !item.unavailableFields.includes("key"))
+        .map((item) => item.key);
+      setSelectedKeys((current) =>
+        checked
+          ? [...new Set([...current, ...keys])]
+          : current.filter((key) => !keys.includes(key)),
+      );
+    },
+    [visibleItems],
+  );
+
+  // A selected item that has left the loaded set (deleted, moved out of reach, reassigned
+  // away) must not stay selected: the bulk bar would count and send a key the user can no
+  // longer see. The board view reports its own loaded set through the same callback.
+  const pruneSelection = useCallback((present: Set<string>) => {
+    setSelectedKeys((current) =>
+      current.every((key) => present.has(key))
+        ? current
+        : current.filter((key) => present.has(key)),
+    );
+  }, []);
+  useEffect(() => {
+    if (visibleItems) {
+      pruneSelection(new Set(visibleItems.map((item) => item.key)));
+    }
+  }, [visibleItems, pruneSelection]);
+
+  const hasEnteredSelectionMode = useRef(false);
+  const toggleSelectionMode = useCallback(() => {
+    hasEnteredSelectionMode.current = true;
+    setSelectionMode((on) => !on);
+    setSelectedKeys([]);
+  }, []);
+  // One polite region for selection state (accessibility.md): entering or leaving the mode and
+  // every change of the selected count.
+  const selectionAnnouncement = selectionMode
+    ? selectedKeys.length > 0
+      ? t("workItems:bulk.selected", { count: selectedKeys.length })
+      : t("workItems:bulk.modeOn")
+    : hasEnteredSelectionMode.current
+      ? t("workItems:bulk.modeOff")
+      : "";
 
   return (
     <>
@@ -239,36 +327,131 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             : t("workItems:list.pageTitle")
         }
       />
-      <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
-        <div className="flex items-center justify-between gap-3">
+      <div
+        className={`flex h-full flex-col gap-4 overflow-y-auto p-6${
+          layout === "board" ? " w-full min-w-0" : ""
+        }`}
+      >
+        <p className="sr-only" role="status" aria-live="polite">
+          {selectionAnnouncement}
+        </p>
+        <div
+          className={`flex items-center justify-between gap-3${
+            layout === "board" ? " flex-wrap" : ""
+          }`}
+        >
           <h1 className="font-semibold text-lg">
             {project ? project.name : projectKey} ·{" "}
             {t("workItems:list.heading")}
           </h1>
-          {project ? (
-            <Suspense fallback={null}>
-              <WorkItemCreateTrigger
-                buttonRef={createTriggerRef}
-                onClick={openCreateDialog}
-              />
-            </Suspense>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {/* First in the right-aligned group: it arrives after capabilities load, and
+                anything inserted at the leading edge leaves the controls after it where they are. */}
+            {project ? (
+              <Suspense fallback={null}>
+                <WorkItemSelectionToggle
+                  selectionMode={selectionMode}
+                  onToggle={toggleSelectionMode}
+                  onCapabilityChange={setCanAssign}
+                />
+              </Suspense>
+            ) : null}
+            <fieldset
+              aria-label={t("workItems:list.layoutGroup")}
+              className="m-0 flex min-w-0 items-center gap-1 border-0 p-0"
+            >
+              <Button
+                variant={layout === "list" ? "secondary" : "outline"}
+                size="sm"
+                aria-pressed={layout === "list"}
+                onClick={() => handleLayoutChange("list")}
+              >
+                {t("workItems:list.listLayout")}
+              </Button>
+              <Button
+                variant={layout === "board" ? "secondary" : "outline"}
+                size="sm"
+                aria-pressed={layout === "board"}
+                onClick={() => handleLayoutChange("board")}
+              >
+                {t("workItems:list.boardLayout")}
+              </Button>
+            </fieldset>
+            {project ? (
+              <Suspense fallback={null}>
+                <WorkItemCreateTrigger
+                  buttonRef={createTriggerRef}
+                  onClick={openCreateDialog}
+                />
+              </Suspense>
+            ) : null}
+          </div>
         </div>
-        <Suspense fallback={<WorkItemListLoading />}>
-          <WorkItemsPanel
-            project={project}
-            workItemsResult={workItemsResult as WorkItemsResult | undefined}
-            isLoading={isLoading}
-            isError={isError}
-            realtimeProjectId={realtimeProjectId}
-            realtimeStatus={realtimeStatus}
-            sort={sort}
-            dir={dir}
-            onSortChange={handleSortChange}
-            onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
-            onRetry={handleRetry}
-          />
-        </Suspense>
+        {project && selectedKeys.length > 0 && canBulkAssign ? (
+          <Suspense fallback={null}>
+            <BulkAssignToolbar
+              projectId={project.id}
+              workspaceId={project.workspaceId}
+              selectedKeys={selectedKeys}
+              onAssigned={(succeeded) =>
+                setSelectedKeys((current) =>
+                  current.filter((key) => !succeeded.includes(key)),
+                )
+              }
+              onClear={() => setSelectedKeys([])}
+            />
+          </Suspense>
+        ) : null}
+        {layout === "list" ? (
+          <Suspense fallback={<WorkItemListLoading />}>
+            <WorkItemsPanel
+              project={project}
+              workItemsResult={workItemsResult as WorkItemsResult | undefined}
+              isLoading={isLoading}
+              isError={isError}
+              realtimeProjectId={realtimeProjectId}
+              realtimeStatus={realtimeStatus}
+              sort={sort}
+              dir={dir}
+              onSortChange={handleSortChange}
+              onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
+              onRetry={handleRetry}
+              selectedKeys={selectedKeys}
+              canBulkAssign={canBulkAssign}
+              onSelectionChange={handleSelectionChange}
+              onSelectAll={handleSelectAll}
+            />
+          </Suspense>
+        ) : project ? (
+          <Suspense fallback={<WorkItemListLoading />}>
+            <WorkItemBoardView
+              project={project}
+              realtimeProjectId={realtimeProjectId}
+              realtimeStatus={realtimeStatus}
+              onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
+              canSelect={canBulkAssign}
+              selectedKeys={selectedKeys}
+              onSelectionChange={handleSelectionChange}
+              onPruneSelection={pruneSelection}
+            />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<WorkItemListLoading />}>
+            <WorkItemsPanel
+              project={project}
+              workItemsResult={undefined}
+              isLoading={isLoading}
+              isError={isError}
+              realtimeProjectId={realtimeProjectId}
+              realtimeStatus={realtimeStatus}
+              sort={sort}
+              dir={dir}
+              onSortChange={handleSortChange}
+              onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
+              onRetry={handleRetry}
+            />
+          </Suspense>
+        )}
         {project && isCreateOpenForProject ? (
           <WorkItemCreateDialogShell
             projectId={project.id}

@@ -29,8 +29,10 @@ import {
 } from "lucide-react";
 import {
   type FocusEvent,
+  lazy,
   type MouseEvent,
   memo,
+  Suspense,
   useCallback,
   useMemo,
 } from "react";
@@ -46,6 +48,8 @@ import {
 import type { WorkItemField, WorkItemRow } from "@/types/work-item";
 import WorkItemListLoading from "./work-item-list-loading";
 
+const SelectionCheckbox = lazy(() => import("./selection-checkbox"));
+
 export type WorkItemListProps = {
   workItems: WorkItemRow[] | undefined;
   /** Precomputed by the validated fetcher so rendering does not rescan every row. */
@@ -56,6 +60,12 @@ export type WorkItemListProps = {
   dir: WorkItemSortDirection;
   onSortChange: (sort: WorkItemSortField, dir: WorkItemSortDirection) => void;
   onRetry: () => void;
+  /** Keys currently selected for a bulk action (`VW-3`). */
+  selectedKeys?: string[];
+  onSelectionChange?: (key: string, checked: boolean) => void;
+  onSelectAll?: (checked: boolean) => void;
+  /** The strict `assignTasks` capability. Selection controls are not rendered without it. */
+  canBulkAssign?: boolean;
 };
 
 const SORT_COLUMNS: Array<{ field: WorkItemSortField; labelKey: string }> = [
@@ -152,6 +162,10 @@ function WorkItemList({
   dir,
   onSortChange,
   onRetry,
+  selectedKeys = [],
+  onSelectionChange = () => {},
+  onSelectAll = () => {},
+  canBulkAssign = false,
 }: WorkItemListProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -325,6 +339,10 @@ function WorkItemList({
     );
   }
 
+  const selectableKeys = workItems
+    .filter((item) => !item.unavailableFields.includes("key"))
+    .map((item) => item.key);
+
   return (
     <div className="flex flex-col gap-3">
       {hasPartialFailure && (
@@ -347,6 +365,7 @@ function WorkItemList({
         onClickCapture={handleListClick}
       >
         <colgroup>
+          {canBulkAssign && <col className="w-10" />}
           <col className="w-[11%]" />
           <col className="w-[32%]" />
           <col className="w-[12%]" />
@@ -356,6 +375,20 @@ function WorkItemList({
         </colgroup>
         <TableHeader>
           <TableRow>
+            {canBulkAssign && (
+              <TableHead>
+                <Suspense fallback={null}>
+                  <SelectionCheckbox
+                    aria-label={t("workItems:bulk.selectAll")}
+                    checked={selectableKeys.every((key) =>
+                      selectedKeys.includes(key),
+                    )}
+                    disabled={selectableKeys.length === 0}
+                    onCheckedChange={(checked) => onSelectAll(Boolean(checked))}
+                  />
+                </Suspense>
+              </TableHead>
+            )}
             {SORT_COLUMNS.map(({ field, labelKey }) => (
               <TableHead
                 key={field}
@@ -384,6 +417,22 @@ function WorkItemList({
 
             return (
               <TableRow key={item.id}>
+                {canBulkAssign && (
+                  <TableCell>
+                    <Suspense fallback={null}>
+                      <SelectionCheckbox
+                        aria-label={t("workItems:bulk.selectItem", {
+                          key: item.key,
+                        })}
+                        checked={selectedKeys.includes(item.key)}
+                        disabled={item.unavailableFields.includes("key")}
+                        onCheckedChange={(checked) =>
+                          onSelectionChange(item.key, Boolean(checked))
+                        }
+                      />
+                    </Suspense>
+                  </TableCell>
+                )}
                 <TableCell>
                   <div className="work-item-list-cell-content">
                     {item.unavailableFields.includes("key") ? (
