@@ -8,7 +8,6 @@
  * project's task-bound labels, tasks, comments, activities and the project itself are absent
  * from the rows, the counts and the ranking. Session and API-key callers decide the same way.
  */
-import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
