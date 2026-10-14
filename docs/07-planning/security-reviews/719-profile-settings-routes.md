@@ -35,6 +35,7 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 - Light security rebind: CLEAR at `9c121598`. It is a clean merge of `main` `28481af5` (#721, accessibility); the tree equals `git merge-tree`, and #719's surface is byte-identical to `ae828b6a`.
 - Mechanical security rebind at `5896ef3c`: CLEAR. It covers two clean merges of `main`: `aefb6888` (#726, #722) and `f0f85e86` (#712). Each tree equals its merge-tree. The `/api/me/settings` policies are user-scoped, so the reach guard and middleware don't apply to them.
 - Security rebind at `ac689f22`: CLEAR. A pure merge of `main` `f0f85e86..a31bdde3` (#727, #728, #732, #733, #738, #730, #739). There is no migration clash, `/api/me/settings` stays session-only and self-scoped alongside `sees_all`, and there is no first-paint i18n impact. #719's integration and permissions tests pass.
+- Fix `8d048f01`: a 401 on the background settings read no longer triggers the global sign-in redirect, which had destroyed the one-time backup-codes page during MFA session rotation. Ordinary delta APPROVE and security delta CLEAR at `c84afc40`, which includes a clean merge of `main` `2e03855e`.
 
 **Reviewed head:** `beedd219a6d7634254fc66cf3033bd5ba3f54f7c`
 **Reviewed head:** `7a32a0f337b8a195b0054bbd5516a6c88a9ae1f4`
@@ -47,6 +48,7 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 **Reviewed head:** `9c1215980199b860bbe92bb750a2e167ea0759f7`
 **Reviewed head:** `5896ef3cb93ba3f5d684084bf23c3b8393449b7f`
 **Reviewed head:** `ac689f2298ef545fafdd3f0b9b5b66fd2f03069e`
+**Reviewed head:** `c84afc40a149a6d45d1a072ecdb749ef12ded121`
 
 ## Context index
 
@@ -72,6 +74,8 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 16 | `719-9c12-security-rebind-opus.md` | Security rebind (ae828b6a..9c121598) | Claude Opus 5.5 | `9c121598` | CLEAR | `722f07752f489288d65f01aaafaa86b757a994c0c6f6231467600b107f436e0d` |
 | 17 | `719-5896-security-rebind-opus.md` | Mechanical security rebind (c023c7d7..5896ef3c) | Claude Opus 5.5 | `5896ef3c` | CLEAR | `a1d463e3bdb021b6c59ff9524afb11958e4f358753d08019e3cae62c1484f48b` |
 | 18 | `719-ac68-security-rebind-opus.md` | Mechanical security rebind (e6fd9ed9..ac689f22) | Claude Opus 5.5 | `ac689f22` | CLEAR | `1103458ba7011db86dba8faea1f3aa26cea924b31a67b5a065f4a858c40d2fd1` |
+| 19 | `719-c84a-ordinary-delta-sonnet.md` | Ordinary delta review (3619e73b..c84afc40) | Claude Sonnet 5.5 | `c84afc40` | APPROVE | `1d49e82d3859bf0f2f30e25365716aba93adbc2b9afc90940b25dc90129876ac` |
+| 20 | `719-c84a-security-delta-opus.md` | Security delta review (3619e73b..c84afc40) | Claude Opus 5.5 | `c84afc40` | CLEAR | `86a5e82c1d35c03585dc9ec382defb7343c204a8ad6ffed2b5b3af9b85aaa5d7` |
 
 ## Embedded reports
 
@@ -1529,3 +1533,140 @@ No blocking findings. Nothing new beyond the findings already recorded at 5896ef
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 1103458ba7011db86dba8faea1f3aa26cea924b31a67b5a065f4a858c40d2fd1) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-c84a-ordinary-delta-sonnet.md; Claude Sonnet 5.5; sha256 1d49e82d3859bf0f2f30e25365716aba93adbc2b9afc90940b25dc90129876ac) -->
+# PR #719 delta 3619e73b..c84afc40 - ordinary review (correctness/UX)
+
+**Reviewed head:** c84afc40a149a6d45d1a072ecdb749ef12ded121
+**Model/context:** Claude Sonnet 5.5, fresh independent context (did not author the delta). Scratch worktree at exact head, removed afterwards.
+**Delta:** 8d048f01 (SettingsSyncUnauthorizedError, non-HttpError, on 401 of GET /api/me/settings) + clean merge of main 2e03855e (#736).
+
+## Commands and results
+- pnpm install --frozen-lockfile --offline; built packages domain, permissions, email, api (needed for resolution; first vitest run showed 7 files failing purely on unbuilt workspace packages, environmental).
+- web vitest full: 186 files / 1017 tests pass.
+- web typecheck (tsconfig.app + node): pass.
+- check:i18n: all locales in sync.
+- web build with VITE_API_URL="": pass.
+- Non-vacuity: removed the `if (status === 401) throw ...` line; the new test "does not surface a 401 as the global unauthorized error" FAILS (got HttpError, expected SettingsSyncUnauthorizedError); other 7 pass. Fix restored.
+- e2e instance-users-journey.spec.ts (:369), --repeat-each=3, VITE_API_URL="": 3/3 pass. Caveat: the failure is timing-dependent and the notes say it also passes locally on the unfixed head, so local passes do not prove the fix; the author's deterministic held-read repro does (not re-run by me). No containers left behind (compared docker ps -a before/after; none new).
+
+## Findings
+1. Consumers: only two callers of getUserSettings: useGetUserSettings (reads `data` only, retry:false) and the density sync fetchQuery inside a try/catch that swallows all errors. Nothing depends on HttpError/status 401. Other 401 consumers (isUnauthorizedError in tasks/invitations/dashboard) are different queries. No issue.
+2. Real expiry: foreground queries (tasks, invitations, dashboard, etc.) still raise HttpError(401) and the global handler redirects; the `_authenticated` route beforeLoad does a get-session check on each navigation and redirects when signed out. The settings read itself runs once per mount (staleTime 60s, no refetchOnMount), so on an idle page with no other queries an expired session is noticed at the next navigation or foreground call rather than by this read. Acceptable for a background sync (non-blocking, low).
+3. Minor: a 401 settings error now falls to captureCacheError and logs a console.error "[api.query]" line. Harmless noise (low, optional to filter).
+4. Test is non-vacuous and also asserts isUnauthorizedError(error) is false, which pins the contract. Typed-client status widening comment is accurate.
+5. Merge of #736 is clean and unrelated to settings code; full web suite green on the merged tree.
+
+## Not checked
+Did not re-run the author's temporary deterministic held-read spec; did not run API integration or biome ci (author reports unrelated pre-existing biome failures).
+
+**Verdict:** APPROVE the delta; no blocking findings.
+<!-- END REPORT (sha256 1d49e82d3859bf0f2f30e25365716aba93adbc2b9afc90940b25dc90129876ac) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-c84a-security-delta-opus.md; Claude Opus 5.5; sha256 86a5e82c1d35c03585dc9ec382defb7343c204a8ad6ffed2b5b3af9b85aaa5d7) -->
+# PR #719 security delta review: settings-sync 401 fix and main merge (#736)
+
+**Reviewed head:** c84afc40a149a6d45d1a072ecdb749ef12ded121
+**Prior CLEAR head:** ac689f2298ef545fafdd3f0b9b5b66fd2f03069e (`719-ac68-security-rebind-opus.md`)
+**Delta commits:**
+- `3619e73b`, docs(security-reviews): bind the main-merge rebind. It changes only `docs/07-planning/security-reviews/719-profile-settings-routes.md` and is a note only.
+- `8d048f01`, fix(web): keep the settings sync from redirecting on a transient 401. It changes two files:
+  - `apps/web/src/fetchers/user-settings/user-settings.ts`, +19 lines;
+  - `user-settings.test.ts`, +12/-1.
+- `c84afc40`, a merge of main 2e03855e (#736).
+
+**Merged main:** 2e03855edbee5dcab9045e93fd2e06177bd66ea9
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This context did not author, direct or remediate #719 or 8d048f01.
+**Implementer notes consulted:** `719-e2e-fix-sonnet.md`, and the commit message of 8d048f01.
+
+## Mechanical checks
+
+All checks ran against live git and GitHub.
+
+| Check | Result |
+| --- | --- |
+| `gh pr view 719` head | `c84afc40…`: matches |
+| main, confirmed through the GitHub API | `2e03855e…`: main is unchanged |
+| Parents of c84afc40 | `8d048f01…` and `2e03855e…`: matches |
+| Tree compared with `git merge-tree --write-tree 8d048f01 2e03855e` | both `8cdf20ef3d6819bc57857fc2ad12c437ec35fb82`. The merge is clean. |
+| `diff --name-only 8d048f01..c84afc40` compared with `diff --name-only a31bdde3..2e03855e` | identical, 8 files: #736's UI, e2e and Storybook files. There is no file in common with #719. |
+| `ac689f22..8d048f01` | exactly 3619e73b (note) and 8d048f01 (fix). No other code change. |
+
+## The change
+
+`getUserSettings()` (`GET /api/me/settings`) now checks `response.status === 401` first and throws `SettingsSyncUnauthorizedError`. That is a plain `Error` subclass, **not** an `HttpError`. Every other non-OK status still throws `HttpError(status)`.
+
+The global `QueryCache.onError` in `query-client/index.ts` redirects only when `isUnauthorizedError(error)`, which is `error instanceof HttpError && error.status === 401`. The new error therefore no longer triggers `handleUnauthorized()`.
+
+## Security questions
+
+### 1. Does it weaken session-expiry handling?
+
+No, not compared with the baseline.
+
+- `GET /api/me/settings` is a read that #719 itself introduced. Before #719 there was no such read and no redirect source from it. The fix removes only the extra redirect trigger #719 had added. It does not touch any pre-existing detection path.
+- Expiry is still detected by the paths that existed before:
+  - **The route guard.** `routes/agent/_layout/_authenticated.tsx` resolves `authClient.getSession()` and treats a definitive 401 or null session as signed out.
+  - **Every foreground fetcher.** These still throw `HttpError(401)`, so `QueryCache.onError` still calls `handleUnauthorized()`.
+  - **Explicit callers.** For example, `dashboard/index.tsx` calls `isUnauthorizedError` and then `handleUnauthorized`.
+  - **The polling queries** in `use-get-tasks` and `use-pending-invitations` stop on `isUnauthorizedError`.
+- On the server, the session is enforced per request. A swallowed client-side 401 grants nothing: the request was rejected, and no data was returned.
+- The only effect of swallowing is that the background preference sync silently does nothing on that load. That is what it already did for offline or transient failures.
+- Retry:
+  - `useGetUserSettings` sets `retry: false`, so there is no retry loop.
+  - The `fetchQuery` in the density hook's terminal-rejection path catches the error and returns without applying anything.
+  - `shouldRetryQuery` would allow up to 2 retries of the new error type for any other caller. There are no other callers, and the result is bounded either way.
+- Writes are unchanged:
+  - `patchUserSettings` still throws `HttpError`.
+  - `isTerminalWriteRejection` still excludes 401, so a local choice survives a re-login.
+  - `MutationCache.onError` never redirected anyway.
+
+### 2. Can data from another session or user be applied?
+
+No.
+
+- On 401 the fetcher **throws** before reading any body, so nothing reaches the cache and nothing is applied.
+- The query key is `["user-settings", userId]` and is enabled only once the auth user id is known.
+- The density reconciler has guards against applying another user's state:
+  - adopt-time checks (`activeUserId !== userId`, `generation !== state.latest`);
+  - the cache-owner marker (`isPreferenceCacheForeign`).
+- The server side is unchanged. `/api/me/settings` is session-only and reads only the caller's own `personId` rows, with reach re-checked for project keys (see `719-ac68-security-rebind-opus.md`).
+- In the MFA-rotation scenario, the rejected request carried the old cookie of the **same** user. The next mount re-reads with the new cookie, under the same user id.
+
+### 3. Is the error type distinct enough?
+
+Yes.
+
+- It is thrown in exactly one place, `getUserSettings`. Its only consumers are `use-get-user-settings.ts` and `use-density-preference.ts`; I checked with a grep of `apps/web/src`.
+- It does not extend `HttpError` and has no `status` field, so `isUnauthorizedError` is false for it.
+- `isTerminalWriteRejection` treats it as non-terminal (no status), and it is only reached through reads anyway.
+- `lib/error-handler.ts` classifies errors by message substring (`"401"`, `"unauthorized"`, `"authentication"`). The message "Settings sync skipped: session not valid" matches none of them. It cannot be reclassified as an auth error, and it cannot cause a 401 elsewhere to be swallowed.
+- No shared helper was changed: `http-error.ts`, `query-client/index.ts` and `error-handler.ts` are untouched. So no other caller's real 401 can be swallowed.
+
+## Tests and commands
+
+| Command | Result |
+| --- | --- |
+| web vitest: `fetchers/user-settings`, `use-density-preference`, `user-preference-sync`, `deferred-user-preferences-sync`, `user-preferences-sync`, `account/preferences` | **6 files, 43/43 pass** |
+| Mutation: replace the 401 branch with a no-op (restore the old `HttpError(401)` path) | the new test "does not surface a 401 as the global unauthorized error" **fails** (1 failed, 7 passed). The test is not vacuous. The mutation was reverted. |
+| Full web vitest, first run in a fresh worktree | 7 files failed on unresolved `@taskdesk/domain/intake` and `@taskdesk/permissions`, because those packages had not been built yet. This is environmental. |
+| `pnpm turbo run build --filter=@taskdesk/web`, which builds the dependencies and the web app, including #739's i18n namespace-group first-paint guard in `vite.config.ts` | **exit 0**, 5/5 tasks |
+| Full web vitest after the build | **186/186 files, 1017/1017 tests pass** |
+| web `tsc --noEmit` | exit 0 |
+| `gitleaks 8.30.1 git --log-opts=ac689f22..c84afc40 --redact` | **no leaks found** |
+
+The scratch worktree was at the exact head and was removed afterwards. No Postgres was needed, because the delta is web-only.
+
+## Findings
+
+No blocking findings.
+
+- **D1 (non-blocking, observability):** a genuine expiry that occurs while the user is idle on a page whose only activity is this background read is not redirected **by this read**. It is still redirected by the next route load (session guard) or by any foreground query. This is acceptable for a best-effort preference sync and matches the baseline before #719.
+- **D2 (informational):** the new error goes to `captureCacheError` and is logged to the browser console. Nothing is sent off-device, so there is no data exposure.
+
+## Residual risk
+
+- I did not re-run the e2e MFA journey in CI or Playwright locally. I relied on the unit test, the mutation and the implementer's CI evidence.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 86a5e82c1d35c03585dc9ec382defb7343c204a8ad6ffed2b5b3af9b85aaa5d7) -->
