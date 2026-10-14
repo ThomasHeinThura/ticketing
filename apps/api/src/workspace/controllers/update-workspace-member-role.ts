@@ -6,6 +6,7 @@ import {
   roleGrantsOwner,
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
+import { syncWorkspaceAdminReach } from "../workspace-admin-reach";
 import {
   CannotChangeOwnerRoleHereError,
   MemberNotFoundError,
@@ -95,6 +96,8 @@ async function updateWorkspaceMemberRole(
           eq(schema.workspaceUserTable.userId, userId),
         ),
       );
+
+    await syncWorkspaceAdminReach(tx, workspaceId, userId);
 
     return { userId, role };
   });

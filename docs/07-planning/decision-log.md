@@ -1,3 +1,17 @@
+### 2026-10-14 · Workspace owners and admins hold an explicit `sees_all` grant
+
+**Decision (Thomas, 2026-10-14):** workspace owner and admin memberships carry an explicit `sees_all` grant on that workspace, which is reach step 2 in rbac.md. The grant is written when the workspace is created and whenever a member becomes or stops being an owner or admin. A migration backfills it for existing owners and admins.
+
+**Why:** a probe on main (28481af5 and 8ea3ce27) showed that a fresh ordinary owner gets 404 reading or listing their own project. PR #730 (#720) would also remove their project writes. No production path granted reach, and rbac.md says reach repairs do not add implicit grants without a decision.
+
+**Supersedes:** nothing. It narrows rbac.md's "no implicit `sees_all`" note to this one explicit, recorded grant.
+
+**Consequences:**
+- #730 merges only after this lands.
+- Managers, members and customers are unchanged and still need project membership or team ownership.
+
+**Reversal:** remove the grant writer and revert the backfill. Owners and admins would then lose project reach again.
+
 ### 2026-10-13 · Conductor records: G11 re-run rule, #664 deletion removal and navigation scope
 
 **Owner decision recorded: G11 calibration re-run.** On 2026-10-12, in this conductor chat, Thomas answered "Yes, one re-run (Recommended)":
