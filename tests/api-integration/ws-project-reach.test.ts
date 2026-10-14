@@ -67,7 +67,11 @@ function url(node: Node, path: string) {
 
 /** The refusal an upgrade attempt received: status and body, never an open socket. */
 function handshake(target: string, headers: Record<string, string>) {
-  return new Promise<{ status: number; body: string }>((resolve, reject) => {
+  return new Promise<{
+    status: number;
+    body: string;
+    headers: Record<string, string | string[] | undefined>;
+  }>((resolve, reject) => {
     const socket = new WebSocket(target, { headers });
     socket.once("unexpected-response", (_request, response) => {
       let body = "";
@@ -75,7 +79,19 @@ function handshake(target: string, headers: Record<string, string>) {
         body += chunk.toString();
       });
       response.once("end", () =>
-        resolve({ status: response.statusCode ?? 0, body }),
+        resolve({
+          status: response.statusCode ?? 0,
+          body,
+          headers: Object.fromEntries(
+            Object.entries(response.headers).filter(
+              ([name]) =>
+                // Per-request id, and CORS headers that echo the request Origin.
+                name !== "x-taskdesk-request-id" &&
+                !name.startsWith("access-control-") &&
+                name !== "vary",
+            ),
+          ),
+        }),
       );
     });
     socket.once("open", () => {
@@ -349,6 +365,94 @@ describe("project socket reach (#745)", () => {
       taskId: "TD-revoked",
     });
     await expect(closed).resolves.toBe(1008);
+  });
+
+  it("a foreign Origin is refused before any reach decision, for every caller and project", async () => {
+    const w = await world();
+    const inReach = await w.invite("member");
+    await grantProjectRead(inReach.user.id, w.workspace.id, w.project.id);
+    const outOfReach = await w.invite("member");
+    const foreign = (cookie: string) => ({
+      ...w.asSession(cookie),
+      origin: "https://attacker.example",
+    });
+    const results = await Promise.all([
+      handshake(
+        url(w.node, `/api/ws/${w.project.id}`),
+        foreign(inReach.cookie),
+      ),
+      handshake(
+        url(w.node, `/api/ws/${w.project.id}`),
+        foreign(outOfReach.cookie),
+      ),
+      handshake(
+        url(w.node, "/api/ws/project-does-not-exist"),
+        foreign(outOfReach.cookie),
+      ),
+    ]);
+    // Origin is decided first, so the status never reveals what the victim can reach.
+    for (const result of results) expect(result.status).toBe(403);
+    expect(results[1]).toEqual(results[0]);
+    expect(results[2]).toEqual(results[0]);
+  });
+
+  it("an API key credential is not treated as its owner's session", async () => {
+    // A customer person who also has a workspace membership row passes the workspace
+    // predicate; as a SESSION they reach their own organisation's project, but a customer
+    // identity is never valid for a key credential, so the same caller over a key is refused.
+    const { user, workspace } = await createWorkspaceMember({ role: "member" });
+    const [org] = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `customer-org-${randomUUID()}`,
+        name: "Customer Org",
+        isInternal: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    if (!org) throw new Error("organisation insert failed");
+    await db
+      .update(schema.personTable)
+      .set({ side: "customer", organisationId: org.id })
+      .where(eq(schema.personTable.userId, user.id));
+    const { project } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: org.id })
+      .where(eq(schema.projectTable.id, project.id));
+    const key = requireRow(
+      await db
+        .insert(schema.apikeyTable)
+        .values({
+          referenceId: user.id,
+          userId: user.id,
+          key: createHash("sha256")
+            .update(randomBytes(16).toString("hex"))
+            .digest("base64url"),
+          name: "customer key",
+          prefix: "taskdesk",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ id: schema.apikeyTable.id }),
+      "customer api key",
+    );
+    const asSession = { get: () => undefined } as never;
+    const asKey = {
+      get: (name: string) =>
+        name === "apiKey"
+          ? { id: key.id, userId: user.id, enabled: true }
+          : undefined,
+    } as never;
+    await expect(
+      callerReachesLegacySocketProject(asSession, user.id, project.id),
+    ).resolves.toBe(true);
+    await expect(
+      callerReachesLegacySocketProject(asKey, user.id, project.id),
+    ).resolves.toBe(false);
   });
 
   it("a customer reaches only their own organisation's projects", async () => {
