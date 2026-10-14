@@ -38,6 +38,10 @@ type WorkItemsPanelProps = {
     status: WorkItemRealtimeStatus,
   ) => void;
   onRetry: () => void;
+  selectedKeys?: string[];
+  canBulkAssign?: boolean;
+  onSelectionChange?: (key: string, checked: boolean) => void;
+  onSelectAll?: (checked: boolean) => void;
 };
 
 function WorkItemsPanel({
@@ -52,6 +56,10 @@ function WorkItemsPanel({
   onSortChange,
   onRealtimeAvailabilityChange,
   onRetry,
+  selectedKeys,
+  canBulkAssign,
+  onSelectionChange,
+  onSelectAll,
 }: WorkItemsPanelProps) {
   const { t } = useTranslation();
   const workItems = workItemsResult?.items;
@@ -176,6 +184,10 @@ function WorkItemsPanel({
           dir={dir}
           onSortChange={onSortChange}
           onRetry={onRetry}
+          selectedKeys={selectedKeys}
+          canBulkAssign={canBulkAssign}
+          onSelectionChange={onSelectionChange}
+          onSelectAll={onSelectAll}
         />
       </Suspense>
       {project &&
