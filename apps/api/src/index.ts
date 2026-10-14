@@ -131,6 +131,7 @@ import taskRelation from "./task-relation";
 import timeEntry from "./time-entry";
 import user from "./user";
 import getAvatar from "./user/controllers/get-avatar";
+import userPreference from "./user-preference";
 import { buildAuthRequest } from "./utils/auth-request";
 import {
   authenticateApiRequest,
@@ -1509,6 +1510,7 @@ export function createApp(
     notificationPreferences,
   );
   const pendingActionApi = api.route("/me", pendingAction);
+  const userPreferenceApi = api.route("/me", userPreference);
   const searchApi = api.route("/search", search);
   const serviceCalendarApi = api.route("/service-calendars", serviceCalendar);
   const slaPolicyApi = api.route("/sla-policies", slaPolicy);
@@ -1909,6 +1911,7 @@ export function createApp(
     notificationApi,
     notificationPreferencesApi,
     pendingActionApi,
+    userPreferenceApi,
     projectApi,
     projectStatesApi,
     searchApi,
@@ -2297,6 +2300,7 @@ const {
   notificationApi,
   notificationPreferencesApi,
   pendingActionApi,
+  userPreferenceApi,
   projectApi,
   projectStatesApi,
   searchApi,
@@ -2368,6 +2372,7 @@ export type AppType =
   | typeof notificationApi
   | typeof notificationPreferencesApi
   | typeof pendingActionApi
+  | typeof userPreferenceApi
   | typeof searchApi
   | typeof serviceCalendarApi
   | typeof slaPolicyApi

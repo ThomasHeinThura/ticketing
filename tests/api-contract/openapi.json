@@ -2287,6 +2287,19 @@
           "expiresAt"
         ]
       },
+      "MeSettings": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "The caller's stored settings keyed by settings key, e.g. `density` and `layout.<projectId>`."
+          }
+        },
+        "required": [
+          "settings"
+        ]
+      },
       "SearchResponse": {
         "type": "object",
         "properties": {
@@ -12919,6 +12932,116 @@
           },
           "409": {
             "description": "Pending action is already terminal",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/settings": {
+      "get": {
+        "operationId": "getOwnSettings",
+        "tags": [
+          "User settings"
+        ],
+        "summary": "Get the caller's profile settings",
+        "description": "Returns the caller's own stored settings (whitelisted keys only). A layout for a project the caller can no longer reach is omitted.",
+        "responses": {
+          "200": {
+            "description": "The caller's settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patchOwnSettings",
+        "tags": [
+          "User settings"
+        ],
+        "summary": "Update the caller's profile settings",
+        "description": "Apply a partial object of whitelisted keys (`density`, `layout.<projectId>`); `null` clears a key. All keys are validated before any is written. Browser session only; API keys are refused.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {},
+                "description": "A partial object of whitelisted settings keys (`density`, `layout.<projectId>`). A `null` value clears that key."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The caller's updated settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload too large",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Key or value not allowed",
             "content": {
               "text/plain": {
                 "schema": {
