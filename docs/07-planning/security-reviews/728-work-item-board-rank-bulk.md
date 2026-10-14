@@ -14,9 +14,14 @@ A Claude Sonnet 5.5 lane implemented the change over four rounds. The conductor 
 - Ordinary review B by Claude Sonnet 5.5 (spec, real browser, axe, G8, bundle): REQUEST CHANGES at `f38a6a0d` (B1), delta APPROVE at `5c599046` with B2 and B3 still open, and delta APPROVE at `7dc214b0` with B2 and B3 verified in Chromium.
 - Security review by Claude Opus 5.5: CLEAR at `7dc214b0`. It checked the e2e baseline's provenance and hash, server enforcement, leakage and portal bundle purity.
 - Mechanical security rebind at `ab6483c9`: CLEAR. This head merges `main` `f0f85e86` (#712). The tree equals the merge-tree. The rank, assign, transition and bulk routes now enforce project reach, and this PR already handles the resulting 404s.
+- Round 5 fixed a real G11 regression that a same-machine A/B found. Row checkboxes now render only in a capability-gated "Select items" mode, and the board, queries and checkbox moved into lazy chunks. Round 6 added selection announcements, fixed the toggle placement, and clears a stale focus target.
+- Ordinary delta review B by Claude Sonnet 5.5: APPROVE at `a9a7562c`, then at `a1aedb93`. Both were browser-verified, with axe showing 0 critical or serious issues.
+- Ordinary delta review A by Claude Sonnet 5.5: APPROVE at `a1aedb93`. 13 of 15 mutants were caught.
+- Security delta review by Claude Opus 5.5: CLEAR at `a1aedb93`. It confirmed the merge was pure, the e2e PNG hash is unchanged, the gating is intact, there is no leakage, portal bundle purity holds, and the scan is clean.
 
 **Reviewed head:** `7dc214b074c058811e4e3babb5d25b3b927b7bb4`
 **Reviewed head:** `ab6483c9ce86517f5b641e6b236e164778415a80`
+**Reviewed head:** `a1aedb9327c1b2f2b0fafbd5d58c741237dc2a42`
 
 ## Context index
 
@@ -33,6 +38,10 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 7 | `728-7dc2-ordinary-delta-b-sonnet.md` | Ordinary delta review B (5c599046..7dc214b0) | Claude Sonnet 5.5 | `7dc214b0` | APPROVE | `bee45800a1aabe98979bf8ee798bddfd090c642e2eb4e9c367e8bce00fae43c5` |
 | 8 | `728-security-opus.md` | Security review (aefb6888..7dc214b0) | Claude Opus 5.5 | `7dc214b0` | CLEAR | `0e80fa2922b97c5953f0c5a8fc44f2bf28fb4ae18d10f34bc686519c2c2908c7` |
 | 9 | `728-ab64-security-rebind-opus.md` | Mechanical security rebind (7dc214b0..ab6483c9) | Claude Opus 5.5 | `ab6483c9` | CLEAR | `19855c5b10ce419064d7bd11169b8ed9a2d4b656aa2052e7c8e94fd559e11821` |
+| 10 | `728-a9a7-ordinary-delta-b-sonnet.md` | Ordinary delta review B (7dc214b0..a9a7562c) | Claude Sonnet 5.5 | `a9a7562c` | APPROVE | `5be7964cbc050b39f4b3a9a7f112e7a9c0ad601eaa0b4ea8ce05a441ab364fab` |
+| 11 | `728-a1ae-ordinary-delta-b-sonnet.md` | Ordinary delta review B (a9a7562c..a1aedb93) | Claude Sonnet 5.5 | `a1aedb93` | APPROVE | `c642e6e81b0a115b731545fe0cfdd7ca5a8633417fa0c50faaa8f1113e7824b5` |
+| 12 | `512s3-a1ae-ordinary-delta-a-sonnet.md` | Ordinary delta review A (7dc214b0..a1aedb93) | Claude Sonnet 5.5 | `a1aedb93` | APPROVE | `c396ac5b7ac4f05ba224620d01c35febeb31ef2c9415caf9f68b08d18a03dab9` |
+| 13 | `728-a1ae-security-delta-opus.md` | Security delta review (7dc214b0..a1aedb93) | Claude Opus 5.5 | `a1aedb93` | CLEAR | `183d761c7e0da05945ee2becac59412321e6f6849e593baa35043238bdc6e2b6` |
 
 ## Embedded reports
 
@@ -529,3 +538,204 @@ $ comm -12 (#728 own files: f0f85e86...ab6483c9) (#712 delta) -> empty
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 19855c5b10ce419064d7bd11169b8ed9a2d4b656aa2052e7c8e94fd559e11821) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/728-a9a7-ordinary-delta-b-sonnet.md; Claude Sonnet 5.5; sha256 5be7964cbc050b39f4b3a9a7f112e7a9c0ad601eaa0b4ea8ce05a441ab364fab) -->
+# PR #728 exact-head delta review B, round 5 (7dc214b0 to a9a7562c)
+
+**Reviewed head:** a9a7562c5520b44e5cbc674412abf6e3af950904
+**Previous head I reviewed:** 7dc214b074c058811e4e3babb5d25b3b927b7bb4 (APPROVE)
+**Model / context:** Claude Sonnet 5.5, ordinary reviewer B (not author). Scratch worktree at the exact head, removed afterwards.
+Delta = merges of main (f0f85e86 #712, ae35e747, 8ea3ce27 #727) plus the round-5 commits (fa9afc58, faf00249, 3b58b030, bff1d48c, a9a7562c). Non-test source changed: `selection-checkbox.tsx` (new), `work-item-board-view.tsx` (new), `work-item-selection-toggle.tsx` (new), `work-item-list.tsx`, the work route.
+
+## Runs (scratch worktree at a9a7562c)
+| Command | Exit | Result |
+| --- | --- | --- |
+| `pnpm --filter @taskdesk/web typecheck` | 0 | |
+| `pnpm --filter @taskdesk/web exec vitest run` | 0 | 177 files, 952 tests passed |
+| `pnpm check:i18n` | 0 | |
+| `node scripts/ci/check-ui.mjs --raw-elements` | 0 | |
+| `pnpm check:tokens` | 0 | 418 pairs |
+| `pnpm check:visual-scope` | 0 | |
+| build, `pnpm check:bundle-size` | 0 | agent initial 230.8 KB / 350; work-list route graph 303.3 KB / 350 (27 assets); portal 163.7 KB / 200 |
+| `pnpm check:bundle-purity` | 0 | G12 clean |
+| Playwright probe (Chromium, mocked backend; spec deleted) | 0 | 9 tests passed |
+
+## 1. Real browser
+- **Selection-mode flow (list and board).** Default: 0 checkboxes, toggle `aria-pressed=false`. Enter on "Select items": checkboxes appear (list 6 incl. select-all; board 8), `aria-pressed=true`, focus stays on the toggle, next Tab goes to Create work item. Selecting 2 rows shows the bulk bar; the assignee trigger shows "Ada Lovelace" (B1 holds); assign gives "1 assigned, 1 failed. WLP-2: no longer available to you" and only the failed key stays selected. Exit: 0 checkboxes, bulk bar gone, focus stays on the toggle, `aria-pressed=false`; re-entering shows 0 checked, so the selection clears.
+- **Board B1 to B3 still hold.** After the select Move the focus is "Change state of WLP-4" in the Done column. Keyboard rank (Move down) works. Board selection persists across a rank move and clears on exit. B2: at 390 px the document `scrollWidth` equals `clientWidth` (390) on the board and the list; the header wraps with Create on screen.
+- **Live regions.** There is no announcement when selection mode is entered or left, and none when the selected count changes; the mode is conveyed only by `aria-pressed` on the toggle. See finding N1.
+- **axe 4.13:** 0 critical, 0 serious on the list and the board with selection mode on, in light and dark, and on the board at 390 px. Only the moderate page-shell `region` and `landmark-one-main`.
+- **Layout shift (G13).** The Select items toggle is lazy and renders only after capabilities resolve. With capabilities delayed it produced one shift entry (value 0.0023) in the header when it appeared: because the header controls are right-aligned, List and Board slide left about 110 px (List 1009 to 899 at 1280 px). Other shifts are small and pre-existing in kind (list table 0.021, board columns 0.041, header 0.001 to 0.005). The lazy checkboxes cause no shift of their own (they only render after the toggle is pressed). Total is small but non-zero; see N2.
+- **User without `assignTasks`.** No toggle, 0 checkboxes, 6 `<col>` (no extra column), wrapper `flex h-full flex-col gap-4 overflow-y-auto p-6`, header `flex items-center justify-between gap-3` with 2 children, buttons at List 1009 to 1052, Board 1056 to 1116, Create 1124 to 1256. These match the G8 baseline image (List, Board and Create at the same right-aligned positions) and the classes are byte-identical to earlier heads. `check:visual-scope` is green. The list DOM for a user without `assignTasks` is therefore unchanged and the 0331945e baseline still applies. (The pixel match against the pinned linux image is not run by me, no Docker.)
+
+## 2. Spec
+- `VW-3` ("Every layout supports multi-select and the same bulk action bar") is still met on both layouts; nothing in views.md or work-items.md (WI-24 to WI-27) requires always-visible checkboxes. The opt-in mode is a UX decision, not a spec violation. What it removes is discoverability and one-click selection; the spec's own screen-reader requirement (accessibility.md line 19: announcements for selection) is not met by either the old or the new behaviour, but is now more visible because entering the mode has no announcement.
+- The mode state is not URL state (information-architecture.md line 155 lists selection as URL state); this was already true before this round.
+- Mode stays on if `assignTasks` is lost and returns; selection keys are not cleared on capability loss (bar and checkboxes do hide). Harmless.
+
+## Findings (all non-blocking)
+- **N1:** no live-region announcement for entering and leaving selection mode, or for the selected count. Suggest a polite status region ("Selection mode on" and "N selected").
+- **N2:** the toggle appearing after capabilities load shifts the right-aligned List/Board buttons left (CLS 0.0023 in my probe). Reserving space, or placing the toggle after Create, would remove it. The trade-off is documented by the implementer (lazy chunk).
+- **N3:** N1 from the previous round (stale `pendingFocus` when a move is skipped or fails) still applies.
+- **N4 (informational):** the implementer's open LCP item (+40 ms raw, +68 normalised) is a performance policy call for the conductor; I did not run G11.
+
+## Not checked
+G11 A/B (I read the implementer's numbers, did not re-run them), pinned-image G8, a real API, screen readers, other browsers.
+
+**Verdict:** APPROVE
+<!-- END REPORT (sha256 5be7964cbc050b39f4b3a9a7f112e7a9c0ad601eaa0b4ea8ce05a441ab364fab) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/728-a1ae-ordinary-delta-b-sonnet.md; Claude Sonnet 5.5; sha256 c642e6e81b0a115b731545fe0cfdd7ca5a8633417fa0c50faaa8f1113e7824b5) -->
+# PR #728 final exact-head delta review B, round 6 (a9a7562c to a1aedb93)
+
+**Reviewed head:** a1aedb9327c1b2f2b0fafbd5d58c741237dc2a42
+**Previous head I approved:** a9a7562c5520b44e5cbc674412abf6e3af950904
+**Model / context:** Claude Sonnet 5.5, ordinary reviewer B (not author). Scratch worktrees at the exact head and at origin/main 8ea3ce27 (for the shift comparison), both removed afterwards.
+Delta: `work-item-board.tsx` (N3), the work route (N1, N2), 4 locale keys x 19 locales plus schema, and tests. No other source.
+
+## Runs (a1aedb93)
+| Command | Exit | Result |
+| --- | --- | --- |
+| `pnpm --filter @taskdesk/web typecheck` | 0 | |
+| `pnpm --filter @taskdesk/web exec vitest run` | 0 | 177 files, 957 tests passed |
+| `pnpm check:i18n` | 0 | |
+| `node scripts/ci/check-ui.mjs --raw-elements` | 0 | |
+| `pnpm check:tokens` | 0 | 418 pairs |
+| `pnpm check:visual-scope` | 0 | |
+| build, `pnpm check:bundle-size` | 0 | agent initial 230.8 KB / 350; work-list route graph 302.1 KB / 350 (27 assets); portal 163.7 KB / 200 |
+| Playwright probe (Chromium, mocked backend; spec deleted) | 0 | 11 tests passed on the PR head, 2 on main |
+
+## Browser probe
+- **N1 announcements.** One dedicated region, `<p class="sr-only" role="status" aria-live="polite">`, first child of the page wrapper (count 1; empty at load). Text: entering the mode gives "Selection mode on. Use the checkboxes to choose work items."; then "1 work item selected", "2 work items selected"; back to 0 gives the mode-on text; leaving gives "Selection mode off. Selection cleared." Focus stays on the toggle. On the board the region coexists with the board's own status region ("WLP-1 moved to position 2 of 3 in Backlog.") and the realtime notice; each keeps its own text, so no clobbering. The empty `sr-only` paragraph adds one empty node to the list DOM even for users without `assignTasks` (no pixels, absolutely positioned, no gap effect).
+- **N2 header order.** The toggle is now first in the right-aligned group (Select items 899, List 1009, Board 1056, Create 1124 at 1280 px). With it present, List/Board/Create are at exactly the same x as for a user without `assignTasks` (1009/1056/1124), so arrival of the toggle no longer moves them. In my probe the toggle and the Create trigger arrive in the same frame (both wait on capabilities), so the single remaining entry (0.0023) is the group growing leftward, not List/Board sliding.
+- **Create-trigger shift (implementer's pre-existing 141 px).** Confirmed and classified: **not present on main.** On main (8ea3ce27, with the Create chunk delayed 1.5 s) the heading stays at x=24, Create appears at 1124 and the only layout-shift entries are the usual ones (0.0007 heading text, 0.0213 table); no entry names the Create arrival. In #728 List/Board sit right-aligned next to a lazy Create, so they slide left about 140 px (1149 to 1009 in my track) when Create arrives, CLS 0.0009. It is introduced by the layout toggle in this PR, not by round 5 or 6. **Non-blocking** (0.0009 of CLS, no interaction impact); a fix is to reserve Create's width or render a same-size placeholder.
+- **N3.** Code: `pendingFocus` is now assigned inside `runMove` after the busy guard (a skipped move cannot leave a target) and cleared when the result is an error or empty. Browser: a failed (409) rank, then a forced refetch: focus stayed on the parked Board button. I could not make my forced refetch actually change data (the title did not update), so that browser check alone is weak; the unit tests added in this commit (two in `work-item-board.test.tsx`) cover the clearing and I read the logic as correct. Normal flows still work: rank restores focus to the control, the select Move focuses "Change state of WLP-4" in the Done column.
+- **axe 4.13:** 0 critical, 0 serious on the board and the list with selection on, in light and dark, and on the board at 390 px. Only the moderate page-shell `region` and `landmark-one-main`. At 390 px: document `scrollWidth` = `clientWidth` = 390 on both layouts, header wraps.
+- **G8 fixture user (no `assignTasks`):** no toggle, 0 checkboxes, 6 `<col>`, wrapper and header class strings identical to earlier heads, header 2 children, List 1009 to 1052, Board 1056 to 1116, Create 1124 to 1256, matching the baseline image's right-aligned positions. `check:visual-scope` green. The 0331945e baseline still applies (pinned-image pixel run not done by me).
+
+## Findings (all non-blocking)
+- **F1:** the 141 px List/Board shift when Create arrives (CLS 0.0009) is introduced by this PR and absent on main (above). Reserve space for Create to remove it.
+- **F2:** my browser confirmation of N3's stale-refetch case was inconclusive (the forced refetch did not change data); relying on the unit tests plus code reading.
+- **F3 (carry-over):** G11 LCP +40 ms raw remains the conductor's policy call; I did not re-run G11.
+
+## Not checked
+G11 A/B, pinned-image G8, a real API, screen readers, other browsers.
+
+**Verdict:** APPROVE
+<!-- END REPORT (sha256 c642e6e81b0a115b731545fe0cfdd7ca5a8633417fa0c50faaa8f1113e7824b5) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/512s3-a1ae-ordinary-delta-a-sonnet.md; Claude Sonnet 5.5; sha256 c396ac5b7ac4f05ba224620d01c35febeb31ef2c9415caf9f68b08d18a03dab9) -->
+# #512 successor 3 / PR #728: exact-head delta review A (rounds 5-6 and main merges)
+
+**Reviewer model:** Claude Sonnet 5.5 (same reviewer as prior APPROVEs; not author)
+**Reviewed head:** a1aedb9327c1b2f2b0fafbd5d58c741237dc2a42
+**Delta base:** 7dc214b074c058811e4e3babb5d25b3b927b7bb4 (my prior APPROVE). Scratch worktree (email, domain, permissions built first), removed afterwards. No Docker.
+
+## Scope read
+Main merges (#712 API reach, #727 tests; API/e2e files, not reviewed beyond confirming they are main content). Round 5: `work-item-selection-toggle.tsx`, `selection-checkbox.tsx`, `work-item-board-view.tsx`, route `work.tsx`, `work-item-list.tsx`, board. Round 6: live region, toggle placement, `runMove(task, focus)`.
+
+## Behaviour review
+- **Selection mode:** `toggleSelectionMode` flips the mode and clears `selectedKeys` on both entering and leaving. `canBulkAssign = canAssign && selectionMode`. The toolbar shows only with a non-empty selection and `canBulkAssign`; `onAssigned` still removes only server-confirmed keys, so partial-release behaviour is intact. Prune runs from the list items (list) and from `WorkItemBoardView` through `onPruneSelection` (board).
+- **Capability loss mid-session:** the toggle's `canAssign` goes false (and its unmount cleanup reports false), so per-row controls and the toolbar disappear and the test "losing the assign capability..." covers it. Residual (N7, non-blocking): `selectionMode` and `selectedKeys` are not reset, so the mode and stale keys come back if the capability returns, and the live region keeps announcing "N selected" while the capability is gone. The server still enforces every write.
+- **Lazy-chunk boundaries and strict gating:** `WorkItemBoardView` reads `canTransitionTasks`/`canRankTasks` as `!isCheckingPermissions && flag()` and the toggle reads `assignTasks` likewise. Nothing renders controls before the chunk loads, so the lazy boundary can only delay, not widen, gating. The board queries are now mounted only for `layout=board`, so the list route no longer fetches board data. Realtime and the 400/404 handling are unchanged in the board.
+- **Live region:** one polite `sr-only` status in the route; text = "mode on" / count / "mode off" (only after the mode was ever entered).
+- **Focus (round 6):** `pendingFocus` is now set inside `runMove` after the busy check and cleared on error. Rank and select-transition both pass a target.
+
+## Mutations (15 applied by me, restored each time; 13 killed, 2 survived)
+Killed: toggle does not clear selection; bulk ignores selectionMode; bulk ignores canAssign; toggle reads updateTasks; toggle drops loading guard; toggle skips capability reset on unmount; board view canRank without loading guard; board view canTransition from updateTasks; modeOff announcement removed; count announcement removed; focus not cleared on error (N3 test is non-vacuous for the failure case); board view prune not reported; toggle moved out of the header group.
+Survived:
+- S1: `pendingFocus.current = focus` placed before the busy check (a skipped move leaves a target). Not tested. Not reachable from the UI today because the Move buttons are disabled while busy and drag/select paths do not pass a rank focus.
+- S2: no-op move (`result.text === ""`) not clearing the target. Also effectively unreachable (callers pre-filter no-ops).
+Both are untested defensive guards (N8, non-blocking).
+
+## Commands (at a1aedb93)
+- apps/web `npx vitest run`: exit 0, 177 files, 957 tests passed.
+- `pnpm --filter @taskdesk/web typecheck`: exit 0.
+- `pnpm lint:ci`: exit 0 (0 errors).
+- `pnpm check:i18n`: exit 0.
+- `node scripts/ci/check-ui.mjs --raw-elements`: exit 0 (0 raw elements).
+
+## Findings
+Blocking: none. Non-blocking: N4 (still open from earlier), N7, N8 (S1, S2).
+
+## Not checked
+G11 numbers (A/B timings), check:tokens/visual-scope/bundle-size, Playwright, real-browser header shift, the API changes from #712/#727, Sol security scope.
+
+**Verdict:** APPROVE
+<!-- END REPORT (sha256 c396ac5b7ac4f05ba224620d01c35febeb31ef2c9415caf9f68b08d18a03dab9) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/728-a1ae-security-delta-opus.md; Claude Opus 5.5; sha256 183d761c7e0da05945ee2becac59412321e6f6849e593baa35043238bdc6e2b6) -->
+# PR #728 security delta review, ab6483c9 → a1aedb93
+
+**Reviewed head:** a1aedb9327c1b2f2b0fafbd5d58c741237dc2a42
+**Prior clears:**
+- 7dc214b074c058811e4e3babb5d25b3b927b7bb4: full review, CLEAR (`728-security-opus.md`)
+- ab6483c9: mechanical rebind, CLEAR
+
+**PR base:** origin/main 8ea3ce272ce25bf50d599e9e1615d1ce288ede07 (from `gh pr view 728`)
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This is an independent context. It did not author, direct or remediate the PR.
+**Depth:** lightweight delta.
+**Worktree:** a scratch detached worktree at the exact head, removed afterwards.
+
+## Delta (`git log --parents ab6483c9..a1aedb93`)
+
+| Commit | Content |
+| --- | --- |
+| ae35e747 | docs only: `docs/07-planning/security-reviews/728-work-item-board-rank-bulk.md` (+531) |
+| c48892bc | merge of ae35e747 + main 8ea3ce27 (#727) |
+| fa9afc58, faf00249, 3b58b030, bff1d48c, a9a7562c | round 5 (G11): selection mode, a lazy `work-item-board-view` chunk and a lazy `work-item-selection-toggle` chunk, the list preload dropped, and a test for capability loss |
+| a1aedb93 | round 6: a selection live region, toggle placement, and pending focus cleared on a failed or no-op move |
+
+The web-source delta from c48892bc to HEAD covers 31 files: 4 components, `work.tsx`, tests and i18n. There are no changes under `apps/web/src/hooks`, `apps/web/src/fetchers`, `apps/api` or `packages`.
+
+## Checks
+
+1. **Pure merge.**
+   - `git rev-parse c48892bc^{tree}` = `e0dd66340f98f6478911b48f0fd9a57842493367`.
+   - `git merge-tree --write-tree ae35e747 8ea3ce27` = `e0dd66340f98f6478911b48f0fd9a57842493367`.
+   - The trees are identical, so the merge adds nothing of its own.
+2. **e2e path.**
+   - `git diff --name-only 8ea3ce27...HEAD -- apps/web/e2e` lists only `apps/web/e2e/visual.spec.ts-snapshots/work-item-list-linux.png`.
+   - The last commit to touch the PNG is still 0331945e.
+   - Its sha256 is `fff9a8b3af4436380a3a842713877ee740912a065d19026435d3b26fda0d63de`. This still equals the copy-back and target hashes in `512s3-linux-baseline-v11-d6782600/`.
+   - The `settings-forms-direct-load.spec.ts` file that appears relative to 7dc214b0 comes from main (#727). It is not in the PR's diff.
+3. **Gating.**
+   - `work-item-board-view.tsx` passes `canTransition = !isCheckingPermissions && canTransitionTasks()` and `canRank = !isCheckingPermissions && canRankTasks()`. The hook is unchanged, so both are still strict `=== true` flags from `/api/capabilities`, and both are false while capabilities load.
+   - `work-item-selection-toggle.tsx` computes `canAssign = !isCheckingPermissions && canAssignTasks()`. It reports that value upward, reports `false` on effect cleanup and unmount, and renders nothing when `canAssign` is false.
+   - In `work.tsx`, `canAssign` starts as `useState(false)`, and `canBulkAssign = canAssign && selectionMode`. Losing the capability therefore hides the toggle, the per-row checkboxes and the bulk toolbar.
+   - Reviewer A noted that `selectedKeys` can persist after the capability is lost. I agree this is cosmetic: no control renders, and the server enforces every write.
+   - Server side at this head, which includes #712 through f0f85e86:
+     - `requireWorkItemReach` now defaults to project reach (`options.requireProjectReach !== false`).
+     - Rank keeps `work_item:rank` and transition keeps `work_item:transition`.
+     - Bulk uses `workItemBulkAuthoriser` (`bulk-reach.ts` → `utils/caller-reach.ts`) for per-item reach plus the capability.
+   - This closes non-blocking finding N1 from my 7dc214b0 review.
+4. **Leakage.**
+   - The live region reads `t("workItems:bulk.selected", { count })`, `bulk.modeOn` or `bulk.modeOff`. These are a count of the caller's own selection and fixed strings, with no item data.
+   - The board-view chunk calls the same reach-gated fetchers as before, keyed by `project.id`.
+   - The focus change only clears a client-side ref.
+   - Nothing new is exposed.
+5. **Portal bundle purity.**
+   - `pnpm install --frozen-lockfile` exited 0, the `turbo build` of the web dependencies exited 0, and `pnpm --filter @taskdesk/web build` exited 0.
+   - `pnpm check:bundle-purity` reported "G12 portal bundle graph is clean (1 entry, static and dynamic imports checked)."
+   - A grep of `dist/portal` found no board, bulk or selection-toggle code outside the locale catalogs. The only matches are i18n strings such as "Select items" inside the shared per-locale JSON chunks. Those catalogs already shipped whole at 7dc214b0, so this is not new code reach.
+6. **Secrets.** gitleaks 8.30.1, with `--redact`, found no leaks in any of:
+   - `git diff ab6483c9 a1aedb93`;
+   - `git diff 8ea3ce27...a1aedb93` (the full PR diff);
+   - `gitleaks git --log-opts=ab6483c9..a1aedb93` (~125 KB).
+
+## Findings
+
+**Blocking:** none.
+
+**Non-blocking:**
+- **D1 (informational).** Locale catalogs are bundled whole into the portal, so agent-only UI strings ship there. This is an existing pattern and contains no code or data. It is not introduced by this delta.
+- **D2 (cosmetic, agreed with reviewer A).** After the capability is lost, `selectedKeys` is not cleared. Nothing renders that could use it, and the server enforces every write.
+
+## Residual risk / not checked
+
+- I ran no web unit, component or integration suites, and no Docker or visual re-capture.
+- The PNG was captured at d6782600 and has not been re-captured since. Whether it is still valid at head depends on the CI G8 job.
+- I did not re-review the #712 server code in depth. I relied on its merged state and on the default reach behaviour I observed.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 183d761c7e0da05945ee2becac59412321e6f6849e593baa35043238bdc6e2b6) -->
