@@ -1,4 +1,4 @@
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
@@ -103,10 +103,21 @@ export async function lockSavedViewByIdInTransaction(
   return view;
 }
 
+/** Workspace-scoped views always; project-scoped views only for a reachable project. */
+export function projectScopeInReach(reachableProjectIds: readonly string[]) {
+  return reachableProjectIds.length === 0
+    ? ne(savedViewTable.scope, "project")
+    : or(
+        ne(savedViewTable.scope, "project"),
+        inArray(savedViewTable.scopeId, [...reachableProjectIds]),
+      );
+}
+
 export async function listSavedViewsForWorkspace(
   workspaceId: string,
   personId: string,
   userId: string,
+  reachableProjectIds: readonly string[],
 ) {
   const memberships = await db
     .select({ teamId: teamMemberTable.teamId })
@@ -128,7 +139,15 @@ export async function listSavedViewsForWorkspace(
     db
       .select()
       .from(savedViewTable)
-      .where(and(eq(savedViewTable.workspaceId, workspaceId), visibleToCaller)),
+      .where(
+        and(
+          eq(savedViewTable.workspaceId, workspaceId),
+          visibleToCaller,
+          // #740: a project-scoped view names its project (id, and the view's name and query
+          // are about it), so it is listed only when that project is within reach.
+          projectScopeInReach(reachableProjectIds),
+        ),
+      ),
     db.query.userPreferenceTable.findFirst({
       where: (row, { and, eq }) =>
         and(

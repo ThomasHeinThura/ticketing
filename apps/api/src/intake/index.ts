@@ -12,7 +12,11 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
-import { listReachOf, requireReachContext } from "../utils/reach-filtered-list";
+import {
+  listReachOf,
+  requireReachContext,
+  requireReachFilteredList,
+} from "../utils/reach-filtered-list";
 import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
@@ -653,6 +657,7 @@ const duplicateRoute = createRoute({
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
+    requireReachContext,
   ] as const,
   request: {
     params: submissionRefParam,
@@ -684,6 +689,7 @@ const duplicateSuggestionsRoute = createRoute({
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
+    requireReachFilteredList,
   ] as const,
   request: { params: submissionRefParam },
   responses: {
@@ -1086,6 +1092,12 @@ const triageActionRouter = apiRouter<IntakeVariables>()
       c.get("workspaceId"),
       await triagerPersonId(c),
       c.req.valid("json").workItemId,
+      (project) =>
+        listReachOf(c).reaches({
+          projectId: project.id,
+          workspaceId: project.workspaceId,
+          organisationId: project.organisationId,
+        }),
     );
     return c.json(
       {
@@ -1102,6 +1114,7 @@ const triageActionRouter = apiRouter<IntakeVariables>()
         suggestions: await suggestDuplicateWorkItems(
           c.req.valid("param").ref,
           c.get("workspaceId"),
+          await listReachOf(c).reachableProjectIds([c.get("workspaceId")]),
         ),
       },
       200,

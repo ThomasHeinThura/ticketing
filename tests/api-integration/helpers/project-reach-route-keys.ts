@@ -87,6 +87,9 @@ export const PROJECT_LIST_ROUTE_KEYS = [
   "GET /api/label/workspace/{workspaceId}",
   "GET /api/project",
   "GET /api/search",
+  "GET /api/views",
+  "GET /api/views/{id}",
+  "GET /api/submissions/{ref}/duplicates",
 ] as const;
 
 /**
@@ -97,4 +100,5 @@ export const PROJECT_LIST_ROUTE_KEYS = [
 export const PROJECT_BODY_TARGET_ROUTE_KEYS = [
   "POST /api/views",
   "POST /api/submissions/{ref}/accept",
+  "POST /api/submissions/{ref}/duplicate",
 ] as const;

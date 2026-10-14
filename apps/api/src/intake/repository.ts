@@ -1222,6 +1222,11 @@ export async function markSubmissionDuplicate(
   workspaceId: string,
   actorId: string,
   workItemId: string,
+  canReachProject: (project: {
+    id: string;
+    workspaceId: string;
+    organisationId: string | null;
+  }) => Promise<boolean>,
 ) {
   const number = parseSubmissionReference(ref);
   if (number === null)
@@ -1266,7 +1271,8 @@ export async function markSubmissionDuplicate(
       .limit(1);
     if (
       !target ||
-      target.project.organisationId !== row.submission.organisationId
+      target.project.organisationId !== row.submission.organisationId ||
+      !(await canReachProject(target.project))
     )
       throw new HTTPException(404, { message: "Work item not found" });
     const now = new Date();
@@ -1754,6 +1760,7 @@ export async function listOwnSubmissions(
 export async function suggestDuplicateWorkItems(
   ref: string,
   workspaceId: string,
+  reachableProjectIds: readonly string[],
 ) {
   const number = parseSubmissionReference(ref);
   if (number === null)
@@ -1790,7 +1797,9 @@ export async function suggestDuplicateWorkItems(
         (row.submission.formData as Record<string, unknown>)[field.key] ?? "",
       ).trim()
     : "";
-  if (title.length < 2) return [];
+  // #740: a suggestion names a work item (key and title), so only items of projects the
+  // triager reaches may be suggested.
+  if (title.length < 2 || reachableProjectIds.length === 0) return [];
   const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   const score = sql<number>`similarity(${sql.identifier("work_item")}.${sql.identifier("title")}, ${title})`;
   return db
@@ -1809,6 +1818,7 @@ export async function suggestDuplicateWorkItems(
       and(
         eq(schema.workItemTable.workspaceId, workspaceId),
         eq(schema.projectTable.organisationId, row.submission.organisationId),
+        inArray(schema.projectTable.id, [...reachableProjectIds]),
         gt(schema.workItemTable.createdAt, cutoff),
         gt(score, 0.3),
         isNull(schema.workItemTable.deletedAt),

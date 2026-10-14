@@ -45,6 +45,7 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
   it("the file covers exactly the routes the guard requires of this family", () => {
     expect([...PROJECT_BODY_TARGET_ROUTE_KEYS].sort()).toEqual([
       "POST /api/submissions/{ref}/accept",
+      "POST /api/submissions/{ref}/duplicate",
       "POST /api/views",
     ]);
   });
@@ -336,6 +337,126 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
       setAmbientHeaders({ "x-api-key": memberKey });
       const ok = await post(refOk, a.second.id);
       setAmbientHeaders({});
+      expect(ok.status, await ok.clone().text()).toBe(200);
+    });
+  });
+
+  describe("duplicate suggestions and linking name only work items the triager reaches", () => {
+    async function arrange() {
+      const s = await seedIntake("reach-duplicates");
+      const wsId = s.t.workspaceId;
+      const { project: second } = await createProjectFixture({
+        workspaceId: wsId,
+        name: "Second destination",
+      });
+      await db
+        .update(schema.projectTable)
+        .set({ organisationId: s.customer.orgId })
+        .where(eq(schema.projectTable.id, second.id));
+      await makeState(wsId, second.id, "backlog", true);
+      const secondStaff = await addMember(wsId, "admin");
+      await grantProjectRole(secondStaff.user.id, second.id, [
+        "project:read",
+        "work_item:read",
+        "work_item:create",
+      ]);
+      const seesAll = await addMember(wsId, "admin");
+      await grantSeesAll(wsId, seesAll.personId);
+      const create = async (
+        user: { id: string },
+        projectId: string,
+        title: string,
+      ) => {
+        mockAuthenticatedSession(user as never);
+        const response = await json(
+          s.t.app,
+          "POST",
+          `/api/projects/${projectId}/work-items`,
+          { typeId: s.t.type.id, title },
+        );
+        expect(response.status, await response.clone().text()).toBe(200);
+        return (await response.json()) as { id: string; key: string };
+      };
+      const TITLE = "Lobby printer is on fire";
+      const own = await create(s.t.requester.user, s.t.project.id, TITLE);
+      const hidden = await create(
+        secondStaff.user,
+        second.id,
+        `${TITLE} again`,
+      );
+      const ref = await submitAs(s, s.customer, TITLE);
+      return { s, second, secondStaff, seesAll, own, hidden, ref };
+    }
+
+    const keysOf = async (response: Response) =>
+      (
+        (await response.json()) as { suggestions: { key: string }[] }
+      ).suggestions
+        .map((x) => x.key)
+        .sort();
+
+    it("the suggestions a triager gets exclude work items of projects outside reach", async () => {
+      const a = await arrange();
+      const path = `/api/submissions/${a.ref}/duplicates`;
+      const mine = await staffRequest(a.s.t, a.s.t.requester, path);
+      expect(mine.status, await mine.clone().text()).toBe(200);
+      const text = await mine.clone().text();
+      expect(await keysOf(mine)).toEqual([a.own.key]);
+      expect(text).not.toContain(a.hidden.key);
+      expect(text).not.toContain("again");
+
+      const other = await staffRequest(a.s.t, a.secondStaff, path);
+      expect(await keysOf(other)).toEqual([a.hidden.key]);
+      const all = await staffRequest(a.s.t, a.seesAll, path);
+      expect(await keysOf(all)).toEqual([a.own.key, a.hidden.key].sort());
+    });
+
+    it("API key: the same decision for a key's owner", async () => {
+      const a = await arrange();
+      mockAnonymousSession();
+      const scope = { intake: ["triage"], workspace: ["read"] };
+      const outsiderKey = await makeApiKey(a.s.t.requester.user.id, scope);
+      const memberKey = await makeApiKey(a.secondStaff.user.id, scope);
+      const path = `/api/submissions/${a.ref}/duplicates`;
+      setAmbientHeaders({ "x-api-key": outsiderKey });
+      expect(await keysOf(await json(a.s.t.app, "GET", path))).toEqual([
+        a.own.key,
+      ]);
+      setAmbientHeaders({ "x-api-key": memberKey });
+      expect(await keysOf(await json(a.s.t.app, "GET", path))).toEqual([
+        a.hidden.key,
+      ]);
+    });
+
+    it("linking a submission to a work item outside reach answers like a missing item and links nothing", async () => {
+      const a = await arrange();
+      const missing = await staffRequest(
+        a.s.t,
+        a.s.t.requester,
+        `/api/submissions/${a.ref}/duplicate`,
+        { method: "POST", body: { workItemId: `missing-${randomUUID()}` } },
+      );
+      const missingText = await missing.text();
+      expect(missing.status, missingText).toBe(404);
+      const outside = await staffRequest(
+        a.s.t,
+        a.s.t.requester,
+        `/api/submissions/${a.ref}/duplicate`,
+        { method: "POST", body: { workItemId: a.hidden.id } },
+      );
+      const outsideText = await outside.text();
+      expect(outside.status, outsideText).toBe(404);
+      expect(outsideText).toBe(missingText);
+      const [row] = await db.select().from(schema.submissionTable);
+      expect(row?.state).not.toBe("duplicate");
+      expect(row?.workItemId).toBeNull();
+
+      const ok = await staffRequest(
+        a.s.t,
+        a.s.t.requester,
+        `/api/submissions/${a.ref}/duplicate`,
+        { method: "POST", body: { workItemId: a.own.id } },
+      );
       expect(ok.status, await ok.clone().text()).toBe(200);
     });
   });

@@ -8,10 +8,15 @@
  * project's task-bound labels, tasks, comments, activities and the project itself are absent
  * from the rows, the counts and the ranking. Session and API-key callers decide the same way.
  */
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import getLabelsByWorkspaceId from "../../apps/api/src/label/controllers/get-labels-by-workspace-id";
+import getProjects from "../../apps/api/src/project/controllers/get-projects";
+import globalSearch from "../../apps/api/src/search/controllers/global-search";
+import { callerReach } from "../../apps/api/src/utils/caller-reach";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { requireRow } from "./helpers/fixtures";
@@ -215,6 +220,9 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         "GET /api/label/workspace/{workspaceId}",
         "GET /api/project",
         "GET /api/search",
+        "GET /api/views",
+        "GET /api/views/{id}",
+        "GET /api/submissions/{ref}/duplicates",
       ].sort(),
     );
   });
@@ -391,6 +399,101 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
     });
   });
 
+  describe("GET /api/views and GET /api/views/{id}: a project-scoped view names its project", () => {
+    async function seedViews(a: Arranged) {
+      const make = async (
+        name: string,
+        scope: "workspace" | "project",
+        scopeId: string,
+      ) =>
+        requireRow(
+          await db
+            .insert(schema.savedViewTable)
+            .values({
+              workspaceId: a.world.workspaceId,
+              createdBy: a.seesAll.personId,
+              name,
+              scope,
+              scopeId,
+              visibility: "workspace",
+              layout: "list",
+              query: { entity: "work_item" },
+            })
+            .returning(),
+          "view",
+        );
+      return {
+        visible: await make(
+          "Visible project view",
+          "project",
+          a.world.project.id,
+        ),
+        hidden: await make(
+          "Hidden project view",
+          "project",
+          a.world.otherProject.id,
+        ),
+        workspaceWide: await make(
+          "Workspace wide view",
+          "workspace",
+          a.world.workspaceId,
+        ),
+      };
+    }
+
+    for (const caller of CALLERS) {
+      it(`session: ${caller.name}`, async () => {
+        const a = await arrange();
+        const views = await seedViews(a);
+        mockAuthenticatedSession(caller.as(a).user);
+        const list = await read<{ id: string; name: string }[]>(
+          a.app,
+          `/api/views?workspaceId=${a.world.workspaceId}`,
+        );
+        expect(list.status, list.text).toBe(200);
+        const names = list.body.map((v) => v.name);
+        expect(names).toContain("Workspace wide view");
+        expect(names.includes("Visible project view")).toBe(
+          showsVisible(caller.sees),
+        );
+        expect(names.includes("Hidden project view")).toBe(
+          showsHidden(caller.sees),
+        );
+
+        const missing = await read<unknown>(
+          a.app,
+          `/api/views/missing-${randomUUID()}`,
+        );
+        expect(missing.status).toBe(404);
+        const one = await read<unknown>(a.app, `/api/views/${views.hidden.id}`);
+        if (showsHidden(caller.sees)) expect(one.status, one.text).toBe(200);
+        else {
+          expect(one.status, one.text).toBe(404);
+          expect(one.text).toBe(missing.text);
+        }
+        const ok = await read<unknown>(a.app, `/api/views/${views.visible.id}`);
+        expect(ok.status === 200).toBe(showsVisible(caller.sees));
+      });
+    }
+
+    it("API key: an outsider's key does not list a hidden project's view", async () => {
+      const a = await arrange();
+      await seedViews(a);
+      mockAnonymousSession();
+      const key = await makeApiKey(a.world.outsiderAdmin.user.id, {
+        ...PROJECT_KEY_SCOPE,
+        saved_view: ["read", "create"],
+      });
+      setAmbientHeaders({ "x-api-key": key });
+      const list = await read<{ name: string }[]>(
+        a.app,
+        `/api/views?workspaceId=${a.world.workspaceId}`,
+      );
+      expect(list.status, list.text).toBe(200);
+      expect(list.body.map((v) => v.name)).toEqual(["Workspace wide view"]);
+    });
+  });
+
   describe("customers", () => {
     it("a customer with no organisation reach sees no project-bound row", async () => {
       const a = await arrange();
@@ -407,6 +510,80 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
       if (projects.status === 200) assertProjects(projects.body, "none");
       const search = await read<SearchBody>(a.app, searchUrl(a));
       if (search.status === 200) assertSearch(search.body, search.text, "none");
+    });
+
+    it("a customer whose organisation is bound to a project sees exactly that project's rows", async () => {
+      const a = await arrange();
+      const orgId = `org-${randomUUID()}`;
+      await db.insert(schema.organisationTable).values({
+        id: orgId,
+        key: orgId,
+        name: "Bound org",
+        isInternal: false,
+      });
+      const role = requireRow(
+        await db
+          .insert(schema.roleTable)
+          .values({
+            scope: "organisation",
+            key: `customer-${randomUUID()}`,
+            name: "Customer",
+            rank: 0,
+            capabilities: ["work_item:read"],
+          })
+          .returning(),
+        "org role",
+      );
+      const customer = await addMember(a.world.workspaceId, "customer");
+      await db
+        .update(schema.personTable)
+        .set({ side: "customer", organisationId: orgId })
+        .where(eq(schema.personTable.id, customer.personId));
+      await db.insert(schema.membershipTable).values({
+        personId: customer.personId,
+        scope: "organisation",
+        scopeId: orgId,
+        roleId: role.id,
+        seesAll: false,
+      });
+      // Bind the VISIBLE project to the organisation; the other project stays internal.
+      await db
+        .update(schema.projectTable)
+        .set({ organisationId: orgId })
+        .where(eq(schema.projectTable.id, a.world.project.id));
+
+      // The staff routes refuse a customer-role member (no `workspace:read`), so the decision
+      // source they all share is driven directly: the customer's organisation reaches exactly
+      // the project bound to it, and its rows are what the list filters would keep.
+      const reach = await callerReach(
+        {
+          get: (key: string) =>
+            key === "apiKey" ? undefined : customer.user.id,
+        } as never,
+        customer.user.id,
+      );
+      expect(await reach.reachableProjectIds([a.world.workspaceId])).toEqual([
+        a.world.project.id,
+      ]);
+      const labels = await getLabelsByWorkspaceId(a.world.workspaceId, [
+        a.world.project.id,
+      ]);
+      assertLabels(labels, "visible");
+      const found = await globalSearch({
+        query: MARKER,
+        userId: customer.user.id,
+        workspaceId: a.world.workspaceId,
+        reachableProjectIds: (ids) => reach.reachableProjectIds(ids),
+      });
+      assertSearch(
+        found as unknown as SearchBody,
+        JSON.stringify(found),
+        "visible",
+      );
+      const projects = await getProjects(a.world.workspaceId, false, [
+        a.world.project.id,
+      ]);
+      assertProjects(projects as unknown as ProjectRow[], "visible");
     });
   });
 

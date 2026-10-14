@@ -112,19 +112,36 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
   "GET /api/project/organisations":
     "customer organisations (project:create picker); organisation rows, not project rows",
   "GET /api/request-types":
-    "intake request-type definitions; configuration rows, not project rows",
+    "intake request-type definitions; configuration rows. They expose a default project id only, behind request_type:read",
   "GET /api/service-calendars":
     "SLA calendar definitions; configuration rows, not project rows",
   "GET /api/sla-policies":
     "SLA policy definitions; configuration rows, not project rows",
   "GET /api/submissions":
-    "the intake queue, gated by intake:triage; carries an opaque work item id at most, no project name, key or title (follow-up: scope the accepted-item link to reach)",
-  "GET /api/views":
-    "saved-view definitions listed by their own audience rules (SV-15..18); running a view filters by reach",
+    "the intake queue, gated by intake:triage; rows carry the reference, form summary, state, claim, request type, requester and organisation, with no work item or project id, name, key or title (verified in #742 review)",
   "GET /api/views/team-audiences":
     "teams the caller belongs to; team rows, not project rows",
   "GET /api/workflows":
     "workflow definitions; configuration rows, not project rows",
+  "GET /api/invitation/{id}": "a workspace invitation row; no project rows",
+  "GET /api/request-types/{id}":
+    "one request-type definition; configuration row with a default project id only",
+  "GET /api/service-calendars/{id}":
+    "one calendar definition; configuration row",
+  "GET /api/service-calendars/{id}/preview":
+    "computes calendar dates from the calendar's own configuration; no project rows",
+  "GET /api/service-calendars/{id}/usage":
+    "aggregate reference counts for deletion safety (sla_policy:read); no project or work item ids, names or titles",
+  "GET /api/sla-policies/{id}": "one SLA policy definition; configuration row",
+  "GET /api/submissions/{ref}":
+    "one submission thread inside the intake queue; no project or work item fields, same row shape as the queue",
+  "GET /api/submissions/{ref}/attachments":
+    "the submission's own attachments; submissions are not project-bound until accepted",
+  "GET /api/submissions/{ref}/attachments/{id}":
+    "one attachment of the submission; not project-bound",
+  "GET /api/views/{id}/count":
+    "counts only the work items the caller reaches (the saved-view run applies per-row reach); returns a number, never a row",
+  "GET /api/workflows/{id}": "one workflow definition; configuration row",
   "GET /api/workspace/{workspaceId}": "the workspace row itself",
   "GET /api/workspace/{workspaceId}/invitations":
     "workspace invitations; no project rows",
@@ -148,7 +165,7 @@ function findListReachProblems(
   for (const key of candidateKeys) {
     const declared = (routes.get(key) ?? [])
       .map(markOf)
-      .some((mark) => mark?.reachFilteredList === true);
+      .some((mark) => mark?.reachFilteredList === true || mark?.projectReach);
     const reason = exempt[key];
     const exempted = reason !== undefined && reason.trim() !== "";
     if (!declared && !exempted) {
@@ -280,11 +297,11 @@ describe("project reach guard: the checker is not vacuous", () => {
     expect(
       findListReachProblems(declared, [listKey], { [listKey]: "why" }),
     ).toHaveLength(1);
-    // A plain project-reach mark (a single-row route) is not a list declaration.
+    // A single-row project-reach mark also satisfies the check; a bare workspace mark does not.
     const singleRow = new Map([
       [listKey, [handlerWith({ projectReach: true })]],
     ]);
-    expect(findListReachProblems(singleRow, [listKey], {})).toHaveLength(1);
+    expect(findListReachProblems(singleRow, [listKey], {})).toEqual([]);
     expect(
       findListReachProblems(declared, [listKey], { "GET /gone": "why" }),
     ).toHaveLength(1);
@@ -418,17 +435,16 @@ describe("project reach guard: the real router", () => {
     ).toEqual([]);
 
     // Family 4 (#740): workspace-level LIST and SEARCH routes. The candidates are derived from
-    // the real policy registry (a GET on the workspace scope whose only path parameter is
-    // `workspaceId`), so a NEW list route must declare reach filtering or give a reason.
+    // the real policy registry: EVERY GET on the workspace scope, whatever its path
+    // parameters (so `/submissions/{ref}/duplicates` is seen, not just collections whose
+    // only parameter is `workspaceId`). A NEW such route must declare reach filtering (or
+    // single-row project reach) or give a reason.
     const listCandidates = registry.entries
       .filter(
         (entry) =>
           entry.routeKey.startsWith("GET ") &&
           isCapabilityPolicy(entry.policy) &&
-          entry.policy.scope === "workspace" &&
-          (entry.routeKey.match(/\{[^}]+\}/g) ?? []).every(
-            (param) => param === "{workspaceId}",
-          ),
+          entry.policy.scope === "workspace",
       )
       .map((entry) => entry.routeKey);
     // Non-vacuous: the routes this family exists for are candidates, and are declared.
