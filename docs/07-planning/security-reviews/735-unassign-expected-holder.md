@@ -14,9 +14,11 @@ A Claude Sonnet 5.5 lane implemented the change. The reviewers below are fresh, 
 - Ordinary review B by Claude Sonnet 5.5 (API design, other callers, real browser, axe): APPROVE at `f59b68ca`.
 - Security review by Claude Opus 5.5: CLEAR at `f59b68ca`. There is no disclosure to callers who can't already see the holder, no oracle, and the ordering is correct. Three mutations were all killed.
 - Mechanical security rebind at `722ee8b5`: CLEAR. It is a pure merge of `main` `82aecead` (#732).
+- Mechanical security rebind at `410e20e2`: CLEAR. This is a pure merge of `main` `1f1abe7c` (#733) and does not interact with this PR's surface.
 
 **Reviewed head:** `f59b68ca1e02c69a1c87276965e53a7c84fded64`
 **Reviewed head:** `722ee8b59e6a240244a2959612b9323cf932706e`
+**Reviewed head:** `410e20e220a9e69412d4c6f77625b461a98cc16d`
 
 ## Context index
 
@@ -28,6 +30,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 2 | `735-ordinary-b-sonnet.md` | Ordinary review B (0cc0ae12..f59b68ca) | Claude Sonnet 5.5 | `f59b68ca` | APPROVE | `f26d315aea3df20066cb843923430ad4368faa11616407767fe67171f8a75270` |
 | 3 | `735-security-opus.md` | Security review (0cc0ae12..f59b68ca) | Claude Opus 5.5 | `f59b68ca` | CLEAR | `12020b6bc53370fbd436d88f3798cdef9800777e7a1dfa717012b5ed83aeb7d6` |
 | 4 | `735-722e-security-rebind-opus.md` | Mechanical security rebind (f59b68ca..722ee8b5) | Claude Opus 5.5 | `722ee8b5` | CLEAR | `8332a98ebf3f8837bc8993484a92d9df7daaf366eb0f088ac558fcb4bc9faf8b` |
+| 5 | `735-410e-security-rebind-opus.md` | Mechanical security rebind (8b5f1406..410e20e2) | Claude Opus 5.5 | `410e20e2` | CLEAR | `4ba751db0b9f8707e6cc561a871e86f5d646b9029676d0f746c65e7d2957446b` |
 
 ## Embedded reports
 
@@ -371,3 +374,61 @@ The f59b68ca findings therefore carry over unchanged:
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 8332a98ebf3f8837bc8993484a92d9df7daaf366eb0f088ac558fcb4bc9faf8b) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/735-410e-security-rebind-opus.md; Claude Opus 5.5; sha256 4ba751db0b9f8707e6cc561a871e86f5d646b9029676d0f746c65e7d2957446b) -->
+# PR #735 security review: exact-head rebind after merging main (#733)
+
+**Reviewed head:** 410e20e220a9e69412d4c6f77625b461a98cc16d
+**Prior CLEAR heads:**
+- 722ee8b59e6a240244a2959612b9323cf932706e (`735-722e-security-rebind-opus.md`);
+- f59b68ca1e02c69a1c87276965e53a7c84fded64 (`735-security-opus.md`).
+
+**Pre-merge head:** 8b5f1406fc4a64b8e53e0b7604644270d7cafde1
+**Merged main:** 1f1abe7ca145d9a9749c869d4a4b94f4eb4d2537 (#733, owner/admin `sees_all`)
+**Previous main:** 82aecead4c32861c3b2321af4abf7fcd1dc14731
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This is the same independent context that cleared f59b68ca and 722ee8b5. It did not author, direct or remediate the change.
+**Scope:** a mechanical rebind. No tests were run, as the coordinator instructed.
+
+## Checks
+
+All checks ran against live git and GitHub.
+
+| Check | Result |
+| --- | --- |
+| `gh pr view 735` head | `410e20e2…`: matches |
+| `origin/main` | `1f1abe7c…`: main is unchanged |
+| Parents of 410e20e2 | `8b5f1406…` and `1f1abe7c…`: matches |
+| Tree compared with `git merge-tree --write-tree 8b5f1406 1f1abe7c` | both `ff38b0dab4e2775f322922bfe4d8e15fbe58b37d`. The merge is clean and adds no hand edits. |
+| `diff --name-only 8b5f1406..410e20e2` compared with `diff --name-only 82aecead..1f1abe7c` | identical, 21 files |
+| 8b5f1406 already contains 82aecead | yes |
+| Commits after the prior CLEAR (`722ee8b5..8b5f1406`) | exactly one, `8b5f1406 docs(security-reviews): record #735 review chain`. Its parent is 722ee8b5 and it adds one file, `docs/07-planning/security-reviews/735-unassign-expected-holder.md`, with 373 insertions. It is documentation only. |
+
+## Interaction with #735's surface
+
+I grepped the #733 `apps/` diff, excluding the generated drizzle `meta` snapshot, for:
+
+- `assign` and `work_item`;
+- `requireWorkItemReach`, `projectReadDecision` and `has-project-reach`;
+- `require-workspace-capability`;
+- `apiKey`.
+
+No changed line matched.
+
+#733 adds `workspace-admin-reach.ts`. That file is used by:
+
+- the workspace member, invitation, ownership and account-deletion controllers;
+- one boot-reconcile call in `index.ts`.
+
+Migration 0123 also backfills `sees_all` grants for owners and admins. This changes reach **data** for owners and admins, but not the reach or capability **code** that the unassign route runs.
+
+Those callers already hold `work_item:assign` and `work_item:read` in their workspace. #735's 409 is still evaluated only after the reach and capability decisions. It therefore discloses the holder only to principals who can already read the item, so #733 does not change #735's analysis.
+
+No assign or unassign file, schema, OpenAPI entry or web file is in the #733 delta.
+
+The f59b68ca findings carry over unchanged:
+
+- no blocking findings;
+- N1–N4 remain non-blocking or informational.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 4ba751db0b9f8707e6cc561a871e86f5d646b9029676d0f746c65e7d2957446b) -->
