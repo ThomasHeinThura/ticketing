@@ -28,9 +28,11 @@ A Claude Sonnet 5.5 lane implemented the change over four rounds. Round 4 change
 - Ordinary review B by Claude Sonnet 5.5: REQUEST CHANGES at `2a090115`, because the submission detail exposed the linked work item. REQUEST CHANGES again at `11c76a60`, because the submission attachments did the same. Delta APPROVE at `8e4ddd48` after the round-4 altitude change and an independent audit of the submission routes.
 - Security review by Claude Opus 5.5: CLEAR at `8e4ddd48`. Out-of-reach answers are byte-identical to missing ones, the SQL filters are parameterised, `sees_all` and customers are scoped correctly, and all 10 mutations were caught. The project socket's reach is filed as #745.
 - Security rebind at `691c1a9e`: CLEAR. A pure merge of `main` `16234794` (#735, #719). Both guards stay green on the merged tree.
+- Security rebind at `97197795`: CLEAR. This head merges `main` `9af1ed06` (#744, creator project-lead). The only conflict resolution is the decision log, where both entries are kept and no older entry is altered. On the merged tree a creator sees their project in the list and in search, and 138 integration and 107 permissions tests pass.
 
 **Reviewed head:** `8e4ddd485f15533f6ddcdf8051cbf01a140c7f96`
 **Reviewed head:** `691c1a9e0be742fa3702416e9df1e4ce7df08c72`
+**Reviewed head:** `97197795bfcbfc4914f31fc9bc731f7191c0eb5b`
 
 ## Context index
 
@@ -45,6 +47,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 5 | `742-8e4d-ordinary-delta-b-sonnet.md` | Ordinary delta review B (11c76a60..8e4ddd48) | Claude Sonnet 5.5 | `8e4ddd48` | APPROVE | `e918f0190ea92a192922f1fbb0a253e935d78c0799479697775aa8156a6eb05c` |
 | 6 | `742-security-opus.md` | Security review (2e03855e..8e4ddd48) | Claude Opus 5.5 | `8e4ddd48` | CLEAR | `10597158aeb0374b95cf695f22f7cac08cd5e1520186a29862d44d9fcaf47826` |
 | 7 | `742-691c-security-rebind-opus.md` | Security rebind (8e4ddd48..691c1a9e) | Claude Opus 5.5 | `691c1a9e` | CLEAR | `fe2e3940098cb29ffdd3c7bc794ebe1e33117a217ff850442981826f8595436d` |
+| 8 | `742-9719-security-rebind-opus.md` | Security rebind (1efb6a47..97197795) | Claude Opus 5.5 | `97197795` | CLEAR | `daa157cc0b8314272d9544f39091a6667d08192ff7abf7e9d3649709790fe4ba` |
 
 ## Embedded reports
 
@@ -550,3 +553,61 @@ Blocking: none. Non-blocking: the `/api/me/settings` GET note above. Prior findi
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 fe2e3940098cb29ffdd3c7bc794ebe1e33117a217ff850442981826f8595436d) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/742-9719-security-rebind-opus.md; Claude Opus 5.5; sha256 daa157cc0b8314272d9544f39091a6667d08192ff7abf7e9d3649709790fe4ba) -->
+# PR #742 exact-head security rebind (Claude Opus 5.5)
+
+**Reviewed head:** 97197795bfcbfc4914f31fc9bc731f7191c0eb5b
+**Prior CLEAR heads:**
+- 8e4ddd485f15533f6ddcdf8051cbf01a140c7f96 (`742-security-opus.md`);
+- 691c1a9e0be742fa3702416e9df1e4ce7df08c72 (`742-691c-security-rebind-opus.md`).
+
+**Main:** 9af1ed063fdc86f2c96f999e7e7fd901c8e68c7b. `git ls-remote` confirms main is still there, and `gh pr view 742` confirms the PR head is 97197795.
+**Model:** Claude Opus 5.5 (claude-opus-5-5), the same independent context as before. Not the author.
+
+## Structural checks
+
+| Check | Result |
+| --- | --- |
+| Parents of the head | 1efb6a474b3b130a538a1afb12fe07774242c24a, 9af1ed06... |
+| 691c1a9e..1efb6a47 | one commit, "docs(security-reviews): record #742 review chain". It adds `docs/07-planning/security-reviews/742-reach-reads-and-writes.md` only (552 lines). No code. |
+| `git merge-tree --write-tree 1efb6a47 9af1ed06` | tree b72a5da6...; the only conflict is in `docs/07-planning/decision-log.md` |
+| `git diff --name-only <merge-tree> <head>` | `docs/07-planning/decision-log.md` only |
+| Decision log: head against main (9af1ed06) | 15 lines added, 0 removed (the #742 entry, inserted first) |
+| Decision log: head against #742 side (1efb6a47) | 18 lines added, 0 removed (the #744 entry, second) |
+| Conflict markers in the head's decision log | 0 |
+| `git diff --name-only 1efb6a47 <head>` compared with `git diff --name-only 16234794 9af1ed06` | identical, 22 files |
+
+The decision log at the head opens with the #742 entry ("Submission accept answers an unreachable destination exactly like a missing one"). The #744 entry ("A project's creator holds a project-lead membership") comes next, then the older entries, unaltered.
+
+Of main's 22 files, 20 are byte-identical to main at the head. The other two were auto-merged because both sides changed them:
+- **`apps/api/src/project/index.ts`:** the head equals main plus exactly #742's `requireReachFilteredList` import, middleware and `reachableProjectIds` argument.
+- **`docs/01-architecture/rbac.md`:** the head equals main plus exactly #742's three paragraphs.
+
+## Interaction: #744 creator grants with #742 reach filtering
+
+The creator grant gives the creator a project-scope `project-lead` membership. Reach step 3 counts that membership, so `reachableProjectIds` includes the project. That is the same decision source the list, search and label filters use.
+
+My probe (`742-9719-rebind-probe.test.ts`, output `742-9719-rebind-probe-output.txt`) uses the real routes, with a workspace manager as creator:
+- the manager's project list contains the new project (200);
+- a search by the project's name contains it, with `totalCount=1`;
+- another workspace member without reach does not see it in either: list absent, search `totalCount=0`.
+
+`project-creator-lead.test.ts` also asserts that the creator's list contains the project, for manager, member and custom-role creators.
+
+## Runs on the merged tree
+
+The scratch worktree at 97197795 and the Testcontainers Postgres were both removed. No container of mine remains.
+
+| Command | Result |
+| --- | --- |
+| `CI=true vitest --config vitest.integration.config.ts project-creator-lead project-reach-reads project-reach-writes workspace-owner-admin-reach zz-opus-9719-probe` (the filter also matched `work-item-project-reach-reads`) | 6 files, 138 tests passed (`742-9719-rebind-integration.log`) |
+| `vitest --config vitest.permissions.config.ts` (`test:permissions`) | 16 files, 107 tests passed (`742-9719-rebind-permissions.log`) |
+| `TURBO_FORCE=true pnpm check:route-policy` | exit 0, 0 cached; 16 files, 107 tests (`742-9719-rebind-route-policy.log`) |
+
+## Findings
+
+Blocking: none. Earlier non-blocking findings are unchanged.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 daa157cc0b8314272d9544f39091a6667d08192ff7abf7e9d3649709790fe4ba) -->
