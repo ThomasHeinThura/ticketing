@@ -9,6 +9,7 @@ import {
 } from "@taskdesk/domain";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import db from "../database";
 import {
   apiRouter,
   type BaseVariables,
@@ -17,6 +18,7 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { assertCalendarUnused } from "../pending-action/deletion-targets";
 import {
   createPendingAction,
   requirePendingActionRequesterIdentity,
@@ -475,6 +477,12 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
     const requesterPersonId = await requirePendingActionRequesterIdentity(
       c.get("userId"),
       apiKey,
+    );
+    // CAL-9: refuse at request time; approval rechecks under lock.
+    await assertCalendarUnused(
+      db,
+      c.get("workspaceId"),
+      c.req.valid("param").id,
     );
     const created = await createPendingAction({
       requesterPersonId,
