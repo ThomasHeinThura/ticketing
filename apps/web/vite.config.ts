@@ -5,6 +5,7 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import packageJson from "../../package.json";
+import { i18nNamespaceGroups } from "./vite/i18n-namespace-groups";
 
 function preloadWorkRouteForDirectVisits(): Plugin {
   return {
@@ -58,14 +59,17 @@ function preloadWorkRouteForDirectVisits(): Plugin {
         // this user-visible chunk does not begin at the end of the LCP window.
         addChunkAndImports(workItemsPanelChunk.fileName);
 
+        // The route paints from the first-paint namespace group of its locale (see
+        // `src/lib/i18n/index.ts`), not the full catalog, and reaches it through the group
+        // loader table; fetch both alongside the route code.
         const localeAssets = Object.values(bundle).flatMap((item) => {
           if (item.type !== "chunk") return [];
           const locale = Object.keys(item.modules)
             .map(
               (moduleId) =>
-                moduleId
-                  .replaceAll("\\", "/")
-                  .match(/\/i18n\/([A-Za-z]{2,3}-[A-Za-z]{2,4})\.json$/)?.[1],
+                moduleId.match(
+                  /virtual:taskdesk-i18n\/slim-([A-Za-z]{2,3}-[A-Za-z]{2,4})$/,
+                )?.[1],
             )
             .find(Boolean);
           return locale ? [[locale, `/${item.fileName}`]] : [];
@@ -74,6 +78,18 @@ function preloadWorkRouteForDirectVisits(): Plugin {
           throw new Error(
             "G11 work-route preload could not resolve locale assets.",
           );
+        const slimLoaderChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId.endsWith("virtual:taskdesk-i18n/loaders-slim"),
+            ),
+        );
+        if (slimLoaderChunk?.type !== "chunk")
+          throw new Error(
+            "G11 work-route preload could not resolve the locale group loader.",
+          );
+        addChunkAndImports(slimLoaderChunk.fileName);
 
         const latinFontAsset = Object.values(bundle).find(
           (item) =>
@@ -164,6 +180,7 @@ export default defineConfig(({ mode }) => {
       }),
       ...(!isPortal ? [preloadWorkRouteForDirectVisits()] : []),
       ...(isPortal ? [portalModuleGraphMetadata()] : []),
+      i18nNamespaceGroups({ i18nDir: path.resolve(__dirname, "../../i18n") }),
       tailwindcss(),
       react(),
       babel({ presets: [reactCompilerPreset()] }),

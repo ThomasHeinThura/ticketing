@@ -11,9 +11,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-// Keep the small dialog composition available so create intent opens synchronously;
-// its query-heavy form is a separate dynamic module verified by the G11 route graph.
-import WorkItemCreateDialogShell from "@/components/work-item/work-item-create-dialog-shell";
+import { loadWorkItemCreateDialogShell } from "@/components/work-item/work-item-create-dialog-shell-loader";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -43,6 +41,9 @@ function preloadWorkItemsPanel() {
 }
 
 const WorkItemsPanel = lazy(loadWorkItemsPanel);
+// The dialog composition is warmed by the create trigger once it is visible (G11), so create
+// intent opens it as soon as it is clicked; its query-heavy form is a further dynamic module.
+const WorkItemCreateDialogShell = lazy(loadWorkItemCreateDialogShell);
 const WorkItemCreateTrigger = lazy(
   () => import("@/components/work-item/work-item-create-trigger"),
 );
@@ -453,12 +454,14 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           </Suspense>
         )}
         {project && isCreateOpenForProject ? (
-          <WorkItemCreateDialogShell
-            projectId={project.id}
-            workspaceId={project.workspaceId}
-            onClose={closeCreateDialog}
-            finalFocus={getCreateDialogFinalFocus}
-          />
+          <Suspense fallback={null}>
+            <WorkItemCreateDialogShell
+              projectId={project.id}
+              workspaceId={project.workspaceId}
+              onClose={closeCreateDialog}
+              finalFocus={getCreateDialogFinalFocus}
+            />
+          </Suspense>
         ) : null}
       </div>
     </>
