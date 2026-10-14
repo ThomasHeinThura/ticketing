@@ -582,6 +582,7 @@ const submissionDetailRoute = createRoute({
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
+    requireReachContext,
   ] as const,
   request: { params: submissionRefParam },
   responses: {
@@ -1026,9 +1027,17 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
     );
   })
   .openapi(submissionDetailRoute, async (c) => {
+    const reach = listReachOf(c);
     const detail = await findSubmission(
       c.req.valid("param").ref,
       c.get("workspaceId"),
+      undefined,
+      (project) =>
+        reach.reaches({
+          projectId: project.id,
+          workspaceId: project.workspaceId,
+          organisationId: project.organisationId,
+        }),
     );
     return c.json(
       {

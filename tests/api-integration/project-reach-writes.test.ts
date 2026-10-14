@@ -44,6 +44,7 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
 
   it("the file covers exactly the routes the guard requires of this family", () => {
     expect([...PROJECT_BODY_TARGET_ROUTE_KEYS].sort()).toEqual([
+      "GET /api/submissions/{ref}",
       "POST /api/submissions/{ref}/accept",
       "POST /api/submissions/{ref}/duplicate",
       "POST /api/views",
@@ -458,6 +459,86 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
         { method: "POST", body: { workItemId: a.own.id } },
       );
       expect(ok.status, await ok.clone().text()).toBe(200);
+    });
+  });
+
+  describe("GET /api/submissions/{ref}: an accepted submission's work item is shown only within reach", () => {
+    it("a triager without reach to the destination sees neither the work item id nor its public comments", async () => {
+      const s = await seedIntake("reach-detail");
+      const wsId = s.t.workspaceId;
+      const { project: second } = await createProjectFixture({
+        workspaceId: wsId,
+        name: "Second destination",
+      });
+      await db
+        .update(schema.projectTable)
+        .set({ organisationId: s.customer.orgId })
+        .where(eq(schema.projectTable.id, second.id));
+      await makeState(wsId, second.id, "backlog", true);
+      const secondStaff = await addMember(wsId, "admin");
+      await grantProjectRole(secondStaff.user.id, second.id, [
+        "project:read",
+        "work_item:read",
+        "work_item:create",
+        "work_item:comment",
+      ]);
+      const ref = await submitAs(s, s.customer, "Detail probe");
+      const accepted = await staffRequest(
+        s.t,
+        secondStaff,
+        `/api/submissions/${ref}/accept`,
+        {
+          method: "POST",
+          body: { projectId: second.id, workItemTypeId: s.t.type.id },
+        },
+      );
+      expect(accepted.status, await accepted.clone().text()).toBe(200);
+      const item = (await accepted.json()) as {
+        workItem: { id: string; key: string };
+      };
+      // A public comment on the converted item, written by someone who reaches it.
+      const marker = "internal-escalation-note";
+      await db.insert(schema.commentTable).values({
+        workspaceId: wsId,
+        workItemId: item.workItem.id,
+        authorId: secondStaff.personId,
+        actorType: "person",
+        body: {
+          type: "doc",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: marker }] },
+          ],
+        },
+        visibility: "public",
+      });
+
+      const path = `/api/submissions/${ref}`;
+      const inReach = await staffRequest(s.t, secondStaff, path);
+      const inText = await inReach.text();
+      expect(inReach.status, inText).toBe(200);
+      expect(inText).toContain(item.workItem.id);
+      expect(inText).toContain(marker);
+
+      const outside = await staffRequest(s.t, s.t.requester, path);
+      const outText = await outside.text();
+      expect(outside.status, outText).toBe(200);
+      expect(outText).not.toContain(item.workItem.id);
+      expect(outText).not.toContain(marker);
+      expect(
+        (JSON.parse(outText) as { submission: { workItemId: unknown } })
+          .submission.workItemId,
+      ).toBeNull();
+
+      mockAnonymousSession();
+      const key = await makeApiKey(s.t.requester.user.id, {
+        intake: ["triage"],
+        workspace: ["read"],
+      });
+      setAmbientHeaders({ "x-api-key": key });
+      const viaKey = await json(s.t.app, "GET", path);
+      const keyText = await viaKey.text();
+      expect(keyText).not.toContain(item.workItem.id);
+      expect(keyText).not.toContain(marker);
     });
   });
 });

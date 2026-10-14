@@ -88,7 +88,6 @@ export const PROJECT_LIST_ROUTE_KEYS = [
   "GET /api/project",
   "GET /api/search",
   "GET /api/views",
-  "GET /api/views/{id}",
   "GET /api/submissions/{ref}/duplicates",
 ] as const;
 
@@ -101,4 +100,19 @@ export const PROJECT_BODY_TARGET_ROUTE_KEYS = [
   "POST /api/views",
   "POST /api/submissions/{ref}/accept",
   "POST /api/submissions/{ref}/duplicate",
+  "GET /api/submissions/{ref}",
+] as const;
+
+/**
+ * Every route that addresses a saved view by id. The reach check lives in the shared
+ * `workspaceAccess.fromSavedView()` lookup: a project-scoped view of a project the caller
+ * does not reach is answered exactly like a missing view, before any gate or write.
+ */
+export const SAVED_VIEW_BY_ID_ROUTE_KEYS = [
+  "GET /api/views/{id}",
+  "PATCH /api/views/{id}",
+  "DELETE /api/views/{id}",
+  "POST /api/views/{id}/pin",
+  "POST /api/views/{id}/run",
+  "GET /api/views/{id}/count",
 ] as const;

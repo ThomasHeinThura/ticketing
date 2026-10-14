@@ -57,6 +57,9 @@ const PROJECT_BEARING_RESOURCES = [
   "comment",
   "column",
   "workflowRule",
+  // A saved view scoped to a project names it (#740): every route addressing a view by id
+  // must carry project reach.
+  "savedView",
 ] as const;
 
 /**
@@ -133,14 +136,10 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
   "GET /api/service-calendars/{id}/usage":
     "aggregate reference counts for deletion safety (sla_policy:read); no project or work item ids, names or titles",
   "GET /api/sla-policies/{id}": "one SLA policy definition; configuration row",
-  "GET /api/submissions/{ref}":
-    "one submission thread inside the intake queue; no project or work item fields, same row shape as the queue",
   "GET /api/submissions/{ref}/attachments":
     "the submission's own attachments; submissions are not project-bound until accepted",
   "GET /api/submissions/{ref}/attachments/{id}":
     "one attachment of the submission; not project-bound",
-  "GET /api/views/{id}/count":
-    "counts only the work items the caller reaches (the saved-view run applies per-row reach); returns a number, never a row",
   "GET /api/workflows/{id}": "one workflow definition; configuration row",
   "GET /api/workspace/{workspaceId}": "the workspace row itself",
   "GET /api/workspace/{workspaceId}/invitations":

@@ -1,3 +1,18 @@
+### 2026-10-14 · Submission accept answers an unreachable destination exactly like a missing one
+
+**Decision (conductor, 2026-10-14; reversible):** `POST /api/submissions/{ref}/accept` answers a destination project outside the triager's reach with the same 422 as a missing destination, after the claim has committed. It does not answer 404 before the claim.
+
+**Why:** the claim is committed before destination validation on purpose (IQ-16a: starting acceptance is a triage action). A missing destination already answers 422 after the claim. A different answer or a different side effect for an unreachable project would let a triager tell the two cases apart, which is an existence signal. Changing the missing case to 404 would break IQ-16a.
+
+**Consequences:**
+- No work item is created for an unreachable destination.
+- A failed accept leaves the submission claimed by the caller. Stuck claims are tracked in #743.
+- `POST /api/submissions/{ref}/duplicate` and the saved-view routes follow the same "unreachable looks missing" rule (rbac.md, IQ-5a, SV-22).
+
+**Supersedes:** nothing.
+
+**Reversal:** make the reach check in `acceptSubmission` throw 404 before the claim and update the reach tests in `tests/api-integration/project-reach-writes.test.ts`. The cost is that a missing destination and an unreachable one then differ in status and side effect.
+
 ### 2026-10-14 · Workspace owners and admins hold an explicit `sees_all` grant
 
 **Decision (Thomas, 2026-10-14):** workspace owner and admin memberships carry an explicit `sees_all` grant on that workspace, which is reach step 2 in rbac.md. The grant is written when the workspace is created and whenever a member becomes or stops being an owner or admin. A migration backfills it for existing owners and admins.

@@ -1,4 +1,3 @@
-import { HTTPException } from "hono/http-exception";
 import {
   type ApiKey,
   apiRouter,
@@ -151,7 +150,6 @@ const getViewRoute = createRoute({
   middleware: [
     workspaceAccess.fromSavedView(),
     requireWorkspaceCapability("saved_view:read"),
-    requireReachFilteredList,
   ] as const,
   request: { params: savedViewIdParam },
   responses: {
@@ -336,15 +334,6 @@ const view = apiRouter()
     const userId = c.get("userId");
     const personId = await resolveCallerPersonId(userId);
     const view = await getView(id, personId, userId);
-    // #740: a project-scoped view of a project outside reach answers like a missing view.
-    if (
-      view.scope === "project" &&
-      !(await listReachOf(c).reachableProjectIds([view.workspaceId])).includes(
-        view.scopeId,
-      )
-    ) {
-      throw new HTTPException(404, { message: "Saved view not found" });
-    }
     return c.json(view, 200);
   })
   .openapi(updateViewRoute, async (c) => {

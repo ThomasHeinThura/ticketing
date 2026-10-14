@@ -79,6 +79,13 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
   and any suggested duplicates.
 - `IQ-6` Triage actions are: **Accept**, **Decline**, **Merge as duplicate**,
   **Ask for clarification**.
+- `IQ-5a` Triage happens within reach. Suggested duplicates name only work items of projects the
+  triager reaches. Accepting into, or linking a submission to a work item of, a project outside
+  the triager's reach is answered exactly like a missing project or work item (accept: the same
+  422 as a missing destination, after the claim as for any failed destination check, so no
+  existence signal; link: the same 404). Nothing is converted or linked. For an accepted
+  submission, the staff detail shows the work item id and the comments carried over from it only
+  to a triager who reaches the work item's project.
 - `IQ-7` Accepting requires choosing the project and confirming the work item type. Both
   are pre-filled from the request type; the pre-fill is a suggestion, not a decision.
 - `IQ-8` On acceptance, form data is mapped onto native and custom fields per the request

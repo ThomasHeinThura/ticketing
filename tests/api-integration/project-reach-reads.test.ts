@@ -20,7 +20,10 @@ import { callerReach } from "../../apps/api/src/utils/caller-reach";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { requireRow } from "./helpers/fixtures";
-import { PROJECT_LIST_ROUTE_KEYS } from "./helpers/project-reach-route-keys";
+import {
+  PROJECT_LIST_ROUTE_KEYS,
+  SAVED_VIEW_BY_ID_ROUTE_KEYS,
+} from "./helpers/project-reach-route-keys";
 import {
   grantSeesAll,
   PROJECT_KEY_SCOPE,
@@ -221,7 +224,6 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         "GET /api/project",
         "GET /api/search",
         "GET /api/views",
-        "GET /api/views/{id}",
         "GET /api/submissions/{ref}/duplicates",
       ].sort(),
     );
@@ -492,6 +494,127 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
       expect(list.status, list.text).toBe(200);
       expect(list.body.map((v) => v.name)).toEqual(["Workspace wide view"]);
     });
+  });
+
+  describe("every route addressing a saved view by id answers an unreachable project-scoped view exactly like a missing one", () => {
+    const ROUTES = [
+      {
+        key: "GET /api/views/{id}",
+        method: "GET",
+        suffix: "",
+        body: undefined,
+      },
+      {
+        key: "PATCH /api/views/{id}",
+        method: "PATCH",
+        suffix: "",
+        body: { name: "Renamed" },
+      },
+      {
+        key: "DELETE /api/views/{id}",
+        method: "DELETE",
+        suffix: "",
+        body: undefined,
+      },
+      {
+        key: "POST /api/views/{id}/pin",
+        method: "POST",
+        suffix: "/pin",
+        body: undefined,
+      },
+      {
+        key: "POST /api/views/{id}/run",
+        method: "POST",
+        suffix: "/run",
+        body: {},
+      },
+      {
+        key: "GET /api/views/{id}/count",
+        method: "GET",
+        suffix: "/count",
+        body: undefined,
+      },
+    ] as const;
+
+    it("the table covers exactly the routes the guard requires of this family", () => {
+      expect(ROUTES.map((r) => r.key).sort()).toEqual(
+        [...SAVED_VIEW_BY_ID_ROUTE_KEYS].sort(),
+      );
+    });
+
+    async function writes() {
+      return JSON.stringify({
+        views: await db
+          .select()
+          .from(schema.savedViewTable)
+          .orderBy(schema.savedViewTable.id),
+        prefs: await db.select().from(schema.userPreferenceTable),
+        audit: (await db.select().from(schema.auditLogTable)).length,
+        pending: (await db.select().from(schema.pendingActionTable)).length,
+      });
+    }
+
+    for (const route of ROUTES) {
+      it(route.key, async () => {
+        const a = await arrange();
+        const hidden = requireRow(
+          await db
+            .insert(schema.savedViewTable)
+            .values({
+              workspaceId: a.world.workspaceId,
+              createdBy: a.seesAll.personId,
+              name: "Hidden project view",
+              scope: "project",
+              scopeId: a.world.otherProject.id,
+              visibility: "workspace",
+              layout: "list",
+              query: { entity: "work_item" },
+            })
+            .returning(),
+          "view",
+        );
+        const call = (id: string) =>
+          json(
+            a.app,
+            route.method,
+            `/api/views/${id}${route.suffix}`,
+            route.body,
+          );
+        // Callers WITHOUT reach to the hidden view's project: a plain member and a workspace
+        // admin (who holds workspace:manage_settings but no project reach).
+        for (const caller of [
+          a.world.outsiderMember,
+          a.world.outsiderAdmin,
+          a.world.projectAdmin,
+        ]) {
+          mockAuthenticatedSession(caller.user);
+          const missing = await call(`missing-${randomUUID()}`);
+          const missingText = await missing.text();
+          expect(missing.status, missingText).toBe(404);
+          const before = await writes();
+          const response = await call(hidden.id);
+          const text = await response.text();
+          expect(response.status, text).toBe(404);
+          expect(text).toBe(missingText);
+          expect(await writes()).toBe(before);
+        }
+        // Control: the project's own member (and sees_all) reach the view on this route.
+        mockAuthenticatedSession(a.world.otherProjectAdmin.user);
+        const own = await call(hidden.id);
+        expect(own.status, await own.clone().text()).not.toBe(404);
+        // API key owned by an outsider: the same answer.
+        mockAnonymousSession();
+        const key = await makeApiKey(a.world.outsiderAdmin.user.id, {
+          ...PROJECT_KEY_SCOPE,
+          saved_view: ["read", "create", "update", "delete"],
+        });
+        setAmbientHeaders({ "x-api-key": key });
+        const before = await writes();
+        const viaKey = await call(hidden.id);
+        expect(viaKey.status, await viaKey.clone().text()).toBe(404);
+        expect(await writes()).toBe(before);
+      });
+    }
   });
 
   describe("customers", () => {
