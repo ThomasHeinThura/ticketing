@@ -14,7 +14,11 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { requireRow } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+  requireRow,
+} from "./helpers/fixtures";
 import {
   TASK_TARGET_ROUTE_KEYS,
   TASK_TARGET_WORK_ITEM_ROUTE_KEYS,
@@ -27,6 +31,7 @@ import {
 } from "./helpers/project-reach-world";
 import {
   type App,
+  addMember,
   json,
   makeApiKey,
   seedLegacy,
@@ -391,6 +396,100 @@ describe("API integration: project reach on task-targeting routes (#720)", () =>
       expect(text).toBe("Label not found");
       expect(await projectSnapshot()).toBe(before);
     });
+  });
+
+  describe("body-task label routes: a missing task and an unreachable one answer identically, whoever the caller is", () => {
+    const LABEL_ROUTES = [
+      {
+        key: "POST /api/label",
+        call: (app: App, w: ProjectWorld, i: Ids, taskId: string) =>
+          json(app, "POST", "/api/label", {
+            name: "Probe label",
+            color: "#123456",
+            workspaceId: w.workspaceId,
+            taskId,
+          }),
+      },
+      {
+        key: "PUT /api/label/{id}/task",
+        call: (app: App, w: ProjectWorld, i: Ids, taskId: string) =>
+          json(app, "PUT", `/api/label/${i.workspaceLabelId}/task`, { taskId }),
+      },
+    ];
+
+    for (const route of LABEL_ROUTES) {
+      it(`${route.key}: 2 callers x 3 targets give six identical responses`, async () => {
+        const { world, app, ids } = await arrange();
+        // Same-workspace unreachable task, other-tenant task, missing id.
+        const sameWorkspace = requireRow(
+          await db
+            .insert(schema.taskTable)
+            .values({
+              projectId: world.otherProject.id,
+              title: "Unreachable here",
+              description: "d",
+              priority: "low",
+              status: "to-do",
+              number: 1,
+              position: 1,
+            })
+            .returning(),
+          "same-workspace task",
+        );
+        const tenant = await createWorkspaceMember({ role: "admin" });
+        const { project: foreignProject } = await createProjectFixture({
+          workspaceId: tenant.workspace.id,
+        });
+        const foreign = requireRow(
+          await db
+            .insert(schema.taskTable)
+            .values({
+              projectId: foreignProject.id,
+              title: "Other tenant",
+              description: "d",
+              priority: "low",
+              status: "to-do",
+              number: 1,
+              position: 1,
+            })
+            .returning(),
+          "other-tenant task",
+        );
+        const targets = [
+          sameWorkspace.id,
+          foreign.id,
+          `missing-${randomUUID()}`,
+        ];
+        const viewer = await addMember(world.workspaceId, "viewer");
+        const keyNoLabel = await makeApiKey(world.projectAdmin.user.id, {
+          project: ["read"],
+          work_item: ["read"],
+          workspace: ["read"],
+        });
+        const before = await projectSnapshot();
+
+        const seen: { status: number; text: string }[] = [];
+        for (const taskId of targets) {
+          mockAuthenticatedSession(viewer.user);
+          const r = await route.call(app, world, ids, taskId);
+          seen.push({ status: r.status, text: await r.text() });
+        }
+        mockAnonymousSession();
+        setAmbientHeaders({ "x-api-key": keyNoLabel });
+        for (const taskId of targets) {
+          const r = await route.call(app, world, ids, taskId);
+          seen.push({ status: r.status, text: await r.text() });
+        }
+        setAmbientHeaders({});
+
+        expect(seen).toHaveLength(6);
+        for (const response of seen) {
+          expect(response).toEqual(seen[0]);
+        }
+        expect(seen[0]?.status).toBe(404);
+        expect(await projectSnapshot()).toBe(before);
+      });
+    }
   });
 
   describe("workspace-level label definitions stay workspace-scoped", () => {

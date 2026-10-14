@@ -58,10 +58,13 @@ async function assertTaskReach(
   const userId = c.get("userId");
   if (!userId) throw new HTTPException(401, { message: "Unauthorized" });
   const task = await loadLiveTaskFacts(taskId);
-  // A task that does not exist is the downstream controller's own "not found".
-  if (!task) return;
+  // Reach runs BEFORE the route's capability gate (as on #712's item routes), so a missing
+  // task and an unreachable one (this workspace or another tenant) must answer the identical
+  // 404 here for every caller; otherwise a caller lacking the capability would see 404 for an
+  // existing task and 403 for a missing one. Identity is resolved either way, so both do the
+  // same work.
   const reach = await callerReach(c, userId);
-  if (!(await reach.reaches(task))) {
+  if (!task || !(await reach.reaches(task))) {
     setShadowLegacyAuthorization(c, "denied");
     throw new HTTPException(404, { message: notFoundMessage });
   }
