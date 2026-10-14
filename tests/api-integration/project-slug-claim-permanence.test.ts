@@ -25,7 +25,10 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  createWorkspaceMember,
+  grantProjectManageAccess,
+} from "./helpers/fixtures";
 
 function createProjectRequest(
   app: ReturnType<typeof createApp>["app"],
@@ -164,6 +167,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     });
     expect(attackerCreate.status).toBe(200);
     const attackerProject = (await attackerCreate.json()) as { id: string };
+    await grantProjectManageAccess(attacker.user.id, attackerProject.id);
 
     const type = await makeWorkItemType(attacker.workspace.id);
     await makeDefaultState(attacker.workspace.id, attackerProject.id);
@@ -235,6 +239,10 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     });
     expect(attackerCreate.status).toBe(200);
     const attackerProject = (await attackerCreate.json()) as { id: string };
+    const attackerGrant = await grantProjectManageAccess(
+      attacker.user.id,
+      attackerProject.id,
+    );
 
     const type = await makeWorkItemType(attacker.workspace.id);
     await makeDefaultState(attacker.workspace.id, attackerProject.id);
@@ -246,6 +254,13 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
       );
       expect(created.status).toBe(200);
     }
+
+    // The project grant is fixture scaffolding for the item creates above. Withdraw it so
+    // the workspace delete below exercises the slug/key claims, not the unrelated RESTRICT
+    // on `membership.role_id` that a live project membership puts in the cascade's way.
+    await db
+      .delete(schema.membershipTable)
+      .where(eq(schema.membershipTable.roleId, attackerGrant.id));
 
     // Attacker hard-deletes their own workspace. This cascades away the workspace,
     // its project and every work item -- but `work_item_key_claim` has no FK to any of
@@ -324,6 +339,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     });
     expect(attackerCreate.status).toBe(200);
     const attackerProject = (await attackerCreate.json()) as { id: string };
+    await grantProjectManageAccess(attacker.user.id, attackerProject.id);
 
     // Simulate four prior ordinary creates (tasks or work items) having already
     // advanced the shared counter.
@@ -391,6 +407,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     });
     expect(created.status).toBe(200);
     const project = (await created.json()) as { id: string };
+    await grantProjectManageAccess(holder.user.id, project.id);
 
     // Manufacture the pre-existing poisoned claim `POISON-1` would collide with --
     // exactly what an already-freed-and-reclaimed slug from before this fix existed
@@ -444,6 +461,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     });
     expect(created.status).toBe(200);
     const project = (await created.json()) as { id: string };
+    await grantProjectManageAccess(owner.user.id, project.id);
 
     const renamedAway = await updateProjectRequest(app, project.id, {
       name: "Round trip",
@@ -490,6 +508,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     });
     expect(firstCreate.status).toBe(200);
     const firstProject = (await firstCreate.json()) as { id: string };
+    await grantProjectManageAccess(owner.user.id, firstProject.id);
 
     let releaseRowLock: (() => void) | undefined;
     let signalRowLockAcquired: (() => void) | undefined;
@@ -534,6 +553,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
       });
       expect(secondCreate.status).toBe(200);
       secondProject = (await secondCreate.json()) as { id: string };
+      await grantProjectManageAccess(owner.user.id, secondProject.id);
 
       // Move the live row away while preserving its permanent claim. The blocked
       // transaction can then update the first project to RACE-SLUG unless it validates

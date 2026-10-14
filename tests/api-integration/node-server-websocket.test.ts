@@ -100,6 +100,7 @@ async function grantNativeProjectRead(
         capabilities: [
           "project:read",
           "work_item:read",
+          "work_item:create",
           "work_item:update",
           "comment:create",
           "comment:create_internal",

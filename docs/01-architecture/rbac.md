@@ -507,6 +507,38 @@ same `404` as a missing one; in reach without the capability answers `403`. Work
 reach is an explicit opt-out that must state its reason, and `work-item-reach-guard.test.ts`
 fails any item-scoped route that omits project reach without one.
 
+**Project reach also governs every project-scoped route** (#720). A route whose policy declares
+`scope: project` with `reach: required` acts on one project, directly or through a row inside
+it: project update, archive and unarchive, health, milestones, prerequisites, stakeholders,
+document links, columns, workflow rules and the create-into-project routes (`POST
+/api/projects/{projectId}/work-items`, the legacy `POST /api/task/{projectId}` and
+`/api/task/import/{projectId}`). It is decided before the capability and before any body
+validation or write: an out-of-reach project answers the same `404` as a missing one, in reach
+without the registered capability answers `403`, and a request that carries an API key still
+needs project reach (its capability stays with the key-aware gate). `PUT /api/project/{id}`
+keeps its handler-level `project:manage_settings` check for `defaultCommentVisibility`, which
+runs after reach, so an outsider never learns the project exists from that `403`.
+`project-reach-guard.test.ts` fails any such route that omits project reach, and the
+integration tables (`project-scoped-reach.test.ts`) drive the real middleware per route.
+
+**Acting on a specific task requires reach to that task's project** (#720, decision 720-A).
+This holds for the routes outside the work-item surface that name a task:
+
+| Route family | What carries the reach check |
+| --- | --- |
+| Time entries (`GET/POST /api/time-entry…`, `PUT /api/time-entry/{id}`) | Declared on the `work_item` scope; project reach from the task (or the entry's task). The capability stays with the route's own gate |
+| Task labels (`GET /api/label/task/{taskId}`) | Declared on the `work_item` scope, as above |
+| Label routes that name a task in the body, or address a label bound to a task (`POST /api/label`, `GET/PUT/DELETE /api/label/{id}`, `PUT/DELETE /api/label/{id}/task`) | `requireBodyTaskReach` / `requireLabelRowTaskReach`: project reach to the named task, answered with the route's own "not found" |
+| `GET /api/asset/{id}` | An asset belongs to a project (and may be bound to a task in it): the project must be in reach, one `404` for missing and out of reach |
+| `PATCH /api/task/bulk` | Per task: a task in a project outside reach is dropped before any gate runs, so it is indistinguishable from a missing id; the operation's project-level capability (`work_item:update`, `work_item:assign`, `work_item:delete`, `label:manage`) is then decided per task and refused per item |
+
+**Workspace-level label definitions stay workspace-scoped:** a label with no task (create,
+read, rename, delete) is decided by workspace membership and the label permission alone.
+Reversal path for this decision: drop the reach requirement on the routes in the table.
+
+Creating a project does not grant its creator project reach or any project role; that is a
+separate grant (membership), exactly as for the existing reads.
+
 **The 404 is constant-shape.** An out-of-reach id and a non-existent id return the same
 status and the same body, and both count against the same rate-limit bucket. The reach check
 is **always executed** — on a lookup miss against a synthesised row rather than a fetched one,

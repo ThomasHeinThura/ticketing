@@ -465,6 +465,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     const { project: otherProject } = await createProjectFixture({
       workspaceId: creator.workspace.id,
     });
+    await grantWorkItemProjectAccess(creator.user.id, otherProject.id);
     await makeDefaultState(creator.workspace.id, otherProject.id);
 
     const item = (await (
@@ -602,6 +603,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     const { project: strangerProject } = await createProjectFixture({
       workspaceId: stranger.workspace.id,
     });
+    await grantWorkItemProjectAccess(stranger.user.id, strangerProject.id);
     const strangerType = await makeWorkItemType(stranger.workspace.id);
     await makeDefaultState(stranger.workspace.id, strangerProject.id);
     mockAuthenticatedSession(stranger.user);

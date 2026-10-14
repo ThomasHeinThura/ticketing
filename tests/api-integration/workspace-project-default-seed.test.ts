@@ -19,6 +19,7 @@ import { seedProjectStates } from "../../apps/api/src/utils/seed-project-states"
 import { seedWorkspaceDefaults } from "../../apps/api/src/utils/seed-workspace-defaults";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
+import { grantWorkItemProjectAccess } from "./helpers/fixtures";
 import { signUpUser } from "./helpers/organization-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
@@ -108,6 +109,9 @@ describe("API integration: workspace/project default seeding (#309)", () => {
       id: string;
       slug: string;
     };
+    // Creating a project grants the creator no project membership, and the work-item create
+    // route requires project reach (#720): give the owner the item authority explicitly.
+    await grantWorkItemProjectAccess(owner.user.id, project.id);
 
     const states = await db.query.stateTable.findMany({
       where: eq(schema.stateTable.projectId, project.id),

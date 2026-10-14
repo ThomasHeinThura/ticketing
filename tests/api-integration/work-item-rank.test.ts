@@ -266,6 +266,7 @@ describe("API integration: work item rank (#23 fourth slice)", () => {
     const { project: otherProject } = await createProjectFixture({
       workspaceId: creator.workspace.id,
     });
+    await grantWorkItemProjectAccess(creator.user.id, otherProject.id);
     const otherType = await makeWorkItemType(creator.workspace.id);
     await makeDefaultState(creator.workspace.id, otherProject.id);
     const foreign = (await (

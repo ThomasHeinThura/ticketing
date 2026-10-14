@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectManageAccess,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -60,6 +61,7 @@ describe("API integration: label detach/attach", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const task = await seedTask(member.user.id, project.id);
 
     const workspaceLabel = requireRow(
@@ -101,6 +103,7 @@ describe("API integration: label detach/attach", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const task = await seedTask(member.user.id, project.id);
 
     mockAuthenticatedSession(member.user);
@@ -151,6 +154,7 @@ describe("API integration: label detach/attach", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const task = await seedTask(member.user.id, project.id);
 
     const label = requireRow(
@@ -198,6 +202,7 @@ describe("API integration: label detach/attach", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const task = await seedTask(member.user.id, project.id);
 
     const label = requireRow(
@@ -243,6 +248,7 @@ describe("API integration: label detach/attach", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const task = await seedTask(member.user.id, project.id);
 
     const workspaceLabel = requireRow(
@@ -293,6 +299,7 @@ describe("API integration: label detach/attach", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const task = await seedTask(member.user.id, project.id);
 
     const workspaceLabel = requireRow(
@@ -380,6 +387,7 @@ describe("API integration: label detach/attach", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const task = await seedTask(member.user.id, project.id);
 
     const label = requireRow(
@@ -457,6 +465,7 @@ describe("API integration: label detach/attach", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
 
     const taskA = requireRow(
       await db
@@ -610,6 +619,7 @@ describe("API integration: label detach/attach", () => {
     const { project: foreignProject } = await createProjectFixture({
       workspaceId: foreign.workspace.id,
     });
+    await grantProjectManageAccess(foreign.user.id, foreignProject.id);
     const foreignTask = await seedTask(foreign.user.id, foreignProject.id);
 
     mockAuthenticatedSession(member.user);

@@ -27,6 +27,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 
 const FAIL_FUNCTION = "td_probe_316_fail_insert";
@@ -80,6 +81,7 @@ describe("API integration: backfill legacy workspace/project defaults (#316)", (
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
 
     // Pre-backfill: exactly the failure #316 exists to fix.
     const typesBefore = await db.query.workItemTypeTable.findMany({
