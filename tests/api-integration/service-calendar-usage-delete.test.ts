@@ -225,10 +225,7 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
     ).toHaveLength(1);
   });
 
-  // KNOWN GAP (#717 notes): CAL-9 says "both request and approval recheck
-  // references", but DELETE currently returns 202 for an in-use calendar and
-  // only approval rejects it. Remove `.fails` when the request-time check lands.
-  it.fails("CAL-9: rejects deletion requests while any project still references the calendar", async () => {
+  it("CAL-9: rejects deletion requests while any project still references the calendar", async () => {
     const owner = await createWorkspaceMember({ role: "admin" });
     const calendar = await makeCalendar(owner.workspace.id, owner.user.id);
     const { project } = await createProjectFixture({
@@ -263,6 +260,12 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
     expect(response.status).toBe(409);
     await expect(response.text()).resolves.toContain("service_calendar_in_use");
     expect(await db.select().from(schema.pendingActionTable)).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.entityType, "pending_action")),
+    ).toHaveLength(0);
     expect(
       await db
         .select()
@@ -549,7 +552,7 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
     ).toHaveLength(1);
   });
 
-  it("CAL-9: counts SLA policy versions in usage and blocks approval while one references the calendar", async () => {
+  it("CAL-9: counts SLA policy versions in usage and rejects the deletion request while one references the calendar", async () => {
     const owner = await createWorkspaceMember({ role: "admin" });
     const calendar = await makeCalendar(owner.workspace.id, owner.user.id);
     const [policy] = await db
@@ -592,18 +595,9 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
     const request = await app.request(`/api/service-calendars/${calendar.id}`, {
       method: "DELETE",
     });
-    expect(request.status).toBe(202);
-    const pending = (await request.json()) as { pendingActionId: string };
-    const approval = await app.request(
-      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: "{}",
-      },
-    );
-    expect(approval.status).toBe(409);
-    await expect(approval.text()).resolves.toContain("service_calendar_in_use");
+    expect(request.status).toBe(409);
+    await expect(request.text()).resolves.toContain("service_calendar_in_use");
+    expect(await db.select().from(schema.pendingActionTable)).toHaveLength(0);
     expect(
       await db
         .select()
