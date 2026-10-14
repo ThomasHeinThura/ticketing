@@ -122,7 +122,7 @@ function useTriggerListboxName(
 ): ListboxName {
   const [name, setName] = React.useState<ListboxName>({});
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (disabled || !listElement) {
       setName({});
       return;

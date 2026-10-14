@@ -106,6 +106,63 @@ describe("Select", () => {
       ).toBeInTheDocument();
     });
 
+    it("names the listbox from the trigger's aria-labelledby", async () => {
+      render(
+        <div>
+          <span id="region-label">Region label</span>
+          <label htmlFor="region">Ignored native label</label>
+          <Select items={items}>
+            <SelectTrigger aria-labelledby="region-label" id="region">
+              <SelectValue placeholder="Pick" />
+            </SelectTrigger>
+            <SelectPopup>
+              <SelectItem value="low">Low</SelectItem>
+            </SelectPopup>
+          </Select>
+        </div>,
+      );
+
+      fireEvent.click(screen.getByRole("combobox", { name: "Region label" }));
+      const listbox = await screen.findByRole("listbox", {
+        name: "Region label",
+      });
+      expect(listbox).toHaveAttribute("aria-labelledby", "region-label");
+    });
+
+    it("names an open listbox after its own trigger when aria-controls is not yet paired and another Select is on the page", async () => {
+      render(
+        <div>
+          <Select items={items}>
+            <SelectTrigger aria-label="First field">
+              <SelectValue placeholder="Pick" />
+            </SelectTrigger>
+            <SelectPopup>
+              <SelectItem value="low">Low</SelectItem>
+            </SelectPopup>
+          </Select>
+          <Select items={items}>
+            <SelectTrigger
+              aria-controls="not-the-list"
+              aria-label="Second field"
+            >
+              <SelectValue placeholder="Pick" />
+            </SelectTrigger>
+            <SelectPopup>
+              <SelectItem value="high">High</SelectItem>
+            </SelectPopup>
+          </Select>
+        </div>,
+      );
+
+      fireEvent.click(screen.getByRole("combobox", { name: "Second field" }));
+      expect(
+        await screen.findByRole("listbox", { name: "Second field" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("listbox", { name: "First field" }),
+      ).not.toBeInTheDocument();
+    });
+
     it("lets a consumer name the listbox explicitly", async () => {
       render(
         <Select items={items}>
