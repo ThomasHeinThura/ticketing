@@ -16,11 +16,13 @@ A Claude Sonnet 5.5 lane implemented the change. The reviewers below are fresh, 
 - Mechanical security rebind at `722ee8b5`: CLEAR. It is a pure merge of `main` `82aecead` (#732).
 - Mechanical security rebind at `410e20e2`: CLEAR. This is a pure merge of `main` `1f1abe7c` (#733) and does not interact with this PR's surface.
 - Mechanical security rebind at `882eb1d8`: CLEAR. This is a pure merge of `main` `6015f016` (#738), with no interaction.
+- Mechanical security rebind at `64ee15b1`: CLEAR. A pure merge of `main` `a31bdde3` (#730, #739). Assign and unassign, item reach and the 409 precondition are unchanged.
 
 **Reviewed head:** `f59b68ca1e02c69a1c87276965e53a7c84fded64`
 **Reviewed head:** `722ee8b59e6a240244a2959612b9323cf932706e`
 **Reviewed head:** `410e20e220a9e69412d4c6f77625b461a98cc16d`
 **Reviewed head:** `882eb1d8530ab3511d17333ac0a3e8024e5bf6fe`
+**Reviewed head:** `64ee15b10e0f892602d9417f5936e8808eb6c634`
 
 ## Context index
 
@@ -34,6 +36,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 4 | `735-722e-security-rebind-opus.md` | Mechanical security rebind (f59b68ca..722ee8b5) | Claude Opus 5.5 | `722ee8b5` | CLEAR | `8332a98ebf3f8837bc8993484a92d9df7daaf366eb0f088ac558fcb4bc9faf8b` |
 | 5 | `735-410e-security-rebind-opus.md` | Mechanical security rebind (8b5f1406..410e20e2) | Claude Opus 5.5 | `410e20e2` | CLEAR | `4ba751db0b9f8707e6cc561a871e86f5d646b9029676d0f746c65e7d2957446b` |
 | 6 | `735-882e-security-rebind-opus.md` | Mechanical security rebind (3a37b329..882eb1d8) | Claude Opus 5.5 | `882eb1d8` | CLEAR | `e168df093dc5625ecd34cfe9c69f56f503052d302ecb14f6fc39f809398e6291` |
+| 7 | `735-64ee-security-rebind-opus.md` | Mechanical security rebind (6d30d432..64ee15b1) | Claude Opus 5.5 | `64ee15b1` | CLEAR | `a9b07c53ec8c7e12740970766ebf5cd1b2a7e25e5fc9e6e627010799523a5687` |
 
 ## Embedded reports
 
@@ -494,3 +497,71 @@ Prior findings carry over unchanged:
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 e168df093dc5625ecd34cfe9c69f56f503052d302ecb14f6fc39f809398e6291) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/735-64ee-security-rebind-opus.md; Claude Opus 5.5; sha256 a9b07c53ec8c7e12740970766ebf5cd1b2a7e25e5fc9e6e627010799523a5687) -->
+# PR #735 security review: exact-head rebind after merging main (#730 and #739)
+
+**Reviewed head:** 64ee15b10e0f892602d9417f5936e8808eb6c634
+**Prior CLEAR head:** 882eb1d8530ab3511d17333ac0a3e8024e5bf6fe (`735-882e-security-rebind-opus.md`; the substantive review is `735-security-opus.md` at f59b68ca)
+**Pre-merge head:** 6d30d432018cf65747f950baf689f55c5a08871f
+**Merged main:** a31bdde3fde0d31b77bf7452f97abab7b8ce63fc. It contains:
+- #730 (6389d6e7), API project reach;
+- #739 (a31bdde3), web i18n namespace groups.
+
+**Previous main:** 6015f0163f150dcb7f09e485ad0985a8d890db94
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This is the same independent context as the prior #735 security reviews. It did not author, direct or remediate the change.
+**Scope:** a mechanical rebind plus the #730 interaction. No tests were run, as the coordinator instructed.
+
+## Checks
+
+All checks ran against live git and GitHub.
+
+| Check | Result |
+| --- | --- |
+| `gh pr view 735` head | `64ee15b1…`: matches |
+| `origin/main`, confirmed through the GitHub API | `a31bdde3…`: main is unchanged |
+| Parents of 64ee15b1 | `6d30d432…` and `a31bdde3…`: matches |
+| Tree compared with `git merge-tree --write-tree 6d30d432 a31bdde3` | both `fa027e5f79ce547431fa9b53869c78bca7c6f4c4`. The merge is clean and adds no hand edits. |
+| `diff --name-only 6d30d432..64ee15b1` compared with `diff --name-only 6015f016..a31bdde3`, where 6015f016 is the merge base | identical, 111 files |
+| Commits after the prior CLEAR (`882eb1d8..6d30d432`) | exactly one, `6d30d432 docs(security-reviews): bind the main-merge rebind`. Its parent is 882eb1d8 and it changes only `docs/07-planning/security-reviews/735-unassign-expected-holder.md`. It is a note only. |
+| PR code patch: `0cc0ae12..f59b68ca` compared with `a31bdde3..64ee15b1`, excluding security-review notes, with index and hunk-header lines ignored | byte-identical (`cmp` exit 0). The unassign handler, query schema, OpenAPI entry, web fetcher and tests are exactly what was cleared. |
+
+## #730 interaction (project reach)
+
+#730 does touch two files that #735 also touches. In both, it changes a different route.
+
+**`apps/api/src/work-item/index.ts`**
+- #730's only hunk there is `createWorkItemRoute`, whose middleware becomes `workspaceAccess.fromProject("projectId", { requireProjectReach: true, deferApiKeyCapability: true })`.
+- It also adjusts that route's 400 and 404 descriptions.
+- The assign and unassign routes are not touched. They still use `requireWorkItemReach("key", { deferApiKeyCapability: true })`.
+
+**`tests/api-contract/openapi.json`**
+- #730's hunks only change descriptions on project-scoped routes: "Project not found or out of reach", "Malformed project ID", and the asset download text.
+- No hunk touches `DELETE /work-items/{key}/assign` or `POST /work-items/{key}/assign`.
+
+#730 does not modify the files the unassign route depends on:
+
+- `require-work-item-reach.ts`;
+- `require-workspace-capability.ts`;
+- the unassign or assign controllers;
+- `work-item/policy.ts`.
+
+Its `workspace-access-middleware.ts` and `task-target-reach.ts` changes apply to project-scoped and task-target routes, not to the `{key}` item routes.
+
+The `work-item-reach-guard.test.ts` change is a comment only.
+
+So the order (reach 404, then capability 403, then the 409 precondition, then the conditional write) is unchanged, and so is the analysis in `735-security-opus.md`.
+
+## #739 interaction (web i18n)
+
+#739 changes web i18n loaders, the work route, the create-trigger, a new e2e spec and the locale JSON. None of these is one of #735's files.
+
+#735's web change reuses the existing `workItems:journey.assignmentConflict` key and adds no string. The work-item detail journey is not one of #739's deferred work-list namespaces.
+
+Prior findings carry over unchanged:
+
+- no blocking findings;
+- N1–N4 remain non-blocking or informational.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 a9b07c53ec8c7e12740970766ebf5cd1b2a7e25e5fc9e6e627010799523a5687) -->
