@@ -11,8 +11,10 @@ A Claude Sonnet 5.5 lane implemented the change. The reviewers below are fresh, 
 - Ordinary review A by Claude Sonnet 5.5 (real app, axe, G8): APPROVE at `2574031a` and at `fbd00cd6`. It also mechanically confirmed the merge of `main` at `ad4f0429`.
 - Ordinary review B by Claude Sonnet 5.5 (primitive design, mutations): APPROVE at `2574031a` and at `fbd00cd6`. It then gave delta APPROVE at `0be69dd4` for the selector-only e2e commit.
 - Security review by Claude Opus 5.5: CLEAR at `0be69dd4`. No e2e journey is weakened, there are no secrets, the DOM-derived name is XSS-safe, and the baseline hash matches.
+- Mechanical security rebind at `4eccd322`: CLEAR. This is a pure merge of `main` `1f1abe7c` (#733) and does not interact with this PR's surface.
 
 **Reviewed head:** `0be69dd4c3b1acb496e3b506af6b48fcb725c0c6`
+**Reviewed head:** `4eccd32268c2666fd5af68a05ee587fde55ab746`
 
 ## Context index
 
@@ -27,6 +29,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 5 | `736-ad4f-ordinary-merge-confirm-sonnet.md` | Merge confirmation A (fbd00cd6..ad4f0429) | Claude Sonnet 5.5 | `ad4f0429` | CONFIRMED | `f931a7a121b09cb769da4dfc0de2bfed81428933fda31bba115e391789ea664d` |
 | 6 | `736-0be6-ordinary-delta-b-sonnet.md` | Ordinary delta review B (ad4f0429..0be69dd4) | Claude Sonnet 5.5 | `0be69dd4` | APPROVE | `7cbeb37646ad677b89bcc8fe2f548641f60697457759fea039478edd1e6c90ae` |
 | 7 | `736-security-opus.md` | Security review (82aecead..0be69dd4) | Claude Opus 5.5 | `0be69dd4` | CLEAR | `892ae6604666d1503cfc371812936554df162209247ac2d51e0377fb16b2d9dc` |
+| 8 | `736-4ecc-security-rebind-opus.md` | Mechanical security rebind (08ad4a6e..4eccd322) | Claude Opus 5.5 | `4eccd322` | CLEAR | `c5768921c7028851890e7ee3e5d76e734a2626a8cb610660a25fce9f05f35bdc` |
 
 ## Embedded reports
 
@@ -349,3 +352,42 @@ No blocking findings.
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 892ae6604666d1503cfc371812936554df162209247ac2d51e0377fb16b2d9dc) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/736-4ecc-security-rebind-opus.md; Claude Opus 5.5; sha256 c5768921c7028851890e7ee3e5d76e734a2626a8cb610660a25fce9f05f35bdc) -->
+# PR #736 security review: exact-head rebind after merging main (#733)
+
+**Reviewed head:** 4eccd32268c2666fd5af68a05ee587fde55ab746
+**Prior CLEAR head:** 0be69dd4c3b1acb496e3b506af6b48fcb725c0c6 (`736-security-opus.md`, by a different Opus reviewer)
+**Pre-merge head:** 08ad4a6e96b7a818a5541aa0d1d925fc9c0704e1
+**Merged main:** 1f1abe7ca145d9a9749c869d4a4b94f4eb4d2537 (#733, owner/admin `sees_all`)
+**Previous main:** 82aecead4c32861c3b2321af4abf7fcd1dc14731
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This context did not author, direct or remediate #736.
+
+**Scope:** a mechanical rebind only. No tests were run, as the coordinator instructed. This rebind confirms that nothing changed since 0be69dd4 except a documentation commit and a clean merge of main. The substantive security analysis is the prior reviewer's, in `736-security-opus.md`; I did not re-derive it.
+
+## Checks
+
+All checks ran against live git and GitHub.
+
+| Check | Result |
+| --- | --- |
+| `gh pr view 736` head | `4eccd322…`: matches |
+| `origin/main` | `1f1abe7c…`: main is unchanged |
+| Parents of 4eccd322 | `08ad4a6e…` and `1f1abe7c…`: matches |
+| Tree compared with `git merge-tree --write-tree 08ad4a6e 1f1abe7c` | both `343c1ad7e0022eb5d167d7656d2b72d6332371a0`. The merge is clean and adds no hand edits. |
+| `diff --name-only 08ad4a6e..4eccd322` compared with `diff --name-only 82aecead..1f1abe7c` | identical, 21 files |
+| 08ad4a6e already contains 82aecead | yes |
+| Commits after the prior CLEAR (`0be69dd4..08ad4a6e`) | exactly one, `08ad4a6e docs(security-reviews): record #736 review chain`. Its parent is 0be69dd4 and it adds one file, `docs/07-planning/security-reviews/736-select-listbox-name.md`, with 351 insertions. It is documentation only. |
+
+## Interaction with #736's surface (web, e2e, ui)
+
+The 21-file #733 delta contains only:
+
+- `apps/api/**`: the migration 0123 SQL and meta, `index.ts` boot reconcile, and the workspace, invitation and user controllers, including `workspace-admin-reach.ts`;
+- `docs/**`;
+- `tests/api-integration/**`.
+
+It contains no file under `apps/web`, `packages/` (including ui) or `tests/e2e`. A path filter for those prefixes returned nothing. There is no file-level overlap with, or interaction with, #736's surface.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 c5768921c7028851890e7ee3e5d76e734a2626a8cb610660a25fce9f05f35bdc) -->
