@@ -16,7 +16,8 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
-  grantProjectRole,
+  grantProjectAccessForWorkspaceRole,
+  grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -150,6 +151,7 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
       .onConflictDoNothing();
   }
 
+  await grantProjectAccessForWorkspaceRole(user.id, workspaceId, role);
   return user;
 }
 
@@ -158,6 +160,7 @@ async function setupWorkItem(role: "member" | "admin" | "viewer" = "member") {
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });
+  await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   await makeDefaultState(creator.workspace.id, project.id);
 
@@ -362,6 +365,11 @@ describe("API integration: work-item comments (#27)", () => {
       .from(schema.personTable)
       .where(eq(schema.personTable.userId, outOfReachUser.id));
     if (!outOfReachPerson) throw new Error("expected out-of-reach person");
+    // This actor is deliberately OUTSIDE project reach: drop the project access the
+    // helper gave every added member.
+    await db
+      .delete(schema.membershipTable)
+      .where(eq(schema.membershipTable.personId, outOfReachPerson.id));
     const [projectRole] = await db
       .insert(schema.roleTable)
       .values({
@@ -379,18 +387,24 @@ describe("API integration: work-item comments (#27)", () => {
       .from(schema.personTable)
       .where(eq(schema.personTable.userId, creator.user.id));
     if (!creatorPerson) throw new Error("expected creator person");
-    await db.insert(schema.membershipTable).values({
-      personId: creatorPerson.id,
-      scope: "project",
-      scopeId: project.id,
-      roleId: projectRole.id,
-    });
-    await db.insert(schema.membershipTable).values({
-      personId: person.id,
-      scope: "project",
-      scopeId: project.id,
-      roleId: projectRole.id,
-    });
+    await db
+      .insert(schema.membershipTable)
+      .values({
+        personId: creatorPerson.id,
+        scope: "project",
+        scopeId: project.id,
+        roleId: projectRole.id,
+      })
+      .onConflictDoNothing();
+    await db
+      .insert(schema.membershipTable)
+      .values({
+        personId: person.id,
+        scope: "project",
+        scopeId: project.id,
+        roleId: projectRole.id,
+      })
+      .onConflictDoNothing();
 
     await db.insert(schema.watcherTable).values({
       workItemId: workItem.id,
@@ -482,10 +496,6 @@ describe("API integration: work-item comments (#27)", () => {
 
   it("a narrow owner-bound API key cannot create a comment or mention effects", async () => {
     const { app, workItem, creator, project } = await setupWorkItem("member");
-    await grantProjectRole(creator.user.id, project.id, [
-      "project:read",
-      "work_item:read",
-    ]);
     const recipient = await addWorkspaceMember(creator.workspace.id, "member");
     const recipientPerson = requireRow(
       await db
@@ -495,10 +505,6 @@ describe("API integration: work-item comments (#27)", () => {
         .limit(1),
       "narrow-key mention recipient person",
     );
-    await grantProjectRole(recipient.id, project.id, [
-      "project:read",
-      "work_item:read",
-    ]);
 
     const rawKey = await createApiKeyFor(creator.user.id, {
       project: ["read"],
@@ -563,10 +569,6 @@ describe("API integration: work-item comments (#27)", () => {
 
   it("a comment-scoped API key permits only its frozen public-comment subset", async () => {
     const { app, workItem, creator, project } = await setupWorkItem("member");
-    await grantProjectRole(creator.user.id, project.id, [
-      "project:read",
-      "work_item:read",
-    ]);
     const rawKey = await createApiKeyFor(creator.user.id, {
       project: ["read"],
       work_item: ["read"],
@@ -760,10 +762,6 @@ describe("API integration: work-item comments (#27)", () => {
 
   it("a concurrent comment tombstone cannot commit between history-parent and version reads", async () => {
     const { app, workItem, creator, project } = await setupWorkItem("member");
-    await grantProjectRole(creator.user.id, project.id, [
-      "project:read",
-      "work_item:read",
-    ]);
     const created = await postComment(app, workItem.key, {
       body: { type: "doc", content: [] },
       visibility: "internal",
@@ -893,10 +891,6 @@ describe("API integration: work-item comments (#27)", () => {
 
   it("CA-18: the activity stream names the deleter, who can differ from the author", async () => {
     const { app, workItem, creator, project } = await setupWorkItem("member");
-    await grantProjectRole(creator.user.id, project.id, [
-      "project:read",
-      "work_item:read",
-    ]);
     const live = await postComment(app, workItem.key, {
       body: { type: "doc", content: [] },
       visibility: "internal",
@@ -1185,10 +1179,6 @@ describe("API integration: work-item comments (#27)", () => {
       addedBy: creatorPerson.id,
       createdAt: new Date(),
     });
-    await grantProjectRole(creator.user.id, project.id, [
-      "project:read",
-      "work_item:read",
-    ]);
     await db.insert(schema.watcherTable).values({
       workItemId: workItem.id,
       personId: requester.person.id,
@@ -1411,10 +1401,6 @@ describe("API integration: work-item comments (#27)", () => {
       .update(schema.workItemTable)
       .set({ customerVisibility: "organisation" })
       .where(eq(schema.workItemTable.id, workItem.id));
-    await grantProjectRole(creator.user.id, project.id, [
-      "project:read",
-      "work_item:read",
-    ]);
 
     const publicCandidates = await app.request(
       `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=public`,

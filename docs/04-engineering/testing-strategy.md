@@ -123,6 +123,14 @@ on whether the acting identity's memberships put the target resource in scope) �
 can pass the first and still leak data through the second, which is exactly the shape of
 several of v1's eleven holes.
 
+`matrix.test.ts` checks the declared policy against the fixture; it does not exercise the
+middleware that runs on each route. **`work-item-reach-guard.test.ts`** closes that gap for
+item-scoped routes: it fails any `reach: required` route on the `work_item` scope whose
+middleware does not resolve project reach, or that opts out of project reach without a
+stated reason. The per-route integration suites (`work-item-project-reach*.test.ts`,
+`legacy-task-project-reach.test.ts`) drive the real middleware and assert the matrix's
+declared statuses.
+
 **`custom-role.test.ts`** — an administrator-created role (cloned, capabilities ticked and
 unticked in the UI — see [roles and permissions UI](../03-features/roles-and-permissions-ui.md))
 is exercised against the same matrix mechanism as the built-in roles, so "roles are

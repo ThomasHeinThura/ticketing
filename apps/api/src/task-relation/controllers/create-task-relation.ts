@@ -20,12 +20,23 @@ async function createTaskRelation({
   relationType,
   userId,
   workspaceId,
+  canReachTarget,
 }: {
   sourceTaskId: string;
   targetTaskId: string;
   relationType: string;
   userId: string;
   workspaceId: string;
+  /**
+   * Whether the caller reaches the target's project and may update it (`RH`: creating a
+   * relation requires update on BOTH ends). An unreachable target is treated exactly like a
+   * missing one, so the answer is the same 404 and nothing about it is revealed.
+   */
+  canReachTarget: (task: {
+    id: string;
+    projectId: string;
+    workspaceId: string;
+  }) => Promise<boolean>;
 }) {
   // #285's S4 finding: `targetTaskId` reaches the `eq(taskTable.id, targetTaskId)`
   // query below unvalidated -- `sourceTaskId` is already checked by
@@ -60,7 +71,7 @@ async function createTaskRelation({
 
   // Keep target existence as a preflight only. The response must wait until the
   // source project's freeze check so a frozen source cannot reveal target existence.
-  const [targetTask] = await db
+  const [foundTargetTask] = await db
     .select({
       id: taskTable.id,
       projectId: taskTable.projectId,
@@ -75,6 +86,10 @@ async function createTaskRelation({
       ),
     )
     .limit(1);
+  const targetTask =
+    foundTargetTask && (await canReachTarget(foundTargetTask))
+      ? foundTargetTask
+      : undefined;
 
   const { relation, sourceProjectId } = await db.transaction(async (tx) => {
     if (!targetTask) {

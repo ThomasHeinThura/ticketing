@@ -14,6 +14,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectAccessToWorkspaceMembers,
   requireRow,
 } from "./helpers/fixtures";
 import {
@@ -78,9 +79,14 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const destination = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(
+      member.workspace.id,
+      destination.project.id,
+    );
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     const targetTask = await createLegacyTask(project.id, columns.todo.id, 2);
     const comment = requireRow(
@@ -533,6 +539,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const nonmemberId = randomUUID();
     mockAuthenticatedSession(member.user);
 
@@ -599,6 +606,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     mockAuthenticatedSession(member.user);
 
     let archived = false;
@@ -653,6 +661,10 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const sourceFixture = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(
+      member.workspace.id,
+      sourceFixture.project.id,
+    );
     const targetFixture = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
@@ -774,6 +786,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     mockAuthenticatedSession(member.user);
 
@@ -807,9 +820,14 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const destination = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(
+      member.workspace.id,
+      destination.project.id,
+    );
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     mockAuthenticatedSession(member.user);
 
@@ -842,6 +860,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     mockAuthenticatedSession(member.user);
 
@@ -888,6 +907,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
         .returning(),
       "move race source",
     );
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, source.id);
     const foreign = requireRow(
       await db
         .insert(schema.projectTable)
@@ -1059,6 +1079,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     mockAuthenticatedSession(member.user);
 
@@ -1084,6 +1105,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     mockAuthenticatedSession(member.user);
 
@@ -1117,6 +1139,10 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const invalidFixture = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(
+      member.workspace.id,
+      invalidFixture.project.id,
+    );
     const validFixture = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
@@ -1177,6 +1203,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     mockAuthenticatedSession(member.user);
 
@@ -1204,6 +1231,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     const timeEntry = requireRow(
       await db
@@ -1265,6 +1293,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
 
     await db
@@ -1303,6 +1332,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     const workspaceLabel = requireRow(
       await db
@@ -1448,6 +1478,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const race = await raceProjectSoftDelete(project.id, () =>
@@ -1473,6 +1504,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     const taskLabel = requireRow(
       await db
@@ -1622,6 +1654,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     mockAuthenticatedSession(member.user);
     const [projectBefore] = await db
       .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
@@ -1763,6 +1796,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const [projectBefore] = await db
       .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
       .from(schema.projectTable)

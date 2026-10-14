@@ -210,15 +210,10 @@ describe("GET /api/capabilities", () => {
     },
   );
 
-  it("pins the customer role's strict flags as computed today: rankTasks true, transition and settings false", async () => {
-    // Pins TODAY's value, not the intended contract. The built-in `customer` role holds
-    // `work_item:rank` (rbac.md role table) but neither `work_item:transition` nor
-    // `project:manage_settings`, so the strict check reports rankTasks true. This matches
-    // the rank route's current runtime, which does NOT yet enforce rbac.md's "own backlog"
-    // limit (WI-13) and lets a customer-role member rank without project reach; the
-    // permission matrix declares customer -> 403 on POST /api/work-items/{key}/rank.
-    // When the work-item write-route reach fix lands, derive this flag from the same
-    // predicate the fixed route uses and update this row.
+  it("reports false for the customer role's rank and public-comment flags, as the agent routes refuse customers", async () => {
+    // The built-in `customer` role holds `work_item:rank` and `comment:create`, but the agent
+    // API answers customers 403 on item-scoped routes (permission matrix; rbac.md), so the
+    // flags derive from the same predicate those routes use and the UI is not told it may.
     const customer = await createWorkspaceMember({ role: "customer" });
     const now = new Date();
     await db.insert(schema.workspaceRoleTable).values({
@@ -243,9 +238,10 @@ describe("GET /api/capabilities", () => {
       manageProjectSettings: caps.manageProjectSettings,
     }).toEqual({
       transitionTasks: false,
-      rankTasks: true,
+      rankTasks: false,
       manageProjectSettings: false,
     });
+    expect(caps.createPublicComments).toBe(false);
   });
 
   it("never derives the strict flags from a legacy permission map that claims more (#708)", async () => {
