@@ -30,7 +30,6 @@ import {
   createWorkspaceMember,
   grantProjectAccessToWorkspaceMembers,
   grantProjectManageAccess,
-  grantProjectRole,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 

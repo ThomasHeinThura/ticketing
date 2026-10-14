@@ -270,14 +270,6 @@ const CASES: Case[] = [
   },
 ];
 
-const WORKSPACE_LEVEL_KEYS = new Set([
-  "POST /api/label",
-  "GET /api/label/{id}",
-  "PUT /api/label/{id}",
-  "DELETE /api/label/{id}",
-  "PUT /api/label/{id}/task",
-]);
-
 describe("API integration: project reach on task-targeting routes (#720)", () => {
   beforeEach(async () => {
     await resetTestDatabase();

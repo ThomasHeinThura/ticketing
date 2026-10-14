@@ -4,14 +4,7 @@ import { expect } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { mockAuthenticatedSession } from "./auth";
 import { createProjectFixture, grantProjectRole, requireRow } from "./fixtures";
-import {
-  type App,
-  addMember,
-  json,
-  seedLegacy,
-  setupWorld,
-  type World,
-} from "./reach-world";
+import { type App, addMember, json, setupWorld } from "./reach-world";
 
 /**
  * Project-level authority for a caller who must pass project reach AND the registered

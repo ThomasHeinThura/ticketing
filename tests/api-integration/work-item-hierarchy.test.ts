@@ -23,7 +23,6 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectAccessForWorkspaceRole,
-  grantProjectRole,
   grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
