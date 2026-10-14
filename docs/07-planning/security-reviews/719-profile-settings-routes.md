@@ -36,6 +36,7 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 - Mechanical security rebind at `5896ef3c`: CLEAR. It covers two clean merges of `main`: `aefb6888` (#726, #722) and `f0f85e86` (#712). Each tree equals its merge-tree. The `/api/me/settings` policies are user-scoped, so the reach guard and middleware don't apply to them.
 - Security rebind at `ac689f22`: CLEAR. A pure merge of `main` `f0f85e86..a31bdde3` (#727, #728, #732, #733, #738, #730, #739). There is no migration clash, `/api/me/settings` stays session-only and self-scoped alongside `sees_all`, and there is no first-paint i18n impact. #719's integration and permissions tests pass.
 - Fix `8d048f01`: a 401 on the background settings read no longer triggers the global sign-in redirect, which had destroyed the one-time backup-codes page during MFA session rotation. Ordinary delta APPROVE and security delta CLEAR at `c84afc40`, which includes a clean merge of `main` `2e03855e`.
+- Mechanical security rebind at `5d311bbd`: CLEAR. A pure merge of `main` `f4f5bf78` (#735), with no interaction.
 
 **Reviewed head:** `beedd219a6d7634254fc66cf3033bd5ba3f54f7c`
 **Reviewed head:** `7a32a0f337b8a195b0054bbd5516a6c88a9ae1f4`
@@ -49,6 +50,7 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 **Reviewed head:** `5896ef3cb93ba3f5d684084bf23c3b8393449b7f`
 **Reviewed head:** `ac689f2298ef545fafdd3f0b9b5b66fd2f03069e`
 **Reviewed head:** `c84afc40a149a6d45d1a072ecdb749ef12ded121`
+**Reviewed head:** `5d311bbd14631308bc7453c11b70b8c2423643a1`
 
 ## Context index
 
@@ -76,6 +78,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 18 | `719-ac68-security-rebind-opus.md` | Mechanical security rebind (e6fd9ed9..ac689f22) | Claude Opus 5.5 | `ac689f22` | CLEAR | `1103458ba7011db86dba8faea1f3aa26cea924b31a67b5a065f4a858c40d2fd1` |
 | 19 | `719-c84a-ordinary-delta-sonnet.md` | Ordinary delta review (3619e73b..c84afc40) | Claude Sonnet 5.5 | `c84afc40` | APPROVE | `1d49e82d3859bf0f2f30e25365716aba93adbc2b9afc90940b25dc90129876ac` |
 | 20 | `719-c84a-security-delta-opus.md` | Security delta review (3619e73b..c84afc40) | Claude Opus 5.5 | `c84afc40` | CLEAR | `86a5e82c1d35c03585dc9ec382defb7343c204a8ad6ffed2b5b3af9b85aaa5d7` |
+| 21 | `719-5d31-security-rebind-opus.md` | Mechanical security rebind (4beba4a3..5d311bbd) | Claude Opus 5.5 | `5d311bbd` | CLEAR | `1475a00aa1ac493368deff1cb78ea847d3d559394dad52bb22909e9f5848b12a` |
 
 ## Embedded reports
 
@@ -1670,3 +1673,59 @@ No blocking findings.
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 86a5e82c1d35c03585dc9ec382defb7343c204a8ad6ffed2b5b3af9b85aaa5d7) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-5d31-security-rebind-opus.md; Claude Opus 5.5; sha256 1475a00aa1ac493368deff1cb78ea847d3d559394dad52bb22909e9f5848b12a) -->
+# PR #719 security review: exact-head rebind after merging main (#735)
+
+**Reviewed head:** 5d311bbd14631308bc7453c11b70b8c2423643a1
+**Prior CLEAR head:** c84afc40a149a6d45d1a072ecdb749ef12ded121 (`719-c84a-security-delta-opus.md`)
+**Pre-merge head:** 4beba4a3c2ddc41745789ed74ee6978025dd271b
+**Merged main:** f4f5bf78fed1eeb8845d828b4d7e2c5cf096359a (#735, unassign expected-holder precondition)
+**Previous main / merge base:** 2e03855edbee5dcab9045e93fd2e06177bd66ea9
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This context did not author, direct or remediate #719. This reviewer was also #735's independent security reviewer (`735-security-opus.md`), which gives full knowledge of the merged-in surface.
+**Scope:** a mechanical rebind. No tests were run, as the coordinator instructed.
+
+## Checks
+
+All checks ran against live git and GitHub.
+
+| Check | Result |
+| --- | --- |
+| `gh pr view 719` head | `5d311bbd…`: matches |
+| main (`origin/main` and GitHub API `commits/main`) | `f4f5bf78…`: main is unchanged |
+| First-parent `2e03855e..f4f5bf78` | exactly `f4f5bf78 Merge pull request #735` |
+| Parents of 5d311bbd | `4beba4a3…` and `f4f5bf78…`: matches |
+| Tree compared with `git merge-tree --write-tree 4beba4a3 f4f5bf78` | both `f1ca72b9f19b6d2244d8b746285a90da4cb9a945`. The merge is clean and adds no hand edits. |
+| `diff --name-only 4beba4a3..5d311bbd` compared with `git diff --name-only 2e03855e f4f5bf78` | identical, 10 files (below) |
+| Commits after the prior CLEAR (`c84afc40..4beba4a3`) | exactly one, `4beba4a3 docs(security-reviews): bind the e2e fix and main merge`. Its parent is c84afc40 and it changes only `docs/07-planning/security-reviews/719-profile-settings-routes.md`. It is a note only. |
+
+The ten files that came in from main:
+
+- `apps/api/src/work-item/index.ts` and `schema.ts`;
+- `apps/web/src/components/work-item/work-item-journey.tsx` and its test;
+- `apps/web/src/fetchers/work-item/unassign-work-item.ts`;
+- `docs/01-architecture/api-design.md` and `docs/03-features/assignment.md`;
+- the #735 security-review note;
+- `tests/api-contract/openapi.json`;
+- `tests/api-integration/work-item-unassign.test.ts`.
+
+## Interaction
+
+**Shared file.** `tests/api-contract/openapi.json` is the only file changed by both #719 and #735. Both PRs edit it in different operations, and the file merged automatically. To confirm that:
+
+- #719's +/- lines in the contract are byte-identical before the merge (`2e03855e..4beba4a3`) and after it (`f4f5bf78..5d311bbd`).
+- #735's are byte-identical too (`2e03855e..f4f5bf78` and `4beba4a3..5d311bbd`).
+
+Neither PR's contract change was altered or dropped by the merge.
+
+**#719 surface.** Nothing in #735's files touches #719's surface:
+
+- `apps/api/src/user-preference/**`, the `/me/settings` mounting and the `policy-registry` entry;
+- the web user-settings fetchers and hooks, the preference sync providers, `use-density-preference`, `main.tsx` and the account preferences page.
+
+A grep of #735's work-item API and web files for `user-settings`, `user-preference` or `me/settings` returned nothing.
+
+#735 changes only the `DELETE /work-items/{key}/assign` handler and query, and the unassign fetcher and journey call. They are disjoint from #719's session-only, user-scoped routes and its background sync. #735 changes no shared helper: no auth, reach, capability, query-client or `http-error` code.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 1475a00aa1ac493368deff1cb78ea847d3d559394dad52bb22909e9f5848b12a) -->
