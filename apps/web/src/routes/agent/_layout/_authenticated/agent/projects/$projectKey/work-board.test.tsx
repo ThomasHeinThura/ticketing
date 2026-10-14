@@ -68,7 +68,7 @@ vi.mock("@/components/work-item/work-item-selection-toggle", async () => {
     }) => {
       useEffect(() => {
         onCapabilityChange(state.canAssign);
-      }, [onCapabilityChange]);
+      }, [onCapabilityChange, state.canAssign]);
       return state.canAssign ? (
         // ui-exempt: test double for the lazy selection toggle
         <button type="button" aria-pressed={selectionMode} onClick={onToggle}>
@@ -226,6 +226,17 @@ describe("selection mode (G11: no per-row controls until asked)", () => {
     await renderRoute();
     expect(state.boardProps?.canSelect).toBe(false);
     expect(state.panelProps).toBeUndefined();
+  });
+
+  it("losing the assign capability while in selection mode turns the controls off", async () => {
+    state.canAssign = true;
+    const view = await renderRoute();
+    await enterSelectionMode();
+    expect(state.boardProps?.canSelect).toBe(true);
+    state.canAssign = false;
+    const Component = Route.options.component as () => React.JSX.Element;
+    act(() => view.rerender(<Component />));
+    expect(state.boardProps?.canSelect).toBe(false);
   });
 
   it("leaving selection mode removes the controls and clears the selection", async () => {
