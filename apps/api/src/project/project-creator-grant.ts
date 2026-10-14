@@ -142,7 +142,13 @@ export async function grantProjectCreatorLead(
   if (seesAll) return "skipped_sees_all";
 
   const roleId = await ensureProjectLeadRole(tx, workspaceId);
-  if (roleId === null) return "skipped_no_role";
+  if (roleId === null) {
+    // Fail closed, but never silently: the creator gets no project reach from this grant.
+    console.warn(
+      `⚠️ project-lead grant skipped for workspace ${workspaceId}, project ${projectId}: an untrusted (non-system) project-scope role keyed "${PROJECT_LEAD_ROLE_KEY}" exists.`,
+    );
+    return "skipped_no_role";
+  }
 
   const [existing] = await tx
     .select({ id: schema.membershipGrantTable.id })
@@ -336,5 +342,23 @@ export async function revokeProjectCreatorGrantsForProject(
     tx,
     { kind: "project", workspaceId, projectId },
     "project_deleted",
+  );
+}
+
+/**
+ * The person has just gained workspace `sees_all` (promoted to owner or admin): a project-scope
+ * `project_creator` grant would REPLACE their workspace authority on that project under the
+ * declarative evaluator, which is why creation skips the grant for `sees_all` holders. Revoke
+ * every such grant they hold in the workspace, audited, inside the promoting transaction.
+ */
+export async function revokeProjectCreatorGrantsOnSeesAll(
+  tx: Tx,
+  workspaceId: string,
+  personId: string,
+): Promise<number> {
+  return revokeCreatorGrants(
+    tx,
+    { kind: "member", workspaceId, personId },
+    "workspace_sees_all_granted",
   );
 }

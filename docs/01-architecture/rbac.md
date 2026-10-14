@@ -523,7 +523,7 @@ Resolution order for "may this person see project P?":
    projects keep their current reach; owners and admins hold `sees_all` and can add memberships.
    **Lifecycle:** only grants with this origin are ever revoked, never an admin-made or external
    (SCIM / OIDC / JIT) grant: they end when the person is removed from or leaves the workspace,
-   when their account is erased, and when the project is deleted (not re-granted if a deleted
+   when their account is erased, when they are promoted to owner or admin (they then hold `sees_all`, and the project-scope grant would replace their workspace authority on that project; revoked and audited in the promoting transaction), and when the project is deleted (not re-granted if a deleted
    project is recovered), and they are removed with the workspace (#732 helper). Each revoke is
    audited (`membership.changed`, system actor, `after.granted = false`, a `reason`).
 4. Membership of an **ancestor** project ⇒ yes (hierarchy inheritance, from OpenProject).

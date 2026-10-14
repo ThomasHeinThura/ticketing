@@ -12,13 +12,14 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { BUILT_IN_ROLES, defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq, sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { validateIdpMappingRole } from "../../apps/api/src/identity/repository";
 import { createApp } from "../../apps/api/src/index";
 import createProjectCtrl from "../../apps/api/src/project/controllers/create-project";
 import {
   ensureProjectLeadRole,
+  lockCreatorPerson,
   PROJECT_CREATOR_ORIGIN,
   PROJECT_LEAD_ROLE_KEY,
   revokeProjectCreatorGrantsForMember,
@@ -556,6 +557,67 @@ describe("a project's creator holds a project-lead membership", () => {
     expect(await projectStatus(world, manager, project.id)).toBe(200);
   });
 
+  it("promoting a creator to admin revokes their creator grant (audited, same transaction); other role changes keep it", async () => {
+    const world = await newWorld();
+    const member = await addMember(world, "member");
+    const project = await createProject(world, member);
+    expect(project.status).toBe(200);
+    const personId = await personIdOf(member.user.id);
+    const setRole = (role: string) =>
+      call(
+        world.app,
+        world.owner.cookie,
+        "PATCH",
+        `/api/workspace/${world.workspaceId}/members/${member.user.id}/role`,
+        { role },
+      );
+
+    // A role change that does not grant sees_all leaves the grant alone.
+    expect((await setRole("viewer")).status).toBe(200);
+    expect(
+      (await creatorGrants(personId, project.id))[0]?.revokedAt,
+    ).toBeNull();
+    expect((await setRole("member")).status).toBe(200);
+    expect(
+      (await creatorGrants(personId, project.id))[0]?.revokedAt,
+    ).toBeNull();
+
+    expect((await setRole("admin")).status).toBe(200);
+    const rows = await creatorGrants(personId, project.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.revokedAt).toEqual(expect.any(Date));
+    expect(await projectMemberships(personId, project.id)).toEqual([]);
+    // Reach now comes from sees_all alone.
+    expect(await projectStatus(world, member, project.id)).toBe(200);
+    const revokeAudit = (await auditRows(project.id)).filter(
+      (row) =>
+        (row.after as { reason?: string } | null)?.reason ===
+        "workspace_sees_all_granted",
+    );
+    expect(revokeAudit).toHaveLength(1);
+    expect(revokeAudit[0]).toMatchObject({
+      action: "membership.changed",
+      actorType: "system",
+      after: { source: PROJECT_CREATOR_ORIGIN, granted: false },
+    });
+  });
+
+  it("lockCreatorPerson returns only a staff person", async () => {
+    const world = await newWorld();
+    const actor = await signUpUser(world.app);
+    const staff = await db.transaction((tx) =>
+      lockCreatorPerson(tx, actor.user.id),
+    );
+    expect(staff?.id).toBe(await personIdOf(actor.user.id));
+    await db
+      .update(schema.personTable)
+      .set({ side: "customer" })
+      .where(eq(schema.personTable.userId, actor.user.id));
+    expect(
+      await db.transaction((tx) => lockCreatorPerson(tx, actor.user.id)),
+    ).toBeNull();
+  });
+
   it("a creator who leaves the workspace loses their grant", async () => {
     const world = await newWorld();
     const manager = await addManager(world);
@@ -810,8 +872,15 @@ describe("the project-lead role row", () => {
         ),
       );
     const manager = await addManager(world);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const project = await createProject(world, manager);
     expect(project.status).toBe(200);
+    expect(
+      warn.mock.calls.some((call) =>
+        String(call[0]).includes("project-lead grant skipped"),
+      ),
+    ).toBe(true);
+    warn.mockRestore();
     expect(await creatorGrants(await personIdOf(manager.user.id))).toEqual([]);
     expect(await projectStatus(world, manager, project.id)).toBe(404);
   });
