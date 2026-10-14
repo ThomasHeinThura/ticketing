@@ -309,7 +309,9 @@ test.describe("P0 MFA and CSRF browser journey", () => {
 
       await test.step("observability: open God Mode settings", () =>
         page.goto(new URL("/god-mode/observability", origin).toString()));
-      const defaultLevel = page.getByLabel("Default level");
+      const defaultLevel = page.getByRole("combobox", {
+        name: "Default level",
+      });
       const saveLogLevels = async (label: string) => {
         await test.step(label, async () => {
           const responsePromise = page.waitForResponse(
@@ -341,7 +343,7 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       expect(changedSettings.logLevels.default).toBe(changedDefault);
       expect(changedSettings.version > initialSettings.version).toBe(true);
 
-      const realtimeLevel = page.getByLabel("realtime");
+      const realtimeLevel = page.getByRole("combobox", { name: "realtime" });
       await selectOptionThroughControlledPopup(
         page,
         realtimeLevel,

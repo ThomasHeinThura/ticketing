@@ -592,7 +592,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
     });
 
     await test.step("filter state is URL-backed and survives reload", async () => {
-      await page.getByLabel("Filter activity").click();
+      await page.getByRole("combobox", { name: "Filter activity" }).click();
       await page
         .getByRole("option", { name: "Public only", exact: true })
         .click();
@@ -601,9 +601,9 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         activity.locator('li[data-visibility="internal"]'),
       ).toHaveCount(0);
       await page.reload();
-      await expect(page.getByLabel("Filter activity")).toContainText(
-        "Public only",
-      );
+      await expect(
+        page.getByRole("combobox", { name: "Filter activity" }),
+      ).toContainText("Public only");
       await expect(commentRow).toBeVisible();
     });
   });
