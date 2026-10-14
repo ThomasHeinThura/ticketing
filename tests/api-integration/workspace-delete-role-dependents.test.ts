@@ -7,7 +7,7 @@
  * dependents explicitly (`deleteWorkspaceRoleDependents`); the RESTRICT FKs stay.
  */
 import { randomUUID } from "node:crypto";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
@@ -74,11 +74,43 @@ async function createRole(
   );
 }
 
-async function createWorkspaceViaRoute(name: string) {
+async function releaseOwnerReach(workspaceId: string) {
+  await db
+    .delete(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.scope, "workspace"),
+        eq(schema.membershipGrantTable.scopeId, workspaceId),
+      ),
+    );
+  await db
+    .delete(schema.membershipTable)
+    .where(
+      and(
+        eq(schema.membershipTable.scope, "workspace"),
+        eq(schema.membershipTable.scopeId, workspaceId),
+      ),
+    );
+}
+
+/**
+ * `releaseOwnerReach`: workspace creation now gives the owner an explicit workspace
+ * `sees_all` membership and a direct `system_backfill` grant (decision log 2026-10-14,
+ * `workspace-admin-reach.ts`). Fixtures that must seed THEIR OWN workspace-scope
+ * membership/direct grant for that same person would otherwise collide on the
+ * one-membership-per-(person, scope, scope_id) and one-active-direct-grant unique keys
+ * (23505). Those fixtures opt in to start from the person's pre-reach state; every other
+ * test here keeps the owner's reach rows, so deletion is still exercised with them present.
+ */
+async function createWorkspaceViaRoute(
+  name: string,
+  options: { releaseOwnerReach?: boolean } = {},
+) {
   const { app } = createApp();
   const owner = await signUpUser(app);
   const created = await createWorkspaceNative(app, owner.cookie, { name });
   const { id } = (await created.json()) as { id: string };
+  if (options.releaseOwnerReach) await releaseOwnerReach(id);
   return { app, owner, workspaceId: id };
 }
 
@@ -277,8 +309,10 @@ describe("#180 workspace delete with role-referencing rows", () => {
   });
 
   it("deletes a workspace holding a workspace-scope custom role membership", async () => {
-    const { app, owner, workspaceId } =
-      await createWorkspaceViaRoute("WS role");
+    const { app, owner, workspaceId } = await createWorkspaceViaRoute(
+      "WS role",
+      { releaseOwnerReach: true },
+    );
     const personId = await personIdFor(owner.user.id);
     const role = await createRole(workspaceId, "workspace");
     const membership = requireRow(
@@ -321,7 +355,9 @@ describe("#180 workspace delete with role-referencing rows", () => {
   });
 
   it("deletes a workspace with SCIM/OIDC mappings, grants and scim_group_member rows, keeping the connection", async () => {
-    const { app, owner, workspaceId } = await createWorkspaceViaRoute("SCIM");
+    const { app, owner, workspaceId } = await createWorkspaceViaRoute("SCIM", {
+      releaseOwnerReach: true,
+    });
     const role = await createRole(workspaceId, "workspace");
     const { connectionId } = await seedProvisioningRows(
       workspaceId,
@@ -359,12 +395,16 @@ describe("#180 workspace delete with role-referencing rows", () => {
   });
 
   it("leaves another workspace's rows alone, including the same person's memberships there", async () => {
-    const { app, owner, workspaceId } = await createWorkspaceViaRoute("Doomed");
+    const { app, owner, workspaceId } = await createWorkspaceViaRoute(
+      "Doomed",
+      { releaseOwnerReach: true },
+    );
     const keepWorkspace = (
       await createWorkspaceNative(app, owner.cookie, { name: "Keeper" }).then(
         (r) => r.json(),
       )
     ).id as string;
+    await releaseOwnerReach(keepWorkspace);
     const { project: doomedProject } = await createProjectFixture({
       workspaceId,
     });
@@ -529,7 +569,10 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
   }
 
   it("removes a membership holding a GLOBAL role scoped to the doomed workspace, and keeps the role", async () => {
-    const { app, owner, workspaceId } = await createWorkspaceViaRoute("Global");
+    const { app, owner, workspaceId } = await createWorkspaceViaRoute(
+      "Global",
+      { releaseOwnerReach: true },
+    );
     const personId = await personIdFor(owner.user.id);
     const role = await globalRole();
     await db.insert(schema.membershipTable).values({
@@ -594,8 +637,10 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
   });
 
   it("removes a scim_group_member reached only through its group-mapping id", async () => {
-    const { app, owner, workspaceId } =
-      await createWorkspaceViaRoute("MapOnly");
+    const { app, owner, workspaceId } = await createWorkspaceViaRoute(
+      "MapOnly",
+      { releaseOwnerReach: true },
+    );
     const other = await createWorkspaceMember({ role: "owner" });
     const doomedRole = await createRole(workspaceId, "workspace");
     const keptRole = await createRole(other.workspace.id, "workspace");
