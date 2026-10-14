@@ -9535,6 +9535,12 @@
 						},
 						"errorGeneric": {
 							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"reload": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -9561,7 +9567,9 @@
 						"errorTitle",
 						"errorForbidden",
 						"errorInvalid",
-						"errorGeneric"
+						"errorGeneric",
+						"loadFailed",
+						"reload"
 					]
 				},
 				"detail": {
