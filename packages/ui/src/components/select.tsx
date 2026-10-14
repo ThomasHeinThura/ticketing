@@ -9,7 +9,7 @@ import {
   ChevronsUpDownIcon,
   ChevronUpIcon,
 } from "lucide-react";
-import type * as React from "react";
+import * as React from "react";
 
 import { cn } from "../lib/cn";
 
@@ -101,6 +101,68 @@ function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
   );
 }
 
+interface ListboxName {
+  label?: string;
+  labelledBy?: string;
+}
+
+/**
+ * Resolves the accessible name of the open listbox. Base UI renders the
+ * listbox as a bare `role="listbox"` with no name, and axe reports
+ * `aria-input-field-name` whenever it cannot pair the listbox with a combobox
+ * (for example a popup opened without a trigger, or before the trigger has
+ * published `aria-controls`). The popup is named after the trigger that opened
+ * it, so the listbox carries the same label the user heard on the field:
+ * the trigger's `aria-labelledby`, its `aria-label`, or the text of the
+ * `<label>` elements associated with it.
+ */
+function useTriggerListboxName(
+  listElement: HTMLElement | null,
+  disabled: boolean,
+): ListboxName {
+  const [name, setName] = React.useState<ListboxName>({});
+
+  React.useLayoutEffect(() => {
+    if (disabled || !listElement) {
+      setName({});
+      return;
+    }
+    const triggers = Array.from(
+      listElement.ownerDocument.querySelectorAll<HTMLElement>(
+        '[role="combobox"][aria-haspopup="listbox"][aria-expanded="true"]',
+      ),
+    );
+    const trigger =
+      triggers.find(
+        (candidate) =>
+          candidate.getAttribute("aria-controls") === listElement.id,
+      ) ?? (triggers.length === 1 ? triggers[0] : undefined);
+    if (!trigger) {
+      setName({});
+      return;
+    }
+    const labelledBy = trigger.getAttribute("aria-labelledby");
+    if (labelledBy) {
+      setName({ labelledBy });
+      return;
+    }
+    const ariaLabel = trigger.getAttribute("aria-label");
+    if (ariaLabel) {
+      setName({ label: ariaLabel });
+      return;
+    }
+    const labels =
+      trigger instanceof HTMLButtonElement ? Array.from(trigger.labels) : [];
+    const labelText = labels
+      .map((label) => label.textContent?.trim() ?? "")
+      .filter(Boolean)
+      .join(" ");
+    setName(labelText ? { label: labelText } : {});
+  }, [listElement, disabled]);
+
+  return name;
+}
+
 function SelectPopup({
   className,
   children,
@@ -110,6 +172,8 @@ function SelectPopup({
   alignOffset = 0,
   alignItemWithTrigger = true,
   anchor,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
   ...props
 }: SelectPrimitive.Popup.Props & {
   side?: SelectPrimitive.Positioner.Props["side"];
@@ -119,6 +183,14 @@ function SelectPopup({
   alignItemWithTrigger?: SelectPrimitive.Positioner.Props["alignItemWithTrigger"];
   anchor?: SelectPrimitive.Positioner.Props["anchor"];
 }) {
+  const [listElement, setListElement] = React.useState<HTMLDivElement | null>(
+    null,
+  );
+  const derivedName = useTriggerListboxName(
+    listElement,
+    ariaLabel !== undefined || ariaLabelledBy !== undefined,
+  );
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
@@ -144,6 +216,9 @@ function SelectPopup({
           </SelectPrimitive.ScrollUpArrow>
           <div className="relative h-full min-w-(--anchor-width) rounded-lg border bg-popover not-dark:bg-clip-padding shadow-lg/5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]">
             <SelectPrimitive.List
+              aria-label={ariaLabel ?? derivedName.label}
+              aria-labelledby={ariaLabelledBy ?? derivedName.labelledBy}
+              ref={setListElement}
               className={cn(
                 "max-h-(--available-height) overflow-y-auto p-1",
                 className,
