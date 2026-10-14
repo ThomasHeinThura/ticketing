@@ -13,10 +13,12 @@ A Claude Sonnet 5.5 lane implemented the change. The reviewers below are fresh, 
 - Security review by Claude Opus 5.5: CLEAR at `0be69dd4`. No e2e journey is weakened, there are no secrets, the DOM-derived name is XSS-safe, and the baseline hash matches.
 - Mechanical security rebind at `4eccd322`: CLEAR. This is a pure merge of `main` `1f1abe7c` (#733) and does not interact with this PR's surface.
 - Mechanical security rebind at `92ddcc9b`: CLEAR. This is a pure merge of `main` `6015f016` (#738), with no interaction.
+- Mechanical security rebind at `64cbf169`: CLEAR. A pure merge of `main` `a31bdde3` (#730, #739), with no file overlap and no Select or i18n-deferral interaction.
 
 **Reviewed head:** `0be69dd4c3b1acb496e3b506af6b48fcb725c0c6`
 **Reviewed head:** `4eccd32268c2666fd5af68a05ee587fde55ab746`
 **Reviewed head:** `92ddcc9bf21d32f4bf348ac038e215f7d9d01cc9`
+**Reviewed head:** `64cbf16949a5c259430c4385bdd778712ae43953`
 
 ## Context index
 
@@ -33,6 +35,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 7 | `736-security-opus.md` | Security review (82aecead..0be69dd4) | Claude Opus 5.5 | `0be69dd4` | CLEAR | `892ae6604666d1503cfc371812936554df162209247ac2d51e0377fb16b2d9dc` |
 | 8 | `736-4ecc-security-rebind-opus.md` | Mechanical security rebind (08ad4a6e..4eccd322) | Claude Opus 5.5 | `4eccd322` | CLEAR | `c5768921c7028851890e7ee3e5d76e734a2626a8cb610660a25fce9f05f35bdc` |
 | 9 | `736-92dd-security-rebind-opus.md` | Mechanical security rebind (cd0b612c..92ddcc9b) | Claude Opus 5.5 | `92ddcc9b` | CLEAR | `6238111d5e45945063189a9e662a49e72fa98dd7e85ad994668dd2bdcd6554f8` |
+| 10 | `736-64cb-security-rebind-opus.md` | Mechanical security rebind (5f13e088..64cbf169) | Claude Opus 5.5 | `64cbf169` | CLEAR | `3ead9827f6bbab90f7b9f39698c2561e71cb85a960bce1e0a69221d6a8fb0ad0` |
 
 ## Embedded reports
 
@@ -433,3 +436,49 @@ It contains no file under `apps/web`, `packages/` or `tests/e2e`. A path filter 
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 6238111d5e45945063189a9e662a49e72fa98dd7e85ad994668dd2bdcd6554f8) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/736-64cb-security-rebind-opus.md; Claude Opus 5.5; sha256 3ead9827f6bbab90f7b9f39698c2561e71cb85a960bce1e0a69221d6a8fb0ad0) -->
+# PR #736 security review: exact-head rebind after merging main (#730 and #739)
+
+**Reviewed head:** 64cbf16949a5c259430c4385bdd778712ae43953
+**Prior CLEAR head:** 92ddcc9bf21d32f4bf348ac038e215f7d9d01cc9 (`736-92dd-security-rebind-opus.md`; the substantive review is `736-security-opus.md` at 0be69dd4, by a different Opus reviewer)
+**Pre-merge head:** 5f13e088c8fb5e206f2da3f82ce25e17a6669aaa
+**Merged main:** a31bdde3fde0d31b77bf7452f97abab7b8ce63fc. It contains #730 (6389d6e7) and #739 (a31bdde3).
+**Previous main:** 6015f0163f150dcb7f09e485ad0985a8d890db94
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This context did not author, direct or remediate #736.
+**Scope:** a mechanical rebind plus the #739 interaction. No tests were run, as the coordinator instructed. The substantive analysis remains the prior reviewer's.
+
+## Checks
+
+All checks ran against live git and GitHub.
+
+| Check | Result |
+| --- | --- |
+| `gh pr view 736` head | `64cbf169…`: matches |
+| `origin/main`, confirmed through the GitHub API | `a31bdde3…`: main is unchanged |
+| Parents of 64cbf169 | `5f13e088…` and `a31bdde3…`: matches |
+| Tree compared with `git merge-tree --write-tree 5f13e088 a31bdde3` | both `9000b55ffb7c61df5aa10b9605babfdec88a30f7`. The merge is clean and adds no hand edits. |
+| `diff --name-only 5f13e088..64cbf169` compared with `diff --name-only 6015f016..a31bdde3`, where 6015f016 is the merge base | identical, 111 files |
+| Commits after the prior CLEAR (`92ddcc9b..5f13e088`) | exactly one, `5f13e088 docs(security-reviews): bind the main-merge rebind`. Its parent is 92ddcc9b and it changes only `docs/07-planning/security-reviews/736-select-listbox-name.md`. It is a note only. |
+
+## Interaction
+
+**#736 surface.** The `a31bdde3..64cbf169` files are:
+
+- `packages/ui/src/components/select.tsx`, `select.test.tsx` and `select.stories.tsx`, plus a baseline PNG;
+- three e2e specs: `mfa-csrf-journey`, `performance.bench` and `work-item-comments-journey`;
+- the review note.
+
+None of them is changed by #730 or #739: the file intersection with `6015f016..a31bdde3` is empty.
+
+**#739 (i18n deferral and first-paint guard):**
+- #739 does not touch `packages/ui`, so it does not touch the Select primitive.
+- The new `apps/web/e2e/work-list-i18n-deferred.spec.ts` uses **no Select**: no `combobox`, `listbox`, `getByLabel` or Select locator. Its only role locators are `heading` (level 1) and `button "Try Again"`.
+- Its attribute scan reads `aria-label`, `title`, `placeholder` and `alt` to check for untranslated keys. #736 names the listbox with `aria-labelledby` pointing at existing trigger text and adds no i18n string, so it cannot add a raw key to that scan.
+- The Select primitive has no i18n or `useTranslation` dependency. #739's namespace-group loader therefore has nothing to defer in it.
+- #736's e2e selector changes (locating by combobox role) are in specs #739 does not modify.
+
+**#730 (API reach):** API-only, so it does not interact with web, ui or e2e.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 3ead9827f6bbab90f7b9f39698c2561e71cb85a960bce1e0a69221d6a8fb0ad0) -->
