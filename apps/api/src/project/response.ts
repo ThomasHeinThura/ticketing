@@ -30,6 +30,10 @@ export const projectSchema = z
       description:
         "The customer organisation this project serves; null for an internal project.",
     }),
+    createdBy: z.string().nullable().openapi({
+      description:
+        "The staff person who created the project; null for projects created before this was recorded.",
+    }),
     createdAt: responseTimestamp,
     archivedAt: nullableResponseTimestamp.openapi({
       description:

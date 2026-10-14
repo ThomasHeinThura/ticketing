@@ -13,6 +13,24 @@
 
 **Reversal:** make the reach check in `acceptSubmission` throw 404 before the claim and update the reach tests in `tests/api-integration/project-reach-writes.test.ts`. The cost is that a missing destination and an unreachable one then differ in status and side effect.
 
+### 2026-10-14 · A project's creator holds a project-lead membership
+
+**Decision (Thomas, 2026-10-14):**
+- **Grant on create:** creating a project grants the creator a project membership with a project-scope project-lead role. This uses reach step 3 in rbac.md (project membership).
+- **Audit:** the grant is audited like other membership grants.
+- **Creator record:** a `project.created_by` column records the creator from now on.
+- **No backfill:** existing projects are not backfilled. No record shows who created them, and a guessed rule could grant reach to the wrong people. Owners and admins hold `sees_all` (decision of 2026-10-14), so they can see existing projects and grant memberships on them.
+
+**Why:** managers, and any role holding `project:create`, could create a project but then got no reach to it. The review of #742 found that such a creator lands on a 404 board and doesn't see the project in their list.
+
+**Supersedes:** nothing. It extends rbac.md's explicit-grant exceptions with this one recorded grant.
+
+**Consequences:**
+- A project-scope project-lead role must exist to assign, with the capabilities rbac.md gives a lead (see #435).
+- Creator grants follow the normal membership lifecycle. Removal and leave revoke them, and project or workspace delete cleans them up.
+
+**Reversal:** stop granting on create. Existing creator grants then stay until they are revoked.
+
 ### 2026-10-14 · Workspace owners and admins hold an explicit `sees_all` grant
 
 **Decision (Thomas, 2026-10-14):** workspace owner and admin memberships carry an explicit `sees_all` grant on that workspace, which is reach step 2 in rbac.md. The grant is written when the workspace is created and whenever a member becomes or stops being an owner or admin. A migration backfills it for existing owners and admins.

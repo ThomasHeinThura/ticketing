@@ -14,6 +14,7 @@ import {
   invalidateAccountDeletionCredentials,
   requestAccountDeletionRetry,
 } from "../../pending-action/credential-invalidation";
+import { revokeProjectCreatorGrantsForMember } from "../../project/project-creator-grant";
 import { deleteWorkspaceRoleDependents } from "../../workspace/controllers/delete-workspace-role-dependents";
 import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
 import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
@@ -161,6 +162,7 @@ async function deleteAccountDataInTransaction(
       );
     for (const workspaceId of plan.workspaceIdsToLeave) {
       await syncWorkspaceAdminReach(tx, workspaceId, userId);
+      await revokeProjectCreatorGrantsForMember(tx, workspaceId, userId);
     }
   }
 

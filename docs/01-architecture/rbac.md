@@ -242,7 +242,7 @@ reach is an authorization discrepancy to repair, not a reason to downgrade the r
 policy scope or supply the native predicate as policy reach. Native reach rejection masks the
 project with `404`; existing capability checks and resource liveness remain required.
 Observer bookkeeping stays read-only. Native guard repairs follow the protected change flow
-and do not authorize automatic project memberships, implicit `sees_all`, or new role grants. The one recorded exception is the explicit owner/admin `sees_all` grant (Reach step 2; decision log 2026-10-14). Project ancestors and owner-team relations
+and do not authorize automatic project memberships, implicit `sees_all`, or new role grants. The recorded exceptions are the explicit owner/admin `sees_all` grant (Reach step 2) and the creator's project-lead membership (Reach step 3), both decision log 2026-10-14. Project ancestors and owner-team relations
 are not represented in the current project schema; they remain unavailable until their own
 schema and loader exist. A future typed loader may supply those facts, but the observer may
 not infer them from a legacy denial, route URL, or caller input.
@@ -407,6 +407,16 @@ a diff.
 | `viewer` | 20 | Read-only | `workspace:read`, `project:read`, `work_item:read`, `saved_view:read`, `sla_policy:read`, `workflow:read`, `request_type:read`, `report:read`, `kb_article:read`, `service:read` |
 | `customer` | 10 | Portal only. Off the ladder — see below | `work_item:read`, `comment:create`, `attachment:create`, `work_item:rank`, `work_item:escalate_priority`, `approval:decide`, `kb_article:read` — and nothing else, ever |
 
+**`project-lead` (project scope, decision log 2026-10-14, #435).** The one built-in project-scope
+role. Its capabilities are exactly the `lead` row above, held at project scope (the workspace-wide
+ones among them, such as `workspace:read`, never apply to a project-scoped check). It is a
+per-workspace `role` row (`scope = 'project'`, `key = 'project-lead'`, `is_system`, rank 50),
+seeded by migration 0124 and at workspace creation, and is what a project's creator is granted
+(Reach step 3). A project-scope role *overrides* the workspace roles on that project in the
+declarative evaluator (`authorityFor`), so a creator with a richer workspace role (a `manager`)
+holds lead capabilities there under that evaluator; the enforced routes still gate on the
+workspace role. Identity-provider mappings cannot target it (project scope is refused).
+
 **`workspace:transfer_ownership` is deliberately narrower than `workspace:manage_members`,**
 and the two must not be confused. `POST /api/workspace/{workspaceId}/transfer-ownership`
 used to declare `workspace:manage_members` — the closest match the capability list had —
@@ -495,7 +505,27 @@ Resolution order for "may this person see project P?":
    cannot be written from SQL); it is recorded by the 2026-10-14 decision-log entry. These
    automatic grants are the exception to "never self-grantable" only in the sense that no
    person grants them: they follow the legacy owner/admin role and are removed with it.
-3. Project membership ⇒ yes.
+3. Project membership ⇒ yes. **The creator of a project holds one automatically** (decision log
+   2026-10-14, "A project's creator holds a project-lead membership"). Creating a project writes
+   `project.created_by` (the creator's staff person) and, in the same transaction, a **direct**
+   grant on that project with `direct_origin = 'project_creator'` (system-written, never API
+   input, no granting person) carrying the project-scope **`project-lead`** role, projected like
+   any other grant, plus an audit row (`membership.changed`, project-scoped, actor the creator,
+   `after.source = 'project_creator'`, `after.granted = true`). Without it a manager, or any role
+   holding `project:create`, created a project and then had no reach to it (404 board, absent
+   from their list). **Skipped** when the creator already holds an active workspace `sees_all`
+   (owners and admins, step 2): they reach every project already, and a project-scope role would
+   *replace* their workspace authority on that project. Everyone else is always granted. It is
+   reach, not new route authority: the route-level capability gates still read the workspace role
+   (a `member` creator can read, list and work items, but `PUT /api/project/{id}` still needs a
+   workspace role holding `project:update`). **No backfill:** nothing recorded who created an
+   existing project and a guessed rule could grant reach to the wrong person, so existing
+   projects keep their current reach; owners and admins hold `sees_all` and can add memberships.
+   **Lifecycle:** only grants with this origin are ever revoked, never an admin-made or external
+   (SCIM / OIDC / JIT) grant: they end when the person is removed from or leaves the workspace,
+   when their account is erased, when they are promoted to owner or admin (they then hold `sees_all`, and the project-scope grant would replace their workspace authority on that project; revoked and audited in the promoting transaction), and when the project is deleted (not re-granted if a deleted
+   project is recovered), and they are removed with the workspace (#732 helper). Each revoke is
+   audited (`membership.changed`, system actor, `after.granted = false`, a `reason`).
 4. Membership of an **ancestor** project ⇒ yes (hierarchy inheritance, from OpenProject).
 5. Team membership where the team **owns** the project — `project.owner_team_id` — ⇒ yes.
    Specified in [teams.md](../03-features/teams.md).
