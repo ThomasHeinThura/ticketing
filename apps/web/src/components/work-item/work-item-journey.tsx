@@ -716,7 +716,7 @@ function AssignmentSection({ item, onAccessLost, announce }: SectionProps) {
       handleFailure(mutationError, "workItems:journey.assignmentError"),
   });
   const unassignMutation = useMutation({
-    mutationFn: () => unassignWorkItem(item.key),
+    mutationFn: () => unassignWorkItem(item.key, item.assigneeId),
     onSuccess: async () => {
       setError("");
       announce(t("workItems:journey.unassignDone"));
