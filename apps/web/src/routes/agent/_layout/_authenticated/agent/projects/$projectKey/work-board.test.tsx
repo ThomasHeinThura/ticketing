@@ -24,7 +24,15 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: translate }),
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) =>
+      translate(
+        typeof options?.count === "number"
+          ? `${key}_${options.count === 1 ? "one" : "other"}`
+          : key,
+        options,
+      ),
+  }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/components/work-item/work-item-create-trigger", () => ({
@@ -252,6 +260,60 @@ describe("selection mode (G11: no per-row controls until asked)", () => {
     expect(state.boardProps?.canSelect).toBe(false);
     await enterSelectionMode();
     expect(state.boardProps?.selectedKeys).toEqual([]);
+  });
+});
+
+describe("selection announcements (accessibility.md)", () => {
+  const announcement = () =>
+    screen
+      .getAllByRole("status")
+      .map((node) => node.textContent)
+      .join("|");
+
+  it("announces nothing until selection mode is used", async () => {
+    state.canAssign = true;
+    await renderRoute();
+    expect(announcement()).not.toMatch(/Selection mode|selected/);
+  });
+
+  it("announces entering and leaving selection mode and each change of the count", async () => {
+    state.canAssign = true;
+    await renderRoute();
+    await enterSelectionMode();
+    expect(announcement()).toContain(
+      "Selection mode on. Use the checkboxes to choose work items.",
+    );
+    act(() => {
+      callProp(state.boardProps, "onSelectionChange", "WLP-1", true);
+    });
+    expect(announcement()).toContain("1 work item selected");
+    act(() => {
+      callProp(state.boardProps, "onSelectionChange", "WLP-2", true);
+    });
+    expect(announcement()).toContain("2 work items selected");
+    await enterSelectionMode();
+    expect(announcement()).toContain("Selection mode off. Selection cleared.");
+  });
+
+  it("uses the one polite region, not a second one", async () => {
+    state.canAssign = true;
+    await renderRoute();
+    await enterSelectionMode();
+    expect(
+      document.querySelectorAll('[role="status"][aria-live="polite"]'),
+    ).toHaveLength(1);
+  });
+});
+
+describe("selection toggle placement (no layout shift when it arrives)", () => {
+  it("is the first control in the header actions, ahead of the layout buttons", async () => {
+    state.canAssign = true;
+    await renderRoute();
+    const toggle = screen.getByRole("button", { name: "Select items" });
+    const list = screen.getByRole("button", { name: "List" });
+    expect(
+      toggle.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 

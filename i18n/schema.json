@@ -10299,6 +10299,12 @@
 						},
 						"selectMode": {
 							"type": "string"
+						},
+						"modeOn": {
+							"type": "string"
+						},
+						"modeOff": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -10317,7 +10323,9 @@
 						"unnamedPerson",
 						"peopleError",
 						"saving",
-						"selectMode"
+						"selectMode",
+						"modeOn",
+						"modeOff"
 					]
 				}
 			},

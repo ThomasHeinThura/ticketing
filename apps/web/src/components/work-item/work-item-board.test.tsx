@@ -585,6 +585,32 @@ describe("failure handling for rank (404, 409, 422, 400, 403)", () => {
     },
   );
 
+  it("a failed move leaves no focus target, so a later refetch does not steal focus", async () => {
+    rankWorkItem.mockRejectedValue(new HttpError(409, "x"));
+    const view = board({ canRank: true });
+    const down = screen.getByRole("button", {
+      name: "Move down: WLP-1 in Open",
+    });
+    down.focus();
+    fireEvent.click(down);
+    await screen.findByTestId("work-item-board-error");
+    const elsewhere = screen.getByRole("link", { name: /WLP-5/ });
+    elsewhere.focus();
+    // A later refetch (realtime, polling) delivers a re-ordered board.
+    view.rerender({
+      canRank: true,
+      workItems: [
+        item("WLP-2", "s-open", "1"),
+        item("WLP-1", "s-open", "2"),
+        item("WLP-3", "s-open", "3"),
+        item("WLP-4", "s-done", "1"),
+        item("WLP-5", "s-done", "2"),
+      ],
+    });
+    await Promise.resolve();
+    expect(screen.getByRole("link", { name: /WLP-5/ })).toHaveFocus();
+  });
+
   it("re-enables the controls after a failed move", async () => {
     rankWorkItem.mockRejectedValue(new HttpError(409, "x"));
     board({ canRank: true });

@@ -300,10 +300,21 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     }
   }, [visibleItems, pruneSelection]);
 
+  const hasEnteredSelectionMode = useRef(false);
   const toggleSelectionMode = useCallback(() => {
+    hasEnteredSelectionMode.current = true;
     setSelectionMode((on) => !on);
     setSelectedKeys([]);
   }, []);
+  // One polite region for selection state (accessibility.md): entering or leaving the mode and
+  // every change of the selected count.
+  const selectionAnnouncement = selectionMode
+    ? selectedKeys.length > 0
+      ? t("workItems:bulk.selected", { count: selectedKeys.length })
+      : t("workItems:bulk.modeOn")
+    : hasEnteredSelectionMode.current
+      ? t("workItems:bulk.modeOff")
+      : "";
 
   return (
     <>
@@ -321,6 +332,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           layout === "board" ? " w-full min-w-0" : ""
         }`}
       >
+        <p className="sr-only" role="status" aria-live="polite">
+          {selectionAnnouncement}
+        </p>
         <div
           className={`flex items-center justify-between gap-3${
             layout === "board" ? " flex-wrap" : ""
@@ -331,6 +345,17 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             {t("workItems:list.heading")}
           </h1>
           <div className="flex items-center gap-2">
+            {/* First in the right-aligned group: it arrives after capabilities load, and
+                anything inserted at the leading edge leaves the controls after it where they are. */}
+            {project ? (
+              <Suspense fallback={null}>
+                <WorkItemSelectionToggle
+                  selectionMode={selectionMode}
+                  onToggle={toggleSelectionMode}
+                  onCapabilityChange={setCanAssign}
+                />
+              </Suspense>
+            ) : null}
             <fieldset
               aria-label={t("workItems:list.layoutGroup")}
               className="m-0 flex min-w-0 items-center gap-1 border-0 p-0"
@@ -352,15 +377,6 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                 {t("workItems:list.boardLayout")}
               </Button>
             </fieldset>
-            {project ? (
-              <Suspense fallback={null}>
-                <WorkItemSelectionToggle
-                  selectionMode={selectionMode}
-                  onToggle={toggleSelectionMode}
-                  onCapabilityChange={setCanAssign}
-                />
-              </Suspense>
-            ) : null}
             {project ? (
               <Suspense fallback={null}>
                 <WorkItemCreateTrigger

@@ -153,12 +153,19 @@ export default function WorkItemBoard({
   }
 
   /** Runs one write at a time; a second concurrent move would rank against stale neighbours. */
-  async function runMove(task: () => Promise<Notice>) {
+  async function runMove(task: () => Promise<Notice>, focus?: FocusTarget) {
+    // A skipped move must not leave a focus target behind for a later, unrelated refetch.
     if (busyRef.current) return undefined;
     busyRef.current = true;
     setBusy(true);
+    pendingFocus.current = focus;
     try {
       const result = await task();
+      // A failed or no-op move has nothing to refocus; clearing here also stops a later
+      // refetch (realtime, polling) from moving focus.
+      if (result.kind === "error" || result.text === "") {
+        pendingFocus.current = undefined;
+      }
       setNotice(result);
       return result;
     } finally {
@@ -206,8 +213,10 @@ export default function WorkItemBoard({
     const from = column.findIndex((candidate) => candidate.id === item.id);
     const to = direction === "up" ? from - 1 : from + 1;
     if (from === -1 || to < 0 || to >= column.length) return;
-    pendingFocus.current = { key: item.key, direction };
-    void runMove(() => rankWithin(item, column, to, to, stateName));
+    void runMove(() => rankWithin(item, column, to, to, stateName), {
+      key: item.key,
+      direction,
+    });
   }
 
   /** The Change state select shares the board's one-write guard with drag and rank. */
@@ -215,36 +224,38 @@ export default function WorkItemBoard({
     item: WorkItemRow,
     offer: { toStateTemplateId: string; toStateName: string },
   ): Promise<boolean> {
-    pendingFocus.current = { key: item.key, direction: "state" };
-    const result = await runMove(async () => {
-      try {
-        await transitionWorkItem({
-          key: item.key,
-          toStateTemplateId: offer.toStateTemplateId,
-        });
-        await refreshBoard();
-        await queryClient.invalidateQueries({
-          queryKey: ["work-items", "transitions", item.key],
-        });
-        return {
-          kind: "status",
-          text: t("workItems:board.transitionSaved", {
+    const result = await runMove(
+      async () => {
+        try {
+          await transitionWorkItem({
             key: item.key,
-            state: offer.toStateName,
-          }),
-        };
-      } catch (error) {
-        await refreshBoard();
-        return {
-          kind: "error",
-          text: describeFailure(
-            classifyWorkItemWriteError(error),
-            item.key,
-            "transition",
-          ),
-        };
-      }
-    });
+            toStateTemplateId: offer.toStateTemplateId,
+          });
+          await refreshBoard();
+          await queryClient.invalidateQueries({
+            queryKey: ["work-items", "transitions", item.key],
+          });
+          return {
+            kind: "status",
+            text: t("workItems:board.transitionSaved", {
+              key: item.key,
+              state: offer.toStateName,
+            }),
+          };
+        } catch (error) {
+          await refreshBoard();
+          return {
+            kind: "error",
+            text: describeFailure(
+              classifyWorkItemWriteError(error),
+              item.key,
+              "transition",
+            ),
+          };
+        }
+      },
+      { key: item.key, direction: "state" },
+    );
     return result?.kind === "status";
   }
 

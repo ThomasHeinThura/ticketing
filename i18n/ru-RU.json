@@ -2573,7 +2573,9 @@
 			"peopleError": "Couldn't load the people you can assign to.",
 			"saving": "Assigning…",
 			"unnamedPerson": "Unnamed person",
-			"selectMode": "Select items"
+			"selectMode": "Select items",
+			"modeOff": "Selection mode off. Selection cleared.",
+			"modeOn": "Selection mode on. Use the checkboxes to choose work items."
 		}
 	},
 	"portal": {
