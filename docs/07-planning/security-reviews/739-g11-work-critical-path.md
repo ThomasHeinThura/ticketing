@@ -19,8 +19,10 @@ A Claude Sonnet 5.5 lane implemented the change over three rounds. The reviewers
 - Ordinary review A by Claude Sonnet 5.5: REQUEST CHANGES at `ad160fd3`. Raw i18n keys appeared on navigation, and the tests were vacuous. Delta APPROVE at `d26d110e`, and at `d4a17d64`.
 - Ordinary review B by Claude Sonnet 5.5 (architecture, independent A/B reproducing about −234 ms LCP, docs): APPROVE at `d26d110e`. Delta APPROVE at `d4a17d64`, confirming the structural guard follows the real chunk graph.
 - Security review by Claude Opus 5.5: CLEAR at `d4a17d64`. No gate or calibration change, a deterministic plugin with no injection path, portal purity intact, and a same-origin fallback only.
+- Round 4 fixed hosted `check:deps` without any gate change. The loader tables are now committed placeholder files that the plugin fills at build time. Ordinary delta B: APPROVE at `867ed4f4`. Security delta: CLEAR at `867ed4f4`, finding no gate change, no injection path, deterministic builds and a pure merge of `main` `6389d6e7`.
 
 **Reviewed head:** `d4a17d64e58d142ffdcdce12947fc527667d729b`
+**Reviewed head:** `867ed4f43fd8f8fdfeaf8e531fc29fb90853c295`
 
 ## Context index
 
@@ -34,6 +36,8 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 4 | `739-d4a1-ordinary-delta-b-sonnet.md` | Ordinary delta review B (d26d110e..d4a17d64) | Claude Sonnet 5.5 | `d4a17d64` | APPROVE | `45667f398116663398ea7821d3ec18743cd445ede463cebc6b3c11a458ae4a4b` |
 | 5 | `739-d4a1-ordinary-delta-a-sonnet.md` | Ordinary delta review A (d26d110e..d4a17d64) | Claude Sonnet 5.5 | `d4a17d64` | APPROVE | `ce3009187bd6f9c22aa0aeed594379a6a05f0875c2776c643fd1e2d5250b0b89` |
 | 6 | `739-security-opus.md` | Security review (6015f016..d4a17d64) | Claude Opus 5.5 | `d4a17d64` | CLEAR | `55a167c1d85a4d41e81ec7eb6320f6797ac56f7220405eaa641380c040b3ad78` |
+| 7 | `739-867e-ordinary-delta-b-sonnet.md` | Ordinary delta review B (d4a17d64..867ed4f4) | Claude Sonnet 5.5 | `867ed4f4` | APPROVE | `d0c6c2688b8d8ee4842298a3de981dec8de1fd7592278fc55be9a31b3f628953` |
+| 8 | `739-867e-security-delta-opus.md` | Security delta review (d4a17d64..867ed4f4) | Claude Opus 5.5 | `867ed4f4` | CLEAR | `a55675018580b47f311d658c27c734fb69ed0e684047e5820ed09264dac26ff9` |
 
 ## Embedded reports
 
@@ -439,3 +443,107 @@ Verdict: **APPROVE** (non-blocking: F-R3-1 guard coverage of the shell layout ch
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 55a167c1d85a4d41e81ec7eb6320f6797ac56f7220405eaa641380c040b3ad78) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/739-867e-ordinary-delta-b-sonnet.md; Claude Sonnet 5.5; sha256 d0c6c2688b8d8ee4842298a3de981dec8de1fd7592278fc55be9a31b3f628953) -->
+# #739 exact-head delta review B (d4a17d64 to 867ed4f4)
+
+**Reviewed head:** 867ed4f43fd8f8fdfeaf8e531fc29fb90853c295
+**Previously approved:** d4a17d64e58d142ffdcdce12947fc527667d729b
+**Model:** Claude Sonnet 5.5, fresh context. Scratch worktree, removed afterwards. No Docker. Main checkout untouched.
+
+## Scope check
+`git diff d4a17d64 867ed4f4 -- scripts .github` is empty: no gate machinery changed. Real changes: two placeholder files `lib/i18n/group-loaders-{slim,rest}.ts`, `index.ts` imports them, `vite-env.d.ts` virtual declarations removed, `vite.config.ts` locates the slim loader chunk by the placeholder path, and the plugin's `load()` replaces the placeholders. The rest is merged main (#730, API/docs) and review notes.
+
+## Placeholder safety
+- Plugin not applied: I removed `i18nNamespaceGroups(...)` from `vite.config.ts` and built the agent. The build fails loudly ("G11 work-route preload could not resolve locale assets"), because no `slim-<locale>` modules exist. So an unplugged build cannot ship.
+- A tool that imports the placeholder directly gets `{}`. In group mode a lookup `loaders.default[locale]()` then throws a TypeError, which rejects the load (deferred group falls back to the full catalog; the first-paint group would fail loudly rather than silently render). It never silently succeeds with empty data. Group mode only happens in the browser on /work, so this only matters if someone bypasses the build. Non-blocking.
+- Portal gets `export default {}` via `groupedEntry: false`, with 0 `slim-*`/`rest-*` chunks in `dist/portal`.
+
+## Chunk output and determinism
+- Two direct builds of this head are byte-identical (same file-list and content hash, agent and portal).
+- Versus d4a17d64: the chunk set is the same, apart from the two loader chunks renamed `loaders-*` to `group-loaders-*` with identical content hashes, and the content-hash cascade through the entry's import path. Work-list route graph is unchanged: 276.1 KB gzip, 13 assets; agent initial 231.6 KB (+0.1); portal 164.4 KB.
+
+## First-paint guard (mutation)
+Added `"settings:title.x"` to `work-item-list.tsx`: build exit 1, "work-item-list.tsx -> settings". Restored.
+
+## Hosted `static` steps and others, locally on a clean install
+`lint:ci`, `typecheck` (whole repo via turbo), `check:tokens`, `check:i18n`, `check:deps`, `check:dockerfile-deps`, `check:ui`, `check:ui:raw-elements`: all exit 0. `check:deps` passes now. `check:bundle-purity`: clean (1 entry). `check:bundle-size`: passes (above).
+Also: web vitest 181 files / 975 tests passed; `test:a11y` ui 154 passed, web 8 passed; e2e `work-list-i18n-deferred.spec.ts` 6 passed.
+
+## Findings
+No blocking findings. Non-blocking: as above, direct import of the placeholder in a non-Vite tool yields an empty table and a TypeError rather than the full catalog for the first-paint group.
+
+## Verdict
+**APPROVE (ordinary delta review B) at 867ed4f43fd8f8fdfeaf8e531fc29fb90853c295.**
+<!-- END REPORT (sha256 d0c6c2688b8d8ee4842298a3de981dec8de1fd7592278fc55be9a31b3f628953) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/739-867e-security-delta-opus.md; Claude Opus 5.5; sha256 a55675018580b47f311d658c27c734fb69ed0e684047e5820ed09264dac26ff9) -->
+# PR #739 — exact-head security delta (round 4)
+
+- **Reviewed head:** 867ed4f43fd8f8fdfeaf8e531fc29fb90853c295
+- **Previous clear:** d4a17d64e58d142ffdcdce12947fc527667d729b (`739-security-opus.md`)
+- **Delta commits (first parent):**
+  - 5afcfd66 docs(security-reviews): record #739 review chain
+  - f88c77ca Merge origin/main (6389d6e7, #730)
+  - 867ed4f4 fix(web): resolve the i18n group loaders through real files
+- **Model / context:** Claude Opus 5.5 (claude-opus-5-5). This is an independent context; it did not author, direct or remediate this PR.
+- **Head verification:** `gh pr view 739 --json headRefOid` returned 867ed4f43fd8f8fdfeaf8e531fc29fb90853c295.
+- **Workspace:** a detached scratch worktree at the exact head. It was removed afterwards. The main checkout was not touched and no Docker was used.
+
+## Checks
+
+1. **`scripts/` and `.github/` are unchanged.**
+   - `git diff --stat d4a17d64 867ed4f4 -- scripts .github package.json apps/web/package.json pnpm-lock.yaml apps/web/vitest.config.ts` is empty.
+   - `git diff --stat 6389d6e7 867ed4f4 -- scripts .github` is also empty.
+   - `check:deps` (`scripts/ci/check-deps.mjs`) and its tests are untouched.
+   - The fix makes the import satisfy `check:deps` by pointing it at a real file. It does not add an exemption or allowlist. `check:deps` reported rc=0: "9 workspace packages/apps and 1595 source files; runtime workspace graph is acyclic and package boundaries hold".
+
+2. **Content replacement in the plugin (`vite/i18n-namespace-groups.ts`) cannot inject code.**
+   - The new branch in `load()` matches only ids matching `/src/lib/i18n/group-loaders-(slim|rest)\.ts$`, after stripping `?` queries and normalising backslashes.
+   - The `slim` or `rest` group comes from the regex capture, not from file content. The placeholder's own source is never read or echoed.
+   - The output is a fixed template. It lists `JSON.stringify(locale)`, where the locale comes from `listLocales(i18nDir)`: repo `i18n/*.json` filenames filtered by `^[A-Za-z]{2,3}-[A-Za-z]{2,4}\.json$` and sorted. Each entry maps to `() => import(JSON.stringify("virtual:taskdesk-i18n/<group>-<locale>"))`.
+   - Portal builds (`groupedEntry: false`) return `export default {}`.
+   - The emitted chunks were inspected. The agent tables reference only the `slim-*` / `rest-*` locale chunks. Both portal tables are `{}`.
+   - The plugin has no network access, no eval and no environment input.
+   - The placeholders in `src/lib/i18n/` are inert typed `{}` defaults. If the plugin were ever absent, the lookup `loaders[locale]` would throw, and the existing retry and full-catalog fallback would handle it. That is not unsafe.
+
+3. **Determinism.** Two clean `pnpm build` runs (agent and portal) produced 1,590 files each. Their SHA-256 manifests are identical; the manifest digest is `9d041c849fb29f836692d4090db6cc55973e635be77460a6b29fa74f87173ac0`.
+
+4. **Portal purity.**
+   - `check:bundle-purity` rc=0: "G12 portal bundle graph is clean".
+   - The portal has 0 `slim-`/`rest-` chunks, and its two loader tables are empty. The agent has 38 such chunks.
+
+5. **The merge of main is pure.** `git merge-tree --write-tree 5afcfd66 6389d6e7` produces tree `b4b459b5…`, which is identical to the tree of merge commit f88c77ca. The merge therefore has no manual conflict edits. The only PR-side changes after it are the 7 files in 867ed4f4. 5afcfd66 changes one review-record doc.
+
+6. **Secrets.** gitleaks 8.30.1 found no leaks on `d4a17d64..867ed4f4` (about 215 KB). It also found none on `6389d6e7..867ed4f4`.
+
+## Commands and results (exact head)
+
+| Command | Result |
+| --- | --- |
+| `pnpm install --frozen-lockfile`, then `pnpm turbo build --filter=@taskdesk/web... --force` | 5/5 tasks OK |
+| `pnpm build` (second clean build) | rc=0; output identical to the first build |
+| `pnpm check:deps` | rc=0 |
+| `pnpm check:bundle-size` | rc=0. Work-list route graph 276.1 / 350 KB, portal 164.4 / 200 KB. These match the d4a17d64 figures. |
+| `pnpm check:bundle-purity` | rc=0 |
+| `pnpm check:i18n` | rc=0 |
+| `npx vitest run` (apps/web) | 181 files, 975 tests passed |
+| `npx playwright test e2e/work-list-i18n-deferred.spec.ts` | 6/6 passed |
+| gitleaks on the delta | no leaks |
+
+## Findings
+
+**Blocking:** none.
+
+**Non-blocking:**
+
+1. `check:deps` analyses source only. It sees the placeholder `{}`, not the generated `import("virtual:taskdesk-i18n/...")` edges. The hidden edges reach only build-internal JSON catalog modules generated from repo files, so no package boundary is bypassed. This is noted for awareness, not as a gate gap.
+2. The older `virtual:taskdesk-i18n/loaders-*` branch in `load()` is now dead code. It is harmless and could be removed in a later cleanup.
+
+## Residual risk
+
+- I did not run the G11 perf bench, the full e2e suite or the Docker/UAT deploy.
+- I did not review the main-side #730 API content; that PR is reviewed under its own gates. I verified only that the merge introduced no edits beyond an automatic merge.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 a55675018580b47f311d658c27c734fb69ed0e684047e5820ed09264dac26ff9) -->
