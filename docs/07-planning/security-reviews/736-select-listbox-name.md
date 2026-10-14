@@ -12,9 +12,11 @@ A Claude Sonnet 5.5 lane implemented the change. The reviewers below are fresh, 
 - Ordinary review B by Claude Sonnet 5.5 (primitive design, mutations): APPROVE at `2574031a` and at `fbd00cd6`. It then gave delta APPROVE at `0be69dd4` for the selector-only e2e commit.
 - Security review by Claude Opus 5.5: CLEAR at `0be69dd4`. No e2e journey is weakened, there are no secrets, the DOM-derived name is XSS-safe, and the baseline hash matches.
 - Mechanical security rebind at `4eccd322`: CLEAR. This is a pure merge of `main` `1f1abe7c` (#733) and does not interact with this PR's surface.
+- Mechanical security rebind at `92ddcc9b`: CLEAR. This is a pure merge of `main` `6015f016` (#738), with no interaction.
 
 **Reviewed head:** `0be69dd4c3b1acb496e3b506af6b48fcb725c0c6`
 **Reviewed head:** `4eccd32268c2666fd5af68a05ee587fde55ab746`
+**Reviewed head:** `92ddcc9bf21d32f4bf348ac038e215f7d9d01cc9`
 
 ## Context index
 
@@ -30,6 +32,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 6 | `736-0be6-ordinary-delta-b-sonnet.md` | Ordinary delta review B (ad4f0429..0be69dd4) | Claude Sonnet 5.5 | `0be69dd4` | APPROVE | `7cbeb37646ad677b89bcc8fe2f548641f60697457759fea039478edd1e6c90ae` |
 | 7 | `736-security-opus.md` | Security review (82aecead..0be69dd4) | Claude Opus 5.5 | `0be69dd4` | CLEAR | `892ae6604666d1503cfc371812936554df162209247ac2d51e0377fb16b2d9dc` |
 | 8 | `736-4ecc-security-rebind-opus.md` | Mechanical security rebind (08ad4a6e..4eccd322) | Claude Opus 5.5 | `4eccd322` | CLEAR | `c5768921c7028851890e7ee3e5d76e734a2626a8cb610660a25fce9f05f35bdc` |
+| 9 | `736-92dd-security-rebind-opus.md` | Mechanical security rebind (cd0b612c..92ddcc9b) | Claude Opus 5.5 | `92ddcc9b` | CLEAR | `6238111d5e45945063189a9e662a49e72fa98dd7e85ad994668dd2bdcd6554f8` |
 
 ## Embedded reports
 
@@ -391,3 +394,42 @@ It contains no file under `apps/web`, `packages/` (including ui) or `tests/e2e`.
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 c5768921c7028851890e7ee3e5d76e734a2626a8cb610660a25fce9f05f35bdc) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/736-92dd-security-rebind-opus.md; Claude Opus 5.5; sha256 6238111d5e45945063189a9e662a49e72fa98dd7e85ad994668dd2bdcd6554f8) -->
+# PR #736 security review: exact-head rebind after merging main (#738)
+
+**Reviewed head:** 92ddcc9bf21d32f4bf348ac038e215f7d9d01cc9
+**Prior CLEAR head:** 4eccd32268c2666fd5af68a05ee587fde55ab746 (`736-4ecc-security-rebind-opus.md`; the substantive review is `736-security-opus.md` at 0be69dd4, by a different Opus reviewer)
+**Pre-merge head:** cd0b612c210acfc03d7b2c40183db2d2ae2682b7
+**Merged main:** 6015f0163f150dcb7f09e485ad0985a8d890db94 (#738, service-calendar delete request-time recheck)
+**Previous main:** 1f1abe7ca145d9a9749c869d4a4b94f4eb4d2537
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This context did not author, direct or remediate #736.
+**Scope:** a mechanical rebind. No tests were run, as the coordinator instructed. The substantive analysis remains the prior reviewer's.
+
+## Checks
+
+All checks ran against live git and GitHub.
+
+| Check | Result |
+| --- | --- |
+| `gh pr view 736` head | `92ddcc9b…`: matches |
+| `origin/main` | `6015f016…`: main is unchanged |
+| Parents of 92ddcc9b | `cd0b612c…` and `6015f016…`: matches |
+| Tree compared with `git merge-tree --write-tree cd0b612c 6015f016` | both `40aa92ba41f13e9707ab775e852480b7e0e1244c`. The merge is clean and adds no hand edits. |
+| `diff --name-only cd0b612c..92ddcc9b` compared with `diff --name-only 1f1abe7c..6015f016` | identical, 4 files |
+| cd0b612c already contains 1f1abe7c | yes |
+| Commits after the prior CLEAR (`4eccd322..cd0b612c`) | exactly one, `cd0b612c docs(security-reviews): bind the main-merge rebind`. Its parent is 4eccd322 and it changes only `docs/07-planning/security-reviews/736-select-listbox-name.md`, with 42 insertions. It is a note only. |
+
+## Interaction with #736's surface (web, e2e, ui)
+
+The #738 delta contains only:
+
+- `apps/api/src/pending-action/deletion-targets.ts`;
+- `apps/api/src/service-calendar/index.ts`;
+- one security-review doc;
+- `tests/api-integration/service-calendar-usage-delete.test.ts`.
+
+It contains no file under `apps/web`, `packages/` or `tests/e2e`. A path filter for those prefixes returned nothing. There is no overlap or interaction.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 6238111d5e45945063189a9e662a49e72fa98dd7e85ad994668dd2bdcd6554f8) -->
