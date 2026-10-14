@@ -377,7 +377,7 @@ async function collectCreateInteraction(page: Page, resetFixture: () => void) {
   await page.getByTestId("create-work-item-trigger").click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await captureScreen(page, "create-dialog");
-  await page.getByLabel("Type").click();
+  await page.getByRole("combobox", { name: "Type" }).click();
   await page.getByRole("option", { name: "Task" }).click();
   await page
     .getByLabel("Title", { exact: true })
