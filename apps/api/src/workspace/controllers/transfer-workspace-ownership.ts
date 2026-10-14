@@ -6,7 +6,10 @@ import {
   isUnambiguousMembership,
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
-import { syncWorkspaceAdminReach } from "../workspace-admin-reach";
+import {
+  lockPersonsInOrder,
+  syncWorkspaceAdminReach,
+} from "../workspace-admin-reach";
 import {
   AlreadyOwnerError,
   AmbiguousMembershipError,
@@ -145,6 +148,10 @@ async function transferWorkspaceOwnership(
         ),
       );
 
+    // Both person rows, in id order, before either sync: the syncs lock them in caller-
+    // dependent order otherwise, and two opposite-direction transfers between the same two
+    // people in different workspaces could deadlock (40P01).
+    await lockPersonsInOrder(tx, [newOwnerUserId, callerId]);
     await syncWorkspaceAdminReach(tx, workspaceId, newOwnerUserId);
     await syncWorkspaceAdminReach(tx, workspaceId, callerId);
 

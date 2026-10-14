@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
+import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
 import { projectMembershipKeys } from "../identity/membership-projection";
 import {
@@ -140,7 +141,11 @@ export async function syncWorkspaceAdminReach(
   userId: string,
 ): Promise<void> {
   const [person] = await tx
-    .select({ id: schema.personTable.id, side: schema.personTable.side })
+    .select({
+      id: schema.personTable.id,
+      side: schema.personTable.side,
+      organisationId: schema.personTable.organisationId,
+    })
     .from(schema.personTable)
     .where(eq(schema.personTable.userId, userId))
     .for("update")
@@ -176,8 +181,10 @@ export async function syncWorkspaceAdminReach(
   if (existing && existing.directOrigin !== "system_backfill") return;
 
   const now = new Date();
+  let change: "granted" | "revoked" | null = null;
   if (roleId === null) {
     if (!existing) return;
+    change = "revoked";
     await tx
       .update(schema.membershipGrantTable)
       .set({
@@ -188,6 +195,7 @@ export async function syncWorkspaceAdminReach(
       })
       .where(eq(schema.membershipGrantTable.id, existing.id));
   } else if (!existing) {
+    change = "granted";
     await tx.insert(schema.membershipGrantTable).values({
       id: createId(),
       personId: person.id,
@@ -199,6 +207,7 @@ export async function syncWorkspaceAdminReach(
       seesAll: true,
     });
   } else if (existing.roleId !== roleId || !existing.seesAll) {
+    change = "granted";
     await tx
       .update(schema.membershipGrantTable)
       .set({ roleId, seesAll: true, updatedAt: now })
@@ -208,6 +217,53 @@ export async function syncWorkspaceAdminReach(
   await projectMembershipKeys(tx, [
     { personId: person.id, scope: "workspace", scopeId: workspaceId },
   ]);
+
+  // Audit (rbac.md / security-model.md: `sees_all` changes are audited reach changes).
+  // A system action: no acting person. Granting uses `membership.sees_all_granted`;
+  // revoking uses `membership.changed` (the catalogue has no separate revoke key). Written
+  // in the same transaction as the grant so the two commit or roll back together. Only a real
+  // change is recorded; an idempotent re-sync writes nothing. The migration backfill (0123)
+  // cannot write hash-chained audit rows from SQL, so it writes none and is recorded by the
+  // decision log and the migration itself; the boot reconcile runs this function and does
+  // audit.
+  if (change !== null) {
+    await appendAuditLog(tx, {
+      actorId: null,
+      actorType: "system",
+      organisationId: person.organisationId,
+      workspaceId,
+      action:
+        change === "granted"
+          ? "membership.sees_all_granted"
+          : "membership.changed",
+      entityType: "membership",
+      entityId: person.id,
+      after: {
+        source: "workspace_role",
+        scope: "workspace",
+        scopeId: workspaceId,
+        seesAll: change === "granted",
+        ...(desired === null ? {} : { role: desired }),
+      },
+    });
+  }
+}
+
+/**
+ * Lock the `person` rows of these users in one deterministic order (by person id) so two
+ * transactions that each sync the same pair of people in opposite directions cannot
+ * deadlock on them. `syncWorkspaceAdminReach` re-locks the same rows, which is free.
+ */
+export async function lockPersonsInOrder(
+  tx: Tx,
+  userIds: readonly string[],
+): Promise<void> {
+  await tx
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(inArray(schema.personTable.userId, [...userIds]))
+    .orderBy(schema.personTable.id)
+    .for("update");
 }
 
 /**

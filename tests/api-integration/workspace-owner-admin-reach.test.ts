@@ -18,7 +18,10 @@ import { createApp } from "../../apps/api/src/index";
 import deleteAccountData from "../../apps/api/src/user/controllers/delete-account-data";
 import { seedDefaultWorkspaceRoles } from "../../apps/api/src/utils/seed-default-workspace-roles";
 import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
-import { reconcileWorkspaceAdminReach } from "../../apps/api/src/workspace/workspace-admin-reach";
+import {
+  lockPersonsInOrder,
+  reconcileWorkspaceAdminReach,
+} from "../../apps/api/src/workspace/workspace-admin-reach";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
@@ -818,6 +821,172 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       await seedDefaultWorkspaceRoles();
       await reconcileWorkspaceAdminReach();
       expect(await canReadProject(world, admin)).toBe(200);
+    });
+  });
+
+  describe("round 4: audit and lock order", () => {
+    async function auditFor(userId: string, workspaceId: string) {
+      const personId = await personIdOf(userId);
+      const rows = await db
+        .select({
+          action: schema.auditLogTable.action,
+          actorType: schema.auditLogTable.actorType,
+          actorId: schema.auditLogTable.actorId,
+          after: schema.auditLogTable.after,
+          workspaceId: schema.auditLogTable.workspaceId,
+        })
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityType, "membership"),
+            eq(schema.auditLogTable.entityId, personId),
+          ),
+        )
+        .orderBy(schema.auditLogTable.seq);
+      return rows.filter((r) => r.workspaceId === workspaceId);
+    }
+
+    it("workspace creation audits the owner grant as a system action", async () => {
+      const world = await newWorld();
+      expect(await auditFor(world.owner.user.id, world.workspaceId)).toEqual([
+        expect.objectContaining({
+          action: "membership.sees_all_granted",
+          actorType: "system",
+          actorId: null,
+          after: expect.objectContaining({ seesAll: true, role: "owner" }),
+        }),
+      ]);
+    });
+
+    it("promote audits a grant, demote audits a revoke, and an unchanged re-sync audits nothing", async () => {
+      const world = await newWorld();
+      const member = await addMember(world, "member");
+      expect(await auditFor(member.user.id, world.workspaceId)).toEqual([]);
+      await setRole(world, member, "admin");
+      await setRole(world, member, "admin");
+      const afterPromote = await auditFor(member.user.id, world.workspaceId);
+      expect(afterPromote.map((r) => r.action)).toEqual([
+        "membership.sees_all_granted",
+      ]);
+      expect(afterPromote[0]?.after).toMatchObject({
+        seesAll: true,
+        role: "admin",
+      });
+      await setRole(world, member, "viewer");
+      const afterDemote = await auditFor(member.user.id, world.workspaceId);
+      expect(afterDemote.map((r) => r.action)).toEqual([
+        "membership.sees_all_granted",
+        "membership.changed",
+      ]);
+      expect(afterDemote[1]).toMatchObject({
+        actorType: "system",
+        after: expect.objectContaining({ seesAll: false }),
+      });
+    });
+
+    it("remove and leave audit the revoke", async () => {
+      const world = await newWorld();
+      const removed = await addMember(world, "admin");
+      const leaver = await addMember(world, "admin");
+      await call(
+        world.app,
+        world.owner.cookie,
+        "DELETE",
+        `/api/workspace/${world.workspaceId}/members/${removed.user.id}`,
+      );
+      await call(
+        world.app,
+        leaver.cookie,
+        "POST",
+        `/api/workspace/${world.workspaceId}/leave`,
+      );
+      for (const actor of [removed, leaver]) {
+        expect(
+          (await auditFor(actor.user.id, world.workspaceId)).map(
+            (r) => r.action,
+          ),
+        ).toEqual(["membership.sees_all_granted", "membership.changed"]);
+      }
+    });
+
+    it("a boot reconcile that grants audits it", async () => {
+      const world = await newWorld();
+      await db
+        .update(schema.workspaceRoleTable)
+        .set({ isSystem: false })
+        .where(
+          and(
+            eq(schema.workspaceRoleTable.workspaceId, world.workspaceId),
+            eq(schema.workspaceRoleTable.role, "admin"),
+          ),
+        );
+      const admin = await addMember(world, "admin");
+      expect(await auditFor(admin.user.id, world.workspaceId)).toEqual([]);
+      await seedDefaultWorkspaceRoles();
+      await reconcileWorkspaceAdminReach();
+      expect(
+        (await auditFor(admin.user.id, world.workspaceId)).map((r) => r.action),
+      ).toEqual(["membership.sees_all_granted"]);
+    });
+
+    it("lockPersonsInOrder takes both rows regardless of argument order, so opposite callers wait instead of deadlocking", async () => {
+      const world = await newWorld();
+      const other = await addMember(world, "member");
+      const ids = [world.owner.user.id, other.user.id];
+      let release: () => void = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let firstHasBoth: () => void = () => {};
+      const ready = new Promise<void>((resolve) => {
+        firstHasBoth = resolve;
+      });
+      const first = db.transaction(async (tx) => {
+        await lockPersonsInOrder(tx, ids);
+        firstHasBoth();
+        await held;
+      });
+      await ready;
+      const second = db.transaction((tx) =>
+        lockPersonsInOrder(tx, [...ids].reverse()),
+      );
+      release();
+      await expect(Promise.all([first, second])).resolves.toBeDefined();
+    });
+
+    it("opposite-direction ownership transfers between the same two people do not deadlock", async () => {
+      const first = await newWorld();
+      const secondOwner = await addMember(first, "member");
+      // A second workspace owned by the other person, with the first owner as a member.
+      const ws2 = await createWorkspaceNative(first.app, secondOwner.cookie, {
+        name: "Other",
+      });
+      const ws2Id = ((await ws2.json()) as { id: string }).id;
+      const added = await call(
+        first.app,
+        secondOwner.cookie,
+        "POST",
+        `/api/workspace/${ws2Id}/members`,
+        { userId: first.owner.user.id, role: "member" },
+      );
+      expect(added.status).toBe(200);
+      const [a, b] = await Promise.all([
+        call(
+          first.app,
+          first.owner.cookie,
+          "POST",
+          `/api/workspace/${first.workspaceId}/transfer-ownership`,
+          { newOwnerUserId: secondOwner.user.id },
+        ),
+        call(
+          first.app,
+          secondOwner.cookie,
+          "POST",
+          `/api/workspace/${ws2Id}/transfer-ownership`,
+          { newOwnerUserId: first.owner.user.id },
+        ),
+      ]);
+      expect([a.status, b.status]).toEqual([200, 200]);
     });
   });
 });
