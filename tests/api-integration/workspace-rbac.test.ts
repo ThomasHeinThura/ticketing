@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectAccessToWorkspaceMembers,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -101,6 +102,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
 
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
@@ -114,6 +119,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
 
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
@@ -136,6 +145,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(member.user);
@@ -157,6 +170,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(member.user);
@@ -185,6 +202,10 @@ describe("API integration: workspace RBAC enforcement", () => {
         const { project, columns } = await createProjectFixture({
           workspaceId: member.workspace.id,
         });
+        await grantProjectAccessToWorkspaceMembers(
+          member.workspace.id,
+          project.id,
+        );
         const task = await seedTask(
           project.id,
           columns[columnKey].id,
@@ -216,6 +237,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
 
       const outsiderId = `user-${randomUUID()}`;
       const outsider = requireRow(
@@ -253,6 +278,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: victim.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        victim.workspace.id,
+        project.id,
+      );
 
       mockAuthenticatedSession(attacker.user);
       const { app } = createApp();
@@ -286,6 +315,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: viewer.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        viewer.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(viewer.user);
@@ -313,6 +346,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(member.user);
@@ -371,6 +408,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const { project: otherProject, columns: otherColumns } =
         await createProjectFixture({ workspaceId: other.workspace.id });
       const task = await seedTask(project.id, columns.todo.id);
@@ -435,6 +476,10 @@ describe("API integration: workspace RBAC enforcement", () => {
         const { project, columns } = await createProjectFixture({
           workspaceId: member.workspace.id,
         });
+        await grantProjectAccessToWorkspaceMembers(
+          member.workspace.id,
+          project.id,
+        );
         const { project: foreignProject, columns: foreignColumns } =
           await createProjectFixture({ workspaceId: foreign.workspace.id });
         const task = await seedTask(project.id, columns.todo.id);
@@ -528,6 +573,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(member.user);
@@ -551,6 +600,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(member.user);
@@ -578,6 +631,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: admin.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        admin.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(admin.user);
@@ -606,6 +663,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
       const foreignLabel = requireRow(
         await db
@@ -669,6 +730,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
       const foreignLabel = requireRow(
         await db
@@ -723,6 +788,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: victim.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        victim.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       // A site-wide instance admin (`user.role = "admin"`) who has never joined
@@ -771,6 +840,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       await createWorkspaceRoleRow(member.workspace.id, "readonly", {
         work_item: ["read"],
         project: ["read"],
@@ -788,6 +861,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       await createWorkspaceRoleRow(member.workspace.id, "creator", {
         work_item: ["create", "read"],
         project: ["read"],
@@ -807,6 +884,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       await createWorkspaceRoleRow(member.workspace.id, "viewer", {
         work_item: ["create", "read", "update"],
         project: ["read"],
@@ -825,6 +906,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       // Malformed permission payload. The middleware should refuse rather than
       // crash; with no built-in fallback for "broken", access is denied.
       await createWorkspaceRoleRow(member.workspace.id, "broken", "not-json");
@@ -841,6 +926,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       // Some entries are valid string arrays, others are objects/strings/etc.
       // Middleware keeps the valid ones and ignores the rest.
       await createWorkspaceRoleRow(
@@ -875,6 +964,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
 
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
@@ -890,6 +983,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(member.user);
@@ -918,6 +1015,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id, member.user.id);
 
       mockAuthenticatedSession(member.user);
@@ -953,6 +1054,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(member.user);
@@ -987,6 +1092,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id, member.user.id);
 
       mockAuthenticatedSession(member.user);
@@ -1021,6 +1130,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: admin.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        admin.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(admin.user);
@@ -1055,6 +1168,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(member.user);
@@ -1085,6 +1202,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(member.user);
@@ -1103,6 +1224,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
 
       mockAuthenticatedSession(member.user);
@@ -1159,6 +1284,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
 
@@ -1181,6 +1310,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
 
@@ -1203,6 +1336,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
 
@@ -1217,6 +1354,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
 
@@ -1267,6 +1408,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
       // deleteLabel requires the label to be attached to a task; without a
       // taskId the controller rejects with 400 before checking permissions.
@@ -1297,6 +1442,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
       const label = requireRow(
         await db
@@ -1333,6 +1482,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
 
       // Reload the user so the mocked session reflects the admin role.
       const refreshedUser = await db.query.userTable.findFirst({
@@ -1358,6 +1511,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
 
       mockAuthenticatedSession({ ...member.user, role: null });
       const { app } = createApp();
@@ -1395,6 +1552,10 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { project } = await createProjectFixture({
         workspaceId: owner.workspace.id,
       });
+      await grantProjectAccessToWorkspaceMembers(
+        owner.workspace.id,
+        project.id,
+      );
       mockAuthenticatedSession(owner.user);
       const { app } = createApp();
 

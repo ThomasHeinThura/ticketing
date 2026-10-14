@@ -2,6 +2,11 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { assertWorkItemProjectReach } from "../utils/assert-work-item-project-reach";
+import {
+  WORK_ITEM_REACH_MARK,
+  type WorkItemReachMark,
+} from "../utils/reach-mark";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 
@@ -23,7 +28,7 @@ import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
  * answer consistent with every other row lookup in this codebase.
  */
 export function requireCommentReach(idKey = "id") {
-  return async (c: Context, next: Next) => {
+  const middleware = async (c: Context, next: Next) => {
     const userId = c.get("userId");
     if (!userId) {
       throw new HTTPException(401, { message: "Unauthorized" });
@@ -56,6 +61,7 @@ export function requireCommentReach(idKey = "id") {
         workItemId: schema.commentTable.workItemId,
         workspaceId: schema.commentTable.workspaceId,
         authorId: schema.commentTable.authorId,
+        projectId: schema.workItemTable.projectId,
       })
       .from(schema.commentTable)
       .innerJoin(
@@ -90,6 +96,19 @@ export function requireCommentReach(idKey = "id") {
       throw error;
     }
 
+    await assertWorkItemProjectReach(
+      c,
+      userId,
+      {
+        projectId: comment.projectId,
+        workspaceId: comment.workspaceId,
+        workItemId: comment.workItemId,
+      },
+      // No `deferApiKeyCapability`: the edit/delete controllers check the owner's workspace
+      // role, not the key's scope, so a key must fail closed here.
+      { notFoundMessage: "Comment not found" },
+    );
+
     c.set("workspaceId", comment.workspaceId);
     // #400 F1 (Opus review): row-derived, never from the caller's request -- label it
     // so shadow mode's evidence gate keeps it instead of always nulling it.
@@ -100,4 +119,7 @@ export function requireCommentReach(idKey = "id") {
 
     return next();
   };
+  return Object.assign(middleware, {
+    [WORK_ITEM_REACH_MARK]: { projectReach: true } satisfies WorkItemReachMark,
+  });
 }

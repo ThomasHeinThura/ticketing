@@ -588,11 +588,13 @@ describe("strict policy runtime enforcement against the production API graph", (
       .where(eq(schema.taskActivityTable.id, comment.id));
     expect(afterDenied?.content).toBe("original");
 
+    // An API key carries no canonical capability subset, so the route's own project-capability
+    // check refuses it even in scope: the legacy edit route fails closed for keys.
     const inScope = await edit(
       await issueKey({ comment: ["update_own"] }),
-      "applied",
+      "should not apply either",
     );
-    expect(inScope.status, await inScope.clone().text()).toBe(200);
+    expect(inScope.status, await inScope.clone().text()).toBe(403);
   });
 
   it("uses the addressed row's workspace and refuses a caller query hint for another workspace", async () => {

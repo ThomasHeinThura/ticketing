@@ -7,7 +7,16 @@ import {
   userTable,
 } from "../../database/schema";
 
-async function getTaskRelations(taskId: string, workspaceId: string) {
+async function getTaskRelations(
+  taskId: string,
+  workspaceId: string,
+  /** Whether the caller reaches the task's project; unreachable related tasks are dropped. */
+  canReachTask: (task: {
+    id: string;
+    projectId: string;
+    workspaceId: string;
+  }) => Promise<boolean>,
+) {
   const relations = await db
     .select({
       id: taskRelationTable.id,
@@ -69,7 +78,10 @@ async function getTaskRelations(taskId: string, workspaceId: string) {
       );
 
     for (const task of taskRows) {
-      tasks.set(task.id, task);
+      // A related task outside the caller's project reach is omitted entirely, with its
+      // relation: its title, status, priority and assignee must not reach the caller.
+      if (await canReachTask({ ...task, workspaceId }))
+        tasks.set(task.id, task);
     }
   }
 

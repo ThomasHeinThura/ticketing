@@ -49,7 +49,10 @@ const createTaskCommentRoute = createRoute({
   description:
     "Add a comment to a task. Mentions in the content notify the mentioned users, and the assignee is notified too. Returns the stored activity row, which carries no author object -- read the list route for that.",
   middleware: [
-    workspaceAccess.fromTaskId(),
+    workspaceAccess.fromTaskId("taskId", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -75,7 +78,10 @@ const updateTaskCommentRoute = createRoute({
   summary: "Update task comment",
   description: "Edit a comment. Only the comment's author may do this.",
   middleware: [
-    workspaceAccess.fromComment(),
+    workspaceAccess.fromComment("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -103,7 +109,10 @@ const deleteTaskCommentRoute = createRoute({
   summary: "Delete task comment",
   description: "Delete a comment. Only the comment's author may do this.",
   middleware: [
-    workspaceAccess.fromComment(),
+    workspaceAccess.fromComment("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: { params: commentParam },

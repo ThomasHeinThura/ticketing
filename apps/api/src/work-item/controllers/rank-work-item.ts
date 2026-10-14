@@ -25,8 +25,10 @@ import { assertProjectStillLive } from "../assert-work-item-live";
 // `beforeId`/`afterId` is required; passing neither is a 400 (there is nothing to rank
 // relative to).
 //
-// `WI-13` (customers may re-rank only their own organisation's backlog) is NOT enforced
-// here: nothing in this codebase yet resolves a live customer-portal caller identity
+// `WI-13` (customers may re-rank only their own organisation's backlog) is NOT expressible
+// here, so `requireWorkItemReach()` FAILS CLOSED: a customer principal gets 403 on this route
+// (the permission matrix declares the same). Original note, still true of this controller:
+// it is NOT enforced here: nothing in this codebase yet resolves a live customer-portal caller identity
 // (`work-item/index.ts`'s own file comment notes the same gap for every other route --
 // no route anywhere assembles `packages/permissions`'s customer/organisation reach at
 // runtime yet). This route gates on `work_item:rank` via `requireWorkspaceCapability`,

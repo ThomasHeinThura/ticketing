@@ -6,6 +6,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectAccessToWorkspaceMembers,
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
@@ -112,6 +113,7 @@ describe("issue #290 (S4): NUL-byte sweep on body id fields that reach a DB look
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await seedTask(project.id, columns.todo.id);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -134,6 +136,7 @@ describe("issue #290 (S4): NUL-byte sweep on body id fields that reach a DB look
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await seedTask(project.id, columns.todo.id);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -228,6 +231,7 @@ describe("issue #290 (S4): NUL-byte sweep on body id fields that reach a DB look
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await seedTask(project.id, columns.todo.id);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -248,6 +252,7 @@ describe("issue #290 (S4): NUL-byte sweep on body id fields that reach a DB look
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await seedTask(project.id, columns.todo.id);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -266,6 +271,7 @@ describe("issue #290 (S4): NUL-byte sweep on body id fields that reach a DB look
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await seedTask(project.id, columns.todo.id, member.user.id);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -292,6 +298,7 @@ describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
 
@@ -315,6 +322,7 @@ describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
 
@@ -359,6 +367,7 @@ describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await seedTask(project.id, columns.todo.id);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -390,6 +399,7 @@ describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await seedTask(project.id, columns.todo.id);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();

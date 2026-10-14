@@ -224,6 +224,7 @@ describe("API integration: approval lifecycle", () => {
     await grantProjectRole(approver.user.id, project.id, [
       "project:read",
       "work_item:read",
+      "work_item:transition",
       "approval:decide_cab",
     ]);
     const approverPerson = requireRow(

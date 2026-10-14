@@ -1,4 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
+import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
@@ -15,6 +16,8 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { isCustomerPrincipal } from "../utils/is-customer-principal";
+import { markReach } from "../utils/reach-mark";
 import {
   assertCallerHasCapability,
   assertCallerHasCapabilityOrSelf,
@@ -29,6 +32,7 @@ import {
   workspaceMemberRoles,
 } from "../utils/workspace-member-roles";
 import type { ActivityActorType } from "./activity";
+import { workItemBulkAuthoriser } from "./bulk-reach";
 import { commentSchema } from "./comment-response";
 import {
   commentIdParam,
@@ -262,6 +266,29 @@ const listWorkItemsRoute = createRoute({
   },
 });
 
+// Customers are portal-only (the matrix declares 403 in reach). Other callers' results are
+// reach-filtered per project inside the query itself, so this collection route needs no
+// per-item reach middleware.
+const searchCustomerRefusal = markReach(
+  async (c: Context, next: Next) => {
+    const userId = c.get("userId");
+    const workspaceId = c.get("workspaceId");
+    if (
+      userId &&
+      workspaceId &&
+      (await isCustomerPrincipal(userId, workspaceId))
+    ) {
+      throw new HTTPException(403, { message: "Insufficient permissions" });
+    }
+    await next();
+  },
+  {
+    projectReach: false,
+    workspaceReachOnlyReason:
+      "collection route: results are filtered per project reach inside the query",
+  },
+);
+
 const searchWorkItemsRoute = createRoute({
   method: "post",
   operationId: "searchWorkItems",
@@ -289,6 +316,7 @@ const searchWorkItemsRoute = createRoute({
         throw error;
       }
     },
+    searchCustomerRefusal,
   ] as const,
   request: {
     body: {
@@ -349,9 +377,7 @@ const getWorkItemRoute = createRoute({
     "Get a single work item by its permanent key, e.g. PROJ-123. The detail response " +
     "includes the project's CA-2 `defaultCommentVisibility`; creating a comment still " +
     "requires the caller to submit an explicit visibility.",
-  middleware: [
-    requireWorkItemReach("key", { requireProjectReach: true }),
-  ] as const,
+  middleware: [requireWorkItemReach()] as const,
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse("The work item", workItemDetailSchema),
@@ -369,7 +395,7 @@ const getWorkItemSlaRoute = createRoute({
   tags: ["Work items"],
   summary: "Evaluate a work item's pinned SLA policy version",
   middleware: [
-    requireWorkItemReach("key", { requireProjectReach: true }),
+    requireWorkItemReach(),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
@@ -429,7 +455,7 @@ const updateWorkItemRoute = createRoute({
     "Changing `priority` additionally requires `work_item:set_priority` " +
     "(`docs/01-architecture/rbac.md`) -- `work_item:update` alone is not enough.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:update"),
   ] as const,
   request: {
@@ -498,7 +524,9 @@ const assignWorkItemRoute = createRoute({
   // has been parsed; the capability decision itself is field-dependent (`AS-2`'s
   // self-branch reads `body.assigneeId`), so it runs in the handler -- the same placement
   // `PATCH`'s `work_item:set_priority` check uses, for the same reason.
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
+  ] as const,
   request: {
     params: workItemKeyParam,
     body: {
@@ -539,7 +567,7 @@ const deleteWorkItemRoute = createRoute({
     "this codebase today (e.g. `DELETE /api/projects/{id}`), none of which implement " +
     "that mechanism yet. Tracked on issue #428.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:delete"),
   ] as const,
   request: { params: workItemKeyParam },
@@ -564,7 +592,7 @@ const rankWorkItemRoute = createRoute({
     "one of `beforeId`/`afterId` (the two items that should end up surrounding this " +
     "one's new slot) is required.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:rank"),
   ] as const,
   request: {
@@ -598,7 +626,7 @@ const setWorkItemParentRoute = createRoute({
     "descendant of it (a cycle, at any distance), or would exceed the maximum hierarchy " +
     "depth of 5. Parent and child must be in the same project (`RH-6`).",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:update"),
   ] as const,
   request: {
@@ -637,7 +665,7 @@ const detachWorkItemParentRoute = createRoute({
     "Detach a work item from its parent (`RH-11`/`RH-12`). Idempotent when the item " +
     "already has no parent. Detaching mutates the former parent's own roll-up too.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:update"),
   ] as const,
   request: { params: workItemKeyParam },
@@ -661,9 +689,7 @@ const getWorkItemTreeRoute = createRoute({
     "descendant beneath it, with the requested item's own node flagged `isCurrent`. " +
     "Capped in total size (`truncated: true` when the real subtree is larger than the " +
     "response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
-  middleware: [
-    requireWorkItemReach("key", { requireProjectReach: true }),
-  ] as const,
+  middleware: [requireWorkItemReach()] as const,
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse("The hierarchy tree", workItemTreeResponseSchema),
@@ -685,7 +711,7 @@ const watchWorkItemRoute = createRoute({
     "on `work_item:read`, not a dedicated watch capability -- anyone with read access " +
     "may watch.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
@@ -709,7 +735,7 @@ const unwatchWorkItemRoute = createRoute({
     "to be recreated; an explicit watcher's row is deleted outright. Idempotent: " +
     "unwatching something never watched is a 200 no-op.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
@@ -765,9 +791,7 @@ const listWorkItemActivityRoute = createRoute({
     "merged and sorted together, not two separate lists. Every row is returned " +
     "regardless of `visibility` -- see the controller's own doc comment for why no " +
     "caller-type filtering is applied yet. A tombstone includes its `deletedBy` actor id.",
-  middleware: [
-    requireWorkItemReach("key", { requireProjectReach: true }),
-  ] as const,
+  middleware: [requireWorkItemReach()] as const,
   request: { params: workItemKeyParam, query: listWorkItemActivityQuery },
   responses: {
     200: jsonResponse(
@@ -799,7 +823,9 @@ const unassignWorkItemRoute = createRoute({
   // Same reasoning as the assign route directly above: reach resolves the row in
   // middleware, while the capability decision depends on a fact (the row's CURRENT
   // holder) that is only known in the handler.
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
+  ] as const,
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse(
@@ -840,7 +866,7 @@ const transitionWorkItemRoute = createRoute({
     "is refused with 422 before any work-item mutation. `set_assignee`'s `'default'` " +
     "always resolves to no assignee (no project/type default-assignee column yet).",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:transition"),
   ] as const,
   request: {
@@ -879,9 +905,7 @@ const listWorkItemTransitionsRoute = createRoute({
     "Exactly what this actor may do now, with reasons for anything blocked " +
     '(`workflows.md` § "The state select"). An illegal transition is absent, never ' +
     "shown disabled -- the UI never computes legality client-side.",
-  middleware: [
-    requireWorkItemReach("key", { requireProjectReach: true }),
-  ] as const,
+  middleware: [requireWorkItemReach()] as const,
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse(
@@ -909,7 +933,9 @@ const createCommentRoute = createRoute({
     "Add a comment to a work item (`CA-1`..`CA-11`). `visibility` is required, chosen " +
     "explicitly at composition -- `public` requires `comment:create`, `internal` requires " +
     "`comment:create_internal`.",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
+  ] as const,
   request: {
     params: workItemKeyParam,
     body: {
@@ -938,9 +964,7 @@ const commentMentionCandidatesRoute = createRoute({
     "List people in this work item's workspace who can be considered for a comment mention. " +
     "Customer candidates are available only for public comments and only when they currently " +
     "reach this work item.",
-  middleware: [
-    requireWorkItemReach("key", { requireProjectReach: true }),
-  ] as const,
+  middleware: [requireWorkItemReach()] as const,
   request: {
     params: workItemKeyParam,
     query: commentMentionCandidatesQuery,
@@ -965,9 +989,7 @@ const commentMentionPreflightRoute = createRoute({
   description:
     "Return selected person ids split by current work-item reach. Unknown, inactive, " +
     "non-member and out-of-scope ids are indistinguishable from inaccessible people.",
-  middleware: [
-    requireWorkItemReach("key", { requireProjectReach: true }),
-  ] as const,
+  middleware: [requireWorkItemReach()] as const,
   request: {
     params: workItemKeyParam,
     body: {
@@ -1401,6 +1423,12 @@ const workItem = apiRouter<
         : // `assigneeId` is required by `bulkWorkItemsBody`'s own `.refine` whenever
           // `operation === "assign"`, so this is never actually undefined here.
           { operation: "assign", assigneeId: assigneeId as string },
+      await workItemBulkAuthoriser(
+        c,
+        userId,
+        workspaceId,
+        operation === "delete" ? "work_item:delete" : "work_item:assign",
+      ),
     );
     return c.json(result, 200);
   })
