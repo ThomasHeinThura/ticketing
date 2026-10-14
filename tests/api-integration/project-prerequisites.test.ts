@@ -10,6 +10,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectManageAccess,
   grantProjectRole,
 } from "./helpers/fixtures";
 
@@ -61,6 +62,7 @@ describe("API integration: project prerequisites", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await createPrerequisite(project.id, {
@@ -76,6 +78,7 @@ describe("API integration: project prerequisites", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await createPrerequisite(project.id, {
@@ -91,6 +94,7 @@ describe("API integration: project prerequisites", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
 
@@ -137,10 +141,12 @@ describe("API integration: project prerequisites", () => {
       workspaceId: member.workspace.id,
       slug: "project-a",
     });
+    await grantProjectManageAccess(member.user.id, projectA.id);
     const { project: projectB } = await createProjectFixture({
       workspaceId: member.workspace.id,
       slug: "project-b",
     });
+    await grantProjectManageAccess(member.user.id, projectB.id);
     mockAuthenticatedSession(member.user);
 
     const createResponse = await createPrerequisite(projectA.id, {
@@ -161,6 +167,7 @@ describe("API integration: project prerequisites", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await createPrerequisite(project.id, {
@@ -176,6 +183,7 @@ describe("API integration: project prerequisites", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await createPrerequisite(project.id, {
@@ -191,6 +199,7 @@ describe("API integration: project prerequisites", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await updatePrerequisite(

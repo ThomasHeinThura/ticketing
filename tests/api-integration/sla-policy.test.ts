@@ -376,9 +376,11 @@ describe("API integration: SLA policy authoring contract", () => {
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
+    // The owner also creates the evaluated item through the API (project-reach gated).
     await grantProjectRole(owner.user.id, project.id, [
       "project:read",
       "work_item:read",
+      "work_item:create",
     ]);
     const createdAt = new Date();
     const [stateTemplate] = await db

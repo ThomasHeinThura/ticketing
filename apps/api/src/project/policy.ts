@@ -194,6 +194,14 @@ export const projectPolicies = {
     reach: "required",
   },
 
+  // **Project reach on every write below (#720).** Each `{id}`/`{projectId}` write now runs
+  // `workspaceAccess.fromProject(..., { requireProjectReach: true, deferApiKeyCapability: true })`
+  // (or the column / workflow-rule equivalents): an out-of-reach project answers the same 404 as a
+  // missing one before the legacy `requireWorkspacePermission` gate, in reach without the declared
+  // capability is 403, and an API key still needs reach with its capability left to the key-aware
+  // gate. `tests/permissions/project-reach-guard.test.ts` enforces this for every project-scoped
+  // route; `PUT /api/project/{id}`'s handler-level `project:manage_settings` check (#726) runs after.
+
   // ── Issue #25's bounded slice ──────────────────────────────────────────────────────
   // Milestones, prerequisites, stakeholders, document links. All eleven routes below
   // share one enforcement shape: `workspaceAccess.fromProject()` (scope: "project",

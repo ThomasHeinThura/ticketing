@@ -47,7 +47,10 @@ const createColumnRoute = createRoute({
   description:
     "Add a column to the end of a project's board. The slug is derived from the name.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -59,7 +62,7 @@ const createColumnRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created column", columnSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing project:update permission"),
     // #202: `create-column.ts` rejects a soft-deleted project via
     // `getProjectWorkspaceId`, the same helper `getColumns`/`reorderColumns` use --
@@ -78,7 +81,10 @@ const reorderColumnsRoute = createRoute({
   description:
     "Set new positions for a project's columns and return the whole board in its new order.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -108,7 +114,10 @@ const updateColumnRoute = createRoute({
   description:
     "Update a column. Omitted fields are left unchanged; icon and color accept null to clear them.",
   middleware: [
-    workspaceAccess.fromColumn("id"),
+    workspaceAccess.fromColumn("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -135,7 +144,10 @@ const deleteColumnRoute = createRoute({
   description:
     "Delete an empty column. A column holding tasks is refused until they are moved or deleted.",
   middleware: [
-    workspaceAccess.fromColumn("id"),
+    workspaceAccess.fromColumn("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: columnParam },

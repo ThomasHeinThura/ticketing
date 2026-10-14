@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -19,8 +20,10 @@ describe("POST /api/work-items/search", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    // The member also creates the searched items through the API (project-reach gated).
     await grantProjectRole(member.user.id, project.id, [
       "work_item:read",
+      "work_item:create",
       "project:read",
     ]);
     const now = new Date();
@@ -111,6 +114,14 @@ describe("POST /api/work-items/search", () => {
       createdAt: now,
       updatedAt: now,
     });
+    // The hidden item is created through the (project-reach gated) API, so the member is
+    // granted the project just long enough to create it, then loses reach again: the
+    // search below must still never surface it.
+    const hiddenGrant = await grantProjectRole(
+      member.user.id,
+      hiddenProject.project.id,
+      ["project:read", "work_item:read", "work_item:create"],
+    );
     const hiddenProjectItem = await app.request(
       `/api/projects/${hiddenProject.project.id}/work-items`,
       {
@@ -127,6 +138,9 @@ describe("POST /api/work-items/search", () => {
       hiddenProjectItem.status,
       await hiddenProjectItem.clone().text(),
     ).toBe(200);
+    await db
+      .delete(schema.membershipTable)
+      .where(eq(schema.membershipTable.roleId, hiddenGrant.id));
 
     const response = await app.request("/api/work-items/search", {
       method: "POST",

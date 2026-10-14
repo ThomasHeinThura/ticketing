@@ -29,7 +29,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectAccessToWorkspaceMembers,
-  grantProjectRole,
+  grantProjectManageAccess,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 
@@ -107,6 +107,7 @@ async function buildDeletedProjectFixture(): Promise<Fixture> {
   const { project, columns } = await createProjectFixture({
     workspaceId: member.workspace.id,
   });
+  await grantProjectManageAccess(member.user.id, project.id);
   await grantWorkItemProjectAccess(member.user.id, project.id);
 
   const [task] = await db
@@ -386,6 +387,7 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
         name: "Destination",
         slug: "destination",
       });
+      await grantProjectManageAccess(member.user.id, destination.id);
 
       const [task] = await db
         .insert(schema.taskTable)
@@ -429,6 +431,7 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
         name: "Deleted",
         slug: "deleted",
       });
+      await grantProjectManageAccess(member.user.id, deleted.id);
 
       const [task] = await db
         .insert(schema.taskTable)
@@ -492,6 +495,10 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
           name: "Live",
           slug: "live",
         });
+      // Reach and the update capability on both projects: the batch must still skip the
+      // soft-deleted one rather than refuse as a whole.
+      await grantWorkItemProjectAccess(member.user.id, deleted.id);
+      await grantWorkItemProjectAccess(member.user.id, live.id);
 
       const [frozen] = await db
         .insert(schema.taskTable)
@@ -600,6 +607,7 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectManageAccess(member.user.id, project.id);
       await grantProjectAccessToWorkspaceMembers(
         member.workspace.id,
         project.id,
@@ -721,9 +729,7 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
         const fixture = await createProjectFixture({
           workspaceId: member.workspace.id,
         });
-        await grantProjectRole(member.user.id, fixture.project.id, [
-          "project:read",
-        ]);
+        await grantProjectManageAccess(member.user.id, fixture.project.id);
         mockAuthenticatedSession(member.user);
         return fixture;
       })();
@@ -753,6 +759,7 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
         const fixture = await createProjectFixture({
           workspaceId: member.workspace.id,
         });
+        await grantProjectManageAccess(member.user.id, fixture.project.id);
         mockAuthenticatedSession(member.user);
         return fixture;
       })();
@@ -789,6 +796,7 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectManageAccess(member.user.id, project.id);
       await grantProjectAccessToWorkspaceMembers(
         member.workspace.id,
         project.id,

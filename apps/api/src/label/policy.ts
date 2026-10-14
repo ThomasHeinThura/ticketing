@@ -44,7 +44,15 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * member may read" runtime behaviour) makes it a genuine match on breadth, not merely the
  * least-wrong option, unlike a case where reuse would silently narrow today's access.
  *
- * `scope: "workspace"` throughout: both capabilities used here (`label:manage`,
+ * **Task-targeting routes carry project reach (#720, decision 720-A).** `GET /api/label/task/
+ * {taskId}` is declared on the `work_item` scope (`fromTaskId` with `requireProjectReach`). The
+ * other routes stay workspace-scoped because a label may be a workspace-level DEFINITION (no
+ * task), which is decided by workspace membership alone; when the request names a task (body
+ * `taskId`) or addresses a label bound to one, `requireBodyTaskReach` / `requireLabelRowTaskReach`
+ * (`utils/task-target-reach.ts`) additionally require reach to that task's project and answer the
+ * route's own "not found". The capability stays with the route's own gate.
+ *
+ * `scope: "workspace"` otherwise: both capabilities used here (`label:manage`,
  * `workspace:read`) are workspace-domain capabilities in rbac.md, checked at workspace scope
  * regardless of which path parameter happens to identify the addressed row -- the same
  * reasoning `workspace/policy.ts` applies to its own member/invitation routes, which are
@@ -62,7 +70,7 @@ export const labelPolicies = {
   // decision is reached.
   "GET /api/label/task/{taskId}": {
     capability: "workspace:read",
-    scope: "workspace",
+    scope: "work_item",
     scopeSource: "row",
     reach: "required",
   },

@@ -9,6 +9,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectAccessToWorkspaceMembers,
+  grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -263,13 +264,12 @@ describe("API integration: workspace RBAC enforcement", () => {
       const response = await postCreateTask(app, project.id);
       // Before #290, `workspaceAccess.fromProject` answered 403 here ("reachable
       // resource, wrong tenant") but 400 for an outright unknown project id -- letting
-      // a caller tell the two apart. It now answers this exactly like the unknown-id
-      // case (#202's own precedent for this helper: a project lookup failure is a 400,
-      // not a 404), never a 403.
-      expect(response.status).toBe(400);
-      await expect(response.text()).resolves.toBe(
-        "Workspace ID could not be determined",
-      );
+      // a caller tell the two apart. Since #720 the route requires project reach, so it
+      // answers this exactly like the unknown-id case (404, `api-design.md`), never a 403.
+      expect(response.status).toBe(404);
+      const unknown = await postCreateTask(app, "no-such-project-id");
+      expect(unknown.status).toBe(404);
+      await expect(response.text()).resolves.toBe(await unknown.text());
     });
 
     it("issue #290: does not distinguish a project reached through a conflicting workspaceId query from an unknown one", async () => {
@@ -301,11 +301,24 @@ describe("API integration: workspace RBAC enforcement", () => {
       );
 
       // `?workspaceId=` was never consulted for a `lookup` source (that's #256); #290
-      // additionally means the resolved-but-out-of-reach project doesn't leak a 403.
-      expect(response.status).toBe(400);
-      await expect(response.text()).resolves.toBe(
-        "Workspace ID could not be determined",
+      // additionally means the resolved-but-out-of-reach project doesn't leak a 403, and
+      // since #720 it answers the same 404 a missing project does.
+      expect(response.status).toBe(404);
+      const unknown = await app.request(
+        `/api/task/no-such-project-id?workspaceId=${attacker.workspace.id}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "Cross-workspace probe",
+            description: "",
+            priority: "low",
+            status: "to-do",
+          }),
+        },
       );
+      expect(unknown.status).toBe(404);
+      await expect(response.text()).resolves.toBe(await unknown.text());
     });
   });
 
@@ -414,6 +427,12 @@ describe("API integration: workspace RBAC enforcement", () => {
       );
       const { project: otherProject, columns: otherColumns } =
         await createProjectFixture({ workspaceId: other.workspace.id });
+      // Reach to BOTH projects: a task in a project the caller cannot reach is dropped before
+      // the workspace count, so the span has to be genuine (#720).
+      await grantProjectAccessToWorkspaceMembers(
+        other.workspace.id,
+        otherProject.id,
+      );
       const task = await seedTask(project.id, columns.todo.id);
       const otherTask = await seedTask(otherProject.id, otherColumns.todo.id);
 
@@ -888,6 +907,10 @@ describe("API integration: workspace RBAC enforcement", () => {
         member.workspace.id,
         project.id,
       );
+      // The custom workspace role is what lets this viewer create; the project-level role
+      // the fixture gives a viewer is read-only (and overrides workspace roles on the
+      // project), so lift it to the item set the custom role declares.
+      await grantWorkItemProjectAccess(member.user.id, project.id);
       await createWorkspaceRoleRow(member.workspace.id, "viewer", {
         work_item: ["create", "read", "update"],
         project: ["read"],
