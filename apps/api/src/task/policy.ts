@@ -297,6 +297,13 @@ export const taskPolicies = {
   // (no per-task-list role scope exists) and honestly sourced from persisted data; `reach`
   // is exempt as `no_single_resource` for the same reason — there is no single addressed row.
   //
+  // **Per-task project reach (#720).** `fromTasks("taskIds", { requireProjectReach: true })` drops
+  // every named task whose project the caller cannot reach before any gate runs (so it is
+  // indistinguishable from a missing id), and `bulkUpdateTasks` then decides the operation's
+  // project-level capability per task (`work_item:update` / `assign` / `delete` / `label:manage`)
+  // from the same source as `POST /api/work-items/bulk` (`utils/caller-reach.ts`). The `reach`
+  // exemption below stays accurate: there is still no SINGLE addressed resource.
+  //
   // **The genuinely hard one in this file — flagged for extra scrutiny, not a guess.** The
   // real runtime gate, `requireBulkTaskPermission`
   // (`controllers/require-task-permission.ts`), is DYNAMIC: it reads `operation` from the

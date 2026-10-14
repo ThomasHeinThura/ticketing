@@ -13,6 +13,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectManageAccess,
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
@@ -95,6 +96,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
 
@@ -112,6 +114,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     await grantProjectRole(member.user.id, project.id, ["project:read"]);
     const person = await makeStaffPerson();
     mockAuthenticatedSession(member.user);
@@ -158,6 +161,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     await grantProjectRole(member.user.id, project.id, ["project:read"]);
     const outsider = await makePersonInAnotherOrganisation();
     mockAuthenticatedSession(member.user);
@@ -181,6 +185,7 @@ describe("API integration: project stakeholders", () => {
     const { project: projectB } = await createProjectFixture({
       workspaceId: memberB.workspace.id,
     });
+    await grantProjectManageAccess(memberB.user.id, projectB.id);
     mockAuthenticatedSession(memberA.user);
 
     const response = await addStakeholder(projectB.id, {
@@ -189,7 +194,8 @@ describe("API integration: project stakeholders", () => {
       personId: "irrelevant",
     });
 
-    expect(response.status).toBe(400);
+    // Out of reach is the same 404 as a missing project (#720, `api-design.md`).
+    expect(response.status).toBe(404);
   });
 
   it("rejects adding a stakeholder from a role without project:update", async () => {
@@ -197,6 +203,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const person = await makeStaffPerson();
     mockAuthenticatedSession(member.user);
 
@@ -214,6 +221,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const person = await makeStaffPerson();
     mockAuthenticatedSession(member.user);
 
@@ -231,6 +239,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const person = await makeStaffPerson();
     mockAuthenticatedSession(member.user);
 
@@ -248,6 +257,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const person = await makeStaffPerson();
     mockAuthenticatedSession(member.user);
 
@@ -265,6 +275,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await addStakeholder(project.id, {
@@ -281,6 +292,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await standDownStakeholder(

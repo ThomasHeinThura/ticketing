@@ -10,6 +10,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectManageAccess,
   grantProjectRole,
 } from "./helpers/fixtures";
 
@@ -63,6 +64,7 @@ describe("API integration: project milestones", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await createMilestone(project.id, {
@@ -78,6 +80,7 @@ describe("API integration: project milestones", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
 
@@ -129,6 +132,7 @@ describe("API integration: project milestones", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await createMilestone(project.id, { name: "No date" });
@@ -141,6 +145,7 @@ describe("API integration: project milestones", () => {
     const { project: projectB } = await createProjectFixture({
       workspaceId: memberB.workspace.id,
     });
+    await grantProjectManageAccess(memberB.user.id, projectB.id);
     mockAuthenticatedSession(memberA.user);
 
     const response = await createMilestone(projectB.id, {
@@ -148,7 +153,8 @@ describe("API integration: project milestones", () => {
       date: "2026-01-01T00:00:00.000Z",
     });
 
-    expect(response.status).toBe(400);
+    // Out of reach is the same 404 as a missing project (#720, `api-design.md`).
+    expect(response.status).toBe(404);
   });
 
   it("rejects a NUL byte in name (S1, Opus review of PR #438)", async () => {
@@ -156,6 +162,7 @@ describe("API integration: project milestones", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await createMilestone(project.id, {
@@ -171,6 +178,7 @@ describe("API integration: project milestones", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await createMilestone(project.id, {
@@ -186,6 +194,7 @@ describe("API integration: project milestones", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await updateMilestone(

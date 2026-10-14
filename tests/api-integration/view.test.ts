@@ -208,12 +208,15 @@ describe("API integration: saved views", () => {
       workspaceId: member.workspace.id,
       slug: "saved-view-other",
     });
+    // The member also creates the fixture items through the API (project-reach gated).
     await grantProjectRole(member.user.id, target.project.id, [
       "work_item:read",
+      "work_item:create",
       "project:read",
     ]);
     await grantProjectRole(member.user.id, other.project.id, [
       "work_item:read",
+      "work_item:create",
       "project:read",
     ]);
 

@@ -44,7 +44,10 @@ const upsertWorkflowRuleRoute = createRoute({
   description:
     "Create a workflow rule, or update the target column of the existing rule for the same integration and event.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -56,7 +59,7 @@ const upsertWorkflowRuleRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created or updated rule", workflowRuleRowSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing project:update permission"),
     // #202: newly reachable -- a soft-deleted project's automation is frozen. As on
     // the list route above, a nonexistent project still answers 400, not 404.
@@ -72,7 +75,10 @@ const deleteWorkflowRuleRoute = createRoute({
   summary: "Delete workflow rule",
   description: "Delete a workflow rule. Returns the rule that was removed.",
   middleware: [
-    workspaceAccess.fromWorkflowRule("id"),
+    workspaceAccess.fromWorkflowRule("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: workflowRuleParam },

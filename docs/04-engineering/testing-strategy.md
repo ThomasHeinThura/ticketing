@@ -131,6 +131,16 @@ stated reason. The per-route integration suites (`work-item-project-reach*.test.
 `legacy-task-project-reach.test.ts`) drive the real middleware and assert the matrix's
 declared statuses.
 
+**`project-reach-guard.test.ts`** extends the same guard beyond work-item scope (#720): it
+fails any `reach: required` route on the `project` scope whose middleware does not resolve
+project reach (or that has no reasoned exemption), any route in the task-targeting set
+(labels naming a task, the asset download, the legacy bulk update) that lacks a reach mark,
+and any route anywhere whose middleware resolves a project, task, column, time-entry or
+workflow-rule row from the request without carrying project reach. Every route in those sets
+must also appear in a behavioural table (`project-scoped-reach.test.ts`,
+`task-target-reach.test.ts`), because a mark is self-attested and proves declaration, not
+enforcement.
+
 **`custom-role.test.ts`** — an administrator-created role (cloned, capabilities ticked and
 unticked in the UI — see [roles and permissions UI](../03-features/roles-and-permissions-ui.md))
 is exercised against the same matrix mechanism as the built-in roles, so "roles are

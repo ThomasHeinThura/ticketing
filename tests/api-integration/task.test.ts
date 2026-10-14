@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectManageAccess,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -22,6 +23,7 @@ describe("API integration: task creation", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
 
     mockAnonymousSession();
     const { app } = createApp();
@@ -50,6 +52,7 @@ describe("API integration: task creation", () => {
       name: "Delivery",
       slug: "delivery",
     });
+    await grantProjectManageAccess(member.user.id, project.id);
 
     await db.insert(schema.taskTable).values({
       projectId: project.id,
@@ -133,6 +136,7 @@ describe("API integration: task creation", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
 
     const outsider = requireRow(
       await db
@@ -165,13 +169,22 @@ describe("API integration: task creation", () => {
     });
 
     // Before #290, an existing-but-out-of-reach project answered 403 here, while an
-    // outright unknown project id answered 400 -- a caller could tell the two apart.
-    // `workspaceAccess.fromProject` now gives this the identical 400 body a nonexistent
-    // project id gets (#202's own precedent for this helper), never the 403.
-    expect(response.status).toBe(400);
-    await expect(response.text()).resolves.toBe(
-      "Workspace ID could not be determined",
-    );
+    // outright unknown project id answered 400 -- a caller could tell the two apart. Since
+    // #720 the route requires project reach, so an out-of-reach project gets the identical
+    // 404 body a nonexistent project id gets (`api-design.md`), never the 403.
+    expect(response.status).toBe(404);
+    const unknown = await app.request("/api/task/no-such-project-id", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: "Forbidden task",
+        description: "Should not be created",
+        priority: "low",
+        status: "to-do",
+      }),
+    });
+    expect(unknown.status).toBe(404);
+    await expect(response.text()).resolves.toBe(await unknown.text());
 
     const persistedTask = await db.query.taskTable.findFirst({
       where: and(
@@ -188,6 +201,7 @@ describe("API integration: task creation", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -248,6 +262,7 @@ describe("API integration: task creation", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -296,6 +311,7 @@ describe("API integration: task creation", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const missingAssigneeId = `user-${randomUUID()}`;
 
     mockAuthenticatedSession(member.user);
@@ -337,6 +353,7 @@ describe("API integration: task creation", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const paddedAssigneeId = `  ${member.user.id}  `;
 
     mockAuthenticatedSession(member.user);
@@ -389,6 +406,7 @@ describe("API integration: task creation", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectManageAccess(member.user.id, project.id);
 
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
@@ -433,6 +451,7 @@ describe("API integration: task creation", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
 
     await db
       .update(schema.projectTable)

@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectManageAccess,
   grantProjectRole,
 } from "./helpers/fixtures";
 
@@ -101,6 +102,7 @@ describe("API integration: managed-service project configuration", () => {
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
+    await grantProjectManageAccess(owner.user.id, project.id);
     await grantProjectRole(owner.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();

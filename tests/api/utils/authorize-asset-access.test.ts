@@ -7,7 +7,19 @@ const { state } = vi.hoisted(() => ({
     resolveCalls: 0,
     queryCalls: 0,
     caller: "anonymous" as "anonymous" | "member" | "outsider",
+    /** Whether the caller reaches the asset's PROJECT (#720). */
+    projectReach: true,
   },
+}));
+
+// #720: project reach comes from the shared decision source (`utils/caller-reach.ts`), whose
+// own behaviour is covered by the integration tables; here it is a stand-in so the asset
+// lookup's query count stays the thing this file measures.
+vi.mock("../../../apps/api/src/utils/caller-reach", () => ({
+  callerReach: async () => ({
+    reaches: async () => state.projectReach,
+    can: async () => true,
+  }),
 }));
 
 vi.mock("../../../apps/api/src/utils/authenticate-api-request", () => ({
@@ -52,6 +64,7 @@ vi.mock("../../../apps/api/src/database", async () => {
           mimeType: "image/png",
           filename: "file.png",
           workspaceId: "workspace-1",
+          projectId: "project-1",
         },
       ];
     },
@@ -79,6 +92,7 @@ describe("loadReachableAsset", () => {
     state.resolveCalls = 0;
     state.queryCalls = 0;
     state.caller = "anonymous";
+    state.projectReach = true;
   });
 
   it("rejects an anonymous caller before any row is read", async () => {
@@ -124,5 +138,36 @@ describe("loadReachableAsset", () => {
 
     expect(asset.workspaceId).toBe("workspace-1");
     expect(state.queryCalls).toBe(1);
+  });
+
+  it("answers an asset in a project the member cannot reach like a missing one (#720)", async () => {
+    state.caller = "member";
+    state.projectReach = false;
+    const hiddenBefore = state.queryCalls;
+    // A real denial records the legacy decision on the request context for shadow evidence.
+    const recordingContext = {
+      get: () => undefined,
+      set: () => undefined,
+    } as unknown as Context;
+    const hiddenStatus = await statusOf(
+      loadReachableAsset(recordingContext, "asset-1"),
+    );
+    const hiddenQueries = state.queryCalls - hiddenBefore;
+
+    state.caller = "outsider";
+    const missingBefore = state.queryCalls;
+    const missingStatus = await statusOf(
+      loadReachableAsset(context, "asset-does-not-exist"),
+    );
+    const missingQueries = state.queryCalls - missingBefore;
+
+    expect({ status: hiddenStatus, queries: hiddenQueries }).toEqual({
+      status: 404,
+      queries: 1,
+    });
+    expect({ status: missingStatus, queries: missingQueries }).toEqual({
+      status: 404,
+      queries: 1,
+    });
   });
 });

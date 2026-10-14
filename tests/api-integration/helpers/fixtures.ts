@@ -4,7 +4,7 @@ import {
   type DefaultRoleName,
   defaultRolePayloads,
 } from "@taskdesk/permissions";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../../apps/api/src/database";
 import { DEFAULT_PROJECT_COLUMNS } from "../../../apps/api/src/project/controllers/create-project";
 import {
@@ -237,6 +237,42 @@ export async function grantProjectRole(
   if (!project)
     throw new Error("grantProjectRole: project was not provisioned");
 
+  // One project membership per person and project: a second grant WIDENS the first role
+  // (union of capabilities) rather than colliding with it, so a fixture helper can add the
+  // authority a route needs on top of whatever the test already granted.
+  const [existing] = await db
+    .select({ roleId: schema.membershipTable.roleId })
+    .from(schema.membershipTable)
+    .where(
+      and(
+        eq(schema.membershipTable.personId, person.id),
+        eq(schema.membershipTable.scope, "project"),
+        eq(schema.membershipTable.scopeId, projectId),
+      ),
+    )
+    .limit(1);
+  if (existing) {
+    const [current] = await db
+      .select()
+      .from(schema.roleTable)
+      .where(eq(schema.roleTable.id, existing.roleId))
+      .limit(1);
+    if (!current)
+      throw new Error("grantProjectRole: existing role row is missing");
+    const [widened] = await db
+      .update(schema.roleTable)
+      .set({
+        capabilities: [
+          ...new Set([...(current.capabilities as string[]), ...capabilities]),
+        ],
+      })
+      .where(eq(schema.roleTable.id, current.id))
+      .returning();
+    if (!widened)
+      throw new Error("grantProjectRole: role update returned no row");
+    return widened;
+  }
+
   const [role] = await db
     .insert(schema.roleTable)
     .values({
@@ -269,6 +305,7 @@ export async function grantProjectRole(
 export const WORK_ITEM_PROJECT_CAPABILITIES = [
   "project:read",
   "work_item:read",
+  "work_item:create",
   "work_item:update",
   "work_item:delete",
   "work_item:assign",
@@ -295,7 +332,9 @@ export function grantWorkItemProjectAccess(userId: string, projectId: string) {
  * For a test actor added to a workspace that already holds its project(s): give the actor
  * the project authority its workspace role implies, on every existing project, so a test of
  * a workspace-capability decision still reaches that decision. A `viewer` gets read only
- * (so write routes stay a capability refusal); every other role gets the full item set.
+ * (so write routes stay a capability refusal); every other role gets the full item set plus
+ * the project-level management capabilities (the workspace role's own legacy gate still
+ * decides who may actually manage a project).
  * Tests that need an actor OUTSIDE project reach must not call this.
  */
 export async function grantProjectAccessForWorkspaceRole(
@@ -314,7 +353,7 @@ export async function grantProjectAccessForWorkspaceRole(
         "work_item:read",
       ]);
     } else {
-      await grantWorkItemProjectAccess(userId, project.id);
+      await grantProjectManageAccess(userId, project.id);
     }
   }
 }
@@ -348,7 +387,29 @@ export async function grantProjectAccessToWorkspaceMembers(
         "work_item:read",
       ]);
     } else {
-      await grantWorkItemProjectAccess(member.userId, projectId);
+      await grantProjectManageAccess(member.userId, projectId);
     }
   }
+}
+
+/**
+ * Project-scoped authority for a staff test actor who must pass project reach AND the
+ * registered capability on the project-scoped WRITE routes (#720: `PUT /api/project/{id}`,
+ * archive, milestones, stakeholders, columns, workflow rules, create-into-project routes).
+ * Superset of `WORK_ITEM_PROJECT_CAPABILITIES`: the project-level role overrides the workspace
+ * role on the project, so it must carry everything the test's actor does there.
+ */
+export const PROJECT_MANAGE_CAPABILITIES = [
+  ...WORK_ITEM_PROJECT_CAPABILITIES,
+  "project:update",
+  "project:delete",
+  "project:manage_settings",
+  "label:manage",
+  "time_entry:create",
+  "time_entry:read_any",
+  "time_entry:update_any",
+] as const;
+
+export function grantProjectManageAccess(userId: string, projectId: string) {
+  return grantProjectRole(userId, projectId, [...PROJECT_MANAGE_CAPABILITIES]);
 }

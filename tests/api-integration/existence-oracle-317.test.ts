@@ -438,9 +438,12 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     );
     const { project: ownProject, columns: ownColumns } =
       await createProjectFixture({ workspaceId: caller.workspace.id });
+    // The mixed bulk write below must change the caller's own task, which needs the
+    // project-level update capability (#720); the foreign project stays out of reach.
     await grantProjectRole(caller.user.id, ownProject.id, [
       "project:read",
       "work_item:read",
+      "work_item:update",
     ]);
     const ownTask = requireRow(
       await db

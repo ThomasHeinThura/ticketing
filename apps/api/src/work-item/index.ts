@@ -204,7 +204,10 @@ const createWorkItemRoute = createRoute({
     "Create a work item in a project. The key is `{project.slug}-{number}`, assigned " +
     "atomically. The initial state is the project's own default state.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspaceCapability("work_item:create"),
   ] as const,
   request: {
@@ -216,14 +219,13 @@ const createWorkItemRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created work item", workItemSchema),
-    // #290: an unknown/out-of-reach project now 400s uniformly via
-    // `workspaceAccess.fromProject()` (#202's own precedent for this helper), folded
-    // into this same 400 alongside the route's other malformed-request cases.
+    // #720: an unknown or out-of-reach project answers the same 404 below (project reach is
+    // required); this 400 is the route's own malformed-request cases only.
     400: errorResponse(
-      "Invalid body, unknown/unreachable/cross-workspace type, or the project has no default state",
+      "Invalid body, unknown/cross-workspace type, or the project has no default state",
     ),
     403: errorResponse("Missing work_item:create permission"),
-    404: errorResponse("Project not found"),
+    404: errorResponse("Project not found or out of reach"),
     // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
     // 2026-09-22): defence in depth for a poisoned key range that predates the
     // `project_slug_claim` fix (see `create-work-item.ts`'s own catch clause) -- expected
