@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
 import { invalidateNativeAuthorization } from "../../ws";
+import { revokeProjectCreatorGrantsForProject } from "../project-creator-grant";
 
 // #187: 30 days, matching `docs/03-features/projects-and-engagements.md` PR-16 and the
 // `project` row's retention entry in `docs/01-architecture/data-model.md`.
@@ -27,20 +28,27 @@ const PURGE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
  * propagating that error.
  */
 async function deleteProject(id: string, workspaceId: string) {
-  const [deletedProject] = await db
-    .update(projectTable)
-    .set({
-      deletedAt: new Date(),
-      purgeAfter: new Date(Date.now() + PURGE_AFTER_MS),
-    })
-    .where(
-      and(
-        eq(projectTable.id, id),
-        eq(projectTable.workspaceId, workspaceId),
-        isNull(projectTable.deletedAt),
-      ),
-    )
-    .returning();
+  const deletedProject = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(projectTable)
+      .set({
+        deletedAt: new Date(),
+        purgeAfter: new Date(Date.now() + PURGE_AFTER_MS),
+      })
+      .where(
+        and(
+          eq(projectTable.id, id),
+          eq(projectTable.workspaceId, workspaceId),
+          isNull(projectTable.deletedAt),
+        ),
+      )
+      .returning();
+    // Decision log 2026-10-14: the creator's project-lead grant goes with the project, in the
+    // same transaction. Grants of any other origin are left alone (a recovered project keeps
+    // them); the creator is not re-granted on recovery -- an owner or admin re-adds them.
+    if (row) await revokeProjectCreatorGrantsForProject(tx, workspaceId, id);
+    return row;
+  });
 
   if (!deletedProject) {
     // Either the project never existed/belonged to this workspace, or it was already

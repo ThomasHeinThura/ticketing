@@ -4,6 +4,7 @@ import { and, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
 import { projectMembershipKeys } from "../identity/membership-projection";
+import { revokeProjectCreatorGrantsOnSeesAll } from "../project/project-creator-grant";
 import {
   isGenuineBuiltInRoleGrant,
   resolveMembershipRoleFrom,
@@ -227,6 +228,13 @@ export async function syncWorkspaceAdminReach(
   await projectMembershipKeys(tx, [
     { personId: person.id, scope: "workspace", scopeId: workspaceId },
   ]);
+
+  // A creator promoted to owner/admin must not keep a project-scope creator grant (decision
+  // log 2026-10-14, "A project's creator holds a project-lead membership"): it would replace
+  // their workspace authority on that project. Same transaction, audited.
+  if (roleId !== null) {
+    await revokeProjectCreatorGrantsOnSeesAll(tx, workspaceId, person.id);
+  }
 
   // Audit (rbac.md / security-model.md: `sees_all` changes are audited reach changes).
   // A system action: no acting person. Granting uses `membership.sees_all_granted`;
