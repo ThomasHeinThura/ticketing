@@ -25,6 +25,8 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectAccessForWorkspaceRole,
+  grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -134,6 +136,7 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     });
   }
 
+  await grantProjectAccessForWorkspaceRole(user.id, workspaceId, role);
   return user;
 }
 
@@ -194,14 +197,17 @@ async function addPersonOnRoster({
       .returning(),
     "addPersonOnRoster: role",
   );
-  await db.insert(schema.membershipTable).values({
-    personId: person.id,
-    scope: "project",
-    scopeId: projectId,
-    roleId: role.id,
-    createdAt: now,
-    updatedAt: now,
-  });
+  await db
+    .insert(schema.membershipTable)
+    .values({
+      personId: person.id,
+      scope: "project",
+      scopeId: projectId,
+      roleId: role.id,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing();
   return person;
 }
 
@@ -223,14 +229,17 @@ async function rosterPersonOnProject(personId: string, projectId: string) {
       .returning(),
     "rosterPersonOnProject: role",
   );
-  await db.insert(schema.membershipTable).values({
-    personId,
-    scope: "project",
-    scopeId: projectId,
-    roleId: role.id,
-    createdAt: now,
-    updatedAt: now,
-  });
+  await db
+    .insert(schema.membershipTable)
+    .values({
+      personId,
+      scope: "project",
+      scopeId: projectId,
+      roleId: role.id,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing();
 }
 
 async function setupProject() {
@@ -238,6 +247,7 @@ async function setupProject() {
     role: "admin",
   });
   const { project } = await createProjectFixture({ workspaceId: workspace.id });
+  await grantWorkItemProjectAccess(creator.id, project.id);
   const type = await makeWorkItemType(workspace.id);
   await makeDefaultState(workspace.id, project.id);
   return { creator, workspace, project, type };

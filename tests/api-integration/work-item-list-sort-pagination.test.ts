@@ -17,7 +17,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
-  grantProjectRole,
+  grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 
 async function makeWorkItemType(workspaceId: string) {
@@ -78,10 +78,7 @@ async function setupProject() {
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });
-  await grantProjectRole(creator.user.id, project.id, [
-    "project:read",
-    "work_item:read",
-  ]);
+  await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   const { state } = await makeState(creator.workspace.id, project.id);
   return { creator, project, type, state };
@@ -679,10 +676,7 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
     const { project: projectB } = await createProjectFixture({
       workspaceId: creator.workspace.id,
     });
-    await grantProjectRole(creator.user.id, projectB.id, [
-      "project:read",
-      "work_item:read",
-    ]);
+    await grantWorkItemProjectAccess(creator.user.id, projectB.id);
     const typeB = await makeWorkItemType(creator.workspace.id);
     await makeState(creator.workspace.id, projectB.id);
 

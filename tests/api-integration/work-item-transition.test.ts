@@ -17,9 +17,11 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
-  grantProjectRole,
+  grantProjectAccessForWorkspaceRole,
+  grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
   requireRow,
+  WORK_ITEM_PROJECT_CAPABILITIES,
 } from "./helpers/fixtures";
 import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 
@@ -175,6 +177,7 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     });
   }
 
+  await grantProjectAccessForWorkspaceRole(user.id, workspaceId, role);
   return user;
 }
 
@@ -240,12 +243,15 @@ async function makeAssigneePerson(options: {
         .returning(),
       "makeAssigneePerson: role",
     );
-    await db.insert(schema.membershipTable).values({
-      personId: person.id,
-      scope: "project",
-      scopeId: options.projectId,
-      roleId: role.id,
-    });
+    await db
+      .insert(schema.membershipTable)
+      .values({
+        personId: person.id,
+        scope: "project",
+        scopeId: options.projectId,
+        roleId: role.id,
+      })
+      .onConflictDoNothing();
   }
   return person;
 }
@@ -265,10 +271,7 @@ async function setupProject() {
     role: "admin",
   });
   const { project } = await createProjectFixture({ workspaceId: workspace.id });
-  await grantProjectRole(creator.id, project.id, [
-    "project:read",
-    "work_item:read",
-  ]);
+  await grantWorkItemProjectAccess(creator.id, project.id);
   return { creator, workspace, project };
 }
 
@@ -1028,12 +1031,24 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     expect(withoutRole.status).toBe(409);
 
     const memberPerson = await makePerson(member.id);
-    await db.insert(schema.membershipTable).values({
-      personId: memberPerson.id,
-      scope: "project",
-      scopeId: project.id,
-      roleId: role.id,
-    });
+    // Move the member onto the transition's own role; that role carries the same item
+    // capabilities so the route's project-capability check still passes.
+    await db
+      .update(schema.roleTable)
+      .set({
+        capabilities: [...WORK_ITEM_PROJECT_CAPABILITIES],
+        workspaceId: workspace.id,
+      })
+      .where(eq(schema.roleTable.id, role.id));
+    await db
+      .update(schema.membershipTable)
+      .set({ roleId: role.id })
+      .where(
+        and(
+          eq(schema.membershipTable.personId, memberPerson.id),
+          eq(schema.membershipTable.scopeId, project.id),
+        ),
+      );
 
     const withRole = await transitionRequest(app, key, {
       toStateTemplateId: inProgress.stateTemplate.id,

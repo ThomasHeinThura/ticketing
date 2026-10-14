@@ -10,6 +10,9 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { assertWorkItemProjectReach } from "../utils/assert-work-item-project-reach";
+import { callerReach } from "../utils/caller-reach";
+import { markReach } from "../utils/reach-mark";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
@@ -28,13 +31,21 @@ import {
 } from "./schema";
 
 async function workspaceIdOfTask(taskId: string) {
+  return (await taskReachRow(taskId))?.workspaceId ?? null;
+}
+
+async function taskReachRow(taskId: string) {
   const [task] = await db
-    .select({ workspaceId: projectTable.workspaceId })
+    .select({
+      workspaceId: projectTable.workspaceId,
+      projectId: taskTable.projectId,
+      taskId: taskTable.id,
+    })
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
     .where(eq(taskTable.id, taskId))
     .limit(1);
-  return task?.workspaceId ?? null;
+  return task ?? null;
 }
 
 function requireUserId(c: Context) {
@@ -86,6 +97,19 @@ async function scopeToSourceTask(c: Context, next: Next) {
   // the caller's request -- label it so shadow mode's evidence gate keeps it instead
   // of always nulling it.
   c.set("workspaceIdSource", "row");
+  const sourceTask = await taskReachRow(sourceTaskId);
+  if (sourceTask) {
+    await assertWorkItemProjectReach(
+      c,
+      userId,
+      {
+        projectId: sourceTask.projectId,
+        workspaceId: sourceTask.workspaceId,
+        workItemId: sourceTask.taskId,
+      },
+      { notFoundMessage: "Source task not found", deferApiKeyCapability: true },
+    );
+  }
   return next();
 }
 
@@ -99,7 +123,10 @@ async function scopeToRelation(c: Context, next: Next) {
     rejectNulByte(id, "Task relation id");
   }
   const [rel] = await db
-    .select({ sourceTaskId: taskRelationTable.sourceTaskId })
+    .select({
+      sourceTaskId: taskRelationTable.sourceTaskId,
+      targetTaskId: taskRelationTable.targetTaskId,
+    })
     .from(taskRelationTable)
     .where(eq(taskRelationTable.id, id ?? ""))
     .limit(1);
@@ -130,6 +157,39 @@ async function scopeToRelation(c: Context, next: Next) {
   // never from the caller's request -- label it so shadow mode's evidence gate keeps
   // it instead of always nulling it.
   c.set("workspaceIdSource", "row");
+  const relationSource = await taskReachRow(rel.sourceTaskId);
+  if (relationSource) {
+    await assertWorkItemProjectReach(
+      c,
+      userId,
+      {
+        projectId: relationSource.projectId,
+        workspaceId: relationSource.workspaceId,
+        workItemId: relationSource.taskId,
+      },
+      {
+        notFoundMessage: "Task relation not found",
+        deferApiKeyCapability: true,
+      },
+    );
+  }
+  // Removing a relation needs update on BOTH ends (`relations-and-hierarchy.md`).
+  const relationTarget = await taskReachRow(rel.targetTaskId);
+  if (relationTarget) {
+    await assertWorkItemProjectReach(
+      c,
+      userId,
+      {
+        projectId: relationTarget.projectId,
+        workspaceId: relationTarget.workspaceId,
+        workItemId: relationTarget.taskId,
+      },
+      {
+        notFoundMessage: "Task relation not found",
+        deferApiKeyCapability: true,
+      },
+    );
+  }
   return next();
 }
 
@@ -156,6 +216,9 @@ const getTaskRelationsRoute = createRoute({
     404: errorResponse("Task not found"),
   },
 });
+
+markReach(scopeToSourceTask, { projectReach: true });
+markReach(scopeToRelation, { projectReach: true });
 
 const createTaskRelationRoute = createRoute({
   method: "post",
@@ -208,14 +271,20 @@ const deleteTaskRelationRoute = createRoute({
 });
 
 const taskRelation = apiRouter<BaseVariables & { workspaceId: string }>()
-  .openapi(getTaskRelationsRoute, async (c) =>
-    c.json(
-      await getTaskRelations(c.req.valid("param").taskId, c.get("workspaceId")),
+  .openapi(getTaskRelationsRoute, async (c) => {
+    const reach = await callerReach(c, c.get("userId"));
+    return c.json(
+      await getTaskRelations(
+        c.req.valid("param").taskId,
+        c.get("workspaceId"),
+        (task) => reach.reaches(task),
+      ),
       200,
-    ),
-  )
+    );
+  })
   .openapi(createTaskRelationRoute, async (c) => {
     const { sourceTaskId, targetTaskId, relationType } = c.req.valid("json");
+    const reach = await callerReach(c, c.get("userId"));
     return c.json(
       await createTaskRelation({
         sourceTaskId,
@@ -223,6 +292,9 @@ const taskRelation = apiRouter<BaseVariables & { workspaceId: string }>()
         relationType,
         userId: c.get("userId"),
         workspaceId: c.get("workspaceId"),
+        canReachTarget: async (task) =>
+          (await reach.reaches(task)) &&
+          (await reach.can("work_item:update", task)),
       }),
       200,
     );

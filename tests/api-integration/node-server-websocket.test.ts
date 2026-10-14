@@ -97,7 +97,13 @@ async function grantNativeProjectRead(
         key: `native-project-read-${randomUUID()}`,
         name: "Native project read fixture role",
         rank: 1,
-        capabilities: ["project:read", "work_item:read"],
+        capabilities: [
+          "project:read",
+          "work_item:read",
+          "work_item:update",
+          "comment:create",
+          "comment:create_internal",
+        ],
       })
       .returning(),
     "native project read fixture role",

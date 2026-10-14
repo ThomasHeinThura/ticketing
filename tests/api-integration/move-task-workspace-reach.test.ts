@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -43,6 +44,7 @@ describe("PUT /api/task/move/{id} scopes destination project errors", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
     const { project: foreignProject } = await createProjectFixture({
       workspaceId: foreign.workspace.id,
     });

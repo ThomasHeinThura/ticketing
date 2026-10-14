@@ -19,7 +19,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
-  grantProjectRole,
+  grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 
 async function makeWorkItemType(workspaceId: string) {
@@ -72,10 +72,7 @@ async function setupProjectWithDefaultState() {
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });
-  await grantProjectRole(creator.user.id, project.id, [
-    "project:read",
-    "work_item:read",
-  ]);
+  await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   const state = await makeDefaultState(creator.workspace.id, project.id);
   return { creator, project, type, state };

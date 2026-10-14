@@ -19,6 +19,8 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import { projectReadDecision } from "./has-project-reach";
+import { isCustomerPrincipal } from "./is-customer-principal";
+import { WORK_ITEM_REACH_MARK, type WorkItemReachMark } from "./reach-mark";
 import { rejectNulByte } from "./reject-nul-byte";
 import { validateWorkspaceAccess } from "./validate-workspace-access";
 
@@ -128,6 +130,13 @@ type WorkspaceAccessMiddlewareConfig = {
   sources: WorkspaceIdSource[];
   /** Enforce canonical project reach after the typed project row is resolved. */
   requireProjectReach?: boolean;
+  /** Write routes whose next gate is key-aware: an API key still needs reach, but its capability is decided downstream. */
+  deferApiKeyCapability?: boolean;
+};
+
+type ReachOptions = {
+  readonly requireProjectReach?: boolean;
+  readonly deferApiKeyCapability?: boolean;
 };
 
 type ShadowResourceAnchor = {
@@ -192,7 +201,7 @@ async function readJsonObjectBody(
 export function workspaceAccessMiddleware(
   config: WorkspaceAccessMiddlewareConfig,
 ) {
-  return async (c: Context, next: Next) => {
+  const middleware = async (c: Context, next: Next) => {
     markShadowLegacyAuthorizationUnknown(c);
     const userId = c.get("userId");
 
@@ -215,6 +224,9 @@ export function workspaceAccessMiddleware(
     let shadowWorkItemId: string | null = null;
     let shadowWorkspaceIdSource: "request" | "row" | null = null;
     let policyScopeResource: PolicyScopeResource | null = null;
+    let reachResource:
+      | Extract<WorkspaceIdSource, { type: "lookup" }>["resource"]
+      | null = null;
 
     // Read once, ahead of the loop: `lookup`/`lookupMany` sources need it to check
     // reach as soon as they resolve a row, not only after the loop ends.
@@ -273,6 +285,7 @@ export function workspaceAccessMiddleware(
           // the file comment above `NUL_BYTE_LABEL`).
           rejectNulByte(id, NUL_BYTE_LABEL);
           if (source.resource === "project") c.set("projectIdFromRequest", id);
+          reachResource = source.resource;
           const resolved = await lookupWorkspaceId(
             source.resource,
             id,
@@ -488,11 +501,28 @@ export function workspaceAccessMiddleware(
           message: "Project read policy could not be determined",
         });
       }
+      // Row-addressed resources answer with their own "not found", byte-identical to a
+      // missing row, so an out-of-reach id is not distinguishable from a missing one.
+      const notFoundMessage =
+        reachResource && reachResource !== "project"
+          ? RESOURCE_NOT_FOUND_MESSAGE[reachResource]
+          : "Project not found";
       if (!decision.reachable) {
         setShadowLegacyAuthorization(c, "denied");
-        throw new HTTPException(404, { message: "Project not found" });
+        throw new HTTPException(404, { message: notFoundMessage });
       }
-      if (!decision.capable) {
+      if (
+        !decision.capable &&
+        !(config.deferApiKeyCapability === true && apiKey)
+      ) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
+      // Customers are portal-only: item-scoped agent routes answer 403 in reach.
+      if (
+        c.get("workItemId") &&
+        (await isCustomerPrincipal(userId, workspaceId))
+      ) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
@@ -500,6 +530,11 @@ export function workspaceAccessMiddleware(
 
     return next();
   };
+  // Marker read by `tests/permissions/work-item-reach-guard.test.ts`; not used at runtime.
+  const mark: WorkItemReachMark = {
+    projectReach: config.requireProjectReach === true,
+  };
+  return Object.assign(middleware, { [WORK_ITEM_REACH_MARK]: mark });
 }
 
 /**
@@ -991,31 +1026,25 @@ export const workspaceAccess = {
   fromParam: (key = "workspaceId") =>
     workspaceAccessMiddleware({ sources: [{ type: "param", key }] }),
 
-  fromProject: (
-    idKey = "id",
-    options: { readonly requireProjectReach?: boolean } = {},
-  ) =>
+  fromProject: (idKey = "id", options: ReachOptions = {}) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "project", idKey }],
       requireProjectReach: options.requireProjectReach,
+      deferApiKeyCapability: options.deferApiKeyCapability,
     }),
 
-  fromTask: (
-    idKey = "id",
-    options: { readonly requireProjectReach?: boolean } = {},
-  ) =>
+  fromTask: (idKey = "id", options: ReachOptions = {}) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "task", idKey }],
       requireProjectReach: options.requireProjectReach,
+      deferApiKeyCapability: options.deferApiKeyCapability,
     }),
 
-  fromTaskId: (
-    idKey = "taskId",
-    options: { readonly requireProjectReach?: boolean } = {},
-  ) =>
+  fromTaskId: (idKey = "taskId", options: ReachOptions = {}) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "task", idKey }],
       requireProjectReach: options.requireProjectReach,
+      deferApiKeyCapability: options.deferApiKeyCapability,
     }),
 
   fromTasks: (idKey = "taskIds") =>
@@ -1033,14 +1062,18 @@ export const workspaceAccess = {
       sources: [{ type: "lookup", resource: "timeEntry", idKey }],
     }),
 
-  fromActivity: (idKey = "id") =>
+  fromActivity: (idKey = "id", options: ReachOptions = {}) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "activity", idKey }],
+      requireProjectReach: options.requireProjectReach,
+      deferApiKeyCapability: options.deferApiKeyCapability,
     }),
 
-  fromComment: (idKey = "id") =>
+  fromComment: (idKey = "id", options: ReachOptions = {}) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "comment", idKey }],
+      requireProjectReach: options.requireProjectReach,
+      deferApiKeyCapability: options.deferApiKeyCapability,
     }),
 
   fromColumn: (idKey = "id") =>
