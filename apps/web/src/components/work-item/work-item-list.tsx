@@ -6,7 +6,6 @@ import {
   AlertTitle,
   Badge,
   Button,
-  Checkbox,
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -30,8 +29,10 @@ import {
 } from "lucide-react";
 import {
   type FocusEvent,
+  lazy,
   type MouseEvent,
   memo,
+  Suspense,
   useCallback,
   useMemo,
 } from "react";
@@ -46,6 +47,8 @@ import {
 } from "@/lib/routes";
 import type { WorkItemField, WorkItemRow } from "@/types/work-item";
 import WorkItemListLoading from "./work-item-list-loading";
+
+const SelectionCheckbox = lazy(() => import("./selection-checkbox"));
 
 export type WorkItemListProps = {
   workItems: WorkItemRow[] | undefined;
@@ -374,14 +377,16 @@ function WorkItemList({
           <TableRow>
             {canBulkAssign && (
               <TableHead>
-                <Checkbox
-                  aria-label={t("workItems:bulk.selectAll")}
-                  checked={selectableKeys.every((key) =>
-                    selectedKeys.includes(key),
-                  )}
-                  disabled={selectableKeys.length === 0}
-                  onCheckedChange={(checked) => onSelectAll(Boolean(checked))}
-                />
+                <Suspense fallback={null}>
+                  <SelectionCheckbox
+                    aria-label={t("workItems:bulk.selectAll")}
+                    checked={selectableKeys.every((key) =>
+                      selectedKeys.includes(key),
+                    )}
+                    disabled={selectableKeys.length === 0}
+                    onCheckedChange={(checked) => onSelectAll(Boolean(checked))}
+                  />
+                </Suspense>
               </TableHead>
             )}
             {SORT_COLUMNS.map(({ field, labelKey }) => (
@@ -414,16 +419,18 @@ function WorkItemList({
               <TableRow key={item.id}>
                 {canBulkAssign && (
                   <TableCell>
-                    <Checkbox
-                      aria-label={t("workItems:bulk.selectItem", {
-                        key: item.key,
-                      })}
-                      checked={selectedKeys.includes(item.key)}
-                      disabled={item.unavailableFields.includes("key")}
-                      onCheckedChange={(checked) =>
-                        onSelectionChange(item.key, Boolean(checked))
-                      }
-                    />
+                    <Suspense fallback={null}>
+                      <SelectionCheckbox
+                        aria-label={t("workItems:bulk.selectItem", {
+                          key: item.key,
+                        })}
+                        checked={selectedKeys.includes(item.key)}
+                        disabled={item.unavailableFields.includes("key")}
+                        onCheckedChange={(checked) =>
+                          onSelectionChange(item.key, Boolean(checked))
+                        }
+                      />
+                    </Suspense>
                   </TableCell>
                 )}
                 <TableCell>
