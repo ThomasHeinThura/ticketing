@@ -14,21 +14,13 @@ const state = vi.hoisted(() => ({
     string
   >,
   navigate: vi.fn(),
-  perms: {
-    assign: false,
-    transition: false,
-    rank: false,
-    update: true,
-    checking: false,
-  },
+  /** What the (mocked) selection toggle reports as the caller's assignTasks. */
+  canAssign: false,
   listItems: [] as unknown[],
-  boardPages: [] as unknown[],
   boardProps: undefined as Record<string, unknown> | undefined,
   panelProps: undefined as Record<string, unknown> | undefined,
   toolbarProps: undefined as Record<string, unknown> | undefined,
   listEnabled: undefined as boolean | undefined,
-  boardEnabled: undefined as boolean | undefined,
-  statesEnabled: undefined as boolean | undefined,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -44,16 +36,13 @@ vi.mock("@/components/work-item/work-item-create-dialog-shell", () => ({
 vi.mock("@/components/work-item/work-item-list-loading", () => ({
   default: () => <div data-testid="list-loading" />,
 }));
-vi.mock("@/components/work-item/work-item-list-realtime", () => ({
-  default: () => null,
-}));
 vi.mock("@/components/work-item/work-items-panel", () => ({
   default: (props: Record<string, unknown>) => {
     state.panelProps = props;
     return <div data-testid="panel" />;
   },
 }));
-vi.mock("@/components/work-item/work-item-board", () => ({
+vi.mock("@/components/work-item/work-item-board-view", () => ({
   default: (props: Record<string, unknown>) => {
     state.boardProps = props;
     return <div data-testid="board" />;
@@ -65,6 +54,29 @@ vi.mock("@/components/work-item/bulk-assign-toolbar", () => ({
     return <div data-testid="toolbar" />;
   },
 }));
+vi.mock("@/components/work-item/work-item-selection-toggle", async () => {
+  const { useEffect } = await import("react");
+  return {
+    default: ({
+      selectionMode,
+      onToggle,
+      onCapabilityChange,
+    }: {
+      selectionMode: boolean;
+      onToggle: () => void;
+      onCapabilityChange: (can: boolean) => void;
+    }) => {
+      useEffect(() => {
+        onCapabilityChange(state.canAssign);
+      }, [onCapabilityChange]);
+      return state.canAssign ? (
+        <button type="button" aria-pressed={selectionMode} onClick={onToggle}>
+          Select items
+        </button>
+      ) : null;
+    },
+  };
+});
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "ws_1" }, isLoading: false, isError: false }),
 }));
@@ -90,40 +102,6 @@ vi.mock("@/hooks/queries/work-item/use-get-work-items", () => ({
       refetch: vi.fn(),
     };
   },
-}));
-vi.mock("@/hooks/queries/work-item/use-get-board-work-items", () => ({
-  default: (args: { enabled?: boolean }) => {
-    state.boardEnabled = args.enabled;
-    return {
-      data: { pages: state.boardPages },
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-    };
-  },
-}));
-vi.mock("@/hooks/queries/project/use-get-project-states", () => ({
-  default: (_id: string | undefined, enabled?: boolean) => {
-    state.statesEnabled = enabled;
-    return {
-      data: [{ id: "s1", name: "Open" }],
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    };
-  },
-}));
-vi.mock("@/hooks/use-workspace-permission", () => ({
-  useWorkspacePermission: () => ({
-    canAssignTasks: () => state.perms.assign,
-    canTransitionTasks: () => state.perms.transition,
-    canRankTasks: () => state.perms.rank,
-    canUpdateTasks: () => state.perms.update,
-    isCheckingPermissions: state.perms.checking,
-  }),
 }));
 
 import { Route } from "./work";
@@ -155,21 +133,14 @@ async function renderRoute() {
   return view;
 }
 
-function enterSelectionMode() {
-  fireEvent.click(screen.getByRole("button", { name: "Select items" }));
+async function enterSelectionMode() {
+  fireEvent.click(await screen.findByRole("button", { name: "Select items" }));
 }
 
 beforeEach(() => {
   state.search = { layout: "board", sort: "key", dir: "asc" };
-  state.perms = {
-    assign: false,
-    transition: false,
-    rank: false,
-    update: true,
-    checking: false,
-  };
+  state.canAssign = false;
   state.listItems = [row("WLP-1"), row("WLP-2")];
-  state.boardPages = [{ items: [row("WLP-1"), row("WLP-2")] }];
   state.boardProps = undefined;
   state.panelProps = undefined;
   state.toolbarProps = undefined;
@@ -187,21 +158,19 @@ afterEach(() => {
 });
 
 describe("work route layouts", () => {
-  it("board layout fetches the board and states and not the list", async () => {
+  it("board layout renders the board view and does not fetch the list", async () => {
     await renderRoute();
     expect(screen.getByTestId("board")).toBeInTheDocument();
     expect(screen.queryByTestId("panel")).toBeNull();
-    expect(state.boardEnabled).toBe(true);
-    expect(state.statesEnabled).toBe(true);
     expect(state.listEnabled).toBe(false);
+    expect(state.boardProps?.project).toMatchObject({ id: "proj_1" });
   });
 
-  it("list layout fetches the list and not the board or states", async () => {
+  it("list layout renders the panel and fetches the list", async () => {
     state.search = { layout: "list", sort: "key", dir: "asc" };
     await renderRoute();
     expect(screen.getByTestId("panel")).toBeInTheDocument();
-    expect(state.boardEnabled).toBe(false);
-    expect(state.statesEnabled).toBe(false);
+    expect(screen.queryByTestId("board")).toBeNull();
     expect(state.listEnabled).toBe(true);
   });
 
@@ -223,105 +192,62 @@ describe("work route layouts", () => {
   });
 });
 
-describe("strict capability wiring", () => {
-  it("passes rank and transition from rankTasks/transitionTasks, never from updateTasks", async () => {
-    state.perms = { ...state.perms, update: true };
-    await renderRoute();
-    expect(state.boardProps?.canRank).toBe(false);
-    expect(state.boardProps?.canTransition).toBe(false);
-    expect(state.boardProps?.canSelect).toBe(false);
-  });
-
-  it("enables each control only from its own flag", async () => {
-    state.perms = { ...state.perms, rank: true };
-    await renderRoute();
-    expect(state.boardProps).toMatchObject({
-      canRank: true,
-      canTransition: false,
-      canSelect: false,
-    });
-    cleanup();
-    state.perms = { ...state.perms, rank: false, transition: true };
-    await renderRoute();
-    expect(state.boardProps).toMatchObject({
-      canRank: false,
-      canTransition: true,
-      canSelect: false,
-    });
-    cleanup();
-    state.perms = { ...state.perms, transition: false, assign: true };
-    await renderRoute();
-    expect(state.boardProps?.canSelect).toBe(false);
-    enterSelectionMode();
-    expect(state.boardProps).toMatchObject({
-      canRank: false,
-      canTransition: false,
-      canSelect: true,
-    });
-  });
-
-  it("grants nothing while capabilities are still loading", async () => {
-    state.perms = {
-      assign: true,
-      transition: true,
-      rank: true,
-      update: true,
-      checking: true,
-    };
-    await renderRoute();
-    expect(state.boardProps).toMatchObject({
-      canRank: false,
-      canTransition: false,
-      canSelect: false,
-    });
-  });
-
-  it("the list's selection controls follow assignTasks only", async () => {
-    state.search = { layout: "list", sort: "key", dir: "asc" };
-    await renderRoute();
-    expect(state.panelProps?.canBulkAssign).toBe(false);
-    cleanup();
-    state.perms = { ...state.perms, assign: true };
-    await renderRoute();
-    expect(state.panelProps?.canBulkAssign).toBe(false);
-    enterSelectionMode();
-    expect(state.panelProps?.canBulkAssign).toBe(true);
-  });
-});
-
 describe("selection mode (G11: no per-row controls until asked)", () => {
   it("offers the Select items toggle only with assign capability", async () => {
     await renderRoute();
     expect(screen.queryByRole("button", { name: "Select items" })).toBeNull();
     cleanup();
-    state.perms = { ...state.perms, assign: true };
+    state.canAssign = true;
     await renderRoute();
     expect(
       screen.getByRole("button", { name: "Select items" }),
     ).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("leaving selection mode removes the controls and clears the selection", async () => {
-    state.perms = { ...state.perms, assign: true };
+  it("per-row controls appear only after the capability and selection mode are both on (board)", async () => {
+    state.canAssign = true;
     await renderRoute();
-    enterSelectionMode();
+    expect(state.boardProps?.canSelect).toBe(false);
+    await enterSelectionMode();
+    expect(state.boardProps?.canSelect).toBe(true);
+  });
+
+  it("per-row controls appear only after the capability and selection mode are both on (list)", async () => {
+    state.search = { layout: "list", sort: "key", dir: "asc" };
+    state.canAssign = true;
+    await renderRoute();
+    expect(state.panelProps?.canBulkAssign).toBe(false);
+    await enterSelectionMode();
+    expect(state.panelProps?.canBulkAssign).toBe(true);
+  });
+
+  it("selection mode alone, without the capability, never enables controls", async () => {
+    await renderRoute();
+    expect(state.boardProps?.canSelect).toBe(false);
+    expect(state.panelProps).toBeUndefined();
+  });
+
+  it("leaving selection mode removes the controls and clears the selection", async () => {
+    state.canAssign = true;
+    await renderRoute();
+    await enterSelectionMode();
     act(() => {
       callProp(state.boardProps, "onSelectionChange", "WLP-1", true);
     });
     expect(await screen.findByTestId("toolbar")).toBeInTheDocument();
-    enterSelectionMode();
+    await enterSelectionMode();
     expect(screen.queryByTestId("toolbar")).toBeNull();
     expect(state.boardProps?.canSelect).toBe(false);
-    enterSelectionMode();
+    await enterSelectionMode();
     expect(state.boardProps?.selectedKeys).toEqual([]);
   });
 });
 
 describe("bulk selection", () => {
-  it("shows the toolbar only with assign capability and a non-empty selection", async () => {
-    state.perms = { ...state.perms, assign: true };
+  it("shows the toolbar only with a non-empty selection in selection mode", async () => {
+    state.canAssign = true;
     await renderRoute();
-    enterSelectionMode();
+    await enterSelectionMode();
     expect(screen.queryByTestId("toolbar")).toBeNull();
     act(() => {
       callProp(state.boardProps, "onSelectionChange", "WLP-1", true);
@@ -342,29 +268,33 @@ describe("bulk selection", () => {
     expect(screen.queryByTestId("toolbar")).toBeNull();
   });
 
-  it("drops a selected key that has left the loaded items and keeps the rest", async () => {
-    state.perms = { ...state.perms, assign: true };
-    const view = await renderRoute();
-    enterSelectionMode();
+  it("the board view's prune callback drops keys that left the loaded set and keeps the rest", async () => {
+    state.canAssign = true;
+    await renderRoute();
+    await enterSelectionMode();
     act(() => {
       callProp(state.boardProps, "onSelectionChange", "WLP-1", true);
       callProp(state.boardProps, "onSelectionChange", "WLP-2", true);
     });
-    expect(state.toolbarProps?.selectedKeys).toEqual(["WLP-1", "WLP-2"]);
-    state.boardPages = [{ items: [row("WLP-2")] }];
-    const Component = Route.options.component as () => React.JSX.Element;
-    act(() => view.rerender(<Component />));
+    expect(
+      (await screen.findByTestId("toolbar")) &&
+        state.toolbarProps?.selectedKeys,
+    ).toEqual(["WLP-1", "WLP-2"]);
+    act(() => {
+      callProp(state.boardProps, "onPruneSelection", new Set(["WLP-2"]));
+    });
     expect(state.toolbarProps?.selectedKeys).toEqual(["WLP-2"]);
   });
 
   it("clear and partial completion update the selection", async () => {
-    state.perms = { ...state.perms, assign: true };
+    state.canAssign = true;
     await renderRoute();
-    enterSelectionMode();
+    await enterSelectionMode();
     act(() => {
       callProp(state.boardProps, "onSelectionChange", "WLP-1", true);
       callProp(state.boardProps, "onSelectionChange", "WLP-2", true);
     });
+    await screen.findByTestId("toolbar");
     act(() => callProp(state.toolbarProps, "onAssigned", ["WLP-1"]));
     expect(state.toolbarProps?.selectedKeys).toEqual(["WLP-2"]);
     act(() => callProp(state.toolbarProps, "onClear"));
@@ -373,14 +303,31 @@ describe("bulk selection", () => {
 
   it("select-all in the list selects only rows with a valid key", async () => {
     state.search = { layout: "list", sort: "key", dir: "asc" };
-    state.perms = { ...state.perms, assign: true };
+    state.canAssign = true;
     state.listItems = [
       row("WLP-1"),
       row("WLP-2", { unavailableFields: ["key"] }),
     ];
     await renderRoute();
-    enterSelectionMode();
+    await enterSelectionMode();
     act(() => callProp(state.panelProps, "onSelectAll", true));
+    await screen.findByTestId("toolbar");
     expect(state.toolbarProps?.selectedKeys).toEqual(["WLP-1"]);
+  });
+
+  it("drops list selections whose rows left the loaded list", async () => {
+    state.search = { layout: "list", sort: "key", dir: "asc" };
+    state.canAssign = true;
+    const view = await renderRoute();
+    await enterSelectionMode();
+    act(() => {
+      callProp(state.panelProps, "onSelectionChange", "WLP-1", true);
+      callProp(state.panelProps, "onSelectionChange", "WLP-2", true);
+    });
+    await screen.findByTestId("toolbar");
+    state.listItems = [row("WLP-2")];
+    const Component = Route.options.component as () => React.JSX.Element;
+    act(() => view.rerender(<Component />));
+    expect(state.toolbarProps?.selectedKeys).toEqual(["WLP-2"]);
   });
 });
