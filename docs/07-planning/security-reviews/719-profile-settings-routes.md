@@ -34,6 +34,7 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 - Security rebinds: CLEAR at `4291ea0f`, which raised D1 (the stale active-user window before the deferred mount). D1 was fixed by the conductor's per-user mount count in `ae828b6a` and cleared there.
 - Light security rebind: CLEAR at `9c121598`. It is a clean merge of `main` `28481af5` (#721, accessibility); the tree equals `git merge-tree`, and #719's surface is byte-identical to `ae828b6a`.
 - Mechanical security rebind at `5896ef3c`: CLEAR. It covers two clean merges of `main`: `aefb6888` (#726, #722) and `f0f85e86` (#712). Each tree equals its merge-tree. The `/api/me/settings` policies are user-scoped, so the reach guard and middleware don't apply to them.
+- Security rebind at `ac689f22`: CLEAR. A pure merge of `main` `f0f85e86..a31bdde3` (#727, #728, #732, #733, #738, #730, #739). There is no migration clash, `/api/me/settings` stays session-only and self-scoped alongside `sees_all`, and there is no first-paint i18n impact. #719's integration and permissions tests pass.
 
 **Reviewed head:** `beedd219a6d7634254fc66cf3033bd5ba3f54f7c`
 **Reviewed head:** `7a32a0f337b8a195b0054bbd5516a6c88a9ae1f4`
@@ -45,6 +46,7 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 **Reviewed head:** `ae828b6a750f18cabadcd415a57cebecbd0ef2ec`
 **Reviewed head:** `9c1215980199b860bbe92bb750a2e167ea0759f7`
 **Reviewed head:** `5896ef3cb93ba3f5d684084bf23c3b8393449b7f`
+**Reviewed head:** `ac689f2298ef545fafdd3f0b9b5b66fd2f03069e`
 
 ## Context index
 
@@ -69,6 +71,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 15 | `719-ae82-ordinary-b-sonnet.md` | Ordinary delta review B (4291ea0f..ae828b6a) | Claude Sonnet 5.5 | `ae828b6a` | APPROVE | `17cec66eb80c63fda65d9242ba685941915d2372aa7e534eaa38baab8eb9970c` |
 | 16 | `719-9c12-security-rebind-opus.md` | Security rebind (ae828b6a..9c121598) | Claude Opus 5.5 | `9c121598` | CLEAR | `722f07752f489288d65f01aaafaa86b757a994c0c6f6231467600b107f436e0d` |
 | 17 | `719-5896-security-rebind-opus.md` | Mechanical security rebind (c023c7d7..5896ef3c) | Claude Opus 5.5 | `5896ef3c` | CLEAR | `a1d463e3bdb021b6c59ff9524afb11958e4f358753d08019e3cae62c1484f48b` |
+| 18 | `719-ac68-security-rebind-opus.md` | Mechanical security rebind (e6fd9ed9..ac689f22) | Claude Opus 5.5 | `ac689f22` | CLEAR | `1103458ba7011db86dba8faea1f3aa26cea924b31a67b5a065f4a858c40d2fd1` |
 
 ## Embedded reports
 
@@ -1426,3 +1429,103 @@ None, blocking or non-blocking.
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 a1d463e3bdb021b6c59ff9524afb11958e4f358753d08019e3cae62c1484f48b) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-ac68-security-rebind-opus.md; Claude Opus 5.5; sha256 1103458ba7011db86dba8faea1f3aa26cea924b31a67b5a065f4a858c40d2fd1) -->
+# PR #719 security review: exact-head rebind after merging main f0f85e86..a31bdde3
+
+**Reviewed head:** ac689f2298ef545fafdd3f0b9b5b66fd2f03069e
+**Prior CLEAR head:** 5896ef3cb93ba3f5d684084bf23c3b8393449b7f (`719-5896-security-rebind-opus.md`)
+**Pre-merge head:** e6fd9ed985a3c36a9998804fedb9830e2e5eb9a3
+**Merged main:** a31bdde3fde0d31b77bf7452f97abab7b8ce63fc
+**Merge base:** f0f85e865898280421a48520c33dab935483b508
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This context did not author, direct or remediate #719.
+**Scope:** a mechanical rebind, plus a cross-PR interaction review of the main range and targeted tests.
+
+## Main range merged in
+
+`git log --oneline --first-parent f0f85e86..a31bdde3` lists 7 merges:
+
+- 8ea3ce27 #727
+- 0cc0ae12 #728
+- 82aecead #732
+- 1f1abe7c #733
+- 6015f016 #738
+- 6389d6e7 #730
+- a31bdde3 #739
+
+#735 is not in the range.
+
+## Mechanical checks
+
+All checks ran against live git and GitHub.
+
+| Check | Result |
+| --- | --- |
+| `gh pr view 719` head | `ac689f22…`: matches |
+| `origin/main`, confirmed through the GitHub API `commits/main` | `a31bdde3…`: main is unchanged |
+| Parents of ac689f22 | `e6fd9ed9…` and `a31bdde3…`: matches |
+| Tree compared with `git merge-tree --write-tree e6fd9ed9 a31bdde3` | both `320a0ad4c3c337809ecee3b54ef1dab4e001535a`. The merge is clean and adds no hand edits; `git show --cc` shows no conflict-resolution hunks. |
+| `diff --name-only e6fd9ed9..ac689f22` compared with `diff --name-only f0f85e86..a31bdde3` | identical, 170 files |
+| Commits after the prior CLEAR (`5896ef3c..e6fd9ed9`) | exactly one, `e6fd9ed9 docs(security-reviews): bind the main-merge rebind`. Its parent is 5896ef3c and it changes only `docs/07-planning/security-reviews/719-profile-settings-routes.md`. It is a note only. |
+| PR files compared with main (`a31bdde3..ac689f22`) | 30 files. The PR's own surface is `apps/api/src/user-preference/**`, a `policy-registry.ts` entry, the web preference sync, settings, fetchers and hooks, the docs, `openapi.json`, `user-preference.test.ts` and `matrix.fixture.json`. |
+| Files edited by both #719 and main | `apps/api/src/index.ts`, `tests/api-contract/openapi.json`, `tests/api-integration/strict-runtime-enforcement.test.ts`. All three merged automatically with no conflict hunks. `check:openapi` confirms the merged contract matches the merged API (284 operations). |
+
+## Interaction review
+
+**Migrations.** #719 adds **no** migration: no file under `apps/api/drizzle/` is in `a31bdde3..ac689f22`.
+- The journal at the head ends `0121 → 0122 → 0123_workspace_owner_admin_sees_all`, all from main, with no collision.
+- `user_preference` already exists from the 0088–0118 spine (#618) and 0119 (#620).
+
+**#733 (`sees_all`) compared with `/api/me/settings`.**
+- The routes are mounted at `/me`, are session-only (`requireSessionOnly`), and read and write only the caller's own `user_preference` rows, keyed by `personId`.
+- `sees_all` matters only for project-scoped `layout` keys. `reachableProjectIds` filters them through the canonical `reaches(identity, …)` from `resolveIdentity` on **both** read (`getOwnSettings`) and write (`patchOwnSettings`).
+- After #733, an owner or admin with the backfilled `sees_all` grant reaches every project in their workspace. They can therefore store and see their **own** layout preference for those projects.
+- That is the intended effect of #733's decision, and it matches every other reach-gated route.
+- No other user's data becomes visible.
+- Removing `sees_all` (demotion) hides those project rows again on read, because the filter is applied at read time.
+- `user-preference.test.ts` passes against the merged tree, including its owner, outsider and other-project cases.
+
+**#730 (and #740's) project reach.**
+- #719's routes are not project-scoped or task-target routes.
+- They use neither `workspaceAccess.fromProject` nor `requireWorkItemReach`, so #730's middleware changes do not apply.
+- #730 does not change `@taskdesk/permissions` `reaches` or `resolve-identity`.
+- `test:permissions` passes 16/16 files and 104/104 tests. This includes route coverage, `project-reach-guard` and `work-item-reach-guard` on the merged router, with #719's routes present.
+
+**#739 (i18n first-paint guard).**
+- #719 adds no i18n keys; no `i18n/*.json` file is among its changes.
+- #719 does change `main.tsx`, which gains two lines to mount the deferred preference sync. #739's guard tests and #719's deferred-sync tests both pass on the merged tree:
+  - `apps/web/src/lib/i18n/**`, including `deferred-namespace-guard.test.ts` and `work-route-namespaces.test.ts`;
+  - `deferred-user-preferences-sync.test.tsx`.
+- Web `tsc --noEmit` is clean.
+- I did not repeat the conductor's full `vite build` guard run (186 files, 1016 tests). I rely on it for the build-time guard.
+
+**Other merges in the range:**
+- #727 (forms), #728 (board, rank, bulk), #732 (workspace-delete dependents) and #738 (service-calendar) share no files with #719's surface.
+- `delete-account-data.ts` (#732, #733) does not reference `user_preference` routes.
+
+## Tests run
+
+Tests ran in a private Postgres container `postgres:18-alpine`, database `opus719_test`, ID `6127380728aa`. I removed it by that ID. The scratch worktree was at the exact head and was removed afterwards.
+
+| Command | Result |
+| --- | --- |
+| integration `user-preference.test.ts` + `strict-runtime-enforcement.test.ts` | 2 files, **37/37 pass** |
+| `pnpm --filter @taskdesk/api test:permissions`, run directly in a fresh worktree | 5 files failed with 25 skipped: "Failed to resolve entry for package `@taskdesk/email` / `@taskdesk/domain`". These workspace packages had not been built yet. This is environmental, not a code fault. |
+| `pnpm test:permissions` (turbo, `dependsOn: ^build`) | **16/16 files, 104/104 tests pass**, 5/5 tasks |
+| `pnpm check:route-policy`, `check:policy`, `check:openapi` | exit 0, exit 0, exit 0 (284 operations) |
+| web vitest: `deferred-user-preferences-sync`, `user-preferences-sync`, `fetchers/user-settings`, `use-density-preference`, `user-preference-sync`, `account/preferences`, `lib/i18n/**` | **11 files, 61/61 pass** |
+| web `tsc --noEmit` | exit 0 |
+
+The unbuilt-package explanation also accounts for the cold first `test:permissions` failure recorded in `735-security-opus.md` N4.
+
+## Findings
+
+No blocking findings. Nothing new beyond the findings already recorded at 5896ef3c.
+
+## Residual risk
+
+- I did not rebuild the image or rerun the full web build guard; I relied on the conductor's local build.
+- I did not run the full integration suite.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 1103458ba7011db86dba8faea1f3aa26cea924b31a67b5a065f4a858c40d2fd1) -->
