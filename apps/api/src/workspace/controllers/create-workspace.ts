@@ -11,6 +11,7 @@ import {
   randomSlugSuffix,
   slugifyWorkspaceName,
 } from "../../utils/workspace-slug";
+import { syncWorkspaceAdminReach } from "../workspace-admin-reach";
 
 export type CreateWorkspaceInput = {
   name: string;
@@ -139,6 +140,12 @@ async function createWorkspace(input: CreateWorkspaceInput) {
           role: "owner",
           joinedAt: now,
         });
+
+        // (2b) the owner's explicit workspace `sees_all` grant (decision log 2026-10-14;
+        // rbac.md Reach step 2). Written in the same transaction as the owner row: without
+        // it a fresh owner has no project reach at all. An `owner` grant never reads
+        // `workspace_role`, so it can follow the owner row directly.
+        await syncWorkspaceAdminReach(tx, workspace.id, input.ownerId);
 
         // (3) the default role rows. `owner` is deliberately NOT among them
         // (retrofit plan R5): owner authority stays in the compiled-in

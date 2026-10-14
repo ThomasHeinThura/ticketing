@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
+import { removeWorkspaceAdminReach } from "../workspace-admin-reach";
 import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 /**
@@ -47,6 +48,10 @@ async function deleteWorkspace(workspaceId: string, sessionId: string) {
     await tx
       .delete(schema.workflowTable)
       .where(eq(schema.workflowTable.workspaceId, workspaceId));
+
+    // The owner/admin reach grants reference this workspace's `role` rows with
+    // `ON DELETE RESTRICT`, so they go first (see `removeWorkspaceAdminReach`).
+    await removeWorkspaceAdminReach(tx, [workspaceId]);
 
     const [deleted] = await tx
       .delete(schema.workspaceTable)

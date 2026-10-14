@@ -6,6 +6,7 @@ import {
   isUnambiguousMembership,
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
+import { syncWorkspaceAdminReach } from "../workspace-admin-reach";
 import {
   AlreadyOwnerError,
   AmbiguousMembershipError,
@@ -143,6 +144,9 @@ async function transferWorkspaceOwnership(
           eq(schema.workspaceUserTable.userId, callerId),
         ),
       );
+
+    await syncWorkspaceAdminReach(tx, workspaceId, newOwnerUserId);
+    await syncWorkspaceAdminReach(tx, workspaceId, callerId);
 
     return {
       workspaceId,

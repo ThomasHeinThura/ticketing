@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { WorkspaceRoleNotFoundError } from "../../workspace/controllers/workspace-membership-errors";
 import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
+import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
 import {
   AlreadyWorkspaceMemberError,
   InvitationExpiredError,
@@ -136,6 +137,7 @@ async function acceptInvitation(
       role,
       joinedAt: now,
     });
+    await syncWorkspaceAdminReach(tx, invitation.workspaceId, callerId);
 
     return {
       invitation: {

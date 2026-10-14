@@ -15,6 +15,10 @@ import {
   requestAccountDeletionRetry,
 } from "../../pending-action/credential-invalidation";
 import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
+import {
+  removeWorkspaceAdminReach,
+  syncWorkspaceAdminReach,
+} from "../../workspace/workspace-admin-reach";
 
 type AccountDeletionTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
@@ -139,6 +143,9 @@ async function deleteAccountDataInTransaction(
       .delete(workflowTable)
       .where(inArray(workflowTable.workspaceId, plan.workspaceIdsToDelete));
 
+    // Owner/admin reach grants restrict deleting this workspace's `role` rows.
+    await removeWorkspaceAdminReach(tx, plan.workspaceIdsToDelete);
+
     await tx
       .delete(workspaceTable)
       .where(inArray(workspaceTable.id, plan.workspaceIdsToDelete));
@@ -153,6 +160,9 @@ async function deleteAccountDataInTransaction(
           inArray(workspaceUserTable.workspaceId, plan.workspaceIdsToLeave),
         ),
       );
+    for (const workspaceId of plan.workspaceIdsToLeave) {
+      await syncWorkspaceAdminReach(tx, workspaceId, userId);
+    }
   }
 
   return plan;
