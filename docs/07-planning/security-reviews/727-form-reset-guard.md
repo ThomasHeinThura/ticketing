@@ -16,10 +16,12 @@ A Claude Sonnet 5.5 lane implemented the change. The conductor (Claude Opus 5.5)
 - Security review by Claude Opus 5.5: CLEAR at `e5c1423a`. Diff scope, e2e isolation, secrets and the auth-redirect spec were run together.
 - Mechanical security rebind at `eaacaba2`: CLEAR. This head merges `main` `417944ca` (#726). Its tree equals the merge-tree of `dc480271` with `417944ca`, the changed files are exactly #726's, and there is no interaction with this PR's paths.
 - Mechanical security rebind at `77e69d7a`: CLEAR. This head merges `main` `aefb6888` (#722). Its tree equals the merge-tree of `39515633` with `aefb6888`, and the changed files are exactly #722's, with no interaction.
+- Mechanical security rebind at `321cbd22`: CLEAR. This head merges `main` `f0f85e86` (#712). The tree equals the merge-tree, and the changed files are exactly #712's, with no web change.
 
 **Reviewed head:** `e5c1423a446a98d88f0388a1c741ce06feb0c40d`
 **Reviewed head:** `eaacaba27e0372e9e4d18903af99cf39985f470e`
 **Reviewed head:** `77e69d7a3d2cbe90aa7ad86501e78a5e1f5cba88`
+**Reviewed head:** `321cbd229b6d069a89073046599864cb565ebc64`
 
 ## Context index
 
@@ -32,6 +34,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 3 | `727-security-opus.md` | Security review (28481af5..e5c1423a) | Claude Opus 5.5 | `e5c1423a` | CLEAR | `92ecf47356b9c232f937797708260de9ae42b23511c0a7dbec4aaa3a5052cd0f` |
 | 4 | `727-eaac-security-rebind-opus.md` | Mechanical security rebind (dc480271..eaacaba2) | Claude Opus 5.5 | `eaacaba2` | CLEAR | `002820ec4535c9395eda9fd4299e184683fe84ba25de70e66d320d910f74dd33` |
 | 5 | `727-77e6-security-rebind-opus.md` | Mechanical security rebind (39515633..77e69d7a) | Claude Opus 5.5 | `77e69d7a` | CLEAR | `da097263e6ce28cb4cea7861d5b2c2225dd91765addc8026e1dbb6790271e042` |
+| 6 | `727-321c-security-rebind-opus.md` | Mechanical security rebind (d7d1dda7..321cbd22) | Claude Opus 5.5 | `321cbd22` | CLEAR | `0332c0679d51a41f62bf604b7c6de56209f20eb1d4376ca653441bbb2bf1abc4` |
 
 ## Embedded reports
 
@@ -311,3 +314,41 @@ docs/07-planning/security-reviews/727-form-reset-guard.md      (note-only)
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 da097263e6ce28cb4cea7861d5b2c2225dd91765addc8026e1dbb6790271e042) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/727-321c-security-rebind-opus.md; Claude Opus 5.5; sha256 0332c0679d51a41f62bf604b7c6de56209f20eb1d4376ca653441bbb2bf1abc4) -->
+# PR #727 — security exact-head rebind (mechanical merge of main #712)
+
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This is a fresh, independent context. I did not author, direct or remediate #727 or #712.
+**Reviewed head:** 321cbd229b6d069a89073046599864cb565ebc64
+**Prior CLEAR head:** 77e69d7a3d2cbe90aa7ad86501e78a5e1f5cba88
+**Pre-merge head:** d7d1dda77b4fe46fca7c888dd335ac2337a04450
+**Main merged in:** f0f85e865898280421a48520c33dab935483b508 (merge of #712; parents aefb6888 and ef1780c1)
+**Method:** read-only. A blobless bare clone in the scratchpad. No tests were run.
+
+## Commands and outputs
+```
+$ git ls-remote origin refs/heads/main refs/pull/727/head   (at the start and again at the end)
+f0f85e865898280421a48520c33dab935483b508 refs/heads/main
+321cbd229b6d069a89073046599864cb565ebc64 refs/pull/727/head
+$ git rev-list --parents -n1 321cbd22 -> 321cbd22... d7d1dda77b4fe46fca7c888dd335ac2337a04450 f0f85e865898280421a48520c33dab935483b508
+$ git rev-parse 321cbd22^{tree}                  -> e897db1ed5bdcfb1b211b3396bad9fd36b382581
+$ git merge-tree --write-tree d7d1dda7 f0f85e86 -> e897db1ed5bdcfb1b211b3396bad9fd36b382581  (identical)
+$ git diff --name-only d7d1dda7 321cbd22  vs  git diff --name-only aefb6888 f0f85e86 -> 69 files, IDENTICAL
+$ git diff --name-only 77e69d7a d7d1dda7 -> docs/07-planning/security-reviews/727-form-reset-guard.md (note-only, the only first-parent commit)
+$ git diff --name-only a9b1de14 f0f85e86^2 -> only docs/07-planning/security-reviews/712-work-item-project-reach.md
+```
+The last check shows that #712 as merged equals the a9b1de14 content I reviewed, plus its note.
+
+## Interaction review
+- #712 is API, tests and docs only: 69 files, none under `apps/web/`. #727's guard scans only `apps/web/src`, and its e2e spec loads only the settings pages. Neither of #727's two test files can be affected.
+- None of #727's own three files overlaps #712.
+
+## CI (observed)
+- `pull request template + security review` was FAILURE. I expect it to clear once a note recording this head is committed.
+- Other checks were green or still running.
+
+## Findings
+None, blocking or non-blocking.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 0332c0679d51a41f62bf604b7c6de56209f20eb1d4376ca653441bbb2bf1abc4) -->
