@@ -33,6 +33,7 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 - Ordinary delta reviews by the reviewer-B context: REQUEST CHANGES at `369b42ed` (the crash on chunk failure), then APPROVE at `4291ea0f` and at `ae828b6a`.
 - Security rebinds: CLEAR at `4291ea0f`, which raised D1 (the stale active-user window before the deferred mount). D1 was fixed by the conductor's per-user mount count in `ae828b6a` and cleared there.
 - Light security rebind: CLEAR at `9c121598`. It is a clean merge of `main` `28481af5` (#721, accessibility); the tree equals `git merge-tree`, and #719's surface is byte-identical to `ae828b6a`.
+- Mechanical security rebind at `5896ef3c`: CLEAR. It covers two clean merges of `main`: `aefb6888` (#726, #722) and `f0f85e86` (#712). Each tree equals its merge-tree. The `/api/me/settings` policies are user-scoped, so the reach guard and middleware don't apply to them.
 
 **Reviewed head:** `beedd219a6d7634254fc66cf3033bd5ba3f54f7c`
 **Reviewed head:** `7a32a0f337b8a195b0054bbd5516a6c88a9ae1f4`
@@ -43,6 +44,7 @@ A Claude Sonnet 5.5 lane implemented it. The conductor (Claude Opus 5.5) made th
 **Reviewed head:** `4291ea0f9465bc55361f480197fd2d39ea5060f3`
 **Reviewed head:** `ae828b6a750f18cabadcd415a57cebecbd0ef2ec`
 **Reviewed head:** `9c1215980199b860bbe92bb750a2e167ea0759f7`
+**Reviewed head:** `5896ef3cb93ba3f5d684084bf23c3b8393449b7f`
 
 ## Context index
 
@@ -66,6 +68,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 14 | `719-ae82-security-rebind-opus.md` | Security rebind (4291ea0f..ae828b6a) | Claude Opus 5.5 | `ae828b6a` | CLEAR | `cada8be7ad640c1e5794851083f52a09e8f5161ad05624bce4bb4052cc9b53e6` |
 | 15 | `719-ae82-ordinary-b-sonnet.md` | Ordinary delta review B (4291ea0f..ae828b6a) | Claude Sonnet 5.5 | `ae828b6a` | APPROVE | `17cec66eb80c63fda65d9242ba685941915d2372aa7e534eaa38baab8eb9970c` |
 | 16 | `719-9c12-security-rebind-opus.md` | Security rebind (ae828b6a..9c121598) | Claude Opus 5.5 | `9c121598` | CLEAR | `722f07752f489288d65f01aaafaa86b757a994c0c6f6231467600b107f436e0d` |
+| 17 | `719-5896-security-rebind-opus.md` | Mechanical security rebind (c023c7d7..5896ef3c) | Claude Opus 5.5 | `5896ef3c` | CLEAR | `a1d463e3bdb021b6c59ff9524afb11958e4f358753d08019e3cae62c1484f48b` |
 
 ## Embedded reports
 
@@ -1356,3 +1359,70 @@ The findings from earlier reports carry over unchanged and remain non-blocking:
 **CLEAR** for 9c1215980199b860bbe92bb750a2e167ea0759f7. This sampled Opus 5.5 review does not
 replace the required GPT-6 Sol security review at this head.
 <!-- END REPORT (sha256 722f07752f489288d65f01aaafaa86b757a994c0c6f6231467600b107f436e0d) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/719-5896-security-rebind-opus.md; Claude Opus 5.5; sha256 a1d463e3bdb021b6c59ff9524afb11958e4f358753d08019e3cae62c1484f48b) -->
+# PR #719 — security exact-head rebind (two mechanical merges of main: aefb6888, then f0f85e86)
+
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This is a fresh, independent context. I did not author, direct or remediate #719, #726, #722 or #712.
+**Reviewed head:** 5896ef3cb93ba3f5d684084bf23c3b8393449b7f
+**Prior CLEAR head:** 9c121598
+**Commits after 9c121598 (first-parent):**
+- c023c7d7: a note-only commit (`docs/07-planning/security-reviews/719-profile-settings-routes.md`);
+- 19b289ca: a merge of main aefb6888 (#726 and #722);
+- 5896ef3c: a merge of main f0f85e86 (#712).
+
+**Method:** read-only. A blobless bare clone in the scratchpad. No tests were run. I relied on the conductor's report that `pnpm test:permissions` passed at 5896ef3c with 15 files and 95 tests; I did not re-run it.
+
+## Commands and outputs
+```
+$ git ls-remote origin refs/heads/main refs/pull/719/head   (at the start and again at the end)
+f0f85e865898280421a48520c33dab935483b508 refs/heads/main
+5896ef3cb93ba3f5d684084bf23c3b8393449b7f refs/pull/719/head
+$ git diff --name-only 9c121598 c023c7d7 -> docs/07-planning/security-reviews/719-profile-settings-routes.md
+
+Merge 1:
+$ git rev-list --parents -n1 19b289ca -> 19b289ca6a460d745f5a773255440a225620fa08 c023c7d75557c1b3219cb03b7b5089c0803c5241 aefb6888f3d45ad3439c69133ac644f738a70a4a
+$ tree 19b289ca = ab25747a7923c9fdeba52fb1672b8f3cd85aba87 ; merge-tree c023c7d7 aefb6888 = ab25747a7923c9fdeba52fb1672b8f3cd85aba87 (identical)
+$ diff --name-only c023c7d7 19b289ca vs 28481af5 aefb6888 -> 52 files, IDENTICAL (merge-base 28481af5)
+
+Merge 2:
+$ git rev-list --parents -n1 5896ef3c -> 5896ef3c... 19b289ca6a460d745f5a773255440a225620fa08 f0f85e865898280421a48520c33dab935483b508
+$ tree 5896ef3c = 2fe3b27d4f52323bd14f77bd434e958f8e3bf061 ; merge-tree 19b289ca f0f85e86 = 2fe3b27d4f52323bd14f77bd434e958f8e3bf061 (identical)
+$ diff --name-only 19b289ca 5896ef3c vs aefb6888 f0f85e86 -> 69 files, IDENTICAL (merge-base aefb6888)
+```
+
+## File overlaps (both auto-merged cleanly)
+- **`tests/api-contract/openapi.json`** is touched by both #719 and the #726/#722 delta.
+- **`tests/api-integration/strict-runtime-enforcement.test.ts`** is touched by both #719 and #712. The hunks are disjoint:
+  - #719 adds `"apps/api/src/user-preference/policy.ts"` to a policy-source list;
+  - #712 changes the in-scope API-key expectation on the legacy edit route from 200 to 403.
+
+  They don't interact.
+
+## Interaction review
+1. **#712's reach guard does not apply to #719's routes.**
+   - `work-item-reach-guard.test.ts` selects only registry entries where `isCapabilityPolicy(policy) && scope === "work_item" && reach === "required"`.
+   - `GET` and `PATCH /api/me/settings` are kind-2 `{ authenticated: true, self: true, personParam: { exempt } }` policies (PATCH adds `sessionOnly`). They have no capability, scope or reach, so they are excluded.
+2. **#712's reach middleware does not apply either.**
+   - #712's project reach is opt-in per route: `requireWorkItemReach()` / `requireAttachmentReach()`, or `workspaceAccess.*` with `requireProjectReach`.
+   - #712 did not touch `apps/api/src/index.ts`, `policy-registry.ts` or `packages/`, so there is no global middleware change.
+   - #719's routes are mounted at `api.route("/me", userPreference)`. Their middleware is `requireSessionOnly()` plus `bodyLimit` (PATCH) and no `workspaceAccess`.
+   - Layout-key project reach stays the controller-level `resolveIdentity`/`reaches` check (ST-14), as CLEARed.
+3. **Policy registry.** `policy-registry.ts` (changed only by #719) registers `userPreferencePolicies`. #712 adds no policy source file, and its routes keep their own `/api/work-items` and similar keys, so there is no key collision. The registry throws at module load on an invalid entry, and the conductor's permissions run passed.
+4. **#726's `manageProjectSettings` against #719's keys.** No collision:
+   - `manageProjectSettings` is a `/api/capabilities` response flag, read by `use-workspace-permission.ts`. #719 does not touch that file.
+   - #719's settings keys are user-preference row keys (`density`, `layout.<projectId>`, `whitelist.ts`), stored per person. They are separate namespaces with no shared identifier.
+
+## CI (observed)
+- `pull request template + security review` was FAILURE. I expect it to clear once a note recording this head is committed.
+- 14 other checks were still running when I checked.
+
+## Findings
+None, blocking or non-blocking.
+
+## Residual risk / not checked
+- I did not re-run `pnpm test:permissions`. Hosted CI at 5896ef3c is the gate, including the openapi contract check for the auto-merged `openapi.json`.
+- I did not re-review #719's own semantics, which were CLEARed at 9c121598.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 a1d463e3bdb021b6c59ff9524afb11958e4f358753d08019e3cae62c1484f48b) -->
