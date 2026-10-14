@@ -7,11 +7,13 @@ async function listViews(
   workspaceId: string,
   personId: string,
   userId: string,
+  reachableProjectIds: readonly string[],
 ) {
   const { views, pinnedValue } = await listSavedViewsForWorkspace(
     workspaceId,
     personId,
     userId,
+    reachableProjectIds,
   );
 
   const pinnedIds = new Set(

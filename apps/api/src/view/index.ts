@@ -10,6 +10,11 @@ import {
   createPendingAction,
   requirePendingActionRequesterIdentity,
 } from "../pending-action/service";
+import {
+  listReachOf,
+  requireReachContext,
+  requireReachFilteredList,
+} from "../utils/reach-filtered-list";
 import type { ApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -66,6 +71,7 @@ const listViewsRoute = createRoute({
   middleware: [
     workspaceAccess.fromQuery(),
     requireWorkspaceCapability("saved_view:read"),
+    requireReachFilteredList,
   ] as const,
   request: { query: listViewsQuery },
   responses: {
@@ -115,6 +121,7 @@ const createViewRoute = createRoute({
   middleware: [
     workspaceAccess.fromBody(),
     requireWorkspaceCapability("saved_view:create"),
+    requireReachContext,
   ] as const,
   request: {
     body: {
@@ -295,7 +302,15 @@ const view = apiRouter()
   .openapi(listViewsRoute, async (c) => {
     const { workspaceId } = c.req.valid("query");
     const personId = await resolveCallerPersonId(c.get("userId"));
-    return c.json(await listViews(workspaceId, personId, c.get("userId")), 200);
+    return c.json(
+      await listViews(
+        workspaceId,
+        personId,
+        c.get("userId"),
+        await listReachOf(c).reachableProjectIds([workspaceId]),
+      ),
+      200,
+    );
   })
   .openapi(createViewRoute, async (c) => {
     const body = c.req.valid("json");
@@ -309,6 +324,7 @@ const view = apiRouter()
         userId,
         actor,
         c.get("apiKey") as ApiKeyPermissionScope | undefined,
+        listReachOf(c),
       ),
       200,
     );
@@ -317,7 +333,8 @@ const view = apiRouter()
     const { id } = c.req.valid("param");
     const userId = c.get("userId");
     const personId = await resolveCallerPersonId(userId);
-    return c.json(await getView(id, personId, userId), 200);
+    const view = await getView(id, personId, userId);
+    return c.json(view, 200);
   })
   .openapi(updateViewRoute, async (c) => {
     const { id } = c.req.valid("param");

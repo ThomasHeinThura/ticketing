@@ -334,6 +334,7 @@ describe("intake atomic conversion", () => {
       fixture.staff.id,
       fixture.project.id,
       fixture.type.id,
+      async () => true,
     );
     const [item] = await db
       .select()
@@ -371,6 +372,7 @@ describe("intake atomic conversion", () => {
       fixture.staff.id,
       fixture.project.id,
       fixture.type.id,
+      async () => true,
     );
     const [visibleItem] = await db
       .select()
@@ -434,6 +436,7 @@ describe("intake atomic conversion", () => {
         fixture.staff.id,
         fixture.project.id,
         fixture.type.id,
+        async () => true,
       ).then(
         (value) => ({ status: "fulfilled" as const, value }),
         (error: unknown) => ({ status: "rejected" as const, error }),
@@ -602,6 +605,7 @@ describe("intake atomic conversion", () => {
             fixture.staff.id,
             fixture.project.id,
             fixture.type.id,
+            async () => true,
           ).then(
             () => ({ status: "fulfilled" as const }),
             (error: unknown) => ({ status: "rejected" as const, error }),
@@ -891,6 +895,7 @@ describe("intake atomic conversion", () => {
         staff.id,
         project.id,
         chosenType.id,
+        async () => true,
       ),
       acceptSubmission(
         `SUB-${submission.number}`,
@@ -898,6 +903,7 @@ describe("intake atomic conversion", () => {
         staff.id,
         project.id,
         chosenType.id,
+        async () => true,
       ),
     ]);
     expect(
@@ -1015,6 +1021,7 @@ describe("intake atomic conversion", () => {
         staff.id,
         project.id,
         foreignType.id,
+        async () => true,
       ),
     ).rejects.toMatchObject({ status: 422 });
     const [notConverted] = await db

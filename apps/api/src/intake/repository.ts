@@ -40,6 +40,10 @@ import {
   findWorkspaceDefaultSlaPolicyQuery,
   findWorkspaceOwnedSlaPolicyQuery,
 } from "../work-item/repository";
+import {
+  type LinkedWorkItemReach,
+  reachableLinkedWorkItemId,
+} from "./submission-linked-work-item";
 
 type RequestTypeInput = {
   workspaceId: string;
@@ -832,6 +836,15 @@ async function convertSubmissionInTransaction(
   typeId: string,
   requestSlaPolicyId: string | null,
   defaultAssigneeId: string | null,
+  /**
+   * #741: whether the triager's project reach includes the destination. Supplied by the staff
+   * accept route; a project outside it is answered exactly like a missing or foreign one.
+   */
+  canReachProject: (project: {
+    id: string;
+    workspaceId: string;
+    organisationId: string | null;
+  }) => Promise<boolean> = async () => true,
 ) {
   const actorId = actor.id;
   const actorName =
@@ -863,7 +876,11 @@ async function convertSubmissionInTransaction(
     // Match the counter UPDATE's lock mode so concurrent acceptors serialize without upgrades.
     .for("no key update")
     .limit(1);
-  if (!project || project.organisationId !== submission.organisationId)
+  if (
+    !project ||
+    project.organisationId !== submission.organisationId ||
+    !(await canReachProject(project))
+  )
     throw new HTTPException(422, {
       message: "Destination project is unavailable for this organisation",
     });
@@ -1141,6 +1158,11 @@ export async function acceptSubmission(
   actorId: string,
   projectId: string,
   typeId: string,
+  canReachProject: (project: {
+    id: string;
+    workspaceId: string;
+    organisationId: string | null;
+  }) => Promise<boolean>,
 ) {
   const number = parseSubmissionReference(ref);
   if (number === null)
@@ -1193,6 +1215,7 @@ export async function acceptSubmission(
       typeId,
       snapshot.slaPolicyId,
       snapshot.defaultAssigneeId,
+      canReachProject,
     );
     return { ref, state: "accepted" as const, workItem: item };
   });
@@ -1203,6 +1226,11 @@ export async function markSubmissionDuplicate(
   workspaceId: string,
   actorId: string,
   workItemId: string,
+  canReachProject: (project: {
+    id: string;
+    workspaceId: string;
+    organisationId: string | null;
+  }) => Promise<boolean>,
 ) {
   const number = parseSubmissionReference(ref);
   if (number === null)
@@ -1247,7 +1275,8 @@ export async function markSubmissionDuplicate(
       .limit(1);
     if (
       !target ||
-      target.project.organisationId !== row.submission.organisationId
+      target.project.organisationId !== row.submission.organisationId ||
+      !(await canReachProject(target.project))
     )
       throw new HTTPException(404, { message: "Work item not found" });
     const now = new Date();
@@ -1299,6 +1328,12 @@ export async function findSubmission(
   ref: string,
   workspaceId?: string,
   requesterId?: string,
+  /**
+   * Staff detail only (#740): the caller's reach. Without a reachable work item the id and the
+   * comments carried over from it are left out (`submission-linked-work-item.ts`). The portal
+   * requester's own view passes nothing and keeps its existing behaviour.
+   */
+  staffReach?: LinkedWorkItemReach,
 ) {
   const number = /^SUB-([1-9]\d{0,9})$/u.exec(ref)?.[1];
   if (!number)
@@ -1347,13 +1382,23 @@ export async function findSubmission(
     ...message,
     createdAt: message.createdAt.toISOString(),
   }));
-  if (row.submission.state === "accepted" && row.submission.workItemId) {
+  let linkedWorkItemId = row.submission.workItemId;
+  if (staffReach) {
+    linkedWorkItemId = await reachableLinkedWorkItemId(
+      staffReach,
+      row.submission.workItemId,
+    );
+    if (linkedWorkItemId === null) {
+      row.submission = { ...row.submission, workItemId: null };
+    }
+  }
+  if (row.submission.state === "accepted" && linkedWorkItemId) {
     const comments = await db
       .select()
       .from(schema.commentTable)
       .where(
         and(
-          eq(schema.commentTable.workItemId, row.submission.workItemId),
+          eq(schema.commentTable.workItemId, linkedWorkItemId),
           eq(schema.commentTable.visibility, "public"),
           isNull(schema.commentTable.deletedAt),
         ),
@@ -1735,6 +1780,7 @@ export async function listOwnSubmissions(
 export async function suggestDuplicateWorkItems(
   ref: string,
   workspaceId: string,
+  reachableProjectIds: readonly string[],
 ) {
   const number = parseSubmissionReference(ref);
   if (number === null)
@@ -1771,7 +1817,9 @@ export async function suggestDuplicateWorkItems(
         (row.submission.formData as Record<string, unknown>)[field.key] ?? "",
       ).trim()
     : "";
-  if (title.length < 2) return [];
+  // #740: a suggestion names a work item (key and title), so only items of projects the
+  // triager reaches may be suggested.
+  if (title.length < 2 || reachableProjectIds.length === 0) return [];
   const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   const score = sql<number>`similarity(${sql.identifier("work_item")}.${sql.identifier("title")}, ${title})`;
   return db
@@ -1790,6 +1838,7 @@ export async function suggestDuplicateWorkItems(
       and(
         eq(schema.workItemTable.workspaceId, workspaceId),
         eq(schema.projectTable.organisationId, row.submission.organisationId),
+        inArray(schema.projectTable.id, [...reachableProjectIds]),
         gt(schema.workItemTable.createdAt, cutoff),
         gt(score, 0.3),
         isNull(schema.workItemTable.deletedAt),

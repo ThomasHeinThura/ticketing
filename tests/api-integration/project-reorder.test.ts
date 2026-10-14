@@ -6,9 +6,9 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
   grantProjectManageAccess,
 } from "./helpers/fixtures";
+import { createSeesAllWorkspaceMember as createWorkspaceMember } from "./helpers/project-reach-world";
 
 type ProjectListEntry = typeof schema.projectTable.$inferSelect;
 

@@ -596,6 +596,33 @@ Reversal path for this decision: drop the reach requirement on the routes in the
 Creating a project does not grant its creator project reach or any project role; that is a
 separate grant (membership), exactly as for the existing reads.
 
+**Workspace-level lists and search return only what the caller reaches** (#740). A route that
+lists or searches rows from more than one project restricts them, in its own SQL, to the
+caller's reachable projects (`sees_all`, project membership, customer organisation, instance
+admin): the workspace label list drops task-bound labels of unreachable projects, search drops
+tasks, comments, activities and projects outside reach, and the project list drops unreachable
+projects and their rollups. Counts and pages are built from the filtered rows, so neither
+discloses a hidden project. Workspace-level label definitions, the workspace row and
+configuration lists are not project-bearing and stay workspace-scoped.
+`project-reach-guard.test.ts` derives the workspace-level collection routes from the policy
+registry and fails any that neither declares `requireReachFilteredList` nor gives a reason.
+
+**Three writes name their target project outside the path** (#741): a saved view with a project
+scope (`POST /api/views`), the destination project of `POST /api/submissions/{ref}/accept`, and
+the work item named by `POST /api/submissions/{ref}/duplicate`. Triage happens within reach, so
+a project outside the caller's reach is answered exactly like a missing one (the same status and
+body), and no view, work item or link is created. Reversal path: drop `requireReachContext` and
+the reach check in the three handlers.
+
+**Saved views and intake reads follow the same rule.** The saved-view list omits a
+project-scoped view whose project is outside reach. Every route that addresses a view by id
+(get, update, delete request, pin, run, count) answers such a view exactly like a missing view,
+from the shared `workspaceAccess.fromSavedView()` lookup and before any capability gate or
+write, whatever capability the caller holds. The duplicate suggestions of a submission name only
+work items of reachable projects, and the staff submission detail of an accepted submission
+leaves out the work item id and the comments carried over from it when the work item's project
+is outside reach.
+
 **The 404 is constant-shape.** An out-of-reach id and a non-existent id return the same
 status and the same body, and both count against the same rate-limit bucket. The reach check
 is **always executed** — on a lookup miss against a synthesised row rather than a fetched one,

@@ -5,7 +5,10 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { portalIdentity } from "../intake/repository";
+import { reachableLinkedWorkItemId } from "../intake/submission-linked-work-item";
 import type { BaseVariables } from "../openapi";
+import { callerReach } from "../utils/caller-reach";
+import { markReach } from "../utils/reach-mark";
 
 type SubmissionAttachmentVariables = BaseVariables & {
   workspaceId: string;
@@ -61,7 +64,7 @@ export function requireSubmissionAttachmentReach(
     | "staff_list"
     | "staff_download",
 ) {
-  return async (c: SubmissionAttachmentContext, next: Next) => {
+  const middleware = async (c: SubmissionAttachmentContext, next: Next) => {
     const ref = c.req.param("ref");
     const number = ref ? parseSubmissionReference(ref) : null;
     if (number === null)
@@ -90,6 +93,15 @@ export function requireSubmissionAttachmentReach(
       .limit(1);
     if (!row) throw new HTTPException(404, { message: "Submission not found" });
     await assertIntakeEnabled(row.workspaceId);
+    // #740: the staff list and download expose the converted work item's attachments only to a
+    // caller who reaches its project; otherwise the link is treated as absent. The portal
+    // requester's own view is unchanged.
+    const linkedWorkItemId = mode.startsWith("portal_")
+      ? row.submission.workItemId
+      : await reachableLinkedWorkItemId(
+          await callerReach(c as unknown as Context, c.get("userId")),
+          row.submission.workItemId,
+        );
     const organisationId =
       person?.organisationId ?? row.submission.organisationId;
     c.set("workspaceId", row.workspaceId);
@@ -100,7 +112,7 @@ export function requireSubmissionAttachmentReach(
     // (CP-16, same rule as download below).
     c.set(
       "submissionWorkItemId",
-      row.submission.state === "accepted" ? row.submission.workItemId : null,
+      row.submission.state === "accepted" ? linkedWorkItemId : null,
     );
     c.set("requesterId", row.submission.requesterId);
     c.set("policyOrganisationId", organisationId);
@@ -114,10 +126,10 @@ export function requireSubmissionAttachmentReach(
         ? undefined
         : mode === "portal_complete" &&
             row.submission.state === "accepted" &&
-            row.submission.workItemId
+            linkedWorkItemId
           ? or(
               eq(schema.attachmentTable.submissionId, row.submission.id),
-              eq(schema.attachmentTable.workItemId, row.submission.workItemId),
+              eq(schema.attachmentTable.workItemId, linkedWorkItemId),
             )
           : eq(schema.attachmentTable.submissionId, row.submission.id);
       const [attachment] = await db
@@ -139,8 +151,8 @@ export function requireSubmissionAttachmentReach(
         attachment?.submissionId === row.submission.id;
       const attachedToAcceptedWorkItem =
         row.submission.state === "accepted" &&
-        row.submission.workItemId !== null &&
-        attachment?.workItemId === row.submission.workItemId;
+        linkedWorkItemId !== null &&
+        attachment?.workItemId === linkedWorkItemId;
       if (
         !attachment ||
         (!attachedToSubmission && !attachedToAcceptedWorkItem) ||
@@ -156,4 +168,16 @@ export function requireSubmissionAttachmentReach(
     }
     await next();
   };
+  // The staff modes carry project reach for the converted work item (see above); the portal
+  // modes are the requester's own request, decided by the portal predicate.
+  return markReach(
+    middleware,
+    mode.startsWith("portal_")
+      ? {
+          projectReach: false,
+          workspaceReachOnlyReason:
+            "portal requester's own submission and its own work item, decided by the portal predicate",
+        }
+      : { projectReach: true },
+  );
 }

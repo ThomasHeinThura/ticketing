@@ -144,6 +144,12 @@ type WorkspaceAccessMiddlewareConfig = {
    * (`time-entry/policy.ts`), so adding reach does not silently change who may act.
    */
   deferCapability?: boolean;
+  /**
+   * For the saved-view lookup (#740): a view scoped to a project names that project, so a
+   * project-scoped view whose project the caller does not reach is answered exactly like a
+   * missing view, on EVERY route that addresses a view by id, before any gate or write.
+   */
+  savedViewScopeReach?: boolean;
 };
 
 type ReachOptions = {
@@ -179,6 +185,8 @@ type WorkspaceRowScope = {
     createdBy: string;
     visibility: string;
     sharedWithTeamId: string | null;
+    scope?: string;
+    scopeId?: string;
   };
 };
 
@@ -187,6 +195,39 @@ type WorkspaceRowScope = {
  * current-schema values explicitly avoids guessing from a legacy denial while keeping
  * future hierarchy/team support gated on the schema and loader that introduce those facts.
  */
+async function assertSavedViewProjectReach(
+  c: Context,
+  userId: string,
+  workspaceId: string,
+  projectId: string,
+): Promise<void> {
+  const [project] = await db
+    .select({ organisationId: schema.projectTable.organisationId })
+    .from(schema.projectTable)
+    .where(
+      and(
+        eq(schema.projectTable.id, projectId),
+        eq(schema.projectTable.workspaceId, workspaceId),
+        isNull(schema.projectTable.deletedAt),
+      ),
+    )
+    .limit(1);
+  const reach = await callerReach(c, userId);
+  if (
+    !project ||
+    !(await reach.reaches({
+      projectId,
+      workspaceId,
+      organisationId: project.organisationId,
+    }))
+  ) {
+    setShadowLegacyAuthorization(c, "denied");
+    throw new HTTPException(404, {
+      message: RESOURCE_NOT_FOUND_MESSAGE.savedView,
+    });
+  }
+}
+
 function currentProjectReachFacts(
   projectId: string,
   workspaceId: string,
@@ -367,6 +408,18 @@ export function workspaceAccessMiddleware(
             }
             if (resolved.policyRowFacts) {
               c.set("policyRowFacts", resolved.policyRowFacts);
+            }
+            if (
+              config.savedViewScopeReach &&
+              source.resource === "savedView" &&
+              resolved.policyRowFacts?.scope === "project"
+            ) {
+              await assertSavedViewProjectReach(
+                c,
+                userId,
+                resolved.workspaceId,
+                resolved.policyRowFacts.scopeId ?? "",
+              );
             }
           }
           if (!workspaceId) {
@@ -567,7 +620,8 @@ export function workspaceAccessMiddleware(
   const mark: WorkItemReachMark = {
     projectReach:
       config.requireProjectReach === true ||
-      config.projectReachPerItem === true,
+      config.projectReachPerItem === true ||
+      config.savedViewScopeReach === true,
     ...(resources.length > 0 ? { resources } : {}),
   };
   return Object.assign(middleware, { [WORK_ITEM_REACH_MARK]: mark });
@@ -1004,6 +1058,8 @@ async function lookupWorkspaceId(
             createdBy: schema.savedViewTable.createdBy,
             visibility: schema.savedViewTable.visibility,
             sharedWithTeamId: schema.savedViewTable.sharedWithTeamId,
+            scope: schema.savedViewTable.scope,
+            scopeId: schema.savedViewTable.scopeId,
           })
           .from(schema.savedViewTable)
           .where(
@@ -1020,6 +1076,8 @@ async function lookupWorkspaceId(
                 createdBy: savedView.createdBy,
                 visibility: savedView.visibility,
                 sharedWithTeamId: savedView.sharedWithTeamId,
+                scope: savedView.scope,
+                scopeId: savedView.scopeId,
               },
             }
           : null;
@@ -1150,5 +1208,6 @@ export const workspaceAccess = {
   fromSavedView: (idKey = "id") =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "savedView", idKey }],
+      savedViewScopeReach: true,
     }),
 };

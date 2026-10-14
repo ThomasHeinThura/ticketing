@@ -4,6 +4,10 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import {
+  listReachOf,
+  requireReachFilteredList,
+} from "../utils/reach-filtered-list";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import globalSearch from "./controllers/global-search";
@@ -21,6 +25,7 @@ const globalSearchRoute = createRoute({
   middleware: [
     workspaceAccess.fromQuery(),
     requireWorkspaceCapability("workspace:read"),
+    requireReachFilteredList,
   ] as const,
   request: { query: searchQuery },
   responses: {
@@ -45,6 +50,8 @@ const search = apiRouter().openapi(globalSearchRoute, async (c) => {
       workspaceId,
       projectId,
       limit,
+      reachableProjectIds: (workspaceIds) =>
+        listReachOf(c).reachableProjectIds(workspaceIds),
     }),
     200,
   );

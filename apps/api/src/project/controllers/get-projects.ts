@@ -1,4 +1,5 @@
-import { and, count, eq, isNull, min, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, min, sql } from "drizzle-orm";
 import db from "../../database";
 import { projectTable, taskTable } from "../../database/schema";
 
@@ -17,6 +18,7 @@ const EMPTY_STATISTICS: ProjectStatistics = {
 async function getProjectStatistics(
   workspaceId: string,
   includeArchived: boolean,
+  reachFilter: SQL | undefined,
 ) {
   const statisticsByProject = new Map<string, ProjectStatistics>();
 
@@ -45,11 +47,13 @@ async function getProjectStatistics(
         ? and(
             eq(projectTable.workspaceId, workspaceId),
             isNull(projectTable.deletedAt),
+            reachFilter,
           )
         : and(
             eq(projectTable.workspaceId, workspaceId),
             isNull(projectTable.archivedAt),
             isNull(projectTable.deletedAt),
+            reachFilter,
           ),
     )
     .groupBy(taskTable.projectId);
@@ -69,7 +73,23 @@ async function getProjectStatistics(
   return statisticsByProject;
 }
 
-async function getProjects(workspaceId: string, includeArchived = false) {
+/**
+ * `reachableProjectIds` (#740) restricts the list to projects the caller reaches. It is
+ * required, not optional, so a new caller cannot forget it: pass `null` only for a trusted,
+ * non-request context that has no caller (none exists today).
+ */
+async function getProjects(
+  workspaceId: string,
+  includeArchived: boolean,
+  reachableProjectIds: readonly string[] | null,
+) {
+  if (reachableProjectIds !== null && reachableProjectIds.length === 0) {
+    return [];
+  }
+  const reachFilter =
+    reachableProjectIds === null
+      ? undefined
+      : inArray(projectTable.id, [...reachableProjectIds]);
   const projects = await db.query.projectTable.findMany({
     // #187: same reasoning as `getProjectStatistics` above -- `deletedAt` is always
     // excluded, `includeArchived` only ever controls `archivedAt`.
@@ -77,11 +97,13 @@ async function getProjects(workspaceId: string, includeArchived = false) {
       ? and(
           eq(projectTable.workspaceId, workspaceId),
           isNull(projectTable.deletedAt),
+          reachFilter,
         )
       : and(
           eq(projectTable.workspaceId, workspaceId),
           isNull(projectTable.archivedAt),
           isNull(projectTable.deletedAt),
+          reachFilter,
         ),
     // `id` is the deterministic tie-breaker: without it, rows sharing both a
     // position and a createdAt come back in an unspecified order.
@@ -95,6 +117,7 @@ async function getProjects(workspaceId: string, includeArchived = false) {
   const statisticsByProject = await getProjectStatistics(
     workspaceId,
     includeArchived,
+    reachFilter,
   );
 
   return projects.map((project) => ({
