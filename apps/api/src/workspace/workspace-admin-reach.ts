@@ -147,7 +147,7 @@ export async function syncWorkspaceAdminReach(
     .for("update")
     .limit(1);
   // No provisioned staff person: there is nothing to hold a grant.
-  if (!person || person.side !== "staff") return;
+  if (person?.side !== "staff") return;
 
   const desired = await desiredReachRoleKey(tx, workspaceId, userId);
   const roleId =
