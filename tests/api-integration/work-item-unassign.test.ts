@@ -8,7 +8,7 @@
  * and a viewer (holds neither, and is refused even when the row names them -- the
  * conjunction, not the capability alone, is the branch).
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -235,8 +235,48 @@ function assignRequest(
 function unassignRequest(
   app: ReturnType<typeof createApp>["app"],
   key: string,
+  expectedAssigneeId?: string,
+  headers: Record<string, string> = {},
 ) {
-  return app.request(`/api/work-items/${key}/assign`, { method: "DELETE" });
+  const query =
+    expectedAssigneeId === undefined
+      ? ""
+      : `?expectedAssigneeId=${encodeURIComponent(expectedAssigneeId)}`;
+  return app.request(`/api/work-items/${key}/assign${query}`, {
+    method: "DELETE",
+    headers,
+  });
+}
+
+function hashApiKeyForTest(rawKey: string) {
+  return createHash("sha256")
+    .update(rawKey)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function createApiKeyFor(
+  userId: string,
+  permissions: Record<string, string[]>,
+) {
+  const rawKey = `taskdesk_test_${randomUUID()}`;
+  const now = new Date();
+  await db.insert(schema.apikeyTable).values({
+    referenceId: userId,
+    userId,
+    key: hashApiKeyForTest(rawKey),
+    name: "unassign precondition test key",
+    start: rawKey.slice(0, 12),
+    prefix: "taskdesk",
+    permissions: JSON.stringify(permissions),
+    enabled: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return rawKey;
 }
 
 async function assigneeActivityRows(workItemId: string) {
@@ -698,5 +738,113 @@ describe("API integration: work item unassignment (#30, assignment.md)", () => {
       ),
     ).toHaveLength(0);
     expect(publishEventMock).not.toHaveBeenCalled();
+  });
+  describe("#723: expected-holder precondition", () => {
+    async function setupHeld() {
+      const { creator, workspace, project, type } = await setupProject();
+      const lead = await addWorkspaceMember(workspace.id, "lead");
+      const holderA = await addPersonOnRoster({ projectId: project.id });
+      const holderB = await addPersonOnRoster({ projectId: project.id });
+      mockAuthenticatedSession(creator);
+      const { app } = createApp();
+      const { key } = await createWorkItem(app, project.id, type.id);
+      await assignRequest(app, key, { assigneeId: holderA.id });
+      publishEventMock.mockReset();
+      return { creator, lead, app, key, holderA, holderB, workspace, project };
+    }
+    async function rowFor(key: string) {
+      const [row] = await db
+        .select()
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.key, key));
+      return requireRow([row], "rowFor");
+    }
+
+    it("a matching expected holder clears the assignment (session)", async () => {
+      const { lead, app, key, holderA } = await setupHeld();
+      mockAuthenticatedSession(lead);
+      const response = await unassignRequest(app, key, holderA.id);
+      expect(response.status).toBe(200);
+      expect((await rowFor(key)).assigneeId).toBeNull();
+    });
+
+    it("a mismatched expected holder is 409 naming the current holder, and nothing is written", async () => {
+      const { lead, app, key, holderA, holderB } = await setupHeld();
+      const before = await rowFor(key);
+      mockAuthenticatedSession(lead);
+      const response = await unassignRequest(app, key, holderB.id);
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({
+        key,
+        currentAssigneeId: holderA.id,
+      });
+      const after = await rowFor(key);
+      expect(after.assigneeId).toBe(holderA.id);
+      expect(after.version).toBe(before.version);
+      expect(
+        (await assigneeActivityRows(after.id)).filter(
+          (entry) => entry.newValue === null,
+        ),
+      ).toHaveLength(0);
+      expect(publishEventMock).not.toHaveBeenCalled();
+    });
+
+    it("an expected holder on an item that is now unassigned is 409, not a silent no-op", async () => {
+      const { lead, app, key, holderA } = await setupHeld();
+      mockAuthenticatedSession(lead);
+      expect((await unassignRequest(app, key)).status).toBe(200);
+      const response = await unassignRequest(app, key, holderA.id);
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({
+        currentAssigneeId: null,
+      });
+    });
+
+    it("an absent precondition keeps the legacy behaviour (clears whoever holds it)", async () => {
+      const { lead, app, key } = await setupHeld();
+      mockAuthenticatedSession(lead);
+      expect((await unassignRequest(app, key)).status).toBe(200);
+      expect((await rowFor(key)).assigneeId).toBeNull();
+    });
+
+    it("race: after A is cleared and B takes the item, a second request carrying the stale A precondition is 409 and B keeps the item", async () => {
+      const { lead, app, key, holderA, holderB } = await setupHeld();
+      mockAuthenticatedSession(lead);
+      expect((await unassignRequest(app, key, holderA.id)).status).toBe(200);
+      expect(
+        (await assignRequest(app, key, { assigneeId: holderB.id })).status,
+      ).toBe(200);
+      const stale = await unassignRequest(app, key, holderA.id);
+      expect(stale.status).toBe(409);
+      expect(await stale.json()).toMatchObject({
+        currentAssigneeId: holderB.id,
+      });
+      expect((await rowFor(key)).assigneeId).toBe(holderB.id);
+    });
+
+    it("an API key honours the precondition: mismatch 409 writes nothing, match clears", async () => {
+      const { creator, app, key, holderA, holderB } = await setupHeld();
+      mockAnonymousSession();
+      const rawKey = await createApiKeyFor(creator.id, {
+        project: ["read"],
+        work_item: ["read", "assign", "update"],
+      });
+      const headers = { "x-api-key": rawKey };
+      const stale = await unassignRequest(app, key, holderB.id, headers);
+      expect(stale.status).toBe(409);
+      expect((await rowFor(key)).assigneeId).toBe(holderA.id);
+      const ok = await unassignRequest(app, key, holderA.id, headers);
+      expect(ok.status).toBe(200);
+      expect((await rowFor(key)).assigneeId).toBeNull();
+    });
+
+    it("the precondition does not disclose the holder to a caller who may not clear it", async () => {
+      const { workspace, project, app, key, holderB } = await setupHeld();
+      const memberUser = await addWorkspaceMember(workspace.id, "member");
+      await addPersonOnRoster({ userId: memberUser.id, projectId: project.id });
+      mockAuthenticatedSession(memberUser);
+      const response = await unassignRequest(app, key, holderB.id);
+      expect(response.status).toBe(403);
+    });
   });
 });

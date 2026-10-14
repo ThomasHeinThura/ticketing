@@ -513,7 +513,9 @@ describe("WorkItemJourney assignment (AS-1, AS-2, AS-3, AS-9)", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "workItems:journey.unassign" }),
     );
-    await waitFor(() => expect(unassignWorkItem).toHaveBeenCalledWith("WLP-1"));
+    await waitFor(() =>
+      expect(unassignWorkItem).toHaveBeenCalledWith("WLP-1", "self"),
+    );
 
     view.unmount();
     render(
@@ -544,7 +546,34 @@ describe("WorkItemJourney assignment (AS-1, AS-2, AS-3, AS-9)", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "workItems:journey.unassign" }),
     );
-    await waitFor(() => expect(unassignWorkItem).toHaveBeenCalledWith("WLP-1"));
+    await waitFor(() =>
+      expect(unassignWorkItem).toHaveBeenCalledWith("WLP-1", "colleague"),
+    );
+  });
+
+  it("shows the conflict message, refreshes the item and does not retry when unassign answers 409 (#723)", async () => {
+    unassignWorkItem.mockRejectedValue(new HttpError(409, "conflict"));
+    const client = newClient();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    render(
+      wrap(
+        client,
+        <WorkItemJourney
+          item={makeItem({ assigneeId: "colleague" })}
+          onAccessLost={vi.fn()}
+        />,
+      ),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "workItems:journey.unassign" }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "workItems:journey.assignmentConflict",
+    );
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["work-items", "detail", "WLP-1"],
+    });
+    expect(unassignWorkItem).toHaveBeenCalledTimes(1);
   });
 
   it("asks for confirmation before taking work held by someone else, then asserts the holder it saw", async () => {

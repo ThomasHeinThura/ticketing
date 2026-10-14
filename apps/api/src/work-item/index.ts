@@ -111,6 +111,7 @@ import {
   rankWorkItemBody,
   setWorkItemParentBody,
   transitionWorkItemBody,
+  unassignWorkItemQuery,
   updateWorkItemBody,
   workItemKeyParam,
   workspaceIdParam,
@@ -818,7 +819,10 @@ const unassignWorkItemRoute = createRoute({
     "assignment (the branch reads the row's current holder, not the request body). " +
     "Clearing an already-unassigned item is an idempotent 200 no-op with no activity " +
     "entry and no event (`AS-9`: work is never silently unassigned, so there is " +
-    "nothing to unwrite). A lost race returns 409 with the current assignee. Bulk " +
+    "nothing to unwrite). Pass `expectedAssigneeId` (the holder the caller saw) to make " +
+    "the clear conditional: any other current holder, or none, returns 409 with the " +
+    "current assignee and writes nothing (#723). A lost race returns 409 with the " +
+    "current assignee. Bulk " +
     "unassign and the `work_item.unassigned` notification fan-out are later slices.",
   // Same reasoning as the assign route directly above: reach resolves the row in
   // middleware, while the capability decision depends on a fact (the row's CURRENT
@@ -826,7 +830,7 @@ const unassignWorkItemRoute = createRoute({
   middleware: [
     requireWorkItemReach("key", { deferApiKeyCapability: true }),
   ] as const,
-  request: { params: workItemKeyParam },
+  request: { params: workItemKeyParam, query: unassignWorkItemQuery },
   responses: {
     200: jsonResponse(
       "The assignment as cleared",
@@ -1444,6 +1448,7 @@ const workItem = apiRouter<
   })
   .openapi(unassignWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
+    const { expectedAssigneeId } = c.req.valid("query");
     const workspaceId = c.get("workspaceId");
     const userId = c.get("userId");
 
@@ -1486,6 +1491,25 @@ const workItem = apiRouter<
         callerPerson.id === current.assigneeId,
       c.get("apiKey"),
     );
+
+    // #723: a caller-supplied expected holder that is not the holder now is a stale screen.
+    // Refused AFTER the capability decision (so the holder is never disclosed to a caller who may not act) and BEFORE the write, naming who holds it now, so a
+    // stale view can never clear a holder someone else just set. (The controller's own
+    // conditional UPDATE still closes the window after this read.)
+    if (
+      expectedAssigneeId !== undefined &&
+      expectedAssigneeId !== current.assigneeId
+    ) {
+      const stale = new WorkItemAssigneeConflictError(key, current.assigneeId);
+      return c.json(
+        {
+          message: stale.message,
+          key: stale.key,
+          currentAssigneeId: stale.currentAssigneeId,
+        },
+        409,
+      );
+    }
 
     const { actorId, actorType } = resolveActor(
       c.get("userId"),
