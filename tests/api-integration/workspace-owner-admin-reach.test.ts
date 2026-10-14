@@ -16,6 +16,12 @@ import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-
 import { projectMembershipKeys } from "../../apps/api/src/identity/membership-projection";
 import { createApp } from "../../apps/api/src/index";
 import deleteAccountData from "../../apps/api/src/user/controllers/delete-account-data";
+import { seedDefaultWorkspaceRoles } from "../../apps/api/src/utils/seed-default-workspace-roles";
+import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
+import {
+  reconcileWorkspaceAdminReach,
+  removeWorkspaceAdminReach,
+} from "../../apps/api/src/workspace/workspace-admin-reach";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
@@ -587,5 +593,204 @@ describe("workspace owner/admin explicit sees_all grant", () => {
     expect(
       (await reachRows(world.owner.user.id, world.workspaceId)).membership,
     ).toEqual([]);
+  });
+
+  describe("round 2: guards and reconciliation", () => {
+    async function explicitDirectGrant(world: World, actor: Actor) {
+      const personId = await personIdOf(actor.user.id);
+      const ownerPersonId = await personIdOf(world.owner.user.id);
+      const [role] = await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: world.workspaceId,
+          key: "explicit-direct",
+          name: "Explicit direct",
+          rank: 5,
+          capabilities: [],
+        })
+        .returning();
+      if (!role) throw new Error("role");
+      const [grant] = await db
+        .insert(schema.membershipGrantTable)
+        .values({
+          personId,
+          scope: "workspace",
+          scopeId: world.workspaceId,
+          roleId: role.id,
+          sourceKind: "direct",
+          directOrigin: "admin",
+          grantedByPersonId: ownerPersonId,
+          seesAll: false,
+        })
+        .returning();
+      if (!grant) throw new Error("grant");
+      await db.transaction((tx) =>
+        projectMembershipKeys(tx, [
+          { personId, scope: "workspace", scopeId: world.workspaceId },
+        ]),
+      );
+      return grant;
+    }
+
+    it("an admin-made direct grant is never rewritten or revoked by promotion or demotion", async () => {
+      const world = await newWorld();
+      const member = await addMember(world, "member");
+      const grant = await explicitDirectGrant(world, member);
+      await setRole(world, member, "admin");
+      expect(await canReadProject(world, member)).toBe(404);
+      let rows = await reachRows(member.user.id, world.workspaceId);
+      expect(rows.membership).toEqual([
+        { seesAll: false, roleKey: "explicit-direct" },
+      ]);
+      expect(rows.grants).toHaveLength(1);
+      await setRole(world, member, "viewer");
+      rows = await reachRows(member.user.id, world.workspaceId);
+      expect(rows.grants).toEqual([
+        expect.objectContaining({ directOrigin: "admin", revokedAt: null }),
+      ]);
+      const [after] = await db
+        .select()
+        .from(schema.membershipGrantTable)
+        .where(eq(schema.membershipGrantTable.id, grant.id));
+      expect(after).toMatchObject({ roleId: grant.roleId, seesAll: false });
+    });
+
+    it("a custom role merely named admin (workspace_role not is_system) gets no grant", async () => {
+      const world = await newWorld();
+      await db
+        .update(schema.workspaceRoleTable)
+        .set({ isSystem: false })
+        .where(
+          and(
+            eq(schema.workspaceRoleTable.workspaceId, world.workspaceId),
+            eq(schema.workspaceRoleTable.role, "admin"),
+          ),
+        );
+      const lookalike = await addMember(world, "admin");
+      expect(await canReadProject(world, lookalike)).toBe(404);
+      expect(
+        (await reachRows(lookalike.user.id, world.workspaceId)).grants,
+      ).toEqual([]);
+    });
+
+    it("a manager added and set through the real routes gains no grant", async () => {
+      const world = await newWorld();
+      await db.insert(schema.workspaceRoleTable).values({
+        workspaceId: world.workspaceId,
+        role: "manager",
+        permission: "{}",
+        isSystem: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      const manager = await addMember(world, "manager");
+      expect(await canReadProject(world, manager)).toBe(404);
+      expect(
+        (await reachRows(manager.user.id, world.workspaceId)).grants,
+      ).toEqual([]);
+      const other = await addMember(world, "member");
+      await setRole(world, other, "manager");
+      expect(
+        (await reachRows(other.user.id, world.workspaceId)).grants,
+      ).toEqual([]);
+    });
+
+    it("carrier role rows are system, not editable, and carry no capabilities", async () => {
+      const world = await newWorld();
+      await addMember(world, "admin");
+      const roles = await db
+        .select({
+          key: schema.roleTable.key,
+          isSystem: schema.roleTable.isSystem,
+          isEditable: schema.roleTable.isEditable,
+          capabilities: schema.roleTable.capabilities,
+        })
+        .from(schema.roleTable)
+        .where(eq(schema.roleTable.workspaceId, world.workspaceId));
+      expect(roles.map((r) => r.key).sort()).toEqual(["admin", "owner"]);
+      for (const role of roles) {
+        expect(role).toMatchObject({
+          isSystem: true,
+          isEditable: false,
+          capabilities: [],
+        });
+      }
+    });
+
+    it("a customer-side person promoted to admin gets no grant", async () => {
+      const world = await newWorld();
+      const member = await addMember(world, "member");
+      await db
+        .update(schema.personTable)
+        .set({ side: "customer" })
+        .where(eq(schema.personTable.userId, member.user.id));
+      await setRole(world, member, "admin");
+      expect(
+        (await reachRows(member.user.id, world.workspaceId)).grants,
+      ).toEqual([]);
+    });
+
+    it("workspace cleanup removes only system_backfill grants and leaves admin-made ones", async () => {
+      const world = await newWorld();
+      const member = await addMember(world, "viewer");
+      const grant = await explicitDirectGrant(world, member);
+      await db.transaction((tx) =>
+        removeWorkspaceAdminReach(tx, [world.workspaceId]),
+      );
+      const rows = await db
+        .select({ id: schema.membershipGrantTable.id })
+        .from(schema.membershipGrantTable)
+        .where(eq(schema.membershipGrantTable.scopeId, world.workspaceId));
+      expect(rows).toEqual([{ id: grant.id }]);
+    });
+
+    it("boot reconciliation grants an admin whose staff person is created after they joined", async () => {
+      const world = await newWorld();
+      const userId = `late-person-${randomUUID()}`;
+      await db.insert(schema.userTable).values({
+        id: userId,
+        name: "Late",
+        email: `${userId}@example.com`,
+        emailVerified: true,
+      });
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: world.workspaceId,
+        userId,
+        role: "admin",
+        joinedAt: new Date(),
+      });
+      await reconcileWorkspaceAdminReach();
+      const none = await db
+        .select({ id: schema.membershipTable.id })
+        .from(schema.membershipTable)
+        .where(eq(schema.membershipTable.scopeId, world.workspaceId));
+      expect(none).toHaveLength(1); // only the owner
+      await ensureStaffPersonForUser(userId);
+      await reconcileWorkspaceAdminReach();
+      expect((await reachRows(userId, world.workspaceId)).membership).toEqual([
+        { seesAll: true, roleKey: "admin" },
+      ]);
+      // idempotent
+      expect(await reconcileWorkspaceAdminReach()).toBe(0);
+    });
+
+    it("boot reconciliation grants an admin whose is_system row is healed by the default-role seed", async () => {
+      const world = await newWorld();
+      await db
+        .update(schema.workspaceRoleTable)
+        .set({ isSystem: false })
+        .where(
+          and(
+            eq(schema.workspaceRoleTable.workspaceId, world.workspaceId),
+            eq(schema.workspaceRoleTable.role, "admin"),
+          ),
+        );
+      const admin = await addMember(world, "admin");
+      expect(await canReadProject(world, admin)).toBe(404);
+      await seedDefaultWorkspaceRoles();
+      await reconcileWorkspaceAdminReach();
+      expect(await canReadProject(world, admin)).toBe(200);
+    });
   });
 });

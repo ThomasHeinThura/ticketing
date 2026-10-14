@@ -1,8 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
-import { and, eq, inArray, isNull } from "drizzle-orm";
-import type db from "../database";
-import { schema } from "../database";
+import { and, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
+import db, { schema } from "../database";
 import { projectMembershipKeys } from "../identity/membership-projection";
 import {
   isGenuineBuiltInRoleGrant,
@@ -241,4 +240,58 @@ export async function removeWorkspaceAdminReach(
         inArray(schema.membershipTable.scopeId, [...workspaceIds]),
       ),
     );
+}
+
+/**
+ * Boot-time reconciliation (idempotent). The writers keep the grant current at every role
+ * change, but two cases change the INPUTS to `syncWorkspaceAdminReach` without a role
+ * change: a staff `person` created after the member joined (`ensureStaffPersonForUser`,
+ * the boot person backfill) and the every-boot `workspace_role.is_system` heal
+ * (`seed-default-workspace-roles.ts`, issue #318). So the boot sequence runs this after
+ * both seeds: for every legacy `owner`/`admin` membership whose person holds no active
+ * direct workspace grant yet, run the same per-member sync in its own transaction.
+ * Members who already hold any active direct grant are skipped (cheap, and the sync would
+ * leave an admin-made grant alone anyway). Returns the number of members visited.
+ */
+export async function reconcileWorkspaceAdminReach(): Promise<number> {
+  const database = db;
+  const candidates = await database
+    .select({
+      workspaceId: schema.workspaceUserTable.workspaceId,
+      userId: schema.workspaceUserTable.userId,
+    })
+    .from(schema.workspaceUserTable)
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.userId, schema.workspaceUserTable.userId),
+    )
+    .where(
+      and(
+        inArray(schema.workspaceUserTable.role, [...REACH_ROLE_KEYS]),
+        eq(schema.personTable.side, "staff"),
+        notExists(
+          database
+            .select({ one: sql`1` })
+            .from(schema.membershipGrantTable)
+            .where(
+              and(
+                eq(schema.membershipGrantTable.personId, schema.personTable.id),
+                eq(schema.membershipGrantTable.scope, "workspace"),
+                eq(
+                  schema.membershipGrantTable.scopeId,
+                  schema.workspaceUserTable.workspaceId,
+                ),
+                eq(schema.membershipGrantTable.sourceKind, "direct"),
+                isNull(schema.membershipGrantTable.revokedAt),
+              ),
+            ),
+        ),
+      ),
+    );
+  for (const { workspaceId, userId } of candidates) {
+    await database.transaction((tx) =>
+      syncWorkspaceAdminReach(tx, workspaceId, userId),
+    );
+  }
+  return candidates.length;
 }
