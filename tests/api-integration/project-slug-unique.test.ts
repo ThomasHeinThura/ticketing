@@ -17,7 +17,10 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  createWorkspaceMember,
+  grantProjectManageAccess,
+} from "./helpers/fixtures";
 
 function createProjectRequest(
   app: ReturnType<typeof createApp>["app"],
@@ -141,6 +144,7 @@ describe("API integration: project.slug uniqueness (#261 F1)", () => {
     });
     expect(secondCreate.status).toBe(200);
     const secondProject = (await secondCreate.json()) as { id: string };
+    await grantProjectManageAccess(second.user.id, secondProject.id);
 
     const update = await updateProjectRequest(secondApp, secondProject.id, {
       name: "Second project",

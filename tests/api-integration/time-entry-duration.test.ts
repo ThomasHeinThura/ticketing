@@ -8,11 +8,16 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectAccessToWorkspaceMembers,
+  grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
 
 async function seedTaskFor(workspaceId: string) {
   const { project, columns } = await createProjectFixture({ workspaceId });
+  // Time entries act on a task, so the caller needs reach to its project (#720): give the
+  // workspace's existing members the project authority their workspace role implies.
+  await grantProjectAccessToWorkspaceMembers(workspaceId, project.id);
   const task = requireRow(
     await db
       .insert(schema.taskTable)
@@ -144,6 +149,11 @@ describe("time entry duration", () => {
       isSystem: true,
     });
 
+    // Reach to the project, so the denial below is the capability decision, not a 404.
+    await grantProjectRole(member.user.id, task.projectId, [
+      "project:read",
+      "work_item:read",
+    ]);
     mockAuthenticatedSession(member.user);
     const memberApp = createApp().app;
     const denied = await memberApp.request(`/api/time-entry/task/${task.id}`);

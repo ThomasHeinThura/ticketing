@@ -12,6 +12,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectManageAccess,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -67,6 +68,7 @@ describe("API integration: bulk label name-family locking", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const task = requireRow(
       await db
         .insert(schema.taskTable)

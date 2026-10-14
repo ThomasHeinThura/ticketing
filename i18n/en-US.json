@@ -2315,7 +2315,9 @@
 			"errorTitle": "Couldn't create the work item",
 			"errorForbidden": "You don't have permission to create work items in this project.",
 			"errorInvalid": "Check the fields and try again.",
-			"errorGeneric": "Something went wrong while creating the work item."
+			"errorGeneric": "Something went wrong while creating the work item.",
+			"loadFailed": "The create form could not be loaded.",
+			"reload": "Reload page"
 		},
 		"detail": {
 			"loading": "Loading work item…",

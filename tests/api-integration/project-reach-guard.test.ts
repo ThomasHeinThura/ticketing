@@ -11,6 +11,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 
 type App = ReturnType<typeof createApp>["app"];
@@ -317,6 +318,13 @@ describe("native project read reach", () => {
     const fresh = await createShadowApp();
     const { app } = fresh;
     fresh.mockUser(owner.user);
+    // The fixture work item is created through the API, which is project-reach gated
+    // (#720). The owner is an actor whose LACK of reach this test asserts below, so the
+    // grant is withdrawn again as soon as the item exists.
+    const ownerFixtureRole = await grantWorkItemProjectAccess(
+      owner.user.id,
+      project.id,
+    );
     const createWorkItem = await app.request(
       `/api/projects/${project.id}/work-items`,
       {
@@ -330,6 +338,9 @@ describe("native project read reach", () => {
     );
     expect(createWorkItem.status).toBe(200);
     const createdWorkItem = (await createWorkItem.json()) as { key: string };
+    await db
+      .delete(schema.membershipTable)
+      .where(eq(schema.membershipTable.roleId, ownerFixtureRole.id));
     const [workItem] = await db
       .select({
         id: schema.workItemTable.id,

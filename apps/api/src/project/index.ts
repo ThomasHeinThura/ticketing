@@ -279,7 +279,10 @@ const updateProjectRoute = createRoute({
     "Replace a project's name, icon, slug, description, and visibility. " +
     "defaultCommentVisibility (CA-2) is optional and needs project:manage_settings.",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -291,7 +294,7 @@ const updateProjectRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated project", projectSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse(
       "Missing project:update permission, or defaultCommentVisibility was sent without the project:manage_settings capability",
     ),
@@ -333,7 +336,10 @@ const updateProjectHealthRoute = createRoute({
   tags: ["Projects"],
   summary: "Set project health",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -345,7 +351,7 @@ const updateProjectHealthRoute = createRoute({
   },
   responses: {
     200: jsonResponse("Updated project health", projectHealthSchema),
-    400: errorResponse("Invalid body or unknown project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project not found"),
   },
@@ -363,15 +369,16 @@ const deleteProjectRoute = createRoute({
     "purge 30 days later, once the purge job (#198) exists. Archive it instead if " +
     "you just want it out of the way without starting that clock.",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["delete"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
     200: jsonResponse("The deleted project", projectSchema),
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
     403: errorResponse("Missing project:delete permission"),
     404: errorResponse("Project not found"),
   },
@@ -386,15 +393,16 @@ const archiveProjectRoute = createRoute({
   description:
     "Hide a project from the default list without deleting it. Reversible with unarchive.",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
     200: jsonResponse("The archived project", projectSchema),
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
@@ -410,15 +418,16 @@ const unarchiveProjectRoute = createRoute({
   summary: "Unarchive project",
   description: "Return an archived project to the default list.",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
     200: jsonResponse("The restored project", projectSchema),
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
@@ -460,7 +469,10 @@ const createMilestoneRoute = createRoute({
   tags: ["Projects"],
   summary: "Create a milestone",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -472,7 +484,7 @@ const createMilestoneRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created milestone", milestoneSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project not found"),
   },
@@ -487,7 +499,10 @@ const updateMilestoneRoute = createRoute({
   description:
     "Partial update. `reached: true` marks it reached now; `reached: false` clears it.",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -499,7 +514,7 @@ const updateMilestoneRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated milestone", milestoneSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project or milestone not found"),
   },
@@ -512,7 +527,10 @@ const deleteMilestoneRoute = createRoute({
   tags: ["Projects"],
   summary: "Delete a milestone",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: milestoneParam },
@@ -553,7 +571,10 @@ const createPrerequisiteRoute = createRoute({
   tags: ["Projects"],
   summary: "Create a prerequisite",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -565,7 +586,7 @@ const createPrerequisiteRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created prerequisite", prerequisiteSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project not found"),
   },
@@ -582,7 +603,10 @@ const updatePrerequisiteRoute = createRoute({
     "`PR-11`: there is no portal route onto this table, so ticking off is staff-only " +
     "structurally, not by an application-level check here.",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -594,7 +618,7 @@ const updatePrerequisiteRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated prerequisite", prerequisiteSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project or prerequisite not found"),
   },
@@ -607,7 +631,10 @@ const deletePrerequisiteRoute = createRoute({
   tags: ["Projects"],
   summary: "Delete a prerequisite",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: prerequisiteParam },
@@ -646,7 +673,10 @@ const addStakeholderRoute = createRoute({
   tags: ["Projects"],
   summary: "Add a stakeholder",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -658,7 +688,7 @@ const addStakeholderRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The added stakeholder", stakeholderSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project or person not found"),
   },
@@ -671,7 +701,10 @@ const updateStakeholderRoute = createRoute({
   tags: ["Projects"],
   summary: "Update a stakeholder",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -683,7 +716,7 @@ const updateStakeholderRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated stakeholder", stakeholderSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project or stakeholder not found"),
   },
@@ -698,7 +731,10 @@ const standDownStakeholderRoute = createRoute({
   description:
     "PR-12: stood down, never deleted -- removed from counts and pickers, keeps history.",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: stakeholderParam },
@@ -741,7 +777,10 @@ const addDocumentLinkRoute = createRoute({
   description:
     "A link, never a copy. No PATCH: editing url or title is remove-then-re-add.",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -753,7 +792,7 @@ const addDocumentLinkRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The added document link", documentLinkSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project not found"),
   },
@@ -766,7 +805,10 @@ const deleteDocumentLinkRoute = createRoute({
   tags: ["Projects"],
   summary: "Delete a document link",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: documentLinkParam },

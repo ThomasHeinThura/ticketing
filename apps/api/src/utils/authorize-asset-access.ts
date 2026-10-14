@@ -1,5 +1,5 @@
 import { and, eq, isNull, not } from "drizzle-orm";
-import type { Context } from "hono";
+import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { policyShadowEnabled } from "../permissions/shadow-config";
@@ -8,6 +8,9 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import { resolveAssetBearerOrCookie } from "./authenticate-api-request";
+import { callerReach } from "./caller-reach";
+import { markReach } from "./reach-mark";
+import { rejectNulByte } from "./reject-nul-byte";
 import { reachableWorkspacePredicate } from "./workspace-access-middleware";
 
 export type ReachableAsset = {
@@ -16,6 +19,7 @@ export type ReachableAsset = {
   mimeType: string;
   filename: string;
   workspaceId: string;
+  projectId: string;
 };
 
 /**
@@ -45,14 +49,18 @@ export async function loadReachableAsset(
   id: string,
 ): Promise<ReachableAsset> {
   const { userId, apiKeyId } = await resolveAssetBearerOrCookie(c);
+  // Resolved before the row lookup so a missing asset and an unreachable one do the same
+  // identity work (`rbac.md`: the reach check is always executed, never short-circuited).
+  const reach = await callerReach(c, userId);
 
-  const [asset] = await db
+  const [workspaceReachableAsset] = await db
     .select({
       id: schema.assetTable.id,
       objectKey: schema.assetTable.objectKey,
       mimeType: schema.assetTable.mimeType,
       filename: schema.assetTable.filename,
       workspaceId: schema.assetTable.workspaceId,
+      projectId: schema.assetTable.projectId,
     })
     .from(schema.assetTable)
     // The join selects nothing now that `is_public` is gone, but it is kept
@@ -74,8 +82,25 @@ export async function loadReachableAsset(
     )
     .limit(1);
 
+  // #720: an asset belongs to a project (and may be bound to a task in it), so reading it
+  // requires reach to that project, like every item-scoped route. Out of reach is the same
+  // "no row" as a missing asset: one 404, no distinguishing signal.
+  let asset: ReachableAsset | undefined = workspaceReachableAsset;
+  let outOfProjectReach = false;
+  if (asset) {
+    if (!(await reach.reaches(asset))) {
+      asset = undefined;
+      outOfProjectReach = true;
+    }
+  }
+
   if (!asset) {
-    if (policyShadowEnabled && (await hasMatchedRowScopedCapabilityPolicy(c))) {
+    if (outOfProjectReach) setShadowLegacyAuthorization(c, "denied");
+    if (
+      !outOfProjectReach &&
+      policyShadowEnabled &&
+      (await hasMatchedRowScopedCapabilityPolicy(c))
+    ) {
       // Evidence-only lookup for this exact asset route. Keep the native 404
       // unless a live, non-orphaned row is proven to have failed the same reach
       // predicate used by the primary load above.
@@ -121,3 +146,19 @@ export async function loadReachableAsset(
   }
   return asset;
 }
+
+/**
+ * Route middleware for `GET /api/asset/{id}`: loads the asset through `loadReachableAsset`
+ * (credential, workspace reach and PROJECT reach in one place) and hands the row to the
+ * handler. Carries the reach mark `tests/permissions/project-reach-guard.test.ts` reads.
+ */
+export const requireAssetProjectReach = markReach(
+  async (c: Context, next: Next) => {
+    const id = c.req.param("id") ?? "";
+    // #281 sweep: a NUL byte would otherwise 500 instead of a clean 400.
+    rejectNulByte(id, "Asset id");
+    c.set("reachableAsset", await loadReachableAsset(c, id));
+    return next();
+  },
+  { projectReach: true },
+);

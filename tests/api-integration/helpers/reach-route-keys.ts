@@ -1,3 +1,5 @@
+import { TASK_TARGET_WORK_ITEM_ROUTE_KEYS } from "./project-reach-route-keys";
+
 /**
  * The route keys each behavioural reach table covers. Pure data (no DB), imported by the
  * integration tests (which assert their table matches the list exactly) AND by
@@ -66,7 +68,12 @@ export const READ_ROUTE_KEYS = [
   "GET /api/external-link/task/{taskId}",
 ] as const;
 
-/** Covered by a dedicated test (`work-item-project-reach-credentials.test.ts`). */
+/**
+ * Covered by a dedicated test: search by `work-item-project-reach-credentials.test.ts`, and the
+ * task-targeting label / time-entry routes #720 moved onto the `work_item` scope by
+ * `task-target-reach.test.ts`.
+ */
 export const OTHER_COVERED_ROUTE_KEYS = [
   "POST /api/work-items/search",
+  ...TASK_TARGET_WORK_ITEM_ROUTE_KEYS,
 ] as const;

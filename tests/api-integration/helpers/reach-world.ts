@@ -177,6 +177,11 @@ export async function setupWorld() {
 
   // Callers. Strong workspace roles on purpose: the defect was that workspace-level reach
   // plus a workspace role was enough; only the project membership differs between them.
+  // The world's own `admin` creates fixture items through the API (`createItem`), which is
+  // itself project-reach gated since #720, so it holds the item authority on the project.
+  await grantProjectRole(admin.user.id, project.id, [
+    ...WORK_ITEM_PROJECT_CAPABILITIES,
+  ]);
   const projectMember = await addMember(workspaceId, "admin");
   await grantProjectRole(projectMember.user.id, project.id, [
     ...WORK_ITEM_PROJECT_CAPABILITIES,

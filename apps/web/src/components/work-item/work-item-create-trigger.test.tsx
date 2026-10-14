@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -20,6 +20,7 @@ import WorkItemCreateTrigger from "./work-item-create-trigger";
 
 describe("WorkItemCreateTrigger", () => {
   afterEach(() => {
+    cleanup();
     mocks.permission = { canCreate: false, checking: false };
   });
 
@@ -43,5 +44,17 @@ describe("WorkItemCreateTrigger", () => {
     fireEvent.click(trigger);
 
     expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it("shows pending feedback while the dialog code loads", () => {
+    mocks.permission = { canCreate: true, checking: false };
+    const onClick = vi.fn();
+    render(<WorkItemCreateTrigger onClick={onClick} pending />);
+
+    const trigger = screen.getByTestId("create-work-item-trigger");
+    expect(trigger).toHaveAttribute("aria-busy", "true");
+    expect(trigger).toBeDisabled();
+    fireEvent.click(trigger);
+    expect(onClick).not.toHaveBeenCalled();
   });
 });

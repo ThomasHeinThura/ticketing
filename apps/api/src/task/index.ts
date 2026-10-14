@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import { assetTable, projectTable, workspaceTable } from "../database/schema";
@@ -20,13 +20,17 @@ import {
   isImageContentType,
   validateTaskAssetUploadInput,
 } from "../storage";
+import { callerReach } from "../utils/caller-reach";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
+import { markReach } from "../utils/reach-mark";
 import { requirePublicAppOrigin } from "../utils/request-origin";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { lockTaskAndAssertProjectLive } from "./assert-task-project-live";
-import bulkUpdateTasks from "./controllers/bulk-update-tasks";
+import bulkUpdateTasks, {
+  type BulkCallerReach,
+} from "./controllers/bulk-update-tasks";
 import createTask from "./controllers/create-task";
 import deleteTask from "./controllers/delete-task";
 import exportTasks from "./controllers/export-tasks";
@@ -81,6 +85,23 @@ import {
   updateTitleBody,
 } from "./schema";
 
+/**
+ * `PATCH /api/task/bulk` names many tasks, so it cannot use a single-row reach middleware.
+ * This resolves the caller's reach decision source once (`utils/caller-reach.ts`, the same
+ * one `POST /api/work-items/bulk` uses); `bulkUpdateTasks` then answers PROJECT reach and the
+ * operation's project-level capability for every task it touches. Marked so the structural
+ * guard (`tests/permissions/project-reach-guard.test.ts`) can see the route carries it.
+ */
+const requireBulkTaskReach = markReach(
+  async (c: Context, next: Next) => {
+    const userId = c.get("userId");
+    if (!userId) throw new HTTPException(401, { message: "Unauthorized" });
+    c.set("bulkTaskReach", await callerReach(c, userId));
+    return next();
+  },
+  { projectReach: true },
+);
+
 const listTasksRoute = createRoute({
   method: "get",
   operationId: "listTasks",
@@ -109,8 +130,9 @@ const bulkUpdateTasksRoute = createRoute({
   description:
     "Apply one operation to many tasks at once. Every task must be in the same workspace.",
   middleware: [
-    workspaceAccess.fromTasks(),
+    workspaceAccess.fromTasks("taskIds", { requireProjectReach: true }),
     requireWorkspaceMembership,
+    requireBulkTaskReach,
     requireBulkTaskPermission,
     requireBulkTaskEntitlement,
   ] as const,
@@ -146,7 +168,10 @@ const createTaskRoute = createRoute({
   description:
     "Add a task to a project. It is placed in the column named by `status`.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["create"] }),
   ] as const,
   request: {
@@ -158,7 +183,7 @@ const createTaskRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created task", taskSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing work_item:create permission"),
     404: errorResponse("Project not found"),
   },
@@ -411,7 +436,10 @@ const importTasksRoute = createRoute({
   description:
     "Import tasks into a project. Each task is reported individually, so a partial import still returns 200.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["create"] }),
   ] as const,
   request: {
@@ -423,7 +451,7 @@ const importTasksRoute = createRoute({
   },
   responses: {
     200: jsonResponse("Per-task import outcome", taskImportResultSchema),
-    400: errorResponse("Invalid body, or unknown/unreachable project"),
+    400: errorResponse("Invalid body"),
     403: errorResponse("Missing work_item:create permission"),
     404: errorResponse("Project not found"),
   },
@@ -719,6 +747,9 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         value,
         userId,
         workspaceId: c.get("workspaceId"),
+        reach: (c as unknown as Context).get(
+          "bulkTaskReach",
+        ) as BulkCallerReach,
       });
     } catch (error) {
       if (error instanceof HTTPException && error.status === 403) {

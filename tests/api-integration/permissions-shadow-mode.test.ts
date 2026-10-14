@@ -34,6 +34,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectRole,
+  grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 
@@ -747,6 +748,8 @@ describe("observer-only provenance for masked native read denials", () => {
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
+    // The owner creates the persisted item through the API, which requires project reach.
+    await grantWorkItemProjectAccess(owner.user.id, project.id);
     await backfillPersons();
     fresh.mockUser(owner.user);
 
@@ -2117,7 +2120,11 @@ describe("#324 — denied param workspace scope is checked against a verified ro
         body: JSON.stringify({ typeId: type.id, title: "Shadow scope probe" }),
       },
     );
-    expect(response.status).toBe(200);
+    // Since #720 the route enforces project reach natively, so the owner (no project
+    // membership) is refused here (404, like a missing project) and the observer's
+    // independent evaluation must AGREE with that denial rather than disagree with an
+    // allowed legacy decision, as it did while this route checked workspace reach only.
+    expect(response.status).toBe(404);
 
     await new Promise((resolve) => setTimeout(resolve, 300));
     const tallies = await shadowTalliesFor(
@@ -2125,8 +2132,8 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     );
     expect(tallies).toContainEqual(
       expect.objectContaining({
-        outcome: "legacy_allow_policy_deny",
-        reasonCode: "not_found",
+        outcome: "agree",
+        reasonCode: null,
       }),
     );
   });

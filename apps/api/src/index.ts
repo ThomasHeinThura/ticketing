@@ -136,7 +136,10 @@ import {
   authenticateApiRequest,
   hasInvalidExplicitCredential,
 } from "./utils/authenticate-api-request";
-import { loadReachableAsset } from "./utils/authorize-asset-access";
+import {
+  type ReachableAsset,
+  requireAssetProjectReach,
+} from "./utils/authorize-asset-access";
 import { backfillWorkspaceAndProjectDefaults } from "./utils/backfill-workspace-project-defaults";
 import { getInvitationDetails } from "./utils/check-registration-allowed";
 import { csrfProtectionMiddleware } from "./utils/csrf-protection";
@@ -1418,7 +1421,9 @@ export function createApp(
       tags: ["Assets"],
       summary: "Download asset",
       description:
-        "Download an uploaded asset. Requires a real credential (session, personal API key, or MCP key) and membership of the asset's workspace; image types are served inline, everything else as an attachment.",
+        "Download an uploaded asset. Requires a real credential (session, personal API key, or MCP key), membership of the asset's workspace and reach to the asset's project; image types are served inline, everything else as an attachment.",
+      // #720: workspace reach AND project reach, resolved by `loadReachableAsset`.
+      middleware: [requireAssetProjectReach] as const,
       request: { params: z.object({ id: z.string() }) },
       responses: {
         200: {
@@ -1431,15 +1436,10 @@ export function createApp(
       },
     }),
     async (c) => {
-      const { id } = c.req.param();
-      // #281 sweep: this id reaches a raw `eq(assetTable.id, ...)` query below,
-      // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
-      rejectNulByte(id, "Asset id");
-      // #317 S1/S4: existence and workspace reach are checked in the same
-      // query (`loadReachableAsset`), so a foreign asset and a missing one
-      // cost the same single round trip and 404 identically -- see that
-      // function's own comment.
-      const asset = await loadReachableAsset(c, id);
+      // The middleware already loaded the asset: existence, workspace reach and project
+      // reach are one query and one 404 (#317 S1/S4, #720), so a foreign or out-of-reach
+      // asset and a missing one cost the same single round trip and answer identically.
+      const asset = c.get("reachableAsset") as ReachableAsset;
       try {
         await assertCallerHasCapability(
           asset.workspaceId,
