@@ -611,6 +611,13 @@
             ],
             "description": "The customer organisation this project serves; null for an internal project."
           },
+          "createdBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The staff person who created the project; null for projects created before this was recorded."
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -661,6 +668,7 @@
           "supportLevel",
           "serviceCalendarId",
           "organisationId",
+          "createdBy",
           "createdAt",
           "archivedAt",
           "deletedAt",

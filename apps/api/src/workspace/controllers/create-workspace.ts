@@ -3,6 +3,7 @@ import { DEFAULT_ROLE_NAMES, defaultRolePayloads } from "@taskdesk/permissions";
 import { eq, like, or } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { publishEvent } from "../../events";
+import { ensureProjectLeadRole } from "../../project/project-creator-grant";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { ensureInternalOrganisation } from "../../utils/seed-internal-organisation";
 import { seedWorkspaceDefaults } from "../../utils/seed-workspace-defaults";
@@ -203,6 +204,10 @@ async function createWorkspace(input: CreateWorkspaceInput) {
         // workspace -- without them, `POST /api/projects/{projectId}/work-items` has
         // no type and no default state to create against on a fresh instance.
         await seedWorkspaceDefaults(workspace.id, tx);
+
+        // The project-scope `project-lead` role (decision log 2026-10-14), so it exists to
+        // assign from the first project on; migration 0124 seeds it for older workspaces.
+        await ensureProjectLeadRole(tx, workspace.id);
 
         // (7)+(8) the CREATING session selects the new workspace and team.
         // Preserved through S4–S7 by explicit decision (retrofit plan §2.5,

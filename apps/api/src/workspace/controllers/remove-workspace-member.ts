@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
+import { revokeProjectCreatorGrantsForMember } from "../../project/project-creator-grant";
 import {
   anyRoleIsOwner,
   distinctOwnerUserCount,
@@ -83,6 +84,8 @@ async function removeWorkspaceMember(
       );
 
     await syncWorkspaceAdminReach(tx, workspaceId, userId);
+    // Decision log 2026-10-14: creator project-lead grants end with the membership.
+    await revokeProjectCreatorGrantsForMember(tx, workspaceId, userId);
 
     await tx
       .update(schema.sessionTable)

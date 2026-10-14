@@ -849,7 +849,6 @@
 			"tag": "0120_approval_workspace_anchor",
 			"breakpoints": true
 		},
-
 		{
 			"idx": 121,
 			"version": "7",
@@ -869,6 +868,13 @@
 			"version": "7",
 			"when": 1791945587607,
 			"tag": "0123_workspace_owner_admin_sees_all",
+			"breakpoints": true
+		},
+		{
+			"idx": 124,
+			"version": "7",
+			"when": 1791988639038,
+			"tag": "0124_project_created_by_and_creator_grant",
 			"breakpoints": true
 		}
 	]

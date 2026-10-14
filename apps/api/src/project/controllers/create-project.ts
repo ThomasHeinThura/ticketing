@@ -9,6 +9,10 @@ import {
 } from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { seedProjectStates } from "../../utils/seed-project-states";
+import {
+  grantProjectCreatorLead,
+  lockCreatorPerson,
+} from "../project-creator-grant";
 
 export const DEFAULT_PROJECT_COLUMNS = [
   { name: "To Do", slug: "to-do", position: 0, isFinal: false },
@@ -65,9 +69,17 @@ async function createProject(
   icon: string,
   slug: string,
   configuration: ProjectConfiguration,
+  creatorUserId: string,
 ) {
   try {
-    return await createProjectRow(workspaceId, name, icon, slug, configuration);
+    return await createProjectRow(
+      workspaceId,
+      name,
+      icon,
+      slug,
+      configuration,
+      creatorUserId,
+    );
   } catch (error) {
     // Exact constraint names, not a substring match on `"slug"` (issue #269): this
     // transaction's own inserts can raise EITHER `project`'s `project_slug_unique`
@@ -135,6 +147,7 @@ async function createProjectRow(
   icon: string,
   slug: string,
   configuration: ProjectConfiguration,
+  creatorUserId: string,
 ) {
   return db.transaction(async (tx) => {
     if (configuration.organisationId !== null) {
@@ -169,6 +182,11 @@ async function createProjectRow(
       throw new ProjectSlugTakenError(slug);
     }
 
+    // The creator's staff person (locked first: person -> grants -> audit is the repo-wide
+    // lock order). Absent for a user with no provisioned staff person: `created_by` then
+    // stays NULL and no grant is possible.
+    const creator = await lockCreatorPerson(tx, creatorUserId);
+
     // New projects go to the bottom of the workspace's ordering.
     const [{ maxPosition } = { maxPosition: null }] = await tx
       .select({ maxPosition: max(projectTable.position) })
@@ -186,6 +204,7 @@ async function createProjectRow(
         supportLevel: configuration.supportLevel,
         serviceCalendarId: configuration.serviceCalendarId,
         organisationId: configuration.organisationId,
+        createdBy: creator?.id ?? null,
         position: maxPosition === null ? 0 : maxPosition + 1,
       })
       .returning();
@@ -213,6 +232,16 @@ async function createProjectRow(
       // concrete `state` rows from the workspace's default `state_template`s, in the
       // SAME transaction as the project itself.
       await seedProjectStates(createdProject.id, workspaceId, tx);
+
+      // Decision log 2026-10-14: the creator holds a project-lead membership on the
+      // project they just made (skipped for `sees_all` holders), audited, atomically.
+      if (creator) {
+        await grantProjectCreatorLead(tx, {
+          workspaceId,
+          projectId: createdProject.id,
+          person: creator,
+        });
+      }
     }
 
     return createdProject;

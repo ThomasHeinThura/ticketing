@@ -47,7 +47,7 @@ evidence.
 
 ### Grant provenance and validation
 
-- A direct grant carries its `direct_origin` (`admin` or migration-only `system_backfill`);
+- A direct grant carries its `direct_origin` (`admin`, system-written `system_backfill`, or system-written `project_creator`, decision log 2026-10-14);
   only `admin` carries `granted_by_person_id`. Direct grants alone may set `sees_all`.
 - A JIT-default grant names its external identity and connection but no group mapping.
 - An OIDC-group grant names its external identity, connection, and exactly one OIDC mapping.
