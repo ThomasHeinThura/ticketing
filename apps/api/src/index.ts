@@ -7,7 +7,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { normaliseRouteKey } from "@taskdesk/permissions";
 import type { Session, User } from "better-auth/types";
-import { and, eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
@@ -39,12 +39,11 @@ import capabilities from "./capabilities";
 import column from "./column";
 import comment from "./comment";
 import config from "./config";
-import db, {
+import {
   closeMigrationPool,
   getDatabase,
   getMigrationDatabase,
   getMigrationDatabasePool,
-  schema,
 } from "./database";
 import { assertApplicationRoleIsNotPrivileged } from "./database/assert-application-role-is-not-privileged";
 import { assertNoMigrationUrlInApiProcess } from "./database/assert-no-migration-url-in-api-process";
@@ -161,7 +160,6 @@ import {
 } from "./utils/require-workspace-capability";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
-import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
 import view from "./view";
 import workItem from "./work-item";
 import workItemCommentVersions from "./work-item/comment-versions";
@@ -181,6 +179,10 @@ import {
   removeUserConnection,
   shutdownWebSocketAdapter,
 } from "./ws";
+import {
+  callerReachesLegacySocketProject,
+  requireLegacySocketProjectReach,
+} from "./ws/legacy-project-reach";
 import { logRealtimeFailure } from "./ws/log-realtime-failure";
 import { checkWebSocketOrigin } from "./ws/origin-policy";
 
@@ -1728,6 +1730,9 @@ export function createApp(
 
   api.get(
     "/ws/:projectId",
+    // #745: origin policy and PROJECT reach are decided by this middleware, before the upgrade;
+    // its reach mark is what `project-reach-guard.test.ts` requires of the route.
+    requireLegacySocketProjectReach,
     upgradeWebSocket(async (c) => {
       const projectId = c.req.param("projectId");
 
@@ -1747,51 +1752,7 @@ export function createApp(
         throw new HTTPException(500, { message: "Internal Server Error" });
       }
 
-      const originResult = checkWebSocketOrigin({
-        host: c.req.header("Host") ?? null,
-        origin: c.req.header("Origin") ?? null,
-        sessionPortal: (
-          c.get("session") as (Session & { portal?: unknown }) | null
-        )?.portal,
-        hasSession: c.get("session") !== null,
-      });
-      if (!originResult.allowed) {
-        throw new HTTPException(originResult.status, { message: "Forbidden" });
-      }
-
       const userId = c.get("userId");
-
-      if (projectId) {
-        // #281 sweep: this id reaches a raw `eq(projectTable.id, ...)` query below,
-        // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
-        rejectNulByte(projectId, "Project id");
-        // #317 S1/S4: existence and workspace reach are folded into one
-        // query, the same `reachableWorkspacePredicate` #307/#338 use in
-        // `workspace-access-middleware.ts` -- a foreign project and an
-        // unknown one now cost the same single round trip and both answer
-        // 401 before any upgrade, rather than a second `validateWorkspaceAccess`
-        // query distinguishing "out of reach" (403, remapped) from "unknown"
-        // (401).
-        const apiKeyId = c.get("apiKey")?.id;
-        const [project] = await db
-          .select({ workspaceId: schema.projectTable.workspaceId })
-          .from(schema.projectTable)
-          .where(
-            and(
-              eq(schema.projectTable.id, projectId),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
-            ),
-          )
-          .limit(1);
-
-        if (!project) {
-          throw new HTTPException(401, { message: "Unauthorized" });
-        }
-      }
 
       const windowId = c.req.query("windowId");
       const initiatorId = windowId ? `${userId}:${windowId}` : userId;
@@ -1821,21 +1782,11 @@ export function createApp(
                     (session && session.portal !== "agent")
                   )
                     return false;
-                  const [project] = await db
-                    .select({ id: schema.projectTable.id })
-                    .from(schema.projectTable)
-                    .where(
-                      and(
-                        eq(schema.projectTable.id, projectId),
-                        sql`${schema.projectTable.deletedAt} IS NULL`,
-                        reachableWorkspacePredicate(
-                          schema.projectTable.workspaceId,
-                          userId,
-                          c.get("apiKey")?.id,
-                        ),
-                      ),
-                    )
-                    .limit(1);
+                  const project = await callerReachesLegacySocketProject(
+                    c,
+                    userId,
+                    projectId,
+                  );
                   return Boolean(project);
                 } catch {
                   return false;

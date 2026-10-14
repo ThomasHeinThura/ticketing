@@ -1711,6 +1711,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantNativeProjectRead(
+        member.user.id,
+        member.workspace.id,
+        project.id,
+      );
       const rawKey = `taskdesk_test_${randomBytes(16).toString("hex")}`;
       const now = new Date();
       const [key] = await db
@@ -1786,6 +1791,8 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    // #745: the socket needs project reach, not just workspace membership.
+    await grantNativeProjectRead(member.user.id, workspace.id, project.id);
     const socket = await openSocket(
       websocketUrl(node.server, `/api/ws/${project.id}`),
       {
@@ -1828,6 +1835,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const { project: foreignProject } = await createProjectFixture({
       workspaceId: stranger.workspace.id,
     });
+    await grantNativeProjectRead(
+      member.user.id,
+      member.workspace.id,
+      project.id,
+    );
     mockAuthenticatedSession(member.user);
     const sessionId = `session-${member.user.id}`;
     const sessionNow = new Date();

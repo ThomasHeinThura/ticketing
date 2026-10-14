@@ -77,3 +77,11 @@ export const TASK_TARGET_WORK_ITEM_ROUTE_KEYS = [
   "POST /api/time-entry",
   "PUT /api/time-entry/{id}",
 ] as const;
+
+/**
+ * WebSocket upgrade routes addressed to one project (#745). Their policy is `delegated:
+ * "websocket"` (there is no Hono response for a policy middleware to shape), so the upgrade
+ * handler itself must decide PROJECT reach and carries the reach mark the guard reads.
+ * `ws-project-reach.test.ts` drives every key here against the real listener.
+ */
+export const PROJECT_SOCKET_ROUTE_KEYS = ["GET /api/ws/{projectId}"] as const;

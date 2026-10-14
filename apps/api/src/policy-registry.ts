@@ -181,7 +181,7 @@ export const platformPolicies = {
   "GET /api/ws/{projectId}": {
     delegated: "websocket",
     reason:
-      "websocket upgrade; the handler authenticates the session before the socket opens",
+      "websocket upgrade; the handler authenticates the session before the socket opens, and requireLegacySocketProjectReach decides origin and project reach (#745)",
   },
 
   // The liveness probe. Returns a constant, reads nothing.

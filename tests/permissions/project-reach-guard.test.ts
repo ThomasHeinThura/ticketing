@@ -7,6 +7,7 @@ import {
 } from "../../apps/api/src/utils/task-target-reach";
 import {
   PROJECT_READ_ROUTE_KEYS,
+  PROJECT_SOCKET_ROUTE_KEYS,
   PROJECT_WRITE_ROUTE_KEYS,
   TASK_TARGET_ROUTE_KEYS,
 } from "../api-integration/helpers/project-reach-route-keys";
@@ -281,6 +282,23 @@ describe("project reach guard: the real router", () => {
         ),
     );
     expect(projectBearing.length).toBeGreaterThanOrEqual(60);
+
+    // Family 3 (#745): the project WebSocket upgrade. Its policy is `delegated: "websocket"`,
+    // so the capability-policy derivation above cannot see it; the upgrade handler must carry
+    // the project-reach mark itself, and `ws-project-reach.test.ts` drives it behaviourally.
+    for (const key of PROJECT_SOCKET_ROUTE_KEYS) {
+      expect(
+        registry.entries.some((entry) => entry.routeKey === key),
+        `${key} is not a registered route`,
+      ).toBe(true);
+      expect(
+        (handlersByKey.get(key) ?? []).map(markOf),
+        `${key} must declare project reach`,
+      ).toContainEqual(expect.objectContaining({ projectReach: true }));
+    }
+    expect(
+      findReachProblems(handlersByKey, [...PROJECT_SOCKET_ROUTE_KEYS], {}),
+    ).toEqual([]);
 
     // Family 2: task-targeting routes whose policy stays workspace-scoped / list-addressed.
     for (const key of TASK_TARGET_ROUTE_KEYS) {

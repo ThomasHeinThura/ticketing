@@ -36,9 +36,12 @@ one socket and explicit `subscribe` / `unsubscribe` frames for work-item topics.
 their existing clients; they are not sources for native work-item event delivery. Their
 retirement requires migrating those consumers separately. Both legacy sockets reauthenticate
 before every event and on the 60-second floor, including private identity invalidation
-signals. The project socket also rereads its project's current workspace reach before
+signals. The project socket requires **project reach** (not only workspace membership) at
+upgrade: a project the caller cannot reach, one in another workspace, a soft-deleted one and
+an unknown id are all refused with the same `401` before the upgrade, so no subscription
+exists for them. It rereads that project reach, with the project's existence, before
 delivery. Loss of the original credential, an inactive or banned identity, or lost project
-reach closes that legacy connection without sending the queued event. A failed authority
+reach (including a removed project membership) closes that legacy connection without sending the queued event. A failed authority
 lookup fails closed. Event checks are ordered per connection; disconnecting discards in-flight
 delivery, and an exhausted bounded authorization queue closes the connection so the client
 can reconnect and refetch. The native handshake authenticates
@@ -284,6 +287,7 @@ small "live updates unavailable" indicator. The application remains fully usable
 | `ws-explicit-credential-origin.test.ts` | On the agent host, a valid explicit `x-api-key` and bearer API key without `Origin` retain access subject to existing reach policy; a supplied foreign Origin is refused. An invalid explicit bearer token or key with a valid cookie cannot fall back to that cookie. |
 | `ws-portal-session.test.ts` | The agent host rejects non-agent, unbound legacy, and revoked session rows before upgrade. The portal public edge returns CP-19's generic 404 without session resolution; internal portal session binding tests do not assert public socket reachability. |
 | `ws-subscribe-policy.test.ts` | Subscribing to an out-of-reach project is refused, indistinguishably from a non-existent one |
+| `ws-project-reach.test.ts` | The legacy `/api/ws/{projectId}` socket: an in-reach member (session and API key), a workspace owner or admin and an instance admin subscribe and receive events; a same-workspace member without project reach, another workspace's member and a missing or soft-deleted project receive the identical `401` with no upgrade; revoking project membership closes an open socket; a customer reaches only their organisation's projects |
 | `ws-reauthorize.test.ts` | Subscribe, revoke the membership, assert no further events arrive |
 | `ws-frame-validation.test.ts` | Malformed frames and `user:` topics for another person are refused |
 | `ws-fanout.test.ts` | Two clients, one mutation, both receive it once |
