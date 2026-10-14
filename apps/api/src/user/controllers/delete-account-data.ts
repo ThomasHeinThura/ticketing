@@ -16,6 +16,7 @@ import {
 } from "../../pending-action/credential-invalidation";
 import { deleteWorkspaceRoleDependents } from "../../workspace/controllers/delete-workspace-role-dependents";
 import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
+import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
 
 type AccountDeletionTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
@@ -158,6 +159,9 @@ async function deleteAccountDataInTransaction(
           inArray(workspaceUserTable.workspaceId, plan.workspaceIdsToLeave),
         ),
       );
+    for (const workspaceId of plan.workspaceIdsToLeave) {
+      await syncWorkspaceAdminReach(tx, workspaceId, userId);
+    }
   }
 
   return plan;
