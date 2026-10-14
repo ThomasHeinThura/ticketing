@@ -6,6 +6,10 @@ import {
 } from "../openapi";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
+import {
+  requireBodyTaskReach,
+  requireLabelRowTaskReach,
+} from "../utils/task-target-reach";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import assignLabelToTask from "./controllers/assign-label-to-task";
 import createLabel from "./controllers/create-label";
@@ -33,7 +37,10 @@ const getTaskLabelsRoute = createRoute({
   summary: "Get task labels",
   description: "Get all labels assigned to a specific task",
   middleware: [
-    workspaceAccess.fromTaskId(),
+    workspaceAccess.fromTaskId("taskId", {
+      requireProjectReach: true,
+      deferCapability: true,
+    }),
     requireWorkspaceCapability("workspace:read"),
   ] as const,
   request: { params: taskIdParam },
@@ -75,6 +82,7 @@ const createLabelRoute = createRoute({
   description: "Create a new label in a workspace",
   middleware: [
     workspaceAccess.fromBody(),
+    requireBodyTaskReach(),
     requireWorkspacePermission({ label: ["create"] }),
   ] as const,
   request: {
@@ -102,6 +110,7 @@ const getLabelRoute = createRoute({
   description: "Get a specific label by ID",
   middleware: [
     workspaceAccess.fromLabel(),
+    requireLabelRowTaskReach(),
     requireWorkspaceCapability("workspace:read"),
   ] as const,
   request: { params: labelParam },
@@ -124,6 +133,8 @@ const attachLabelToTaskRoute = createRoute({
   description: "Attach an existing label to a task",
   middleware: [
     workspaceAccess.fromLabel(),
+    requireLabelRowTaskReach(),
+    requireBodyTaskReach(),
     requireWorkspacePermission({ label: ["update"] }),
   ] as const,
   request: {
@@ -155,6 +166,7 @@ const detachLabelFromTaskRoute = createRoute({
   description: "Detach a label from its current task",
   middleware: [
     workspaceAccess.fromLabel(),
+    requireLabelRowTaskReach(),
     requireWorkspacePermission({ label: ["update"] }),
   ] as const,
   request: { params: labelParam },
@@ -175,6 +187,7 @@ const updateLabelRoute = createRoute({
   description: "Update an existing label",
   middleware: [
     workspaceAccess.fromLabel(),
+    requireLabelRowTaskReach(),
     requireWorkspacePermission({ label: ["update"] }),
   ] as const,
   request: {
@@ -201,6 +214,7 @@ const deleteLabelRoute = createRoute({
   description: "Delete a label by ID",
   middleware: [
     workspaceAccess.fromLabel(),
+    requireLabelRowTaskReach(),
     requireWorkspacePermission({ label: ["delete"] }),
   ] as const,
   request: { params: labelParam },

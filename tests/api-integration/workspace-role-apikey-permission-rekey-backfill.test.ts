@@ -23,6 +23,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 import { signUpUser } from "./helpers/organization-http";
 import {
@@ -113,6 +114,7 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
 
     // Step 1: insert the OLD pre-migration JSON shape directly, bypassing the application
     // layer — exactly what a pre-rename binary would have persisted for this role.
@@ -170,6 +172,7 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
 
     const rawKey = `taskdesk_test_${randomUUID()}`;
     const hashed = hashApiKeyForTest(rawKey);

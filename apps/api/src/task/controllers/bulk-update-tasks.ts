@@ -12,6 +12,7 @@ import {
 import { publishEvent } from "../../events";
 import { lockWorkspaceLabelNames } from "../../label/label-name-lock";
 import { assertAssignableUserAndLockMembership } from "../../utils/assert-assignable-user";
+import type { callerReach } from "../../utils/caller-reach";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 import {
@@ -27,6 +28,28 @@ type BulkOperation =
   | "addLabel"
   | "removeLabel"
   | "updateDueDate";
+
+/** The caller's project reach and project-level capability (`utils/caller-reach.ts`). */
+export type BulkCallerReach = Awaited<ReturnType<typeof callerReach>>;
+
+/**
+ * The project-level capability each operation needs on EACH task it touches (#720). The
+ * workspace-role check (`requireBulkTaskPermission`) still runs once at the route; this is
+ * the per-item half, decided from the same source as the single-item routes.
+ */
+function capabilityFor(operation: BulkOperation) {
+  switch (operation) {
+    case "delete":
+      return "work_item:delete" as const;
+    case "updateAssignee":
+      return "work_item:assign" as const;
+    case "addLabel":
+    case "removeLabel":
+      return "label:manage" as const;
+    default:
+      return "work_item:update" as const;
+  }
+}
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 type ItemResult =
@@ -71,13 +94,21 @@ async function bulkUpdateTasks({
   value,
   userId,
   workspaceId,
+  reach,
 }: {
   taskIds: string[];
   operation: BulkOperation;
   value?: string | null;
   userId: string;
   workspaceId: string;
+  reach: BulkCallerReach;
 }) {
+  // Fail closed (#720): without the route's reach context nothing may be touched.
+  if (!reach) {
+    throw new HTTPException(500, {
+      message: "Could not determine project reach for this request",
+    });
+  }
   if (!workspaceId) {
     throw new HTTPException(500, {
       message: "Could not determine workspace for this request",
@@ -101,8 +132,12 @@ async function bulkUpdateTasks({
   }
 
   const uniqueTaskIds = [...new Set(taskIds)];
-  const scopedRows = await db
-    .select({ id: taskTable.id })
+  const workspaceScopedRows = await db
+    .select({
+      id: taskTable.id,
+      projectId: taskTable.projectId,
+      workspaceId: projectTable.workspaceId,
+    })
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
     .where(
@@ -113,7 +148,15 @@ async function bulkUpdateTasks({
         isNull(projectTable.deletedAt),
       ),
     );
-  const scopedIds = new Set(scopedRows.map((task) => task.id));
+  // #720: PROJECT reach per task. A task in a project the caller cannot reach is dropped
+  // here, exactly as one outside the workspace is, so it is indistinguishable from a
+  // missing id (anonymous "Task not found" per item, or "No tasks found" when none remain).
+  const scopedRows: typeof workspaceScopedRows = [];
+  for (const row of workspaceScopedRows) {
+    if (await reach.reaches(row)) scopedRows.push(row);
+  }
+  const scopedById = new Map(scopedRows.map((task) => [task.id, task]));
+  const scopedIds = new Set(scopedById.keys());
   if (scopedIds.size === 0) {
     throw new HTTPException(404, { message: "No tasks found" });
   }
@@ -129,6 +172,16 @@ async function bulkUpdateTasks({
   for (const taskId of uniqueTaskIds) {
     if (!scopedIds.has(taskId)) {
       results.push({ success: false, error: "Task not found" });
+      continue;
+    }
+    const scopedRow = scopedById.get(taskId);
+    // Reachable, but the caller's project-level role does not grant this operation here.
+    if (scopedRow && !(await reach.can(capabilityFor(operation), scopedRow))) {
+      results.push({
+        taskId,
+        success: false,
+        error: "Insufficient permissions",
+      });
       continue;
     }
     let taskInScope = false;

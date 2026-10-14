@@ -262,6 +262,7 @@ describe("API integration: bulk work item operations (#23 fourth slice)", () => 
     const { project: foreignProject } = await createProjectFixture({
       workspaceId: foreign.workspace.id,
     });
+    await grantWorkItemProjectAccess(foreign.user.id, foreignProject.id);
     const foreignType = await makeWorkItemType(foreign.workspace.id);
     await makeDefaultState(foreign.workspace.id, foreignProject.id);
     mockAuthenticatedSession(foreign.user);

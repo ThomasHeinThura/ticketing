@@ -19,7 +19,9 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectAccessForWorkspaceRole,
   grantProjectRole,
+  grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
@@ -165,10 +167,7 @@ async function setupProjectWithDefaultState(
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });
-  await grantProjectRole(creator.user.id, project.id, [
-    "project:read",
-    "work_item:read",
-  ]);
+  await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   const state = await makeDefaultState(creator.workspace.id, project.id);
   return { creator, project, type, state };
@@ -453,6 +452,7 @@ describe("API integration: work item create/read/list (#23)", () => {
     const { project } = await createProjectFixture({
       workspaceId: creator.workspace.id,
     });
+    await grantWorkItemProjectAccess(creator.user.id, project.id);
     const type = await makeWorkItemType(creator.workspace.id);
     mockAuthenticatedSession(creator.user);
     const { app } = createApp();
@@ -565,6 +565,7 @@ describe("API integration: work item create/read/list (#23)", () => {
       })
     )?.workspaceId as string;
     const viewer = await addWorkspaceMember(workspaceId, "viewer");
+    await grantProjectAccessForWorkspaceRole(viewer.id, workspaceId, "viewer");
     mockAuthenticatedSession(viewer);
     const { app } = createApp();
 
@@ -615,6 +616,13 @@ describe("API integration: work item create/read/list (#23)", () => {
           workspaceId,
           role,
         );
+        // Reach to the project, so the 403 below is the workspace-capability refusal under
+        // test and not the project-reach 404 (#720).
+        await grantProjectAccessForWorkspaceRole(
+          escalated.id,
+          workspaceId,
+          role,
+        );
         mockAuthenticatedSession(escalated);
         const { app } = createApp();
 
@@ -642,6 +650,11 @@ describe("API integration: work item create/read/list (#23)", () => {
       // `addWorkspaceMember` (unlike the `...WithoutGenuineRow` variant above) seeds a
       // genuine `is_system = true` row for the name it's given.
       const genuineManager = await addWorkspaceMember(workspaceId, "manager");
+      await grantProjectAccessForWorkspaceRole(
+        genuineManager.id,
+        workspaceId,
+        "manager",
+      );
       mockAuthenticatedSession(genuineManager);
       const { app } = createApp();
 
@@ -660,6 +673,11 @@ describe("API integration: work item create/read/list (#23)", () => {
         })
       )?.workspaceId as string;
       const escalated = await addWorkspaceMemberWithoutGenuineRow(
+        workspaceId,
+        "manager",
+      );
+      await grantProjectAccessForWorkspaceRole(
+        escalated.id,
         workspaceId,
         "manager",
       );
@@ -740,13 +758,16 @@ describe("API integration: work item create/read/list (#23)", () => {
     });
 
     // Before #290, `workspaceAccess.fromProject` answered 403 for a project the
-    // caller can't reach, distinguishable from the 400 an unknown project id gets.
-    // It now answers this exactly like the unknown-id case (#202's own precedent for
-    // this helper), never a 403.
-    expect(response.status).toBe(400);
-    await expect(response.text()).resolves.toBe(
-      "Workspace ID could not be determined",
-    );
+    // caller can't reach, distinguishable from an unknown project id. Since #720 this
+    // route requires project reach (`api-design.md`: out of reach is the same 404 as
+    // missing), so it answers exactly like the unknown-id case, never a 403.
+    expect(response.status).toBe(404);
+    const unknown = await createWorkItemRequest(app, "no-such-project-id", {
+      typeId: type.id,
+      title: "Stranger should not reach this project",
+    });
+    expect(unknown.status).toBe(404);
+    await expect(response.text()).resolves.toBe(await unknown.text());
   });
 
   it("GET /api/work-items/{key}: returns the right shape, and 404s on a nonexistent key", async () => {

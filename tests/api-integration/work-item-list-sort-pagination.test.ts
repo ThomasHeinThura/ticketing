@@ -648,6 +648,7 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
     const { project: otherProject } = await createProjectFixture({
       workspaceId: creator.workspace.id,
     });
+    await grantWorkItemProjectAccess(creator.user.id, otherProject.id);
     const otherType = await makeWorkItemType(creator.workspace.id);
     await makeState(creator.workspace.id, otherProject.id);
 

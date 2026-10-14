@@ -7,6 +7,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectAccessToWorkspaceMembers,
+  grantProjectManageAccess,
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
@@ -206,10 +207,7 @@ describe("issue #290 (S4): NUL-byte sweep on body id fields that reach a DB look
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
-    await grantProjectRole(member.user.id, project.id, [
-      "project:read",
-      "work_item:read",
-    ]);
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
 

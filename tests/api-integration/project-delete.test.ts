@@ -16,6 +16,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectManageAccess,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -145,6 +146,7 @@ describe("API integration: project soft delete", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await deleteRequest(project.id);
@@ -164,6 +166,7 @@ describe("API integration: project soft delete", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const beforeDelete = Date.now();
@@ -189,11 +192,13 @@ describe("API integration: project soft delete", () => {
       name: "Kept",
       slug: "kept",
     });
+    await grantProjectManageAccess(member.user.id, kept.id);
     const { project: deleted } = await createProjectFixture({
       workspaceId: member.workspace.id,
       name: "Deleted",
       slug: "deleted",
     });
+    await grantProjectManageAccess(member.user.id, deleted.id);
     mockAuthenticatedSession(member.user);
 
     const deleteResponse = await deleteRequest(deleted.id);
@@ -211,6 +216,7 @@ describe("API integration: project soft delete", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const deleteResponse = await deleteRequest(project.id);
@@ -225,6 +231,7 @@ describe("API integration: project soft delete", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const firstDelete = await deleteRequest(project.id);
@@ -253,6 +260,7 @@ describe("API integration: project soft delete", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     const workItem = await makeWorkItemUnder(member.workspace.id, project.id);
     mockAuthenticatedSession(member.user);
 

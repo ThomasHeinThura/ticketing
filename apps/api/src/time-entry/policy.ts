@@ -63,6 +63,13 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * helpers, this pair included: a nonexistent id now 404s directly from the middleware, before
  * any authority decision runs, rather than falling through to a caller-supplied workspace.)
  *
+ * **`scope: "work_item"` since #720.** Every route here acts on a specific task (the path or body
+ * task, or the entry's own task), so project reach to that task's project is decided by the
+ * route's `workspaceAccess.fromTaskId()` / `.fromTimeEntry()` with `requireProjectReach` -- same
+ * 404 as a missing row, customers 403 -- and `deferCapability`: the capability above stays with
+ * the route's own gate, because it is documented here as wider or narrower than the declared name
+ * and adding reach must not change who may act. Decision 720-A, `rbac.md` § Reach.
+ *
  * **`reach: "required"` on all four**, `POST /api/time-entry` included: although the route
  * creates a new row, it addresses an *existing* task (`taskId` in the request body, resolved
  * to a real row by the same lookup), so — exactly like `POST
@@ -84,7 +91,7 @@ export const timeEntryPolicies = {
   // List every time entry logged against one task; requires `time_entry:read_any`.
   "GET /api/time-entry/task/{taskId}": {
     capability: "time_entry:read_any",
-    scope: "workspace",
+    scope: "work_item",
     scopeSource: "row",
     reach: "required",
   },
@@ -92,7 +99,7 @@ export const timeEntryPolicies = {
   // Read a single time entry by id; requires `time_entry:read_any`.
   "GET /api/time-entry/{id}": {
     capability: "time_entry:read_any",
-    scope: "workspace",
+    scope: "work_item",
     scopeSource: "row",
     reach: "required",
   },
@@ -103,7 +110,7 @@ export const timeEntryPolicies = {
   // addresses-an-existing-resource reasoning behind `reach: "required"`.
   "POST /api/time-entry": {
     capability: "time_entry:create",
-    scope: "workspace",
+    scope: "work_item",
     scopeSource: "row",
     reach: "required",
   },
@@ -114,7 +121,7 @@ export const timeEntryPolicies = {
   // ownership predicate at all, so `_any` is the honest name, not `_own`.
   "PUT /api/time-entry/{id}": {
     capability: "time_entry:update_any",
-    scope: "workspace",
+    scope: "work_item",
     scopeSource: "row",
     reach: "required",
   },

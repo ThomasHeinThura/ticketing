@@ -12,6 +12,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectManageAccess,
 } from "./helpers/fixtures";
 
 function createColumnRequest(projectId: string, name: string) {
@@ -33,6 +34,7 @@ describe("API integration: column creation", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
     mockAuthenticatedSession(member.user);
 
     const response = await createColumnRequest(project.id, "Blocked");
@@ -44,6 +46,7 @@ describe("API integration: column creation", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectManageAccess(member.user.id, project.id);
 
     await db
       .update(schema.projectTable)

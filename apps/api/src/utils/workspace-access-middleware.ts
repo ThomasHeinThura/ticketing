@@ -18,6 +18,7 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { callerReach } from "./caller-reach";
 import { projectReadDecision } from "./has-project-reach";
 import { isCustomerPrincipal } from "./is-customer-principal";
 import { WORK_ITEM_REACH_MARK, type WorkItemReachMark } from "./reach-mark";
@@ -130,13 +131,25 @@ type WorkspaceAccessMiddlewareConfig = {
   sources: WorkspaceIdSource[];
   /** Enforce canonical project reach after the typed project row is resolved. */
   requireProjectReach?: boolean;
+  /**
+   * For a `lookupMany` source: drop every named row whose project the caller cannot reach, so
+   * it is indistinguishable from a missing id. (The capability is decided per item later.)
+   */
+  projectReachPerItem?: boolean;
   /** Write routes whose next gate is key-aware: an API key still needs reach, but its capability is decided downstream. */
   deferApiKeyCapability?: boolean;
+  /**
+   * Decide REACH only; the next gate owns the capability decision. For routes whose declared
+   * capability is documented as wider or narrower than the runtime gate they keep
+   * (`time-entry/policy.ts`), so adding reach does not silently change who may act.
+   */
+  deferCapability?: boolean;
 };
 
 type ReachOptions = {
   readonly requireProjectReach?: boolean;
   readonly deferApiKeyCapability?: boolean;
+  readonly deferCapability?: boolean;
 };
 
 type ShadowResourceAnchor = {
@@ -395,8 +408,11 @@ export function workspaceAccessMiddleware(
             rejectNulByte(taskId, NUL_BYTE_LABEL);
           }
           if (taskIds.length > 0) {
-            const tasks = await db
-              .select({ workspaceId: schema.projectTable.workspaceId })
+            const reachableTasks = await db
+              .select({
+                workspaceId: schema.projectTable.workspaceId,
+                projectId: schema.taskTable.projectId,
+              })
               .from(schema.taskTable)
               .innerJoin(
                 schema.projectTable,
@@ -412,6 +428,17 @@ export function workspaceAccessMiddleware(
                   ),
                 ),
               );
+            // #720: a task in a project the caller cannot reach is dropped here exactly like
+            // one in a workspace they cannot reach, so it is indistinguishable from a missing
+            // id before any later gate (legacy permission, per-item capability) can answer.
+            let tasks = reachableTasks;
+            if (config.projectReachPerItem) {
+              const reach = await callerReach(c, userId);
+              tasks = [];
+              for (const task of reachableTasks) {
+                if (await reach.reaches(task)) tasks.push(task);
+              }
+            }
             const distinctWorkspaceIds = [
               ...new Set(tasks.map((task) => task.workspaceId)),
             ];
@@ -513,6 +540,7 @@ export function workspaceAccessMiddleware(
       }
       if (
         !decision.capable &&
+        config.deferCapability !== true &&
         !(config.deferApiKeyCapability === true && apiKey)
       ) {
         setShadowLegacyAuthorization(c, "denied");
@@ -531,8 +559,16 @@ export function workspaceAccessMiddleware(
     return next();
   };
   // Marker read by `tests/permissions/work-item-reach-guard.test.ts`; not used at runtime.
+  const resources = config.sources.flatMap((source) =>
+    source.type === "lookup" || source.type === "lookupMany"
+      ? [source.resource]
+      : [],
+  );
   const mark: WorkItemReachMark = {
-    projectReach: config.requireProjectReach === true,
+    projectReach:
+      config.requireProjectReach === true ||
+      config.projectReachPerItem === true,
+    ...(resources.length > 0 ? { resources } : {}),
   };
   return Object.assign(middleware, { [WORK_ITEM_REACH_MARK]: mark });
 }
@@ -1031,6 +1067,7 @@ export const workspaceAccess = {
       sources: [{ type: "lookup", resource: "project", idKey }],
       requireProjectReach: options.requireProjectReach,
       deferApiKeyCapability: options.deferApiKeyCapability,
+      deferCapability: options.deferCapability,
     }),
 
   fromTask: (idKey = "id", options: ReachOptions = {}) =>
@@ -1038,6 +1075,7 @@ export const workspaceAccess = {
       sources: [{ type: "lookup", resource: "task", idKey }],
       requireProjectReach: options.requireProjectReach,
       deferApiKeyCapability: options.deferApiKeyCapability,
+      deferCapability: options.deferCapability,
     }),
 
   fromTaskId: (idKey = "taskId", options: ReachOptions = {}) =>
@@ -1045,11 +1083,13 @@ export const workspaceAccess = {
       sources: [{ type: "lookup", resource: "task", idKey }],
       requireProjectReach: options.requireProjectReach,
       deferApiKeyCapability: options.deferApiKeyCapability,
+      deferCapability: options.deferCapability,
     }),
 
-  fromTasks: (idKey = "taskIds") =>
+  fromTasks: (idKey = "taskIds", options: ReachOptions = {}) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookupMany", resource: "task", idKey }],
+      projectReachPerItem: options.requireProjectReach,
     }),
 
   fromLabel: (idKey = "id") =>
@@ -1057,9 +1097,12 @@ export const workspaceAccess = {
       sources: [{ type: "lookup", resource: "label", idKey }],
     }),
 
-  fromTimeEntry: (idKey = "id") =>
+  fromTimeEntry: (idKey = "id", options: ReachOptions = {}) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "timeEntry", idKey }],
+      requireProjectReach: options.requireProjectReach,
+      deferApiKeyCapability: options.deferApiKeyCapability,
+      deferCapability: options.deferCapability,
     }),
 
   fromActivity: (idKey = "id", options: ReachOptions = {}) =>
@@ -1067,6 +1110,7 @@ export const workspaceAccess = {
       sources: [{ type: "lookup", resource: "activity", idKey }],
       requireProjectReach: options.requireProjectReach,
       deferApiKeyCapability: options.deferApiKeyCapability,
+      deferCapability: options.deferCapability,
     }),
 
   fromComment: (idKey = "id", options: ReachOptions = {}) =>
@@ -1074,16 +1118,23 @@ export const workspaceAccess = {
       sources: [{ type: "lookup", resource: "comment", idKey }],
       requireProjectReach: options.requireProjectReach,
       deferApiKeyCapability: options.deferApiKeyCapability,
+      deferCapability: options.deferCapability,
     }),
 
-  fromColumn: (idKey = "id") =>
+  fromColumn: (idKey = "id", options: ReachOptions = {}) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "column", idKey }],
+      requireProjectReach: options.requireProjectReach,
+      deferApiKeyCapability: options.deferApiKeyCapability,
+      deferCapability: options.deferCapability,
     }),
 
-  fromWorkflowRule: (idKey = "id") =>
+  fromWorkflowRule: (idKey = "id", options: ReachOptions = {}) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "workflowRule", idKey }],
+      requireProjectReach: options.requireProjectReach,
+      deferApiKeyCapability: options.deferApiKeyCapability,
+      deferCapability: options.deferCapability,
     }),
 
   // #31 -- workflow persistence.

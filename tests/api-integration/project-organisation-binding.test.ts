@@ -14,7 +14,11 @@ import { createApp } from "../../apps/api/src/index";
 import { acceptSubmission } from "../../apps/api/src/intake/repository";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import {
+  createWorkspaceMember,
+  grantProjectManageAccess,
+  requireRow,
+} from "./helpers/fixtures";
 
 type ProjectRow = typeof schema.projectTable.$inferSelect;
 
@@ -329,6 +333,9 @@ describe("API integration: project customer-organisation binding", () => {
         organisationId: first.id,
       })
     ).json()) as ProjectRow;
+    // Creating a project grants the creator no project membership; updating it needs the
+    // project-level capability (#720).
+    await grantProjectManageAccess(admin.user.id, created.id);
     const { app } = createApp();
 
     for (const organisationId of [second.id, null]) {

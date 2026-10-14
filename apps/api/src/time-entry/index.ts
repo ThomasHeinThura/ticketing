@@ -27,7 +27,10 @@ const getTaskTimeEntriesRoute = createRoute({
   summary: "Get task time entries",
   description: "Get every time entry logged against a task.",
   middleware: [
-    workspaceAccess.fromTaskId(),
+    workspaceAccess.fromTaskId("taskId", {
+      requireProjectReach: true,
+      deferCapability: true,
+    }),
     requireWorkspaceCapability("time_entry:read_any"),
   ] as const,
   request: { params: taskIdParam },
@@ -48,7 +51,10 @@ const getTimeEntryRoute = createRoute({
   summary: "Get time entry",
   description: "Get a single time entry by ID.",
   middleware: [
-    workspaceAccess.fromTimeEntry(),
+    workspaceAccess.fromTimeEntry("id", {
+      requireProjectReach: true,
+      deferCapability: true,
+    }),
     requireWorkspaceCapability("time_entry:read_any"),
   ] as const,
   request: { params: timeEntryParam },
@@ -70,7 +76,10 @@ const createTimeEntryRoute = createRoute({
   description:
     "Log time against a task. Omit endTime to start a running entry that can be closed later with an update.",
   middleware: [
-    workspaceAccess.fromTaskId(),
+    workspaceAccess.fromTaskId("taskId", {
+      requireProjectReach: true,
+      deferCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -98,7 +107,10 @@ const updateTimeEntryRoute = createRoute({
   description:
     "Replace a time entry's start, end, and description. Setting endTime closes a running entry and fills in its duration.",
   middleware: [
-    workspaceAccess.fromTimeEntry(),
+    workspaceAccess.fromTimeEntry("id", {
+      requireProjectReach: true,
+      deferCapability: true,
+    }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {

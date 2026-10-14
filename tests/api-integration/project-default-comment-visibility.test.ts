@@ -22,6 +22,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectManageAccess,
   grantProjectRole,
 } from "./helpers/fixtures";
 
@@ -95,6 +96,7 @@ async function actorWithLegacyMap(
   const { project } = await createProjectFixture({
     workspaceId: actor.workspace.id,
   });
+  await grantProjectManageAccess(actor.user.id, project.id);
   return { actor, project };
 }
 

@@ -18,10 +18,13 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * (`apps/api/src/utils/workspace-access-middleware.ts`) into the same query that loads the
  * asset row -- a 404 covers both "no such asset" and "not a platform admin or member of the
  * asset's own workspace" (#317 S1/S4, closing the existence-and-timing oracle #307/#338 left
- * open on this route). There is no project-level or work-item-level check anywhere on this
- * path -- the query that loads the asset joins `projectTable` only to refuse an orphaned
- * asset row (see the comment at that join in `index.ts`), never to check the caller's
- * standing in that project.
+ * open on this route). Since #720 there IS a project-reach check on this path: the asset
+ * belongs to a project (and may be bound to a task in it), so `requireAssetProjectReach`
+ * (`authorize-asset-access.ts`) also requires the caller to reach that project, and an
+ * out-of-reach asset answers the same 404 as a missing one. The policy stays workspace-scoped
+ * because the capability this route enforces is still `workspace:read` on the workspace; the
+ * project reach is carried by the route's middleware mark, which
+ * `tests/permissions/project-reach-guard.test.ts` requires.
  *
  * **`scope: "workspace"`, not `project` or `work_item`.** The asset table
  * (`apps/api/src/database/schema.ts`) carries `workspaceId`, `projectId` and optional
