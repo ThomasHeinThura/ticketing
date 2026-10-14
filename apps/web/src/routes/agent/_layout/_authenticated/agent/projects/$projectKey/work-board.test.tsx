@@ -70,6 +70,7 @@ vi.mock("@/components/work-item/work-item-selection-toggle", async () => {
         onCapabilityChange(state.canAssign);
       }, [onCapabilityChange]);
       return state.canAssign ? (
+        // ui-exempt: test double for the lazy selection toggle
         <button type="button" aria-pressed={selectionMode} onClick={onToggle}>
           Select items
         </button>

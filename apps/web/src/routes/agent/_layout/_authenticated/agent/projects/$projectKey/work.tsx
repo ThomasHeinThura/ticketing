@@ -40,10 +40,6 @@ function loadWorkItemsPanel(): Promise<WorkItemsPanelModule> {
 
 function preloadWorkItemsPanel() {
   void loadWorkItemsPanel().catch(() => undefined);
-  // The panel renders the list, which is its own chunk. Requesting it only once the panel
-  // mounts makes the list suspend behind the panel skeleton and lands the rows after React's
-  // 300 ms fallback throttle (G11 work-list render), so start it with the panel.
-  void import("@/components/work-item/work-item-list").catch(() => undefined);
 }
 
 const WorkItemsPanel = lazy(loadWorkItemsPanel);
