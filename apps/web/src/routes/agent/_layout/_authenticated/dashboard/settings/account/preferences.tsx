@@ -17,6 +17,7 @@ import {
 } from "@taskdesk/ui";
 import { RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useDensityPreference } from "@/hooks/use-density-preference";
 import { useLocale } from "@/hooks/use-locale";
 import {
   isWeekStartDay,
@@ -66,9 +67,8 @@ function RouteComponent() {
     resetDisplayPreferences,
     sidebarDefaultOpen,
     setSidebarDefaultOpen,
-    compactMode,
-    setCompactMode,
   } = useUserPreferencesStore();
+  const { density, setDensity } = useDensityPreference();
 
   const themeLabels: Record<string, string> = {
     light: t("settings:preferencesPage.themeLight"),
@@ -90,7 +90,6 @@ function RouteComponent() {
     comfortable: t("settings:preferencesPage.densityComfortable"),
     compact: t("settings:preferencesPage.densityCompact"),
   };
-  const density = compactMode ? "compact" : "comfortable";
 
   const selectedLocale: AppLocale = locale ?? defaultLocale;
 
@@ -278,7 +277,7 @@ function RouteComponent() {
               value={density}
               onValueChange={(value) => {
                 if (value) {
-                  setCompactMode(value === "compact");
+                  setDensity(value === "compact" ? "compact" : "comfortable");
                 }
               }}
             >

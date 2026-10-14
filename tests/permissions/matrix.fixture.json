@@ -2604,6 +2604,40 @@
 				"outOfReach": "allow"
 			}
 		},
+		"GET /api/me/settings": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
 		"GET /api/notification": {
 			"instance_admin": {
 				"inReach": "allow",
@@ -5526,6 +5560,40 @@
 			"customer": {
 				"inReach": "403 forbidden",
 				"outOfReach": "403 forbidden"
+			}
+		},
+		"PATCH /api/me/settings": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
 			}
 		},
 		"PATCH /api/notification/{id}/read": {

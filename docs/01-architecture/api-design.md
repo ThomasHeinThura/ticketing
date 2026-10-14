@@ -842,7 +842,9 @@ POST /api/instance/plugins/{id}/test         { config }
 Actions return the mutated resource in its normal response shape, so the client can
 update its cache without a refetch. Actions that can race (self-assign, claim a
 submission) accept an optional `If-Match` or use a conditional update and return `409`
-naming the winner.
+naming the winner. `DELETE /work-items/{key}/assign` takes an optional `expectedAssigneeId`
+query parameter (the holder the caller saw); any other current holder is `409` and nothing is
+written (`AS-19`).
 
 ## Errors
 
