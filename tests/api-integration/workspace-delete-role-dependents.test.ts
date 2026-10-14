@@ -509,3 +509,201 @@ describe("#180 workspace delete with role-referencing rows", () => {
     ).toHaveLength(1);
   });
 });
+
+describe("#180 round 2 -- predicates that only the scope/mapping paths reach", () => {
+  async function globalRole() {
+    return requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: null,
+          key: `global-${randomUUID()}`,
+          name: "Global built-in",
+          rank: 1,
+          capabilities: ["project:read"],
+        })
+        .returning(),
+      "global role",
+    );
+  }
+
+  it("removes a membership holding a GLOBAL role scoped to the doomed workspace, and keeps the role", async () => {
+    const { app, owner, workspaceId } = await createWorkspaceViaRoute("Global");
+    const personId = await personIdFor(owner.user.id);
+    const role = await globalRole();
+    await db.insert(schema.membershipTable).values({
+      personId,
+      scope: "workspace",
+      scopeId: workspaceId,
+      roleId: role.id,
+    });
+
+    const response = await deleteWorkspaceNative(
+      app,
+      owner.cookie,
+      workspaceId,
+    );
+    expect(response.status).toBe(200);
+    expect(
+      await db
+        .select()
+        .from(schema.membershipTable)
+        .where(eq(schema.membershipTable.roleId, role.id)),
+    ).toHaveLength(0);
+    // The global role is not workspace-owned: it survives.
+    expect(
+      await db
+        .select()
+        .from(schema.roleTable)
+        .where(eq(schema.roleTable.id, role.id)),
+    ).toHaveLength(1);
+  });
+
+  it("removes a membership holding a GLOBAL role scoped to a project of the doomed workspace, but not one in another workspace", async () => {
+    const { app, owner, workspaceId } =
+      await createWorkspaceViaRoute("GlobalP");
+    const other = await createWorkspaceMember({ role: "owner" });
+    const personId = await personIdFor(owner.user.id);
+    const role = await globalRole();
+    const { project } = await createProjectFixture({ workspaceId });
+    const { project: otherProject } = await createProjectFixture({
+      workspaceId: other.workspace.id,
+    });
+    await db.insert(schema.membershipTable).values([
+      { personId, scope: "project", scopeId: project.id, roleId: role.id },
+      {
+        personId,
+        scope: "project",
+        scopeId: otherProject.id,
+        roleId: role.id,
+      },
+    ]);
+
+    const response = await deleteWorkspaceNative(
+      app,
+      owner.cookie,
+      workspaceId,
+    );
+    expect(response.status).toBe(200);
+    const remaining = await db
+      .select()
+      .from(schema.membershipTable)
+      .where(eq(schema.membershipTable.roleId, role.id));
+    expect(remaining.map((m) => m.scopeId)).toEqual([otherProject.id]);
+  });
+
+  it("removes a scim_group_member reached only through its group-mapping id", async () => {
+    const { app, owner, workspaceId } =
+      await createWorkspaceViaRoute("MapOnly");
+    const other = await createWorkspaceMember({ role: "owner" });
+    const doomedRole = await createRole(workspaceId, "workspace");
+    const keptRole = await createRole(other.workspace.id, "workspace");
+    const doomed = await seedProvisioningRows(
+      workspaceId,
+      doomedRole.id,
+      owner.user.id,
+    );
+    // A second, surviving mapping + grant (other workspace). Re-point the doomed
+    // mapping's scim_group_member at the SURVIVING grant, so the member is not reachable
+    // through a doomed grant -- only through its (doomed) mapping id.
+    const survivor = await seedProvisioningRows(
+      other.workspace.id,
+      keptRole.id,
+      other.user.id,
+    );
+    const [survivingMember] = await db
+      .select()
+      .from(schema.scimGroupMemberTable)
+      .where(
+        eq(
+          schema.scimGroupMemberTable.scimGroupMappingId,
+          (
+            await db
+              .select()
+              .from(schema.scimGroupMappingTable)
+              .where(eq(schema.scimGroupMappingTable.roleId, keptRole.id))
+          )[0]?.id ?? "",
+        ),
+      );
+    const [doomedMember] = await db
+      .select()
+      .from(schema.scimGroupMemberTable)
+      .where(
+        eq(
+          schema.scimGroupMemberTable.scimGroupMappingId,
+          (
+            await db
+              .select()
+              .from(schema.scimGroupMappingTable)
+              .where(eq(schema.scimGroupMappingTable.roleId, doomedRole.id))
+          )[0]?.id ?? "",
+        ),
+      );
+    if (!survivingMember || !doomedMember) throw new Error("fixture");
+    // Detach the doomed member from its own (doomed) grant by swapping grant ids with
+    // the surviving member's grant: doomed member -> surviving grant.
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(schema.scimGroupMemberTable)
+        .where(eq(schema.scimGroupMemberTable.id, doomedMember.id));
+      await tx
+        .delete(schema.scimGroupMemberTable)
+        .where(eq(schema.scimGroupMemberTable.id, survivingMember.id));
+      await tx.insert(schema.scimGroupMemberTable).values({
+        scimGroupMappingId: doomedMember.scimGroupMappingId,
+        externalIdentityId: doomedMember.externalIdentityId,
+        membershipId: null,
+        membershipGrantId: survivingMember.membershipGrantId,
+      });
+    });
+    expect(doomed.connectionId).not.toBe(survivor.connectionId);
+
+    const response = await deleteWorkspaceNative(
+      app,
+      owner.cookie,
+      workspaceId,
+    );
+    expect(response.status).toBe(200);
+    expect(await db.select().from(schema.scimGroupMemberTable)).toHaveLength(0);
+    // The surviving workspace's grant is untouched.
+    expect(
+      await db
+        .select()
+        .from(schema.membershipGrantTable)
+        .where(eq(schema.membershipGrantTable.roleId, keptRole.id)),
+    ).toHaveLength(2);
+  });
+
+  it("deletes a membership in workspace B that holds a role owned by workspace A when A is deleted (invalid by model)", async () => {
+    const { app, owner, workspaceId } = await createWorkspaceViaRoute("A");
+    const other = await createWorkspaceMember({ role: "owner" });
+    const roleA = await createRole(workspaceId, "workspace");
+    const personB = await personIdFor(other.user.id);
+    await db.insert(schema.membershipTable).values({
+      personId: personB,
+      scope: "workspace",
+      scopeId: other.workspace.id,
+      roleId: roleA.id,
+    });
+
+    const response = await deleteWorkspaceNative(
+      app,
+      owner.cookie,
+      workspaceId,
+    );
+    expect(response.status).toBe(200);
+    expect(
+      await db
+        .select()
+        .from(schema.membershipTable)
+        .where(eq(schema.membershipTable.personId, personB)),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, other.workspace.id)),
+    ).toHaveLength(1);
+  });
+});
