@@ -9,6 +9,11 @@ export type WorkItemReachMark = {
   readonly projectReach: boolean;
   readonly workspaceReachOnlyReason?: string;
   /**
+   * Set by `requireReachFilteredList`: the route lists or searches rows across projects and its
+   * handler restricts them to the caller's reachable projects (#740).
+   */
+  readonly reachFilteredList?: boolean;
+  /**
    * The persisted resource kinds a `workspaceAccess.*` lookup resolves from the request
    * (`project`, `task`, `column`, ...). Lets `project-reach-guard.test.ts` derive, from the
    * real router, which routes act on a project or a task, rather than trusting a hand-kept

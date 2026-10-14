@@ -25,6 +25,12 @@ type SearchParams = {
   workspaceId?: string;
   projectId?: string;
   limit?: number;
+  /**
+   * Resolves which of the given workspaces' live projects the caller reaches (#740). Every
+   * task, project, comment and activity hit is restricted to that set IN SQL, so the page,
+   * the ranking and `totalCount` can never be built from a hidden project's rows.
+   */
+  reachableProjectIds: (workspaceIds: string[]) => Promise<string[]>;
 };
 
 type SearchResult = {
@@ -110,6 +116,7 @@ async function globalSearch(params: SearchParams): Promise<{
     workspaceId,
     projectId,
     limit = 20,
+    reachableProjectIds,
   } = params;
 
   let resolvedUserId = userId;
@@ -149,15 +156,18 @@ async function globalSearch(params: SearchParams): Promise<{
   // search, and project search itself) joins through `projectTable` and reuses this
   // filter, so excluding a soft-deleted project's rows here closes all four at once --
   // matching `get-project.ts`'s "gone everywhere in ordinary use" convention.
-  const workspaceFilter = workspaceId
-    ? and(
-        eq(projectTable.workspaceId, workspaceId),
-        isNull(projectTable.deletedAt),
-      )
-    : and(
-        inArray(projectTable.workspaceId, accessibleWorkspaceIds),
-        isNull(projectTable.deletedAt),
-      );
+  // #740: the same filter also restricts to the projects the caller REACHES (workspace
+  // membership alone is not reach), so a hit never names a project the caller cannot see.
+  const reachable = await reachableProjectIds(
+    workspaceId ? [workspaceId] : accessibleWorkspaceIds,
+  );
+  const workspaceFilter = and(
+    workspaceId
+      ? eq(projectTable.workspaceId, workspaceId)
+      : inArray(projectTable.workspaceId, accessibleWorkspaceIds),
+    isNull(projectTable.deletedAt),
+    reachable.length > 0 ? inArray(projectTable.id, reachable) : sql`false`,
+  );
 
   // Check if query matches short-id pattern (e.g. "DEP-23"). `generateProjectSlug`
   // normalizes to NFKC before it stores a key, so the query is normalized too,

@@ -9,10 +9,8 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import {
-  createProjectFixture,
-  createWorkspaceMember,
-} from "./helpers/fixtures";
+import { createProjectFixture } from "./helpers/fixtures";
+import { createSeesAllWorkspaceMember as createWorkspaceMember } from "./helpers/project-reach-world";
 
 type SearchResult = {
   id: string;

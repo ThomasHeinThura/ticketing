@@ -660,6 +660,12 @@ GET /api/projects/{projectId}/work-items
 
 `meta.total` is an estimate for large sets and is documented as such.
 
+**Lists and search are reach-filtered.** A collection or search that returns rows from more than
+one project (the project list, workspace label list, `GET /api/search`, the saved-view list,
+duplicate suggestions) returns only rows in projects the caller reaches, in the query itself, so
+the rows, the page and every count are built from reachable rows only. An id outside reach
+behaves as a missing one. See [rbac.md](rbac.md) § Reach.
+
 ## Query grammar — filters, sort, grouping, aggregation
 
 Complex queries — saved views, queues, tier 2 and tier 3 reports — use one structured

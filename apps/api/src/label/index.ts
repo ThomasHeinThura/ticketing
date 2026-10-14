@@ -4,6 +4,10 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import {
+  listReachOf,
+  requireReachFilteredList,
+} from "../utils/reach-filtered-list";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import {
@@ -64,6 +68,7 @@ const getWorkspaceLabelsRoute = createRoute({
   middleware: [
     workspaceAccess.fromParam(),
     requireWorkspaceCapability("workspace:read"),
+    requireReachFilteredList,
   ] as const,
   request: { params: workspaceIdParam },
   responses: {
@@ -233,7 +238,13 @@ const label = apiRouter()
   })
   .openapi(getWorkspaceLabelsRoute, async (c) => {
     const { workspaceId } = c.req.valid("param");
-    return c.json(await getLabelsByWorkspaceId(workspaceId), 200);
+    return c.json(
+      await getLabelsByWorkspaceId(
+        workspaceId,
+        await listReachOf(c).reachableProjectIds([workspaceId]),
+      ),
+      200,
+    );
   })
   .openapi(createLabelRoute, async (c) => {
     const { name, color, workspaceId, taskId } = c.req.valid("json");

@@ -24,6 +24,7 @@ describe("issue #307 S6: bulkUpdateTasks fails closed when workspaceId is falsy"
         reach: {
           reaches: async () => false,
           can: async () => false,
+          reachableProjectIds: async () => [],
         },
       }),
     ).rejects.toMatchObject({ status: 500 });
