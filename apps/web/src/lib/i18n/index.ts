@@ -83,7 +83,12 @@ function loadGroup(
   return pending;
 }
 
+// Locales whose deferred group could not be fetched; they are served from the full catalog.
+const fullCatalogFallback = new Set<AppLocale>();
+
 async function loadNamespaceFromGroups(locale: AppLocale, namespace: string) {
+  if (fullCatalogFallback.has(locale))
+    return (await loadLocaleResources(locale))[namespace];
   const slim = await loadGroup("slim", locale);
   if (namespace in slim) return slim[namespace];
   return (await loadGroup("rest", locale))[namespace];
@@ -104,14 +109,55 @@ function loadLocaleResources(
     (resources) => resources as Record<string, unknown>,
   );
   localeResources.set(locale, pending);
+  // A failed fetch must not be remembered, or a later retry would never reach the network.
+  pending.catch(() => localeResources.delete(locale));
   return pending;
+}
+
+const allNamespaces = new Map<AppLocale, Promise<void>>();
+
+/**
+ * Loads every namespace of a locale in group mode: the deferred group, one retry, then the full
+ * catalog from its own chunk. Rejects only if all three fail; a screen must never render raw
+ * keys because a fetch failed.
+ */
+function ensureAllNamespaces(locale: AppLocale): Promise<void> {
+  const cached = allNamespaces.get(locale);
+  if (cached) return cached;
+  const pending = (async () => {
+    let namespaces: string[];
+    try {
+      namespaces = Object.keys(await loadGroup("rest", locale));
+    } catch {
+      try {
+        namespaces = Object.keys(await loadGroup("rest", locale));
+      } catch {
+        fullCatalogFallback.add(locale);
+        namespaces = Object.keys(await loadLocaleResources(locale));
+      }
+    }
+    await i18n.loadNamespaces(namespaces);
+  })();
+  allNamespaces.set(locale, pending);
+  pending.catch(() => allNamespaces.delete(locale));
+  return pending;
+}
+
+/**
+ * Resolves once every namespace of the active locale is loaded; immediately outside group mode.
+ * Gate any navigation off the work list on it: components reference other namespaces through
+ * `t("ns:key")` and would otherwise render raw keys until the deferred group lands.
+ */
+export function whenAllNamespacesLoaded(): Promise<void> {
+  if (!useNamespaceGroups) return Promise.resolve();
+  return ensureAllNamespaces(resolveLocale(i18n.language, getBrowserLocale()));
 }
 
 export function preloadNamespaces(locale: AppLocale): Promise<void> {
   if (useNamespaceGroups)
     return afterFirstPaint()
-      .then(() => loadGroup("rest", locale))
-      .then((resources) => i18n.loadNamespaces(Object.keys(resources)));
+      .then(() => ensureAllNamespaces(locale))
+      .catch(() => undefined);
   return loadLocaleResources(locale).then((resources) =>
     i18n.loadNamespaces(Object.keys(resources)),
   );

@@ -1,25 +1,21 @@
 import { Button } from "@taskdesk/ui";
-import { type Ref, useEffect } from "react";
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { preloadWorkItemCreateDialogShell } from "./work-item-create-dialog-shell-loader";
 
 export default function WorkItemCreateTrigger({
   onClick,
   buttonRef,
+  pending = false,
 }: {
   onClick: () => void;
+  /** The dialog code is still loading after a click. */
+  pending?: boolean;
   buttonRef?: Ref<HTMLButtonElement>;
 }) {
   const { t } = useTranslation();
   const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission();
   const canCreate = !isCheckingPermissions && canCreateTasks();
-
-  // Warm the dialog composition once create intent is possible; it is not on the route's
-  // initial graph (G11).
-  useEffect(() => {
-    if (canCreate) preloadWorkItemCreateDialogShell();
-  }, [canCreate]);
 
   if (!canCreate) return null;
 
@@ -27,6 +23,8 @@ export default function WorkItemCreateTrigger({
     <Button
       ref={buttonRef}
       size="sm"
+      loading={pending}
+      aria-busy={pending || undefined}
       onClick={onClick}
       data-testid="create-work-item-trigger"
     >

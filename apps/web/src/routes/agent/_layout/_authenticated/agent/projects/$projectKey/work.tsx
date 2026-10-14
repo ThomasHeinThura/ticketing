@@ -104,6 +104,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   // intent opens it as soon as it is clicked; its query-heavy form is a further dynamic module.
   const [CreateDialogShell, setCreateDialogShell] =
     useState<CreateDialogShellComponent>();
+  const [createDialogLoad, setCreateDialogLoad] = useState<
+    "idle" | "loading" | "failed"
+  >("idle");
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   // Per-row selection controls cost 500 Base UI checkboxes on a full list (G11), so they exist
   // only while the user is in selection mode.
@@ -210,9 +213,17 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     pendingFocusRestoreRef.current = undefined;
     setIsCreateOpen(true);
     setCreateIntentProjectContext(projectContext);
+    setCreateDialogLoad("loading");
     loadWorkItemCreateDialogShell().then(
-      (module) => setCreateDialogShell(() => module.default),
-      () => undefined,
+      (module) => {
+        setCreateDialogShell(() => module.default);
+        setCreateDialogLoad("idle");
+      },
+      () => {
+        setCreateDialogLoad("failed");
+        setIsCreateOpen(false);
+        setCreateIntentProjectContext(undefined);
+      },
     );
   }, [project?.id, projectContext]);
 
@@ -406,12 +417,30 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               <Suspense fallback={null}>
                 <WorkItemCreateTrigger
                   buttonRef={createTriggerRef}
+                  pending={createDialogLoad === "loading"}
                   onClick={openCreateDialog}
                 />
               </Suspense>
             ) : null}
           </div>
         </div>
+        {createDialogLoad === "failed" ? (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-3 text-destructive-foreground text-sm"
+          >
+            <span>{t("workItems:create.loadFailed")}</span>
+            {/* A failed dynamic import is remembered by the browser for this document, so a
+                second attempt cannot succeed; a reload is the retry that works. */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.location.reload()}
+            >
+              {t("workItems:create.reload")}
+            </Button>
+          </div>
+        ) : null}
         {project && selectedKeys.length > 0 && canBulkAssign ? (
           <Suspense fallback={null}>
             <BulkAssignToolbar

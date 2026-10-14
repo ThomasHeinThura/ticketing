@@ -2392,7 +2392,9 @@
 			"typesError": "Couldn't load work item types.",
 			"typesLoading": "Loading types…",
 			"typesRetry": "Retry",
-			"close": "Close"
+			"close": "Close",
+			"loadFailed": "The create form could not be loaded.",
+			"reload": "Reload page"
 		},
 		"journey": {
 			"editHeading": "Edit",
