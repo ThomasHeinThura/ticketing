@@ -62,6 +62,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -852,6 +853,11 @@ describe("strict policy runtime enforcement against the production API graph", (
       const { project } = await createProjectFixture({
         workspaceId: owner.workspace.id,
       });
+      // Reading an asset requires reach to the asset's project (#720).
+      await grantProjectRole(owner.user.id, project.id, [
+        "project:read",
+        "work_item:read",
+      ]);
       const asset = requireRow(
         await db
           .insert(schema.assetTable)

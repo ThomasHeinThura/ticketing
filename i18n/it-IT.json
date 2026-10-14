@@ -2356,7 +2356,10 @@
 			"unassigned": "Unassigned",
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
-			"assigneeInactive": "(inactive)"
+			"assigneeInactive": "(inactive)",
+			"boardLayout": "Board",
+			"layoutGroup": "Layout",
+			"listLayout": "List"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -2382,7 +2385,9 @@
 			"typesError": "Couldn't load work item types.",
 			"typesLoading": "Loading types…",
 			"typesRetry": "Retry",
-			"close": "Close"
+			"close": "Close",
+			"loadFailed": "The create form could not be loaded.",
+			"reload": "Reload page"
 		},
 		"journey": {
 			"editHeading": "Edit",
@@ -2439,6 +2444,76 @@
 			"reasonUnknown": "not available",
 			"reasonApprovalPending": "waiting for approval",
 			"reasonCabPending": "waiting for change advisory board approval"
+		},
+		"board": {
+			"changeState": "Change state",
+			"changeStateFor": "Change state of {{key}}",
+			"chooseState": "New state for {{key}}",
+			"chooseStatePlaceholder": "Choose a state",
+			"columnCount": "{{total}} work items in {{state}}",
+			"currentState": "Current state: {{state}}",
+			"emptyColumn": "No work items in this state.",
+			"failure": {
+				"conflict": "{{key}} changed in the meantime and can't be moved from there. The board was refreshed.",
+				"forbidden": "You don't have permission to move {{key}}.",
+				"gone": "{{key}} is no longer available to you. The board was refreshed.",
+				"invalid": "The work items around {{key}} changed, so its position wasn't saved. The board was refreshed.",
+				"rejected": "{{key}} can't be moved right now because a rule blocks it. The board was refreshed.",
+				"unknown": "Couldn't move {{key}}. The board was refreshed.",
+				"transitionInvalid": "The state change for {{key}} was not valid. The board was refreshed."
+			},
+			"loadErrorDescription": "The board's states or work items failed to load.",
+			"loadErrorTitle": "Couldn't load the board",
+			"loadingMore": "Loading…",
+			"loadingTransitions": "Loading state changes…",
+			"loadMore": "Load more",
+			"movedNotRanked": "{{key}} moved to {{state}}, but its position there was not saved. {{reason}}",
+			"moveDown": "Move down: {{key}} in {{state}}",
+			"moveDownShort": "Move down",
+			"moveState": "Move",
+			"moveStateFor": "Move {{key}} to the chosen state",
+			"moveUp": "Move up: {{key}} in {{state}}",
+			"moveUpShort": "Move up",
+			"noStatesDescription": "Add states to the project's workflow to see them as board columns.",
+			"noStatesTitle": "This project has no states yet",
+			"rankSaved": "{{key}} moved to position {{position}} of {{total}} in {{state}}.",
+			"retry": "Retry",
+			"selectColumn": "Select all work items in {{state}}",
+			"transitionBlocked": "{{key}} can't move there right now ({{reason}}). Open it to add what's missing.",
+			"transitionForbidden": "You don't have permission to change the state of work items.",
+			"transitionLoadError": "Couldn't load the available state changes.",
+			"transitionSaved": "{{key}} moved to {{state}}.",
+			"transitionUnavailable": "{{key}} can't move to that state right now."
+		},
+		"bulk": {
+			"assign": "Assign selected",
+			"assigneeLabel": "Assign selected work items to",
+			"assigneePlaceholder": "Choose a project member",
+			"clear": "Clear selection",
+			"failedItem": "{{key}}: {{reason}}",
+			"failure": {
+				"conflict": "The selected work items changed in the meantime. Nothing was assigned.",
+				"forbidden": "You don't have permission to assign work items.",
+				"gone": "The selected work items are no longer available to you.",
+				"invalid": "The request was not valid, so nothing was assigned.",
+				"rejected": "These work items can't be assigned to that person. Nothing was assigned.",
+				"unknown": "Couldn't assign the selected work items. Try again."
+			},
+			"reasonGone": "no longer available to you",
+			"result": "{{succeeded}} assigned, {{failed}} failed.",
+			"selectAll": "Select all work items",
+			"selected_many": "{{count}} work items selected",
+			"selected_one": "{{count}} work item selected",
+			"selected_other": "{{count}} work items selected",
+			"selectItem": "Select {{key}}",
+			"toolbarLabel": "Bulk actions",
+			"loadingPeople": "Loading people…",
+			"peopleError": "Couldn't load the people you can assign to.",
+			"saving": "Assigning…",
+			"unnamedPerson": "Unnamed person",
+			"selectMode": "Select items",
+			"modeOff": "Selection mode off. Selection cleared.",
+			"modeOn": "Selection mode on. Use the checkboxes to choose work items."
 		}
 	},
 	"portal": {

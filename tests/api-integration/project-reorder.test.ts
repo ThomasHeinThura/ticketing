@@ -7,6 +7,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectManageAccess,
 } from "./helpers/fixtures";
 
 type ProjectListEntry = typeof schema.projectTable.$inferSelect;
@@ -238,6 +239,8 @@ describe("API integration: project reorder", () => {
       workspaceId: member.workspace.id,
       name: "Archived",
     });
+    // Archiving is a project-scoped write: the actor must hold it on THIS project (#720).
+    await grantProjectManageAccess(member.user.id, archived.id);
     const { project: second } = await createProjectFixture({
       workspaceId: member.workspace.id,
       name: "Second",

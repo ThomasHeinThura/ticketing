@@ -242,7 +242,7 @@ reach is an authorization discrepancy to repair, not a reason to downgrade the r
 policy scope or supply the native predicate as policy reach. Native reach rejection masks the
 project with `404`; existing capability checks and resource liveness remain required.
 Observer bookkeeping stays read-only. Native guard repairs follow the protected change flow
-and do not authorize automatic project memberships, implicit `sees_all`, or new role grants. Project ancestors and owner-team relations
+and do not authorize automatic project memberships, implicit `sees_all`, or new role grants. The one recorded exception is the explicit owner/admin `sees_all` grant (Reach step 2; decision log 2026-10-14). Project ancestors and owner-team relations
 are not represented in the current project schema; they remain unavailable until their own
 schema and loader exist. A future typed loader may supply those facts, but the observer may
 not infer them from a legacy denial, route URL, or caller input.
@@ -478,6 +478,23 @@ Resolution order for "may this person see project P?":
 
 1. `instance:admin` ⇒ yes.
 2. Explicit `sees_all` grant on a workspace membership ⇒ yes within that workspace only.
+   Who holds it: a workspace **owner** or **admin** holds this grant automatically (decision log
+   2026-10-14). It is written when the workspace is created and whenever a member becomes, or
+   stops being, an owner or admin (role change, invitation accept, direct add, ownership
+   transfer, removal, leave), and a migration backfilled existing owners and admins. It is a
+   **direct** grant with `direct_origin = 'system_backfill'` (system-written, never API input),
+   projected like any other `sees_all` grant; revoking it never touches an admin-made direct
+   grant or an external (SCIM / OIDC / JIT) grant for the same person. Managers, members,
+   viewers and customers hold no implicit `sees_all` and still need steps 3 to 6.
+   **Audit:** every automatic grant and revoke is an audited reach change written in the same
+   transaction as the grant: `membership.sees_all_granted` when it is granted (or its role
+   changes) and `membership.changed` when it is revoked, both as a system action (no acting
+   person; `after` carries `source: workspace_role`, the workspace, `seesAll` and the role).
+   A re-sync that changes nothing writes nothing. The boot reconcile audits the grants it makes. The boot reconcile is fail-safe per member: a failing member is logged (workspace and person ids), counted in the boot summary line and retried on the next boot; it never aborts API boot.
+   The one-shot backfill migration `0123` writes **no** audit rows (hash-chained audit rows
+   cannot be written from SQL); it is recorded by the 2026-10-14 decision-log entry. These
+   automatic grants are the exception to "never self-grantable" only in the sense that no
+   person grants them: they follow the legacy owner/admin role and are removed with it.
 3. Project membership ⇒ yes.
 4. Membership of an **ancestor** project ⇒ yes (hierarchy inheritance, from OpenProject).
 5. Team membership where the team **owns** the project — `project.owner_team_id` — ⇒ yes.
@@ -506,6 +523,38 @@ per route remains true. `owner-team-reach.test.ts` asserts a `lead` (holding
 same `404` as a missing one; in reach without the capability answers `403`. Workspace-only
 reach is an explicit opt-out that must state its reason, and `work-item-reach-guard.test.ts`
 fails any item-scoped route that omits project reach without one.
+
+**Project reach also governs every project-scoped route** (#720). A route whose policy declares
+`scope: project` with `reach: required` acts on one project, directly or through a row inside
+it: project update, archive and unarchive, health, milestones, prerequisites, stakeholders,
+document links, columns, workflow rules and the create-into-project routes (`POST
+/api/projects/{projectId}/work-items`, the legacy `POST /api/task/{projectId}` and
+`/api/task/import/{projectId}`). It is decided before the capability and before any body
+validation or write: an out-of-reach project answers the same `404` as a missing one, in reach
+without the registered capability answers `403`, and a request that carries an API key still
+needs project reach (its capability stays with the key-aware gate). `PUT /api/project/{id}`
+keeps its handler-level `project:manage_settings` check for `defaultCommentVisibility`, which
+runs after reach, so an outsider never learns the project exists from that `403`.
+`project-reach-guard.test.ts` fails any such route that omits project reach, and the
+integration tables (`project-scoped-reach.test.ts`) drive the real middleware per route.
+
+**Acting on a specific task requires reach to that task's project** (#720, decision 720-A).
+This holds for the routes outside the work-item surface that name a task:
+
+| Route family | What carries the reach check |
+| --- | --- |
+| Time entries (`GET/POST /api/time-entry…`, `PUT /api/time-entry/{id}`) | Declared on the `work_item` scope; project reach from the task (or the entry's task). The capability stays with the route's own gate |
+| Task labels (`GET /api/label/task/{taskId}`) | Declared on the `work_item` scope, as above |
+| Label routes that name a task in the body, or address a label bound to a task (`POST /api/label`, `GET/PUT/DELETE /api/label/{id}`, `PUT/DELETE /api/label/{id}/task`) | `requireBodyTaskReach` / `requireLabelRowTaskReach`: project reach to the named task, answered with the route's own "not found" |
+| `GET /api/asset/{id}` | An asset belongs to a project (and may be bound to a task in it): the project must be in reach, one `404` for missing and out of reach |
+| `PATCH /api/task/bulk` | Per task: a task in a project outside reach is dropped before any gate runs, so it is indistinguishable from a missing id; the operation's project-level capability (`work_item:update`, `work_item:assign`, `work_item:delete`, `label:manage`) is then decided per task and refused per item |
+
+**Workspace-level label definitions stay workspace-scoped:** a label with no task (create,
+read, rename, delete) is decided by workspace membership and the label permission alone.
+Reversal path for this decision: drop the reach requirement on the routes in the table.
+
+Creating a project does not grant its creator project reach or any project role; that is a
+separate grant (membership), exactly as for the existing reads.
 
 **The 404 is constant-shape.** An out-of-reach id and a non-existent id return the same
 status and the same body, and both count against the same rate-limit bucket. The reach check

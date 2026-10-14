@@ -19,6 +19,24 @@ describe("issue #307 S6: bulkUpdateTasks fails closed when workspaceId is falsy"
         // Deliberately the falsy value a missing/broken middleware would produce --
         // cast because the real call site's type is `string`, not `string | ""`.
         workspaceId: "" as string,
+        // Deny-all stand-in for the route's reach context: the call must fail on the
+        // workspace invariant before it is ever consulted.
+        reach: {
+          reaches: async () => false,
+          can: async () => false,
+        },
+      }),
+    ).rejects.toMatchObject({ status: 500 });
+  });
+
+  it("throws 500 when the route's reach context is missing, before any database access", async () => {
+    await expect(
+      bulkUpdateTasks({
+        taskIds: ["some-task-id"],
+        operation: "delete",
+        userId: "some-user-id",
+        workspaceId: "some-workspace-id",
+        reach: undefined as never,
       }),
     ).rejects.toMatchObject({ status: 500 });
   });
