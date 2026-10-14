@@ -17,12 +17,14 @@ A Claude Sonnet 5.5 lane implemented the change. The reviewers below are fresh, 
 - Mechanical security rebind at `410e20e2`: CLEAR. This is a pure merge of `main` `1f1abe7c` (#733) and does not interact with this PR's surface.
 - Mechanical security rebind at `882eb1d8`: CLEAR. This is a pure merge of `main` `6015f016` (#738), with no interaction.
 - Mechanical security rebind at `64ee15b1`: CLEAR. A pure merge of `main` `a31bdde3` (#730, #739). Assign and unassign, item reach and the 409 precondition are unchanged.
+- Mechanical security rebind at `903ce3bb`: CLEAR. A pure merge of `main` `2e03855e` (#736), with no interaction.
 
 **Reviewed head:** `f59b68ca1e02c69a1c87276965e53a7c84fded64`
 **Reviewed head:** `722ee8b59e6a240244a2959612b9323cf932706e`
 **Reviewed head:** `410e20e220a9e69412d4c6f77625b461a98cc16d`
 **Reviewed head:** `882eb1d8530ab3511d17333ac0a3e8024e5bf6fe`
 **Reviewed head:** `64ee15b10e0f892602d9417f5936e8808eb6c634`
+**Reviewed head:** `903ce3bb79152538d09e1e8fb81c80949f453e5c`
 
 ## Context index
 
@@ -37,6 +39,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 5 | `735-410e-security-rebind-opus.md` | Mechanical security rebind (8b5f1406..410e20e2) | Claude Opus 5.5 | `410e20e2` | CLEAR | `4ba751db0b9f8707e6cc561a871e86f5d646b9029676d0f746c65e7d2957446b` |
 | 6 | `735-882e-security-rebind-opus.md` | Mechanical security rebind (3a37b329..882eb1d8) | Claude Opus 5.5 | `882eb1d8` | CLEAR | `e168df093dc5625ecd34cfe9c69f56f503052d302ecb14f6fc39f809398e6291` |
 | 7 | `735-64ee-security-rebind-opus.md` | Mechanical security rebind (6d30d432..64ee15b1) | Claude Opus 5.5 | `64ee15b1` | CLEAR | `a9b07c53ec8c7e12740970766ebf5cd1b2a7e25e5fc9e6e627010799523a5687` |
+| 8 | `735-903c-security-rebind-opus.md` | Mechanical security rebind (60de5049..903ce3bb) | Claude Opus 5.5 | `903ce3bb` | CLEAR | `711c44e7e8db1c871e327e2baf09d72edd8244f2bfe61272f8bece31c0ce4c75` |
 
 ## Embedded reports
 
@@ -565,3 +568,48 @@ Prior findings carry over unchanged:
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 a9b07c53ec8c7e12740970766ebf5cd1b2a7e25e5fc9e6e627010799523a5687) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-14/735-903c-security-rebind-opus.md; Claude Opus 5.5; sha256 711c44e7e8db1c871e327e2baf09d72edd8244f2bfe61272f8bece31c0ce4c75) -->
+# PR #735 security review: exact-head rebind after merging main (#736)
+
+**Reviewed head:** 903ce3bb79152538d09e1e8fb81c80949f453e5c
+**Prior CLEAR head:** 64ee15b10e0f892602d9417f5936e8808eb6c634 (`735-64ee-security-rebind-opus.md`; the substantive review is `735-security-opus.md` at f59b68ca)
+**Pre-merge head:** 60de50491b3beaf457265fe0c4cf52504c0c3034
+**Merged main:** 2e03855edbee5dcab9045e93fd2e06177bd66ea9 (#736, Select popup a11y)
+**Previous main:** a31bdde3fde0d31b77bf7452f97abab7b8ce63fc
+**Reviewer model:** Claude Opus 5.5 (claude-opus-5-5). This is the same independent context as the prior #735 security reviews. It did not author, direct or remediate the change.
+**Scope:** a mechanical rebind. No tests were run, as the coordinator instructed.
+
+## Checks
+
+All checks ran against live git and GitHub.
+
+| Check | Result |
+| --- | --- |
+| `gh pr view 735` head | `903ce3bb…`: matches |
+| main, confirmed through the GitHub API `commits/main` | `2e03855e…`: main is unchanged |
+| Parents of 903ce3bb | `60de5049…` and `2e03855e…`: matches |
+| Tree compared with `git merge-tree --write-tree 60de5049 2e03855e` | both `88d430eb648000eba67b30757d9557f5b07d7051`. The merge is clean and adds no hand edits. |
+| `diff --name-only 60de5049..903ce3bb` compared with `diff --name-only a31bdde3..2e03855e`, where a31bdde3 is the merge base | identical, 8 files (below) |
+| Commits after the prior CLEAR (`64ee15b1..60de5049`) | exactly one, `60de5049 docs(security-reviews): bind the main-merge rebind`. Its parent is 64ee15b1 and it changes only `docs/07-planning/security-reviews/735-unassign-expected-holder.md`. It is a note only. |
+
+The eight files that came in from main:
+
+- `packages/ui/src/components/select.tsx`, `select.test.tsx` and `select.stories.tsx`;
+- `primitives-select--open--linux.png`;
+- e2e specs `mfa-csrf-journey`, `performance.bench` and `work-item-comments-journey`;
+- `docs/07-planning/security-reviews/736-select-listbox-name.md`.
+
+## Interaction
+
+#736 is UI, e2e and Storybook only. It has no API file, and no file in common with #735.
+
+#735's surface is unaffected: the unassign handler, the query schema, the controller, reach, the capability gate, the OpenAPI contract, and the `unassign-work-item.ts` / `work-item-journey.tsx` web files.
+
+Prior findings carry over unchanged:
+
+- no blocking findings;
+- N1–N4 remain non-blocking or informational.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 711c44e7e8db1c871e327e2baf09d72edd8244f2bfe61272f8bece31c0ce4c75) -->
