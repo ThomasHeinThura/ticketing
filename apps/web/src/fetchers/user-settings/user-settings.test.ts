@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getUserSettings } from "./user-settings";
+import { isUnauthorizedError } from "@/lib/http-error";
+import {
+  getUserSettings,
+  SettingsSyncUnauthorizedError,
+} from "./user-settings";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
@@ -34,5 +38,12 @@ describe("getUserSettings", () => {
   it("rejects a non-2xx response with its status", async () => {
     mocks.get.mockResolvedValue({ ok: false, status: 404 });
     await expect(getUserSettings()).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("does not surface a 401 as the global unauthorized error", async () => {
+    mocks.get.mockResolvedValue({ ok: false, status: 401 });
+    const error = await getUserSettings().catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(SettingsSyncUnauthorizedError);
+    expect(isUnauthorizedError(error)).toBe(false);
   });
 });

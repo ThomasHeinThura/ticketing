@@ -10,8 +10,27 @@ export type UserSettings = InferResponseType<typeof settings.$get, 200>;
 /** A partial object of whitelisted keys; `null` clears a key. */
 export type UserSettingsPatch = Record<string, unknown>;
 
+/**
+ * The settings read is a best-effort background sync, so a 401 must never reach the query
+ * cache as an `HttpError(401)`: that triggers the global hard redirect to sign-in. A 401 here
+ * can be transient. Verifying the first authenticator factor deletes the old session and sets a
+ * new cookie, so a read already in flight with the old cookie is rejected while the user is
+ * still signed in; the redirect then tears down the enrolment page before its one-time backup
+ * codes are shown. A genuinely expired session is still redirected by the auth session query
+ * and by every foreground read.
+ */
+export class SettingsSyncUnauthorizedError extends Error {
+  constructor() {
+    super("Settings sync skipped: session not valid");
+    this.name = "SettingsSyncUnauthorizedError";
+  }
+}
+
 export async function getUserSettings(): Promise<UserSettings> {
   const response = await settings.$get();
+  // The typed client narrows `status` to the documented 200; widen it to see a 401.
+  const status: number = response.status;
+  if (status === 401) throw new SettingsSyncUnauthorizedError();
   if (!response.ok) {
     throw new HttpError(response.status, "Unable to load settings");
   }
