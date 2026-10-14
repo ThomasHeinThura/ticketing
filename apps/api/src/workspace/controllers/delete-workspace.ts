@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
+import { deleteWorkspaceRoleDependents } from "./delete-workspace-role-dependents";
 import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 /**
@@ -47,6 +48,11 @@ async function deleteWorkspace(workspaceId: string, sessionId: string) {
     await tx
       .delete(schema.workflowTable)
       .where(eq(schema.workflowTable.workspaceId, workspaceId));
+
+    // `membership`/`membership_grant`/group-mapping role FKs are `ON DELETE RESTRICT`
+    // and would 500 the cascade below once any of them references a workspace-owned
+    // role (issue #180). Remove them explicitly, in dependency order, first.
+    await deleteWorkspaceRoleDependents(tx, [workspaceId]);
 
     const [deleted] = await tx
       .delete(schema.workspaceTable)
