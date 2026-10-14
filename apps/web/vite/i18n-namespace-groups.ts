@@ -8,6 +8,7 @@ import {
 
 const PREFIX = "virtual:taskdesk-i18n/";
 const RESOLVED_PREFIX = `\0${PREFIX}`;
+const LOADER_TABLE_FILE = /\/src\/lib\/i18n\/group-loaders-(slim|rest)\.ts$/u;
 const LOCALE_FILE = /^([A-Za-z]{2,3}-[A-Za-z]{2,4})\.json$/u;
 
 export type I18nNamespaceGroup = "slim" | "rest";
@@ -110,6 +111,19 @@ export function i18nNamespaceGroups({
       return source.startsWith(PREFIX) ? `\0${source}` : undefined;
     },
     load(id) {
+      // The loader tables replace the placeholder modules under src/lib/i18n.
+      const tableFile = LOADER_TABLE_FILE.exec(
+        id.split("?")[0].replaceAll("\\", "/"),
+      );
+      if (tableFile) {
+        if (!groupedEntry) return "export default {};\n";
+        const group = tableFile[1];
+        const entries = listLocales(i18nDir).map(
+          (locale) =>
+            `  ${JSON.stringify(locale)}: () => import(${JSON.stringify(`${PREFIX}${group}-${locale}`)}),`,
+        );
+        return `export default {\n${entries.join("\n")}\n};\n`;
+      }
       if (!isGroupModule(id)) return undefined;
       const name = id.slice(RESOLVED_PREFIX.length);
       const loaders = /^loaders-(slim|rest)$/u.exec(name);

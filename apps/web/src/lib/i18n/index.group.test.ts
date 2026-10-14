@@ -13,10 +13,10 @@ vi.mock("./after-first-paint", () => ({
 
 const rest = vi.hoisted(() => ({ fail: 0, requests: 0 }));
 
-vi.mock("virtual:taskdesk-i18n/loaders-rest", async () => {
+vi.mock("./group-loaders-rest", async () => {
   const actual = await vi.importActual<{
     default: Record<string, () => Promise<unknown>>;
-  }>("virtual:taskdesk-i18n/loaders-rest");
+  }>("./group-loaders-rest");
   return {
     default: new Proxy(actual.default, {
       get(target, locale: string) {

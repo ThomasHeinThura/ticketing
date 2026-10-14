@@ -61,8 +61,8 @@ const groupResources = new Map<string, Promise<Record<string, unknown>>>();
 // Two separate call sites: the bundler preloads a dynamic import's dependencies per call, and a
 // conditional expression would make the first-paint group also fetch the deferred one's loader.
 function importGroupLoaders(group: NamespaceGroup) {
-  if (group === "slim") return import("virtual:taskdesk-i18n/loaders-slim");
-  return import("virtual:taskdesk-i18n/loaders-rest");
+  if (group === "slim") return import("./group-loaders-slim");
+  return import("./group-loaders-rest");
 }
 
 function loadGroup(

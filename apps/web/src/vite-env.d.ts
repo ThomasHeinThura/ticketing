@@ -81,21 +81,3 @@ interface CookieStore {
     options?: { path?: string; domain?: string },
   ): Promise<void>;
 }
-
-// Served by `vite/i18n-namespace-groups.ts`: a locale catalog split into the namespaces the
-// work-list route paints with (`slim`) and everything else (`rest`).
-declare module "virtual:taskdesk-i18n/loaders-slim" {
-  const loaders: Record<
-    string,
-    () => Promise<{ default: Record<string, unknown> }>
-  >;
-  export default loaders;
-}
-
-declare module "virtual:taskdesk-i18n/loaders-rest" {
-  const loaders: Record<
-    string,
-    () => Promise<{ default: Record<string, unknown> }>
-  >;
-  export default loaders;
-}

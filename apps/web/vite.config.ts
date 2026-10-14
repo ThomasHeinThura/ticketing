@@ -168,7 +168,7 @@ function preloadWorkRouteForDirectVisits(): Plugin {
           (item) =>
             item.type === "chunk" &&
             Object.keys(item.modules).some((moduleId) =>
-              moduleId.endsWith("virtual:taskdesk-i18n/loaders-slim"),
+              moduleId.endsWith("/src/lib/i18n/group-loaders-slim.ts"),
             ),
         );
         if (slimLoaderChunk?.type !== "chunk")
