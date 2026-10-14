@@ -424,6 +424,18 @@ export const assignWorkItemBody = z.object({
     .optional(),
 });
 
+// `DELETE /api/work-items/{key}/assign` (#723): the optional expected-holder precondition.
+// A query parameter because DELETE carries no body. Present: the clear only proceeds while
+// that person still holds the item (anything else, including "now unassigned", is a 409
+// and writes nothing). Absent: the legacy authority-pinned behaviour.
+export const unassignWorkItemQuery = z.object({
+  expectedAssigneeId: z
+    .string()
+    .min(1)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+    .optional(),
+});
+
 // `POST /api/work-items/{key}/rank` (`WI-11`) -- see `controllers/rank-work-item.ts`'s
 // own doc comment for the full "why this shape" reasoning (a judgment call, since
 // nothing in this file declared a contract for it before this slice). At least one of

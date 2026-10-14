@@ -21135,7 +21135,7 @@
           "Work items"
         ],
         "summary": "Unassign work item",
-        "description": "Clear a work item's assignee (`assignment.md`, `AS-2`). Requires `work_item:assign`; a caller holding only `work_item:update` may clear their OWN assignment (the branch reads the row's current holder, not the request body). Clearing an already-unassigned item is an idempotent 200 no-op with no activity entry and no event (`AS-9`: work is never silently unassigned, so there is nothing to unwrite). A lost race returns 409 with the current assignee. Bulk unassign and the `work_item.unassigned` notification fan-out are later slices.",
+        "description": "Clear a work item's assignee (`assignment.md`, `AS-2`). Requires `work_item:assign`; a caller holding only `work_item:update` may clear their OWN assignment (the branch reads the row's current holder, not the request body). Clearing an already-unassigned item is an idempotent 200 no-op with no activity entry and no event (`AS-9`: work is never silently unassigned, so there is nothing to unwrite). Pass `expectedAssigneeId` (the holder the caller saw) to make the clear conditional: any other current holder, or none, returns 409 with the current assignee and writes nothing (#723). A lost race returns 409 with the current assignee. Bulk unassign and the `work_item.unassigned` notification fan-out are later slices.",
         "parameters": [
           {
             "schema": {
@@ -21144,6 +21144,15 @@
             "required": true,
             "name": "key",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "expectedAssigneeId",
+            "in": "query"
           }
         ],
         "responses": {

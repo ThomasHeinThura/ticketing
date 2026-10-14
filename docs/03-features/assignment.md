@@ -88,6 +88,16 @@ Collaboration is expressed by watchers, sub-tasks and comments.
   The actor is never notified of their own action, and this covers unassigning yourself
   as well as assigning yourself.
 
+- `AS-19` Assignment and unassignment are conditional on the holder the caller saw
+  (optimistic concurrency, #723). Assign already requires it: an unconditional `POST`
+  succeeds only while the item is unassigned, and replacing a holder names that holder in
+  `expectedCurrentAssigneeId`. Unassign accepts `expectedAssigneeId`; a mismatch is 409 and
+  writes nothing. The precondition is optional on unassign so existing API-key and MCP
+  callers keep working, but the web detail page always sends it, and on a 409 shows "the
+  assignee changed", refreshes, and never retries silently. **Bulk assign needs no
+  separate precondition:** it sends no expected holder, so it only ever assigns items that
+  are unassigned and reports the rest as per-item failures; it cannot overwrite a holder.
+
 ## Permissions
 
 | Action | Capability | Extra |
@@ -125,7 +135,7 @@ from someone is the same act for a lead as for a member, and the cost is one cli
 
 ```
 POST   /api/work-items/{key}/assign     work_item:assign · orSelfTarget(body.assigneeId, work_item:update)   — kind 1; the body predicate is in the registry ([rbac.md](../01-architecture/rbac.md)), not the handler. An action route, not a `PATCH` — exempt from `If-Match` the same way `POST /work-items/{key}/rank` is (`WI-7`). Conflicts are caught by a conditional write instead: `UPDATE ... WHERE assignee_id IS NULL` (or, for a targeted reassign, `WHERE assignee_id = :expectedCurrentAssigneeId`); zero rows updated means someone else won, and the response is 409 with the row's current `assigneeId`
-DELETE /api/work-items/{key}/assign     work_item:assign · orOwner(row.assignee_id === identity.personId, work_item:update)
+DELETE /api/work-items/{key}/assign     work_item:assign · orOwner(row.assignee_id === identity.personId, work_item:update)   — optional query `expectedAssigneeId` (the holder the caller saw): if the current holder is anything else, **including nobody**, the response is 409 with the row's current `assigneeId` and nothing is written (`AS-19`). Omitted, the legacy behaviour holds (clears whoever holds it; already-unassigned is a 200 no-op)
 GET    /api/projects/{id}/assignable    work_item:read
 POST   /api/work-items/bulk/assign      work_item:assign — evaluated per item; partial results reported; above 50 items from an MCP key → 202 (`MC-7`)
 ```
