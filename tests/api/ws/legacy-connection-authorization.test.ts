@@ -131,4 +131,117 @@ describe("legacy socket live authority", () => {
     await Promise.all(checks);
     expect(ws.send).not.toHaveBeenCalled();
   });
+
+  describe("reusing a passing lookup for event deliveries (#748)", () => {
+    it("never reuses by default", async () => {
+      const ws = socket();
+      const authorize = vi.fn(async () => true);
+      const connection = createLegacyConnectionAuthorization(
+        ws as unknown as SocketContext,
+        authorize,
+        vi.fn(),
+      );
+      await Promise.all([connection.check("a"), connection.check("b")]);
+      expect(authorize).toHaveBeenCalledTimes(2);
+      connection.dispose();
+    });
+
+    it("answers a burst from one lookup, then looks again once the window has passed", async () => {
+      vi.useFakeTimers();
+      const ws = socket();
+      const authorize = vi.fn(async () => true);
+      const connection = createLegacyConnectionAuthorization(
+        ws as unknown as SocketContext,
+        authorize,
+        vi.fn(),
+        1_500,
+      );
+      await Promise.all(
+        Array.from({ length: 20 }, (_, i) => connection.check(`e${i}`)),
+      );
+      expect(authorize).toHaveBeenCalledTimes(1);
+      expect(ws.send).toHaveBeenCalledTimes(20);
+      await vi.advanceTimersByTimeAsync(1_499);
+      await connection.check("still-reused");
+      expect(authorize).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(2);
+      await connection.check("after-window");
+      expect(authorize).toHaveBeenCalledTimes(2);
+      connection.dispose();
+    });
+
+    it("closes on the first delivery after the window when access was lost", async () => {
+      vi.useFakeTimers();
+      const ws = socket();
+      const remove = vi.fn();
+      let allowed = true;
+      const connection = createLegacyConnectionAuthorization(
+        ws as unknown as SocketContext,
+        async () => allowed,
+        remove,
+        1_500,
+      );
+      await connection.check("before");
+      allowed = false;
+      await connection.check("inside-window");
+      expect(ws.send.mock.calls).toEqual([["before"], ["inside-window"]]);
+      await vi.advanceTimersByTimeAsync(1_501);
+      await connection.check("after-window");
+      expect(ws.send).toHaveBeenCalledTimes(2);
+      expect(remove).toHaveBeenCalledTimes(1);
+      expect(ws.close).toHaveBeenCalledWith(1008, "authorization unavailable");
+    });
+
+    it("a fresh check always looks again, even inside the window", async () => {
+      const ws = socket();
+      let allowed = true;
+      const authorize = vi.fn(async () => allowed);
+      const remove = vi.fn();
+      const connection = createLegacyConnectionAuthorization(
+        ws as unknown as SocketContext,
+        authorize,
+        remove,
+        60_000,
+      );
+      await connection.check("prime");
+      allowed = false;
+      await connection.check(undefined, { fresh: true });
+      expect(authorize).toHaveBeenCalledTimes(2);
+      expect(remove).toHaveBeenCalledTimes(1);
+    });
+
+    it("the 60-second floor looks again even while deliveries keep the window warm", async () => {
+      vi.useFakeTimers();
+      const ws = socket();
+      let allowed = true;
+      const authorize = vi.fn(async () => allowed);
+      const remove = vi.fn();
+      const connection = createLegacyConnectionAuthorization(
+        ws as unknown as SocketContext,
+        authorize,
+        remove,
+        120_000,
+      );
+      await connection.check("prime");
+      allowed = false;
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(authorize).toHaveBeenCalledTimes(2);
+      expect(remove).toHaveBeenCalledTimes(1);
+      connection.dispose();
+    });
+
+    it("a refused lookup is never reused", async () => {
+      const ws = socket();
+      const authorize = vi.fn(async () => false);
+      const connection = createLegacyConnectionAuthorization(
+        ws as unknown as SocketContext,
+        authorize,
+        vi.fn(),
+        60_000,
+      );
+      await connection.check("denied");
+      await connection.check("after-denial");
+      expect(ws.send).not.toHaveBeenCalled();
+    });
+  });
 });

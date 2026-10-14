@@ -24,6 +24,7 @@ import {
   invalidateNativeAuthorization,
   shutdownWebSocketAdapter,
 } from "../../apps/api/src/ws";
+import { LEGACY_AUTHORIZATION_REUSE_MS } from "../../apps/api/src/ws/legacy-connection-authorization";
 import { authorizeNativeTopic } from "../../apps/api/src/ws/native-work-item-realtime";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
@@ -116,6 +117,16 @@ async function grantNativeProjectRead(
     roleId: role.id,
   });
 }
+
+/**
+ * A legacy project socket reuses one passing authority lookup for a short window (#748). A
+ * revocation that is written straight to the database, with no control-channel invalidation,
+ * is therefore noticed by event delivery once that window has elapsed.
+ */
+const afterLegacyReuseWindow = () =>
+  new Promise<void>((resolve) =>
+    setTimeout(resolve, LEGACY_AUTHORIZATION_REUSE_MS + 200),
+  );
 
 function listening(server: ReturnType<typeof createNodeServer>["server"]) {
   return new Promise<void>((resolve, reject) => {
@@ -1679,6 +1690,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       const permitted = nextMessage(socket);
       publish();
       await expect(permitted).resolves.toHaveProperty("type");
+      if (kind === "project") await afterLegacyReuseWindow();
       const received: unknown[] = [];
       socket.on("message", (data) => received.push(data.toString()));
       const closed = new Promise<number>((resolve) =>
@@ -1727,6 +1739,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
           name: "legacy authority",
           start: rawKey.slice(0, 12),
           prefix: "taskdesk",
+          // #748: the project socket needs the key itself to be scoped to read.
+          permissions: JSON.stringify({
+            project: ["read"],
+            work_item: ["read"],
+          }),
           createdAt: now,
           updatedAt: now,
         })
@@ -1756,6 +1773,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       const permitted = nextMessage(socket);
       publish();
       await expect(permitted).resolves.toHaveProperty("type");
+      if (kind === "project") await afterLegacyReuseWindow();
       const received: unknown[] = [];
       socket.on("message", (data) => received.push(data.toString()));
       const closed = new Promise<number>((resolve) =>

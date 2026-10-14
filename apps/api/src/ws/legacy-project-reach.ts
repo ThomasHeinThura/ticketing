@@ -1,59 +1,60 @@
-import { reaches } from "@taskdesk/permissions";
-import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
-import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { markReach } from "../utils/reach-mark";
 import { rejectNulByte } from "../utils/reject-nul-byte";
-import { reachableWorkspacePredicate } from "../utils/workspace-access-middleware";
 import { checkWebSocketOrigin } from "./origin-policy";
+import {
+  authorizeProjectSocketRead,
+  type ProjectSocketCredential,
+} from "./project-read-authorization";
+
+/** The socket credential the legacy route holds for this request (session or API key). */
+export function legacySocketCredential(
+  c: Context,
+  userId: string,
+): ProjectSocketCredential {
+  const apiKey = c.get("apiKey") as
+    | {
+        id?: string;
+        userId?: string;
+        enabled?: boolean;
+        permissions?: Record<string, string[]> | null;
+      }
+    | undefined;
+  const session = c.get("session") as
+    | { impersonatedBy?: string | null }
+    | null
+    | undefined;
+  return {
+    userId,
+    apiKeyId: apiKey?.id,
+    apiKeyEnabled: apiKey?.enabled,
+    apiKeyOwnerUserId: apiKey?.userId,
+    apiKeyPermissions: apiKey?.permissions,
+    impersonated: Boolean(session?.impersonatedBy),
+  };
+}
 
 /**
  * Whether the caller may hold a legacy project subscription (`/api/ws/{projectId}`) for this
- * project: the project exists (not soft-deleted), the caller reaches its workspace, and the
- * caller's resolved identity reaches the project itself (#745, same decision source as
- * #712/#730/#742: `reaches()` over the persisted project facts).
+ * project. The decision is `authorizeProjectSocketRead`, the same function the native socket's
+ * `project:{id}` topic uses (#748): project reach, the `project:read` capability, API-key
+ * scope, the project's own customer organisation and the archived/deleted exclusions.
  *
- * An out-of-reach project, a project in another workspace and an unknown project all return
- * `false`; callers must answer all three identically. Used at upgrade time and again on every
- * re-authorisation, so a socket cannot outlive the reach it was opened with.
- *
- * The customer organisation is read from the PROJECT row (`rbac.md` step 6), not the workspace.
+ * Every refusal returns `false`; callers must answer all of them identically. Used at upgrade
+ * time and again on every re-authorisation, so a socket cannot outlive what it was opened with.
  */
 export async function callerReachesLegacySocketProject(
   c: Context,
   userId: string,
   projectId: string,
 ): Promise<boolean> {
-  // Resolved before the lookup, so a missing project costs the same work as a hidden one.
-  const identity = await resolveCallerIdentity(c, userId);
-  const [project] = await db
-    .select({
-      workspaceId: schema.projectTable.workspaceId,
-      organisationId: schema.projectTable.organisationId,
-    })
-    .from(schema.projectTable)
-    .where(
-      and(
-        eq(schema.projectTable.id, projectId),
-        isNull(schema.projectTable.deletedAt),
-        reachableWorkspacePredicate(
-          schema.projectTable.workspaceId,
-          userId,
-          c.get("apiKey")?.id,
-        ),
-      ),
-    )
-    .limit(1);
-  if (!project || !identity) return false;
-  return reaches(identity, {
-    projectId,
-    workspaceId: project.workspaceId,
-    organisationId: project.organisationId,
-    ancestorProjectIds: [],
-    ownerTeamId: null,
-  });
+  return (
+    (await authorizeProjectSocketRead(
+      legacySocketCredential(c, userId),
+      projectId,
+    )) !== null
+  );
 }
 
 /**

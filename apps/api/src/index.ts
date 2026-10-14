@@ -168,7 +168,8 @@ import workflowRule from "./workflow-rule";
 import workspace from "./workspace";
 import { reconcileWorkspaceAdminReach } from "./workspace/workspace-admin-reach";
 import {
-  addConnection,
+  type addConnection,
+  addConnectionWithinLimit,
   addNativeConnection,
   addUserConnection,
   forceShutdownWebSocketAdapter,
@@ -1600,6 +1601,10 @@ export function createApp(
           apiKeyEnabled: apiKey?.enabled,
           apiKeyOwnerUserId: apiKey?.userId,
           apiKeyPermissions: apiKey?.permissions,
+          impersonated: Boolean(
+            (session as { impersonatedBy?: string | null } | null)
+              ?.impersonatedBy,
+          ),
           portal: session?.portal ?? null,
         };
       };
@@ -1761,7 +1766,7 @@ export function createApp(
       return {
         onOpen(_evt, ws) {
           if (projectId) {
-            conn = addConnection(
+            const opened = addConnectionWithinLimit(
               projectId,
               ws,
               userId,
@@ -1793,6 +1798,12 @@ export function createApp(
                 }
               },
             );
+            // #748: the same per-person cap the native socket enforces.
+            if (!opened) {
+              ws.close(1008, "connection limit");
+              return;
+            }
+            conn = opened;
           }
         },
         onMessage(evt) {
