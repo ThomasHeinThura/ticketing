@@ -221,5 +221,15 @@ describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as th
     // own coverage of what it does) is what proves it actually ran as part of THIS
     // boot sequence, under the app role, not merely that it exists somewhere.
     expect(logged.some((line) => /backfill/i.test(line))).toBe(true);
+
+    // The owner/admin reach reconcile (decision log 2026-10-14) is wired into the boot
+    // sequence: it always logs one summary line, so removing the call fails here.
+    expect(
+      logged.some((line) =>
+        /Owner\/admin reach reconcile: \d+ member\(s\) visited, 0 failed/.test(
+          line,
+        ),
+      ),
+    ).toBe(true);
   });
 });

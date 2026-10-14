@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { roleGrantsOwner } from "../../utils/workspace-member-roles";
+import { syncWorkspaceAdminReach } from "../workspace-admin-reach";
 import {
   OwnerRoleNotAssignableHereError,
   TargetUserNotFoundError,
@@ -106,6 +107,7 @@ async function addWorkspaceMember(
       role: input.role,
       joinedAt: new Date(),
     });
+    await syncWorkspaceAdminReach(tx, input.workspaceId, input.userId);
 
     return { ...user, role: input.role };
   });

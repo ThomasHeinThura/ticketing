@@ -164,6 +164,7 @@ import workItemCommentVersions from "./work-item/comment-versions";
 import workflow from "./workflow";
 import workflowRule from "./workflow-rule";
 import workspace from "./workspace";
+import { reconcileWorkspaceAdminReach } from "./workspace/workspace-admin-reach";
 import {
   addConnection,
   addNativeConnection,
@@ -2035,6 +2036,9 @@ export async function runApiBootTasks(): Promise<void> {
   await startAuthConfigRuntime();
   await seedDefaultWorkspaceRoles();
   await seedInternalOrganisationAndStaffPersons();
+  // Owner/admin explicit sees_all (decision log 2026-10-14): re-sync members whose person
+  // or genuine-admin role row was created/healed by the two seeds above.
+  await reconcileWorkspaceAdminReach();
 
   // #316: backfill the default work-item types, state templates and project states
   // that #309/#313 only seed on NEW workspace/project creation -- see that file's own

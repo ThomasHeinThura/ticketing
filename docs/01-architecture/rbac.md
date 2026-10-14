@@ -242,7 +242,7 @@ reach is an authorization discrepancy to repair, not a reason to downgrade the r
 policy scope or supply the native predicate as policy reach. Native reach rejection masks the
 project with `404`; existing capability checks and resource liveness remain required.
 Observer bookkeeping stays read-only. Native guard repairs follow the protected change flow
-and do not authorize automatic project memberships, implicit `sees_all`, or new role grants. Project ancestors and owner-team relations
+and do not authorize automatic project memberships, implicit `sees_all`, or new role grants. The one recorded exception is the explicit owner/admin `sees_all` grant (Reach step 2; decision log 2026-10-14). Project ancestors and owner-team relations
 are not represented in the current project schema; they remain unavailable until their own
 schema and loader exist. A future typed loader may supply those facts, but the observer may
 not infer them from a legacy denial, route URL, or caller input.
@@ -478,6 +478,23 @@ Resolution order for "may this person see project P?":
 
 1. `instance:admin` ⇒ yes.
 2. Explicit `sees_all` grant on a workspace membership ⇒ yes within that workspace only.
+   Who holds it: a workspace **owner** or **admin** holds this grant automatically (decision log
+   2026-10-14). It is written when the workspace is created and whenever a member becomes, or
+   stops being, an owner or admin (role change, invitation accept, direct add, ownership
+   transfer, removal, leave), and a migration backfilled existing owners and admins. It is a
+   **direct** grant with `direct_origin = 'system_backfill'` (system-written, never API input),
+   projected like any other `sees_all` grant; revoking it never touches an admin-made direct
+   grant or an external (SCIM / OIDC / JIT) grant for the same person. Managers, members,
+   viewers and customers hold no implicit `sees_all` and still need steps 3 to 6.
+   **Audit:** every automatic grant and revoke is an audited reach change written in the same
+   transaction as the grant: `membership.sees_all_granted` when it is granted (or its role
+   changes) and `membership.changed` when it is revoked, both as a system action (no acting
+   person; `after` carries `source: workspace_role`, the workspace, `seesAll` and the role).
+   A re-sync that changes nothing writes nothing. The boot reconcile audits the grants it makes. The boot reconcile is fail-safe per member: a failing member is logged (workspace and person ids), counted in the boot summary line and retried on the next boot; it never aborts API boot.
+   The one-shot backfill migration `0123` writes **no** audit rows (hash-chained audit rows
+   cannot be written from SQL); it is recorded by the 2026-10-14 decision-log entry. These
+   automatic grants are the exception to "never self-grantable" only in the sense that no
+   person grants them: they follow the legacy owner/admin role and are removed with it.
 3. Project membership ⇒ yes.
 4. Membership of an **ancestor** project ⇒ yes (hierarchy inheritance, from OpenProject).
 5. Team membership where the team **owns** the project — `project.owner_team_id` — ⇒ yes.

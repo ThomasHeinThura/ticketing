@@ -6,6 +6,7 @@ import {
   distinctOwnerUserCount,
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
+import { syncWorkspaceAdminReach } from "../workspace-admin-reach";
 import {
   LastOwnerCannotLeaveError,
   MemberNotFoundError,
@@ -80,6 +81,8 @@ async function removeWorkspaceMember(
           eq(schema.workspaceUserTable.userId, userId),
         ),
       );
+
+    await syncWorkspaceAdminReach(tx, workspaceId, userId);
 
     await tx
       .update(schema.sessionTable)
