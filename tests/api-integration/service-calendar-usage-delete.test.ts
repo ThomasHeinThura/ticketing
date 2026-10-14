@@ -605,4 +605,94 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
         .where(eq(schema.serviceCalendarTable.id, calendar.id)),
     ).toHaveLength(1);
   });
+
+  it("CAL-9: a project bound to a different calendar does not block deleting an unreferenced one", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const unused = await makeCalendar(owner.workspace.id, owner.user.id);
+    const used = await makeCalendar(owner.workspace.id, owner.user.id);
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({
+        kind: "managed_service",
+        supportLevel: "L1",
+        serviceCalendarId: used.id,
+      })
+      .where(eq(schema.projectTable.id, project.id));
+    mockAuthenticatedSession(owner.user);
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: `session-${owner.user.id}`,
+      token: `token-${owner.user.id}`,
+      userId: owner.user.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const { app } = createApp();
+
+    const response = await app.request(`/api/service-calendars/${unused.id}`, {
+      method: "DELETE",
+    });
+    expect(response.status).toBe(202);
+    const [pending] = await db.select().from(schema.pendingActionTable);
+    expect(pending?.targetIds).toEqual([unused.id]);
+
+    const blocked = await app.request(`/api/service-calendars/${used.id}`, {
+      method: "DELETE",
+    });
+    expect(blocked.status).toBe(409);
+  });
+
+  it("CAL-9: an outsider gets 404, never 409, for an in-use calendar in another workspace", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const calendar = await makeCalendar(owner.workspace.id, owner.user.id);
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({
+        kind: "managed_service",
+        supportLevel: "L1",
+        serviceCalendarId: calendar.id,
+      })
+      .where(eq(schema.projectTable.id, project.id));
+    const outsider = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(outsider.user);
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: `session-${outsider.user.id}`,
+      token: `token-${outsider.user.id}`,
+      userId: outsider.user.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/service-calendars/${calendar.id}`,
+      { method: "DELETE" },
+    );
+    expect(response.status).toBe(404);
+    expect(await response.text()).not.toContain("service_calendar_in_use");
+    expect(await db.select().from(schema.pendingActionTable)).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.entityType, "pending_action")),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.serviceCalendarTable)
+        .where(eq(schema.serviceCalendarTable.id, calendar.id)),
+    ).toHaveLength(1);
+  });
 });
