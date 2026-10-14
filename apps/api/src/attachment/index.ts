@@ -81,7 +81,7 @@ const presignAttachmentRoute = createRoute({
     "AT-2: mints a presigned direct-PUT for a new attachment on this work item. The " +
     "API never proxies the bytes themselves.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
@@ -107,9 +107,7 @@ const listWorkItemAttachmentsRoute = createRoute({
   path: "/work-items/{key}/attachments",
   tags: ["Attachments"],
   summary: "List a work item's attachments",
-  middleware: [
-    requireWorkItemReach("key", { requireProjectReach: true }),
-  ] as const,
+  middleware: [requireWorkItemReach()] as const,
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse("The work item's attachments", attachmentListSchema),
@@ -128,7 +126,7 @@ const completeAttachmentRoute = createRoute({
     "AT-2's edge case: rejects a declared MIME that does not match the uploaded " +
     "bytes' own magic bytes, deleting the object.",
   middleware: [
-    requireAttachmentReach(),
+    requireAttachmentReach("id", { deferApiKeyCapability: true }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: { params: attachmentIdParam },
@@ -152,9 +150,7 @@ const downloadAttachmentRoute = createRoute({
   description:
     "AT-5/AT-6: redirects to a five-minute presigned download URL and writes an " +
     "attachment.downloaded audit row.",
-  middleware: [
-    requireAttachmentReach("id", { requireProjectReach: true }),
-  ] as const,
+  middleware: [requireAttachmentReach()] as const,
   request: { params: attachmentIdParam },
   responses: {
     302: { description: "Redirect to the presigned download URL" },
@@ -172,7 +168,7 @@ const deleteAttachmentRoute = createRoute({
   description:
     "AT-7: soft delete. Only the attachment's own uploader may do this.",
   middleware: [
-    requireAttachmentReach(),
+    requireAttachmentReach("id", { deferApiKeyCapability: true }),
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: { params: attachmentIdParam },

@@ -10,6 +10,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -151,6 +152,7 @@ describe("API integration: workspace-label cascade vs task deletion", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
@@ -219,6 +221,7 @@ describe("API integration: workspace-label cascade vs task deletion", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantWorkItemProjectAccess(member.user.id, project.id);
     const task = requireRow(
       await db
         .insert(schema.taskTable)

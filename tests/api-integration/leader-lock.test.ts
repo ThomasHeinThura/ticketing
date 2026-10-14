@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import db from "../../apps/api/src/database";
 import { withJobLease } from "../../apps/api/src/scheduler/leader-lock";
-import { ensureTestDatabaseMigrated } from "./helpers/database";
+import { resetTestDatabase } from "./helpers/database";
 
 const LEASE = "integration-test-lease";
 
@@ -18,7 +18,10 @@ async function readLease() {
 }
 
 beforeAll(async () => {
-  await ensureTestDatabaseMigrated();
+  // Start from an empty database. Running only the migration against whatever the previous
+  // file left behind trips the membership cutover guard when that file inserted membership
+  // rows without grants (project-role fixtures), making this suite order-dependent.
+  await resetTestDatabase();
 });
 
 describe("withJobLease", () => {

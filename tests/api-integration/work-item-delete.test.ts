@@ -18,6 +18,8 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectAccessForWorkspaceRole,
+  grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 import { raceProjectArchive } from "./helpers/race-soft-delete";
@@ -100,6 +102,7 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
       updatedAt: now,
     });
   }
+  await grantProjectAccessForWorkspaceRole(user.id, workspaceId, role);
   return user;
 }
 
@@ -110,6 +113,7 @@ async function setupProjectWithDefaultState(
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });
+  await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   const state = await makeDefaultState(creator.workspace.id, project.id);
   return { creator, project, type, state };

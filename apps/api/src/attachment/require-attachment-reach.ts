@@ -8,7 +8,13 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import { projectReadDecision } from "../utils/has-project-reach";
+import { isCustomerPrincipal } from "../utils/is-customer-principal";
+import {
+  WORK_ITEM_REACH_MARK,
+  type WorkItemReachMark,
+} from "../utils/reach-mark";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import type { WorkItemReachOptions } from "../work-item/require-work-item-reach";
 
 /**
  * `GET /api/attachments/{id}` and `DELETE /api/attachments/{id}` middleware: resolves the
@@ -30,9 +36,12 @@ import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
  */
 export function requireAttachmentReach(
   idKey = "id",
-  options: { readonly requireProjectReach?: boolean } = {},
+  options: WorkItemReachOptions = {},
 ) {
-  return async (c: Context, next: Next) => {
+  // PROJECT reach (to the parent work item's project) is the default, exactly as for
+  // `requireWorkItemReach()`; workspace-only reach needs a stated reason.
+  const projectReach = options.requireProjectReach !== false;
+  const middleware = async (c: Context, next: Next) => {
     markShadowLegacyAuthorizationUnknown(c);
     const userId = c.get("userId");
     if (!userId) {
@@ -118,7 +127,7 @@ export function requireAttachmentReach(
       throw error;
     }
 
-    if (options.requireProjectReach) {
+    if (projectReach) {
       const decision = await projectReadDecision(c, userId, {
         projectId: row.projectId,
         workspaceId: row.workspaceId,
@@ -136,7 +145,16 @@ export function requireAttachmentReach(
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(404, { message: "Attachment not found" });
       }
-      if (!decision.capable) {
+      if (
+        !decision.capable &&
+        options.deferCapability !== true &&
+        !(options.deferApiKeyCapability === true && apiKey)
+      ) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
+      // Customer principals never act through the agent API (matrix: 403 in reach).
+      if (await isCustomerPrincipal(userId, row.workspaceId)) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
@@ -145,6 +163,13 @@ export function requireAttachmentReach(
     setShadowLegacyAuthorization(c, "allowed");
     return next();
   };
+  const mark: WorkItemReachMark = {
+    projectReach,
+    ...(options.requireProjectReach === false
+      ? { workspaceReachOnlyReason: options.workspaceReachOnlyReason }
+      : {}),
+  };
+  return Object.assign(middleware, { [WORK_ITEM_REACH_MARK]: mark });
 }
 
 export default requireAttachmentReach;
