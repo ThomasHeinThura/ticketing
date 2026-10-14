@@ -27,6 +27,9 @@ describe("work route namespace groups", () => {
   });
 
   it("keeps every namespace the work route paints with in the first-paint group", () => {
+    // A quick unit-level check; the build also fails for any module in the work route's real
+    // first-paint chunks (`findDeferredNamespaceUsers` in vite.config.ts), which is the guard that
+    // does not depend on this hand-kept list.
     // The route, its panel, list, loading state, selection and create controls, and the
     // sidebar it renders inside. A namespace used here but missing from the first-paint group
     // would show raw keys on the primary screen until the deferred group lands.

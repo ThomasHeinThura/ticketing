@@ -1,7 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { Plugin } from "vite";
-import { WORK_ROUTE_I18N_NAMESPACES } from "../src/lib/i18n/work-route-namespaces";
+import {
+  DEFERRED_NAMESPACE_ALLOWLIST,
+  WORK_ROUTE_I18N_NAMESPACES,
+} from "../src/lib/i18n/work-route-namespaces";
 
 const PREFIX = "virtual:taskdesk-i18n/";
 const RESOLVED_PREFIX = `\0${PREFIX}`;
@@ -22,6 +25,60 @@ export function splitI18nNamespaces(
   return { slim, rest };
 }
 
+/**
+ * Namespaces a source file refers to: any `"ns:key"` string literal (covers `t(...)`, key tables
+ * and `i18n.t(...)`), `useTranslation("ns")` / `useTranslation(["a", "b"])` and `{ ns: ... }`
+ * options. `known` limits matches to real catalog namespaces.
+ */
+export function referencedNamespaces(
+  source: string,
+  known: readonly string[],
+): Set<string> {
+  const found = new Set<string>();
+  const keep = (name: string | undefined) => {
+    if (name && known.includes(name)) found.add(name);
+  };
+  for (const match of source.matchAll(/["'`]([A-Za-z]+):[A-Za-z_][\w.]*/g))
+    keep(match[1]);
+  for (const match of source.matchAll(
+    /useTranslation\(\s*(\[[^\]]*\]|["'][^"']*["'])/g,
+  ))
+    for (const name of match[1].matchAll(/["']([A-Za-z]+)["']/g)) keep(name[1]);
+  for (const match of source.matchAll(/\bns:\s*(\[[^\]]*\]|["'][^"']*["'])/g))
+    for (const name of match[1].matchAll(/["']([A-Za-z]+)["']/g)) keep(name[1]);
+  return found;
+}
+
+/**
+ * First-paint modules (path -> source) that refer to a namespace outside the first-paint group
+ * and are not on the reviewed allowlist. Each entry is a screen that could paint raw keys
+ * before the deferred group lands.
+ */
+export function findDeferredNamespaceUsers(
+  modules: ReadonlyMap<string, string>,
+  known: readonly string[],
+  {
+    slim = WORK_ROUTE_I18N_NAMESPACES,
+    allowed = DEFERRED_NAMESPACE_ALLOWLIST,
+  }: {
+    slim?: readonly string[];
+    allowed?: Readonly<Record<string, readonly string[]>>;
+  } = {},
+) {
+  const violations: { file: string; namespace: string }[] = [];
+  for (const [file, source] of modules) {
+    for (const namespace of referencedNamespaces(source, known)) {
+      if (slim.includes(namespace)) continue;
+      const entry = Object.entries(allowed).find(([suffix]) =>
+        file.endsWith(suffix),
+      );
+      if (entry?.[1].includes(namespace)) continue;
+      violations.push({ file, namespace });
+    }
+  }
+  return violations;
+}
+
 function listLocales(i18nDir: string) {
   return readdirSync(i18nDir)
     .map((file) => LOCALE_FILE.exec(file)?.[1])
@@ -34,7 +91,17 @@ function listLocales(i18nDir: string) {
  * a loader table per group. The catalog files stay the single source of truth, so
  * `check:i18n` and the translation workflow are untouched.
  */
-export function i18nNamespaceGroups({ i18nDir }: { i18nDir: string }): Plugin {
+export function i18nNamespaceGroups({
+  i18nDir,
+  groupedEntry = true,
+}: {
+  i18nDir: string;
+  /**
+   * False for a build whose entry never loads grouped catalogs (the portal): the loader tables
+   * are empty, so no per-locale group chunks are emitted for it.
+   */
+  groupedEntry?: boolean;
+}): Plugin {
   const isGroupModule = (id: string) => id.startsWith(RESOLVED_PREFIX);
 
   return {
@@ -46,6 +113,7 @@ export function i18nNamespaceGroups({ i18nDir }: { i18nDir: string }): Plugin {
       if (!isGroupModule(id)) return undefined;
       const name = id.slice(RESOLVED_PREFIX.length);
       const loaders = /^loaders-(slim|rest)$/u.exec(name);
+      if (loaders && !groupedEntry) return "export default {};\n";
       if (loaders) {
         const group = loaders[1];
         const entries = listLocales(i18nDir).map(

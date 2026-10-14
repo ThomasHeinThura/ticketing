@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
@@ -5,7 +6,10 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import packageJson from "../../package.json";
-import { i18nNamespaceGroups } from "./vite/i18n-namespace-groups";
+import {
+  findDeferredNamespaceUsers,
+  i18nNamespaceGroups,
+} from "./vite/i18n-namespace-groups";
 
 function preloadWorkRouteForDirectVisits(): Plugin {
   return {
@@ -58,6 +62,88 @@ function preloadWorkRouteForDirectVisits(): Plugin {
         // route code executes. Fetch its static closure alongside the route so
         // this user-visible chunk does not begin at the end of the LCP window.
         addChunkAndImports(workItemsPanelChunk.fileName);
+
+        // Guard for the deferred i18n namespaces (src/lib/i18n/work-route-namespaces.ts): every
+        // source module the work route can paint from before the deferred group lands, that is
+        // the entry and route closures plus the chunks they import dynamically, may only refer
+        // to first-paint namespaces unless it is on the reviewed allowlist.
+        const paintChunks = new Set<string>(files);
+        const addStaticClosure = (fileName: string) => {
+          if (paintChunks.has(fileName)) return;
+          paintChunks.add(fileName);
+          const chunk = bundle[fileName];
+          if (chunk?.type === "chunk")
+            for (const imported of chunk.imports) addStaticClosure(imported);
+        };
+        // The entry and the layout routes the work route renders inside (shell, sidebar,
+        // workspace switcher), plus whatever the route and panel import on demand.
+        const shellRoutes = [
+          "/routes/agent/__root.tsx",
+          "/routes/agent/_layout.tsx",
+          "/routes/agent/_layout/_authenticated.tsx",
+        ];
+        for (const item of Object.values(bundle)) {
+          if (item.type !== "chunk") continue;
+          const facade = item.facadeModuleId
+            ?.split("?")[0]
+            .replaceAll("\\", "/");
+          if (
+            item.isEntry ||
+            shellRoutes.some((route) => facade?.endsWith(route))
+          )
+            addStaticClosure(item.fileName);
+        }
+        for (const fileName of [
+          routeChunk.fileName,
+          workItemsPanelChunk.fileName,
+        ]) {
+          const chunk = bundle[fileName];
+          if (chunk?.type === "chunk")
+            for (const imported of chunk.dynamicImports)
+              addStaticClosure(imported);
+        }
+        const paintSources = new Map<string, string>();
+        for (const fileName of paintChunks) {
+          const chunk = bundle[fileName];
+          if (chunk?.type !== "chunk") continue;
+          for (const moduleId of Object.keys(chunk.modules)) {
+            const file = moduleId.split("?")[0];
+            // Route files in the entry chunk are stubs: their components are split into
+            // chunks that only load after navigation, which the root route gates.
+            const isRouteStub =
+              file.includes("/src/routes/") &&
+              !moduleId.includes("tsr-split=component");
+            if (
+              !isRouteStub &&
+              file.includes("/apps/web/src/") &&
+              !file.includes(".test.") &&
+              existsSync(file)
+            )
+              paintSources.set(file, readFileSync(file, "utf8"));
+          }
+        }
+        const catalogNamespaces = Object.keys(
+          JSON.parse(
+            readFileSync(
+              path.resolve(__dirname, "../../i18n/en-US.json"),
+              "utf8",
+            ),
+          ),
+        );
+        const deferredUsers = findDeferredNamespaceUsers(
+          paintSources,
+          catalogNamespaces,
+        );
+        if (deferredUsers.length > 0)
+          throw new Error(
+            "These modules can paint on the work route but use a namespace that loads after first paint:\n" +
+              deferredUsers
+                .map(
+                  ({ file, namespace }) =>
+                    `  ${path.relative(__dirname, file)} -> ${namespace}`,
+                )
+                .join("\n"),
+          );
 
         // The route paints from the first-paint namespace group of its locale (see
         // `src/lib/i18n/index.ts`), not the full catalog, and reaches it through the group
@@ -225,7 +311,10 @@ export default defineConfig(({ mode }) => {
       }),
       ...(!isPortal ? [preloadWorkRouteForDirectVisits()] : []),
       ...(isPortal ? [portalModuleGraphMetadata()] : []),
-      i18nNamespaceGroups({ i18nDir: path.resolve(__dirname, "../../i18n") }),
+      i18nNamespaceGroups({
+        i18nDir: path.resolve(__dirname, "../../i18n"),
+        groupedEntry: !isPortal,
+      }),
       tailwindcss(),
       react(),
       babel({ presets: [reactCompilerPreset()] }),

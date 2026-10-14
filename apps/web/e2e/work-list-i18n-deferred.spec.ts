@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import {
   installPerformanceApiFixture,
@@ -11,15 +14,63 @@ import {
 const RAW_KEY =
   /(?<![\w@/.-])[a-z][A-Za-z0-9]*(?:\.[a-zA-Z][A-Za-z0-9]*){1,5}(?![\w@-])/g;
 
-async function rawKeys(page: Page) {
-  const text = await page.evaluate(() => document.body.innerText);
-  return [
-    ...new Set(
-      (text.match(RAW_KEY) ?? []).filter(
-        (token) => !/^(www|e\.g|i\.e)/.test(token),
+// Every key path of the English catalogue, with and without its namespace. i18next returns the
+// key (without the namespace) when it cannot resolve one, so a screen showing any of these as
+// its own text, label, title or placeholder is showing a raw key, dotted or not.
+function catalogueKeyPaths() {
+  const catalogue = JSON.parse(
+    readFileSync(
+      path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        "../../../i18n/en-US.json",
       ),
+      "utf8",
     ),
-  ];
+  ) as Record<string, unknown>;
+  const paths = new Set<string>();
+  const walk = (node: unknown, prefix: string, namespace: string) => {
+    if (node && typeof node === "object") {
+      for (const [key, value] of Object.entries(node))
+        walk(value, prefix ? `${prefix}.${key}` : key, namespace);
+      return;
+    }
+    // A one-word path ("new") is ordinary copy in places; its namespaced form is not.
+    if (prefix.includes(".") || /[a-z][A-Z]/.test(prefix)) paths.add(prefix);
+    paths.add(`${namespace}:${prefix}`);
+    // The bare last segment is also what a missing key renders ("loadFailed"). Single plain
+    // words ("new", "title") are not tracked: they are ordinary copy in places, so only
+    // camelCase leaves, which no screen prints as text, are a reliable signal.
+    const leaf = prefix.split(".").pop() ?? prefix;
+    if (/[a-z][A-Z]/.test(leaf)) paths.add(leaf);
+  };
+  for (const [namespace, value] of Object.entries(catalogue))
+    walk(value, "", namespace);
+  return [...paths];
+}
+
+const KEY_PATHS = catalogueKeyPaths();
+
+async function rawKeys(page: Page) {
+  const shown = await page.evaluate((keyPaths) => {
+    const keys = new Set(keyPaths);
+    const found = new Set<string>();
+    const check = (value: string | null | undefined) => {
+      const text = value?.trim();
+      if (text && keys.has(text)) found.add(text);
+    };
+    for (const element of Array.from(document.body.querySelectorAll("*"))) {
+      for (const node of Array.from(element.childNodes))
+        if (node.nodeType === Node.TEXT_NODE) check(node.textContent);
+      for (const name of ["aria-label", "title", "placeholder", "alt"])
+        check(element.getAttribute(name));
+    }
+    return [...found];
+  }, KEY_PATHS);
+  const text = await page.evaluate(() => document.body.innerText);
+  const dotted = (text.match(RAW_KEY) ?? []).filter(
+    (token) => !/^(www|e\.g|i\.e)/.test(token),
+  );
+  return [...new Set([...shown, ...dotted])];
 }
 
 async function holdDeferredGroup(page: Page) {
