@@ -454,6 +454,14 @@ export const projectTable = pgTable(
       .notNull()
       .default("internal"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    // Decision log 2026-10-14 "A project's creator holds a project-lead membership": the
+    // staff `person` who created the project, written by `createProjectRow` from now on.
+    // NULL for every project created before this column (no record of the creator exists,
+    // so no backfill), and set null again if the person row is ever erased. Same actor
+    // convention as the other `created_by` columns (`person.id`, `ON DELETE SET NULL`).
+    createdBy: text("created_by").references(() => personTable.id, {
+      onDelete: "set null",
+    }),
     archivedAt: timestamp("archived_at", { mode: "date" }),
     // #187: soft delete. `deletedAt`/`purgeAfter` mirror `organisationTable`'s own pair
     // (PR #179) -- nullable, no default, set together by the delete route
@@ -2715,7 +2723,7 @@ export const membershipGrantTable = pgTable(
     check(
       "membership_grant_direct_origin_check",
       sql.raw(
-        "(direct_origin IS NULL) OR (direct_origin = ANY (ARRAY['admin'::text, 'system_backfill'::text]))",
+        "(direct_origin IS NULL) OR (direct_origin = ANY (ARRAY['admin'::text, 'system_backfill'::text, 'project_creator'::text]))",
       ),
     ),
     check(
@@ -2727,7 +2735,7 @@ export const membershipGrantTable = pgTable(
     check(
       "membership_grant_source_shape_check",
       sql.raw(
-        "((source_kind = 'direct'::text) AND (direct_origin IS NOT NULL) AND (((direct_origin = 'admin'::text) AND (granted_by_person_id IS NOT NULL)) OR ((direct_origin = 'system_backfill'::text) AND (granted_by_person_id IS NULL))) AND (external_identity_id IS NULL) AND (identity_connection_id IS NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NULL)) OR ((source_kind = 'jit_default'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NULL) AND (sees_all = false)) OR ((source_kind = 'oidc_group'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NOT NULL) AND (scim_group_mapping_id IS NULL) AND (sees_all = false)) OR ((source_kind = 'scim_group'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NOT NULL) AND (sees_all = false))",
+        "((source_kind = 'direct'::text) AND (direct_origin IS NOT NULL) AND (((direct_origin = 'admin'::text) AND (granted_by_person_id IS NOT NULL)) OR ((direct_origin = ANY (ARRAY['system_backfill'::text, 'project_creator'::text])) AND (granted_by_person_id IS NULL))) AND (external_identity_id IS NULL) AND (identity_connection_id IS NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NULL)) OR ((source_kind = 'jit_default'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NULL) AND (sees_all = false)) OR ((source_kind = 'oidc_group'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NOT NULL) AND (scim_group_mapping_id IS NULL) AND (sees_all = false)) OR ((source_kind = 'scim_group'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NOT NULL) AND (sees_all = false))",
       ),
     ),
     index("membership_grant_person_scope_idx")

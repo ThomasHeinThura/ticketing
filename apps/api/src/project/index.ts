@@ -892,6 +892,7 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
           serviceCalendarId: serviceCalendarId ?? null,
           organisationId: organisationId ?? null,
         },
+        c.get("userId"),
       );
       return c.json(newProject, 200);
     } catch (error) {

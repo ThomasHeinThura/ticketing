@@ -707,7 +707,14 @@ describe("workspace owner/admin explicit sees_all grant", () => {
           capabilities: schema.roleTable.capabilities,
         })
         .from(schema.roleTable)
-        .where(eq(schema.roleTable.workspaceId, world.workspaceId));
+        // The workspace-scope carriers only: the project-scope `project-lead` role
+        // (decision log 2026-10-14) carries real capabilities by design.
+        .where(
+          and(
+            eq(schema.roleTable.workspaceId, world.workspaceId),
+            eq(schema.roleTable.scope, "workspace"),
+          ),
+        );
       expect(roles.map((r) => r.key).sort()).toEqual(["admin", "owner"]);
       for (const role of roles) {
         expect(role).toMatchObject({
