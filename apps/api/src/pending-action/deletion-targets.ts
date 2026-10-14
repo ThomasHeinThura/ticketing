@@ -1055,8 +1055,12 @@ async function invalidateServiceCalendarDeletion(
   return { row: invalidated, auditFailure };
 }
 
-async function assertCalendarUnused(
-  tx: PendingActionTransaction,
+/**
+ * CAL-9: the single definition of "in use", shared by the deletion request
+ * (service-calendar route) and its approval recheck.
+ */
+export async function assertCalendarUnused(
+  tx: Pick<typeof db, "select">,
   workspaceId: string,
   calendarId: string,
 ) {
