@@ -723,7 +723,42 @@
 				"iconRequired": "Іконка є обов'язковою"
 			},
 			"importExportTasks": "Імпорт/Експорт",
-			"importExportTasksDescription": "Імпортуйте та експортуйте завдання."
+			"importExportTasksDescription": "Імпортуйте та експортуйте завдання.",
+			"engagement": {
+				"amber": "Amber",
+				"calendarRequired": "A managed service needs a service calendar.",
+				"calendarsError": "Could not load service calendars.",
+				"calendarUnlisted": "Saved calendar (not in the loaded list)",
+				"description": "Set the project kind, health, support level, and service calendar.",
+				"discard": "Discard changes",
+				"failure": {
+					"calendarInvalid": "That service calendar is not available in this workspace.",
+					"forbidden": "You do not have permission to change this. Ask a workspace admin for the project update permission.",
+					"generic": "Could not save the change. Try again.",
+					"managedServiceIncomplete": "A managed service needs both a support level and a service calendar.",
+					"notFound": "This project no longer exists or is out of reach."
+				},
+				"green": "Green",
+				"health": "Health",
+				"kind": "Project kind",
+				"loadError": "Could not load the engagement settings.",
+				"managedService": "Managed service",
+				"noCalendars": "No service calendars exist in this workspace yet.",
+				"none": "None",
+				"project": "Project",
+				"readOnly": "You can view these settings but need the project update permission to change them.",
+				"red": "Red",
+				"retry": "Retry",
+				"save": "Save engagement settings",
+				"saved": "Engagement settings saved.",
+				"saving": "Saving…",
+				"serviceCalendar": "Service calendar",
+				"supportLevel": "Support level",
+				"supportLevelRequired": "A managed service needs a support level.",
+				"title": "Engagement and service",
+				"unset": "Not set",
+				"manageSettingsRequired": "Changing the kind, support level or service calendar needs permission to manage project settings. You can still set the health."
+			}
 		},
 		"projectIntegrations": {
 			"pageTitle": "Інтеґрації проєкту",
@@ -1356,7 +1391,8 @@
 			"members": "Учасники",
 			"invitations": "Запрошення",
 			"more": "Більше",
-			"backToBoard": "Назад до дошки"
+			"backToBoard": "Назад до дошки",
+			"savedViews": "Saved views"
 		},
 		"projectList": {
 			"viewProject": "Переглянути проєкт",
@@ -2366,7 +2402,11 @@
 			"assigneeInactive": "(inactive)",
 			"boardLayout": "Board",
 			"layoutGroup": "Layout",
-			"listLayout": "List"
+			"listLayout": "List",
+			"emptyFilteredDescription": "Change or clear the filter to see more of this project's work items.",
+			"emptyFilteredTitle": "No work items match this filter",
+			"loadingMore": "Loading more…",
+			"loadMore": "Load more"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -2522,6 +2562,66 @@
 			"selectMode": "Select items",
 			"modeOff": "Selection mode off. Selection cleared.",
 			"modeOn": "Selection mode on. Use the checkboxes to choose work items."
+		},
+		"filter": {
+			"addCondition": "Add condition",
+			"addGroup": "Add group",
+			"apply": "Apply filter",
+			"boardNotice": "The board does not apply this filter. Switch to the list to see the filtered work items.",
+			"cannotOpenVisually": "This filter cannot be opened visually: {{error}}",
+			"datePlaceholder": "YYYY-MM-DD or 7d",
+			"field": "Filter field",
+			"fieldPlaceholder": "Field",
+			"fields": {
+				"assignee": "Assignee",
+				"createdAt": "Created date",
+				"dueDate": "Due date",
+				"priority": "Priority",
+				"project": "Project",
+				"stateGroup": "State group",
+				"type": "Type",
+				"watcher": "Watcher"
+			},
+			"formLabel": "Work item filters",
+			"groupOperator": "Group operator",
+			"invalidText": "Invalid filter text.",
+			"listPlaceholder": "value1, value2",
+			"loading": "Loading the filter editor",
+			"match": "Match",
+			"matchAll": "all (AND)",
+			"matchAny": "any (OR)",
+			"modeGroup": "Filter editor mode",
+			"modeText": "Text",
+			"modeVisual": "Visual",
+			"noFilters": "No filters are active.",
+			"notRepresentable": "This filter cannot be represented in text mode. Remove or edit the unsupported clause.",
+			"operatorFor": "Operator for {{field}}",
+			"operators": {
+				"contains": "contains",
+				"eq": "is",
+				"gt": "after / greater than",
+				"gte": "at or after / at least",
+				"in": "is one of",
+				"lt": "before / less than",
+				"lte": "at or before / at most"
+			},
+			"removeFilter": "Remove {{field}} filter",
+			"removeGroup": "Remove filter group",
+			"textLabel": "Filter work items",
+			"textPlaceholder": "assignee:@me state:started OR priority:>=high",
+			"unavailableField": "This field is not available yet. Applying it shows the server's answer for this field.",
+			"unavailableHint": "This field is not available yet. Apply the filter to see the server's answer for it.",
+			"unsupportedField": "Unsupported field. Edit it in text mode or remove it.",
+			"valueFor": "Value for {{field}}",
+			"valuePlaceholder": "Value",
+			"valuesFor": "Values for {{field}}",
+			"toggle": "Filter",
+			"toggleActive": "Filter (on)",
+			"errors": {
+				"forbidden": "You don't have access to filter by one of these fields.",
+				"invalid": "This filter could not be applied. Check its syntax and values.",
+				"unavailable": "A field in this filter isn't available yet."
+			}
 		}
 	},
 	"portal": {
@@ -3094,6 +3194,96 @@
 			"confirmRequest": "Request deletion",
 			"deleteRequested": "Deletion requested. Approve it to complete.",
 			"deleteError": "Deletion could not be requested."
+		}
+	},
+	"savedViews": {
+		"cancelEdit": "Cancel editing",
+		"clone": "Clone as private view",
+		"columnName": {
+			"assignee": "Assignee",
+			"dueDate": "Due date",
+			"key": "Key",
+			"priority": "Priority",
+			"state": "State",
+			"title": "Title"
+		},
+		"columns": "Visible columns",
+		"count_few": "{{count}} matching work items",
+		"count_many": "{{count}} matching work items",
+		"count_one": "{{count}} matching work item",
+		"count_other": "{{count}} matching work items",
+		"countLoading": "Counting matching work items…",
+		"create": "Create view",
+		"createError": "The saved view could not be created.",
+		"createForbidden": "You can't create a view with that audience.",
+		"createForm": "New saved view",
+		"creating": "Creating…",
+		"deleteAlreadyRequested": "A deletion request for this view is already waiting for approval.",
+		"deleteError": "A deletion request could not be created.",
+		"deleteForbidden": "Only the owner of a view, or someone who manages workspace settings, can request its deletion.",
+		"description": "Views available to you in this workspace. Each one is a stored search you can open, share by its link, pin and copy.",
+		"direction": {
+			"asc": "Ascending",
+			"desc": "Descending"
+		},
+		"directionLabel": "Sort direction",
+		"duplicate": "Duplicate",
+		"duplicateError": "The view could not be duplicated.",
+		"duplicateNamed": "Duplicate {{name}} as a private view",
+		"edit": "Edit view",
+		"empty": "No saved views are available.",
+		"emptySearch": "No saved view matches that name.",
+		"forbidden": "You can't make that change to this view.",
+		"layoutUnavailable": "This view uses a layout or query that is not supported here yet.",
+		"loadError": "Saved views could not be loaded.",
+		"loading": "Loading saved views",
+		"loadingMore": "Loading more…",
+		"loadingView": "Loading saved view…",
+		"loadMore": "Load more",
+		"modifiedNotice": "This is not the saved definition. Save the view to keep these changes.",
+		"name": "View name",
+		"pin": "Pin",
+		"pinError": "The pin could not be changed.",
+		"pinNamed": "Pin {{name}}",
+		"pinned": "Pinned",
+		"projectUnavailable": "This project is unavailable to your account.",
+		"queryNotEditable": "This view's query can't be edited here. You can still rename it and change who can see it.",
+		"requestDelete": "Request deletion",
+		"requestDeleteNamed": "Request deletion of {{name}}",
+		"requesting": "Requesting…",
+		"retry": "Try again",
+		"save": "Save view",
+		"saveError": "The saved view could not be updated.",
+		"search": "Filter saved views",
+		"sharedLinkNotice": "You can't open the saved view behind this link. This is the query it carries, run with your own access, so you see only the work items you are allowed to.",
+		"sharedViewName": "Shared view",
+		"sort": "Sort work items",
+		"sortField": {
+			"dueDate": "Due date",
+			"key": "Key",
+			"priority": "Priority",
+			"title": "Title"
+		},
+		"summary": "Visibility: {{visibility}}",
+		"team": {
+			"label": "Team",
+			"loadError": "The teams you can share with could not be loaded.",
+			"placeholder": "Choose a team"
+		},
+		"title": "Saved views",
+		"unpin": "Unpin",
+		"unpinNamed": "Unpin {{name}}",
+		"viewUnavailable": "This saved view isn't available to you, or it no longer exists.",
+		"visibility": {
+			"label": "Visibility",
+			"private": "Private",
+			"team": "Team",
+			"workspace": "Workspace"
+		},
+		"errors": {
+			"forbidden": "You don't have access to filter by one of this view's fields.",
+			"invalid": "This view's filter could not be applied. Check its syntax and values.",
+			"unavailable": "A field in this view's filter isn't available yet."
 		}
 	},
 	"identityConnections": {

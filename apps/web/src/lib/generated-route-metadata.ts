@@ -16,6 +16,8 @@ export const generatedRouteMetadata = {
     "/agent/settings/sla-policies",
     "/agent/settings/sla-policies/$id",
     "/agent/triage",
+    "/agent/views",
+    "/agent/views/$id",
     "/agent/work-items/$key",
     "/auth",
     "/auth/check-email",

@@ -184,6 +184,26 @@ const visualSlaPolicy = {
   draftVersion: null,
 };
 
+const visualSavedView = {
+  id: "visual-view",
+  workspaceId: workspace.id,
+  createdBy: "visual-person",
+  name: "Open incidents",
+  scope: "workspace",
+  scopeId: workspace.id,
+  visibility: "workspace",
+  sharedWithTeamId: null,
+  layout: "list",
+  query: {
+    entity: "work_item",
+    filter: { field: "priority", op: "eq", value: "high" },
+    sort: [{ field: "key", direction: "asc" }],
+  },
+  createdAt: "2026-09-01T00:00:00.000Z",
+  updatedAt: "2026-09-15T00:00:00.000Z",
+  isPinned: true,
+};
+
 async function installAuthenticatedFixture(page: Page) {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
@@ -396,6 +416,21 @@ async function installAuthenticatedFixture(page: Page) {
         page: { hasMore: false, nextCursor: null },
         meta: {},
       };
+    } else if (path.endsWith("/api/me/csrf-token")) {
+      // Running a saved view is a POST, which obtains the session's CSRF token first.
+      body = { token: "visual-csrf", expiresAt: "2030-01-01T00:00:00.000Z" };
+    } else if (path.endsWith("/api/views/visual-view/count")) {
+      body = { count: 1 };
+    } else if (path.endsWith("/api/views/visual-view/run")) {
+      body = {
+        data: [workItem],
+        page: { hasMore: false, nextCursor: null },
+        meta: { total: 1 },
+      };
+    } else if (path.endsWith("/api/views/visual-view")) {
+      body = visualSavedView;
+    } else if (path.endsWith("/api/views")) {
+      body = [visualSavedView];
     } else if (path.endsWith("/api/work-items/HELP-7/activity")) {
       // The native activity timeline reads a paged envelope; the generic `[]`
       // default has no `data` array and crashes the detail route.
@@ -960,6 +995,48 @@ test("SLA policy editor screen @visual", async ({ page }) => {
   await expect(page.getByText("Active version 1")).toBeVisible();
   await expect(page.getByText("First response", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("sla-policy-editor.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("saved views index screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/views");
+  await expect(
+    page.getByRole("heading", { name: "Saved views" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open incidents" }),
+  ).toBeVisible();
+  await expect(page.getByText("1 matching work item")).toBeVisible();
+  await expect(page).toHaveScreenshot("saved-views-index.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("saved view detail screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/views/visual-view");
+  await expect(
+    page.getByRole("heading", { name: "Open incidents" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Customer cannot reset their password"),
+  ).toBeVisible();
+  await expect(page.getByText("1 matching work item")).toBeVisible();
+  await expect(page).toHaveScreenshot("saved-view-detail.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

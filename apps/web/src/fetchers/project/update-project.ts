@@ -1,5 +1,6 @@
 import { client } from "@taskdesk/libs";
 import type { InferRequestType } from "hono/client";
+import { HttpError } from "@/lib/http-error";
 
 export type UpdateProjectRequest = InferRequestType<
   (typeof client)["project"][":id"]["$put"]
@@ -12,6 +13,9 @@ async function updateProject({
   icon,
   slug,
   description,
+  kind,
+  supportLevel,
+  serviceCalendarId,
   defaultCommentVisibility,
 }: UpdateProjectRequest) {
   const response = await client.project[":id"].$put({
@@ -24,6 +28,11 @@ async function updateProject({
       icon,
       slug,
       description,
+      // Engagement fields (PR-9) follow the same rule: the server reads an omitted
+      // field as "unchanged" and an explicit null as "clear".
+      ...(kind !== undefined ? { kind } : {}),
+      ...(supportLevel !== undefined ? { supportLevel } : {}),
+      ...(serviceCalendarId !== undefined ? { serviceCalendarId } : {}),
       ...(defaultCommentVisibility !== undefined
         ? { defaultCommentVisibility }
         : {}),
@@ -32,7 +41,7 @@ async function updateProject({
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(error);
+    throw new HttpError(response.status, error);
   }
 
   const data = await response.json();

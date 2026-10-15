@@ -123,7 +123,8 @@ infrequent-access tiers.
 ## 7 · WebSockets
 
 Each connection costs memory and a file descriptor. Limits already in place: five sockets
-per person, fifty subscriptions per socket, idle close after five minutes.
+per person per API replica and per socket kind (native and legacy project sockets are
+counted separately, in each process, so N replicas allow up to 5N of each), fifty subscriptions per socket, idle close after five minutes.
 
 At several thousand concurrent connections, raise the file descriptor limit and add
 replicas. Sticky sessions are not needed — the Valkey adapter fans out across replicas.

@@ -12,7 +12,11 @@ import { useTranslation } from "react-i18next";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
-import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
+import type {
+  WorkItemSearchColumn,
+  WorkItemSortDirection,
+  WorkItemSortField,
+} from "@/lib/routes";
 
 const WorkItemListRealtime = lazy(
   () => import("@/components/work-item/work-item-list-realtime"),
@@ -38,6 +42,11 @@ type WorkItemsPanelProps = {
     status: WorkItemRealtimeStatus,
   ) => void;
   onRetry: () => void;
+  columns?: WorkItemSearchColumn[];
+  isFiltered?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
   selectedKeys?: string[];
   canBulkAssign?: boolean;
   onSelectionChange?: (key: string, checked: boolean) => void;
@@ -56,6 +65,11 @@ function WorkItemsPanel({
   onSortChange,
   onRealtimeAvailabilityChange,
   onRetry,
+  columns,
+  isFiltered,
+  hasMore,
+  onLoadMore,
+  isLoadingMore,
   selectedKeys,
   canBulkAssign,
   onSelectionChange,
@@ -184,6 +198,11 @@ function WorkItemsPanel({
           dir={dir}
           onSortChange={onSortChange}
           onRetry={onRetry}
+          columns={columns}
+          isFiltered={isFiltered}
+          hasMore={hasMore}
+          onLoadMore={onLoadMore}
+          isLoadingMore={isLoadingMore}
           selectedKeys={selectedKeys}
           canBulkAssign={canBulkAssign}
           onSelectionChange={onSelectionChange}
