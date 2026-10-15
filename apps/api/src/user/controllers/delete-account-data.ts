@@ -1,7 +1,13 @@
 import { APIError } from "better-auth/api";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, notInArray, or } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import db from "../../database";
 import {
+  membershipGrantTable,
+  membershipTable,
+  personTable,
+  projectTable,
+  roleTable,
   userTable,
   workflowTable,
   workspaceTable,
@@ -25,6 +31,7 @@ type AccountDeletionTransaction = Parameters<
 
 import {
   formatBlockedWorkspacesMessage,
+  formatOtherAccessMessage,
   hasOwnerRole,
   holdsOwnerExactly,
   planAccountDeletion,
@@ -83,6 +90,95 @@ async function collectMemberships(
   });
 }
 
+/**
+ * Workspaces among `workspaceIds` that someone other than the erasing user can still reach
+ * through the identity-provisioned tables (owner decision, 2026-10-15, #734).
+ *
+ * The legacy `workspace_member` count only sees people added the legacy way. SCIM and OIDC
+ * provisioning writes `membership` and `membership_grant` rows instead, and erasing a "sole
+ * member" workspace deletes those rows with it. Erasure must not silently remove anyone's
+ * access, so a workspace is only deletable when every access row that targets it (the
+ * workspace, one of its projects, or a role the workspace owns) belongs to the erasing user's
+ * own person. Rows scoped to something else that merely shares the id (for example an
+ * organisation) are not access to the workspace and do not count.
+ */
+async function workspacesWithOtherAccess(
+  tx: AccountDeletionTransaction,
+  workspaceIds: readonly string[],
+  userId: string,
+): Promise<{ id: string; name: string }[]> {
+  if (workspaceIds.length === 0) return [];
+  const ownPersonIds = (
+    await tx
+      .select({ id: personTable.id })
+      .from(personTable)
+      .where(eq(personTable.userId, userId))
+  ).map((row) => row.id);
+  const blocked: { id: string; name: string }[] = [];
+  for (const workspaceId of workspaceIds) {
+    const projectIds = tx
+      .select({ id: projectTable.id })
+      .from(projectTable)
+      .where(eq(projectTable.workspaceId, workspaceId));
+    const roleIds = tx
+      .select({ id: roleTable.id })
+      .from(roleTable)
+      .where(eq(roleTable.workspaceId, workspaceId));
+    const inScope = (
+      scope: AnyPgColumn,
+      scopeId: AnyPgColumn,
+      roleId: AnyPgColumn,
+    ) =>
+      or(
+        and(eq(scope, "workspace"), eq(scopeId, workspaceId)),
+        and(eq(scope, "project"), inArray(scopeId, projectIds)),
+        inArray(roleId, roleIds),
+      );
+    const others = (personId: AnyPgColumn) =>
+      ownPersonIds.length > 0 ? notInArray(personId, ownPersonIds) : undefined;
+    const [membership] = await tx
+      .select({ id: membershipTable.id })
+      .from(membershipTable)
+      .where(
+        and(
+          inScope(
+            membershipTable.scope,
+            membershipTable.scopeId,
+            membershipTable.roleId,
+          ),
+          others(membershipTable.personId),
+        ),
+      )
+      .limit(1);
+    const [grant] = membership
+      ? []
+      : await tx
+          .select({ id: membershipGrantTable.id })
+          .from(membershipGrantTable)
+          .where(
+            and(
+              inScope(
+                membershipGrantTable.scope,
+                membershipGrantTable.scopeId,
+                membershipGrantTable.roleId,
+              ),
+              others(membershipGrantTable.personId),
+              // A revoked grant is no longer access.
+              isNull(membershipGrantTable.revokedAt),
+            ),
+          )
+          .limit(1);
+    if (membership || grant) {
+      const [workspace] = await tx
+        .select({ name: workspaceTable.name })
+        .from(workspaceTable)
+        .where(eq(workspaceTable.id, workspaceId));
+      blocked.push({ id: workspaceId, name: workspace?.name ?? "workspace" });
+    }
+  }
+  return blocked;
+}
+
 export async function deleteAccountData(userId: string) {
   if (!hasAccountDeletionTransaction()) {
     return db.transaction((tx) =>
@@ -127,6 +223,21 @@ async function deleteAccountDataInTransaction(
   if (plan.blockedWorkspaceNames.length > 0) {
     throw new APIError("CONFLICT", {
       message: formatBlockedWorkspacesMessage(plan.blockedWorkspaceNames),
+    });
+  }
+
+  // Before anything is deleted or invalidated: a workspace others still reach through
+  // SCIM/OIDC provisioning must be transferred or removed first, never erased around them.
+  const withOtherAccess = await workspacesWithOtherAccess(
+    tx,
+    plan.workspaceIdsToDelete,
+    userId,
+  );
+  if (withOtherAccess.length > 0) {
+    throw new APIError("CONFLICT", {
+      message: formatOtherAccessMessage(
+        withOtherAccess.map((workspace) => workspace.name),
+      ),
     });
   }
 

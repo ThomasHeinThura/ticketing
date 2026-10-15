@@ -752,3 +752,195 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
     ).toHaveLength(1);
   });
 });
+
+/**
+ * #734 (owner decision 2026-10-15): account erasure counts identity-provisioned (SCIM/OIDC)
+ * access in its sole-member check. A workspace that anyone else can still reach is never
+ * erased around them: the request stops with a 409, before anything is deleted.
+ */
+describe("#734 account erasure and IdP-provisioned members", () => {
+  async function snapshot() {
+    return {
+      workspaces: (await db.select().from(schema.workspaceTable)).length,
+      roles: (await db.select().from(schema.roleTable)).length,
+      memberships: (await db.select().from(schema.membershipTable)).length,
+      grants: (await db.select().from(schema.membershipGrantTable)).length,
+      oidc: (await db.select().from(schema.oidcGroupMappingTable)).length,
+      scim: (await db.select().from(schema.scimGroupMappingTable)).length,
+      scimMembers: (await db.select().from(schema.scimGroupMemberTable)).length,
+      users: (await db.select().from(schema.userTable)).length,
+      legacyMembers: (await db.select().from(schema.workspaceUserTable)).length,
+    };
+  }
+
+  async function soleLegacyMemberWorkspace() {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const wsRole = await createRole(owner.workspace.id, "workspace");
+    return { owner, wsRole };
+  }
+
+  it("stops with a 409 and deletes nothing when another person holds SCIM/OIDC access", async () => {
+    const { owner, wsRole } = await soleLegacyMemberWorkspace();
+    const other = await createWorkspaceMember({ role: "owner" });
+    await seedProvisioningRows(owner.workspace.id, wsRole.id, other.user.id);
+    const before = await snapshot();
+
+    await expect(deleteAccountData(owner.user.id)).rejects.toThrow(
+      /Other people still have access to ".*" through your identity provider/u,
+    );
+
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("stops when the other person's access is a project-scope membership of the workspace", async () => {
+    const { owner } = await soleLegacyMemberWorkspace();
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const other = await createWorkspaceMember({ role: "owner" });
+    const otherPerson = await personIdFor(other.user.id);
+    // A GLOBAL role: only the project scope, not role ownership, ties this row to the workspace.
+    const projectRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: null,
+          key: `global-${randomUUID()}`,
+          name: "Global built-in",
+          rank: 1,
+          capabilities: ["project:read"],
+        })
+        .returning(),
+      "global role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId: otherPerson,
+      scope: "project",
+      scopeId: project.id,
+      roleId: projectRole.id,
+    });
+    const before = await snapshot();
+
+    await expect(deleteAccountData(owner.user.id)).rejects.toThrow(
+      /Other people still have access/u,
+    );
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("stops when the only other row is a grant", async () => {
+    const { owner, wsRole } = await soleLegacyMemberWorkspace();
+    const other = await createWorkspaceMember({ role: "owner" });
+    const otherPerson = await personIdFor(other.user.id);
+    await db.insert(schema.membershipGrantTable).values({
+      personId: otherPerson,
+      scope: "workspace",
+      scopeId: owner.workspace.id,
+      roleId: wsRole.id,
+      sourceKind: "direct",
+      directOrigin: "system_backfill",
+    });
+    const before = await snapshot();
+
+    await expect(deleteAccountData(owner.user.id)).rejects.toThrow(
+      /Other people still have access/u,
+    );
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("is not blocked by another person's revoked grant", async () => {
+    const { owner, wsRole } = await soleLegacyMemberWorkspace();
+    const other = await createWorkspaceMember({ role: "owner" });
+    await db.insert(schema.membershipGrantTable).values({
+      personId: await personIdFor(other.user.id),
+      scope: "workspace",
+      scopeId: owner.workspace.id,
+      roleId: wsRole.id,
+      sourceKind: "direct",
+      directOrigin: "system_backfill",
+      revokedAt: new Date(),
+      revocationReason: "direct_removed",
+    });
+
+    await deleteAccountData(owner.user.id);
+
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, owner.workspace.id)),
+    ).toHaveLength(0);
+  });
+
+  it("proceeds as before for a truly sole member, whose own provisioned rows go with the workspace", async () => {
+    const { owner, wsRole } = await soleLegacyMemberWorkspace();
+    await seedProvisioningRows(owner.workspace.id, wsRole.id, owner.user.id);
+
+    await deleteAccountData(owner.user.id);
+
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, owner.workspace.id)),
+    ).toHaveLength(0);
+    expect(await db.select().from(schema.membershipGrantTable)).toHaveLength(0);
+  });
+
+  it("is not blocked by another person's access to a different workspace", async () => {
+    const { owner } = await soleLegacyMemberWorkspace();
+    const other = await createWorkspaceMember({ role: "owner" });
+    const otherRole = await createRole(other.workspace.id, "workspace");
+    await seedProvisioningRows(other.workspace.id, otherRole.id, other.user.id);
+
+    await deleteAccountData(owner.user.id);
+
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, owner.workspace.id)),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, other.workspace.id)),
+    ).toHaveLength(1);
+  });
+
+  it("does not count, or delete, another person's organisation-scoped row that merely shares the workspace id", async () => {
+    const { owner, wsRole: _unused } = await soleLegacyMemberWorkspace();
+    const other = await createWorkspaceMember({ role: "owner" });
+    const otherPerson = await personIdFor(other.user.id);
+    const otherRole = await createRole(other.workspace.id, "workspace");
+    const lookalike = requireRow(
+      await db
+        .insert(schema.membershipTable)
+        .values({
+          personId: otherPerson,
+          scope: "organisation",
+          scopeId: owner.workspace.id,
+          roleId: otherRole.id,
+        })
+        .returning(),
+      "organisation-scoped membership",
+    );
+
+    await deleteAccountData(owner.user.id);
+
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, owner.workspace.id)),
+    ).toHaveLength(0);
+    // The scope = 'workspace' predicate: this row is not access to the workspace.
+    expect(
+      await db
+        .select()
+        .from(schema.membershipTable)
+        .where(eq(schema.membershipTable.id, lookalike.id)),
+    ).toHaveLength(1);
+  });
+});
