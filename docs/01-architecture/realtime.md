@@ -46,8 +46,8 @@ capability and a key without the scope are all refused with the same `401` befor
 (`1008` on a later recheck), so no subscription exists for them. An instance admin with no
 workspace role holds reach but no `project:read`, and is refused on both sockets. The socket
 rereads that decision before delivery. A person may hold at most **five** legacy project
-sockets (the native limit); a sixth is closed with `1008` and reason "connection limit". To
-keep a burst of events from repeating the whole lookup (about seven queries) once per event per
+sockets **per API replica** (the native limit, counted in each process, so N replicas allow up to 5N); a sixth is closed with `1008` and reason "connection limit". To
+keep a burst of events from repeating the whole lookup (about eleven queries) once per event per
 connection, a legacy project socket reuses one passing lookup for **1.5 seconds**: a
 revocation that is announced on the control channel (membership, role, project, session or
 archive changes publish `identity.invalidate`) and the 60-second floor always look again at

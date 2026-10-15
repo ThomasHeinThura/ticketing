@@ -4,7 +4,7 @@ const REFRESH_INTERVAL_MS = 60_000;
 /**
  * How long a legacy PROJECT socket reuses one passing authority lookup for event deliveries on
  * that same socket (#748). A burst of events would otherwise repeat the whole lookup, roughly
- * seven database queries, once per event per connection. The window is the longest a
+ * eleven database queries, once per event per connection. The window is the longest a
  * revocation that is not announced on the control channel can go unnoticed by event delivery;
  * an announced one (`identity.invalidate`), the 60-second floor and any failed or refused
  * lookup never use it.
@@ -24,7 +24,8 @@ export function createLegacyConnectionAuthorization(
   let disposed = false;
   let pending = 0;
   let queue = Promise.resolve();
-  // A passing lookup is reusable until `reusableUntil`. Checks run strictly one at a time, so a
+  // A passing lookup is reusable until `reusableUntil` (a monotonic `performance.now()` time, so
+  // a wall-clock step cannot stretch the window). Checks run strictly one at a time, so a
   // fresh check can never be overtaken by a lookup that started before it.
   let reusableUntil = 0;
 
@@ -60,11 +61,15 @@ export function createLegacyConnectionAuthorization(
       try {
         if (disposed) return;
         let allowed: boolean;
-        if (!options.fresh && reuseMs > 0 && Date.now() < reusableUntil) {
+        if (
+          !options.fresh &&
+          reuseMs > 0 &&
+          performance.now() < reusableUntil
+        ) {
           allowed = true;
         } else {
           allowed = await authorize();
-          if (allowed) reusableUntil = Date.now() + reuseMs;
+          if (allowed) reusableUntil = performance.now() + reuseMs;
         }
         if (disposed) return;
         if (!allowed) {
