@@ -27,3 +27,11 @@ dc63e859546223ac9c11abc3c1d36a5c79ef445e:tests/api-integration/audit-log.test.ts
 # Exact immutable findings only; authentic reports unchanged. Technical record: 2026-10-12.
 9e89f35410266df75827627a30ff84610e2d775f:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:243
 9e89f35410266df75827627a30ff84610e2d775f:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:248
+
+# Public reviewer-report filenames in immutable issue #631 evidence publication.
+# Exact finding fingerprints only; reports unchanged, no rule/path exemption.
+# Technical disposition: 2026-10-15, independent delta and Sol review required.
+aea7da52bddab201a6de5882e70551e7da0cc55c:docs/07-planning/security-reviews/identity-timezones-631.md:generic-api-key:45
+aea7da52bddab201a6de5882e70551e7da0cc55c:docs/07-planning/security-reviews/identity-timezones-631.md:generic-api-key:77
+aea7da52bddab201a6de5882e70551e7da0cc55c:docs/07-planning/security-reviews/identity-timezones-631.md:generic-api-key:146
+aea7da52bddab201a6de5882e70551e7da0cc55c:docs/07-planning/security-reviews/identity-timezones-631.md:generic-api-key:178

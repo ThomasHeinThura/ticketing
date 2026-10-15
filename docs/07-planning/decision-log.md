@@ -1,3 +1,13 @@
+### 2026-10-15 · Exact immutable #631 review-filename secret-scan findings
+
+**Technical disposition (conductor; subject to independent ordinary and Sol clearance):** the four `generic-api-key` findings in publication commit `aea7da52bddab201a6de5882e70551e7da0cc55c`, note `docs/07-planning/security-reviews/identity-timezones-631.md`, lines 45, 77, 146 and 178, match public reviewer-report filenames. The matched values are the ordinary A/B and current-main composition report filenames, not credentials or the adjacent report digests. They identify retained local evidence and confer no access.
+
+**Bound:** add only the four exact commit/file/rule/line fingerprints to the existing `.gitleaksignore`, following its immutable-public-review-filename precedent. No file, directory, rule, arbitrary digest, or future commit is exempted. Authentic reports and Git history remain unchanged. Verify the original history range becomes clean and that identical prose in a fresh commit plus a synthetic credential still triggers scanning. This is a non-secret finding correction, not a secret-scan gate waiver; the required check remains mandatory on the final candidate.
+
+**Provenance and limits:** hosted Gitleaks 8.24.3 reported these four exact locations. Installed Gitleaks 8.30.1 independently reproduced exactly the four public filenames; local checks supplement rather than replace the final hosted version. Independent current-head review must verify that classification and the narrow fingerprints before merge. No Thomas decision or authorization to ignore a real credential is claimed.
+
+**Supersedes:** nothing. **Reversal:** remove these four fingerprints; the same immutable prose findings become blocking again.
+
 ### 2026-10-14 · Submission accept answers an unreachable destination exactly like a missing one
 
 **Decision (conductor, 2026-10-14; reversible):** `POST /api/submissions/{ref}/accept` answers a destination project outside the triager's reach with the same 422 as a missing destination, after the claim has committed. It does not answer 404 before the claim.
