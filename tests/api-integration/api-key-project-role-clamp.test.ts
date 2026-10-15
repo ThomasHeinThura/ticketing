@@ -21,6 +21,7 @@ import { grantProjectRole } from "./helpers/fixtures";
 import {
   addMember,
   createItem,
+  type Fixture,
   json,
   makeApiKey,
   ROUTES,
@@ -415,7 +416,11 @@ describe("API integration: API key authority is clamped by the owner's project r
         const world = await setupWorld();
         const { app } = createApp();
         const target = await createItem(app, world, TITLE);
-        const item = { key: target.key, neighbourId: "", parentKey: "" };
+        const item: Fixture = {
+          key: target.key,
+          neighbourId: "",
+          parentKey: "",
+        };
         await route.prepare?.(world, item, app);
         // A workspace admin passes every legacy workspace statement; only the project role
         // (read-only) can refuse them. They authored the row, so ownership cannot refuse either.
