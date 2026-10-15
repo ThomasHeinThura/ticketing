@@ -643,3 +643,113 @@ Exact source: `89290ab8b6fd5403f6513cc37063bd4ce78ea5cc`. Authoring/conducting c
 Graph and byte-level accepted-main conservation recorded separately in580-boot-outbox-composition-conservation.json.
 
 `pnpm --filter @taskdesk/api typecheck` passed exit0 at the same composed source; full command output is retained in580-boot-outbox-composed-typecheck.log.
+
+---
+
+## Shared seed-builder boundary repair and current review
+
+**Reviewed head:** `9f58e3279adbbb0f9c0444eb48ee1f197eab030d`
+
+The original composition clearances above retain their exact source scope. A later actual typed scan of the full changed boot source found two pre-existing utility repository helpers returning raw builders. Their only two production callers immediately await them. The bounded repair changes only those functions to async/await; predicates, projections, arguments, executor and caller sequencing remain unchanged. One fresh strong ordinary delta review and a further fresh independent lightweight Sol confirmation clear this no-authority-semantics delta. The current production-source scope is eighteen files; the actual targeted checker reports zero violations. API typecheck, Biome and the existing seed-role unit suite (one file/five tests) passed, including independent ordinary reruns. No current-source PostgreSQL/image proof follows. Existing dependencies and runtime limitations remain. These new reports are unchanged below; all earlier reports remain authentic historical coverage.
+
+---
+
+Retained evidence file — 580-boot-shared-builder-repair-luna.md
+
+# #580 boot shared-builder boundary repair handoff
+
+- **Branch:** `codex/query-ownership-580-b10` (existing draft PR #798)
+- **Pre-repair exact head:** `5769f11835ee1c91594ca13fdbc92f645493b0f0`
+- **New exact head:** `9f58e3279adbbb0f9c0444eb48ee1f197eab030d`
+- **Commit:** `fix(api): materialize workspace seed queries`
+- **Worktree:** `/Users/heinthura/.codex/worktrees/q580-b10/Ticketing.v2`
+
+## Concrete dependency and bounded fix
+
+The structural checker proof `580-boot-outbox-targeted-checker.json` at the pre-repair head reported two builder-boundary violations in `seed-default-workspace-roles.ts`: `listAllWorkspaceIds` and `listWorkspaceRoleKeys` were exported from `apps/api/src/utils/repository.ts` as non-async functions returning raw Drizzle builders. The seeder calls and awaits both functions during boot. Those two functions had no other production callers; their existing test coverage is in `tests/api/utils/seed-default-workspace-roles.test.ts`.
+
+Made only those two functions `async` and awaited each existing statement. Retained the `SelectExecutor` structural argument, selections, predicates, parameter types, and caller behavior; each call now resolves to materialized rows instead of exposing a composable builder. No caller, boot source, reviewer record, doc, shared contract, or #790 source was edited.
+
+## Checks on the new source
+
+- `pnpm exec biome check apps/api/src/utils/repository.ts` — passed, 1 file.
+- `git diff --check` — passed.
+- `pnpm --filter @taskdesk/api typecheck` — passed across all configured API TypeScript projects.
+- Existing `tests/api/utils/seed-default-workspace-roles.test.ts` — passed, 1 file / 5 tests.
+- Actual structural checker source `4a69fc25194622494a7c1102b9f86f42e6b58edf` analyzed the original 17 production paths plus `apps/api/src/utils/repository.ts` — 18 files, zero violations. The checker source file SHA-256 matches the retained checker worktree copy (`cc20147b7421473a8fdfd42d43f8ad9ba0717e36f5b48d373847528a3de0d6ff`).
+
+No Docker, PostgreSQL, browser, or image checks were run. The edit is a checker-detected repository-boundary repair; no runtime or boot execution is claimed.
+
+## Review and source preservation
+
+The published source at `5769f11835ee1c91594ca13fdbc92f645493b0f0` remains unchanged as the parent of this commit, retaining all prior reports and evidence in ancestry. Those older reviews do not cover the new source at `9f58e3279adbbb0f9c0444eb48ee1f197eab030d`; delta ordinary review and Sol review remain pending. No push, PR update, PR body change, or review approval was performed.
+
+The commit changes only `apps/api/src/utils/repository.ts`; the worktree is clean after commit.
+
+---
+
+Retained evidence file — 580-boot-builder-delta-ordinary-luna.md
+
+# #580 boot-builder repair ordinary delta review
+
+- **Role:** Independent ordinary delta review.
+- **Reviewer identity:** GPT-6 (the exact Luna/Sol variant is not exposed in this review context).
+- **Candidate:** `9f58e3279adbbb0f9c0444eb48ee1f197eab030d`
+- **Base / prior source:** `5769f11835ee1c91594ca13fdbc92f645493b0f0`
+- **Comparison:** exact candidate against exact parent.
+- **Independence:** Fresh context; did not author, direct, or remediate this delta.
+
+## Scope and ruling
+
+**CLEAR — no blocking or non-blocking findings.**
+
+The complete source delta is four changed lines in `apps/api/src/utils/repository.ts`: `listAllWorkspaceIds` and `listWorkspaceRoleKeys` are now `async`, and each awaits its existing Drizzle statement before returning. The projections, selected tables, role/workspace predicates, parameter types, and supplied executor are unchanged.
+
+The only production references to these helpers are the two calls in `apps/api/src/utils/seed-default-workspace-roles.ts`; both already await their results. The helper tests also await both calls. Returning materialized rows closes the builder escape required by the query-ownership result rule. It does not move query construction, broaden or narrow predicates, change the executor, or alter seed ordering, batching, conflict handling, catches, or startup call sites. Both statements continue to execute through the same shared `db` executor. I found no authority, tenant-scope, transaction, or gate pass/fail semantic change in this delta.
+
+The accepted D1–D4 ownership contract supports this narrow correction: statement construction remains in the named repository module; each repository helper materializes its result; no infrastructure allowlist or tooling exception changes; and the seed tooling exclusion does not affect these application source helpers.
+
+## Checks performed
+
+- Inspected the exact Git diff and commit parent; only `apps/api/src/utils/repository.ts` changed.
+- Searched all production and test references to both helper names; found the two awaited production calls and the existing awaited helper tests.
+- `pnpm --filter @taskdesk/api typecheck` — passed all configured TypeScript projects.
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts tests/api/utils/seed-default-workspace-roles.test.ts` — passed, 1 file / 5 tests.
+- `pnpm exec biome check apps/api/src/utils/repository.ts` — passed, 1 file.
+- `git diff --check 5769f11835ee1c91594ca13fdbc92f645493b0f0 9f58e3279adbbb0f9c0444eb48ee1f197eab030d` — passed.
+- Reviewed the retained targeted-checker proof and author handoff as supporting context; they are not substitutes for this source inspection.
+
+An initial test invocation used the seed CLI config, which does not include this unit file and exited “No test files found.” I corrected the config and ran the exact focused unit successfully; the initial invocation did not execute or alter the test.
+
+## Limits
+
+This is ordinary delta review only. The changed path falls within the repository's security-review scope; the separate required lightweight GPT-6 Sol confirmation remains outstanding. No Docker, PostgreSQL, browser, image, whole-candidate, or acceptance claim is made. This report does not authorize push, merge, or any broader #580 acceptance.
+
+---
+
+Retained evidence file — 580-boot-builder-delta-security-sol.md
+
+# #580 boot repository builder repair — security delta confirmation
+
+- **Role:** Fresh independent lightweight security reviewer.
+- **Model:** GPT-6 Sol. Parent dispatch attests `collaboration.spawn_agent` with `task_name: boot_builder_delta_security`, `fork_turns: none`, `model: gpt-6-sol`; this context does not expose a separate runtime model identifier. The model label records the explicit dispatch, not an intrinsic model self-verification.
+- **Candidate / reviewed head:** `9f58e3279adbbb0f9c0444eb48ee1f197eab030d`.
+- **Comparison base:** `5769f11835ee1c91594ca13fdbc92f645493b0f0` (candidate's direct parent).
+- **Independence:** Fresh context with no inherited author turns; I did not author, direct, or remediate the change. I performed this review after reading the independent ordinary delta report, then checked its claims against source.
+
+## Verdict
+
+**CLEAR for this exact four-line source delta; no blocking or non-blocking security finding.** The lightweight tier is appropriate because the edit changes no authorization decision, tenant predicate, role contents, query executor, or gate pass/fail semantics. It changes only the return boundary of two existing query helpers from a Drizzle builder/thenable to a promise of materialized rows.
+
+Both helpers are in `apps/api/src/utils/repository.ts`, a security-review path. `listAllWorkspaceIds` still selects only `workspace.id` from the same workspace table without a predicate. `listWorkspaceRoleKeys` still selects only workspace ID and role and applies the same `workspaceIds` and `roles` `inArray` predicates. Both receive and use the same supplied `SelectExecutor`. The new `async` / `return await` makes the unchanged statement execute before the helper resolves. No caller can further compose a returned builder, consistent with the repository result contract in `docs/04-engineering/coding-standards.md`.
+
+The only production callers are the two `await` expressions in `seedDefaultWorkspaceRoles()`. It passes the shared `db` executor, checks the workspace result before querying roles, and handles errors in its existing `try/catch`. Rejected queries remain caught and rethrown; the seed's role names, permissions, `isSystem` repair, missing-row calculation, insertion batching and conflict target are untouched. Query execution moves from assimilation at the existing caller `await` to assimilation at the new helper `await`, with no intervening side effect. Helper tests also await both results. No route, permission policy, migration, schema, CI check, or tenant-scoping contract changed.
+
+## Verification and limits
+
+- Checked `git rev-parse HEAD`, direct parent, complete `git diff --stat` and source diff between the exact SHAs, `git diff --check`, and clean worktree; only `apps/api/src/utils/repository.ts` changed and the diff has no whitespace error.
+- Read the accepted AGENTS/workflow/active-mission/model and security-path rules, repository result contract, both versions of the helper, full seed caller, and focused helper tests; searched all helper references.
+- Read the separate ordinary report, which records API typecheck, focused Vitest **1 file / 5 tests**, and Biome **1 file** passing on this SHA. I did not rerun those checks or claim them as my own execution.
+- No PostgreSQL, Docker image, boot, browser, whole-candidate acceptance, hosted CI, or exact-head merge-readiness result was produced by this review. Historical reports for the parent remain historical; this verdict covers only the new delta and does not rewrite them.
+
+**Reviewed head:** `9f58e3279adbbb0f9c0444eb48ee1f197eab030d`
