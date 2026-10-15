@@ -51,6 +51,11 @@ const EMPTY_CAPABILITIES = {
   manageTeam: false,
   removeMembers: false,
   manageServiceCalendars: false,
+  // saved_view:share and workspace:manage_settings, exactly as /api/capabilities returns them:
+  // they decide which audiences a saved view may be given (`SV-15`, `SV-18`). The server still
+  // enforces every create and update; these only decide which choices are offered.
+  shareSavedViews: false,
+  manageWorkspaceSettings: false,
 } as const satisfies Record<string, boolean>;
 
 export function useWorkspacePermission(targetWorkspaceId?: string) {
@@ -114,6 +119,8 @@ export function useWorkspacePermission(targetWorkspaceId?: string) {
       canManageTeam: () => can.manageTeam,
       canRemoveMembers: () => can.removeMembers,
       canManageServiceCalendars: () => can.manageServiceCalendars,
+      canShareSavedViews: () => can.shareSavedViews,
+      canManageWorkspaceSettings: () => can.manageWorkspaceSettings,
       canCreatePublicComments: () => can.createPublicComments === true,
       canCreateInternalComments: () => can.createInternalComments === true,
       canTransitionTasks: () => can.transitionTasks === true,
