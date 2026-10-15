@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { windowId } from "@taskdesk/libs";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getApiUrl, toWebSocketBase } from "@/fetchers/get-api-url";
 import { authClient } from "@/lib/auth-client";
 
@@ -40,18 +40,33 @@ export function reconnectDelay(
 // We send a lightweight ping every 30 seconds to keep the connection alive.
 const WS_PING_INTERVAL_MS = 30_000;
 
-export function useProjectWebSocket(projectId: string) {
+/**
+ * `connecting` is a pending state, not an outage (realtime.md, Fallback): no indicator.
+ * `live` once the socket is open. `unavailable` after a connection error or close the client is
+ * not causing itself, and it stays until the socket opens again, or the hook starts over for
+ * another project or session. A terminal stop (the connection limit, or the retries used up)
+ * therefore leaves it showing; the pages already poll every 30 seconds in the meantime.
+ */
+export type ProjectSocketStatus = "connecting" | "live" | "unavailable";
+
+export function useProjectWebSocket(projectId: string): {
+  status: ProjectSocketStatus;
+} {
   const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const wsRef = useRef<WebSocket | null>(null);
   const retriesRef = useRef(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [status, setStatus] = useState<ProjectSocketStatus>("connecting");
 
   useEffect(() => {
     if (!projectId || !session?.user?.id) return;
 
     retriesRef.current = 0;
+    // A new project or session starts over, which also gives a stopped socket its retry.
+    let disposed = false;
+    setStatus("connecting");
 
     function clearPing() {
       if (pingIntervalRef.current) {
@@ -67,6 +82,7 @@ export function useProjectWebSocket(projectId: string) {
 
       ws.onopen = () => {
         retriesRef.current = 0; // Reset retries on successful connection
+        setStatus("live");
         // Start keepalive pings to prevent Cloudflare idle timeout (100s)
         clearPing();
         pingIntervalRef.current = setInterval(() => {
@@ -143,6 +159,9 @@ export function useProjectWebSocket(projectId: string) {
       ws.onclose = (event) => {
         clearPing();
         wsRef.current = null;
+        // Closing the socket ourselves (unmount, project or session change) is not an outage.
+        if (disposed) return;
+        setStatus("unavailable");
 
         const delay = reconnectDelay(event, retriesRef.current);
         if (delay === null) {
@@ -157,6 +176,7 @@ export function useProjectWebSocket(projectId: string) {
     connect();
 
     return () => {
+      disposed = true;
       retriesRef.current = MAX_RETRIES; // Prevent reconnect after unmount
       clearPing();
       if (timeoutRef.current) {
@@ -165,4 +185,6 @@ export function useProjectWebSocket(projectId: string) {
       wsRef.current?.close();
     };
   }, [projectId, session?.user?.id, queryClient]);
+
+  return { status };
 }
