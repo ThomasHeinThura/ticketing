@@ -284,6 +284,22 @@ not re-raised in a later review:
 - *Per-request visibility inside a customer organisation undefined* — resolved by
   `customer_visibility` (`private | organisation`) in `rbac.md`, `data-model.md` and `god-mode.md`.
 
+### P3 identity findings 81–82 — specification-owner disposition (2026-10-04)
+
+The independent P3 contract reviews of exact specification head
+`09ace3548ed15fa886ef7a5634571da94948fde6` found no specification blockers and recommended
+that the owner mark findings 81–82 sufficiently specified to begin implementation. The owner
+records that limited disposition here: finding 81's connection-bound domain routing, Entra
+admission, immutable identity and source-scoped group authority are normative in IP-9/IP-27/
+IP-28 and proposed ADR-0015; finding 82's CSRF and OIDC protocol controls are normative in
+the security model and IP-7. This does **not** withdraw or close either historical security
+finding. Runtime implementation, real Entra verification, PostgreSQL migration/concurrency,
+browser negative tests, independent implementation review and P3 acceptance remain open.
+ADR-0015 is still proposed, and human design review remains deferred to P4. See the current
+[P3 owning-findings handoff](../../security-reviews/p3-identity-owning-findings-handoff.md)
+for the mapped runtime obligations and [P3 contract review record](../../security-reviews/544-identity-trust-contracts.md)
+for exact review provenance and its scope limits.
+
 ### PR #553 design-level dispositions — 2026-10-01
 
 Two fresh, independent GPT-6 Luna reviews of exact candidate
