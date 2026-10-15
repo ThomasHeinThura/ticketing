@@ -77,7 +77,7 @@ its source-binding limit are recorded in the
 │ pnpm check:overrides one override source only    │
 │ pnpm check:dockerfile-deps Dockerfile=workspace  │
 │ gitleaks             no secrets in the diff      │
-│ planned — not wired: check:queries (#580)        │
+│ pnpm check:queries   planned — not wired (#580) │
 │ pnpm check:inventory screen counts match rows    │
 │ pnpm check:reviews   review section empty        │
 │ pnpm check:env       no stray process.env        │
