@@ -100,6 +100,12 @@ search validator, current viewer reach, and field permissions as direct work-ite
   cannot see the saved view itself. *(v1's saved filters were not addressable, which made
   "look at this queue" an unshareable instruction.)*
 - `SV-20` Views can be pinned to the sidebar, per user.
+- `SV-22` A view scoped to a project names that project, so it is reachable only by callers who
+  reach the project, whatever its visibility. The list omits it, and every route that addresses
+  it by id (get, update, delete request, pin, run, count) answers exactly like a missing view
+  (404), before any capability gate, and writes nothing. Creating a view with a project scope
+  needs reach to that project; an unreachable project gets the same 400 as a missing one.
+  Workspace-scoped views are unaffected.
 - `SV-21` Duplicating a view is one click, which is how most views actually get made.
 
 ## Queues

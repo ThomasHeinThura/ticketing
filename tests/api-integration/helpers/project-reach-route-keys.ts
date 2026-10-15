@@ -85,3 +85,44 @@ export const TASK_TARGET_WORK_ITEM_ROUTE_KEYS = [
  * `ws-project-reach.test.ts` drives every key here against the real listener.
  */
 export const PROJECT_SOCKET_ROUTE_KEYS = ["GET /api/ws/{projectId}"] as const;
+
+/**
+ * Workspace-level LIST and SEARCH routes that return rows from more than one project (#740).
+ * Each declares `requireReachFilteredList` and restricts its rows to the caller's reachable
+ * projects in SQL; `project-reach-reads.test.ts` drives them for sessions and API keys.
+ */
+export const PROJECT_LIST_ROUTE_KEYS = [
+  "GET /api/label/workspace/{workspaceId}",
+  "GET /api/project",
+  "GET /api/search",
+  "GET /api/views",
+  "GET /api/submissions/{ref}/duplicates",
+] as const;
+
+/**
+ * Writes whose target project is named in the body or chosen by the handler, not addressed by
+ * a path id (#741). Each declares `requireReachContext`; an unreachable project is answered
+ * exactly like a missing one. `project-reach-writes.test.ts` drives them.
+ */
+export const PROJECT_BODY_TARGET_ROUTE_KEYS = [
+  "POST /api/views",
+  "POST /api/submissions/{ref}/accept",
+  "POST /api/submissions/{ref}/duplicate",
+  "GET /api/submissions/{ref}",
+  "GET /api/submissions/{ref}/attachments",
+  "GET /api/submissions/{ref}/attachments/{id}",
+] as const;
+
+/**
+ * Every route that addresses a saved view by id. The reach check lives in the shared
+ * `workspaceAccess.fromSavedView()` lookup: a project-scoped view of a project the caller
+ * does not reach is answered exactly like a missing view, before any gate or write.
+ */
+export const SAVED_VIEW_BY_ID_ROUTE_KEYS = [
+  "GET /api/views/{id}",
+  "PATCH /api/views/{id}",
+  "DELETE /api/views/{id}",
+  "POST /api/views/{id}/pin",
+  "POST /api/views/{id}/run",
+  "GET /api/views/{id}/count",
+] as const;

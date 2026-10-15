@@ -1,6 +1,7 @@
 import { HTTPException } from "hono/http-exception";
 import { publishEvent } from "../../events";
 import type { z } from "../../openapi";
+import type { callerReach } from "../../utils/caller-reach";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import type { ApiKeyPermissionScope } from "../../utils/require-api-key-permission-scope";
 import {
@@ -14,22 +15,28 @@ import {
   writeSavedViewAudit,
 } from "../audit";
 import {
+  findProjectInWorkspace,
   insertSavedView,
-  projectBelongsToWorkspace,
   teamMemberInWorkspace,
 } from "../repository";
 import type { createViewBody } from "../schema";
 
+type CallerReach = Awaited<ReturnType<typeof callerReach>>;
 type CreateViewInput = z.infer<typeof createViewBody>;
 
 // SV-15/SV-18: `scope`/`scope_id` (what the query targets) is a separate axis from
 // `visibility` (who can see the view). This validates the FORMER -- that `scopeId`
 // genuinely names a workspace-or-project the view's own `workspaceId` contains -- so a
 // view can never be created pointing at another tenant's project.
+//
+// #741: a project scope also requires the caller's REACH to that project. A project in the
+// workspace that the caller cannot reach is answered with the exact error a missing id gets, so
+// the response is not a same-workspace existence oracle and nothing is written.
 async function assertScopeBelongsToWorkspace(
   workspaceId: string,
   scope: "workspace" | "project",
   scopeId: string,
+  reach: CallerReach,
 ) {
   if (scope === "workspace") {
     if (scopeId !== workspaceId) {
@@ -41,9 +48,16 @@ async function assertScopeBelongsToWorkspace(
   }
 
   rejectNulByte(scopeId, "scopeId");
-  const projectExists = await projectBelongsToWorkspace(scopeId, workspaceId);
+  const project = await findProjectInWorkspace(scopeId, workspaceId);
 
-  if (!projectExists) {
+  if (
+    !project ||
+    !(await reach.reaches({
+      projectId: project.id,
+      workspaceId: project.workspaceId,
+      organisationId: project.organisationId,
+    }))
+  ) {
     throw new HTTPException(400, {
       message: "scopeId must be a project in this workspace",
     });
@@ -55,11 +69,12 @@ async function createView(
   personId: string,
   userId: string,
   auditActor: SavedViewAuditActor,
-  apiKey?: ApiKeyPermissionScope,
+  apiKey: ApiKeyPermissionScope | undefined,
+  reach: CallerReach,
 ) {
   const { workspaceId, scope, scopeId, visibility, sharedWithTeamId } = input;
 
-  await assertScopeBelongsToWorkspace(workspaceId, scope, scopeId);
+  await assertScopeBelongsToWorkspace(workspaceId, scope, scopeId, reach);
 
   // SV-15: this is a separate axis from `scope`/`scopeId` above.
   if (visibility === "team") {
