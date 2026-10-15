@@ -142,6 +142,10 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       `import { eq } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; export async function listRows() { return db.select().from(userTable).where(eq(userTable.id, "id")).limit(1); }`,
     ],
     [
+      "database/default-async-assimilated.repository.ts",
+      `import { eq } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; export default async function () { return db.select().from(userTable).where(eq(userTable.id, "id")).limit(1); }`,
+    ],
+    [
       "database/full-select-escape.repository.ts",
       `import { eq } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; export function buildRows() { return db.select().from(userTable).where(eq(userTable.id, "id")).limit(1); }`,
     ],
@@ -154,8 +158,44 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       "interface RepositoryShape { readonly label: string } export type { RepositoryShape };",
     ],
     [
+      "database/type-only-class-export.repository.ts",
+      `import db from "../../database"; class RepositoryShape { read() { return db.select(); } } export type { RepositoryShape };`,
+    ],
+    [
       "database/recursive-api.repository.ts",
       "interface RepositoryShape { next?: RepositoryShape; listRows: () => Promise<{ id: string }[]> } export const repository = {} as RepositoryShape;",
+    ],
+    [
+      "database/default-anonymous-function.repository.ts",
+      `import db from "../../database"; export default function () { return db.select(); }`,
+    ],
+    [
+      "database/default-anonymous-class.repository.ts",
+      `import db from "../../database"; export default class { read() { return db.select(); } }`,
+    ],
+    [
+      "database/namespace-source.repository.ts",
+      `import db from "../../database"; export function read() { return db.select(); }`,
+    ],
+    [
+      "database/namespace-async-source.repository.ts",
+      `import { eq } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; export async function readRows() { return db.select().from(userTable).where(eq(userTable.id, "id")).limit(1); }`,
+    ],
+    [
+      "database/namespace.repository.ts",
+      `export * as repository from "./namespace-source.repository";`,
+    ],
+    [
+      "database/namespace-async.repository.ts",
+      `export * as repository from "./namespace-async-source.repository";`,
+    ],
+    [
+      "database/namespace-drizzle.repository.ts",
+      `export * as drizzle from "drizzle-orm";`,
+    ],
+    [
+      "database/sql-aliased-escape.repository.ts",
+      'import { sql } from "drizzle-orm"; export const fragment = sql`select 1`.as("alias");',
     ],
   ]);
   const absoluteFiles = [];
@@ -278,6 +318,20 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       ["database/factory-escape.repository.ts", /exposes a query builder/],
       ["database/full-select-escape.repository.ts", /exposes a query builder/],
       ["database/omit-select-escape.repository.ts", /exposes a query builder/],
+      [
+        "database/default-anonymous-function.repository.ts",
+        /exposes a query builder/,
+      ],
+      [
+        "database/default-anonymous-class.repository.ts",
+        /exposes a query builder/,
+      ],
+      ["database/namespace.repository.ts", /exposes a query builder/],
+      ["database/sql-aliased-escape.repository.ts", /exposes a query builder/],
+      [
+        "database/namespace-drizzle.repository.ts",
+        /exposes a query builder|query-builder escape cannot be excluded/,
+      ],
     ]);
     for (const [relative, expected] of expectedViolations) {
       assert.match(
@@ -327,6 +381,11 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       "an async function returning an assimilated row thenable remains valid",
     );
     assert.equal(
+      byFile.has(key("database/default-async-assimilated.repository.ts")),
+      false,
+      "an anonymous default async function returning rows remains valid",
+    );
+    assert.equal(
       byFile.has(key("database/private-class-method.repository.ts")),
       false,
       "private/protected implementation methods do not escape the repository boundary",
@@ -335,6 +394,16 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       byFile.has(key("database/type-only-export.repository.ts")),
       false,
       "type-only exports do not form runtime query-builder boundaries",
+    );
+    assert.equal(
+      byFile.has(key("database/type-only-class-export.repository.ts")),
+      false,
+      "a class exposed only through a type-only export has no runtime query boundary",
+    );
+    assert.equal(
+      byFile.has(key("database/namespace-async.repository.ts")),
+      false,
+      "namespace runtime exports preserve async thenable assimilation for completed queries",
     );
     assert.equal(
       byFile.has(key("database/recursive-api.repository.ts")),

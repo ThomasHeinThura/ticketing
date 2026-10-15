@@ -27,7 +27,7 @@ const METHODS = new Set([
   "refreshMaterializedView",
 ]);
 const DRIZZLE_QUERY_TYPES =
-  /^(?:Pg(?:Select|SelectBuilder|SelectBase|SelectQueryBuilderBase|Insert|InsertBase|Update|UpdateBase|Delete|DeleteBase|Raw|RelationalQuery|RefreshMaterializedView)|QueryPromise|SQL|SQLWrapper)$/;
+  /^(?:Pg(?:Select|SelectBuilder|SelectBase|SelectQueryBuilderBase|Insert|InsertBase|Update|UpdateBase|Delete|DeleteBase|Raw|RelationalQuery|RefreshMaterializedView)|QueryPromise|SQL|SQLWrapper|Aliased)$/;
 const DRIZZLE_DATABASE_TYPES =
   /^(?:PgDatabase|NodePgDatabase|PgTransaction|NodePgTransaction)$/;
 const PG_TYPES = /^(?:Pool|PoolClient|Client|ClientBase)$/;
@@ -224,16 +224,18 @@ function exportedQueryBoundary(
     if (nested.kind !== "safe") return nested;
   }
 
-  for (const signature of checker.getSignaturesOfType(type, 0)) {
-    const nested = exportedQueryBoundary(
-      checker.getReturnTypeOfSignature(signature),
-      checker,
-      source,
-      publicMembers,
-      seen,
-      depth + 1,
-    );
-    if (nested.kind !== "safe") return nested;
+  for (const signatureKind of [0, 1]) {
+    for (const signature of checker.getSignaturesOfType(type, signatureKind)) {
+      const nested = exportedQueryBoundary(
+        checker.getReturnTypeOfSignature(signature),
+        checker,
+        source,
+        publicMembers,
+        seen,
+        depth + 1,
+      );
+      if (nested.kind !== "safe") return nested;
+    }
   }
 
   // Walk only declarations that form source-level public object/class APIs. This avoids
@@ -793,71 +795,144 @@ export function analyzeQueryOwnership({
         node.forEachChild?.(collectPublicMembers);
       };
       collectPublicMembers(source);
-      const exports = [];
-      const hasExport = (node) =>
-        node.modifiers?.some(
-          (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
-        );
+      // Use the compiler's runtime module surface as the invariant. Syntax-only export
+      // enumeration misses anonymous defaults and namespace/star re-exports; AST is used
+      // solely to distinguish explicitly type-only aliases, which have no runtime value.
+      const typeOnlyExports = new Set();
       for (const statement of source.statements) {
-        if (hasExport(statement)) {
-          if (
-            statement.kind === ts.SyntaxKind.FunctionDeclaration ||
-            statement.kind === ts.SyntaxKind.ClassDeclaration ||
-            statement.kind === ts.SyntaxKind.EnumDeclaration
-          ) {
-            if (statement.name)
-              exports.push({ node: statement.name, boundary: statement });
-          } else if (statement.kind === ts.SyntaxKind.VariableStatement) {
-            for (const declaration of statement.declarationList.declarations)
-              if (declaration.name.kind === ts.SyntaxKind.Identifier)
-                exports.push({ node: declaration.name, boundary: declaration });
-          }
-        }
-        if (statement.kind === ts.SyntaxKind.ExportAssignment)
-          exports.push({ node: statement.expression, boundary: statement });
-        if (statement.kind === ts.SyntaxKind.ExportDeclaration) {
-          if (statement.isTypeOnly) continue;
-          if (statement.exportClause?.kind === ts.SyntaxKind.NamedExports) {
-            for (const specifier of statement.exportClause.elements)
-              if (!specifier.isTypeOnly)
-                exports.push({ node: specifier.name, boundary: specifier });
-          } else if (!statement.exportClause) {
-            // Star exports cannot be enumerated through the native AST's module symbol surface
-            // with a reliable source location; fail closed rather than silently missing a value.
-            reportNode(
-              source,
-              "export-star repository boundary cannot be enumerated; query-builder escape cannot be excluded",
-            );
-          }
+        if (statement.kind !== ts.SyntaxKind.ExportDeclaration) continue;
+        if (statement.isTypeOnly) {
+          for (const specifier of statement.exportClause?.elements ?? [])
+            typeOnlyExports.add(specifier.name.text);
+        } else if (
+          statement.exportClause?.kind === ts.SyntaxKind.NamedExports
+        ) {
+          for (const specifier of statement.exportClause.elements)
+            if (specifier.isTypeOnly) typeOnlyExports.add(specifier.name.text);
         }
       }
-      for (const exported of exports) {
-        let type;
+      const moduleSymbol = checker.getSymbolAtLocation(source);
+      if (!moduleSymbol) {
+        reportNode(
+          source,
+          "could not resolve runtime module exports; query-builder escape cannot be excluded",
+        );
+      } else {
+        const seenExports = new Set();
+        let exportNodes = 0;
+        const inspectExport = (exported, depth = 0) => {
+          if (++exportNodes > 512 || depth > 20) {
+            reportNode(
+              source,
+              "runtime export graph exceeds safe inspection limits; query-builder escape cannot be excluded",
+            );
+            return;
+          }
+          if (typeOnlyExports.has(exported.name)) return;
+          let target = exported;
+          const declarations = exported.declarations ?? [];
+          const isAlias = declarations.some((declaration) =>
+            [
+              ts.SyntaxKind.ExportSpecifier,
+              ts.SyntaxKind.NamespaceExport,
+            ].includes(declaration.kind),
+          );
+          if (isAlias) {
+            try {
+              target = checker.getAliasedSymbol(exported);
+            } catch {
+              reportNode(
+                source,
+                "could not resolve runtime export alias; query-builder escape cannot be excluded",
+              );
+              return;
+            }
+          }
+          if (!target) {
+            reportNode(
+              source,
+              "runtime export has no resolvable symbol; query-builder escape cannot be excluded",
+            );
+            return;
+          }
+          const declarationsOfTarget = target.declarations ?? [];
+          if (
+            declarationsOfTarget.length > 0 &&
+            declarationsOfTarget.every((declaration) =>
+              [
+                ts.SyntaxKind.InterfaceDeclaration,
+                ts.SyntaxKind.TypeAliasDeclaration,
+              ].includes(declaration.kind),
+            )
+          )
+            return;
+
+          const exportId = target.id ?? target.index ?? target.name;
+          if (seenExports.has(exportId)) return;
+          seenExports.add(exportId);
+
+          // Namespace exports are runtime object boundaries. Recurse through the
+          // compiler's actual exported members, including nested aliases.
+          const namespaceExports =
+            declarations.some(
+              (declaration) =>
+                declaration.kind === ts.SyntaxKind.NamespaceExport,
+            ) || target.exports;
+          if (namespaceExports) {
+            let members;
+            try {
+              members = checker.getExportsOfModule(target);
+            } catch {
+              reportNode(
+                source,
+                "could not enumerate runtime namespace exports; query-builder escape cannot be excluded",
+              );
+              return;
+            }
+            for (const member of members) inspectExport(member, depth + 1);
+          }
+
+          let type;
+          try {
+            type = checker.getTypeOfSymbol(target);
+          } catch {
+            type = undefined;
+          }
+          if (!type) {
+            reportNode(
+              source,
+              "could not type exported repository value; return shape is unproven",
+            );
+            return;
+          }
+          const result = exportedQueryBoundary(
+            type,
+            checker,
+            source,
+            publicMembers,
+          );
+          if (result.kind === "builder")
+            reportNode(
+              source,
+              "exported repository value exposes a query builder instead of awaited rows, DTOs, or scalars",
+            );
+          else if (result.kind !== "safe")
+            reportNode(
+              source,
+              "exported repository value shape is unresolved or exceeds safe inspection limits; query-builder escape cannot be excluded",
+            );
+        };
+        let runtimeExports;
         try {
-          type = checker.getTypeAtLocation(exported.node);
+          runtimeExports = checker.getExportsOfModule(moduleSymbol);
         } catch {
           reportNode(
             source,
-            "could not type exported repository value; return shape is unproven",
+            "could not enumerate runtime module exports; query-builder escape cannot be excluded",
           );
-          continue;
+          runtimeExports = [];
         }
-        const result = exportedQueryBoundary(
-          type,
-          checker,
-          source,
-          publicMembers,
-        );
-        if (result.kind === "builder")
-          reportNode(
-            exported.boundary,
-            "exported repository value exposes a query builder instead of awaited rows, DTOs, or scalars",
-          );
-        else if (result.kind !== "safe")
-          reportNode(
-            exported.boundary,
-            "exported repository value shape is unresolved or exceeds safe inspection limits; query-builder escape cannot be excluded",
-          );
+        for (const exported of runtimeExports) inspectExport(exported);
       }
     }
   }
