@@ -148,7 +148,8 @@ work-item/
 ├── policy.ts         the policy each route declares  (mandatory — one of the five kinds in rbac.md)
 ├── repository.ts     the ONLY place db.select()/insert()/update() on this feature's tables may appear;
 │                     takes explicit tenant parameters (workspaceId / projectId / identity) on its functions
-│                     (multi-tenancy.md; conductor decision, PR #780, decision log 2026-10-15). Enforced by check:queries
+│                     (multi-tenancy.md; conductor decision, PR #780, decision log 2026-10-15).
+│                     Query ownership is specified in coding-standards.md; check:queries is planned, not wired.
 ├── controllers/
 │   ├── create-work-item.ts
 │   ├── update-work-item.ts

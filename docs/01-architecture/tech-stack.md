@@ -154,7 +154,7 @@ P0. This is the input to the P0 estimate, not a footnote.
 | **k6** | Load baselines |
 | **cosign** | Image and release-archive signing |
 | **@vitest/coverage-v8** (present in kaneo, unused) | The 90 % `packages/domain` threshold, enforced per package |
-| A small AST script (`check:queries`) | The "no `db.select()` outside `repository.ts`" rule — Biome cannot express it |
+| A planned small AST script (`check:queries`; not currently wired) | The "no `db.select()` outside `repository.ts`" ownership rule — Biome cannot express it; see [coding standards](../04-engineering/coding-standards.md#query-ownership-issue-580) for the authoritative contract |
 
 Also inherited and to be **consolidated**, per the [inherited-features register](inherited-features.md):
 `valibot` → Zod only (one surviving file after the integration deletions); `nanostores` **stays** — it is

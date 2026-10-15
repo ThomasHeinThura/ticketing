@@ -61,8 +61,11 @@ shape: repositories take explicit tenant parameters and no wrapper type is intro
 implementation decisions"; see also
 [coding-standards.md](../04-engineering/coding-standards.md)).
 
-`check:queries` (issue #580) forbids building a query such as `db.select().from(workItem)`
-outside repository modules, so ad-hoc unscoped queries cannot creep into controllers.
+The planned `check:queries` gate (issue #580) will forbid building statements such as
+`db.select().from(workItem)` outside repository modules once it is wired. This check enforces
+query ownership, not tenant-predicate correctness; the tenant-scope contract is defined in
+[coding standards](../04-engineering/coding-standards.md#query-ownership-issue-580). The gate
+is not currently wired.
 
 ### The 404 rule
 

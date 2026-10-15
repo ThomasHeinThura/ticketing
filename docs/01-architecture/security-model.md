@@ -111,14 +111,16 @@ forged `X-Forwarded-For`, cross-origin WebSocket, CSRF on an elevated route.
 
 ### 5. Secrets never serialise; queries are never unscoped
 
-Response schemas are explicit; there is no `select *` to the wire. Every table read goes
-through a feature's `repository.ts` whose exports take an identity and return a
-phantom-typed `ScopedQuery` that **cannot execute without one** — a type error, not a lint
-warning; `check:queries` additionally fails the build on any `db.select()` outside a
-repository. RLS remains rejected as the *primary* control ([multi-tenancy.md](multi-tenancy.md)) — but
-as a **backstop** it is no longer deferred: a P0 prototype covers `work_item`, `comment` and
-`attachment`, and P0 closes with it either merged and measured or dropped with the reason in
-the decision log (decided 2026-09-06).
+Response schemas are explicit; there is no `select *` to the wire. A repository query that
+can return cross-organisation data takes its tenant scope explicitly (such as `workspaceId`,
+`projectId` or resolved identity) and applies that scope in the statement predicate. Keeping
+statements in named repositories is an ownership convention; it does not itself prove that a
+query is scoped. The planned `check:queries` gate (#580) is not currently wired, and its
+repository-location check will enforce query ownership rather than tenant predicate semantics.
+These explicit predicates remain required regardless of the gate. RLS remains rejected as the
+*primary* control ([multi-tenancy.md](multi-tenancy.md)) — but as a **backstop** it is no longer
+deferred: a P0 prototype covers `work_item`, `comment` and `attachment`, and P0 closes with it
+either merged and measured or dropped with the reason in the decision log (decided 2026-09-06).
 
 ---
 
