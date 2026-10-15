@@ -10,9 +10,11 @@ The conductor (Claude Opus 5.5) implemented the change. The reviewers below are 
 - Ordinary review B by Claude Sonnet 5.5: APPROVE at `0fa992c9`, then APPROVE on the delta at `0ef6db6b`.
 - Security review by Claude Opus 5.5: CLEAR at `0ef6db6b`. A step timeout fails the job, and the sign/publish job is skipped, so nothing unscanned is signed or published. Permissions, triggers, concurrency and signing identity are unchanged.
 - Mechanical security rebind by Claude Opus 5.5: CLEAR at `28325153`, a clean merge of `main` `8ed5fef2` (#756, docs only); merge-tree equality checked.
+- Mechanical security rebind by Claude Opus 5.5: CLEAR at `24ca1f09`, a clean merge of `main` `1455ed80` (#755 and #757); `release.yml` unchanged.
 
 **Reviewed head:** `0ef6db6ba05c7461e47c138a21abf89c83128008`
 **Reviewed head:** `28325153ea446b8c3b9026a1db819d2b34a28d1e`
+**Reviewed head:** `24ca1f0916061bc265e6101f5a6776ad54b8d0bd`
 
 ## Context index
 
@@ -22,7 +24,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `758-ordinary-a-sonnet.md` | Ordinary review A (main..0ef6db6b) | Claude Sonnet 5.5 | `0ef6db6b` | APPROVE | `626d8b2a6de65fd567e38f3dcf8a50743f8e54105301a772afaed739bdb7ee18` |
 | 2 | `758-ordinary-b-sonnet.md` | Ordinary review B (main..0ef6db6b) | Claude Sonnet 5.5 | `0ef6db6b` | APPROVE | `a1cb7d84173fbc91fbd36775ef7818d173a4af52719bca63d298e6d977cf888b` |
-| 3 | `758-security-opus.md` | Security review (main..0ef6db6b) | Claude Opus 5.5 | `0ef6db6b` | CLEAR | `3c2322492077868104546ad9bcdd2ad26b79e0da9c80142a69c6d0105e2e501a` |
+| 3 | `758-security-opus.md` | Security review (main..0ef6db6b) | Claude Opus 5.5 | `0ef6db6b` | CLEAR | `a2f173105cb18b09a6406db2bff32976203ef82106f705c7c16e2c79bd55fd06` |
 
 ## Embedded reports
 
@@ -115,7 +117,7 @@ Cannot prove the 35-minute figure against real run history from the repository; 
 **Verdict:** APPROVE
 <!-- END REPORT (sha256 a1cb7d84173fbc91fbd36775ef7818d173a4af52719bca63d298e6d977cf888b) -->
 
-<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/758-security-opus.md; Claude Opus 5.5; sha256 3c2322492077868104546ad9bcdd2ad26b79e0da9c80142a69c6d0105e2e501a) -->
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/758-security-opus.md; Claude Opus 5.5; sha256 a2f173105cb18b09a6406db2bff32976203ef82106f705c7c16e2c79bd55fd06) -->
 # #758 security review (Opus 5.5) — step timeout on the multi-architecture release build (#753)
 
 **Reviewed head:** 0ef6db6ba05c7461e47c138a21abf89c83128008
@@ -204,4 +206,26 @@ None.
 **Interaction:** none. The merge brought documentation only, and the release workflow is byte-identical to the head I cleared.
 
 **Verdict:** CLEAR
-<!-- END REPORT (sha256 3c2322492077868104546ad9bcdd2ad26b79e0da9c80142a69c6d0105e2e501a) -->
+
+---
+
+## Rebind — merge of main `1455ed80` (Opus 5.5, mechanical)
+
+**Reviewed head:** 24ca1f0916061bc265e6101f5a6776ad54b8d0bd
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), same independent review context as above
+
+**Comparison base:** `87aaf68fc4ccb9f5411fd48022de0e0a6d52571e`. That is my CLEAR head `28325153` plus one commit, which edits only the security-review note.
+
+| Check | Result |
+| --- | --- |
+| `git ls-remote origin refs/heads/codex/release-build-timeout-753` and `gh pr view 758` | `24ca1f0916061bc265e6101f5a6776ad54b8d0bd` |
+| parents of `24ca1f09` | `87aaf68fc4ccb9f5411fd48022de0e0a6d52571e`, `1455ed80d87806c7c5e22c34e5f0f07c72782289` |
+| `git diff --stat 28325153 87aaf68f` | 1 file: `docs/07-planning/security-reviews/758-release-build-timeout.md` (+27/−3) |
+| `git merge-tree --write-tree 87aaf68f 1455ed80` | `d120b1ad811b79274ead6939bf4d47960694147b`, equal to the tree of `24ca1f09`, so the merge was clean with no hand edits |
+| `git diff --stat 87aaf68f 24ca1f09` | 12 files, exactly the files main changed since `8ed5fef2` (#755 overlays, `deploy.sh`, loopback test, docs and note; #757 docs) |
+| `git diff --stat 0ef6db6b 24ca1f09 -- .github` | empty: `release.yml` is byte-identical to the head I cleared |
+
+**Interaction:** none with this PR's change. `release.yml` does package `compose.yml`, `deploy/` and `scripts/deploy.sh` into the versioned deployment archive. Main changed the content of those files, already security-reviewed under #755. The workflow's packaging, signing, permissions and step timeout are unchanged.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 a2f173105cb18b09a6406db2bff32976203ef82106f705c7c16e2c79bd55fd06) -->
