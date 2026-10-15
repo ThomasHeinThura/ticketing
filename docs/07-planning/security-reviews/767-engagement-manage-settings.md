@@ -12,12 +12,15 @@ A Claude Sonnet 5.5 lane implemented the change; the conductor (Claude Opus 5.5)
 - Mechanical security rebind by Claude Opus 5.5: CLEAR at `4a59f9f0`, a clean merge of `main` `8ed5fef2` (docs only).
 - Mechanical rebind by Claude Opus 5.5: CLEAR at `5d1a4dbc`, a clean merge of `main` `97648c61` (#755: deploy overlays, docs and test only). Ordinary reviewers A and B also confirmed it.
 - Mechanical rebind by Claude Opus 5.5: CLEAR at `634eb074`, a clean merge of `main` `1455ed80` (#757, 3 docs files); ordinary reviewers A and B confirmed it.
+- Mechanical rebinds by Claude Opus 5.5: CLEAR at `2909b2c2` (merge of `main` `c35666c5`, #763) and `d6f3dfbf` (merge of `main` `9297362b`, #758); ordinary reviewers A and B confirmed both.
 
 **Reviewed head:** `361d3110fd164f09160ea96ef6d48da4a49b56b3`
 **Reviewed head:** `f0106a1990e637d5003d420ad5bf33cd5867a780`
 **Reviewed head:** `4a59f9f05d1c003643151e153f266d63d6590c66`
 **Reviewed head:** `5d1a4dbcdea46c57f0f107a510e5396fd2efe73b`
 **Reviewed head:** `634eb07410b1e439a1d28f5ab7364359e7e19575`
+**Reviewed head:** `2909b2c25d434619f233ebfb0683f9a88af307b8`
+**Reviewed head:** `d6f3dfbfcbd867c38e946ff9fdd6bb3df345f999`
 
 ## Context index
 
@@ -25,15 +28,15 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 
 | # | Report (private path) | Role | Model | Head | Verdict | SHA-256 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `767-ordinary-a-sonnet.md` | Ordinary review A (main..634eb074) | Claude Sonnet 5.5 | `634eb074` | APPROVE | `86ed91e6bd7422e5746a05557b265fa64d5e4dbd59de2344e894c1066f57fd74` |
-| 2 | `767-ordinary-b-sonnet.md` | Ordinary review B (main..634eb074) | Claude Sonnet 5.5 | `634eb074` | APPROVE | `4243624909094cf1a0f04dda841773b1eb38e11851bd9275deeddbe967ad0234` |
-| 3 | `767-security-opus.md` | Security review, delta and rebind (main..634eb074) | Claude Opus 5.5 | `634eb074` | CLEAR | `b9257477012d22d7f8cd001baa46237cd644b0e9c031209e9a1694916c56f367` |
+| 1 | `767-ordinary-a-sonnet.md` | Ordinary review A (main..d6f3dfbf) | Claude Sonnet 5.5 | `d6f3dfbf` | APPROVE | `3554ec4b93cf18e448ddb8b02e2612bc62665bed760790731c8bb328b2702253` |
+| 2 | `767-ordinary-b-sonnet.md` | Ordinary review B (main..d6f3dfbf) | Claude Sonnet 5.5 | `d6f3dfbf` | APPROVE | `15c77f650ab7d2b0cb3df3e24d898b1e271847bff66db85894a9b65416d49b77` |
+| 3 | `767-security-opus.md` | Security review, delta and rebind (main..d6f3dfbf) | Claude Opus 5.5 | `d6f3dfbf` | CLEAR | `bbbb33e3497ddb7cbc08bd862e182bdc89c6746dada0f4ca726cd5d51e94bea4` |
 
 ## Embedded reports
 
 Each report is embedded byte for byte between its BEGIN and END markers, copied by a script that reads the file bytes. The marker carries the SHA-256 of those bytes. Where a report did not end with a newline, one newline follows it before the END marker, outside the hashed bytes.
 
-<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-ordinary-a-sonnet.md; Claude Sonnet 5.5; sha256 86ed91e6bd7422e5746a05557b265fa64d5e4dbd59de2344e894c1066f57fd74) -->
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-ordinary-a-sonnet.md; Claude Sonnet 5.5; sha256 3554ec4b93cf18e448ddb8b02e2612bc62665bed760790731c8bb328b2702253) -->
 # PR #767 ordinary review A (PUT /api/project/{id}: engagement fields need strict project:manage_settings)
 
 **Reviewed head:** 0388ac698b445e3b17b563a6af94ae1117e1b59f
@@ -137,9 +140,29 @@ Mechanical check only. Live head confirmed. 47083646 is my approved 4a59f9f0 plu
 Mechanical check only. Live head confirmed. f8d0163a differs from my approved 5d1a4dbc only in the evidence note `767-engagement-manage-settings.md` (1 file, +73/-9). Merge: parents `^1` f8d0163afd15573e7f066a1c4929c2fed2da1871, `^2` 1455ed80d87806c7c5e22c34e5f0f07c72782289 (main, #757 docs). `git merge-tree --write-tree f8d0163a 1455ed80` = dc2ba9778455956adccc36f2a5b16536b529550b, equal to the head's tree. No file overlap with the PR since the merge-base. No findings.
 
 **Verdict:** APPROVE
-<!-- END REPORT (sha256 86ed91e6bd7422e5746a05557b265fa64d5e4dbd59de2344e894c1066f57fd74) -->
 
-<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-ordinary-b-sonnet.md; Claude Sonnet 5.5; sha256 4243624909094cf1a0f04dda841773b1eb38e11851bd9275deeddbe967ad0234) -->
+---
+# Delta review 6 (1a10823f -> 2909b2c2, merge of main c35666c5)
+
+**Reviewed head:** 2909b2c25d434619f233ebfb0683f9a88af307b8
+**Model / context:** Claude Sonnet 5.5, fresh independent context (did not author, direct or remediate)
+
+Mechanical check only. Live head confirmed. 1a10823f differs from my approved 634eb074 only in the evidence note `767-engagement-manage-settings.md` (1 file, +62/-9). Merge: parents `^1` 1a10823f673d2a3964f92ea20e3a187f658b6463, `^2` c35666c531c4b84c300bac5432fd4dc8dca3ed4f (main, #763). `git merge-tree --write-tree 1a10823f c35666c5` = 310f323b3deca174483e2280ce044146b8cfa738, equal to the head's tree. No file overlap with the PR since the merge-base; the merge adds only main's two web test files (`nav-projects-sortable.test.tsx`, `test/setup.ts`). #767 code, tests, docs and openapi unchanged. No findings.
+
+**Verdict:** APPROVE
+
+---
+# Delta review 7 (2909b2c2 -> d6f3dfbf, merge of main 9297362b)
+
+**Reviewed head:** d6f3dfbfcbd867c38e946ff9fdd6bb3df345f999
+**Model / context:** Claude Sonnet 5.5, fresh independent context (did not author, direct or remediate)
+
+Mechanical check only. Head confirmed via `git ls-remote origin refs/heads/codex/engagement-manage-settings-766` and `gh pr view 767` (same sha). Chain: 1a10823f -> 2909b2c2 (checked in delta 6: parents 1a10823f + c35666c5, merge-tree equal) -> d6f3dfbf. This step: parents `^1` 2909b2c25d434619f233ebfb0683f9a88af307b8 (my approved head), `^2` 9297362b5f2dd1f17da935c8051c1562b473638a (main, #758). `git merge-tree --write-tree 2909b2c2 9297362b` = 3595a44aa1866810391cdc5c06667c53a00a5249, equal to the head's tree. No file overlap with the PR since the merge-base. The merge brings only main's `.github/workflows/release.yml` (+4) and `docs/07-planning/security-reviews/758-release-build-timeout.md`; #767's code, tests, rbac.md and openapi are unchanged from the head I approved. No findings.
+
+**Verdict:** APPROVE
+<!-- END REPORT (sha256 3554ec4b93cf18e448ddb8b02e2612bc62665bed760790731c8bb328b2702253) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-ordinary-b-sonnet.md; Claude Sonnet 5.5; sha256 15c77f650ab7d2b0cb3df3e24d898b1e271847bff66db85894a9b65416d49b77) -->
 # Ordinary review B, PR #767 (architecture, contracts, whole-system consistency)
 
 **Reviewed head:** 0388ac698b445e3b17b563a6af94ae1117e1b59f
@@ -244,9 +267,34 @@ Role matrix read from rbac.md, and the integration tests derive "lead-like" by r
 - f8d0163a versus my approved 5d1a4dbc: one commit, "docs(security-reviews): bind the #767 main-merge rebind", changing only docs/07-planning/security-reviews/767-engagement-manage-settings.md (+73/-9); no source, test, spec or openapi change, so the code I approved is unchanged.
 
 **Verdict:** APPROVE
-<!-- END REPORT (sha256 4243624909094cf1a0f04dda841773b1eb38e11851bd9275deeddbe967ad0234) -->
 
-<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-security-opus.md; Claude Opus 5.5; sha256 b9257477012d22d7f8cd001baa46237cd644b0e9c031209e9a1694916c56f367) -->
+---
+## Delta review (1a10823f to 2909b2c2, merge of main)
+
+**Reviewed head:** 2909b2c25d434619f233ebfb0683f9a88af307b8
+**Model / context:** Claude Sonnet 5.5, fresh independent context (did not author, direct or remediate)
+
+- Live head confirmed by `gh pr view`. Parents: 1a10823f673d2a3964f92ea20e3a187f658b6463 and c35666c531c4b84c300bac5432fd4dc8dca3ed4f (main, an ancestor of origin/main).
+- `git merge-tree --write-tree 1a10823f c35666c5` gives tree 310f323b3deca174483e2280ce044146b8cfa738, identical to the tree of 2909b2c2: clean merge, no hand edits.
+- Main's side since the merge base is two web test files (apps/web/src/components/nav-projects-sortable.test.tsx, apps/web/src/test/setup.ts); neither overlaps #767's files, and no file differs between 1a10823f and 2909b2c2 outside that set.
+- 1a10823f versus my approved 634eb074: one commit, "docs(security-reviews): bind the #767 rebind after #757", changing only docs/07-planning/security-reviews/767-engagement-manage-settings.md (+62/-9); no source, test, spec or openapi change, so the code I approved is unchanged.
+
+**Verdict:** APPROVE
+
+---
+## Delta review (2909b2c2 to d6f3dfbf, merge of main)
+
+**Reviewed head:** d6f3dfbfcbd867c38e946ff9fdd6bb3df345f999
+**Model / context:** Claude Sonnet 5.5, fresh independent context (did not author, direct or remediate)
+
+- Head obtained from `git ls-remote origin refs/heads/codex/engagement-manage-settings-766` and confirmed equal to `gh pr view 767` headRefOid. Parents: 2909b2c25d434619f233ebfb0683f9a88af307b8 (my approved head, so no intermediate commit this time) and 9297362b5f2dd1f17da935c8051c1562b473638a (main, an ancestor of origin/main).
+- `git merge-tree --write-tree 2909b2c2 9297362b` gives tree 3595a44aa1866810391cdc5c06667c53a00a5249, identical to the tree of d6f3dfbf: clean merge, no hand edits.
+- Main's side since the merge base is `.github/workflows/release.yml` and `docs/07-planning/security-reviews/758-release-build-timeout.md` (#758); neither overlaps #767's files, and no file differs between 2909b2c2 and d6f3dfbf outside that set. #767's own content is unchanged from what I approved.
+
+**Verdict:** APPROVE
+<!-- END REPORT (sha256 15c77f650ab7d2b0cb3df3e24d898b1e271847bff66db85894a9b65416d49b77) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-security-opus.md; Claude Opus 5.5; sha256 bbbb33e3497ddb7cbc08bd862e182bdc89c6746dada0f4ca726cd5d51e94bea4) -->
 # PR #767 (closes #766) — independent security review
 
 **Reviewed head:** 361d3110fd164f09160ea96ef6d48da4a49b56b3
@@ -513,4 +561,55 @@ Docker: only Testcontainers created by these runs, auto-removed. No other contai
 - Tests were not re-run; a docs-only clean merge cannot change the reviewed behaviour.
 
 **Verdict:** CLEAR
-<!-- END REPORT (sha256 b9257477012d22d7f8cd001baa46237cd644b0e9c031209e9a1694916c56f367) -->
+
+---
+
+# Mechanical rebind (634eb074 -> 1a10823f -> 2909b2c2)
+
+**Reviewed head:** 2909b2c25d434619f233ebfb0683f9a88af307b8
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), same independent reviewer context as above (did not author, direct or remediate)
+
+- `gh pr view 767 --json headRefOid` = 2909b2c25d434619f233ebfb0683f9a88af307b8 (confirmed live).
+- **Note-only commit.** 1a10823f673d2a3964f92ea20e3a187f658b6463 has a single parent, 634eb074 (the
+  last CLEAR head). `git diff 634eb074 1a10823f`: 1 file,
+  `docs/07-planning/security-reviews/767-engagement-manage-settings.md` (+62/-9).
+  No code, test or contract change.
+- **Merge.** `git rev-list --parents -n1 2909b2c2`: parents are 1a10823f and
+  c35666c531c4b84c300bac5432fd4dc8dca3ed4f. The latter is the current `origin/main`.
+- `git merge-tree --write-tree 1a10823f c35666c5` exited 0 with tree
+  310f323b3deca174483e2280ce044146b8cfa738. That equals `2909b2c2^{tree}`, so it is a clean merge
+  with no manual edits.
+- **Incoming from main** (`git diff --stat 1a10823f 2909b2c2`): 2 files, +13/-4.
+  - `apps/web/src/test/setup.ts`
+  - `apps/web/src/components/nav-projects-sortable.test.tsx`
+- **No interaction.** Both incoming files are web test setup/test files. They do not overlap the PR's
+  API, docs, contract or integration-test files, and cannot affect API handler behaviour.
+- Tests were not re-run; a clean merge with disjoint web-test files cannot change the reviewed
+  behaviour.
+
+**Verdict:** CLEAR
+
+---
+
+# Mechanical rebind (2909b2c2 -> d6f3dfbf)
+
+**Reviewed head:** d6f3dfbfcbd867c38e946ff9fdd6bb3df345f999
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), same independent reviewer context as above (did not author, direct or remediate)
+
+- `git ls-remote origin refs/heads/codex/engagement-manage-settings-766` and
+  `gh pr view 767 --json headRefOid` both give d6f3dfbfcbd867c38e946ff9fdd6bb3df345f999.
+- **Merge.** `git rev-list --parents -n1 d6f3dfbf`: parents are 2909b2c2 (the last CLEAR head, first
+  parent directly, with no intervening commit) and 9297362b5f2dd1f17da935c8051c1562b473638a. The
+  latter is the current `origin/main`.
+- `git merge-tree --write-tree 2909b2c2 9297362b` exited 0 with tree
+  3595a44aa1866810391cdc5c06667c53a00a5249. That equals `d6f3dfbf^{tree}`, so it is a clean merge
+  with no manual edits.
+- **Incoming from main** (`git diff --stat 2909b2c2 d6f3dfbf`): 2 files, +259/-0.
+  - `.github/workflows/release.yml` (+4, a step timeout)
+  - `docs/07-planning/security-reviews/758-release-build-timeout.md`
+- **No interaction.** Neither file overlaps the PR's files. The CI workflow change is covered by
+  #758's own review and does not affect API handler behaviour.
+- Tests were not re-run; a clean merge with disjoint files cannot change the reviewed behaviour.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 bbbb33e3497ddb7cbc08bd862e182bdc89c6746dada0f4ca726cd5d51e94bea4) -->
