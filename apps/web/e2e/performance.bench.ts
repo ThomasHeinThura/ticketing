@@ -30,6 +30,11 @@ import {
   WORK_LIST_PATH,
   WORKSPACE_ID,
 } from "./helpers/g11-performance-fixture";
+import {
+  FULLRUNNER_RESULT_DIRECTORY,
+  PRIVATE_FULLRUNNER_PROJECT_NAME,
+  persistPrivateBoardDragIntervals,
+} from "./helpers/hosted-drag-fullrunner-evidence.mjs";
 import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
 import { attachPerformanceNetworkCapture } from "./helpers/performance-network-summary";
 
@@ -124,6 +129,8 @@ test.beforeAll(async ({ browser }) => {
   console.log(
     `G11 host: cpu model ${host.cpuModel}; nproc ${String(host.nproc)}`,
   );
+  if (test.info().project.name === PRIVATE_FULLRUNNER_PROJECT_NAME)
+    console.log(`G11 private fullrunner Chromium: ${browser.version()}`);
   const pinned =
     PERFORMANCE_REFERENCE.unthrottledMs !== null ||
     PERFORMANCE_REFERENCE.throttledMs !== null;
@@ -736,7 +743,7 @@ async function collectBoardRender(page: Page) {
   );
 }
 
-async function collectBoardDragFrameP95(page: Page) {
+async function collectBoardDragFrameP95(page: Page, sampleOrdinal: number) {
   await openLegacyBoard(page);
   await page.waitForTimeout(400);
 
@@ -841,6 +848,14 @@ async function collectBoardDragFrameP95(page: Page) {
   const frameTimes = await page.evaluate(
     () => (window as G11Window).__g11Metrics.dragFrameTimes ?? [],
   );
+  const projectName = test.info().project.name;
+  const rawIntervalDirectory = `${FULLRUNNER_RESULT_DIRECTORY}/raw-intervals`;
+  await persistPrivateBoardDragIntervals({
+    directory: rawIntervalDirectory,
+    projectName,
+    sampleOrdinal,
+    intervalsMs: frameTimes,
+  });
   if (frameTimes.length < 60)
     throw new Error(
       "The 2.2 second board drag captured too few animation frames: " +
@@ -1382,13 +1397,16 @@ test("G11: board render, 200 tasks", async ({ browser }) => {
 
 test("G11: board drag p95 frame time", async ({ browser }) => {
   test.setTimeout(120_000);
+  let sampleOrdinal = 0;
   await threeSamplesWithOneRetry({
     name: "board drag p95 frame time (ms; unthrottled)",
     budget: 20,
-    sample: () =>
-      withPerformancePage(browser, false, (page) =>
-        collectBoardDragFrameP95(page),
-      ),
+    sample: () => {
+      sampleOrdinal += 1;
+      return withPerformancePage(browser, false, (page) =>
+        collectBoardDragFrameP95(page, sampleOrdinal),
+      );
+    },
   });
 });
 

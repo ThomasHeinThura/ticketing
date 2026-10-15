@@ -30,20 +30,50 @@ jobs:
         env:
           VITE_API_URL: ""
 
+      - name: Bind source, fixture, and built manifest before measurement
+        run: node apps/web/e2e/helpers/capture-hosted-drag-fullrunner-source.mjs
+
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
 
       - name: Install Chromium
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
 
-      - name: Capture hosted legacy board drag diagnostic
-        run: pnpm --filter @taskdesk/web exec playwright test --config playwright.perf-diagnostic.config.ts --grep 'hosted manual diagnostic - legacy board drag CPU profile' --workers=1
+      - name: Run the full performance suite with the canonical runner capture lifecycle
+        id: fullrunner
+        shell: bash
+        run: |
+          if pnpm --filter @taskdesk/web exec playwright test --config playwright.perf-fullrunner-diagnostic.config.ts; then
+            playwright_exit_code=0
+          else
+            playwright_exit_code=$?
+          fi
+          printf 'exit_code=%s\n' "$playwright_exit_code" >> "$GITHUB_OUTPUT"
 
-      - name: Upload sanitized source-bound summary only
+      - name: Write sanitized source-bound summary
+        if: ${{ always() }}
+        id: summary
+        run: node apps/web/e2e/helpers/write-hosted-drag-fullrunner-summary.mjs '${{ steps.fullrunner.outputs.exit_code }}'
+
+      - name: Preserve original fullrunner command result
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          original_exit_code='${{ steps.fullrunner.outputs.exit_code }}'
+          if [[ -z "$original_exit_code" ]]; then
+            echo "The fullrunner command did not report an exit code."
+            exit 1
+          fi
+          if [[ "$original_exit_code" != "0" ]]; then
+            exit "$original_exit_code"
+          fi
+          node --input-type=module -e 'import { readFileSync } from "node:fs"; const result = JSON.parse(readFileSync("apps/web/test-results/hosted-drag-fullrunner/hosted-board-drag-summary.json", "utf8")); if (result.status !== "complete" || result.commandExitCode !== 0) process.exit(1);'
+
+      - name: Upload bounded numeric summary only
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: hosted-board-drag-diagnostic-summary
-          path: apps/web/test-results/g11-initial-page-diagnostic/**/hosted-board-drag-summary.json
+          name: hosted-board-drag-fullrunner-summary
+          path: apps/web/test-results/hosted-drag-fullrunner/hosted-board-drag-summary.json
           if-no-files-found: warn
           retention-days: 7
