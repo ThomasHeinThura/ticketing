@@ -9,8 +9,10 @@ The conductor (Claude Opus 5.5) implemented the change. The reviewers below are 
 - Ordinary review A by Claude Sonnet 5.5: APPROVE at `0fa992c9`, then APPROVE on the comment-only delta at `0ef6db6b`.
 - Ordinary review B by Claude Sonnet 5.5: APPROVE at `0fa992c9`, then APPROVE on the delta at `0ef6db6b`.
 - Security review by Claude Opus 5.5: CLEAR at `0ef6db6b`. A step timeout fails the job, and the sign/publish job is skipped, so nothing unscanned is signed or published. Permissions, triggers, concurrency and signing identity are unchanged.
+- Mechanical security rebind by Claude Opus 5.5: CLEAR at `28325153`, a clean merge of `main` `8ed5fef2` (#756, docs only); merge-tree equality checked.
 
 **Reviewed head:** `0ef6db6ba05c7461e47c138a21abf89c83128008`
+**Reviewed head:** `28325153ea446b8c3b9026a1db819d2b34a28d1e`
 
 ## Context index
 
@@ -20,7 +22,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `758-ordinary-a-sonnet.md` | Ordinary review A (main..0ef6db6b) | Claude Sonnet 5.5 | `0ef6db6b` | APPROVE | `626d8b2a6de65fd567e38f3dcf8a50743f8e54105301a772afaed739bdb7ee18` |
 | 2 | `758-ordinary-b-sonnet.md` | Ordinary review B (main..0ef6db6b) | Claude Sonnet 5.5 | `0ef6db6b` | APPROVE | `a1cb7d84173fbc91fbd36775ef7818d173a4af52719bca63d298e6d977cf888b` |
-| 3 | `758-security-opus.md` | Security review (main..0ef6db6b) | Claude Opus 5.5 | `0ef6db6b` | CLEAR | `a28384fc2e07c5cded1b4fd20749859731a58b9aa7abb2f2efac25ade7456406` |
+| 3 | `758-security-opus.md` | Security review (main..0ef6db6b) | Claude Opus 5.5 | `0ef6db6b` | CLEAR | `3c2322492077868104546ad9bcdd2ad26b79e0da9c80142a69c6d0105e2e501a` |
 
 ## Embedded reports
 
@@ -113,7 +115,7 @@ Cannot prove the 35-minute figure against real run history from the repository; 
 **Verdict:** APPROVE
 <!-- END REPORT (sha256 a1cb7d84173fbc91fbd36775ef7818d173a4af52719bca63d298e6d977cf888b) -->
 
-<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/758-security-opus.md; Claude Opus 5.5; sha256 a28384fc2e07c5cded1b4fd20749859731a58b9aa7abb2f2efac25ade7456406) -->
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/758-security-opus.md; Claude Opus 5.5; sha256 3c2322492077868104546ad9bcdd2ad26b79e0da9c80142a69c6d0105e2e501a) -->
 # #758 security review (Opus 5.5) — step timeout on the multi-architecture release build (#753)
 
 **Reviewed head:** 0ef6db6ba05c7461e47c138a21abf89c83128008
@@ -180,4 +182,26 @@ None.
   `integration - Postgres 18` was pending at review time; not evaluated as part of this verdict.
 
 **Verdict:** CLEAR
-<!-- END REPORT (sha256 a28384fc2e07c5cded1b4fd20749859731a58b9aa7abb2f2efac25ade7456406) -->
+
+---
+
+## Rebind — merge of main `8ed5fef2` (Opus 5.5, mechanical)
+
+**Reviewed head:** 28325153ea446b8c3b9026a1db819d2b34a28d1e
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), same independent review context as above
+
+**Comparison base:** `80caeda81be4c2c1ee63ae2b64bea6054f2a7a07`. That is my CLEAR head `0ef6db6b` plus one commit, which adds only `docs/07-planning/security-reviews/758-release-build-timeout.md`.
+
+| Check | Result |
+| --- | --- |
+| live head (`gh pr view 758`) | `28325153ea446b8c3b9026a1db819d2b34a28d1e` |
+| parents of `28325153` | `80caeda81be4c2c1ee63ae2b64bea6054f2a7a07`, `8ed5fef24f2e43aa09ac721e3c6faedda9c45030` |
+| `git diff --stat 0ef6db6b 80caeda8` | 1 file: `docs/07-planning/security-reviews/758-release-build-timeout.md` (+183) |
+| `git merge-tree --write-tree 80caeda8 8ed5fef2` | `cdb7734cebaab67885caffc686051c963a7ae6e7`, equal to the tree of `28325153`, so the merge was clean with no hand edits |
+| `git diff --stat 80caeda8 28325153` | 5 docs files only: `docs/05-operations/environments.md`, `docs/07-planning/{active-mission,decision-log,integration-execution-queue,pr-disposition-ledger}.md` |
+| paths changed since `0ef6db6b` under `.github compose.yml deploy scripts apps packages` | none; `.github/workflows/release.yml` is unchanged |
+
+**Interaction:** none. The merge brought documentation only, and the release workflow is byte-identical to the head I cleared.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 3c2322492077868104546ad9bcdd2ad26b79e0da9c80142a69c6d0105e2e501a) -->
