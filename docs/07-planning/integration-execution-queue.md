@@ -1,3 +1,26 @@
+## Continuation checkpoint — 2026-10-15 07:55 UTC
+
+**Source:** accepted `main` `d159704be626136e728df7ddef0381dc37cf7756` (merge of #749). v2.0.0-alpha.4 is published from it and deployed to laptop SIT; its backup, isolated restore, SIT smoke and independent Opus audit (PASS WITH FINDINGS, none blocking) are the completed alpha.4 checkpoint. Thomas's 2026-10-15 decision resumes the remaining #589 integration. Only Codex automations on this host are PAUSED; this Claude Code session is the sole conductor.
+
+**Open PRs:** #589 (historical train, retained source `2350397b`, ABSORB THEN CLOSE after the units below), #755 (#752 loopback, draft).
+
+| Unit | Issue | Owner | State | Next action |
+|---|---|---|---|---|
+| M1 query ownership + enforced `check:queries` | #580 | Sonnet lane `codex/query-ownership-580` | RUNNING | current-tree inventory, batch plan, batch 1 |
+| M2 God Mode Authentication/SCIM UI | #713 | unassigned | WAITING (lane cap) | reconcile against accepted DTOs, preconditions and step-up; #561 |
+| M3 saved views index/detail | #714 | one coordinated #714/#715 owner | WAITING | after a lane frees; shares routes, filters and query contracts with M4 |
+| M4 structured work-list | #715 | same owner as #714 | WAITING | export (F3) excluded |
+| M6 project engagement controls | #716 | Sonnet lane `codex/project-engagement-716` | RUNNING | web-only against the API on `main` |
+| M7 service-calendar tests | #717 | — | DONE | #738, merge `6015f016`, note `738-service-calendar-request-recheck.md` |
+| M9 documentation drift | #718 | conductor | READY | items 1, 2, 4; verify stale #437, #444, #592; item 3 inside #580 |
+| Laptop loopback | #752 | conductor | REVIEW | #755: reviews, Opus, CI |
+| Disposition ledger | #754 | conductor | IN THIS CHANGE | ledger marked as a dated snapshot |
+| Release reliability | #753 | conductor | WAITING | bounded diagnosis before the next release |
+
+**Acceptance risks to reconcile before final acceptance:** #724, #734, #743, #750, #751, #729, #631/#632. Each gets a source-and-test verdict; none is assumed current or stale.
+
+**Stop conditions:** every selected unit merged and verified, proven equivalent, or deferred by Thomas; #589 closed as absorbed with its branch kept; one signed prerelease deployed by digest to `https://ticketing.localhost` and `https://portal.localhost`; backup and isolated restore proven; real-browser workflows recorded; fresh independent audit with no unresolved blocking finding; report; Hold.
+
 ## Delivery integration checkpoint — 2026-10-12 04:17:41 UTC
 
 **P0–P7 / acceptance boundary:** P0 remains accepted within #624/#628 and #626's exact deferrals. No later phase completion, consolidated artifact publication, laptop SIT acceptance/recovery, final audit or handover completion is claimed. Thomas's “FINISH EXISTING DELIVERY, DO NOT RESTART” addendum retains the existing mission, conductor, queue, workers and sole continuation. Its original attachment remains preserved; the private `finish-existing-delivery-addendum-receipt.json` records its path and SHA-256. Priorities are real Comments/D9, Users, approved customer intake, auth correction and remaining unique #609/#512 journeys; existing holds and predecessor conservation remain.
