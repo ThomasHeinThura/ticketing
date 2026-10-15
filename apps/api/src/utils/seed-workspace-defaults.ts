@@ -1,6 +1,11 @@
-import db, { schema } from "../database";
+import type db from "../database";
+import { executorOrDefault } from "../database/executor";
 import { DEFAULT_STATE_TEMPLATES } from "./default-state-templates";
 import { DEFAULT_WORK_ITEM_TYPES } from "./default-work-item-types";
+import {
+  insertDefaultStateTemplateRows,
+  insertDefaultWorkItemTypeRows,
+} from "./seed-defaults.repository";
 
 /**
  * Seeds only the default `work_item_type` rows (issue #309, `work-items.md` § "Default
@@ -18,26 +23,19 @@ import { DEFAULT_WORK_ITEM_TYPES } from "./default-work-item-types";
  */
 export async function seedDefaultWorkItemTypes(
   workspaceId: string,
-  dbOrTx: Pick<typeof db, "insert"> = db,
+  dbOrTx: Pick<typeof db, "insert"> = executorOrDefault(),
 ): Promise<void> {
-  await dbOrTx
-    .insert(schema.workItemTypeTable)
-    .values(
-      DEFAULT_WORK_ITEM_TYPES.map((type) => ({
-        workspaceId,
-        key: type.key,
-        name: type.name,
-        category: type.category,
-        isEpic: type.isEpic ?? false,
-        isChange: type.isChange ?? false,
-      })),
-    )
-    .onConflictDoNothing({
-      target: [
-        schema.workItemTypeTable.workspaceId,
-        schema.workItemTypeTable.key,
-      ],
-    });
+  await insertDefaultWorkItemTypeRows(
+    dbOrTx,
+    DEFAULT_WORK_ITEM_TYPES.map((type) => ({
+      workspaceId,
+      key: type.key,
+      name: type.name,
+      category: type.category,
+      isEpic: type.isEpic ?? false,
+      isChange: type.isChange ?? false,
+    })),
+  );
 }
 
 /**
@@ -50,24 +48,17 @@ export async function seedDefaultWorkItemTypes(
  */
 export async function seedDefaultStateTemplates(
   workspaceId: string,
-  dbOrTx: Pick<typeof db, "insert"> = db,
+  dbOrTx: Pick<typeof db, "insert"> = executorOrDefault(),
 ): Promise<void> {
-  await dbOrTx
-    .insert(schema.stateTemplateTable)
-    .values(
-      DEFAULT_STATE_TEMPLATES.map((template) => ({
-        workspaceId,
-        key: template.key,
-        name: template.name,
-        group: template.group,
-      })),
-    )
-    .onConflictDoNothing({
-      target: [
-        schema.stateTemplateTable.workspaceId,
-        schema.stateTemplateTable.key,
-      ],
-    });
+  await insertDefaultStateTemplateRows(
+    dbOrTx,
+    DEFAULT_STATE_TEMPLATES.map((template) => ({
+      workspaceId,
+      key: template.key,
+      name: template.name,
+      group: template.group,
+    })),
+  );
 }
 
 /**
@@ -101,7 +92,7 @@ export async function seedDefaultStateTemplates(
  */
 export async function seedWorkspaceDefaults(
   workspaceId: string,
-  dbOrTx: Pick<typeof db, "insert"> = db,
+  dbOrTx: Pick<typeof db, "insert"> = executorOrDefault(),
 ): Promise<void> {
   await seedDefaultWorkItemTypes(workspaceId, dbOrTx);
   await seedDefaultStateTemplates(workspaceId, dbOrTx);
