@@ -78,6 +78,8 @@ export default async function searchWorkItems(input: {
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
   columns?: WorkItemSearchColumn[];
+  /** The `page.nextCursor` of the previous page; bound by the server to this exact query. */
+  cursor?: string;
 }): Promise<StructuredWorkItemsResult> {
   let filter: ReturnType<typeof parseWorkItemFilterText>;
   try {
@@ -102,6 +104,7 @@ export default async function searchWorkItems(input: {
   const response = await client["work-items"].search.$post({
     json: {
       workspaceId: input.workspaceId,
+      ...(input.cursor ? { cursor: input.cursor } : {}),
       query: {
         entity: "work_item",
         filter: scopedFilter,

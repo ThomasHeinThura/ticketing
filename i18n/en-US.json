@@ -2291,7 +2291,9 @@
 			"listLayout": "List",
 			"boardLayout": "Board",
 			"emptyFilteredTitle": "No work items match this filter",
-			"emptyFilteredDescription": "Change or clear the filter to see more of this project's work items."
+			"emptyFilteredDescription": "Change or clear the filter to see more of this project's work items.",
+			"loadMore": "Load more",
+			"loadingMore": "Loading more…"
 		},
 		"create": {
 			"trigger": "Create work item",
@@ -2562,7 +2564,12 @@
 			"loading": "Loading the filter editor",
 			"boardNotice": "The board does not apply this filter. Switch to the list to see the filtered work items.",
 			"toggle": "Filter",
-			"toggleActive": "Filter (on)"
+			"toggleActive": "Filter (on)",
+			"errors": {
+				"invalid": "This filter could not be applied. Check its syntax and values.",
+				"forbidden": "You don't have access to filter by one of these fields.",
+				"unavailable": "A field in this filter isn't available yet."
+			}
 		}
 	},
 	"portal": {

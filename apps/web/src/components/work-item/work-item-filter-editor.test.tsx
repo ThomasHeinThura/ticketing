@@ -261,4 +261,52 @@ describe("work-item filter editor", () => {
       screen.getByRole("combobox", { name: "Group operator" }),
     ).toHaveTextContent("all (AND)");
   });
+
+  it("focuses its first control on mount only when asked", () => {
+    const { unmount } = render(
+      <WorkItemFilterEditor
+        filter=""
+        mode="visual"
+        onApply={vi.fn()}
+        onModeChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Visual" })).not.toHaveFocus();
+    unmount();
+    render(
+      <WorkItemFilterEditor
+        filter=""
+        mode="visual"
+        autoFocus
+        onApply={vi.fn()}
+        onModeChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Visual" })).toHaveFocus();
+  });
+
+  it("closes on Escape from a field, but not from inside an open selector", async () => {
+    const onClose = vi.fn();
+    render(
+      <WorkItemFilterEditor
+        filter="priority:high"
+        mode="visual"
+        onClose={onClose}
+        onApply={vi.fn()}
+        onModeChange={vi.fn()}
+      />,
+    );
+    const field = (
+      await screen.findAllByRole("combobox", { name: "Filter field" })
+    )[0];
+    if (!field) throw new Error("expected a field selector");
+    fireEvent.click(field);
+    const option = await screen.findByRole("option", { name: "Assignee" });
+    fireEvent.keyDown(option, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Apply filter" }), {
+      key: "Escape",
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

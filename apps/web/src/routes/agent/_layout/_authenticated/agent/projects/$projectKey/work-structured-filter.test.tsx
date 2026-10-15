@@ -13,6 +13,9 @@ const state = vi.hoisted(() => ({
   navigate: vi.fn(),
   hookArgs: undefined as Record<string, unknown> | undefined,
   hookError: undefined as unknown,
+  hasNextPage: false,
+  isFetchingNextPage: false,
+  fetchNextPage: vi.fn(),
   panelProps: undefined as Record<string, unknown> | undefined,
   controlsProps: undefined as Record<string, unknown> | undefined,
 }));
@@ -70,6 +73,9 @@ vi.mock("@/hooks/queries/work-item/use-get-work-items", () => ({
       isLoading: false,
       isError: state.hookError !== undefined,
       error: state.hookError,
+      hasNextPage: state.hasNextPage,
+      isFetchingNextPage: state.isFetchingNextPage,
+      fetchNextPage: state.fetchNextPage,
       refetch: vi.fn(),
     };
   },
@@ -108,6 +114,9 @@ beforeEach(() => {
   state.search = { layout: "list", sort: "key", dir: "asc" };
   state.hookArgs = undefined;
   state.hookError = undefined;
+  state.hasNextPage = false;
+  state.isFetchingNextPage = false;
+  state.fetchNextPage = vi.fn();
   state.panelProps = undefined;
   state.controlsProps = undefined;
   state.navigate.mockReset();
@@ -295,5 +304,60 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
     expect(
       screen.queryByRole("button", { name: /export|download/i }),
     ).toBeNull();
+  });
+});
+
+describe("work route filter disclosure (aria-expanded, focus)", () => {
+  it("is a disclosure: expanded state and a controlled id only while it exists, never aria-pressed", async () => {
+    await renderRoute();
+    const toggle = screen.getByRole("button", { name: "Filter" });
+    expect(toggle).not.toHaveAttribute("aria-pressed");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).not.toHaveAttribute("aria-controls");
+    fireEvent.click(toggle);
+    await screen.findByTestId("controls");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const controlled = toggle.getAttribute("aria-controls");
+    expect(controlled).toBeTruthy();
+    expect(document.getElementById(controlled ?? "")).not.toBeNull();
+  });
+
+  it("asks the editor to take focus when the user opens it, not when the URL did", async () => {
+    await renderRoute();
+    fireEvent.click(screen.getByRole("button", { name: "Filter" }));
+    await screen.findByTestId("controls");
+    expect(state.controlsProps?.autoFocus).toBe(true);
+    cleanup();
+    state.search = { layout: "list", sort: "key", dir: "asc", filter: "x:y" };
+    await renderRoute();
+    await screen.findByTestId("controls");
+    expect(state.controlsProps?.autoFocus).toBe(false);
+  });
+
+  it("returns focus to the toggle when the editor closes, by the toggle or by the editor", async () => {
+    await renderRoute();
+    const toggle = screen.getByRole("button", { name: "Filter" });
+    fireEvent.click(toggle);
+    await screen.findByTestId("controls");
+    callControl("onClose");
+    await waitFor(() => expect(screen.queryByTestId("controls")).toBeNull());
+    expect(toggle).toHaveFocus();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+describe("work route pages of a filtered list", () => {
+  it("hands the panel the load-more controls and follows them", async () => {
+    state.hasNextPage = true;
+    state.search = { layout: "list", sort: "key", dir: "asc", filter: "x:y" };
+    await renderRoute();
+    expect(state.panelProps).toMatchObject({
+      hasMore: true,
+      isLoadingMore: false,
+    });
+    const loadMore = state.panelProps?.onLoadMore;
+    if (typeof loadMore !== "function") throw new Error("onLoadMore missing");
+    loadMore();
+    expect(state.fetchNextPage).toHaveBeenCalledTimes(1);
   });
 });

@@ -462,3 +462,29 @@ describe("work-item panel structured query props", () => {
     });
   });
 });
+
+describe("work-item panel pagination props", () => {
+  afterEach(cleanup);
+
+  it("forwards the load-more controls to the list", async () => {
+    const onLoadMore = vi.fn();
+    render(
+      <WorkItemsPanel
+        {...panelProps({ isLoading: false })}
+        hasMore
+        isLoadingMore
+        onLoadMore={onLoadMore}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("work-item-list-populated"),
+      ).toBeInTheDocument(),
+    );
+    expect(testState.listProps).toMatchObject({
+      hasMore: true,
+      isLoadingMore: true,
+      onLoadMore,
+    });
+  });
+});

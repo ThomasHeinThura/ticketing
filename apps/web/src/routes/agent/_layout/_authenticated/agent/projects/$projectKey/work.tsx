@@ -107,6 +107,19 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { layout, sort, dir, filter, filterMode, columns } = Route.useSearch();
   const isFiltered = !!filter?.trim();
   const [isFilterOpen, setIsFilterOpen] = useState(isFiltered);
+  // Focus moves into the editor only when the user opens it, never when the URL did.
+  const [focusFilterEditor, setFocusFilterEditor] = useState(false);
+  const filterToggleRef = useRef<HTMLButtonElement>(null);
+  const toggleFilter = useCallback(() => {
+    if (isFilterOpen) {
+      setIsFilterOpen(false);
+      setFocusFilterEditor(false);
+      filterToggleRef.current?.focus();
+    } else {
+      setFocusFilterEditor(true);
+      setIsFilterOpen(true);
+    }
+  }, [isFilterOpen]);
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   // The dialog composition is warmed by the create trigger once it is visible (G11), so create
@@ -242,6 +255,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     isError: isWorkItemsError,
     error: workItemsError,
     refetch: refetchWorkItems,
+    hasNextPage: hasMoreWorkItems,
+    isFetchingNextPage: isLoadingMoreWorkItems,
+    fetchNextPage: fetchMoreWorkItems,
   } = useGetWorkItems({
     projectId: project?.id,
     projectSlug: project?.slug,
@@ -455,12 +471,15 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             </fieldset>
             {layout === "list" ? (
               <Button
+                ref={filterToggleRef}
                 variant={isFiltered ? "secondary" : "outline"}
                 size="sm"
-                aria-pressed={isFilterOpen}
+                // A disclosure: expanded state only, and a controlled id only while it exists.
                 aria-expanded={isFilterOpen}
-                aria-controls="work-item-filter-controls"
-                onClick={() => setIsFilterOpen((open) => !open)}
+                aria-controls={
+                  isFilterOpen ? "work-item-filter-controls" : undefined
+                }
+                onClick={toggleFilter}
               >
                 <ListFilter />
                 {isFiltered
@@ -483,6 +502,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           <div id="work-item-filter-controls">
             <Suspense fallback={null}>
               <WorkItemListControls
+                autoFocus={focusFilterEditor}
+                onClose={toggleFilter}
                 filter={filter ?? ""}
                 mode={filterMode ?? "visual"}
                 workItemsError={workItemsError}
@@ -551,6 +572,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               onRetry={handleRetry}
               columns={columns}
               isFiltered={isFiltered}
+              hasMore={hasMoreWorkItems}
+              onLoadMore={() => void fetchMoreWorkItems()}
+              isLoadingMore={isLoadingMoreWorkItems}
               selectedKeys={selectedKeys}
               canBulkAssign={canBulkAssign}
               onSelectionChange={handleSelectionChange}

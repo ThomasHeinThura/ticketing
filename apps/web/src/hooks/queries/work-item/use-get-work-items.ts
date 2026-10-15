@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import type {
@@ -65,48 +65,81 @@ function useGetWorkItems({
   enabled?: boolean;
 }) {
   const structuredFilter = filter?.trim() ? filter : undefined;
-  const query = useQuery({
-    queryKey: [
-      "work-items",
-      projectId,
-      sort,
-      dir,
-      structuredFilter ?? "",
-      structuredFilter ? (workspaceId ?? "") : "",
-      structuredFilter ? (columns ?? null) : null,
-    ],
+  const readEnabled = !!projectId && enabled;
+  const refetchInterval = realtimeStatus === "available" ? false : 30_000;
+  const keepSameProject = (
+    previousData: WorkItemsResult | undefined,
+    previousQuery: { queryKey: readonly unknown[] } | undefined,
+  ) => (previousQuery?.queryKey[1] === projectId ? previousData : undefined);
+
+  const listQuery = useQuery({
+    queryKey: ["work-items", projectId, sort, dir],
     queryFn: async () => {
-      if (structuredFilter) {
-        const { default: searchWorkItems } = await import(
-          "@/fetchers/work-item/search-work-items"
-        );
-        return searchWorkItems({
-          workspaceId: workspaceId as string,
-          projectSlug: projectSlug as string,
-          filter: structuredFilter,
-          sort,
-          dir,
-          columns,
-        });
-      }
       const { default: getWorkItems } = await import(
         "@/fetchers/work-item/get-work-items"
       );
       return getWorkItems(projectId as string, sort, dir);
     },
-    enabled:
-      !!projectId &&
-      enabled &&
-      (!structuredFilter || (!!workspaceId && !!projectSlug)),
-    refetchInterval: realtimeStatus === "available" ? false : 30_000,
+    enabled: readEnabled && !structuredFilter,
+    refetchInterval,
     refetchIntervalInBackground: false,
-    placeholderData: (
-      previousData: WorkItemsResult | undefined,
-      previousQuery,
-    ) => (previousQuery?.queryKey[1] === projectId ? previousData : undefined),
+    placeholderData: keepSameProject,
   });
+
+  // A structured filter reads pages of `POST /api/work-items/search` and follows the cursor
+  // on demand, so a filter matching more than one page is never silently cut off.
+  const searchQuery = useInfiniteQuery({
+    queryKey: [
+      "work-items",
+      projectId,
+      sort,
+      dir,
+      "search",
+      structuredFilter ?? "",
+      workspaceId ?? "",
+      columns ?? null,
+    ],
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
+      const { default: searchWorkItems } = await import(
+        "@/fetchers/work-item/search-work-items"
+      );
+      return searchWorkItems({
+        workspaceId: workspaceId as string,
+        projectSlug: projectSlug as string,
+        filter: structuredFilter as string,
+        sort,
+        dir,
+        columns,
+        cursor: pageParam,
+      });
+    },
+    getNextPageParam: (last) =>
+      last.hasMore ? (last.nextCursor ?? undefined) : undefined,
+    select: (data): WorkItemsResult => {
+      const last = data.pages.at(-1);
+      return {
+        items: data.pages.flatMap((page) => page.items),
+        hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
+        hasMore: last?.hasMore ?? false,
+      };
+    },
+    enabled:
+      readEnabled && !!structuredFilter && !!workspaceId && !!projectSlug,
+    refetchInterval,
+    refetchIntervalInBackground: false,
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === projectId ? previousData : undefined,
+  });
+
+  const active = structuredFilter ? searchQuery : listQuery;
   return {
-    ...query,
+    ...active,
+    hasNextPage: structuredFilter ? searchQuery.hasNextPage : false,
+    isFetchingNextPage: structuredFilter
+      ? searchQuery.isFetchingNextPage
+      : false,
+    fetchNextPage: searchQuery.fetchNextPage,
     realtimeStatus,
     isRealtimeUnavailable: realtimeStatus === "unavailable",
   };
