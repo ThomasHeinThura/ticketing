@@ -72,7 +72,6 @@ describe("API integration: notification inbox repository", () => {
 
     const listed = await listVisibleNotificationRows({
       userId: a.user.id,
-      canReadInstanceAlerts: false,
       credentialCanReadTask: true,
     });
     expect(listed.map((r) => r.notification.id)).toEqual([mine.id]);
@@ -111,14 +110,16 @@ describe("API integration: notification inbox repository", () => {
 
     const plain = await listVisibleNotificationRows({
       userId: a.user.id,
-      canReadInstanceAlerts: false,
       credentialCanReadTask: true,
     });
     expect(plain.map((r) => r.notification.id)).toEqual([newer.id, older.id]);
 
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, a.user.id));
     const admin = await listVisibleNotificationRows({
       userId: a.user.id,
-      canReadInstanceAlerts: true,
       credentialCanReadTask: true,
     });
     expect(admin).toHaveLength(3);
@@ -153,7 +154,6 @@ describe("API integration: notification inbox repository", () => {
     // No project grant: the task row is not readable; the plain row is.
     const noReach = await listVisibleNotificationRows({
       userId: a.user.id,
-      canReadInstanceAlerts: false,
       credentialCanReadTask: true,
     });
     expect(noReach.map((r) => r.notification.id)).toEqual([plain.id]);
@@ -161,7 +161,6 @@ describe("API integration: notification inbox repository", () => {
     // A credential that may not read tasks never sees task rows.
     const noCredential = await listVisibleNotificationRows({
       userId: a.user.id,
-      canReadInstanceAlerts: false,
       credentialCanReadTask: false,
     });
     expect(noCredential.map((r) => r.notification.id)).toEqual([plain.id]);
@@ -176,13 +175,11 @@ describe("API integration: notification inbox repository", () => {
     await grantProjectAccessToWorkspaceMembers(a.workspace.id, project.id);
     const withReach = await listVisibleNotificationRows({
       userId: a.user.id,
-      canReadInstanceAlerts: false,
       credentialCanReadTask: true,
     });
     expect(withReach).toHaveLength(2);
     const restrictedCredential = await listVisibleNotificationRows({
       userId: a.user.id,
-      canReadInstanceAlerts: false,
       credentialCanReadTask: false,
     });
     expect(restrictedCredential.map((r) => r.notification.id)).toEqual([

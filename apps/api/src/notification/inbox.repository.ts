@@ -1,4 +1,4 @@
-import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { can, type ResolvedIdentity } from "@taskdesk/permissions";
 import { and, desc, eq, isNull, lt, ne, or } from "drizzle-orm";
 import db from "../database";
 import {
@@ -152,6 +152,13 @@ function nativeRequests(rows: readonly NotificationRow[]) {
   );
 }
 
+function canReadInstanceAlerts(identity: ResolvedIdentity | null) {
+  return (
+    identity?.side === "staff" &&
+    can(identity, "instance:admin", "instance", {})
+  );
+}
+
 async function readableNativeRows(
   tx: InboxExecutor,
   rows: readonly NotificationRow[],
@@ -222,9 +229,16 @@ async function selectCandidatePage(
 async function bulkMutation(userId: string, mode: "read" | "delete") {
   await inboxTransaction(async (tx) => {
     const identity = await resolveInboxIdentity(tx, userId);
+    const excludeInstanceAlerts = !canReadInstanceAlerts(identity);
     let cursor: Cursor | undefined;
     while (true) {
-      const page = await selectCandidatePage(tx, userId, cursor);
+      const page = await selectCandidatePage(
+        tx,
+        userId,
+        cursor,
+        undefined,
+        excludeInstanceAlerts,
+      );
       if (page.length === 0) break;
       const rows = page.map(({ notification }) => notification);
       const allowed = await readableNativeRows(tx, rows, identity);
@@ -289,6 +303,12 @@ export async function markOwnReadableNotificationRead(
     if (!row) return undefined;
     const notification = row.notification;
     if (
+      notification.type === "audit_write_failed" &&
+      !canReadInstanceAlerts(await resolveInboxIdentity(tx, userId))
+    ) {
+      return undefined;
+    }
+    if (
       notification.resourceType === "work_item" ||
       notification.resourceType === "comment"
     ) {
@@ -315,18 +335,13 @@ export async function markOwnReadableNotificationRead(
  * keyset pages before the response limit is applied. */
 export async function listVisibleNotificationRows(params: {
   userId: string;
-  canReadInstanceAlerts: boolean;
   credentialCanReadTask: boolean;
   credential?: NativeInboxCredential;
 }) {
-  const {
-    userId,
-    canReadInstanceAlerts,
-    credentialCanReadTask,
-    credential = {},
-  } = params;
+  const { userId, credentialCanReadTask, credential = {} } = params;
   return inboxTransaction(async (tx) => {
     const identity = await resolveInboxIdentity(tx, userId, credential);
+    const includeInstanceAlerts = canReadInstanceAlerts(identity);
     const results: Array<{
       notification: NotificationRow;
       projectId: string | null;
@@ -339,7 +354,7 @@ export async function listVisibleNotificationRows(params: {
         userId,
         cursor,
         credentialCanReadTask,
-        !canReadInstanceAlerts,
+        !includeInstanceAlerts,
       );
       const userScoped = page;
       const rows = userScoped.map(({ notification }) => notification);

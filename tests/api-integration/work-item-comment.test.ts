@@ -430,7 +430,6 @@ describe("API integration: work-item comments (#27)", () => {
     expect(listedBefore).toHaveLength(2);
     const keyClampedRows = await listVisibleNotificationRows({
       userId: creator.user.id,
-      canReadInstanceAlerts: false,
       credentialCanReadTask: false,
       credential: {
         apiKey: {
@@ -634,7 +633,6 @@ describe("API integration: work-item comments (#27)", () => {
     for (const person of [requester, participant]) {
       const rows = await listVisibleNotificationRows({
         userId: person.user.id,
-        canReadInstanceAlerts: false,
         credentialCanReadTask: false,
       });
       const ids = rows.map(({ notification }) => notification.id);
@@ -645,7 +643,6 @@ describe("API integration: work-item comments (#27)", () => {
     for (const person of [nonparticipant, foreign]) {
       const rows = await listVisibleNotificationRows({
         userId: person.user.id,
-        canReadInstanceAlerts: false,
         credentialCanReadTask: false,
       });
       const ids = rows.map(({ notification }) => notification.id);

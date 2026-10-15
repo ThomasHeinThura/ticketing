@@ -106,6 +106,21 @@ async function plantTaskNotification(input: {
   );
 }
 
+async function plantAuditFailureNotifications(userId: string, count = 1) {
+  return db
+    .insert(schema.notificationTable)
+    .values(
+      Array.from({ length: count }, (_, index) => ({
+        userId,
+        title: `Audit write failed ${index}`,
+        content: "An audit write failed.",
+        type: "audit_write_failed",
+        createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, index)),
+      })),
+    )
+    .returning({ id: schema.notificationTable.id });
+}
+
 async function revokeProjectReach(userId: string, projectId: string) {
   const [person] = await db
     .select({ id: schema.personTable.id })
@@ -125,6 +140,131 @@ async function revokeProjectReach(userId: string, projectId: string) {
 }
 
 describe("notification task reach (security-model §2; NO edge cases)", () => {
+  it("rechecks instance-admin authority in each inbox operation transaction", async () => {
+    const { user } = await fixture();
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, user.id));
+    const [alert] = await plantAuditFailureNotifications(user.id);
+    if (!alert) throw new Error("Expected audit-failure alert");
+
+    expect(
+      (await getNotifications(user.id, true)).map((row) => row.id),
+    ).toContain(alert.id);
+    const foreignAdmin = await createWorkspaceMember({ role: "member" });
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, foreignAdmin.user.id));
+    expect(
+      (await getNotifications(foreignAdmin.user.id, true)).map((row) => row.id),
+    ).not.toContain(alert.id);
+    await expect(
+      markNotificationAsRead(alert.id, foreignAdmin.user.id),
+    ).rejects.toMatchObject({ status: 404 });
+    await db
+      .update(schema.userTable)
+      .set({ role: "member" })
+      .where(eq(schema.userTable.id, user.id));
+
+    expect(
+      (await getNotifications(user.id, true)).map((row) => row.id),
+    ).not.toContain(alert.id);
+    await expect(
+      markNotificationAsRead(alert.id, user.id),
+    ).rejects.toMatchObject({
+      status: 404,
+    });
+    await markAllNotificationsAsRead(user.id);
+    await clearNotifications(user.id);
+
+    const [stillPresent] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, alert.id));
+    expect(stillPresent).toEqual({ isRead: false });
+  });
+
+  it("clamps instance-alert visibility to the actual API-key capability subset", async () => {
+    const { user } = await fixture();
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, user.id));
+    const [alert] = await plantAuditFailureNotifications(user.id);
+    if (!alert) throw new Error("Expected audit-failure alert");
+
+    const sessionRows = await getNotifications(user.id, true);
+    expect(sessionRows.map((row) => row.id)).toContain(alert.id);
+    const keyRows = await getNotifications(user.id, true, {
+      apiKey: {
+        id: `notification-admin-clamp-${randomUUID()}`,
+        userId: user.id,
+        enabled: true,
+        permissions: {},
+      },
+    });
+    expect(keyRows.map((row) => row.id)).not.toContain(alert.id);
+  });
+
+  it("filters hidden alerts before paging and preserves authorized bulk behavior past 100 rows", async () => {
+    const hiddenOwner = await fixture();
+    const hiddenAlerts = await plantAuditFailureNotifications(
+      hiddenOwner.user.id,
+      105,
+    );
+    const visibleOlder = await plantTaskNotification({
+      userId: hiddenOwner.user.id,
+      taskId: hiddenOwner.task.id,
+      title: "Older visible task",
+      createdAt: new Date("2020-01-01T00:00:00Z"),
+    });
+    const hiddenList = await getNotifications(hiddenOwner.user.id, true);
+    expect(hiddenList.map((row) => row.id)).toEqual([visibleOlder.id]);
+    await markAllNotificationsAsRead(hiddenOwner.user.id);
+    await clearNotifications(hiddenOwner.user.id);
+    const hiddenState = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.userId, hiddenOwner.user.id));
+    expect(hiddenState).toHaveLength(106);
+    expect(hiddenState.filter((row) => row.isRead)).toHaveLength(0);
+    expect(hiddenState.map((row) => row.id)).toContain(visibleOlder.id);
+    expect(hiddenAlerts).toHaveLength(105);
+
+    const adminOwner = await fixture();
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, adminOwner.user.id));
+    const adminAlerts = await plantAuditFailureNotifications(
+      adminOwner.user.id,
+      105,
+    );
+    expect(await getNotifications(adminOwner.user.id, true)).toHaveLength(105);
+    await markAllNotificationsAsRead(adminOwner.user.id);
+    const readRows = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.userId, adminOwner.user.id));
+    expect(readRows).toHaveLength(105);
+    expect(readRows.every((row) => row.isRead)).toBe(true);
+    await clearNotifications(adminOwner.user.id);
+    const remaining = await db
+      .select({ id: schema.notificationTable.id })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.userId, adminOwner.user.id));
+    expect(remaining).toHaveLength(0);
+    expect(adminAlerts).toHaveLength(105);
+  });
+
   it("filters hidden rows before the 50-row limit and rejects create/read mutations after revocation", async () => {
     const { user, project, task } = await fixture();
     const { project: hiddenProject } = await createProjectFixture({
