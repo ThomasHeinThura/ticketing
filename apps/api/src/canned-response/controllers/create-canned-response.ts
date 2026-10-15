@@ -1,7 +1,6 @@
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { cannedResponseTable } from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import { insertCannedResponse } from "../repository";
 
 export type CreateCannedResponseInput = {
   workspaceId: string;
@@ -19,16 +18,13 @@ export type CreateCannedResponseInput = {
  */
 export async function createCannedResponse(input: CreateCannedResponseInput) {
   try {
-    const [created] = await db
-      .insert(cannedResponseTable)
-      .values({
-        workspaceId: input.workspaceId,
-        name: input.name,
-        body: input.body,
-        visibilityDefault: input.visibilityDefault ?? "internal",
-        createdBy: input.createdBy,
-      })
-      .returning();
+    const created = await insertCannedResponse({
+      workspaceId: input.workspaceId,
+      name: input.name,
+      body: input.body,
+      visibilityDefault: input.visibilityDefault ?? "internal",
+      createdBy: input.createdBy,
+    });
 
     if (!created) {
       throw new HTTPException(500, {
