@@ -322,9 +322,11 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
       })
       .from(schema.notificationTable)
       .where(eq(schema.notificationTable.userId, hiddenOwner.user.id));
-    expect(hiddenState).toHaveLength(106);
+    expect(new Set(hiddenState.map((row) => row.id))).toEqual(
+      new Set(hiddenAlerts.map((row) => row.id)),
+    );
     expect(hiddenState.filter((row) => row.isRead)).toHaveLength(0);
-    expect(hiddenState.map((row) => row.id)).toContain(visibleOlder.id);
+    expect(hiddenState.map((row) => row.id)).not.toContain(visibleOlder.id);
     expect(hiddenAlerts).toHaveLength(105);
 
     const adminOwner = await fixture();

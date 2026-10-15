@@ -46,18 +46,27 @@ export function canReadNativeInboxCandidate(
 
   const visibleToPersonIds =
     identity.side === "customer" ? resource.visibleToPersonIds : null;
-  return (
-    reaches(identity, {
-      projectId: resource.projectId,
-      workspaceId: resource.workspaceId,
-      organisationId: resource.organisationId,
-      visibleToPersonIds,
-    }) &&
-    can(identity, "work_item:read", "work_item", {
-      workItemId: resource.workItemId,
-      workItemProjectId: resource.projectId,
-      projectId: resource.projectId,
-      workspaceId: resource.workspaceId,
-    })
-  );
+  const inCurrentReach = reaches(identity, {
+    projectId: resource.projectId,
+    workspaceId: resource.workspaceId,
+    organisationId: resource.organisationId,
+    visibleToPersonIds,
+  });
+  if (!inCurrentReach) return false;
+
+  if (identity.side === "customer") {
+    // Customer read authority is organisation-scoped. The evaluator deliberately does not
+    // let an organisation grant satisfy a work-item policy scope; preserve that boundary and
+    // check the built-in customer capability at the serving project's organisation instead.
+    return can(identity, "work_item:read", "organisation", {
+      organisationId: resource.organisationId ?? undefined,
+    });
+  }
+
+  return can(identity, "work_item:read", "work_item", {
+    workItemId: resource.workItemId,
+    workItemProjectId: resource.projectId,
+    projectId: resource.projectId,
+    workspaceId: resource.workspaceId,
+  });
 }
