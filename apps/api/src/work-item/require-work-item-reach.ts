@@ -67,9 +67,10 @@ export type WorkItemReachOptions =
       /**
        * For WRITE routes whose next gate is the key-aware `requireWorkspaceCapability` /
        * handler capability check: an API-key credential still needs project reach here
-       * (404), but its capability is decided by that downstream gate, because the key's
-       * identity carries no canonical capability subset yet (`resolveIdentity`) and would
-       * otherwise be refused on every write. Session callers are unaffected.
+       * (404), but its key SCOPE is decided by that downstream gate (which still speaks the
+       * stored legacy statements). The key identity now carries its stored capability subset
+       * (#750), so the owner's own project authority is still enforced here (#724). Session
+       * callers are unaffected.
        */
       readonly deferApiKeyCapability?: boolean;
       /**

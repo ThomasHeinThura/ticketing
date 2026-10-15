@@ -12,6 +12,10 @@ import {
 import type { Context } from "hono";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
+import {
+  type ApiKeyPermissionScope,
+  apiKeyCapabilitySubset,
+} from "./require-api-key-permission-scope";
 
 export type ProjectReadDecision = {
   readonly reachable: boolean;
@@ -49,13 +53,20 @@ export function evaluateProjectRead(
   };
 }
 
-/** The caller's resolved identity for this request's credential (session, key or impersonation). */
+/**
+ * The caller's resolved identity for this request's credential (session, key or impersonation).
+ *
+ * A key identity carries the key's STORED capability scope (#750), projected by the same
+ * `apiKeyCapabilitySubset` the request adapter and the sockets use, so `can()` evaluates owner
+ * RBAC ∩ key scope. A missing, null or malformed stored scope projects to no capabilities and
+ * is refused; a key can never hold more than its owner.
+ */
 export async function resolveCallerIdentity(
   c: Context,
   userId: string,
 ): Promise<ResolvedIdentity | null> {
   const apiKey = c.get("apiKey") as
-    | { enabled?: boolean; userId?: string }
+    | ({ enabled?: boolean; userId?: string } & ApiKeyPermissionScope)
     | undefined;
   const session = c.get("session") as
     | { impersonatedBy?: string | null }
@@ -73,6 +84,7 @@ export async function resolveCallerIdentity(
           apiKey: {
             enabled: apiKey.enabled === true,
             ownerUserId: apiKey.userId ?? "",
+            capabilities: apiKeyCapabilitySubset(apiKey),
           },
         }
       : {}),
