@@ -757,6 +757,27 @@ describe("API integration: work-item comments (#27)", () => {
       },
     );
     expect(direct.status).toBe(200);
+    const [readDirectly] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, customerItem.id));
+    expect(readDirectly?.isRead).toBe(true);
+    const directComment = await app.request(
+      `/api/notification/${customerComment.id}/read`,
+      { method: "PATCH" },
+    );
+    expect(directComment.status).toBe(200);
+    const [commentReadDirectly] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, customerComment.id));
+    expect(commentReadDirectly?.isRead).toBe(true);
+    const bulkReadComment = await plantFor(
+      customer,
+      "comment",
+      publicComment.id,
+      "work_item.mentioned",
+    );
     await app.request("/api/notification/read-all", { method: "PATCH" });
     const [readItem, readComment] = await Promise.all(
       [customerItem, customerComment].map(async ({ id }) =>
@@ -769,6 +790,16 @@ describe("API integration: work-item comments (#27)", () => {
     );
     expect(readItem?.isRead).toBe(true);
     expect(readComment?.isRead).toBe(true);
+    const [readByBulk] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, bulkReadComment.id));
+    expect(readByBulk?.isRead).toBe(true);
+    const [internalAfterReadAll] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, customerInternal.id));
+    expect(internalAfterReadAll?.isRead).toBe(false);
     const clearItem = await plantFor(
       customer,
       "work_item",
@@ -786,9 +817,19 @@ describe("API integration: work-item comments (#27)", () => {
       .select({ id: schema.notificationTable.id })
       .from(schema.notificationTable)
       .where(
-        inArray(schema.notificationTable.id, [clearItem.id, clearComment.id]),
+        inArray(schema.notificationTable.id, [
+          clearItem.id,
+          clearComment.id,
+          customerInternal.id,
+        ]),
       );
-    expect(clearedReachable).toHaveLength(0);
+    expect(clearedReachable).toHaveLength(1);
+    expect(clearedReachable[0]?.id).toBe(customerInternal.id);
+    const [internalAfterClearAll] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, customerInternal.id));
+    expect(internalAfterClearAll?.isRead).toBe(false);
 
     mockAuthenticatedSession(foreign.user, { portal: "customer" });
     const foreignList = await app.request("/api/notification");
