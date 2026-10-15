@@ -6,6 +6,8 @@ import {
   DEFAULT_WORK_ITEM_LIST_SEARCH,
   parseGeneratedRouteUrl,
   parseGodModeUsersSearch,
+  parseIdentityConnectionEditorSearch,
+  parseIdentityConnectionEditorSearchFromQueryString,
   parseIntakeSearch,
   parsePendingActionsSearch,
   parsePendingActionsSearchFromQueryString,
@@ -584,6 +586,87 @@ describe("routes.slaPolicies", () => {
     expect(routes.slaPolicyEditor.build({ id: "policy/one" })).toBe(
       "/agent/settings/sla-policies/policy%2Fone",
     );
+  });
+});
+
+describe("routes.identityConnections", () => {
+  it("builds the routes the screen inventory names", () => {
+    expect(routes.identityConnections.build()).toBe(
+      "/agent/god-mode/authentication",
+    );
+    expect(routes.identityConnectionEditor.build({ id: "new" })).toBe(
+      "/agent/god-mode/authentication/new",
+    );
+    expect(routes.identityConnectionEditor.build({ id: "conn/a" })).toBe(
+      "/agent/god-mode/authentication/conn%2Fa",
+    );
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.identityConnections.path,
+    );
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.identityConnectionEditor.path,
+    );
+  });
+
+  it("round-trips the open tab, events cursor and mapping selection through the URL", () => {
+    for (const search of [
+      { tab: "scim" as const },
+      { tab: "scim" as const, mapping: "new" },
+      { tab: "scim" as const, mapping: "map/1" },
+      { tab: "events" as const },
+      { tab: "events" as const, eventsCursor: "abc_DEF-123" },
+    ]) {
+      const url = routes.identityConnectionEditor.build(
+        { id: "conn-1" },
+        search,
+      );
+      expect(
+        parseIdentityConnectionEditorSearchFromQueryString(
+          url.split("?")[1] ?? "",
+        ),
+      ).toEqual(search);
+    }
+  });
+
+  it("only keeps state that belongs to the open tab and drops everything else", () => {
+    expect(
+      parseIdentityConnectionEditorSearch({ tab: "scim", eventsCursor: "abc" }),
+    ).toEqual({ tab: "scim" });
+    expect(
+      parseIdentityConnectionEditorSearch({ tab: "events", mapping: "new" }),
+    ).toEqual({ tab: "events" });
+    expect(
+      parseIdentityConnectionEditorSearch({
+        mapping: "new",
+        eventsCursor: "abc",
+      }),
+    ).toEqual({});
+    expect(parseIdentityConnectionEditorSearch({ tab: "connection" })).toEqual(
+      {},
+    );
+    expect(parseIdentityConnectionEditorSearch({ tab: "nope" })).toEqual({});
+  });
+
+  it("rejects a malformed or oversized events cursor and never carries secrets or form values", () => {
+    expect(
+      parseIdentityConnectionEditorSearch({
+        tab: "events",
+        eventsCursor: "has space",
+      }),
+    ).toEqual({ tab: "events" });
+    expect(
+      parseIdentityConnectionEditorSearch({
+        tab: "events",
+        eventsCursor: "x".repeat(513),
+      }),
+    ).toEqual({ tab: "events" });
+    expect(
+      parseIdentityConnectionEditorSearch({
+        tab: "scim",
+        password: "never-in-url",
+        token: "never-in-url",
+      }),
+    ).toEqual({ tab: "scim" });
   });
 });
 
