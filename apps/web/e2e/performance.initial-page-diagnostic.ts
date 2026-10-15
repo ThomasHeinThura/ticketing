@@ -2070,6 +2070,66 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
         }, {}),
       ).sort(([left], [right]) => left.localeCompare(right)),
     );
+  const summarizeRelativeTimeline = (
+    events: BrowserTimelineEvent[],
+    startMicroseconds: number,
+    endMicroseconds: number,
+  ) => {
+    const span = endMicroseconds - startMicroseconds;
+    if (!Number.isFinite(span) || span <= 0 || span > 10_000_000)
+      throw new Error("The canonical timeline window has invalid bounds.");
+    return events.slice(0, 5_000).map((event) => {
+      const rawOffset = event.startMicroseconds - startMicroseconds;
+      const offset = Math.max(0, Math.min(span, rawOffset));
+      const hasDuration = Number.isFinite(event.durationMicroseconds);
+      const rawDuration = hasDuration
+        ? Math.max(0, event.durationMicroseconds ?? 0)
+        : 0;
+      const duration = Math.max(0, Math.min(span - offset, rawDuration));
+      const phase = /^[A-Za-z]$/.test(event.phase) ? event.phase : "unknown";
+      return {
+        name: TIMELINE_EVENT_NAMES.has(event.name) ? event.name : "other",
+        phase,
+        startOffsetMicroseconds: offset,
+        ...(hasDuration ? { durationMicroseconds: duration } : {}),
+        durationKind: hasDuration
+          ? duration === 0
+            ? "instant"
+            : "known"
+          : "unknown",
+        threadRole: "unknown",
+      };
+    });
+  };
+  const summarizeRelativeFrameIntervals = (
+    timestamps: number[],
+    elapsedWindowMs: number,
+  ) => {
+    if (
+      !Number.isFinite(elapsedWindowMs) ||
+      elapsedWindowMs <= 0 ||
+      elapsedWindowMs > 10_000
+    )
+      throw new Error("The canonical RAF window has invalid bounds.");
+    const first = timestamps[0];
+    if (!Number.isFinite(first)) return [];
+    return timestamps.slice(1, 5_001).flatMap((timestamp, index) => {
+      const previous = timestamps[index];
+      if (!Number.isFinite(timestamp) || !Number.isFinite(previous)) return [];
+      const rawStart = previous - first;
+      const rawEnd = timestamp - first;
+      const start = Math.max(0, Math.min(elapsedWindowMs, rawStart));
+      const end = Math.max(start, Math.min(elapsedWindowMs, rawEnd));
+      return end > start
+        ? [{ startOffsetMs: start, durationMs: end - start }]
+        : [];
+    });
+  };
+  const canonicalWindowStart =
+    canonicalRafWindow.cpuSampleCoverage.intervalStartMicroseconds;
+  const canonicalWindowEnd =
+    canonicalRafWindow.cpuSampleCoverage.intervalEndMicroseconds;
+  const canonicalFrameTimestamps = canonicalRafWindow.frameSampling.timestamps;
   const hostedSummary = {
     schemaVersion: 1,
     diagnosticOnly: true,
@@ -2086,12 +2146,21 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
         p95IntervalMs: canonicalRafWindow.frameSampling.p95IntervalMs,
         intervalsOver20Ms: canonicalRafWindow.frameSampling.intervalsOver20Ms,
         intervalsOver33Ms: canonicalRafWindow.frameSampling.intervalsOver33Ms,
+        relativeIntervals: summarizeRelativeFrameIntervals(
+          canonicalFrameTimestamps,
+          canonicalRafWindow.elapsedWindowMs,
+        ),
       },
       cpuSampleCoverage: canonicalRafWindow.cpuSampleCoverage,
       appFrameCount: canonicalRafWindow.topInclusiveCpuFrames.length,
       topAppFrames: canonicalRafWindow.topInclusiveCpuFrames.slice(0, 20),
       timelineEventCounts: countTimelineEvents(
         canonicalRafWindow.timelineEvents,
+      ),
+      timelineEventTimings: summarizeRelativeTimeline(
+        canonicalRafWindow.timelineEvents,
+        canonicalWindowStart,
+        canonicalWindowEnd,
       ),
     },
     pointerContext: {
