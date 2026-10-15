@@ -458,3 +458,78 @@ PR #780, which contains the cited 2026-10-15 conductor decision-log entry, was r
 
 No source edit, push, PR update, merge, gate waiver, stage claim, or runtime acceptance was performed in this review. The earlier 64e blocked verdict is not retroactively changed; this clearance applies only to the exact 9d candidate and its verified one-paragraph repair.
 
+
+## CI table repair and exact-head binding
+
+**Reviewed head:** `22374eb8e504ab8d200c9cd5d826eaa087195096`
+
+Full independent security clearance at9d and the following ordinary/lightweight Sol confirmations cover the sole later CI table correction. The old top-level attestation lacked backticks and was not parsed; it is retained unchanged. This correctly formatted additive binding names the actual current reviewed source. Hosted753 CI failure is preserved; no acceptance gate is waived.
+
+### Authentic report — 764-ci-row-delta-luna.md
+
+Origin SHA-256: `e8b3b87444a6ef52c43a0bc458b3c36b17c3908882c3d0c3953e0f466d2a8f1b`.
+
+# PR #764 CI table row — independent ordinary delta review
+
+**Verdict: APPROVE this bounded documentation delta; no blocking findings.** At exact local head 22374eb8e504ab8d200c9cd5d826eaa087195096, the one-line ci-cd.md correction restores the check command in the table's command column while retaining “planned — not wired” as its description. This satisfies the existing parser and manifest without claiming that the check runs or changing any gate behavior.
+
+**Reviewed exact head:** 22374eb8e504ab8d200c9cd5d826eaa087195096  
+**Comparison base:** 753653bd04d210056d30c79ae487f1a33a83e887  
+**Model/role provenance:** GPT-6 Luna, dispatched by the parent for this bounded ordinary delta review. Runtime model/version introspection is unavailable; attribution records dispatch, not independently verified runtime metadata. I did not author or remediate this change.
+
+## Scope and evidence
+
+Inspected only the exact one-line diff in docs/04-engineering/ci-cd.md, the hosted failure log for 753653bd, the parser in scripts/ci/lib/ci-cd-gates.mjs, the manifest entry in scripts/ci/test-all.mjs, and the relevant GitHub Actions workflow comments/job. Confirmed the worktree HEAD is the requested candidate and the diff changes exactly one file and one line.
+
+Commands/checks:
+
+- git rev-parse HEAD — 22374eb8e504ab8d200c9cd5d826eaa087195096.
+- git diff --stat 753653bd04d210056d30c79ae487f1a33a83e887 22374eb8e504ab8d200c9cd5d826eaa087195096 — one file, one insertion and one deletion.
+- git diff --name-status ... — only docs/04-engineering/ci-cd.md.
+- git diff --check ... — passed.
+- Read /Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/764-ci-docs-753653bd.log. The hosted parser failure says ci-cd.md declared “planned” as the gate while the manifest runs pnpm check:queries, and says the command was not declared. This is the exact mismatch the line repairs.
+- Read scripts/ci/lib/ci-cd-gates.mjs. It normalizes a cell beginning with pnpm <command> as the declared gate; with the new row, the command column parses to pnpm check:queries and the explanatory text is dropped.
+- Read scripts/ci/test-all.mjs: the matching manifest entry remains run: null and retains its reason. No implementation or active command is added.
+- Read .github/workflows/ci-fast.yml: check:queries is explicitly among gates that cannot exist yet; no job is added by this delta.
+- pnpm test:all --list — exit 0; lists pnpm check:queries as “not enabled” with its existing reason; reports 0 passed, 0 failed, 5 not enabled yet.
+- pnpm check:policy — passed: 8 policy files coherent.
+- git status --short — clean.
+
+No heavy tests, builds, source edits, push, or merge were performed.
+
+## Findings
+
+- **Parser mismatch: closed.** The new cell begins with the canonical command pnpm check:queries, matching the manifest gate. The three-space separation preserves the parser's existing command/prose split.
+- **Planned status retained.** The same row still labels the check “planned — not wired (#580)”. The introductory paragraph in ci-cd.md also says entries with that marker are future checks, not active CI gates.
+- **No pass/fail or authority semantics changed.** The manifest continues to use run: null, the --list output continues to say “not enabled”, and the workflow continues to omit a job intentionally. The repaired command label does not execute, enable, or treat the gate as passing.
+- **No scope expansion.** The delta changes no checker, manifest, workflow, permission, policy, or test.
+
+## Limits
+
+This verdict is bound to the local one-line delta at 22374eb8e504ab8d200c9cd5d826eaa087195096. It does not establish remote PR head, hosted status checks on this new SHA, final #764 acceptance, or merge eligibility.
+
+### Authentic report — 764-ci-row-security-sol.md
+
+Origin SHA-256: `b6a9e09c12bf9024ae74690821e29e1f579a28c2da817582d9b1499da23f4eed`.
+
+# PR #764 CI gate table row — independent security confirmation
+
+**Verdict: CLEAR at exact local head `22374eb8e504ab8d200c9cd5d826eaa087195096` for the bounded CI table-row delta.** It restores the parser-visible `pnpm check:queries` command while retaining the explicit “planned — not wired (#580)” description. The command remains disabled in the test manifest. This confirmation preserves the full independent security clearance of the unchanged product/query contract at `9d7e9a50364f503ceb96b939fa8a23b2c6b6a42d`; it does not reclassify the prior adverse reviews or grant merge eligibility.
+
+**Role/provenance:** fresh independent security-review context dispatched by the conductor as `gpt-6-sol`, `fork_turns=none`; I did not author, direct, or remediate the one-line repair. Runtime model/version introspection is unavailable. This label records explicit dispatch, not independent runtime identification. The independent ordinary delta reviewer separately APPROVED the exact 223 head in `764-ci-row-delta-luna.md`.
+
+## Exact scope and finding
+
+The comparison base for this confirmation is `753653bd04d210056d30c79ae487f1a33a83e887`, the immediate parent of 223. `git diff 753653bd..22374eb8` changes only `docs/04-engineering/ci-cd.md`: one table row from `planned — not wired: check:queries (#580)` to `pnpm check:queries   planned — not wired (#580)`. The older full security-cleared source head is 9d. Its intervening 753 commit adds only `docs/07-planning/security-reviews/764-query-ownership.md`, the published review record; it changes no product source, tests, gate script, CI workflow, package script or canonical query contract. The 753 publication remains its own evidence, not an edit to the underlying reviewer verdicts.
+
+The active table parser in `scripts/ci/lib/ci-cd-gates.mjs` takes the first cell segment before two or more spaces and normalizes a `pnpm <script>` command. At 753, the row parsed as gate `planned`, producing the hosted reconciliation failure: the log reported that `ci-cd.md` declares `planned` with no manifest entry and omits `pnpm check:queries`. At 223, the row parses as `pnpm check:queries`, matching the existing manifest entry. The prose after the three spaces is a description, and the table introduction says **planned — not wired** entries are future additions. `scripts/ci/test-all.mjs` still has `run: null` for this gate; `.github/workflows/ci-fast.yml` still says `check:queries` has no job. This changes the erroneous table declaration that made reconciliation fail, but does not activate the checker, change its eventual scope, relax an authorization requirement, add a waiver, or change any runtime behavior.
+
+## Actual verification and limits
+
+- Read `764-ci-row-repair-conductor.md`, the independent ordinary delta report, the exact one-line diff, the earlier full security report `764-security-clearance-sol.md`, the parser, manifest, CI workflow note and the retained hosted 753 failure log.
+- `git rev-parse HEAD` returned `22374eb8e504ab8d200c9cd5d826eaa087195096`; `git status --short` was clean. `git diff --name-status 753653bd..22374eb8` named only `docs/04-engineering/ci-cd.md` and `git diff --check` on that exact one-line delta passed.
+- `pnpm test:all --list` exited 0 and reconciled 40 declared gates. It displayed `pnpm check:queries` as **not enabled**, with **0 passed, 0 failed, 5 not enabled yet**. This list/manifest check does not run the disabled checker.
+- `git diff --name-status 9d7e9a5..753653bd` named only the added #764 security-review note. The broad 9d-to-223 `git diff --check` reports trailing Markdown line-break spaces in that published note; it is not a failure of the one-line CI-row repair and is not represented here as passing.
+
+No product tests, PostgreSQL suite, image, browser, source edit, push, merge or PR-body update was performed. A correctly formatted current-head attestation, remote exact-head checks, and the standing composition/dependency requirements remain for the conductor. This clearance covers only the 223 source delta atop the already cleared 9d candidate.
+
