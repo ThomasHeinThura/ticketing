@@ -165,8 +165,8 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | God Mode home / health | `/agent/god-mode` | route | P4 | ⬜ |
 | General (incl. terminology) | `/agent/god-mode/general` | route | P4 | ⬜ |
 | Branding | `/agent/god-mode/branding` | route | P4 | ⬜ |
-| **Authentication providers** | `/agent/god-mode/authentication` | route | P3 | ⬜ |
-| **Provider editor** | `/agent/god-mode/authentication/{id}` | route | P3 | ⬜ |
+| **Authentication providers** | `/agent/god-mode/authentication` | route | P3 | 🟡 |
+| **Provider editor** | `/agent/god-mode/authentication/{id}` | route | P3 | 🟡 |
 | Organisations | `/agent/god-mode/organisations` | route | P3 | ⬜ |
 | Organisation detail | `/agent/god-mode/organisations/{id}` | route | P3 | ⬜ |
 | **Organisation — Identity** (customer OIDC + SCIM connection) | `/agent/god-mode/organisations/{id}/identity` | route | P3 | ⬜ |
