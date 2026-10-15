@@ -7,7 +7,7 @@
  * dependents explicitly (`deleteWorkspaceRoleDependents`); the RESTRICT FKs stay.
  */
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
@@ -952,6 +952,82 @@ describe("#734 account erasure and IdP-provisioned members", () => {
     );
     expect(await snapshot()).toEqual(before);
   });
+
+  it("serializes customer project creation before erasure, including a creator with no staff person", async () => {
+    const { owner } = await soleLegacyMemberWorkspace();
+    const organisation = requireRow(
+      await db
+        .insert(schema.organisationTable)
+        .values({ key: `cust-${randomUUID()}`, name: "Customer Org" })
+        .returning(),
+      "customer organisation",
+    );
+    const customerUser = await createWorkspaceMember({ role: "member" });
+    const customerPersonId = await personIdFor(customerUser.user.id);
+    await db
+      .update(schema.personTable)
+      .set({ side: "customer", organisationId: organisation.id })
+      .where(eq(schema.personTable.id, customerPersonId));
+
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let inserted: () => void = () => {};
+    const insertedSignal = new Promise<void>((resolve) => {
+      inserted = resolve;
+    });
+    // This follows createProjectRow's ordering: take namespace 1524, then check the
+    // active customer organisation, then insert. `createdBy` stays NULL because the
+    // supported creator has no staff person row.
+    const creatorWithoutPerson = `unprovisioned-${randomUUID()}`;
+    const writer = db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(1524, hashtext(${owner.workspace.id}))`,
+      );
+      const [activeOrganisation] = await tx
+        .select({ id: schema.organisationTable.id })
+        .from(schema.organisationTable)
+        .where(eq(schema.organisationTable.id, organisation.id))
+        .for("share");
+      expect(activeOrganisation).toBeDefined();
+      await tx.insert(schema.projectTable).values({
+        workspaceId: owner.workspace.id,
+        organisationId: organisation.id,
+        name: "Raced customer project",
+        icon: "Folder",
+        slug: `raced-${randomUUID()}`,
+        createdBy: null,
+      });
+      expect(
+        await tx
+          .select({ id: schema.personTable.id })
+          .from(schema.personTable)
+          .where(eq(schema.personTable.userId, creatorWithoutPerson)),
+      ).toHaveLength(0);
+      inserted();
+      await gate;
+    });
+    await insertedSignal;
+
+    const erasure = deleteAccountData(owner.user.id);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    release();
+    await writer;
+    await expect(erasure).rejects.toThrow(/Other people still have access to/u);
+    expect(
+      await db
+        .select({ id: schema.workspaceTable.id })
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, owner.workspace.id)),
+    ).toHaveLength(1);
+    expect(
+      await db
+        .select({ id: schema.projectTable.id })
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.workspaceId, owner.workspace.id)),
+    ).toHaveLength(1);
+  }, 30_000);
 
   it("is not blocked by an inactive customer, or by a customer of an organisation the workspace does not serve", async () => {
     const inactive = await customerOrganisationInWorkspace({ active: false });

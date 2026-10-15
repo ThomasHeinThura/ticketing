@@ -28,6 +28,7 @@ import {
   invalidateAccountDeletionCredentials,
   requestAccountDeletionRetry,
 } from "../../pending-action/credential-invalidation";
+import { lockProjectCreation } from "../../project/project-creation-lock";
 import { revokeProjectCreatorGrantsForMember } from "../../project/project-creator-grant";
 import { isLockNotAvailable } from "../../utils/is-lock-not-available";
 import {
@@ -272,8 +273,10 @@ async function deleteAccountDataInTransaction(
     // Nothing may grant access between the check and the delete. The writers that create
     // identity-provisioned, direct and project-scope rows take no workspace-level lock (and
     // some of these rows have no foreign key to lock through), so the tables themselves are
-    // locked against writes for the rest of this transaction. Reads are unaffected, and only an
-    // erasure that is about to delete a workspace takes it.
+    // locked against writes for the rest of this transaction. Customer project creation takes
+    // the shared workspace lock before looking up/locking its optional creator person; erasure
+    // takes it before these table locks and then rechecks customer reach. Reads are unaffected,
+    // and only an erasure that is about to delete a workspace takes these locks.
     //
     // Lock order is `person`, `membership_grant`, `membership`: the order the provisioning
     // writers already take (OIDC JIT login and SCIM user create/update write `person` first;
@@ -281,7 +284,7 @@ async function deleteAccountDataInTransaction(
     // grants parent-first, and only then projects into `membership` in
     // `identity/repository.ts`). Taking them in any other order can deadlock against a writer.
     //
-    // The wait is bounded: one slow writer must not queue every later writer on these tables
+    // The wait is bounded: one slow writer must not queue every later writer on these locks
     // behind this request. On timeout (55P03) nothing has been deleted and the transaction
     // rolls back; the caller gets the same 409 mechanism as the other refusals here.
     const priorLockTimeout = (
@@ -291,6 +294,12 @@ async function deleteAccountDataInTransaction(
       sql`SELECT set_config('lock_timeout', ${`${ERASURE_LOCK_TIMEOUT_MS}ms`}, true)`,
     );
     try {
+      // Project creation can introduce customer reach without writing any identity row (the
+      // creator may have no staff person). A project that wins commits before this lock is
+      // acquired and is seen by the guarded recheck below.
+      for (const workspaceId of [...plan.workspaceIdsToDelete].sort()) {
+        await lockProjectCreation(tx, workspaceId);
+      }
       await tx.execute(
         sql`LOCK TABLE person, membership_grant, membership IN SHARE ROW EXCLUSIVE MODE`,
       );
