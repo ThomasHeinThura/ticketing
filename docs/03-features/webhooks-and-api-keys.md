@@ -332,7 +332,7 @@ does not exist yet.
 
 ## Open questions
 
-None open on this spec. Related questions that already have their own issues:
+None open on this spec. Related items that already have their own issues:
 
 - Decided 2026-10-15 (Thomas): a key's effective authority is also clamped by the owner's
   project role, so a key never exceeds what the owner's session can do in that project
