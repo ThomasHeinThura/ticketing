@@ -440,4 +440,167 @@ describe("WorkItemList", () => {
     titleHeader.click();
     expect(onSortChange).toHaveBeenCalledWith("title", "asc");
   });
+
+  describe("VW-19 chosen columns", () => {
+    const headerNames = () =>
+      screen
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent?.trim());
+
+    it("renders every column in the default order when none are chosen", () => {
+      renderWithQueryClient(
+        <WorkItemList
+          {...baseProps}
+          workItems={[workItem]}
+          isLoading={false}
+          isError={false}
+        />,
+      );
+      expect(headerNames()).toEqual([
+        "workItems:list.columnKey",
+        "workItems:list.columnTitle",
+        "workItems:list.columnPriority",
+        "workItems:list.columnDueDate",
+        "workItems:list.columnState",
+        "workItems:list.columnAssignee",
+      ]);
+    });
+
+    it("renders only the chosen columns, in the chosen order, for headers and cells", () => {
+      renderWithQueryClient(
+        <WorkItemList
+          {...baseProps}
+          columns={["assignee", "key", "state"]}
+          workItems={[workItem]}
+          isLoading={false}
+          isError={false}
+        />,
+      );
+      expect(headerNames()).toEqual([
+        "workItems:list.columnAssignee",
+        "workItems:list.columnKey",
+        "workItems:list.columnState",
+      ]);
+      const cells = screen
+        .getAllByRole("cell")
+        .map((cell) => cell.textContent?.trim());
+      expect(cells).toEqual([
+        "workItems:list.unassigned",
+        "PROJ-123",
+        "Backlog",
+      ]);
+      expect(screen.queryByText("Fix the thing")).toBeNull();
+    });
+
+    it("only gives sortable columns a sort control and aria-sort", () => {
+      renderWithQueryClient(
+        <WorkItemList
+          {...baseProps}
+          columns={["state", "priority"]}
+          sort="priority"
+          dir="desc"
+          workItems={[workItem]}
+          isLoading={false}
+          isError={false}
+        />,
+      );
+      const [state, priority] = screen.getAllByRole("columnheader");
+      expect(state).not.toHaveAttribute("aria-sort");
+      expect(state?.querySelector("button")).toBeNull();
+      expect(priority).toHaveAttribute("aria-sort", "descending");
+    });
+
+    it("marks a malformed state or assignee name as unavailable instead of blank", () => {
+      renderWithQueryClient(
+        <WorkItemList
+          {...baseProps}
+          columns={["key", "state", "assignee"]}
+          workItems={[
+            {
+              ...workItem,
+              stateName: "",
+              assigneeName: null,
+              unavailableFields: ["stateName", "assigneeName"],
+            },
+          ]}
+          isLoading={false}
+          isError={false}
+        />,
+      );
+      expect(screen.getAllByText("workItems:list.unavailable")).toHaveLength(2);
+    });
+  });
+
+  it("says no item matches when a structured filter yields nothing, not that the project is empty", () => {
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        isFiltered
+        workItems={[]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    expect(
+      screen.getByText("workItems:list.emptyFilteredTitle"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("workItems:list.emptyTitle")).toBeNull();
+  });
+});
+
+describe("WorkItemList: more pages of a filtered result", () => {
+  it("offers Load more only when the search has more pages, and calls it", () => {
+    const onLoadMore = vi.fn();
+    const { rerender } = renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        isFiltered
+        hasMore
+        onLoadMore={onLoadMore}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-list-load-more"));
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <WorkItemList
+        {...baseProps}
+        isFiltered
+        hasMore
+        isLoadingMore
+        onLoadMore={onLoadMore}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    expect(screen.getByTestId("work-item-list-load-more")).toBeDisabled();
+  });
+
+  it("shows nothing extra when there is no further page or no way to load one", () => {
+    const { rerender } = renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        hasMore={false}
+        onLoadMore={vi.fn()}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    expect(screen.queryByTestId("work-item-list-load-more")).toBeNull();
+    rerender(
+      <WorkItemList
+        {...baseProps}
+        hasMore
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    expect(screen.queryByTestId("work-item-list-load-more")).toBeNull();
+  });
 });
