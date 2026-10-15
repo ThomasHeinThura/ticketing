@@ -500,3 +500,320 @@ The new integration fixture uses `grantProjectRole` only for the new narrow-role
 - PostgreSQL integration, Docker/image/container/health, browser, hosted CI, and revocation transition: not run. No source, test, PR, commit, push, or merge changed; the repository worktree remained clean.
 
 
+
+## Hosted failure correction — current independent source clearance
+
+**Reviewed head:** `bb1c79466c79a39904f9fec61fac3b58f0ab7660`
+
+The authentic hosted result at3594 remains FAILED (206files/2999tests,4files/11tests failed). The bounded repair corrects overpowered and invalid negative fixtures, genuine canonical customer identity, owner-positive/key-negative scope setup, and the AK-3 scoped-comment positive oracle. Production authority/status is unchanged; the protected-field key-scope denial now retains its specific error when the owner is capable and key subset is insufficient. Strong independent ordinary review and fresh full independent Sol clear this source. PostgreSQL/image/required CI remain outstanding. #782 disposition exists only in unaccepted carrier791 and remains a dependency.
+
+Conductor dispatch provenance: ordinary reviewer explicitly GPT-6 Luna; fresh security reviewer `/root/apikey_hosted_repair_security_current` spawned with `model: gpt-6-sol`, `fork_turns: none`. Reports preserve their actual runtime introspection limits; advisory failure adjudication is not implementation approval. The prior two adverse ordinary verdicts and all author reports follow unchanged. Publication changes only this own note.
+
+---
+
+### Authentic record: apikey-hosted-failures-adjudication-sol.md
+
+# #784 hosted PostgreSQL failure adjudication — read-only advisory
+
+**Model provenance:** GPT-6 Sol, fresh bounded critical adjudication context; no authorship, remediation, approval, or independent review of a future repair. **Frozen source:** `3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74`, clean worktree `/Users/heinthura/.codex/worktrees/api750/Ticketing.v2`; PR #784 live head matched this SHA when checked. The reviewed predecessor was product `596a2332381e16d89e6bf90a8d679d0cb3a022d8`, followed by an own-note delta. No source was changed here.
+
+**Evidence:** private hosted log `784-pg-3594cb34.log`, final Failed Tests block only; 206 files: 4 failed, 202 passed; 2,999 tests: 11 failed, 2,988 passed. No raw SQL, parameters, credentials, or unrelated diagnostic lines are reproduced. Live GitHub showed #784 open with required `integration - Postgres 18` red, registers red, and pull-request-template/security-review red; other current results do not cure those gates. The previously cleared ordinary/Sol source reviews predated any actual PG run and do not make this candidate merge ready.
+
+**Authorities and checked paths:** `AGENTS.md`, active mission, agent workflow, `CLAUDE.md`; `docs/01-architecture/rbac.md` (project-role override, customer rule, project reach); `docs/03-features/projects-and-engagements.md` (PR-9, field-level manage-settings), `comments-and-activity.md` (CA-2, own comment edit), `webhooks-and-api-keys.md` (AK-3 stored subset intersected with live owner authority), `customer-portal.md`, decision log (owner/role/reach decisions); `apps/api/src/project/index.ts`, `project/policy.ts`, `utils/has-project-reach.ts`, `utils/require-api-key-permission-scope.ts`, `utils/require-workspace-capability.ts`, `work-item/controllers/update-comment.ts`; four failing integration files and `tests/api-integration/helpers/fixtures.ts`. `gh pr view 784` and `gh pr view 782` were read-only live checks. The current source's project-setting check uses `evaluateProjectRead(identity, "project:manage_settings", "project", persistedReachFacts)`. This is the canonical project-aware decision and must not be reverted to a workspace-only role check.
+
+## Findings by actual defect class
+
+1. **Overpowered project-role fixtures invalidate intended role denies (seven status failures).** `actorWithLegacyMap` in both project tests calls `grantProjectManageAccess` by default, and that helper includes `project:manage_settings`. The RBAC spec says a project role overrides workspace roles on that project. Thus the two member/lead `defaultCommentVisibility` denies return 200, the two member/lead engagement denies reach PR-9 validation and return 422, and the two “key cannot widen member/lead owner” denies return 200/422 respectively because their owner actually holds project management authority. A narrow manager project role test already supplies its own reduced project capabilities and should remain. The `defaultCommentVisibility` customer-labeled deny also returns 200: `createWorkspaceMember({role:"customer"})` creates the ordinary active staff fixture and the helper grants it a staff project-management role. A string role name is not proof of a real customer-side identity. Do not fix any of these by imposing workspace-only manage-settings authority or by changing expected statuses to success. Give staff negative fixtures an explicit reachable project role lacking `project:manage_settings`, retain legacy route `project:update` where that contrast is the test, and preserve the no-write assertions. For the customer case construct genuine customer-side person, organisation-scoped customer membership, project organisation binding, and agent API request (or a separate proven genuine-customer fixture); assert 403 and no write. Do not grant a customer a project role, which the spec makes structurally impossible. The status failures map to visibility lines 269 twice, 317, 397 and engagement lines 187 twice, 369; the visibility customer case is line 317.
+
+2. **API key denial reason lost at project field guard (two message failures).** Visibility line 342 and engagement line 312 still receive HTTP 403 but body `Insufficient permissions` where tests require `Insufficient API key scope`. `project/index.ts` checks combined `decision.capable` and always throws the generic message. `evaluateProjectRead` also provides `ownerCapable`, so a bounded source repair can distinguish `ownerCapable=true, capable=false` on an authenticated API key and return the key-scope message; owner incapable must remain a generic permission denial. Preserve persisted project facts, key stored subset, and no-write behavior. Verify both missing-scope and owner-denied cases; do not infer a missing key scope whenever the owner's project role itself lacks authority.
+
+3. **Task-update key-scope test is masked by owner authority (one message failure).** `task-update-concurrency` line 503 gets 403 `Insufficient permissions`; its caller is a workspace viewer with project role `project:read,work_item:read`, so the owner also lacks `work_item:update`. The test cannot claim the denial was solely the key's read-only stored subset. Repair the fixture to give the owner current update authority on the addressed project and retain a read-only key, then require the explicit key-scope 403 and assert unchanged task/version. Keep a separate viewer/session denial and both legacy/versioned route checks. If the repaired fixture still gets generic text, inspect the exact route's error branch and make the smallest consistent distinction without changing the canonical gate.
+
+4. **Strict comment in-scope expectation is stale (one status failure).** `strict-runtime-enforcement` line 598 returns 200 for a key carrying `comment:update_own`. The fixture owner holds that project capability, owns the comment, and the stored key scope carries the same capability. The old comment says a key has no canonical capability subset; #784 now projects one. Keep the out-of-scope read-only key 403 and persisted no-write check, and replace the in-scope 403 assertion with success plus exact persisted comment content (and required own-edit window/identity conditions). If the intended policy truly forbids all legacy comment edits by keys, that conflicts with AK-3 and the present canonical projection and would require an explicit owning spec decision before source restriction; no such prohibition was found.
+
+## Bounded next actions for an implementation owner
+
+- Repair only the fixtures above and the project-field error branch needed to preserve the existing API-key denial contract. Make staff no-manage project grants explicit per case; create a genuine customer actor for the customer denial; keep meaningful 403, no-write and PR-9-before-validation assertions.
+- Add or retain a key test matrix that separates owner-authorized/key-unscoped, owner-unauthorized/key-scoped, owner-and-key-authorized, and genuine customer. For task update, prove the owner-positive/key-negative condition before asserting the error reason. For strict comment, prove both stored-scope refusal and permitted own edit with persisted state.
+- Run the focused four real-PG files first, then exact-head full hosted integration and applicable ordinary/security delta review and all required current-head gates. The previous full-PG run remains failed evidence; no review may be called complete on this advisory report. A future implementation directed by this report needs a fresh independent reviewer.
+- The separate `registers` red result is the missing webhooks review disposition dependency owned by #782 inside carrier #791; it is not an additional #784 product failure. Preserve that dependency and its recorded historical findings; do not duplicate, erase, waive, or treat it as a reason to weaken `check:reviews`.
+
+**Decision status:** no new Thomas product decision is necessary for the fixture, key-scope diagnostic, or positive in-scope comment behavior under the existing approved RBAC/AK-3 contract. Only an intent to ban that in-scope comment edit despite the current contract would need an explicit owner spec decision. This report claims neither a repaired source nor green hosted acceptance.
+
+
+---
+
+### Authentic record: apikey-hosted-fixture-inventory-luna.md
+
+# #784 hosted PostgreSQL failure fixture inventory
+
+**Frozen source inspected:** `3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74`
+**Hosted evidence:** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/784-pg-3594cb34.log`; final Failed Tests block only.
+**Run result:** 206 files (202 passed, 4 failed); 2,999 tests (2,988 passed, 11 failed).
+**Role/provenance:** read-only fixture/error inventory; GPT-6 Codex context, no more-specific model/version exposed. This is not a review.
+
+## Case inventory
+
+1. `project-default-comment-visibility.test.ts`: member and lead expected 403 but received 200; the member-labelled key-with-manage-settings owner expected 403 but received 200. The local `actorWithLegacyMap` always calls `grantProjectManageAccess`, whose explicit project role contains `project:manage_settings`. The RBAC contract makes the project role override the workspace role, so the denial fixtures are actually project-settings-authorized. Keep the 403/no-write intent and use a reachable project role without `manage_settings`, preserving the legacy `project:update` baseline. The narrow manager-overriding-role case must remain.
+
+   The customer-labelled case also expected 403 but received 200. `createWorkspaceMember({ role: "customer" })` creates a staff-side person; the string `customer` in the workspace membership is not a customer identity. The helper then grants that staff person project management. Correct this with an actual customer-side person, a valid customer organisation and matching project organisation binding, and no project-role grant; preserve the 403/no-write assertion. A nonmatching/unreachable project would test masking (404), not this in-reach capability denial.
+
+   A key limited to `project:update` received 403 with `Insufficient permissions`, while the test expects `Insufficient API key scope`. The key owner has project management authority; the stored key subset is the missing condition. Preserve 403 and no-write, and in `project/index.ts` distinguish key `ownerCapable === true && capable === false` as the existing key-scope error. Owner/project denial remains generic. Do not label the narrow-project-role key case as a scope failure when `ownerCapable` is false.
+
+2. `project-engagement-manage-settings.test.ts`: member and lead denials each reach PR-9 validation and receive 422 instead of 403; their fixture helper also unconditionally grants project `manage_settings`. The key-with-settings-scope/member-or-lead-owner denial likewise reaches validation (422). Give these denial cases reachable project roles with `project:update` but without `project:manage_settings`; keep their existing 403/no-write checks and retain allowed engagement scenarios. A key lacking the field scope returned generic 403 rather than the existing API-key-scope diagnostic; apply the same owner-positive/key-negative distinction as the visibility cases.
+
+3. `strict-runtime-enforcement.test.ts`: the read-only key case is denied and its no-write assertion passes. The following key is scoped to `comment:update_own`; its owner has that project capability, authored the comment within the edit window, and the policy declares `comment:update_own` for this operation. The response is 200, contrary to the test's stale comment/expected 403. AK-3 and the canonical capability projection allow this explicit stored subset. Keep the out-of-scope 403/no-write case; for the in-scope own-edit case assert success and the exact persisted body, preserving the owner/window conditions. No source restriction is supported without changing the approved contract.
+
+4. `task-update-concurrency.test.ts`: the read-only key receives generic 403 before the downstream workspace legacy permission middleware can report a key-scope error. Its owner is a workspace viewer whose project role includes only `project:read` and `work_item:read`; therefore the owner also lacks `work_item:update`, and the failure is not isolated to key scope. Add project-level `work_item:update` to this key-specific fixture while retaining the workspace viewer baseline and read-only key. This lets owner authority pass the `deferApiKeyCapability` reach gate so the downstream scope check can return `Insufficient API key scope`. Keep the separate viewer/session denial, both route checks, and unchanged task/version assertions.
+
+## Scope boundary
+
+This inventory did not edit source, tests, or prior evidence. The `registers` check dependency remains owned by the webhooks review section in #782 carried by #791; this report makes no duplicate disposition or waiver. Raw SQL, query parameters, credentials, and unrelated log diagnostics are not reproduced.
+
+
+---
+
+### Authentic record: apikey-hosted-failures-repair-luna.md
+
+# #784 hosted failure grouped repair
+
+**Source head:** `a7e522818abe6cdd5a361e776f4bcbdbf8969274`
+**Parent source:** `3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74`
+**Branch:** `codex/api-key-project-role-clamp-724`
+**Worktree:** `/Users/heinthura/.codex/worktrees/api750/Ticketing.v2`
+**Model provenance:** GPT-6 Codex runtime; no more-specific model/version was exposed here. The requested `-luna` report filename is not evidence of Luna identity.
+**Role:** implementation and test repair following fresh independent Sol advisory; not a review.
+**Read-only inventory:** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/apikey-hosted-fixture-inventory-luna.md`.
+
+## Repair
+
+The canonical target-project `project:manage_settings` evaluator remains in place. For field denials it now preserves the established API-key diagnostic when the owner is capable but the key's stored subset is not; missing owner/project authority still returns the generic permission denial. The check still precedes project reads and writes.
+
+- `project-default-comment-visibility.test.ts`: staff negative cases use a reachable project override with `project:read` and `project:update`, excluding `manage_settings`; the key case with sufficient stored scope uses the same narrow owner ceiling. The customer case now has a customer-side person, active organisation, organisation membership and project binding, with no project-role grant. Existing 403/no-write assertions remain.
+- `project-engagement-manage-settings.test.ts`: member/lead and scoped-key owner-denial cases use narrow reachable project-role overrides, preserving legacy `project:update`, 403, and no-write expectations.
+- `strict-runtime-enforcement.test.ts`: retained the out-of-scope key 403 and no-write assertion. The explicitly scoped `comment:update_own` key now asserts its authorized own edit succeeds and verifies the exact persisted body; fixture author and edit-window setup remain.
+- `task-update-concurrency.test.ts`: the project role now gives the viewer owner `work_item:update` so the read-only key reaches the downstream key-scope gate. Workspace-viewer session denial and both legacy/versioned route checks remain; the key case also asserts unchanged task title, description and version.
+
+Only the five assigned source/test paths changed. No schema, roles, route policy, capabilities, dependencies, shared helpers, checker, register disposition or release state changed.
+
+## Checks on exact source
+
+- `pnpm exec biome check` on all five changed paths — passed.
+- `git diff --check` — passed before commit.
+- `pnpm --filter @taskdesk/api typecheck` — passed across all configured API TypeScript projects.
+- `pnpm --filter @taskdesk/api test:unit` — passed, 119 files / 855 tests.
+- PostgreSQL integration — not run locally; no local Docker/PostgreSQL runtime was available. The original hosted failure remains authentic failure evidence on `3594cb34`; no passing focused or hosted PG result is claimed for this repair.
+
+The separate `registers` result remains the webhooks review dependency owned by #782 inside #791. The prior Sol advisory, prior failed hosted log, public reports, and this read-only inventory were not modified. Worktree is clean after the commit; no push, PR/body edit or merge was performed.
+
+## Remaining gates
+
+Fresh independent strong ordinary review and full Sol security review of exact source `a7e522818abe6cdd5a361e776f4bcbdbf8969274`, followed by required current-head CI including real PostgreSQL integration, remain outstanding. This implementation report grants no acceptance or merge authority.
+
+
+---
+
+### Authentic record: apikey-hosted-repair-ordinary-luna.md
+
+# #784 hosted-failure correction — ordinary review
+
+**Verdict:** BLOCKED on one material fixture finding. The source diagnostic change and staff/key/comment/task regression corrections otherwise match the approved contracts and the bounded repair. Resolve the customer fixture in a changed candidate, then obtain the required fresh full GPT-6 Sol security review and exact-head hosted PostgreSQL result. This review does not grant acceptance.
+
+**Model provenance:** GPT-6 Codex runtime; the platform did not expose a more specific model/version label in this context. I did not author, direct, or remediate the candidate. Independent review context, limited to ordinary review of the bounded delta.
+
+**Exact source:** `a7e522818abe6cdd5a361e776f4bcbdbf8969274`, branch `codex/api-key-project-role-clamp-724`, based on `3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74`. The worktree was clean at review start. I reviewed the complete five-path delta and the project/RBAC/API-key/customer contracts, current route/evaluator code, and prior adjudication, fixture inventory, repair note, and original hosted failure evidence.
+
+## Blocking finding
+
+`tests/api-integration/project-default-comment-visibility.test.ts` still constructs the purported customer through `createWorkspaceMember({ role: "customer" })` in `actorWithLegacyMap`, then changes that provisioned staff person's `side` to `customer` and adds an organisation membership. That helper has already inserted a `workspace_user` membership with role `customer` and creates or rewrites a workspace role row for that role. Changing `person.side` does not remove this staff/workspace identity. The test therefore still invents a customer with a workspace membership and a workspace-scoped customer role, contrary to the customer contract: the built-in customer role is organisation-scoped and customers are off the staff rank ladder. This fails the assigned requirement to use a genuine customer person/org/binding without customer staff/project membership. The no-project-role portion is correct, but it does not cure the invalid workspace identity.
+
+Use a fixture path that creates or provisions a customer-side person with only its valid organisation-scoped customer membership, bind the project to that organisation, and make the agent API call without manufacturing a workspace role/map. Keep the meaningful 403 and persisted no-write assertion. If the existing fixture infrastructure cannot represent this legal state, report that fixture prerequisite rather than retaining the invalid identity. The original advisory's request for a genuine customer principal remains unresolved.
+
+## Delta that cleared inspection
+
+- `apps/api/src/project/index.ts` retains `evaluateProjectRead` on the persisted target project facts. On denial it emits `Insufficient API key scope` only when a key is present and `ownerCapable` is true; owner/project denial, absent identity/facts, and sessions retain generic `Insufficient permissions`. This preserves status and the canonical owner/project authority intersection while accurately identifying a missing key subset.
+- Staff project-setting negative fixtures now install explicit `project:read` + `project:update` project overrides, so the project's authority overrides the workspace grant as the RBAC contract requires. The key-with-broad-scope/underpowered-owner cases retain 403 and persisted-state assertions.
+- The comment test keeps the out-of-scope 403/no-write case and now verifies an explicitly scoped owner-authored comment edit succeeds with the exact persisted body. This agrees with AK-3 and the registered `comment:update_own` contract.
+- The task update key fixture now grants the owner project `work_item:update` while retaining the read-only key, and checks the key-specific 403 plus unchanged title, description, and version. The separate workspace-viewer session boundary remains.
+- No expected status was changed to success for an intended negative authority case, and I found no weakened project-setting denial or omitted state check in those cases. The only invalid-identity issue is the customer case above.
+
+## Verification actually run
+
+- `pnpm exec biome check` on the five changed files — passed, 5 files.
+- `pnpm --filter @taskdesk/api typecheck` — passed (all configured API TypeScript projects).
+- `pnpm --filter @taskdesk/api test:unit` — passed, 119 files / 855 tests.
+- `git diff --check 3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74..a7e522818abe6cdd5a361e776f4bcbdbf8969274` — passed.
+- PostgreSQL integration was not run in this review. Preserve the original hosted result on `3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74` as adverse evidence: 206 files, 4 failed / 202 passed; 2,999 tests, 11 failed / 2,988 passed. The private original log's final failed-tests block remains at `784-pg-3594cb34.log`; no query text or credentials are copied here. No local PG, Docker, browser, push, edit, or merge action was performed.
+
+## Residuals
+
+The source and other four test-file corrections are independently reviewed at this ordinary tier, subject to the customer-fixture blocker. After the fixture is repaired and the candidate SHA changes, review that delta at the required tier. A fresh full GPT-6 Sol review remains mandatory for the current exact head. Exact-head hosted PostgreSQL integration remains required; current passing typecheck/unit/Biome results do not replace it. The separate #782 review dependency and image/current-hosted-PG gates remain outstanding as recorded by the conductor; this report makes no disposition on them.
+
+
+---
+
+### Authentic record: apikey-customer-fixture-repair-luna.md
+
+# API key project-settings customer fixture repair
+
+- Exact parent source head: `a7e522818abe6cdd5a361e776f4bcbdbf8969274`
+- Repair commit: `3871491fbb50e4625b7e5a6f78f2e2563f27d865`
+- Branch: `codex/api-key-project-role-clamp-724`
+- Changed file: `tests/api-integration/project-default-comment-visibility.test.ts` only
+
+## Finding and correction
+
+The prior negative case created a `customer` via `createWorkspaceMember` and changed that staff person's side and organisation afterward. That fixture retained workspace identity/membership and did not represent a reachable customer under the organisation-scoped customer contract. It also described an impossible customer with a legacy workspace `project:update` claim.
+
+The renamed case now creates a separate admin staff fixture only to own the workspace/project, then creates a distinct customer user, customer-side person, active external organisation, organisation-scoped customer role/membership, and project-to-organisation binding. The customer is never passed through `createWorkspaceMember` or `actorWithLegacyMap`. Before the request, assertions establish that the customer has no `workspace_user`, has exactly one organisation membership (therefore no canonical workspace/project membership), and has no corresponding workspace-scoped customer role; the assigned customer role is explicitly organisation-scoped with null `workspaceId`.
+
+The test retains the agent project-settings request's 403 assertion and persisted `defaultCommentVisibility === "internal"` no-write assertion. Existing staff narrow-role and API-key cases are untouched. No production, route policy, role, capability, evaluator, or shared helper behavior changed.
+
+## Checks actually run
+
+- `pnpm exec biome check tests/api-integration/project-default-comment-visibility.test.ts` — passed after formatting.
+- `pnpm --filter @taskdesk/api typecheck` — passed.
+- `pnpm --filter @taskdesk/api test:unit` — passed: 119 files, 855 tests.
+- `git diff --check` — passed.
+- The PostgreSQL integration test was not run; no local PostgreSQL/Docker runtime is available. No claim of an integration/runtime pass is made.
+- Commit hook ran Biome on the staged file and passed.
+
+## Provenance and limits
+
+This report records the authoring Codex agent context. The runtime did not expose a verifiable routed model/version label, so no specific Luna/Sol model identity is asserted. The ordinary reviewer finding report and prior hosted failure/adjudication evidence remain unchanged. This is a one-file test-fixture correction, not independent review or final security clearance.
+
+
+---
+
+### Authentic record: apikey-customer-fixture-ordinary-current-luna.md
+
+# #784 customer-fixture repair — independent ordinary review
+
+**Verdict:** BLOCKED on one remaining contract mismatch in the customer fixture. The prior fake workspace identity is removed, and the requested negative/no-write checks are retained. The organisation membership currently uses a custom role rather than the built-in `customer` role, so this still does not represent the admitted customer identity defined by the repository contract.
+
+**Model provenance:** GPT-6 Codex runtime; no more specific platform model/version was exposed. Fresh ordinary review context; I did not author, direct, or remediate the candidate.
+
+**Exact source:** `3871491fbb50e4625b7e5a6f78f2e2563f27d865`, branch `codex/api-key-project-role-clamp-724`, one-file delta from `a7e522818abe6cdd5a361e776f4bcbdbf8969274`. The worktree was clean when checked. I read the author report and inspected the complete delta, the customer-role contract, the identity resolver's customer branch, and established customer test fixtures.
+
+## Finding
+
+In `tests/api-integration/project-default-comment-visibility.test.ts`, the new user and person are created from scratch. The person is customer-side, belongs to an active external organisation, has no workspace-user row, has exactly one organisation-scope membership, and the project is bound to that organisation. No customer project membership or workspace role-map entry is fabricated. The request remains a denied call to the agent project-settings API, followed by a persisted `defaultCommentVisibility === "internal"` assertion.
+
+However, the test inserts a fresh role with key `comment-visibility-customer-${randomUUID()}` and attaches that role to the organisation membership. The customer contract defines an admitted customer as holding the built-in `customer` role on an organisation-scoped membership; `rbac.md` says `customer` is the one system role at organisation scope. Existing customer fixtures use role key `customer`, null `workspaceId`, and the canonical customer role setup. Here, the resolver derives the canonical customer grant from `person.side`, so the request is denied, but the persisted membership itself is not the specified customer role membership. The test should use or reuse the built-in organisation-scoped role with key `customer` (and the canonical capabilities), then retain the no-workspace/no-project-membership assertions and 403/no-write check.
+
+This is a narrow fixture correction, not an authority or route defect. It blocks this fresh ordinary verdict because the task is to prove the scenario with a genuine customer identity, and the membership row does not yet meet that contract.
+
+## Remaining bounded matrix
+
+The only candidate delta since the blocked review is this one test file. The source-side key-scope diagnostic, staff project-role override denies, key owner/scope distinctions, authorized scoped comment edit, and task update no-write case are unchanged from the previously inspected bounded matrix. The staff negative cases still assert meaningful denials and persisted state; the comment in-scope case still verifies exact persisted content. This one-file repair introduces no successful expected value in place of an intended denial and does not alter production behavior.
+
+## Verification
+
+- `pnpm exec biome check tests/api-integration/project-default-comment-visibility.test.ts` — passed, 1 file.
+- `pnpm --filter @taskdesk/api typecheck` — passed across configured API TypeScript projects.
+- `pnpm --filter @taskdesk/api test:unit` — passed, 119 files / 855 tests.
+- `git diff --check a7e522818abe6cdd5a361e776f4bcbdbf8969274..3871491fbb50e4625b7e5a6f78f2e2563f27d865` — passed.
+- PostgreSQL integration was not run. The author report states no local PostgreSQL/Docker runtime is available. The earlier hosted PostgreSQL failure on `3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74` remains adverse evidence and is preserved in `784-pg-3594cb34.log`; this review does not claim a PG pass.
+
+No source or prior adverse report was edited. No Docker, browser, push, or merge action was performed. A fresh full Sol review and exact-head hosted PostgreSQL integration remain required after the fixture is corrected; the separate #782 review dependency remains outstanding.
+
+
+---
+
+### Authentic record: apikey-customer-canonical-fixture-repair-luna.md
+
+# API key project-settings canonical customer fixture repair
+
+- Parent candidate reviewed: `3871491fbb50e4625b7e5a6f78f2e2563f27d865`
+- Repair commit: `bb1c79466c79a39904f9fec61fac3b58f0ab7660`
+- Branch: `codex/api-key-project-role-clamp-724`
+- Changed file: `tests/api-integration/project-default-comment-visibility.test.ts` only
+
+## Contract and fixture correction
+
+The prior fixture had a separate real customer identity and organisation membership, but attached a newly invented role key/capability set. That was not the built-in customer role required by the identity contract.
+
+`docs/01-architecture/rbac.md` defines organisation scope as existing for exactly one system role, `customer`. `packages/permissions/src/roles.ts` is the role-data source and declares `BUILT_IN_ROLES.customer` with its canonical key, scope, rank, editability, and capabilities. `apps/api/src/permissions/resolve-identity.ts` constructs the customer authority from that built-in definition for a customer-side person; it does not trust an invented database role definition. The integration helper `tests/api-integration/helpers/approval-fixtures.ts` demonstrates admitted-customer construction (external organisation, customer person, organisation membership) but permits test-specific capabilities and therefore is not itself a canonical-role source. There is no global customer-role bootstrap helper in the API. The workspace role seed is unrelated and seeds only workspace roles.
+
+The fixture now persists the canonical built-in key/scope/rank/capabilities, null `workspaceId`, `isSystem: true`, and non-editable status from `BUILT_IN_ROLES.customer`. The customer remains a separately created user and customer-side person, with one active external organisation membership and project-to-organisation binding. Assertions verify the canonical role data, the absence of a workspace user, exactly the single organisation membership (no workspace/project membership), no matching workspace-scoped customer role, and the canonical role lacks `project:update` and `project:manage_settings`. The test retains its 403 response and persisted `defaultCommentVisibility === "internal"` no-write check. Staff and key cases are unchanged; no evaluator or production behavior changed.
+
+## Checks actually run
+
+- `pnpm exec biome check tests/api-integration/project-default-comment-visibility.test.ts` — passed.
+- `pnpm --filter @taskdesk/api typecheck` — passed.
+- `pnpm --filter @taskdesk/api test:unit` — passed: 119 files, 855 tests.
+- `git diff --check` — passed.
+- Commit hook ran Biome on the staged file and passed.
+- PostgreSQL integration test not run because no local PostgreSQL/Docker runtime is available. No integration/runtime pass is claimed.
+
+## Provenance and limits
+
+This report records the authoring Codex agent context. Runtime did not expose a verifiable routed model/version label, so no specific Luna/Sol identity is asserted. The prior ordinary finding and fixture-repair reports remain unchanged. This is a fixture correction, not an independent review or security clearance.
+
+
+---
+
+### Authentic record: apikey-customer-canonical-ordinary-current-luna.md
+
+# #784 canonical customer-fixture repair — independent ordinary review
+
+**Verdict:** CLEAR at the ordinary-review tier for exact source `bb1c79466c79a39904f9fec61fac3b58f0ab7660`. The fixture now uses the canonical built-in customer role on the sole organisation-scoped membership, with no workspace or project authority. The previously blocked ordinary finding is resolved. This verdict is not security clearance or acceptance.
+
+**Model provenance:** GPT-6 Codex runtime; no more specific platform model/version was exposed. Fresh independent ordinary-review context. I did not author, direct, or remediate the candidate.
+
+**Source and scope:** Branch `codex/api-key-project-role-clamp-724`, exact head `bb1c79466c79a39904f9fec61fac3b58f0ab7660`, parent `3871491fbb50e4625b7e5a6f78f2e2563f27d865`. The exact delta changes only `tests/api-integration/project-default-comment-visibility.test.ts`. The worktree was clean at review start. I inspected the delta, `BUILT_IN_ROLES.customer`, the customer identity construction, the customer portal/RBAC contracts, and the unchanged bounded #784 regression matrix.
+
+## Review result
+
+The customer user and customer-side person are created independently of staff workspace fixtures. The test persists the built-in customer role's key, organisation scope, rank, capabilities, `workspaceId: null`, system status, and non-editability from `BUILT_IN_ROLES.customer`. Its sole membership is organisation-scoped and points to that role. The test binds the project to an active external customer organisation, asserts no workspace-user row, exactly one organisation membership, no workspace-scoped customer role in the workspace, and the expected canonical role values. The canonical customer capabilities exclude both `project:update` and `project:manage_settings`.
+
+The agent project-settings request still asserts 403 and then reads the project row to prove `defaultCommentVisibility` remains `internal`. The prior fake staff/customer identity and the intermediate custom role are gone. This matches the stated contract and introduces no invented role/capability fields. The unique `(scope, workspace_id, key)` role index is safe in this fixture: the integration harness truncates all tables before each test, so this test creates the canonical organisation role once in its fresh test database.
+
+The previous bounded matrix remains intact: staff with narrow project-role overrides are still denied protected settings and checked for no writes; API-key owner-authority and stored-scope controls remain; the explicitly scoped own-comment success still checks exact persisted content; and the task-update key denial still checks unchanged task/version. This one-file delta does not alter production authority, route behavior, expected denial status, or prior adverse evidence.
+
+## Verification
+
+- `pnpm exec biome check tests/api-integration/project-default-comment-visibility.test.ts` — passed, 1 file.
+- `pnpm --filter @taskdesk/api typecheck` — passed across configured API TypeScript projects.
+- `pnpm --filter @taskdesk/api test:unit` — passed, 119 files / 855 tests.
+- `git diff --check 3871491fbb50e4625b7e5a6f78f2e2563f27d865..bb1c79466c79a39904f9fec61fac3b58f0ab7660` — passed.
+- PostgreSQL integration was not run, as assigned. The original hosted failure on `3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74` remains adverse evidence (206 files, 4 failed; 2,999 tests, 11 failed) in private `784-pg-3594cb34.log`. This review claims no integration pass.
+
+No source or prior ordinary/adverse report was changed. No PostgreSQL, Docker, browser, push, or merge action was performed. A fresh full GPT-6 Sol review and exact-head hosted PostgreSQL result remain required. The separate #782 review dependency also remains outstanding.
+
+
+---
+
+### Authentic record: apikey-hosted-repair-security-current-sol.md
+
+# #784 hosted-failure repair — full independent security review
+
+**Verdict: CLEAR** for source security at exact reviewed head `bb1c79466c79a39904f9fec61fac3b58f0ab7660`. No blocking finding in the bounded repair or inspected composed authority seams. This is not PostgreSQL, image, CI, merge, or SIT acceptance.
+
+**Reviewed head:** `bb1c79466c79a39904f9fec61fac3b58f0ab7660`  
+**Comparison base:** `3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74`  
+**Prior full security source:** `596a2332381e16d89e6bf90a8d679d0cb3a022d8`, confirmed ancestor of the reviewed head.  
+**Role and provenance:** Fresh independent full security reviewer context dispatched for the Sol-tier role. I did not author, direct, or remediate the candidate. This runtime identifies itself as Codex based on GPT-6 but does not expose an inspectable routed model/version label; the requested `-sol` filename and role assignment are not independent proof of a finer model identifier. The conductor should attach its actual spawn arguments when publishing this report.
+
+I read repository `AGENTS.md`, active mission, agent workflow, `CLAUDE.md`, the RBAC, API-key, project/engagement and customer contracts, the prior full Sol source review, the Sol failure adjudication (as advisory only), both adverse ordinary reviews, all three repair reports, and the final ordinary CLEAR. I inspected the entire five-file `3594cb34..bb1c7946` delta and traced the current project route, reach middleware, identity resolver, key-scope projection, and evaluator. The worktree was clean at the exact head before and after review. No source, test, PR, or prior note was changed.
+
+## Security assessment
+
+- The only production delta is the protected project-field denial message. The guard still evaluates `project:manage_settings` using current identity and persisted target-project reach facts before any project read or write. `evaluateProjectRead` computes `capable` from owner authority intersected with the stored key subset and `ownerCapable` from the owner alone. The new key-scope message is selected only for a key with `ownerCapable === true` and `capable === false`; owner denial, missing identity/facts, and sessions retain the generic permission message. It does not turn a denial into success or replace the target-project check.
+- `workspaceAccess.fromProject` retains project reach, target fact matching and the project capability owner's ceiling; `deferApiKeyCapability` leaves only the legacy key-scope half to the downstream check. The protected-field handler applies the stricter canonical intersection. Project role overrides workspace role for that target project, so the repaired staff fixtures provide `project:read` and `project:update` without `project:manage_settings`. Their 403 and persisted no-write assertions remain.
+- The API-key matrix retains owner-capable/key-insufficient denial with the specific scope reason, owner-incapable/key-scoped denial, and owner-and-key-capable success. The task-update fixture now makes its owner capable of `work_item:update` in the addressed project while the key remains read-only; its key-specific 403 and unchanged title, description and version check are meaningful. The separate workspace-viewer session and foreign-project denials remain.
+- The comment regression retains out-of-scope 403 with no write. Its explicitly scoped `comment:update_own` key has an owner-authored comment inside the edit window and now requires 200 plus the exact persisted body, consistent with AK-3. No broader comment authority is introduced by this test edit.
+- The final customer fixture uses a separate customer-side person, active external organisation, project-to-organisation binding, and the canonical built-in `customer` role on its one organisation-scoped membership. It asserts no workspace user, no workspace-scoped customer role, no project membership, and no project update/settings capability. The agent settings request is 403 and the stored setting stays `internal`. This resolves the fake staff/customer and invented role findings from both adverse ordinary reviews. The resolver's customer branch constructs only the canonical organisation grant and ignores workspace rows; no route in this delta turns the fixture into agent authority.
+
+The source still has a stale comment naming `assertCallerHasCapability` in the protected-field guard. The executable branch uses `resolveCallerIdentity` and `evaluateProjectRead`. This is non-blocking documentation drift, not a changed authority path.
+
+## Checks and limits
+
+- `git diff --check 3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74..HEAD`: passed.
+- `pnpm --filter @taskdesk/permissions exec vitest run src/evaluator.test.ts`: 1 file, 60/60 tests passed.
+- `pnpm --filter @taskdesk/api typecheck`: passed across all configured API TypeScript projects.
+- Exact-head PostgreSQL integration, Docker/image/boot/health, browser and hosted CI: **not run** in this read-only review. The authentic hosted PG result at `3594cb34` remains failed: 206 files (4 failed), 2,999 tests (11 failed). This repair requires a new exact-head real-PG result; typecheck and evaluator units cannot establish the integration fixture outcomes. The separate #782 register disposition remains a carrier dependency and is not waived or weakened here.
+
+**Blocking findings:** none found in the inspected source.  
+**Residual:** current-head hosted PostgreSQL and all required CI/runtime gates must be judged separately by the conductor. The review makes no claim about simultaneous revocation races or full release acceptance.
+
