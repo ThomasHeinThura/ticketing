@@ -41,7 +41,11 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `workspace/policy.ts` gives for declaring `workspace:update` over a hypothetically "more
  * correct" string. So archive, unarchive and reorder below declare `project:update`, matching
  * the actual `requireWorkspacePermission({ project: ["update"] })` check, and this comment is
- * where the gap is recorded for #7's capability migration rather than pretended away. (Column
+ * where the gap is recorded for #7's capability migration rather than pretended away.
+ * Exception (#766): `PUT /api/project/{id}` additionally requires the strict canonical
+ * `project:manage_settings` (intersected with API-key scope) in the handler when the body
+ * sends `defaultCommentVisibility` (CA-2), `kind`, `supportLevel` or `serviceCalendarId`;
+ * the declared baseline stays `project:update`, and health stays on `project:update`. (Column
  * and workflow-rule mutations, classified alongside this file, have the same
  * `project:manage_settings` gap for the same textual reason — see those files.)
  *
