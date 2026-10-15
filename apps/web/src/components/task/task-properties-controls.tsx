@@ -30,9 +30,6 @@ type WorkspaceUsersData = ReturnType<typeof useGetActiveWorkspaceUsers>["data"];
 type TaskPropertiesSummary = Pick<
   Task,
   | "id"
-  | "projectId"
-  | "number"
-  | "title"
   | "status"
   | "priority"
   | "userId"
@@ -58,9 +55,6 @@ const buttonClass = (compact: boolean) =>
 
 const selectTaskPropertiesSummary = (currentTask: Task) => ({
   id: currentTask.id,
-  projectId: currentTask.projectId,
-  number: currentTask.number,
-  title: currentTask.title,
   status: currentTask.status,
   priority: currentTask.priority,
   userId: currentTask.userId,
