@@ -1,29 +1,31 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import type { Executor } from "../database/executor";
+import {
+  findLiveProjectWorkspaceId,
+  listAdminUserIds,
+  listWorkspaceMemberUserIds,
+  lockWorkspaceMembershipRow,
+  shareLockAdminUser,
+} from "./assignable-user.repository";
 
-type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbOrTx = Executor;
 
 const NOT_ASSIGNABLE = "Assignee is not a member of this workspace";
 
 export async function filterAssignableUsers(
   userIds: string[],
   workspaceId: string,
-  executor: DbOrTx = db,
+  executor?: DbOrTx,
 ): Promise<Set<string>> {
   if (userIds.length === 0) {
     return new Set();
   }
 
-  const memberships = await executor
-    .select({ userId: schema.workspaceUserTable.userId })
-    .from(schema.workspaceUserTable)
-    .where(
-      and(
-        inArray(schema.workspaceUserTable.userId, userIds),
-        eq(schema.workspaceUserTable.workspaceId, workspaceId),
-      ),
-    );
+  const memberships = await listWorkspaceMemberUserIds(
+    userIds,
+    workspaceId,
+    executor,
+  );
 
   const assignable = new Set(memberships.map((row) => row.userId));
   const remaining = userIds.filter((id) => !assignable.has(id));
@@ -32,15 +34,7 @@ export async function filterAssignableUsers(
     return assignable;
   }
 
-  const admins = await executor
-    .select({ id: schema.userTable.id })
-    .from(schema.userTable)
-    .where(
-      and(
-        inArray(schema.userTable.id, remaining),
-        eq(schema.userTable.role, "admin"),
-      ),
-    );
+  const admins = await listAdminUserIds(remaining, executor);
 
   for (const admin of admins) {
     assignable.add(admin.id);
@@ -52,7 +46,7 @@ export async function filterAssignableUsers(
 export async function assertAssignableUser(
   userId: string,
   workspaceId: string,
-  executor: DbOrTx = db,
+  executor?: DbOrTx,
 ): Promise<void> {
   const assignable = await filterAssignableUsers(
     [userId],
@@ -77,16 +71,11 @@ export async function assertAssignableUserAndLockMembership(
   workspaceId: string,
   executor: DbOrTx,
 ): Promise<void> {
-  const memberships = await executor
-    .select({ userId: schema.workspaceUserTable.userId })
-    .from(schema.workspaceUserTable)
-    .where(
-      and(
-        eq(schema.workspaceUserTable.userId, userId),
-        eq(schema.workspaceUserTable.workspaceId, workspaceId),
-      ),
-    )
-    .for("update");
+  const memberships = await lockWorkspaceMembershipRow(
+    executor,
+    userId,
+    workspaceId,
+  );
 
   if (memberships.length > 0) return;
 
@@ -95,13 +84,7 @@ export async function assertAssignableUserAndLockMembership(
   // membership inserted after the first query could be removed before the
   // caller's task write. Global admins remain assignable through their user
   // row, which is shared-locked through the transaction instead.
-  const [admin] = await executor
-    .select({ id: schema.userTable.id })
-    .from(schema.userTable)
-    .where(
-      and(eq(schema.userTable.id, userId), eq(schema.userTable.role, "admin")),
-    )
-    .for("share");
+  const admin = await shareLockAdminUser(executor, userId);
 
   if (!admin) {
     throw new HTTPException(403, { message: NOT_ASSIGNABLE });
@@ -110,21 +93,9 @@ export async function assertAssignableUserAndLockMembership(
 
 export async function getProjectWorkspaceId(
   projectId: string,
-  executor: DbOrTx = db,
+  executor?: DbOrTx,
 ): Promise<string> {
-  const [project] = await executor
-    .select({ workspaceId: schema.projectTable.workspaceId })
-    .from(schema.projectTable)
-    // #187: a soft-deleted project is treated as gone everywhere in ordinary use,
-    // matching `get-project.ts`'s convention -- every caller of this helper (task
-    // creation and updates included) gets that for free instead of re-deriving it.
-    .where(
-      and(
-        eq(schema.projectTable.id, projectId),
-        isNull(schema.projectTable.deletedAt),
-      ),
-    )
-    .limit(1);
+  const project = await findLiveProjectWorkspaceId(projectId, executor);
 
   if (!project) {
     throw new HTTPException(404, { message: "Project not found" });

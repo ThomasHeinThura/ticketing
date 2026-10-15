@@ -1,8 +1,10 @@
-import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import {
+  findLabelTaskId,
+  findLiveTaskFacts,
+} from "./access-lookups.repository";
 import { callerReach } from "./caller-reach";
 import { markReach } from "./reach-mark";
 import { rejectNulByte } from "./reject-nul-byte";
@@ -29,24 +31,7 @@ type TaskFacts = {
 };
 
 async function loadLiveTaskFacts(taskId: string): Promise<TaskFacts | null> {
-  const [task] = await db
-    .select({
-      id: schema.taskTable.id,
-      projectId: schema.taskTable.projectId,
-      workspaceId: schema.projectTable.workspaceId,
-    })
-    .from(schema.taskTable)
-    .innerJoin(
-      schema.projectTable,
-      eq(schema.taskTable.projectId, schema.projectTable.id),
-    )
-    .where(
-      and(
-        eq(schema.taskTable.id, taskId),
-        isNull(schema.projectTable.deletedAt),
-      ),
-    )
-    .limit(1);
+  const task = await findLiveTaskFacts(taskId);
   return task ?? null;
 }
 
@@ -104,11 +89,7 @@ export function requireLabelRowTaskReach(
       const id = c.req.param(idKey);
       if (id) {
         rejectNulByte(id, "Label id");
-        const [label] = await db
-          .select({ taskId: schema.labelTable.taskId })
-          .from(schema.labelTable)
-          .where(eq(schema.labelTable.id, id))
-          .limit(1);
+        const label = await findLabelTaskId(id);
         if (label?.taskId) {
           await assertTaskReach(c, label.taskId, notFoundMessage);
         }
