@@ -1,6 +1,5 @@
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
-import { getActiveStaffPerson } from "../instance/users/repository";
 import { submissionRefParam } from "../intake/schema";
 import {
   apiRouter,
@@ -25,6 +24,7 @@ import presignAttachment from "./controllers/presign-attachment";
 import { presignSubmissionAttachment } from "./controllers/presign-submission-attachment";
 import {
   findAttachment,
+  findAttachmentAuditActor,
   listPortalSubmissionAttachments,
   listStaffSubmissionAttachments,
 } from "./repository";
@@ -491,7 +491,7 @@ const attachment = apiRouter<
     const apiKey = c.get("apiKey");
     const [staffPerson] = apiKey
       ? [null]
-      : await getActiveStaffPerson(c.get("userId"));
+      : await findAttachmentAuditActor(c.get("userId"));
     await appendAuditLog(db, {
       actorId: staffPerson?.id ?? c.get("userId"),
       actorType: apiKey ? "api_key" : "person",

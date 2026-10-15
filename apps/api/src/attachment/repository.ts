@@ -1,5 +1,6 @@
+import type { JsonValue } from "@taskdesk/domain";
 import { and, count, eq, isNull, ne, or } from "drizzle-orm";
-import type db from "../database";
+import type { Executor } from "../database/executor";
 import {
   attachmentTable,
   instanceFeatureFlagTable,
@@ -14,12 +15,12 @@ import {
   workspaceFeatureFlagTable,
   workspaceTable,
 } from "../database/schema";
+import { getActiveStaffPerson } from "../instance/users/repository";
 
-type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
-type Executor = typeof db | Transaction;
+type SubmissionJsonData = object | string | number | boolean | null;
 
-export function getAttachmentSettings(executor: Executor) {
-  return executor
+export async function getAttachmentSettings(executor: Executor) {
+  return await executor
     .select({
       maxBytes: instanceSettingTable.attachmentMaxBytes,
       maxPerItem: instanceSettingTable.attachmentMaxPerItem,
@@ -29,18 +30,18 @@ export function getAttachmentSettings(executor: Executor) {
     .limit(1);
 }
 
-export function getAttachmentSizeLimit(executor: Executor) {
-  return executor
+export async function getAttachmentSizeLimit(executor: Executor) {
+  return await executor
     .select({ maxBytes: instanceSettingTable.attachmentMaxBytes })
     .from(instanceSettingTable)
     .limit(1);
 }
 
-export function findAttachmentWorkspaceOrganisation(
+export async function findAttachmentWorkspaceOrganisation(
   executor: Executor,
   workspaceId: string,
 ) {
-  return executor
+  return await executor
     .select({
       isInternal: organisationTable.isInternal,
       id: organisationTable.id,
@@ -54,26 +55,32 @@ export function findAttachmentWorkspaceOrganisation(
     .limit(1);
 }
 
-export function countWorkItemAttachments(
+export async function countWorkItemAttachments(
   executor: Executor,
   workItemId: string,
 ) {
-  return executor
+  return await executor
     .select({ value: count() })
     .from(attachmentTable)
     .where(eq(attachmentTable.workItemId, workItemId));
 }
 
-export function findAttachmentUploader(executor: Executor, userId: string) {
-  return executor
+export async function findAttachmentUploader(
+  executor: Executor,
+  userId: string,
+) {
+  return await executor
     .select({ id: personTable.id })
     .from(personTable)
     .where(eq(personTable.userId, userId))
     .limit(1);
 }
 
-export function findAttachmentWorkItemForReach(executor: Executor, id: string) {
-  return executor
+export async function findAttachmentWorkItemForReach(
+  executor: Executor,
+  id: string,
+) {
+  return await executor
     .select({
       id: attachmentTable.id,
       workItemId: attachmentTable.workItemId,
@@ -96,11 +103,11 @@ export function findAttachmentWorkItemForReach(executor: Executor, id: string) {
     .limit(1);
 }
 
-export function findIntakeFeatureFlags(
+export async function findIntakeFeatureFlags(
   executor: Executor,
   workspaceId: string,
 ) {
-  return Promise.all([
+  return await Promise.all([
     executor
       .select({
         enabled: instanceFeatureFlagTable.enabled,
@@ -122,11 +129,11 @@ export function findIntakeFeatureFlags(
   ]);
 }
 
-export function findSubmissionAttachmentParent(
+export async function findSubmissionAttachmentParent(
   executor: Executor,
   input: { number: number; requesterId?: string },
 ) {
-  return executor
+  const rows = await executor
     .select({
       submission: submissionTable,
       workspaceId: requestTypeTable.workspaceId,
@@ -145,9 +152,16 @@ export function findSubmissionAttachmentParent(
       ),
     )
     .limit(1);
+  return rows.map(({ submission, workspaceId }) => ({
+    submission: {
+      ...submission,
+      formData: submission.formData as SubmissionJsonData,
+    },
+    workspaceId: workspaceId,
+  }));
 }
 
-export function findReachableSubmissionAttachment(
+export async function findReachableSubmissionAttachment(
   executor: Executor,
   input: {
     id: string;
@@ -169,7 +183,7 @@ export function findReachableSubmissionAttachment(
       : input.download
         ? undefined
         : eq(attachmentTable.submissionId, input.submissionId);
-  return executor
+  return await executor
     .select()
     .from(attachmentTable)
     .where(
@@ -186,11 +200,11 @@ export function findReachableSubmissionAttachment(
     .limit(1);
 }
 
-export function findSubmissionForPresign(
+export async function findSubmissionForPresign(
   executor: Executor,
   input: { submissionId: string; requesterId: string; workspaceId: string },
 ) {
-  return executor
+  return await executor
     .select({
       id: submissionTable.id,
       requesterId: submissionTable.requesterId,
@@ -212,11 +226,11 @@ export function findSubmissionForPresign(
     .limit(1);
 }
 
-export function lockSubmissionForPresign(
+export async function lockSubmissionForPresign(
   executor: Executor,
   input: { submissionId: string; requesterId: string },
 ) {
-  return executor
+  return await executor
     .select({
       id: submissionTable.id,
       requesterId: submissionTable.requesterId,
@@ -234,12 +248,12 @@ export function lockSubmissionForPresign(
     .limit(1);
 }
 
-export function countSubmissionAttachments(
+export async function countSubmissionAttachments(
   executor: Executor,
   submissionId: string,
   fieldKey?: string,
 ) {
-  return executor
+  return await executor
     .select({ value: count() })
     .from(attachmentTable)
     .where(
@@ -252,18 +266,25 @@ export function countSubmissionAttachments(
     );
 }
 
-export function findSubmissionFormSchema(
+export async function findSubmissionFormSchema(
   executor: Executor,
   versionId: string,
 ) {
-  return executor
+  const rows = await executor
     .select({ formSchema: requestTypeVersionTable.formSchema })
     .from(requestTypeVersionTable)
     .where(eq(requestTypeVersionTable.id, versionId))
     .limit(1);
+  return rows.map(({ formSchema }) => ({
+    formSchema: formSchema as JsonValue,
+  }));
 }
 
-export function insertSubmissionAttachment(
+export async function findAttachmentAuditActor(userId: string) {
+  return await getActiveStaffPerson(userId);
+}
+
+export async function insertSubmissionAttachment(
   executor: Executor,
   input: {
     id: string;
@@ -278,7 +299,7 @@ export function insertSubmissionAttachment(
     requesterId: string;
   },
 ) {
-  return executor
+  return await executor
     .insert(attachmentTable)
     .values({
       id: input.id,
@@ -297,15 +318,15 @@ export function insertSubmissionAttachment(
     .returning({ id: attachmentTable.id });
 }
 
-export function findAttachment(executor: Executor, id: string) {
-  return executor
+export async function findAttachment(executor: Executor, id: string) {
+  return await executor
     .select()
     .from(attachmentTable)
     .where(eq(attachmentTable.id, id))
     .limit(1);
 }
 
-export function findSubmissionCompletionAttachment(
+export async function findSubmissionCompletionAttachment(
   executor: Executor,
   input: {
     id: string;
@@ -321,7 +342,7 @@ export function findSubmissionCompletionAttachment(
         eq(attachmentTable.workItemId, input.acceptedParentId),
       )
     : eq(attachmentTable.submissionId, input.submissionId);
-  return executor
+  return await executor
     .select()
     .from(attachmentTable)
     .where(
@@ -338,11 +359,11 @@ export function findSubmissionCompletionAttachment(
     .limit(1);
 }
 
-export function lockSubmissionForCompletion(
+export async function lockSubmissionForCompletion(
   executor: Executor,
   input: { submissionId: string; requesterId: string; workspaceId: string },
 ) {
-  return executor
+  return await executor
     .select({
       id: submissionTable.id,
       requesterId: submissionTable.requesterId,
@@ -365,7 +386,7 @@ export function lockSubmissionForCompletion(
     .limit(1);
 }
 
-export function listPortalSubmissionAttachments(
+export async function listPortalSubmissionAttachments(
   executor: Executor,
   input: {
     submissionId: string;
@@ -378,7 +399,7 @@ export function listPortalSubmissionAttachments(
       ? [eq(attachmentTable.workItemId, input.workItemId)]
       : []),
   ];
-  return executor
+  return await executor
     .select({
       id: attachmentTable.id,
       filename: attachmentTable.filename,
@@ -399,7 +420,7 @@ export function listPortalSubmissionAttachments(
     .orderBy(attachmentTable.createdAt);
 }
 
-export function listStaffSubmissionAttachments(
+export async function listStaffSubmissionAttachments(
   executor: Executor,
   input: { submissionId: string; workItemId: string | null },
 ) {
@@ -409,7 +430,7 @@ export function listStaffSubmissionAttachments(
       ? [eq(attachmentTable.workItemId, input.workItemId)]
       : []),
   ];
-  return executor
+  return await executor
     .select({
       id: attachmentTable.id,
       filename: attachmentTable.filename,
@@ -425,26 +446,26 @@ export function listStaffSubmissionAttachments(
     .orderBy(attachmentTable.createdAt);
 }
 
-export function getSubmissionAttachmentSizeLimit(executor: Executor) {
-  return getAttachmentSizeLimit(executor);
+export async function getSubmissionAttachmentSizeLimit(executor: Executor) {
+  return await getAttachmentSizeLimit(executor);
 }
 
-export function deletePendingSubmissionAttachment(
+export async function deletePendingSubmissionAttachment(
   executor: Executor,
   id: string,
 ) {
-  return executor
+  return await executor
     .delete(attachmentTable)
     .where(
       and(eq(attachmentTable.id, id), eq(attachmentTable.state, "pending")),
     );
 }
 
-export function markSubmissionAttachmentReady(
+export async function markSubmissionAttachmentReady(
   executor: Executor,
   input: { id: string; size: number; objectKey: string },
 ) {
-  return executor
+  return await executor
     .update(attachmentTable)
     .set({ state: "ready", size: input.size, objectKey: input.objectKey })
     .where(
@@ -456,22 +477,22 @@ export function markSubmissionAttachmentReady(
     .returning();
 }
 
-export function findAttachmentWorkItemProject(
+export async function findAttachmentWorkItemProject(
   executor: Executor,
   workItemId: string,
 ) {
-  return executor
+  return await executor
     .select({ projectId: workItemTable.projectId })
     .from(workItemTable)
     .where(eq(workItemTable.id, workItemId))
     .limit(1);
 }
 
-export function lockAttachmentWorkItem(
+export async function lockAttachmentWorkItem(
   executor: Executor,
   input: { workItemId: string; workspaceId?: string },
 ) {
-  return executor
+  return await executor
     .select({
       projectId: workItemTable.projectId,
       deletedAt: workItemTable.deletedAt,
@@ -490,11 +511,11 @@ export function lockAttachmentWorkItem(
     .for("share");
 }
 
-export function deletePendingWorkItemAttachment(
+export async function deletePendingWorkItemAttachment(
   executor: Executor,
   input: { id: string; workspaceId: string; workItemId: string },
 ) {
-  return executor
+  return await executor
     .delete(attachmentTable)
     .where(
       and(
@@ -507,7 +528,7 @@ export function deletePendingWorkItemAttachment(
     .returning({ id: attachmentTable.id });
 }
 
-export function insertWorkItemAttachment(
+export async function insertWorkItemAttachment(
   executor: Executor,
   input: {
     id: string;
@@ -522,7 +543,7 @@ export function insertWorkItemAttachment(
     uploadedBy: string | null;
   },
 ) {
-  return executor
+  return await executor
     .insert(attachmentTable)
     .values({
       id: input.id,
@@ -540,11 +561,11 @@ export function insertWorkItemAttachment(
     .returning({ id: attachmentTable.id });
 }
 
-export function updateAttachmentReady(
+export async function updateAttachmentReady(
   executor: Executor,
   input: { id: string; size: number; objectKey: string },
 ) {
-  return executor
+  return await executor
     .update(attachmentTable)
     .set({ state: "ready", size: input.size, objectKey: input.objectKey })
     .where(
@@ -556,23 +577,23 @@ export function updateAttachmentReady(
     .returning();
 }
 
-export function findPersonForAttachmentDelete(
+export async function findPersonForAttachmentDelete(
   executor: Executor,
   userId: string,
 ) {
-  return executor
+  return await executor
     .select({ id: personTable.id })
     .from(personTable)
     .where(eq(personTable.userId, userId))
     .limit(1);
 }
 
-export function lockWorkItemForAttachmentDelete(
+export async function lockWorkItemForAttachmentDelete(
   executor: Executor,
   workItemId: string,
   workspaceId: string,
 ) {
-  return executor
+  return await executor
     .select({
       id: workItemTable.id,
       projectId: workItemTable.projectId,
@@ -589,11 +610,11 @@ export function lockWorkItemForAttachmentDelete(
     .for("share");
 }
 
-export function softDeleteAttachment(
+export async function softDeleteAttachment(
   executor: Executor,
   input: { id: string; personId: string; deletedAt: Date },
 ) {
-  return executor
+  return await executor
     .update(attachmentTable)
     .set({ state: "deleted", deletedAt: input.deletedAt })
     .where(
@@ -606,19 +627,19 @@ export function softDeleteAttachment(
     .returning();
 }
 
-export function findAttachmentObjectKey(executor: Executor, id: string) {
-  return executor
+export async function findAttachmentObjectKey(executor: Executor, id: string) {
+  return await executor
     .select({ objectKey: attachmentTable.objectKey })
     .from(attachmentTable)
     .where(eq(attachmentTable.id, id))
     .limit(1);
 }
 
-export function listWorkItemAttachments(
+export async function listWorkItemAttachments(
   executor: Executor,
   workItemId: string,
 ) {
-  return executor
+  return await executor
     .select()
     .from(attachmentTable)
     .where(
