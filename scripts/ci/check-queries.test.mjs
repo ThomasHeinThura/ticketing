@@ -139,7 +139,15 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
     ],
     [
       "database/async-assimilated.repository.ts",
-      `import db from "../../database"; import { userTable } from "../../database/schema"; export async function listRows() { return db.select().from(userTable); }`,
+      `import { eq } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; export async function listRows() { return db.select().from(userTable).where(eq(userTable.id, "id")).limit(1); }`,
+    ],
+    [
+      "database/full-select-escape.repository.ts",
+      `import { eq } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; export function buildRows() { return db.select().from(userTable).where(eq(userTable.id, "id")).limit(1); }`,
+    ],
+    [
+      "database/omit-select-escape.repository.ts",
+      `import { eq } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; export function buildRows() { const query = db.select().from(userTable).where(eq(userTable.id, "id")).limit(1); return query as Omit<typeof query, "config">; }`,
     ],
     [
       "database/type-only-export.repository.ts",
@@ -268,6 +276,8 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       ["database/object-escape.repository.ts", /exposes a query builder/],
       ["database/class-escape.repository.ts", /exposes a query builder/],
       ["database/factory-escape.repository.ts", /exposes a query builder/],
+      ["database/full-select-escape.repository.ts", /exposes a query builder/],
+      ["database/omit-select-escape.repository.ts", /exposes a query builder/],
     ]);
     for (const [relative, expected] of expectedViolations) {
       assert.match(

@@ -27,7 +27,7 @@ const METHODS = new Set([
   "refreshMaterializedView",
 ]);
 const DRIZZLE_QUERY_TYPES =
-  /^(?:Pg(?:Select|SelectBuilder|Insert|Update|Delete|Raw|RelationalQuery|RefreshMaterializedView)|QueryPromise|SQL|SQLWrapper)$/;
+  /^(?:Pg(?:Select|SelectBuilder|SelectBase|SelectQueryBuilderBase|Insert|InsertBase|Update|UpdateBase|Delete|DeleteBase|Raw|RelationalQuery|RefreshMaterializedView)|QueryPromise|SQL|SQLWrapper)$/;
 const DRIZZLE_DATABASE_TYPES =
   /^(?:PgDatabase|NodePgDatabase|PgTransaction|NodePgTransaction)$/;
 const PG_TYPES = /^(?:Pool|PoolClient|Client|ClientBase)$/;
@@ -80,6 +80,13 @@ function hasNamedType(type, pattern, seen = new Set(), depth = 0) {
     }
   } catch {
     // Not a type reference with arguments.
+  }
+  try {
+    for (const argument of type.getAliasTypeArguments?.() ?? []) {
+      if (hasNamedType(argument, pattern, seen, depth + 1)) return true;
+    }
+  } catch {
+    // Some native API types have no alias arguments.
   }
   try {
     for (const base of type.getBaseTypes?.() ?? []) {
