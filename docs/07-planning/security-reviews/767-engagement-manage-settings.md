@@ -11,11 +11,13 @@ A Claude Sonnet 5.5 lane implemented the change; the conductor (Claude Opus 5.5)
 - Security review by Claude Opus 5.5: CLEAR at `361d3110`. Its non-blocking finding 2 (a plain update wrote stored engagement values back, a lost-update path around the new gate) and finding 4 (rbac.md prose) were fixed at `f0106a19`, which is CLEAR on delta review. The create path (#708 class) remains a recorded follow-up.
 - Mechanical security rebind by Claude Opus 5.5: CLEAR at `4a59f9f0`, a clean merge of `main` `8ed5fef2` (docs only).
 - Mechanical rebind by Claude Opus 5.5: CLEAR at `5d1a4dbc`, a clean merge of `main` `97648c61` (#755: deploy overlays, docs and test only). Ordinary reviewers A and B also confirmed it.
+- Mechanical rebind by Claude Opus 5.5: CLEAR at `634eb074`, a clean merge of `main` `1455ed80` (#757, 3 docs files); ordinary reviewers A and B confirmed it.
 
 **Reviewed head:** `361d3110fd164f09160ea96ef6d48da4a49b56b3`
 **Reviewed head:** `f0106a1990e637d5003d420ad5bf33cd5867a780`
 **Reviewed head:** `4a59f9f05d1c003643151e153f266d63d6590c66`
 **Reviewed head:** `5d1a4dbcdea46c57f0f107a510e5396fd2efe73b`
+**Reviewed head:** `634eb07410b1e439a1d28f5ab7364359e7e19575`
 
 ## Context index
 
@@ -23,15 +25,15 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 
 | # | Report (private path) | Role | Model | Head | Verdict | SHA-256 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `767-ordinary-a-sonnet.md` | Ordinary review A (main..5d1a4dbc) | Claude Sonnet 5.5 | `5d1a4dbc` | APPROVE | `c4f1a3ba5bcf8a224d56d9f314522bedf1371fc2db7859e732ccdd2be3713878` |
-| 2 | `767-ordinary-b-sonnet.md` | Ordinary review B (main..5d1a4dbc) | Claude Sonnet 5.5 | `5d1a4dbc` | APPROVE | `f96ad786084320ccf3425798e1846392c73d223149f4d9b5babed974e631f146` |
-| 3 | `767-security-opus.md` | Security review, delta and rebind (main..5d1a4dbc) | Claude Opus 5.5 | `5d1a4dbc` | CLEAR | `357fa86acd7da9fca8d16fb6925bba4891dbcbd05db3a4a142f930022d5008dc` |
+| 1 | `767-ordinary-a-sonnet.md` | Ordinary review A (main..634eb074) | Claude Sonnet 5.5 | `634eb074` | APPROVE | `86ed91e6bd7422e5746a05557b265fa64d5e4dbd59de2344e894c1066f57fd74` |
+| 2 | `767-ordinary-b-sonnet.md` | Ordinary review B (main..634eb074) | Claude Sonnet 5.5 | `634eb074` | APPROVE | `4243624909094cf1a0f04dda841773b1eb38e11851bd9275deeddbe967ad0234` |
+| 3 | `767-security-opus.md` | Security review, delta and rebind (main..634eb074) | Claude Opus 5.5 | `634eb074` | CLEAR | `b9257477012d22d7f8cd001baa46237cd644b0e9c031209e9a1694916c56f367` |
 
 ## Embedded reports
 
 Each report is embedded byte for byte between its BEGIN and END markers, copied by a script that reads the file bytes. The marker carries the SHA-256 of those bytes. Where a report did not end with a newline, one newline follows it before the END marker, outside the hashed bytes.
 
-<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-ordinary-a-sonnet.md; Claude Sonnet 5.5; sha256 c4f1a3ba5bcf8a224d56d9f314522bedf1371fc2db7859e732ccdd2be3713878) -->
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-ordinary-a-sonnet.md; Claude Sonnet 5.5; sha256 86ed91e6bd7422e5746a05557b265fa64d5e4dbd59de2344e894c1066f57fd74) -->
 # PR #767 ordinary review A (PUT /api/project/{id}: engagement fields need strict project:manage_settings)
 
 **Reviewed head:** 0388ac698b445e3b17b563a6af94ae1117e1b59f
@@ -125,9 +127,19 @@ Findings: none.
 Mechanical check only. Live head confirmed. 47083646 is my approved 4a59f9f0 plus one commit adding only the evidence note `767-engagement-manage-settings.md` (+399, one file, no code/test/doc change). Merge: parents `^1` 47083646f1e553f8a6f3929378ad56f087e34c79, `^2` 97648c614551cb6ed0a548e4be5779f8f1a8339e (main, #755). `git merge-tree --write-tree 47083646 97648c61` = 131bb50835dfd6d1d8ef671719d95eeee8060ba6, equal to the head's tree. No file overlap with the PR since the merge-base. No findings.
 
 **Verdict:** APPROVE
-<!-- END REPORT (sha256 c4f1a3ba5bcf8a224d56d9f314522bedf1371fc2db7859e732ccdd2be3713878) -->
 
-<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-ordinary-b-sonnet.md; Claude Sonnet 5.5; sha256 f96ad786084320ccf3425798e1846392c73d223149f4d9b5babed974e631f146) -->
+---
+# Delta review 5 (f8d0163a -> 634eb074, merge of main 1455ed80)
+
+**Reviewed head:** 634eb07410b1e439a1d28f5ab7364359e7e19575
+**Model / context:** Claude Sonnet 5.5, fresh independent context (did not author, direct or remediate)
+
+Mechanical check only. Live head confirmed. f8d0163a differs from my approved 5d1a4dbc only in the evidence note `767-engagement-manage-settings.md` (1 file, +73/-9). Merge: parents `^1` f8d0163afd15573e7f066a1c4929c2fed2da1871, `^2` 1455ed80d87806c7c5e22c34e5f0f07c72782289 (main, #757 docs). `git merge-tree --write-tree f8d0163a 1455ed80` = dc2ba9778455956adccc36f2a5b16536b529550b, equal to the head's tree. No file overlap with the PR since the merge-base. No findings.
+
+**Verdict:** APPROVE
+<!-- END REPORT (sha256 86ed91e6bd7422e5746a05557b265fa64d5e4dbd59de2344e894c1066f57fd74) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-ordinary-b-sonnet.md; Claude Sonnet 5.5; sha256 4243624909094cf1a0f04dda841773b1eb38e11851bd9275deeddbe967ad0234) -->
 # Ordinary review B, PR #767 (architecture, contracts, whole-system consistency)
 
 **Reviewed head:** 0388ac698b445e3b17b563a6af94ae1117e1b59f
@@ -219,9 +231,22 @@ Role matrix read from rbac.md, and the integration tests derive "lead-like" by r
 - Net content relative to my approved 4a59f9f0 is therefore just the security-review record file. I read its header: its review chain lists my approvals at 0388ac69, 361d3110, f0106a19 and 4a59f9f0 accurately, and the index row for this report cites SHA-256 ce485510... which was the correct hash of this file before this appended section. Appending these delta sections changes the file's bytes, so that embedded hash will no longer equal the current file; the embedded copy is the earlier version. Non-blocking: if the record must stay byte-verifiable, re-index with the new hash or treat the embedded copy as the version of record.
 
 **Verdict:** APPROVE
-<!-- END REPORT (sha256 f96ad786084320ccf3425798e1846392c73d223149f4d9b5babed974e631f146) -->
 
-<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-security-opus.md; Claude Opus 5.5; sha256 357fa86acd7da9fca8d16fb6925bba4891dbcbd05db3a4a142f930022d5008dc) -->
+---
+## Delta review (f8d0163a to 634eb074, merge of main)
+
+**Reviewed head:** 634eb07410b1e439a1d28f5ab7364359e7e19575
+**Model / context:** Claude Sonnet 5.5, fresh independent context (did not author, direct or remediate)
+
+- Live head confirmed by `gh pr view`. Parents: f8d0163afd15573e7f066a1c4929c2fed2da1871 and 1455ed80d87806c7c5e22c34e5f0f07c72782289 (main, an ancestor of origin/main).
+- `git merge-tree --write-tree f8d0163a 1455ed80` gives tree dc2ba9778455956adccc36f2a5b16536b529550b, identical to the tree of 634eb074: clean merge, no hand edits.
+- Main's side since the merge base is the three #757 docs (data-model.md, request-types-and-catalogue.md, reviews/2026-09-05/security.md); none overlaps #767's files, and no file differs between f8d0163a and 634eb074 outside that set.
+- f8d0163a versus my approved 5d1a4dbc: one commit, "docs(security-reviews): bind the #767 main-merge rebind", changing only docs/07-planning/security-reviews/767-engagement-manage-settings.md (+73/-9); no source, test, spec or openapi change, so the code I approved is unchanged.
+
+**Verdict:** APPROVE
+<!-- END REPORT (sha256 4243624909094cf1a0f04dda841773b1eb38e11851bd9275deeddbe967ad0234) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/767-security-opus.md; Claude Opus 5.5; sha256 b9257477012d22d7f8cd001baa46237cd644b0e9c031209e9a1694916c56f367) -->
 # PR #767 (closes #766) — independent security review
 
 **Reviewed head:** 361d3110fd164f09160ea96ef6d48da4a49b56b3
@@ -460,4 +485,32 @@ Docker: only Testcontainers created by these runs, auto-removed. No other contai
   API behaviour.
 
 **Verdict:** CLEAR
-<!-- END REPORT (sha256 357fa86acd7da9fca8d16fb6925bba4891dbcbd05db3a4a142f930022d5008dc) -->
+
+---
+
+# Mechanical rebind (5d1a4dbc -> f8d0163a -> 634eb074)
+
+**Reviewed head:** 634eb07410b1e439a1d28f5ab7364359e7e19575
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), same independent reviewer context as above (did not author, direct or remediate)
+
+- `gh pr view 767 --json headRefOid` = 634eb07410b1e439a1d28f5ab7364359e7e19575 (confirmed live).
+- **Note-only commit.** f8d0163afd15573e7f066a1c4929c2fed2da1871 has a single parent, 5d1a4dbc (the
+  last CLEAR head). `git diff 5d1a4dbc f8d0163a`: 1 file,
+  `docs/07-planning/security-reviews/767-engagement-manage-settings.md` (+73/-9, note regeneration).
+  No code, test or contract change.
+- **Merge.** `git rev-list --parents -n1 634eb074`: parents are f8d0163a and
+  1455ed80d87806c7c5e22c34e5f0f07c72782289. The latter is the current `origin/main`.
+- `git merge-tree --write-tree f8d0163a 1455ed80` exited 0 with tree
+  dc2ba9778455956adccc36f2a5b16536b529550b. That equals `634eb074^{tree}`, so it is a clean merge
+  with no manual edits.
+- **Incoming from main** (`git diff --stat f8d0163a 634eb074`): 3 docs files, +33/-4.
+  - `docs/01-architecture/data-model.md`
+  - `docs/03-features/request-types-and-catalogue.md`
+  - `docs/07-planning/reviews/2026-09-05/security.md`
+- **No interaction.** None of these overlap the PR's files (`apps/api/src/project/{index,policy}.ts`,
+  `rbac.md`, `projects-and-engagements.md`, `openapi.json`, the integration test, the 767 note).
+  No code, test or contract path changed.
+- Tests were not re-run; a docs-only clean merge cannot change the reviewed behaviour.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 b9257477012d22d7f8cd001baa46237cd644b0e9c031209e9a1694916c56f367) -->
