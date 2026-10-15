@@ -82,7 +82,7 @@ export async function findCurrentNotificationResources(
           key: schema.workItemTable.key,
           workspaceId: schema.workItemTable.workspaceId,
           projectId: schema.workItemTable.projectId,
-          organisationId: schema.workspaceTable.organisationId,
+          organisationId: schema.projectTable.organisationId,
           requesterId: schema.workItemTable.requesterId,
           customerVisibility: schema.workItemTable.customerVisibility,
         })
@@ -117,7 +117,7 @@ export async function findCurrentNotificationResources(
           key: schema.workItemTable.key,
           workspaceId: schema.workItemTable.workspaceId,
           projectId: schema.workItemTable.projectId,
-          organisationId: schema.workspaceTable.organisationId,
+          organisationId: schema.projectTable.organisationId,
           requesterId: schema.workItemTable.requesterId,
           customerVisibility: schema.workItemTable.customerVisibility,
         })

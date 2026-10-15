@@ -652,6 +652,226 @@ describe("API integration: work-item comments (#27)", () => {
     }
   });
 
+  it("#580 S3: uses the serving project organisation for customer inbox reach", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const makeCustomerOrganisation = async (prefix: string) => {
+      const [organisation] = await db
+        .insert(schema.organisationTable)
+        .values({
+          key: `${prefix}-${randomUUID()}`,
+          name: prefix,
+          isInternal: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      if (!organisation) throw new Error("expected customer organisation");
+      return organisation;
+    };
+    const customerOrganisation = await makeCustomerOrganisation("serving");
+    const foreignOrganisation = await makeCustomerOrganisation("foreign");
+    const customer = await addCustomerIdentity(customerOrganisation.id);
+    const foreign = await addCustomerIdentity(foreignOrganisation.id);
+    const [workspace] = await db
+      .select({ organisationId: schema.workspaceTable.organisationId })
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, creator.workspace.id));
+    expect(workspace?.organisationId).not.toBe(customerOrganisation.id);
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: customerOrganisation.id })
+      .where(eq(schema.projectTable.id, project.id));
+    await db
+      .update(schema.workItemTable)
+      .set({ customerVisibility: "organisation" })
+      .where(eq(schema.workItemTable.id, workItem.id));
+
+    const publicResponse = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "public",
+    });
+    const internalResponse = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    expect(publicResponse.status).toBe(200);
+    expect(internalResponse.status).toBe(200);
+    const publicComment = (await publicResponse.json()) as { id: string };
+    const internalComment = (await internalResponse.json()) as { id: string };
+
+    const plantFor = (
+      identity: typeof customer,
+      resourceType: "work_item" | "comment",
+      resourceId: string,
+      kind: string,
+    ) =>
+      plantNativeNotification({
+        userId: identity.user.id,
+        personId: identity.person.id,
+        resourceType,
+        resourceId,
+        kind,
+      });
+    const customerItem = await plantFor(
+      customer,
+      "work_item",
+      workItem.id,
+      "work_item.assigned",
+    );
+    const customerComment = await plantFor(
+      customer,
+      "comment",
+      publicComment.id,
+      "work_item.mentioned",
+    );
+    const customerInternal = await plantFor(
+      customer,
+      "comment",
+      internalComment.id,
+      "work_item.mentioned",
+    );
+    const foreignItem = await plantFor(
+      foreign,
+      "work_item",
+      workItem.id,
+      "work_item.assigned",
+    );
+    const foreignComment = await plantFor(
+      foreign,
+      "comment",
+      publicComment.id,
+      "work_item.mentioned",
+    );
+
+    mockAuthenticatedSession(customer.user, { portal: "customer" });
+    const list = await app.request("/api/notification");
+    expect(list.status).toBe(200);
+    const listed = (await list.json()) as Array<{ id: string }>;
+    expect(listed.map(({ id }) => id)).toContain(customerItem.id);
+    expect(listed.map(({ id }) => id)).toContain(customerComment.id);
+    expect(listed.map(({ id }) => id)).not.toContain(customerInternal.id);
+    const direct = await app.request(
+      `/api/notification/${customerItem.id}/read`,
+      {
+        method: "PATCH",
+      },
+    );
+    expect(direct.status).toBe(200);
+    await app.request("/api/notification/read-all", { method: "PATCH" });
+    const [readItem, readComment] = await Promise.all(
+      [customerItem, customerComment].map(async ({ id }) =>
+        db
+          .select({ isRead: schema.notificationTable.isRead })
+          .from(schema.notificationTable)
+          .where(eq(schema.notificationTable.id, id))
+          .then(([row]) => row),
+      ),
+    );
+    expect(readItem?.isRead).toBe(true);
+    expect(readComment?.isRead).toBe(true);
+    const clearItem = await plantFor(
+      customer,
+      "work_item",
+      workItem.id,
+      "work_item.assigned",
+    );
+    const clearComment = await plantFor(
+      customer,
+      "comment",
+      publicComment.id,
+      "work_item.mentioned",
+    );
+    await app.request("/api/notification/clear-all", { method: "DELETE" });
+    const clearedReachable = await db
+      .select({ id: schema.notificationTable.id })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [clearItem.id, clearComment.id]),
+      );
+    expect(clearedReachable).toHaveLength(0);
+
+    mockAuthenticatedSession(foreign.user, { portal: "customer" });
+    const foreignList = await app.request("/api/notification");
+    expect(foreignList.status).toBe(200);
+    expect((await foreignList.json()) as Array<{ id: string }>).toHaveLength(0);
+    expect(
+      (
+        await app.request(`/api/notification/${foreignItem.id}/read`, {
+          method: "PATCH",
+        })
+      ).status,
+    ).toBe(404);
+    await app.request("/api/notification/read-all", { method: "PATCH" });
+    await app.request("/api/notification/clear-all", { method: "DELETE" });
+    const retainedForeign = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [
+          foreignItem.id,
+          foreignComment.id,
+        ]),
+      );
+    expect(retainedForeign).toHaveLength(2);
+    expect(retainedForeign.every(({ isRead }) => !isRead)).toBe(true);
+
+    mockAuthenticatedSession(customer.user, { portal: "customer" });
+    await db
+      .update(schema.workItemTable)
+      .set({ customerVisibility: "private", requesterId: null })
+      .where(eq(schema.workItemTable.id, workItem.id));
+    const privateItemNotice = await plantFor(
+      customer,
+      "work_item",
+      workItem.id,
+      "work_item.assigned",
+    );
+    const privateCommentNotice = await plantFor(
+      customer,
+      "comment",
+      internalComment.id,
+      "work_item.mentioned",
+    );
+    const privateList = await app.request("/api/notification");
+    const privateListed = (await privateList.json()) as Array<{ id: string }>;
+    expect(privateListed).not.toContainEqual(
+      expect.objectContaining({ id: privateItemNotice.id }),
+    );
+    expect(privateListed).not.toContainEqual(
+      expect.objectContaining({ id: privateCommentNotice.id }),
+    );
+    expect(
+      (
+        await app.request(`/api/notification/${privateCommentNotice.id}/read`, {
+          method: "PATCH",
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await app.request(`/api/notification/${privateItemNotice.id}/read`, {
+          method: "PATCH",
+        })
+      ).status,
+    ).toBe(404);
+    await app.request("/api/notification/read-all", { method: "PATCH" });
+    await app.request("/api/notification/clear-all", { method: "DELETE" });
+    const retainedPrivate = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [
+          privateItemNotice.id,
+          privateCommentNotice.id,
+        ]),
+      );
+    expect(retainedPrivate).toHaveLength(2);
+    expect(retainedPrivate.every(({ isRead }) => !isRead)).toBe(true);
+  });
+
   it("CA-12: adds an accessible mention as watcher without unmuting and fans out to that person", async () => {
     const { app, workItem, creator, project } = await setupWorkItem("member");
     const recipient = await addWorkspaceMember(creator.workspace.id, "member");
