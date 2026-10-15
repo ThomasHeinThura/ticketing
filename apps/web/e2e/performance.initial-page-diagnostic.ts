@@ -335,6 +335,113 @@ function inclusiveTraceFrames(
   );
 }
 
+function selectUniqueDirectCpuProfile(profiles: TraceCpuProfile[]) {
+  const candidates = profiles.filter(
+    (profile) =>
+      profile.source === "direct-cdp-profiler" ||
+      profile.id === "direct-cdp-profiler",
+  );
+  if (
+    candidates.length !== 1 ||
+    candidates[0]?.source !== "direct-cdp-profiler" ||
+    candidates[0]?.id !== "direct-cdp-profiler"
+  )
+    throw new Error(
+      `Expected exactly one valid direct CDP CPU profile; found ${candidates.length}.`,
+    );
+  const selected = candidates[0];
+  if (
+    selected.nodes.size === 0 ||
+    selected.samples.length === 0 ||
+    selected.samples.some(
+      (sample) =>
+        !Number.isFinite(sample.start) ||
+        !Number.isFinite(sample.duration) ||
+        sample.duration <= 0 ||
+        !selected.nodes.has(sample.nodeId),
+    )
+  )
+    throw new Error(
+      "The unique direct CDP CPU profile is empty or contains invalid samples.",
+    );
+  return selected;
+}
+
+function assertDirectCpuProfileIsolationProbe() {
+  const directProfile: TraceCpuProfile = {
+    id: "direct-cdp-profiler",
+    source: "direct-cdp-profiler",
+    pid: 0,
+    tid: 0,
+    nodes: new Map([
+      [
+        1,
+        {
+          id: 1,
+          children: [],
+          callFrame: {
+            functionName: "overlapProbe",
+            url: `${ORIGIN}/assets/diagnostic-overlap-probe.js`,
+            lineNumber: 0,
+            columnNumber: 0,
+          },
+        },
+      ],
+    ]),
+    samples: [{ nodeId: 1, start: 100, duration: 100 }],
+  };
+  const inspectorProfile: TraceCpuProfile = {
+    ...directProfile,
+    id: "inspector-overlap-probe",
+    source: "Inspector",
+    samples: [
+      { nodeId: 1, start: 100, duration: 100 },
+      { nodeId: 1, start: 200, duration: 50 },
+    ],
+  };
+  const selected = selectUniqueDirectCpuProfile([
+    directProfile,
+    inspectorProfile,
+  ]);
+  expect(() => selectUniqueDirectCpuProfile([inspectorProfile])).toThrow(
+    "Expected exactly one valid direct CDP CPU profile; found 0.",
+  );
+  expect(() =>
+    selectUniqueDirectCpuProfile([
+      directProfile,
+      { ...directProfile, id: "duplicate-direct-profile" },
+    ]),
+  ).toThrow("Expected exactly one valid direct CDP CPU profile; found 2.");
+  const directSanitized = sanitizeTraceCpuProfile(selected);
+  const inspectorSanitized = sanitizeTraceCpuProfile(inspectorProfile);
+  const directFrames = inclusiveTraceFrames([directSanitized]);
+  const mixedFrames = inclusiveTraceFrames([
+    directSanitized,
+    inspectorSanitized,
+  ]);
+  const directCoverage = summarizeProfileCoverage(
+    selected.samples.map((sample) => ({
+      start: sample.start,
+      end: sample.start + sample.duration,
+    })),
+    0,
+    1_000,
+  );
+  const mixedCoverage = summarizeProfileCoverage(
+    [...selected.samples, ...inspectorProfile.samples].map((sample) => ({
+      start: sample.start,
+      end: sample.start + sample.duration,
+    })),
+    0,
+    1_000,
+  );
+  expect(selected.source).toBe("direct-cdp-profiler");
+  expect(directFrames[0]?.inclusiveSampledMicroseconds).toBe(100);
+  expect(mixedFrames[0]?.inclusiveSampledMicroseconds).toBe(250);
+  expect(directCoverage.unionCoverage).toBe(100);
+  expect(mixedCoverage.unionCoverage).toBe(150);
+}
+
 function alignBoundaryToTrace(capture: DiagnosticCapture) {
   const boundary = capture.boundary;
   if (!boundary) return null;
@@ -1760,6 +1867,7 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
   browser,
 }) => {
   test.setTimeout(180_000);
+  assertDirectCpuProfileIsolationProbe();
   await mkdir(RESULT_DIR, { recursive: true, mode: 0o700 });
   await chmod(RESULT_DIR, 0o700);
   const focusedResultDir = await mkdtemp(
@@ -1774,16 +1882,17 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
     visitLegacyBoardDragProfile,
     FOCUSED_DRAG_TIMELINE_EVENT_NAMES,
   );
+  const directCpuProfile = selectUniqueDirectCpuProfile(
+    capture.traceCpuProfiles,
+  );
   const profileAssetNames = new Set(
-    capture.traceCpuProfiles.flatMap((traceProfile) =>
-      [...traceProfile.nodes.values()]
-        .map((node) => node.callFrame?.url)
-        .filter(
-          (url): url is string =>
-            typeof url === "string" && url.startsWith(`${ORIGIN}/assets/`),
-        )
-        .map(safeAssetName),
-    ),
+    [...directCpuProfile.nodes.values()]
+      .map((node) => node.callFrame?.url)
+      .filter(
+        (url): url is string =>
+          typeof url === "string" && url.startsWith(`${ORIGIN}/assets/`),
+      )
+      .map(safeAssetName),
   );
   const build = await getBuildIdentity(profileAssetNames);
   const rawDirectory = path.join(
@@ -1809,6 +1918,19 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
     [capture],
     build,
     (current) => {
+      const selectedCpuProfile = selectUniqueDirectCpuProfile(
+        current.traceCpuProfiles,
+      );
+      const cpuCaptureStreams = current.traceCpuProfiles.map((profile) => ({
+        source: profile.source,
+        nodeCount: profile.nodes.size,
+        sampleCount: profile.samples.length,
+        includedInFocusedCpuAggregation: profile === selectedCpuProfile,
+        scope:
+          profile === selectedCpuProfile
+            ? "selected direct profile for focused CPU coverage and frame rankings"
+            : "separate tracing CPU capture metadata only; excluded from focused CPU coverage and frame rankings",
+      }));
       const alignment = alignBoundaryToTrace(current);
       if (!alignment)
         throw new Error(`${current.name} has no pointer interval alignment.`);
@@ -1830,7 +1952,7 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
       const frameWindowAlignment = alignBoundaryToTrace(frameWindowCapture);
       if (!frameWindowAlignment)
         throw new Error(`${current.name} has no RAF-window clock alignment.`);
-      const clippedProfiles = current.traceCpuProfiles
+      const clippedProfiles = [selectedCpuProfile]
         .map((profile) =>
           sanitizeTraceCpuProfile(
             profile,
@@ -1839,7 +1961,7 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
           ),
         )
         .filter((profile) => profile !== undefined);
-      const frameWindowProfiles = current.traceCpuProfiles
+      const frameWindowProfiles = [selectedCpuProfile]
         .map((profile) =>
           sanitizeTraceCpuProfile(
             profile,
@@ -1906,10 +2028,12 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
           ...alignment.transform,
           calibratedStartTraceMicroseconds: alignment.startTraceMicroseconds,
           calibratedEndTraceMicroseconds: alignment.endTraceMicroseconds,
-          v8TraceProfileCount: current.traceCpuProfiles.length,
+          selectedDirectProfileCount: clippedProfiles.length,
         },
         cpuSampleCoverage: {
-          scope: "observed ProfileChunk samples; not a completeness guarantee",
+          scope:
+            "observed direct CDP Profiler samples only; not a completeness guarantee",
+          profileSource: selectedCpuProfile.source,
           intervalStartMicroseconds: alignment.startTraceMicroseconds,
           intervalEndMicroseconds: alignment.endTraceMicroseconds,
           observedStartMicroseconds: cpuCoverage.observedStart,
@@ -1943,6 +2067,7 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
         },
         topInclusiveCpuFrames: inclusiveTraceFrames(clippedProfiles),
         traceCpuProfiles: clippedProfiles,
+        cpuCaptureStreams,
         timelineEvents: clipTimelineEvents(
           current.browserPerformance.timelineEvents,
           alignment.startTraceMicroseconds,
@@ -1966,11 +2091,12 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
               frameWindowAlignment.startTraceMicroseconds,
             calibratedEndTraceMicroseconds:
               frameWindowAlignment.endTraceMicroseconds,
-            profilerThreadCount: current.traceCpuProfiles.length,
+            selectedDirectProfileCount: frameWindowProfiles.length,
           },
           cpuSampleCoverage: {
             scope:
-              "observed explicit Profiler samples clipped to the 2.2-second RAF window; not a completeness guarantee",
+              "observed direct CDP Profiler samples only, clipped to the 2.2-second RAF window; not a completeness guarantee",
+            profileSource: selectedCpuProfile.source,
             intervalStartMicroseconds:
               frameWindowAlignment.startTraceMicroseconds,
             intervalEndMicroseconds: frameWindowAlignment.endTraceMicroseconds,
@@ -2007,6 +2133,7 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
           },
           topInclusiveCpuFrames: inclusiveTraceFrames(frameWindowProfiles),
           traceCpuProfiles: frameWindowProfiles,
+          cpuCaptureStreams,
           timelineEvents: canonicalTimelineEvents,
         },
       };
@@ -2024,6 +2151,9 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
     profileWindow?.cpuSampleCoverage?.unionCoverageMicroseconds ?? 0,
     "The hosted drag diagnostic must include aligned direct Profiler samples.",
   ).toBeGreaterThan(0);
+  expect(profileWindow?.cpuSampleCoverage?.profileSource).toBe(
+    "direct-cdp-profiler",
+  );
   expect(
     profileWindow?.canonicalRafWindow?.frameSampling?.intervalCount ?? 0,
     "The hosted drag diagnostic must include the canonical 2.2 second RAF window.",
@@ -2037,6 +2167,9 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
       ?.unionCoverageMicroseconds ?? 0,
     "The canonical RAF window must contain aligned direct Profiler samples.",
   ).toBeGreaterThan(0);
+  expect(
+    profileWindow?.canonicalRafWindow?.cpuSampleCoverage?.profileSource,
+  ).toBe("direct-cdp-profiler");
   const runtimeMetadata = {
     sourceCommitSha: build.sourceCommitSha,
     sourceTreeSha256: build.sourceTreeSha256,
@@ -2216,6 +2349,12 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
     canonicalRafWindow: {
       requestedWindowMs: canonicalRafWindow.requestedWindowMs,
       elapsedWindowMs: canonicalRafWindow.elapsedWindowMs,
+      cpuProfileSelection: {
+        selectedSource: "direct-cdp-profiler",
+        selectedProfileCount: 1,
+        aggregationScope:
+          "pointer and canonical CPU coverage/frame rankings use only this direct profile; inclusive ancestor buckets can overlap and are not additive wall time or causal proof",
+      },
       correlationClock: {
         origin:
           "canonicalRafWindow.cpuSampleCoverage.intervalStartMicroseconds",
@@ -2256,6 +2395,9 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
         canonicalWindowStart,
         canonicalWindowEnd,
       ),
+      cpuCaptureStreams: canonicalRafWindow.cpuCaptureStreams,
+      traceTimelineScope:
+        "preserved separately from CPU selection; trace timeline events/counts are not CPU profile samples",
     },
     pointerContext: {
       durationMs:
@@ -2269,8 +2411,10 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
         intervalsOver33Ms: profileWindow.frameSampling.intervalsOver33Ms,
       },
       cpuSampleCoverage: profileWindow.cpuSampleCoverage,
+      cpuProfileSource: profileWindow.cpuSampleCoverage.profileSource,
       appFrameCount: profileWindow.topInclusiveCpuFrames.length,
       timelineEventCounts: countTimelineEvents(profileWindow.timelineEvents),
+      cpuCaptureStreams: profileWindow.cpuCaptureStreams,
     },
     sourceBindings,
   };
