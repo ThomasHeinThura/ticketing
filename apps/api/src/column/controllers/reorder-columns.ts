@@ -1,8 +1,9 @@
-import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { columnTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import {
+  listProjectColumnsOrdered,
+  updateColumnPositionInProject,
+} from "../repository";
 
 async function reorderColumns(
   projectId: string,
@@ -15,13 +16,11 @@ async function reorderColumns(
   await getProjectWorkspaceId(projectId);
 
   for (const col of columns) {
-    const [updated] = await db
-      .update(columnTable)
-      .set({ position: col.position })
-      .where(
-        and(eq(columnTable.id, col.id), eq(columnTable.projectId, projectId)),
-      )
-      .returning({ id: columnTable.id });
+    const updated = await updateColumnPositionInProject(
+      projectId,
+      col.id,
+      col.position,
+    );
 
     if (!updated) {
       throw new HTTPException(400, {
@@ -30,10 +29,7 @@ async function reorderColumns(
     }
   }
 
-  const updated = await db.query.columnTable.findMany({
-    where: eq(columnTable.projectId, projectId),
-    orderBy: (columns, { asc }) => [asc(columns.position)],
-  });
+  const updated = await listProjectColumnsOrdered(projectId);
 
   return updated;
 }

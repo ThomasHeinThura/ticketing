@@ -1,5 +1,4 @@
-import { eq } from "drizzle-orm";
-import db, { schema } from "../database";
+import { findWorkItemProjectOwner } from "./repository";
 
 /**
  * ONE rule for every staff exposure of a submission's converted work item (#740): once a
@@ -27,18 +26,6 @@ export async function reachableLinkedWorkItemId(
   workItemId: string | null,
 ): Promise<string | null> {
   if (!workItemId) return null;
-  const [owner] = await db
-    .select({
-      projectId: schema.projectTable.id,
-      workspaceId: schema.projectTable.workspaceId,
-      organisationId: schema.projectTable.organisationId,
-    })
-    .from(schema.workItemTable)
-    .innerJoin(
-      schema.projectTable,
-      eq(schema.projectTable.id, schema.workItemTable.projectId),
-    )
-    .where(eq(schema.workItemTable.id, workItemId))
-    .limit(1);
+  const owner = await findWorkItemProjectOwner(workItemId);
   return owner && (await reach.reaches(owner)) ? workItemId : null;
 }

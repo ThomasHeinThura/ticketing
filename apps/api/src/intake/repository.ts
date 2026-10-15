@@ -2328,3 +2328,64 @@ export async function declineSubmission(
     return { ref, state: updated.state, reason, message };
   });
 }
+
+/** The instance-level `feature.intake` flag row, or `undefined` (issue #580). */
+export async function findInstanceIntakeFlag() {
+  const [instance] = await db
+    .select({
+      enabled: schema.instanceFeatureFlagTable.enabled,
+      locked: schema.instanceFeatureFlagTable.locked,
+    })
+    .from(schema.instanceFeatureFlagTable)
+    .where(eq(schema.instanceFeatureFlagTable.featureKey, "feature.intake"))
+    .limit(1);
+  return instance;
+}
+
+/** The workspace-level `feature.intake` flag row, or `undefined` (issue #580). */
+export async function findWorkspaceIntakeFlag(workspaceId: string) {
+  const [workspace] = await db
+    .select({ enabled: schema.workspaceFeatureFlagTable.enabled })
+    .from(schema.workspaceFeatureFlagTable)
+    .where(
+      and(
+        eq(schema.workspaceFeatureFlagTable.workspaceId, workspaceId),
+        eq(schema.workspaceFeatureFlagTable.featureKey, "feature.intake"),
+      ),
+    )
+    .limit(1);
+  return workspace;
+}
+
+/** An organisation's default customer visibility, or `undefined` (issue #580). */
+export async function findOrganisationDefaultCustomerVisibility(
+  organisationId: string,
+) {
+  const [organisation] = await db
+    .select({
+      defaultCustomerVisibility:
+        schema.organisationTable.defaultCustomerVisibility,
+    })
+    .from(schema.organisationTable)
+    .where(eq(schema.organisationTable.id, organisationId))
+    .limit(1);
+  return organisation;
+}
+
+/** The project facts a submission's linked work item is reached through, or `undefined`. */
+export async function findWorkItemProjectOwner(workItemId: string) {
+  const [owner] = await db
+    .select({
+      projectId: schema.projectTable.id,
+      workspaceId: schema.projectTable.workspaceId,
+      organisationId: schema.projectTable.organisationId,
+    })
+    .from(schema.workItemTable)
+    .innerJoin(
+      schema.projectTable,
+      eq(schema.projectTable.id, schema.workItemTable.projectId),
+    )
+    .where(eq(schema.workItemTable.id, workItemId))
+    .limit(1);
+  return owner;
+}
