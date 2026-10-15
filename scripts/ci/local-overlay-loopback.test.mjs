@@ -8,8 +8,14 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const LOCAL_OVERLAYS = ["deploy/compose.local.yml", "deploy/compose.traefik.yml"];
+const root = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../..",
+);
+const LOCAL_OVERLAYS = [
+  "deploy/compose.local.yml",
+  "deploy/compose.traefik.yml",
+];
 
 // Returns { service: [port entries] } for the top-level `services:` block. The
 // overlays use the short string syntax only; any other form is reported so the
@@ -32,7 +38,11 @@ function publishedPorts(text) {
       continue;
     }
     if (/^ {4}ports:/.test(line)) {
-      assert.match(line, /^ {4}ports:(\s*!override)?\s*$/, `unsupported ports form: ${raw}`);
+      assert.match(
+        line,
+        /^ {4}ports:(\s*!override)?\s*$/,
+        `unsupported ports form: ${raw}`,
+      );
       inPorts = true;
       out[service] ??= [];
       continue;
@@ -43,7 +53,8 @@ function publishedPorts(text) {
         out[service].push(item[1]);
         continue;
       }
-      if (/^ {6}-/.test(line)) assert.fail(`unquoted or long-form port entry: ${raw}`);
+      if (/^ {6}-/.test(line))
+        assert.fail(`unquoted or long-form port entry: ${raw}`);
       if (/^ {4}\S/.test(line) || /^ {2}\S/.test(line)) inPorts = false;
     }
   }
@@ -66,17 +77,25 @@ for (const file of LOCAL_OVERLAYS) {
 
   test(`${file}: the application service publishes no port`, async () => {
     const ports = publishedPorts(await readFile(path.join(root, file), "utf8"));
-    assert.equal(ports.taskdesk, undefined, `${file} publishes the taskdesk application port`);
+    assert.equal(
+      ports.taskdesk,
+      undefined,
+      `${file} publishes the taskdesk application port`,
+    );
   });
 }
 
 test("the local Traefik publishes both address families for HTTP and HTTPS", async () => {
-  const ports = publishedPorts(await readFile(path.join(root, "deploy/compose.traefik.yml"), "utf8"));
+  const ports = publishedPorts(
+    await readFile(path.join(root, "deploy/compose.traefik.yml"), "utf8"),
+  );
   const entries = ports.traefik ?? [];
   for (const family of ["127.0.0.1", "[::1]"]) {
     for (const target of [":80", ":443"]) {
       assert.ok(
-        entries.some((entry) => entry.startsWith(`${family}:`) && entry.endsWith(target)),
+        entries.some(
+          (entry) => entry.startsWith(`${family}:`) && entry.endsWith(target),
+        ),
         `traefik has no ${family} binding for container port ${target.slice(1)}`,
       );
     }
