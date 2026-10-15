@@ -11,6 +11,7 @@ import { HttpError } from "@/lib/http-error";
 
 const { mocks } = vi.hoisted(() => ({
   mocks: {
+    canManage: true,
     canUpdate: true,
     checking: false,
     project: undefined as Record<string, unknown> | undefined,
@@ -88,6 +89,7 @@ vi.mock("@tanstack/react-query", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canUpdateProjects: () => mocks.canUpdate,
+    canManageProjectSettings: () => mocks.canManage,
     isCheckingPermissions: mocks.checking,
   }),
 }));
@@ -128,6 +130,7 @@ const save = () => screen.getByRole("button", { name: `${KEY}.save` });
 describe("ProjectEngagementSettings", () => {
   beforeEach(() => {
     mocks.canUpdate = true;
+    mocks.canManage = true;
     mocks.checking = false;
     mocks.projectState = { isLoading: false, isError: false };
     mocks.calendarState = { isLoading: false, isError: false };
@@ -322,6 +325,85 @@ describe("ProjectEngagementSettings", () => {
       screen.getByTestId("project-engagement-readonly"),
     ).toBeInTheDocument();
     expect(mocks.updateHealth).not.toHaveBeenCalled();
+  });
+
+  it("with project:update but not manage_settings: kind, support level and calendar are read-only with a notice, health stays editable", async () => {
+    mocks.canManage = false;
+    render_();
+    expect(kind()).toBeDisabled();
+    expect(support()).toBeDisabled();
+    expect(calendar()).toBeDisabled();
+    expect(health()).not.toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: `${KEY}.save` }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("project-engagement-settings-readonly"),
+    ).toHaveTextContent(`${KEY}.manageSettingsRequired`);
+    expect(
+      screen.queryByTestId("project-engagement-readonly"),
+    ).not.toBeInTheDocument();
+    fireEvent.change(health(), { target: { value: "green" } });
+    await waitFor(() =>
+      expect(mocks.updateHealth).toHaveBeenCalledWith("project-1", "green"),
+    );
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+  });
+
+  it("with both capabilities every control is editable and no notice shows", () => {
+    render_();
+    for (const control of [kind(), health(), support(), calendar()])
+      expect(control).not.toBeDisabled();
+    expect(
+      screen.queryByTestId("project-engagement-settings-readonly"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("project-engagement-readonly"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("with manage_settings but no project:update nothing is editable (the server needs both)", () => {
+    mocks.canUpdate = false;
+    mocks.canManage = true;
+    render_();
+    for (const control of [kind(), health(), support(), calendar()])
+      expect(control).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: `${KEY}.save` }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("project-engagement-readonly"),
+    ).toBeInTheDocument();
+  });
+
+  it("with neither capability everything is read-only and health writes nothing", () => {
+    mocks.canUpdate = false;
+    mocks.canManage = false;
+    render_();
+    for (const control of [kind(), health(), support(), calendar()])
+      expect(control).toBeDisabled();
+    expect(mocks.updateHealth).not.toHaveBeenCalled();
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+  });
+
+  it("handles a 403 on the engagement save: message shown, the unsaved edit is reverted, capabilities refreshed", async () => {
+    mocks.updateProject.mockRejectedValue(
+      new HttpError(403, "Insufficient permissions"),
+    );
+    render_();
+    fireEvent.change(support(), { target: { value: "L2" } });
+    expect(support()).toHaveValue("L2");
+    fireEvent.click(save());
+
+    expect(
+      await screen.findByText(`${KEY}.failure.forbidden`),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(support()).not.toHaveValue("L2"));
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["workspace-capabilities", "ws-1"],
+    });
+    // A failed save is not a saved one.
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 
   it("keeps a saved calendar that is missing from the loaded list", () => {

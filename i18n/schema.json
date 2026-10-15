@@ -3514,6 +3514,9 @@
 								"readOnly": {
 									"type": "string"
 								},
+								"manageSettingsRequired": {
+									"type": "string"
+								},
 								"failure": {
 									"type": "object",
 									"additionalProperties": false,
@@ -3569,6 +3572,7 @@
 								"retry",
 								"loadError",
 								"readOnly",
+								"manageSettingsRequired",
 								"failure"
 							]
 						},

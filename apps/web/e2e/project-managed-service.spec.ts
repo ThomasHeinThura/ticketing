@@ -33,6 +33,8 @@ type Recorded = { method: string; path: string; body?: unknown };
 
 type Options = {
   canUpdate?: boolean;
+  /** Strict project:manage_settings; defaults to canUpdate. */
+  canManage?: boolean;
   healthStatus?: number;
   putStatus?: number;
   putMessage?: string;
@@ -60,7 +62,8 @@ const baseDetails = (): Details => ({
   lastTaskNumber: 0,
 });
 
-const capabilities = (canUpdate: boolean) => ({
+const capabilities = (canUpdate: boolean, canManage: boolean) => ({
+  manageProjectSettings: canManage,
   manageProjects: canUpdate,
   createProjects: canUpdate,
   updateProjects: canUpdate,
@@ -82,6 +85,7 @@ const capabilities = (canUpdate: boolean) => ({
 
 async function mockApi(page: Page, options: Options = {}) {
   const canUpdate = options.canUpdate ?? true;
+  const canManage = options.canManage ?? canUpdate;
   const details = { ...baseDetails(), ...options.seed };
   const requests: Recorded[] = [];
 
@@ -169,7 +173,8 @@ async function mockApi(page: Page, options: Options = {}) {
           role: canUpdate ? "admin" : "member",
         },
       ]);
-    if (path === "/api/capabilities") return json(capabilities(canUpdate));
+    if (path === "/api/capabilities")
+      return json(capabilities(canUpdate, canManage));
     if (path === "/api/service-calendars")
       return json({
         data: [
@@ -411,6 +416,57 @@ test.describe("project engagement controls (PR-9)", () => {
     expect(
       requests.some((r) => r.method === "PUT" || r.method === "PATCH"),
     ).toBe(false);
+  });
+
+  test("with project:update but not manage_settings: engagement is read-only with a notice, health still saves", async ({
+    page,
+  }) => {
+    const { requests } = await mockApi(page, {
+      canUpdate: true,
+      canManage: false,
+      seed: {
+        kind: "managed_service",
+        supportLevel: "L2",
+        serviceCalendarId: calendarId,
+      },
+    });
+    await open(page);
+    await expect(
+      page.getByTestId("project-engagement-settings-readonly"),
+    ).toBeVisible();
+    await expect(page.getByTestId("project-engagement-readonly")).toHaveCount(
+      0,
+    );
+    await expect(kind(page)).toBeDisabled();
+    await expect(supportLevel(page)).toBeDisabled();
+    await expect(calendar(page)).toBeDisabled();
+    await expect(saveButton(page)).toHaveCount(0);
+    await expect(health(page)).toBeEnabled();
+    await choose(page, health(page), "Green");
+    await expect
+      .poll(() => requests.find((r) => r.method === "PATCH")?.body)
+      .toEqual({ health: "green" });
+    expect(requests.some((r) => r.method === "PUT")).toBe(false);
+  });
+
+  test("a server 403 on the engagement save reverts the edit and refreshes capabilities", async ({
+    page,
+  }) => {
+    const { requests } = await mockApi(page, {
+      putStatus: 403,
+      putMessage: "Insufficient permissions",
+    });
+    await open(page);
+    await choose(page, supportLevel(page), "L2");
+    await saveButton(page).click();
+    await expect(
+      page.getByText("You do not have permission to change this."),
+    ).toBeVisible();
+    await expect(supportLevel(page)).toContainText("None");
+    await expect(saveButton(page)).toBeDisabled();
+    expect(
+      requests.filter((r) => r.path === "/api/capabilities").length,
+    ).toBeGreaterThan(1);
   });
 
   test("a server 403 on health is handled: message shown and the value reverts", async ({

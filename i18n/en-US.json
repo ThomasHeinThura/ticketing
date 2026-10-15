@@ -916,7 +916,8 @@
 					"calendarInvalid": "That service calendar is not available in this workspace.",
 					"notFound": "This project no longer exists or is out of reach.",
 					"generic": "Could not save the change. Try again."
-				}
+				},
+				"manageSettingsRequired": "Changing the kind, support level or service calendar needs permission to manage project settings. You can still set the health."
 			},
 			"importExportTasks": "Import/Export",
 			"importExportTasksDescription": "Import and export tasks."

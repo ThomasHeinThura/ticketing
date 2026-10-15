@@ -61,7 +61,8 @@ function ProjectEngagementSettings({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { canUpdateProjects, isCheckingPermissions } = useWorkspacePermission();
+  const { canUpdateProjects, canManageProjectSettings, isCheckingPermissions } =
+    useWorkspacePermission();
   const {
     data: project,
     isLoading,
@@ -90,7 +91,11 @@ function ProjectEngagementSettings({
   const [healthFailure, setHealthFailure] =
     useState<EngagementSaveFailure | null>(null);
 
-  const canEdit = canUpdateProjects();
+  // Health stays on `project:update`. Kind, support level and service calendar need the strict
+  // `project:manage_settings` as well (PUT /api/project/{id}, #766); the server decides, this
+  // only chooses which controls are offered.
+  const canEditHealth = canUpdateProjects();
+  const canEditEngagement = canEditHealth && canManageProjectSettings();
 
   if (isLoading || (isCheckingPermissions && !project)) {
     return (
@@ -215,7 +220,13 @@ function ProjectEngagementSettings({
     } catch (error) {
       const failure = failureOf(error);
       setSaveFailure(failure);
-      if (failure === "forbidden") void refreshCapabilities();
+      if (failure === "forbidden") {
+        // The capability map was stale: drop the unsaved edit so the controls show what is
+        // saved, and refresh capabilities so they follow what the server allows now.
+        setDraft(null);
+        setShowErrors(false);
+        void refreshCapabilities();
+      }
     }
   };
 
@@ -259,10 +270,20 @@ function ProjectEngagementSettings({
         </p>
       </div>
 
-      {!canEdit && (
+      {!canEditHealth && (
         <Alert variant="info" data-testid="project-engagement-readonly">
           <AlertDescription>
             {t("settings:projectGeneral.engagement.readOnly")}
+          </AlertDescription>
+        </Alert>
+      )}
+      {canEditHealth && !canEditEngagement && (
+        <Alert
+          variant="info"
+          data-testid="project-engagement-settings-readonly"
+        >
+          <AlertDescription>
+            {t("settings:projectGeneral.engagement.manageSettingsRequired")}
           </AlertDescription>
         </Alert>
       )}
@@ -278,7 +299,7 @@ function ProjectEngagementSettings({
           <Select
             items={kindItems}
             value={values.kind}
-            disabled={!canEdit || isSaving}
+            disabled={!canEditEngagement || isSaving}
             onValueChange={setKind}
           >
             <SelectTrigger id="project-engagement-kind" className="w-full">
@@ -304,7 +325,7 @@ function ProjectEngagementSettings({
           <Select
             items={healthItems}
             value={health}
-            disabled={!canEdit || pendingHealth !== null}
+            disabled={!canEditHealth || pendingHealth !== null}
             onValueChange={handleHealth}
           >
             <SelectTrigger id="project-engagement-health" className="w-full">
@@ -339,7 +360,7 @@ function ProjectEngagementSettings({
           <Select
             items={supportItems}
             value={values.supportLevel ?? NONE}
-            disabled={!canEdit || isSaving}
+            disabled={!canEditEngagement || isSaving}
             onValueChange={(value) =>
               setDraft({
                 ...values,
@@ -388,7 +409,7 @@ function ProjectEngagementSettings({
           <Select
             items={calendarItems}
             value={values.serviceCalendarId ?? NONE}
-            disabled={!canEdit || isSaving || calendarsLoading}
+            disabled={!canEditEngagement || isSaving || calendarsLoading}
             onValueChange={(value) =>
               setDraft({
                 ...values,
@@ -456,7 +477,7 @@ function ProjectEngagementSettings({
         </Alert>
       )}
 
-      {canEdit && (
+      {canEditEngagement && (
         <div className="flex items-center gap-2">
           <Button
             type="button"

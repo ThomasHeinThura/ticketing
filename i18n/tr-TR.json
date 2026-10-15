@@ -756,7 +756,8 @@
 				"supportLevel": "Support level",
 				"supportLevelRequired": "A managed service needs a support level.",
 				"title": "Engagement and service",
-				"unset": "Not set"
+				"unset": "Not set",
+				"manageSettingsRequired": "Changing the kind, support level or service calendar needs permission to manage project settings. You can still set the health."
 			}
 		},
 		"projectIntegrations": {
