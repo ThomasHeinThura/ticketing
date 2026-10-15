@@ -16,7 +16,7 @@ function useGetProject<TSelected = ProjectData>(
   return useQuery({
     queryFn: () => getProject({ id, workspaceId }),
     queryKey: ["projects", workspaceId, id],
-    enabled: !!id,
+    enabled: !!id && !!workspaceId,
     select,
   });
 }
