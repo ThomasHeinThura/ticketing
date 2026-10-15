@@ -11,7 +11,6 @@ import {
 } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import db from "../../database";
-import { isLockNotAvailable } from "../../utils/is-lock-not-available";
 import {
   membershipGrantTable,
   membershipTable,
@@ -30,6 +29,7 @@ import {
   requestAccountDeletionRetry,
 } from "../../pending-action/credential-invalidation";
 import { revokeProjectCreatorGrantsForMember } from "../../project/project-creator-grant";
+import { isLockNotAvailable } from "../../utils/is-lock-not-available";
 import {
   deleteWorkspaceRoleDependents,
   workspaceDependentPredicates,
