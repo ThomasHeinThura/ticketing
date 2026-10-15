@@ -266,3 +266,25 @@ test("creating a connection is disabled-by-default, staff-only and bound to the 
   });
   expect(fixture.mutations[0]?.body).toEqual(challenge.request);
 });
+
+test("a session without the instance-admin signal never sees the create form or reads identity data", async ({
+  page,
+}) => {
+  const fixture = newIdentityFixture();
+  fixture.sessionRole = "user";
+  await installIdentityAdminFixture(page, fixture);
+  for (const path of [LIST, `${LIST}/new`, `${LIST}/conn-staff`]) {
+    await page.goto(path);
+    await expect(page.getByText("Access denied")).toBeVisible();
+    await expect(page.getByLabel("Connection name")).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Add Entra connection" }),
+    ).toHaveCount(0);
+  }
+  expect(
+    fixture.requests.filter((request) =>
+      request.includes("/api/instance/identity-connections"),
+    ),
+  ).toEqual([]);
+  await expectNoSeriousAxeViolations(page);
+});

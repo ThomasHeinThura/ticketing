@@ -11,12 +11,14 @@ import {
   TabsTab,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
 import { IdentityConnectionEditor } from "@/components/god-mode/identity-connection-editor";
 import { IdentityConnectionEvents } from "@/components/god-mode/identity-connection-events";
 import { ScimPanel } from "@/components/god-mode/scim-panel";
 import PageTitle from "@/components/page-title";
 import { identityAdminFailureKind } from "@/fetchers/god-mode/identity-admin-error";
 import { useIdentityConnections } from "@/hooks/queries/god-mode/use-identity-connections";
+import { useInstanceAdminSignal } from "@/hooks/use-instance-admin-signal";
 import {
   type IdentityConnectionEditorSearch,
   type IdentityConnectionTab,
@@ -49,11 +51,25 @@ function IdentityConnectionEditorRoute() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const creating = id === "new";
-  const connections = useIdentityConnections(!creating);
+  const isAdmin = useInstanceAdminSignal();
+  const connections = useIdentityConnections(!creating && isAdmin);
 
   const tab: IdentityConnectionTab = search.tab ?? "connection";
   const go = (next: IdentityConnectionEditorSearch, replace = false) =>
     void navigate({ search: () => next, replace });
+
+  if (!isAdmin)
+    return (
+      <>
+        <PageTitle title={t("detail.title")} />
+        <main className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+          <div>
+            <BackLink />
+          </div>
+          <IdentityAccessDenied />
+        </main>
+      </>
+    );
 
   if (creating) {
     return (

@@ -97,6 +97,15 @@ export function IdentityConnectionEditor({
     step.clearFailure();
   }
 
+  /**
+   * The client secret must not outlive the request: drop it from the mutation's retained
+   * variables and from the input as soon as the write settles, whether it succeeded or not.
+   */
+  function forgetClientSecret(resetMutation: () => void) {
+    resetMutation();
+    setDraft({ clientSecret: "" });
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaved(null);
@@ -112,6 +121,7 @@ export function IdentityConnectionEditor({
         { operation: "identity_connection_create", request: built.body },
         (token) => mutations.create.mutateAsync({ body: built.body, token }),
       );
+      forgetClientSecret(mutations.create.reset);
       if (result.ok) onCreated?.(result.value.id);
       return;
     }
@@ -139,6 +149,7 @@ export function IdentityConnectionEditor({
           token,
         }),
     );
+    forgetClientSecret(mutations.configure.reset);
     if (result.ok) {
       server.reset();
       setSaved(result.value.configVersion);

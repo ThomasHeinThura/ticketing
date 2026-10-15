@@ -282,4 +282,113 @@ describe("IdentityConnectionEditor (create)", () => {
     await screen.findByText("Enter the tenant ID as a UUID.");
     expect(mocks.prove).not.toHaveBeenCalled();
   });
+
+  it("forgets a typed client secret from the input and the mutation cache once the write settles, on success", async () => {
+    const SECRET = "typed-secret-placeholder";
+    const { client } = renderWithQuery(
+      <IdentityConnectionEditor
+        connection={staffConnection}
+        onReload={vi.fn()}
+      />,
+    );
+    fireEvent.change(
+      screen.getByLabelText("Replace client secret (optional)"),
+      {
+        target: { value: SECRET },
+      },
+    );
+    enterPassword();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Identity connection saved");
+    expect(
+      screen.getByLabelText("Replace client secret (optional)"),
+    ).toHaveValue("");
+    expect(
+      JSON.stringify(
+        client
+          .getMutationCache()
+          .getAll()
+          .map((mutation) => mutation.state),
+      ),
+    ).not.toContain(SECRET);
+  });
+
+  it("forgets a typed client secret on failure too, and the user must re-enter it", async () => {
+    const SECRET = "typed-secret-placeholder";
+    mocks.configure.mockRejectedValue(
+      new IdentityAdminError(503, "x", "", null),
+    );
+    const { client } = renderWithQuery(
+      <IdentityConnectionEditor
+        connection={staffConnection}
+        onReload={vi.fn()}
+      />,
+    );
+    fireEvent.change(
+      screen.getByLabelText("Replace client secret (optional)"),
+      {
+        target: { value: SECRET },
+      },
+    );
+    enterPassword();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText(/temporarily unavailable/u);
+    expect(
+      screen.getByLabelText("Replace client secret (optional)"),
+    ).toHaveValue("");
+    expect(
+      JSON.stringify(
+        client
+          .getMutationCache()
+          .getAll()
+          .map((mutation) => mutation.state),
+      ),
+    ).not.toContain(SECRET);
+  });
+
+  it("forgets the client secret after create settles", async () => {
+    const SECRET = "typed-secret-placeholder";
+    mocks.create.mockResolvedValue({ ...staffConnection, id: "new-id" });
+    const { client } = renderWithQuery(
+      <IdentityConnectionEditor
+        connection={null}
+        onCreated={vi.fn()}
+        onReload={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Connection name"), {
+      target: { value: "Staff" },
+    });
+    fireEvent.change(screen.getByLabelText("Entra tenant ID"), {
+      target: { value: "11111111-1111-4111-8111-111111111111" },
+    });
+    fireEvent.change(screen.getByLabelText("Application (client) ID"), {
+      target: { value: "22222222-2222-4222-8222-222222222222" },
+    });
+    fireEvent.change(screen.getByLabelText("Client secret"), {
+      target: { value: SECRET },
+    });
+    fireEvent.change(screen.getByLabelText("Required Entra app role"), {
+      target: { value: "TaskDesk.User" },
+    });
+    fireEvent.change(screen.getByLabelText("Maximum role rank"), {
+      target: { value: "10" },
+    });
+    enterPassword();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create disabled connection" }),
+    );
+    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByLabelText("Client secret")).toHaveValue(""),
+    );
+    expect(
+      JSON.stringify(
+        client
+          .getMutationCache()
+          .getAll()
+          .map((mutation) => mutation.state),
+      ),
+    ).not.toContain(SECRET);
+  });
 });

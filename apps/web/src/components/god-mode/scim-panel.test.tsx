@@ -319,20 +319,30 @@ describe("SCIM bearer token", () => {
     await screen.findByText(/rejected as invalid, unchanged/u);
   });
 
-  it("never stores the bearer in the mutation cache", async () => {
+  it("never lets the bearer reach any cache, the URL, history state or web storage", async () => {
     const { client } = await renderPanel();
     await enterCode();
     fireEvent.click(
       screen.getByRole("button", { name: "Issue or rotate token" }),
     );
     await screen.findByDisplayValue(BEARER);
-    const cached = JSON.stringify(
-      client
+    const everywhere = JSON.stringify({
+      mutations: client
         .getMutationCache()
         .getAll()
         .map((mutation) => mutation.state),
-    );
-    expect(cached).not.toContain(BEARER);
+      queries: client
+        .getQueryCache()
+        .getAll()
+        .map((query) => ({ key: query.queryKey, state: query.state })),
+      url: window.location.href,
+      history: window.history.state,
+      local: { ...window.localStorage },
+      session: { ...window.sessionStorage },
+    });
+    expect(everywhere).not.toContain(BEARER);
+    // The bearer is still on screen, so the scan above is meaningful.
+    expect(screen.getByDisplayValue(BEARER)).toBeInTheDocument();
   });
 });
 

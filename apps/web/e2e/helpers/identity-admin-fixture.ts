@@ -137,6 +137,8 @@ export type IdentityAdminFixture = {
   eventPages: IdentityEvent[][];
   /** Failure injection. */
   listStatus: number;
+  /** Better Auth user role: the client-side instance-admin signal. */
+  sessionRole: string;
   stepUpChallengeStatus: number;
   /** When set, the next mutation answers with this status/body (then clears). */
   nextMutation: { status: number; body: unknown; text?: boolean } | null;
@@ -217,6 +219,7 @@ export function newIdentityFixture(): IdentityAdminFixture {
       ],
     ],
     listStatus: 200,
+    sessionRole: "admin",
     stepUpChallengeStatus: 200,
     nextMutation: null,
     tokenPresent: false,
@@ -269,7 +272,11 @@ export async function installIdentityAdminFixture(
     const text = (body: string, status: number) =>
       route.fulfill({ status, contentType: "text/plain", body });
 
-    if (path === "/api/auth/get-session") return json(session);
+    if (path === "/api/auth/get-session")
+      return json({
+        ...session,
+        user: { ...session.user, role: fixture.sessionRole },
+      });
     if (path === "/api/config")
       return json({
         disableRegistration: false,

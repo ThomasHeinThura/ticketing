@@ -5,6 +5,7 @@ import { renderWithQuery, staffConnection } from "@/test/identity-test-harness";
 import { Route } from "./authentication";
 
 const mocks = vi.hoisted(() => ({
+  admin: true,
   list: vi.fn(),
   pathname: "/agent/god-mode/authentication",
 }));
@@ -30,6 +31,9 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
 }));
+vi.mock("@/hooks/use-instance-admin-signal", () => ({
+  useInstanceAdminSignal: () => mocks.admin,
+}));
 vi.mock("react-i18next", async () => {
   const { translate } = await import("@/test/en-translation");
   return {
@@ -52,6 +56,7 @@ const Component = (
 ).options.component;
 
 beforeEach(() => {
+  mocks.admin = true;
   mocks.pathname = "/agent/god-mode/authentication";
   mocks.list.mockResolvedValue([
     staffConnection,
@@ -145,5 +150,16 @@ describe("Authentication providers list", () => {
     expect(
       screen.queryByRole("heading", { name: "Authentication providers" }),
     ).toBeNull();
+  });
+
+  it("never reads or renders anything for a session without the instance-admin signal", async () => {
+    mocks.admin = false;
+    renderWithQuery(<Component />);
+    expect(await screen.findByText("Access denied")).toBeInTheDocument();
+    expect(mocks.list).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("link", { name: "Add Entra connection" }),
+    ).toBeNull();
+    expect(screen.queryByText("Staff Entra")).toBeNull();
   });
 });

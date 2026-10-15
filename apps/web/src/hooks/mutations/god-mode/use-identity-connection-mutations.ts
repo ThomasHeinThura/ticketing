@@ -48,6 +48,7 @@ export function useIdentityConnectionMutations(connectionId: string) {
   });
   const updateScim = useMutation({
     mutationFn: patchScimAdmin,
+    gcTime: 0,
     onSuccess: async (settings: ScimAdminSettings) => {
       cacheScim(settings);
       await refreshConnections();
@@ -76,6 +77,7 @@ export function useIdentityConnectionMutations(connectionId: string) {
   });
   const revokeToken = useMutation({
     mutationFn: revokeScimBearer,
+    gcTime: 0,
     onSuccess: async () => {
       await Promise.all([refreshConnections(), refreshScim()]);
     },

@@ -5,6 +5,7 @@ import { renderWithQuery, staffConnection } from "@/test/identity-test-harness";
 import { Route } from "./$id";
 
 const mocks = vi.hoisted(() => ({
+  admin: true,
   list: vi.fn(),
   navigate: vi.fn(),
   params: { id: "conn-1" },
@@ -33,6 +34,9 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
 }));
+vi.mock("@/hooks/use-instance-admin-signal", () => ({
+  useInstanceAdminSignal: () => mocks.admin,
+}));
 vi.mock("react-i18next", async () => {
   const { translate } = await import("@/test/en-translation");
   return {
@@ -60,6 +64,7 @@ const Component = (
 ).options.component;
 
 beforeEach(() => {
+  mocks.admin = true;
   mocks.params = { id: "conn-1" };
   mocks.search = {};
   mocks.list.mockResolvedValue([staffConnection]);
@@ -152,6 +157,26 @@ describe("Provider editor route", () => {
       screen.getByRole("button", { name: "Create disabled connection" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("tab")).toBeNull();
+    expect(mocks.list).not.toHaveBeenCalled();
+  });
+
+  it("does not show the create form or read anything before the server could deny a non-administrator", async () => {
+    mocks.admin = false;
+    mocks.params = { id: "new" };
+    renderWithQuery(<Component />);
+    expect(await screen.findByText("Access denied")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Connection name")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Create disabled connection" }),
+    ).toBeNull();
+    expect(mocks.list).not.toHaveBeenCalled();
+  });
+
+  it("does not show an existing connection to a non-administrator either", async () => {
+    mocks.admin = false;
+    renderWithQuery(<Component />);
+    expect(await screen.findByText("Access denied")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Connection name")).toBeNull();
     expect(mocks.list).not.toHaveBeenCalled();
   });
 });

@@ -19,9 +19,11 @@ import {
   Skeleton,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
 import PageTitle from "@/components/page-title";
 import { identityAdminFailureKind } from "@/fetchers/god-mode/identity-admin-error";
 import { useIdentityConnections } from "@/hooks/queries/god-mode/use-identity-connections";
+import { useInstanceAdminSignal } from "@/hooks/use-instance-admin-signal";
 import { routes } from "@/lib/routes";
 
 export const Route = createFileRoute(
@@ -31,10 +33,22 @@ export const Route = createFileRoute(
 function IdentityConnectionsRoute() {
   const { t } = useTranslation("identityConnections");
   const location = useLocation();
-  const connections = useIdentityConnections();
+  const isAdmin = useInstanceAdminSignal();
+  const connections = useIdentityConnections(isAdmin);
 
   if (location.pathname.startsWith(`${routes.identityConnections.path}/`))
     return <Outlet />;
+
+  if (!isAdmin)
+    return (
+      <>
+        <PageTitle title={t("list.title")} />
+        <main className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+          <h1 className="text-2xl font-semibold">{t("list.title")}</h1>
+          <IdentityAccessDenied />
+        </main>
+      </>
+    );
 
   const kind = connections.isError
     ? identityAdminFailureKind(connections.error)

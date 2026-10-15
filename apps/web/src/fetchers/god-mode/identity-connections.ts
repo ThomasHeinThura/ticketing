@@ -135,7 +135,7 @@ export type ScimAdminSettings = {
   configVersion: number;
 };
 
-/** The five closed PATCH variants of `PATCH /instance/identity-connections/{id}/scim`. */
+/** The four closed PATCH variants of `PATCH /instance/identity-connections/{id}/scim`. */
 export type ScimAdminRequest =
   | {
       configVersion: number;
