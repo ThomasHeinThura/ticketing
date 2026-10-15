@@ -73,6 +73,10 @@ describe("API integration: API-key identity carries its stored capability scope 
       null,
       { project: "read" },
       { project: [1] },
+      // Valid and malformed together: nothing is granted, not even the valid part.
+      { project: ["read"], work_item: [1] },
+      { work_item: [1], project: ["read"] },
+      { project: ["read"], work_item: "read" },
       { project: [["read"]] },
       {},
       { work_item: ["read"] },
@@ -146,5 +150,33 @@ describe("API integration: API-key identity carries its stored capability scope 
       }),
     });
     expect((await getProject(app, world.project.id)).status).toBe(200);
+  });
+
+  it("a null or mixed-malformed scope is refused on a second project-reach route too (not only GET /api/project/{id})", async () => {
+    const { world, app } = await arrange();
+    mockAnonymousSession();
+    for (const permissions of [null, { project: ["read"], work_item: [1] }]) {
+      setAmbientHeaders({
+        "x-api-key": await makeApiKey(world.projectMember.user.id, permissions),
+      });
+      const response = await json(
+        app,
+        "GET",
+        `/api/project/${world.project.id}/milestones`,
+      );
+      expect(response.status, JSON.stringify(permissions)).toBe(403);
+    }
+    // Control: a valid scope reads the same route.
+    setAmbientHeaders({
+      "x-api-key": await makeApiKey(world.projectMember.user.id, {
+        project: ["read"],
+      }),
+    });
+    const ok = await json(
+      app,
+      "GET",
+      `/api/project/${world.project.id}/milestones`,
+    );
+    expect(ok.status, await ok.text()).toBe(200);
   });
 });
