@@ -1,5 +1,3 @@
-## Delivery integration checkpoint — 2026-10-12 04:17:41 UTC
-
 ## Codex takeover checkpoint — 2026-10-15
 
 Thomas designated Codex `/root` as replacement conductor in two direct takeover instructions after the Claude quota interruption. The existing #589 continuation, accepted scope, owner holds and alpha.4 recovery material remain. No new phase or roadmap work is authorized. Both retained Codex automations remain PAUSED; no automatic continuation mechanism is asserted verified. The active session owns the queue.
@@ -27,6 +25,8 @@ Thomas designated Codex `/root` as replacement conductor in two direct takeover 
 
 **Next:** verify S1, complete its bounded repair/reviews, publish authentic carrier reviews with per-commit review-record accounting, obtain all final-head checks and image/runtime/browser evidence, then protected expected-head merge if eligible. Advance the remaining selected-unit queue afterwards. No gate is waived and no phase completion is claimed.
 
+
+## Delivery integration checkpoint — 2026-10-12 04:17:41 UTC
 
 **P0–P7 / acceptance boundary:** P0 remains accepted within #624/#628 and #626's exact deferrals. No later phase completion, consolidated artifact publication, laptop SIT acceptance/recovery, final audit or handover completion is claimed. Thomas's “FINISH EXISTING DELIVERY, DO NOT RESTART” addendum retains the existing mission, conductor, queue, workers and sole continuation. Its original attachment remains preserved; the private `finish-existing-delivery-addendum-receipt.json` records its path and SHA-256. Priorities are real Comments/D9, Users, approved customer intake, auth correction and remaining unique #609/#512 journeys; existing holds and predecessor conservation remain.
 
