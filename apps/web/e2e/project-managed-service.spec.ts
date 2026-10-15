@@ -227,13 +227,6 @@ async function mockApi(page: Page, options: Options = {}) {
   return { requests, details };
 }
 
-async function shot(page: Page, name: string) {
-  const dir = process.env.ENGAGEMENT_SCREENSHOT_DIR;
-  if (!dir) return;
-  await page.getByTestId("project-engagement").scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `${dir}/${name}.png` });
-}
-
 const open = async (page: Page) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`/dashboard/settings/projects/${projectId}/general`);
@@ -271,7 +264,6 @@ test.describe("project engagement controls (PR-9)", () => {
     await expect(kind(page)).toContainText("Project");
     await expect(health(page)).toContainText("Not set");
     await expect(saveButton(page)).toBeDisabled();
-    await shot(page, "01-populated-project");
 
     // Complete managed-service configuration saves with all three fields.
     await choose(page, kind(page), "Managed service");
@@ -304,7 +296,6 @@ test.describe("project engagement controls (PR-9)", () => {
         ),
       )
       .toBe(true);
-    await shot(page, "02-populated-managed-service");
 
     // Reload: every field comes back from the (mock) server.
     await page.reload();
@@ -363,7 +354,6 @@ test.describe("project engagement controls (PR-9)", () => {
     await expect(
       page.getByText("A managed service needs a service calendar."),
     ).toBeVisible();
-    await shot(page, "03-validation-error");
     expect(requests.some((r) => r.method === "PUT")).toBe(false);
 
     // Fixing one field leaves only the other named.
@@ -418,7 +408,6 @@ test.describe("project engagement controls (PR-9)", () => {
     await expect(health(page)).toBeDisabled();
     await expect(saveButton(page)).toHaveCount(0);
     await expect(health(page)).toContainText("Red");
-    await shot(page, "04-read-only");
     expect(
       requests.some((r) => r.method === "PUT" || r.method === "PATCH"),
     ).toBe(false);
