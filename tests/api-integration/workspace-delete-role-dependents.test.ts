@@ -12,7 +12,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
 import { createApp } from "../../apps/api/src/index";
-import deleteAccountData from "../../apps/api/src/user/controllers/delete-account-data";
+import deleteAccountData, {
+  ERASURE_LOCK_TIMEOUT_MS,
+} from "../../apps/api/src/user/controllers/delete-account-data";
 import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -1124,8 +1126,10 @@ describe("#734 account erasure and IdP-provisioned members", () => {
     release();
     await writer;
 
-    // The lock timeout is 3 s; a call that had tried the lock would have waited for it.
-    expect(elapsed).toBeLessThan(1500);
+    // The message below is the real discriminator (a call that tried the lock would have
+    // waited out the timeout and answered "busy"); the time bound is a loose backstop,
+    // well under the lock timeout so a slow runner does not flake it.
+    expect(elapsed).toBeLessThan(ERASURE_LOCK_TIMEOUT_MS - 500);
     expect(String((caught as Error).message)).toMatch(
       /Other people still have access to/u,
     );

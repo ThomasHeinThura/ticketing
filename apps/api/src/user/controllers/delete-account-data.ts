@@ -195,7 +195,7 @@ async function workspacesWithOtherAccess(
 }
 
 /** Longest this request waits for the identity-table write lock below. */
-const ERASURE_LOCK_TIMEOUT = "3s";
+export const ERASURE_LOCK_TIMEOUT_MS = 3000;
 const ERASURE_LOCK_BUSY_MESSAGE =
   "Your account cannot be deleted right now because the system is busy updating access. Nothing was deleted; try again in a moment.";
 
@@ -284,8 +284,11 @@ async function deleteAccountDataInTransaction(
     // The wait is bounded: one slow writer must not queue every later writer on these tables
     // behind this request. On timeout (55P03) nothing has been deleted and the transaction
     // rolls back; the caller gets the same 409 mechanism as the other refusals here.
+    const priorLockTimeout = (
+      await tx.execute(sql`SELECT current_setting('lock_timeout') AS value`)
+    ).rows[0]?.value;
     await tx.execute(
-      sql`SELECT set_config('lock_timeout', ${ERASURE_LOCK_TIMEOUT}, true)`,
+      sql`SELECT set_config('lock_timeout', ${`${ERASURE_LOCK_TIMEOUT_MS}ms`}, true)`,
     );
     try {
       await tx.execute(
@@ -299,8 +302,10 @@ async function deleteAccountDataInTransaction(
       }
       throw error;
     }
-    // The bound is for acquiring this lock only; later statements keep the session default.
-    await tx.execute(sql`SELECT set_config('lock_timeout', '0', true)`);
+    // The bound is for acquiring this lock only; later statements get the prior setting back.
+    await tx.execute(
+      sql`SELECT set_config('lock_timeout', ${String(priorLockTimeout ?? "0")}, true)`,
+    );
   }
   // Re-run under the lock (a no-op repeat when no workspace is being deleted).
   if (plan.workspaceIdsToDelete.length > 0) await refuseIfOthersHaveAccess();
