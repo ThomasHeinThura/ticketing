@@ -12,6 +12,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
 import { createApp } from "../../apps/api/src/index";
+import createProject from "../../apps/api/src/project/controllers/create-project";
+import { lockProjectCreation } from "../../apps/api/src/project/project-creation-lock";
 import deleteAccountData, {
   ERASURE_LOCK_TIMEOUT_MS,
 } from "../../apps/api/src/user/controllers/delete-account-data";
@@ -969,52 +971,91 @@ describe("#734 account erasure and IdP-provisioned members", () => {
       .set({ side: "customer", organisationId: organisation.id })
       .where(eq(schema.personTable.id, customerPersonId));
 
+    const creatorWithoutPerson = `unprovisioned-${randomUUID()}`;
+    expect(
+      await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, creatorWithoutPerson)),
+    ).toHaveLength(0);
+
     let release: () => void = () => {};
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    let inserted: () => void = () => {};
-    const insertedSignal = new Promise<void>((resolve) => {
-      inserted = resolve;
+    let acquired: () => void = () => {};
+    const acquiredSignal = new Promise<void>((resolve) => {
+      acquired = resolve;
     });
-    // This follows createProjectRow's ordering: take namespace 1524, then check the
-    // active customer organisation, then insert. `createdBy` stays NULL because the
-    // supported creator has no staff person row.
-    const creatorWithoutPerson = `unprovisioned-${randomUUID()}`;
-    const writer = db.transaction(async (tx) => {
-      await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(1524, hashtext(${owner.workspace.id}))`,
-      );
-      const [activeOrganisation] = await tx
-        .select({ id: schema.organisationTable.id })
-        .from(schema.organisationTable)
-        .where(eq(schema.organisationTable.id, organisation.id))
-        .for("share");
-      expect(activeOrganisation).toBeDefined();
-      await tx.insert(schema.projectTable).values({
-        workspaceId: owner.workspace.id,
-        organisationId: organisation.id,
-        name: "Raced customer project",
-        icon: "Folder",
-        slug: `raced-${randomUUID()}`,
-        createdBy: null,
-      });
-      expect(
-        await tx
-          .select({ id: schema.personTable.id })
-          .from(schema.personTable)
-          .where(eq(schema.personTable.userId, creatorWithoutPerson)),
-      ).toHaveLength(0);
-      inserted();
+    const blocker = db.transaction(async (tx) => {
+      await lockProjectCreation(tx, owner.workspace.id);
+      acquired();
       await gate;
     });
-    await insertedSignal;
+    await acquiredSignal;
 
-    const erasure = deleteAccountData(owner.user.id);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    release();
-    await writer;
-    await expect(erasure).rejects.toThrow(/Other people still have access to/u);
+    const waitForAdvisoryWaiters = async (expected: number) => {
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline) {
+        const result = await db.execute(sql`
+          SELECT count(*)::int AS count
+          FROM pg_locks
+          WHERE locktype = 'advisory'
+            AND NOT granted
+            AND classid = 1524::oid
+            AND objid = hashtext(${owner.workspace.id})::oid
+            AND objsubid = 2
+        `);
+        const count = Number(result.rows[0]?.count ?? 0);
+        if (count >= expected) return;
+      }
+      throw new Error(
+        `Timed out waiting for ${expected} advisory-lock waiter(s)`,
+      );
+    };
+
+    // Exercise the real createProjectRow path and its optional creator-person lookup. The
+    // blocker makes PostgreSQL expose its queued advisory request before erasure is started.
+    const projectCreation = createProject(
+      owner.workspace.id,
+      "Raced customer project",
+      "Folder",
+      `raced-${randomUUID()}`,
+      {
+        kind: "project",
+        supportLevel: null,
+        serviceCalendarId: null,
+        organisationId: organisation.id,
+      },
+      creatorWithoutPerson,
+    ).then(
+      (value) => ({ status: "fulfilled" as const, value }),
+      (reason: unknown) => ({ status: "rejected" as const, reason }),
+    );
+    let erasure:
+      | Promise<
+          | { status: "fulfilled"; value: unknown }
+          | { status: "rejected"; reason: unknown }
+        >
+      | undefined;
+    try {
+      await waitForAdvisoryWaiters(1);
+      erasure = deleteAccountData(owner.user.id).then(
+        (value) => ({ status: "fulfilled" as const, value }),
+        (reason: unknown) => ({ status: "rejected" as const, reason }),
+      );
+      await waitForAdvisoryWaiters(2);
+    } finally {
+      release();
+      await blocker;
+    }
+    const projectResult = await projectCreation;
+    expect(projectResult.status).toBe("fulfilled");
+    const erasureResult = await erasure;
+    expect(erasureResult?.status).toBe("rejected");
+    expect(
+      String(erasureResult?.status === "rejected" ? erasureResult.reason : ""),
+    ).toMatch(/Other people still have access to/u);
     expect(
       await db
         .select({ id: schema.workspaceTable.id })
