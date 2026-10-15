@@ -248,4 +248,60 @@ describe("work-item filter text AST contract", () => {
     );
     expect(() => parseWorkItemFilterText("due:>3651d")).toThrow("dueDate");
   });
+
+  it("prints and re-parses every comparison operator exactly, including at-or-below", () => {
+    for (const op of ["lt", "lte", "gt", "gte"] as const) {
+      const priority: WorkItemFilter = { field: "priority", op, value: "high" };
+      const due: WorkItemFilter = { field: "dueDate", op, value: "7d" };
+      const created: WorkItemFilter = {
+        field: "createdAt",
+        op,
+        value: "2026-01-01",
+      };
+      for (const leaf of [priority, due, created])
+        expect(parseWorkItemFilterText(printWorkItemFilterText(leaf))).toEqual(
+          leaf,
+        );
+    }
+    expect(
+      printWorkItemFilterText({ field: "priority", op: "lte", value: "high" }),
+    ).toBe("priority:<=high");
+    expect(
+      printWorkItemFilterText({ field: "priority", op: "lt", value: "high" }),
+    ).toBe("priority:<high");
+  });
+
+  it("quotes a value that is a boolean keyword so it can never read as a group operator", () => {
+    for (const value of ["AND", "OR", "and", "Or"]) {
+      const leaf: WorkItemFilter = { field: "project", op: "eq", value };
+      const text = printWorkItemFilterText(leaf);
+      expect(text).toBe(`project:${JSON.stringify(value)}`);
+      expect(parseWorkItemFilterText(text)).toEqual(leaf);
+    }
+    const inGroup: WorkItemFilter = {
+      op: "or",
+      clauses: [
+        { field: "project", op: "eq", value: "AND" },
+        { field: "type", op: "eq", value: "OR" },
+      ],
+    };
+    expect(parseWorkItemFilterText(printWorkItemFilterText(inGroup))).toEqual(
+      inGroup,
+    );
+  });
+
+  it("rejects extra contains() arguments instead of discarding them (the server takes one @me)", () => {
+    expect(() => parseWorkItemFilterText("watcher:contains(@me,@me)")).toThrow(
+      "one value",
+    );
+    expect(() =>
+      parseWorkItemFilterText("watcher:contains(@me,other)"),
+    ).toThrow("one value");
+    expect(() => parseWorkItemFilterText("watcher:contains()")).toThrow();
+    expect(parseWorkItemFilterText("watcher:contains(@me)")).toEqual({
+      field: "watcher",
+      op: "contains",
+      value: "@me",
+    });
+  });
 });

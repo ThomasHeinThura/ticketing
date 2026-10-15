@@ -547,3 +547,60 @@ describe("WorkItemList", () => {
     expect(screen.queryByText("workItems:list.emptyTitle")).toBeNull();
   });
 });
+
+describe("WorkItemList: more pages of a filtered result", () => {
+  it("offers Load more only when the search has more pages, and calls it", () => {
+    const onLoadMore = vi.fn();
+    const { rerender } = renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        isFiltered
+        hasMore
+        onLoadMore={onLoadMore}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-list-load-more"));
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <WorkItemList
+        {...baseProps}
+        isFiltered
+        hasMore
+        isLoadingMore
+        onLoadMore={onLoadMore}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    expect(screen.getByTestId("work-item-list-load-more")).toBeDisabled();
+  });
+
+  it("shows nothing extra when there is no further page or no way to load one", () => {
+    const { rerender } = renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        hasMore={false}
+        onLoadMore={vi.fn()}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    expect(screen.queryByTestId("work-item-list-load-more")).toBeNull();
+    rerender(
+      <WorkItemList
+        {...baseProps}
+        hasMore
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    expect(screen.queryByTestId("work-item-list-load-more")).toBeNull();
+  });
+});

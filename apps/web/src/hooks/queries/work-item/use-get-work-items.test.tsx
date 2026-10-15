@@ -226,11 +226,12 @@ describe("useGetWorkItems: structured filter (SV-11)", () => {
       },
     );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(
-      queryClient
-        .getQueryCache()
-        .findAll({ queryKey: ["work-items", "proj-a"] }),
-    ).toHaveLength(1);
+    // The unused list read is only registered, never fetched; the search read is fetched.
+    const fetched = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ["work-items", "proj-a"] })
+      .filter((query) => query.state.dataUpdateCount > 0);
+    expect(fetched).toHaveLength(1);
     mocks.searchWorkItems.mockClear();
     await queryClient.invalidateQueries({ queryKey: ["work-items", "proj-a"] });
     expect(mocks.searchWorkItems).toHaveBeenCalledTimes(1);
@@ -258,5 +259,65 @@ describe("useGetWorkItems: structured filter (SV-11)", () => {
     rerender({ projectId: "proj-b" });
     expect(result.current.isLoading).toBe(true);
     expect(result.current.data).toBeUndefined();
+  });
+});
+
+describe("useGetWorkItems: a filter matching more than one page", () => {
+  beforeEach(() => {
+    mocks.searchWorkItems.mockReset();
+  });
+
+  const pageOf = (
+    ids: string[],
+    hasMore: boolean,
+    nextCursor: string | null,
+  ) => ({
+    items: ids.map((id) => ({ id })),
+    hasPartialFailure: false,
+    hasMore,
+    nextCursor,
+  });
+
+  it("offers the next page, follows the server's cursor, and shows every page loaded", async () => {
+    mocks.searchWorkItems
+      .mockResolvedValueOnce(pageOf(["a1", "a2"], true, "cursor-1"))
+      .mockResolvedValueOnce(pageOf(["a3"], false, null));
+    const { result } = renderHook(
+      () =>
+        useGetWorkItems({
+          projectId: "proj-a",
+          projectSlug: "OPS",
+          workspaceId: "ws-1",
+          filter: "priority:high",
+          sort: "key",
+          dir: "asc",
+        }),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
+    expect(result.current.hasNextPage).toBe(true);
+    expect(result.current.data?.hasMore).toBe(true);
+    expect(mocks.searchWorkItems.mock.calls[0]?.[0].cursor).toBeUndefined();
+
+    await result.current.fetchNextPage();
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(3));
+    expect(mocks.searchWorkItems.mock.calls[1]?.[0].cursor).toBe("cursor-1");
+    expect(result.current.data?.items.map((item) => item.id)).toEqual([
+      "a1",
+      "a2",
+      "a3",
+    ]);
+    expect(result.current.hasNextPage).toBe(false);
+    expect(result.current.data?.hasMore).toBe(false);
+  });
+
+  it("never offers a next page for the unfiltered list read", async () => {
+    mocks.getWorkItems.mockResolvedValue(makeResult(["a1"]));
+    const { result } = renderHook(
+      () => useGetWorkItems({ projectId: "proj-a", sort: "key", dir: "asc" }),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.hasNextPage).toBe(false);
   });
 });

@@ -240,8 +240,9 @@ test("a recognized but unavailable field shows the server's 422 beside the filte
   await page.getByRole("button", { name: "Apply filter" }).click();
   await expect(page).toHaveURL(/filter=label%3Aurgent/u);
   await expect(page.getByTestId("work-item-list-error")).toBeVisible();
+  // The server's own wording and field name stay out of the UI.
   await expect(page.getByTestId("work-item-search-error")).toHaveText(
-    "422: Filter field unavailable: label",
+    "A field in this filter isn't available yet.",
   );
 });
 
@@ -303,3 +304,52 @@ for (const mode of ["visual", "text"] as const) {
     expect(await seriousOrCriticalViolations(page)).toEqual([]);
   });
 }
+
+test("a filter matching more than one page loads the rest on demand", async ({
+  page,
+}) => {
+  await installPerformanceApiFixture(page);
+  const requests = await mockSearch(page, (request) => {
+    const second = (request as { cursor?: string }).cursor === "cursor-1";
+    return {
+      body: JSON.stringify({
+        data: second ? [row(3, "high")] : [row(1, "high"), row(2, "high")],
+        page: second
+          ? { hasMore: false, nextCursor: null }
+          : { hasMore: true, nextCursor: "cursor-1" },
+        meta: { total: 3 },
+      }),
+    };
+  });
+  await page.goto(`${WORK_LIST_PATH}&filter=priority%3Ahigh`);
+  const rows = page.locator("[data-testid=work-item-list-populated] tbody tr");
+  await expect(rows).toHaveCount(2);
+  await page.getByTestId("work-item-list-load-more").click();
+  await expect(rows).toHaveCount(3);
+  await expect(page.getByTestId("work-item-list-load-more")).toHaveCount(0);
+  expect((requests.at(-1) as { cursor?: string }).cursor).toBe("cursor-1");
+});
+
+test("the filter toggle is a disclosure: focus enters the editor and returns on close", async ({
+  page,
+}) => {
+  await installPerformanceApiFixture(page);
+  await mockSearch(page);
+  await page.goto(WORK_LIST_PATH);
+  const toggle = page.getByRole("button", { name: "Filter" });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(toggle).not.toHaveAttribute("aria-pressed", /.*/u);
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("button", { name: "Visual" })).toBeFocused();
+  await page.getByRole("button", { name: "Text" }).click();
+  await page
+    .getByRole("textbox", { name: "Filter work items" })
+    .press("Escape");
+  await expect(
+    page.getByRole("form", { name: "Work item filters" }),
+  ).toHaveCount(0);
+  await expect(toggle).toBeFocused();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+});

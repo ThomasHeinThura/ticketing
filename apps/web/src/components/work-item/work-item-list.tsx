@@ -68,6 +68,10 @@ export type WorkItemListProps = {
   columns?: WorkItemSearchColumn[];
   /** A structured filter is applied, so an empty result means "no match", not "no items". */
   isFiltered?: boolean;
+  /** More matching pages exist (structured search only); the list offers to load them. */
+  hasMore?: boolean;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
   /** Keys currently selected for a bulk action (`VW-3`). */
   selectedKeys?: string[];
   onSelectionChange?: (key: string, checked: boolean) => void;
@@ -204,6 +208,9 @@ function WorkItemList({
   onRetry,
   columns = DEFAULT_COLUMNS,
   isFiltered = false,
+  hasMore = false,
+  onLoadMore,
+  isLoadingMore = false,
   selectedKeys = [],
   onSelectionChange = () => {},
   onSelectAll = () => {},
@@ -575,6 +582,21 @@ function WorkItemList({
           })}
         </TableBody>
       </Table>
+      {hasMore && onLoadMore ? (
+        <div className="flex justify-center bg-background">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isLoadingMore}
+            onClick={onLoadMore}
+            data-testid="work-item-list-load-more"
+          >
+            {isLoadingMore
+              ? t("workItems:list.loadingMore")
+              : t("workItems:list.loadMore")}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

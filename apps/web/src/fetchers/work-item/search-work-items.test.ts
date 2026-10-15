@@ -163,3 +163,40 @@ describe("structured work-item search fetcher", () => {
     });
   });
 });
+
+describe("structured work-item search pagination", () => {
+  it("sends the cursor of the previous page beside the workspace, and carries the next one back", async () => {
+    mocks.post.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [],
+        page: { hasMore: true, nextCursor: "next-2" },
+      }),
+    });
+    const result = await searchWorkItems({
+      workspaceId: "ws_1",
+      projectSlug: "OPS",
+      filter: "assignee:@me",
+      sort: "key",
+      dir: "asc",
+      cursor: "cursor-1",
+    });
+    expect(mocks.post.mock.calls[0]?.[0].json).toMatchObject({
+      workspaceId: "ws_1",
+      cursor: "cursor-1",
+    });
+    expect(result).toMatchObject({ hasMore: true, nextCursor: "next-2" });
+  });
+
+  it("sends no cursor for the first page", async () => {
+    mocks.post.mockResolvedValue(emptyPage);
+    await searchWorkItems({
+      workspaceId: "ws_1",
+      projectSlug: "OPS",
+      filter: "assignee:@me",
+      sort: "key",
+      dir: "asc",
+    });
+    expect(mocks.post.mock.calls[0]?.[0].json).not.toHaveProperty("cursor");
+  });
+});

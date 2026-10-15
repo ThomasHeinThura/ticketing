@@ -44,6 +44,9 @@ type WorkItemsPanelProps = {
   onRetry: () => void;
   columns?: WorkItemSearchColumn[];
   isFiltered?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
   selectedKeys?: string[];
   canBulkAssign?: boolean;
   onSelectionChange?: (key: string, checked: boolean) => void;
@@ -64,6 +67,9 @@ function WorkItemsPanel({
   onRetry,
   columns,
   isFiltered,
+  hasMore,
+  onLoadMore,
+  isLoadingMore,
   selectedKeys,
   canBulkAssign,
   onSelectionChange,
@@ -194,6 +200,9 @@ function WorkItemsPanel({
           onRetry={onRetry}
           columns={columns}
           isFiltered={isFiltered}
+          hasMore={hasMore}
+          onLoadMore={onLoadMore}
+          isLoadingMore={isLoadingMore}
           selectedKeys={selectedKeys}
           canBulkAssign={canBulkAssign}
           onSelectionChange={onSelectionChange}

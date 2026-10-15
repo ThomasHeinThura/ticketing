@@ -139,6 +139,8 @@ export default async function searchWorkItems(input: {
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
   columns?: WorkItemSearchColumn[];
+  /** The `page.nextCursor` of the previous page; bound by the server to this exact query. */
+  cursor?: string;
 }): Promise<StructuredWorkItemsResult> {
   const filter = parseFilterTextOrThrow(input.filter);
   const projectFilter = {
@@ -153,5 +155,6 @@ export default async function searchWorkItems(input: {
       : projectFilter,
     sort: toSearchSort(input.sort, input.dir),
     columns: input.columns,
+    cursor: input.cursor,
   });
 }

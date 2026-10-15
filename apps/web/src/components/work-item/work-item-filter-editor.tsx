@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@taskdesk/ui";
 import { Plus, Trash2 } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
 import type { WorkItemFilterMode } from "@/lib/routes";
@@ -492,6 +492,10 @@ type WorkItemFilterEditorProps = {
   fallbackSurface?: "background" | "card";
   /** The server's refusal of the applied filter (`status: message`), shown beside it. */
   apiError?: string;
+  /** Focus the editor's first control on mount. */
+  autoFocus?: boolean;
+  /** Escape closes the editor (a disclosure), except inside a select popup. */
+  onClose?: () => void;
   onModeChange: (mode: WorkItemFilterMode) => void;
   onApply: (filter: string) => void;
 };
@@ -501,10 +505,19 @@ export default function WorkItemFilterEditor({
   mode,
   fallbackSurface = "background",
   apiError,
+  autoFocus = false,
+  onClose,
   onModeChange,
   onApply,
 }: WorkItemFilterEditorProps) {
   const { t } = useTranslation();
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (autoFocus)
+      formRef.current
+        ?.querySelector<HTMLElement>("button, input, [role=combobox]")
+        ?.focus();
+  }, [autoFocus]);
   const [textDraft, setTextDraft] = useState(filter);
   const [visualDraft, setVisualDraft] = useState<WorkItemFilter | undefined>();
   const [textError, setTextError] = useState<string>();
@@ -592,9 +605,21 @@ export default function WorkItemFilterEditor({
 
   return (
     <form
+      ref={formRef}
       className="grid gap-3"
       aria-label={t("workItems:filter.formLabel")}
       onSubmit={handleApply}
+      onKeyDown={(event) => {
+        // A select popup uses Escape to close itself, and its events bubble through React.
+        if (
+          event.key === "Escape" &&
+          !event.defaultPrevented &&
+          !(event.target as Element).closest(
+            '[role="listbox"], [role="option"], [aria-expanded="true"]',
+          )
+        )
+          onClose?.();
+      }}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <fieldset
