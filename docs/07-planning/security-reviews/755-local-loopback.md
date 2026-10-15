@@ -10,9 +10,11 @@ The conductor (Claude Opus 5.5) implemented the change. The reviewers below are 
 - Ordinary review B by Claude Sonnet 5.5: REQUEST CHANGES at `6cc3eebe` (stale "publishes 5173" text), fixed at `f17561fd`; APPROVE at `f17561fd` and `049aa62f`.
 - Security review by Claude Opus 5.5: CLEAR at `e8739ff8` (head moved from `f17561fd` by formatting only). Non-blocking notes: the test reads only the two named overlays; the Postgres docs wording and the production-message hedge were corrected in `049aa62f`; the SIT reachability record was corrected for LAN 80/443 (accepted, then closed, with no response).
 - Security rebind by Claude Opus 5.5: CLEAR at `049aa62f`; the delta is docs and message text only.
+- Mechanical security rebind by Claude Opus 5.5: CLEAR at `144b01bb`, a clean merge of `main` `8ed5fef2` (#756, docs only); merge-tree equality checked, and the loopback test passes 6/6.
 
 **Reviewed head:** `e8739ff8cff052050e3b81ed083df53eb46cb9ac`
 **Reviewed head:** `049aa62fc1d83f928e83c53c62e7dbf285bb5468`
+**Reviewed head:** `144b01bb8bf9afaec82907181bdccc1b46f1477e`
 
 ## Context index
 
@@ -22,7 +24,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `755-ordinary-a-sonnet.md` | Ordinary review A (main..049aa62f) | Claude Sonnet 5.5 | `049aa62f` | APPROVE | `eaf8d3815ea6a5a97da5557ff4190d5e1dbabf3e1efe4dd9c1f4807d02aad323` |
 | 2 | `755-ordinary-b-sonnet.md` | Ordinary review B (main..049aa62f) | Claude Sonnet 5.5 | `049aa62f` | APPROVE | `afc7f874be0c48dd039c4daa4727046517ce7be8bd846455ab42ff101a996948` |
-| 3 | `755-security-opus.md` | Security review and rebind (main..049aa62f) | Claude Opus 5.5 | `049aa62f` | CLEAR | `3bf5d8e0ecd408115335ae08ba6e6941a2afd0e4682c68c044b61026a34a04cf` |
+| 3 | `755-security-opus.md` | Security review and rebind (main..049aa62f) | Claude Opus 5.5 | `049aa62f` | CLEAR | `659c76adc8cdbd897b94b0171314a600294dcab27428d810a675b023ab8e46af` |
 
 ## Embedded reports
 
@@ -158,7 +160,7 @@ Runtime not exercised (no `docker compose config` render or live stack); judged 
 **Verdict:** APPROVE
 <!-- END REPORT (sha256 afc7f874be0c48dd039c4daa4727046517ce7be8bd846455ab42ff101a996948) -->
 
-<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/755-security-opus.md; Claude Opus 5.5; sha256 3bf5d8e0ecd408115335ae08ba6e6941a2afd0e4682c68c044b61026a34a04cf) -->
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/755-security-opus.md; Claude Opus 5.5; sha256 659c76adc8cdbd897b94b0171314a600294dcab27428d810a675b023ab8e46af) -->
 # #755 security review (Opus 5.5) — local stack listens on loopback only (#752)
 
 **Reviewed head:** e8739ff8cff052050e3b81ed083df53eb46cb9ac
@@ -311,4 +313,27 @@ None.
 - Compose files and the regression test are unchanged since `e8739ff8`, so the analysis above still holds.
 
 **Verdict:** CLEAR
-<!-- END REPORT (sha256 3bf5d8e0ecd408115335ae08ba6e6941a2afd0e4682c68c044b61026a34a04cf) -->
+
+---
+
+## Rebind — merge of main `8ed5fef2` (Opus 5.5, mechanical)
+
+**Reviewed head:** 144b01bb8bf9afaec82907181bdccc1b46f1477e
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), same independent review context as above
+
+**Comparison base:** `b96dd7ed1f8038a3d372549ea826ce8436e6999f`. That is my CLEAR head `049aa62f` plus one commit, which adds only `docs/07-planning/security-reviews/755-local-loopback.md`.
+
+| Check | Result |
+| --- | --- |
+| live head (`gh pr view 755`) | `144b01bb8bf9afaec82907181bdccc1b46f1477e` |
+| parents of `144b01bb` | `b96dd7ed1f8038a3d372549ea826ce8436e6999f`, `8ed5fef24f2e43aa09ac721e3c6faedda9c45030` |
+| `git diff --stat 049aa62f b96dd7ed` | 1 file: `docs/07-planning/security-reviews/755-local-loopback.md` (+314) |
+| `git merge-tree --write-tree b96dd7ed 8ed5fef2` | `c98da662b1a35f5672438d60166e317a78fc933e`, equal to the tree of `144b01bb`, so the merge was clean with no hand edits |
+| `git diff --stat b96dd7ed 144b01bb` | 5 docs files only: `docs/05-operations/environments.md` (+6), `docs/07-planning/{active-mission,decision-log,integration-execution-queue,pr-disposition-ledger}.md` |
+| code/config paths changed since `049aa62f` (`compose.yml deploy scripts .github apps packages`) | none |
+| `node --test scripts/ci/local-overlay-loopback.test.mjs` @144b01bb | 6 tests, 6 pass, 0 fail, exit 0 |
+
+**Interaction:** none. The `environments.md` addition describes the laptop SIT as loopback-only, served on Traefik HTTPS 443, which is consistent with this PR. No compose file, deploy script or test changed.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 659c76adc8cdbd897b94b0171314a600294dcab27428d810a675b023ab8e46af) -->
