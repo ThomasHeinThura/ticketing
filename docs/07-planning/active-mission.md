@@ -64,6 +64,15 @@ covered. See
 reported. The conductor then sets every remaining queue item to a waiting or terminal state
 and stops. It does not start new roadmap work.
 
+**Continuation — 2026-10-15** (decision log 2026-10-15, "Continue the remaining #589
+integration after alpha.4"): v2.0.0-alpha.4 is a completed checkpoint, not the stop condition.
+In scope now: #580 (M1), #713 (M2), #714 (M3), #715 (M4), #716 (M6) and #718 (M9), #752's
+loopback hardening and #754's ledger correction, then one combined signed prerelease deployed
+to laptop SIT at `https://ticketing.localhost` and `https://portal.localhost` (HTTPS 443,
+loopback only), its recovery and workflow proof, and a fresh independent audit. #589 closes
+only when every selected unit is integrated and verified, proven equivalent, or deferred by
+Thomas. The stop condition above then applies to this continuation.
+
 **Formal stage closure:** an accepted integrated slice is not P0–P7 completion. Stage closure
 keeps its own [stage gate](../04-engineering/definition-of-done.md#stage-completion) and is not
 automatic under this mission.
