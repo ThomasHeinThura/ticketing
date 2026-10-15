@@ -57,7 +57,7 @@ describe("IQ-16a: withdrawal paths", () => {
     expect(reply.status).toBe(409);
   });
 
-  it("refuses withdrawal after a claim, after a staff message, and after an accept attempt", async () => {
+  it("refuses withdrawal after a claim, after a staff message, and after a successful accept", async () => {
     const s = await seedIntake("wd-refused");
     const claimed = await submitAs(s, s.customer, "Claimed");
     const messaged = await submitAs(s, s.customer, "Messaged");
@@ -77,17 +77,15 @@ describe("IQ-16a: withdrawal paths", () => {
       { method: "POST", body: { body: "Which browser?" } },
     );
     expect(message.status).toBe(200);
-    // An accept attempt that fails destination validation still counts as triage action.
+    // #743: only an accept that commits counts as triage action; a failed attempt is rolled
+    // back with its claim (see "accept refusals and rollback").
     const attempt = await staffRequest(
       s.t,
       s.t.requester,
       `/api/submissions/${attempted}/accept`,
-      {
-        method: "POST",
-        body: { projectId: "no-such-project", workItemTypeId: s.t.type.id },
-      },
+      accept(s),
     );
-    expect(attempt.status).toBe(422);
+    expect(attempt.status, await attempt.clone().text()).toBe(200);
 
     for (const ref of [claimed, messaged, attempted]) {
       const withdraw = await portalRequest(
@@ -496,6 +494,74 @@ describe("accept refusals and rollback", () => {
       .map((row) => row.number)
       .sort((a, b) => a - b);
     expect(numbers).toEqual([1, 2]);
+  });
+
+  it("#743: a missing destination leaves no claim, audit or outbox row, so another triager can accept", async () => {
+    const s = await seedIntake("accept-release-missing");
+    const ref = await submitAs(s, s.customer);
+    const auditBefore = (await db.select().from(schema.auditLogTable)).length;
+    const outboxBefore = (await db.select().from(schema.outboxTable)).length;
+    const failed = await staffRequest(
+      s.t,
+      s.t.requester,
+      `/api/submissions/${ref}/accept`,
+      {
+        method: "POST",
+        body: { projectId: "no-such-project", workItemTypeId: s.t.type.id },
+      },
+    );
+    expect(failed.status, await failed.clone().text()).toBe(422);
+    const row = await submissionRow(ref);
+    expect(row.claimedBy).toBeNull();
+    expect(row.claimedAt).toBeNull();
+    expect(row.state).toBe("new");
+    expect((await db.select().from(schema.auditLogTable)).length).toBe(
+      auditBefore,
+    );
+    expect((await db.select().from(schema.outboxTable)).length).toBe(
+      outboxBefore,
+    );
+    // A different triager is not blocked by the failed attempt.
+    mockSessionsByHeader([{ user: s.t.approver.user }]);
+    const other = await staffAs(
+      s.t,
+      s.t.approver.user,
+      `/api/submissions/${ref}/accept`,
+      {
+        method: "POST",
+        body: { projectId: s.t.project.id, workItemTypeId: s.t.type.id },
+      },
+    );
+    expect(other.status, await other.clone().text()).toBe(200);
+    const accepted = await submissionRow(ref);
+    expect(accepted.state).toBe("accepted");
+    expect(accepted.claimedBy).not.toBeNull();
+  });
+
+  it("#743: a successful accept still records the claim, the claimed and accepted audit rows and the outbox event", async () => {
+    const s = await seedIntake("accept-release-success");
+    const ref = await submitAs(s, s.customer);
+    const response = await staffRequest(
+      s.t,
+      s.t.requester,
+      `/api/submissions/${ref}/accept`,
+      accept(s),
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const row = await submissionRow(ref);
+    expect(row.state).toBe("accepted");
+    expect(row.claimedBy).not.toBeNull();
+    expect(row.claimedAt).not.toBeNull();
+    const actions = (await db.select().from(schema.auditLogTable)).map(
+      (entry) => entry.action,
+    );
+    expect(actions).toContain("submission.claimed");
+    expect(actions).toContain("submission.accepted");
+    expect(
+      (await db.select().from(schema.outboxTable)).filter(
+        (event) => event.kind === "submission.accepted",
+      ),
+    ).toHaveLength(1);
   });
 
   it("two different triagers accepting concurrently create one work item; the loser gets 409", async () => {

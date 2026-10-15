@@ -138,10 +138,12 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
   `submission.claimed_by`/`claimed_at` ([data-model.md](../01-architecture/data-model.md))
   are set the moment any of the three triggering actions happens — an explicit
   `POST /api/submissions/{ref}/claim` (see API below), the first `POST .../messages`, or a
-  `POST .../accept` attempt — whichever happens first, all under a conditional write
+  `POST .../accept` — whichever happens first, all under a conditional write
   (`WHERE claimed_by IS NULL`) so a race between a claim and a customer withdrawal is
   resolved the same way as the accept race in the edge cases below: whichever commits
-  first wins. `POST .../withdraw` is refused with `409` once `claimed_by` is set.
+  first wins. The accept claim is taken in the same transaction as conversion, so an
+  accept that fails (for example a missing or unreachable destination project) rolls the
+  claim back and leaves the submission unclaimed (owner decision, issue #743). `POST .../withdraw` is refused with `409` once `claimed_by` is set.
 - `IQ-17` Merging as duplicate links the submission to an existing work item and adds the
   customer as a watcher on it, so they still get updates.
 - `IQ-18` Duplicate suggestions are offered by trigram similarity
