@@ -116,25 +116,46 @@ export async function transitionWorkItem(c: Context) {
 }
 ```
 
-**Repositories own queries.** `db.select()` outside `*/repository.ts` is a lint error, so
-an unscoped query cannot creep into a controller.
+**Repositories own queries.** Controllers, middleware and services never build a query, so an
+unscoped query cannot creep into a controller. The rule, its exact locations and its
+conventions are under [Query ownership](#query-ownership-issue-580) below; the gate that
+enforces it is `check:queries` (issue #580).
 
 ### Query ownership (issue #580)
 
-- **Where queries may live.** Drizzle/SQL statements are written only in `**/repository.ts`,
-  `**/repository/**`, and the persistence layer `apps/api/src/database/**` (schema, migration
-  runner, role bootstrap). Controllers, middleware, services, routes and scheduler code call
-  repository functions. Startup SQL outside `database/` (for example `utils/migrate-*`) moves
-  into `database/` or a repository. This is a structural rule; there is no per-site allowlist
-  or baseline.
+- **Where queries may live.** Drizzle/SQL statements are written only in these places, and
+  the final `check:queries` enumerates them exactly, with no wildcard over `database/`, no
+  per-site allowlist and no baseline:
+  1. repository modules, recognised by their own name: `**/repository.ts`,
+     `**/*.repository.ts` and `**/repository/**` (this includes feature repositories that
+     happen to sit under `database/`, for example
+     `apps/api/src/database/repositories/notification-delivery.repository.ts`);
+  2. the persistence infrastructure, an explicit list of files under `apps/api/src/database/`:
+     `schema.ts`, `relations.ts`, `index.ts`, `executor.ts`, `resolve-database-url.ts`,
+     `wait-for-database.ts`, `prepare-database-startup.ts`, `migration-schema.ts`,
+     `migrate-membership-provenance.ts`, `ensure-application-role.ts`,
+     `assert-application-role-is-not-privileged.ts`,
+     `assert-no-migration-url-in-api-process.ts`, `append-only-tables.ts` and
+     `scram-sha-256.ts`.
+  A new file under `database/` is not allowed to query until it is either named as a
+  repository or added to that list in a reviewed change. Controllers, middleware, services,
+  routes and scheduler code call repository functions. Startup SQL outside `database/` (for
+  example `utils/migrate-*`) moves into the list above or into a repository.
 - **Transactions.** A service may open `db.transaction(...)` as orchestration. Every statement
   inside it goes through a repository function that accepts the handle. Opening a transaction is
   not query construction; running a statement outside a repository is.
-- **Executor.** Repository functions that can join a transaction take
-  `executor: Executor` (`apps/api/src/database/executor.ts`: the shared connection or a
-  transaction handle) as their first parameter. `executorOrDefault(executor)` resolves an
-  optional handle to the shared connection. A repository never opens, commits or rolls back a
-  transaction it was handed.
+- **Executor.** `Executor` (`apps/api/src/database/executor.ts`) is the shared connection or a
+  transaction handle. A repository function that always runs inside a caller's transaction takes
+  `executor: Executor` as its first parameter. A function that is callable both inside and
+  outside a transaction takes `executor?: Executor` as its last parameter and resolves it with
+  `executorOrDefault(executor)`. A function that never joins a transaction may use the shared
+  connection directly. A repository never opens, commits or rolls back a transaction it was
+  handed.
+- **Tenant scoping.** `multi-tenancy.md` and `monorepo-layout.md` describe `forIdentity(identity)`
+  scoped queries. The convention is that repository functions take the tenant explicitly
+  (`workspaceId`, and `projectId` or `organisationId` where the statement needs it) and put it in
+  the statement's predicate. This satisfies `forIdentity`; it is a convention, not a wrapper
+  type, and no new wrapper is introduced by this rule.
 - **Results.** Repository functions await their statement and return rows, DTOs or scalars,
   never an un-awaited query builder, so a caller cannot keep composing the statement.
 - **Raw SQL and fragments.** Raw `execute`/`sql` statements follow the same rule. SQL fragment
