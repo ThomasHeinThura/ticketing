@@ -886,7 +886,42 @@
 				"iconRequired": "L'icona è obbligatoria"
 			},
 			"importExportTasks": "Importa/Esporta",
-			"importExportTasksDescription": "Importa ed esporta attività."
+			"importExportTasksDescription": "Importa ed esporta attività.",
+			"engagement": {
+				"amber": "Amber",
+				"calendarRequired": "A managed service needs a service calendar.",
+				"calendarsError": "Could not load service calendars.",
+				"calendarUnlisted": "Saved calendar (not in the loaded list)",
+				"description": "Set the project kind, health, support level, and service calendar.",
+				"discard": "Discard changes",
+				"failure": {
+					"calendarInvalid": "That service calendar is not available in this workspace.",
+					"forbidden": "You do not have permission to change this. Ask a workspace admin for the project update permission.",
+					"generic": "Could not save the change. Try again.",
+					"managedServiceIncomplete": "A managed service needs both a support level and a service calendar.",
+					"notFound": "This project no longer exists or is out of reach."
+				},
+				"green": "Green",
+				"health": "Health",
+				"kind": "Project kind",
+				"loadError": "Could not load the engagement settings.",
+				"managedService": "Managed service",
+				"noCalendars": "No service calendars exist in this workspace yet.",
+				"none": "None",
+				"project": "Project",
+				"readOnly": "You can view these settings but need the project update permission to change them.",
+				"red": "Red",
+				"retry": "Retry",
+				"save": "Save engagement settings",
+				"saved": "Engagement settings saved.",
+				"saving": "Saving…",
+				"serviceCalendar": "Service calendar",
+				"supportLevel": "Support level",
+				"supportLevelRequired": "A managed service needs a support level.",
+				"title": "Engagement and service",
+				"unset": "Not set",
+				"manageSettingsRequired": "Changing the kind, support level or service calendar needs permission to manage project settings. You can still set the health."
+			}
 		},
 		"projectIntegrations": {
 			"pageTitle": "Integrazioni Progetto",
