@@ -1,7 +1,5 @@
-import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
 import {
@@ -14,6 +12,7 @@ import {
   validateDateRange,
 } from "../../utils/validate-dates";
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { findColumnBySlug, updateTaskRow } from "../repository";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 export class TaskVersionConflictError extends Error {
@@ -80,29 +79,19 @@ async function updateTask(
           tx,
         );
       }
-      const column = await tx.query.columnTable.findFirst({
-        where: and(
-          eq(columnTable.projectId, projectId),
-          eq(columnTable.slug, status),
-        ),
+      const column = await findColumnBySlug(tx, projectId, status);
+      const updatedTask = await updateTaskRow(tx, id, {
+        title,
+        status,
+        columnId: column?.id ?? null,
+        startDate: parsedStartDate || null,
+        dueDate: parsedDueDate || null,
+        projectId,
+        description,
+        priority,
+        position,
+        userId: normalizedUserId ?? null,
       });
-      const [updatedTask] = await tx
-        .update(taskTable)
-        .set({
-          title,
-          status,
-          columnId: column?.id ?? null,
-          startDate: parsedStartDate || null,
-          dueDate: parsedDueDate || null,
-          projectId,
-          description,
-          priority,
-          position,
-          userId: normalizedUserId ?? null,
-          version: sql`${taskTable.version} + 1`,
-        })
-        .where(eq(taskTable.id, id))
-        .returning();
       return { existingTask: lockedTask, updatedTask };
     },
   );

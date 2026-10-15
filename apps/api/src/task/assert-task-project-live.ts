@@ -1,10 +1,9 @@
-import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import type db from "../database";
-import { projectTable, taskTable } from "../database/schema";
+import type { Executor } from "../database/executor";
 import { assertProjectStillLive } from "../work-item/assert-work-item-live";
+import { lockLiveProjectRow, lockTaskRow } from "./repository";
 
-type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbOrTx = Executor;
 
 /**
  * Legacy task writes lock the task first so a concurrent move cannot change which
@@ -23,12 +22,7 @@ export async function lockLegacyTaskRow(tx: DbOrTx, taskId: string) {
 }
 
 export async function lockLegacyTaskRowIfPresent(tx: DbOrTx, taskId: string) {
-  const [task] = await tx
-    .select()
-    .from(taskTable)
-    .where(eq(taskTable.id, taskId))
-    .for("update");
-  return task;
+  return await lockTaskRow(tx, taskId);
 }
 
 export async function lockTaskAndAssertProjectLive(tx: DbOrTx, taskId: string) {
@@ -70,17 +64,7 @@ export async function lockProjectAndAssertLiveForTaskNumber(
   projectId: string,
   projectNotFoundMessage = "Task not found",
 ) {
-  const [project] = await tx
-    .select({ id: projectTable.id })
-    .from(projectTable)
-    .where(
-      and(
-        eq(projectTable.id, projectId),
-        isNull(projectTable.deletedAt),
-        isNull(projectTable.archivedAt),
-      ),
-    )
-    .for("update");
+  const project = await lockLiveProjectRow(tx, projectId);
 
   if (!project) {
     throw new HTTPException(404, { message: projectNotFoundMessage });

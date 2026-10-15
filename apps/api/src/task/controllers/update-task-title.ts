@@ -1,9 +1,8 @@
-import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskActivityTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { insertTaskActivity, updateTaskRow } from "../repository";
 
 async function updateTaskTitle({
   id,
@@ -19,11 +18,7 @@ async function updateTaskTitle({
     if (existingTask.title === title) {
       return { existingTask, updatedTask: existingTask };
     }
-    const [task] = await tx
-      .update(taskTable)
-      .set({ title, version: sql`${taskTable.version} + 1` })
-      .where(eq(taskTable.id, id))
-      .returning();
+    const task = await updateTaskRow(tx, id, { title });
 
     if (!task) {
       throw new HTTPException(500, {
@@ -31,7 +26,7 @@ async function updateTaskTitle({
       });
     }
 
-    await tx.insert(taskActivityTable).values({
+    await insertTaskActivity(tx, {
       taskId: task.id,
       type: "title_changed",
       userId: currentUserId,

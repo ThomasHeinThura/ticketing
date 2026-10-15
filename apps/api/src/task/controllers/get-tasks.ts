@@ -1,26 +1,14 @@
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  gte,
-  inArray,
-  isNull,
-  lte,
-  type SQL,
-  sql,
-} from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import {
-  columnTable,
-  externalLinkTable,
-  labelTable,
-  projectTable,
-  taskTable,
-  userTable,
-} from "../../database/schema";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import {
+  countProjectTasks,
+  findLiveProject,
+  listExternalLinksForTasks,
+  listLabelsForTasks,
+  listProjectColumns,
+  listProjectTasks,
+  type TaskListFilters,
+} from "../repository";
 
 type GetTasksOptions = {
   assigneeId?: string;
@@ -40,42 +28,8 @@ type GetTasksOptions = {
   status?: string;
 };
 
-const priorityCaseExpr = sql<number>`CASE
-  WHEN ${taskTable.priority} = 'urgent' THEN 4
-  WHEN ${taskTable.priority} = 'high' THEN 3
-  WHEN ${taskTable.priority} = 'medium' THEN 2
-  WHEN ${taskTable.priority} = 'low' THEN 1
-  ELSE 0
-END`;
-
-function buildOrderBy(
-  sortBy: GetTasksOptions["sortBy"],
-  sortOrder: GetTasksOptions["sortOrder"],
-): SQL {
-  const direction = sortOrder === "desc" ? desc : asc;
-
-  switch (sortBy) {
-    case "createdAt":
-      return direction(taskTable.createdAt);
-    case "priority":
-      return direction(priorityCaseExpr);
-    case "dueDate":
-      return direction(taskTable.dueDate);
-    case "title":
-      return direction(taskTable.title);
-    case "number":
-      return direction(taskTable.number);
-    default:
-      return direction(taskTable.position);
-  }
-}
-
 async function getTasks(projectId: string, options: GetTasksOptions = {}) {
-  const project = await db.query.projectTable.findFirst({
-    // #187: a soft-deleted project is treated as gone everywhere in ordinary use,
-    // matching `get-project.ts`'s convention.
-    where: and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)),
-  });
+  const project = await findLiveProject(projectId);
 
   if (!project) {
     throw new HTTPException(404, {
@@ -83,104 +37,45 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     });
   }
 
-  const conditions = [eq(taskTable.projectId, projectId)];
-
-  if (options.status) {
-    conditions.push(eq(taskTable.status, options.status));
-  }
-
-  if (options.priority) {
-    conditions.push(eq(taskTable.priority, options.priority));
-  }
+  const filters: TaskListFilters = {
+    status: options.status,
+    priority: options.priority,
+    assigneeId: options.assigneeId,
+    dueBefore: options.dueBefore,
+    dueAfter: options.dueAfter,
+  };
 
   if (options.assigneeId) {
     // S5 (Opus review of PR #307, delta round): reaches the `eq(taskTable.userId,
     // ...)` filter below unvalidated -- a NUL byte would otherwise 500 instead of
     // a clean 400.
     rejectNulByte(options.assigneeId, "assigneeId");
-    conditions.push(eq(taskTable.userId, options.assigneeId));
   }
 
-  if (options.dueBefore) {
-    conditions.push(lte(taskTable.dueDate, new Date(options.dueBefore)));
-  }
-
-  if (options.dueAfter) {
-    conditions.push(gte(taskTable.dueDate, new Date(options.dueAfter)));
-  }
-
-  const whereClause = and(...conditions);
   const usePagination = options.page != null || options.limit != null;
   const page = options.page && options.page > 0 ? options.page : 1;
   const pageSize =
     options.limit && options.limit > 0 ? Math.min(options.limit, 100) : 50;
   const offset = (page - 1) * pageSize;
 
-  const orderByClause = buildOrderBy(
-    options.sortBy ?? "position",
-    options.sortOrder ?? "asc",
-  );
-
-  const [taskCount] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(taskTable)
-    .where(whereClause);
+  const taskCount = await countProjectTasks(projectId, filters);
 
   const total = Number(taskCount?.count ?? 0);
 
-  const taskSelection = {
-    id: taskTable.id,
-    title: taskTable.title,
-    number: taskTable.number,
-    description: taskTable.description,
-    status: taskTable.status,
-    priority: taskTable.priority,
-    startDate: taskTable.startDate,
-    dueDate: taskTable.dueDate,
-    position: taskTable.position,
-    createdAt: taskTable.createdAt,
-    version: taskTable.version,
-    userId: taskTable.userId,
-    assigneeName: userTable.name,
-    assigneeId: userTable.id,
-    assigneeImage: userTable.image,
-    projectId: taskTable.projectId,
-  };
-
-  const query = db
-    .select(taskSelection)
-    .from(taskTable)
-    .leftJoin(userTable, eq(taskTable.userId, userTable.id))
-    .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(whereClause)
-    .orderBy(orderByClause);
-
-  const paginatedTasks = usePagination
-    ? await query.limit(pageSize).offset(offset)
-    : await query;
+  const paginatedTasks = await listProjectTasks(
+    projectId,
+    filters,
+    { sortBy: options.sortBy, sortOrder: options.sortOrder },
+    usePagination ? { limit: pageSize, offset } : undefined,
+  );
 
   const taskIds = paginatedTasks.map((task) => task.id);
 
   const labelsData =
-    taskIds.length > 0
-      ? await db
-          .select({
-            id: labelTable.id,
-            name: labelTable.name,
-            color: labelTable.color,
-            taskId: labelTable.taskId,
-          })
-          .from(labelTable)
-          .where(inArray(labelTable.taskId, taskIds))
-      : [];
+    taskIds.length > 0 ? await listLabelsForTasks(taskIds) : [];
 
   const externalLinksData =
-    taskIds.length > 0
-      ? await db
-          .select()
-          .from(externalLinkTable)
-          .where(inArray(externalLinkTable.taskId, taskIds))
-      : [];
+    taskIds.length > 0 ? await listExternalLinksForTasks(taskIds) : [];
 
   const taskLabelsMap = new Map<
     string,
@@ -230,11 +125,7 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     });
   }
 
-  const projectColumns = await db
-    .select()
-    .from(columnTable)
-    .where(eq(columnTable.projectId, projectId))
-    .orderBy(asc(columnTable.position));
+  const projectColumns = await listProjectColumns(projectId);
 
   const columns = projectColumns.map((column) => ({
     id: column.slug,
