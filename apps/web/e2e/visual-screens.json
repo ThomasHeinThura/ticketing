@@ -136,5 +136,12 @@
 		"applicationRoute": "/agent/settings/sla-policies/$id",
 		"test": "SLA policy editor screen @visual",
 		"screenshot": "sla-policy-editor.png"
+	},
+	{
+		"name": "work-item-board",
+		"inventoryRoute": "/agent/projects/{key}/work?layout=board",
+		"applicationRoute": "/agent/projects/$projectKey/work",
+		"test": "work-item board screen @visual",
+		"screenshot": "work-item-board.png"
 	}
 ]

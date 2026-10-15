@@ -361,6 +361,33 @@ async function installAuthenticatedFixture(page: Page) {
           category: "service",
         },
       ];
+    } else if (path.endsWith("/api/projects/visual-project/states")) {
+      body = [
+        {
+          id: "visual-backlog",
+          stateTemplateId: "visual-backlog-template",
+          name: "Backlog",
+          group: "backlog",
+          position: 0,
+          isDefault: true,
+        },
+        {
+          id: "visual-state",
+          stateTemplateId: "visual-state-template",
+          name: "In progress",
+          group: "started",
+          position: 1,
+          isDefault: false,
+        },
+        {
+          id: "visual-done",
+          stateTemplateId: "visual-done-template",
+          name: "Done",
+          group: "completed",
+          position: 2,
+          isDefault: false,
+        },
+      ];
     } else if (path.endsWith("/api/projects/visual-project/work-items")) {
       body = {
         data: [workItem],
@@ -883,6 +910,27 @@ test("SLA policy editor screen @visual", async ({ page }) => {
   await expect(page.getByText("Active version 1")).toBeVisible();
   await expect(page.getByText("First response", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("sla-policy-editor.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("work-item board screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/work?layout=board");
+  await expect(
+    page.getByRole("heading", { name: "In progress" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Customer cannot reset their password"),
+  ).toBeVisible();
+  await expect(page.getByTestId("realtime-unavailable")).toBeVisible();
+  await expect(page).toHaveScreenshot("work-item-board.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

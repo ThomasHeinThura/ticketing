@@ -188,6 +188,46 @@ describe("WorkItemBoard layout (VW-8)", () => {
   });
 });
 
+describe("G6 states of the board", () => {
+  it("empty: every column says it is empty when no card exists", () => {
+    board({ workItems: [] });
+    expect(screen.getAllByTestId("work-item-board-column")).toHaveLength(3);
+    expect(screen.getAllByText("No work items in this state.")).toHaveLength(3);
+  });
+
+  it("loading: shows a busy skeleton, no columns", () => {
+    board({ isLoading: true, workItems: undefined });
+    expect(screen.getByTestId("work-item-board-loading")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    expect(screen.queryByTestId("work-item-board")).toBeNull();
+  });
+
+  it("error: shows the error with a working retry instead of the board", () => {
+    const onRetry = vi.fn();
+    board({ isError: true, onRetry });
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("work-item-board")).toBeNull();
+  });
+
+  it("partial: a card whose title or priority failed validation says Unavailable instead of rendering blank or wrong", () => {
+    board({
+      workItems: [
+        item("WLP-1", "s-open", "1", {
+          title: "",
+          priority: null,
+          unavailableFields: ["title", "priority"],
+        }),
+      ],
+    });
+    const partial = card("WLP-1");
+    expect(within(partial).getAllByText("Unavailable")).toHaveLength(2);
+    expect(within(partial).queryByText("No priority")).toBeNull();
+  });
+});
+
 describe("capability gating (no UI-only security, but no controls without the flag)", () => {
   it("renders no rank, state or selection controls and no draggable cards with no capability", () => {
     board();
@@ -609,6 +649,66 @@ describe("failure handling for rank (404, 409, 422, 400, 403)", () => {
     });
     await Promise.resolve();
     expect(screen.getByRole("link", { name: /WLP-5/ })).toHaveFocus();
+  });
+
+  it("a failed Change state leaves no focus target, so a later refetch that moves the card does not steal focus", async () => {
+    const offersFor = [
+      {
+        transitionId: "t1",
+        toStateId: "s-done",
+        toStateTemplateId: "tpl-done",
+        toStateName: "Done",
+        available: true,
+        blockedBy: [],
+      },
+    ];
+    getWorkItemTransitions.mockResolvedValue(offersFor);
+    transitionWorkItem.mockRejectedValue(new HttpError(409, "x"));
+    const view = board({ canTransition: true });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Change state of WLP-1" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("combobox", { name: "New state for WLP-1" }),
+    );
+    pickOption(await screen.findByRole("option", { name: "Done" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Move WLP-1 to the chosen state" }),
+    );
+    await screen.findByTestId("work-item-board-error");
+    const elsewhere = screen.getByRole("link", { name: /WLP-5/ });
+    elsewhere.focus();
+    view.rerender({
+      canTransition: true,
+      workItems: [
+        item("WLP-2", "s-open", "2"),
+        item("WLP-3", "s-open", "3"),
+        item("WLP-1", "s-done", "0"),
+        item("WLP-4", "s-done", "1"),
+        item("WLP-5", "s-done", "2"),
+      ],
+    });
+    await Promise.resolve();
+    expect(screen.getByRole("link", { name: /WLP-5/ })).toHaveFocus();
+  });
+
+  it("a keyboard move that finds no neighbours (a no-op) leaves no focus target either", async () => {
+    // Moving the only card of a column has no neighbours to rank against.
+    const view = board({
+      canRank: true,
+      workItems: [item("WLP-1", "s-open", "1"), item("WLP-4", "s-done", "1")],
+    });
+    expect(
+      screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
+    ).toBeDisabled();
+    const elsewhere = screen.getByRole("link", { name: /WLP-4/ });
+    elsewhere.focus();
+    view.rerender({
+      canRank: true,
+      workItems: [item("WLP-4", "s-done", "1"), item("WLP-1", "s-open", "1")],
+    });
+    await Promise.resolve();
+    expect(screen.getByRole("link", { name: /WLP-4/ })).toHaveFocus();
   });
 
   it("re-enables the controls after a failed move", async () => {
