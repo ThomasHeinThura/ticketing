@@ -20,6 +20,7 @@ import MobileProjectNav from "@/components/common/header/mobile-project-nav";
 import ProjectCrumbSelect from "@/components/common/header/project-crumb-select";
 import WorkspaceCrumbSelect from "@/components/common/header/workspace-crumb-select";
 import Layout from "@/components/common/layout";
+import RealtimeUnavailableNotice from "@/components/common/realtime-unavailable-notice";
 import CreateProjectModal from "@/components/shared/modals/create-project-modal";
 import { shortcuts } from "@/constants/shortcuts";
 import useGetProject from "@/hooks/queries/project/use-get-project";
@@ -57,7 +58,7 @@ export default function ProjectLayout({
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
 
-  useProjectWebSocket(projectId);
+  const { status: socketStatus } = useProjectWebSocket(projectId);
 
   const resolvedView =
     activeView ??
@@ -246,6 +247,7 @@ export default function ProjectLayout({
         </div>
       </Layout.Header>
 
+      <RealtimeUnavailableNotice status={socketStatus} />
       <Layout.Content>{children}</Layout.Content>
 
       <CreateProjectModal

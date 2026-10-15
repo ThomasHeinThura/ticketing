@@ -13,6 +13,30 @@ The realistic integration story is not a bespoke connector per tool. It is: **a 
 webhook out, an authenticated API in**, and let Power Automate, n8n, Zapier or a script do
 the rest.
 
+## Data
+
+Authoritative columns live in [data-model.md](../01-architecture/data-model.md); this section
+only says what exists on `main` and what does not, so nobody builds against a table that is
+not there. Checked against `apps/api/src/database/schema.ts` on 2026-10-15.
+
+| Storage | Designed in data-model.md | On `main` |
+| --- | --- | --- |
+| `webhook` — `workspace_id`, `url`, `secret` (encrypted), `secret_previous`, `secret_rotated_at`, `events text[]`, `active`, `disabled_at`, `disabled_reason`, `created_by` | `webhook` row | **Not present.** No `webhook` table exists in `schema.ts`. Created by the P4 implementation ([#47](https://github.com/ThomasHeinThura/ticketing/issues/47)) |
+| `webhook_delivery` — `webhook_id`, `event_id`, `attempt`, `status_code`, `duration_ms`, `request_body jsonb`, `response_body`, `error`, `attempted_at`; 30-day retention | `webhook_delivery` row and retention table | **Not present.** Same owner, #47 |
+| `outbox` — `event_id`, `kind`, `payload jsonb`, `workspace_id`, `state`, `attempts`, `next_attempt_at`, `last_error` | `outbox` row | **Present** (`outboxTable`). `WH-3` writes here in the change's transaction; the `outbox-drain` fan-out to webhooks is not built |
+| `api_key` extension — `workspace_id`/`person_id` (exactly one), `capabilities jsonb`, `ip_allowlist inet[]`, `rate_limit_per_minute`, `expires_at`, `last_used_at`, `last_used_ip`, `prefix`, `is_mcp`, `disabled_at`, `disabled_reason` | `api_key` row | **Not present.** Only better-auth's own `apikey` table exists (`apikeyTable`): hashed `key`, `prefix`, `start`, `user_id`/`reference_id`, `permissions` (text), `enabled`, `expires_at`, `last_request`, rate-limit columns. It has no workspace/service-key owner, no `capabilities jsonb`, no IP allowlist, no `is_mcp`. The extension is P4 ([#47](https://github.com/ThomasHeinThura/ticketing/issues/47)) |
+
+Not to be confused with the inherited notification-preference columns `webhook_enabled`,
+`webhook_url` and `webhook_secret` in `schema.ts`: those belong to per-user notification
+settings, not to this feature, and the inherited generic-webhook integration is on the fork
+removal list (decision log, 2026-09-05, "Fork-time removal and disable list").
+
+Known gaps between the key rules and the key code on `main` are tracked rather than restated
+here: a correctly scoped key losing its capabilities in `resolveCallerIdentity`
+([#750](https://github.com/ThomasHeinThura/ticketing/issues/750)), and a key's authority
+using the owner's workspace role rather than project role
+([#724](https://github.com/ThomasHeinThura/ticketing/issues/724)).
+
 ## Webhooks out
 
 ### Events
@@ -165,6 +189,15 @@ does with a webhook is build a link back.
   them, rather than off the flag. The flag remains useful for the ceilings, the "Use with an AI
   agent" UX, the untrusted-content warning and the audit trail; it is not relied on to keep
   anyone out. *Decided 2026-09-06 (Claude Code, reversible).*
+
+  **Self-row ownership is not a write opt-in.** Until a per-user resource has an explicitly
+  registered API-key capability and scope, its self-only mutations require a browser session.
+  This includes creating/marking/deleting in-app notifications, changing notification
+  preferences or workspace rules, and uploading/deleting the caller's avatar. Their `self`
+  route policy continues to constrain whose row is touched; it does not grant a key mutation
+  right. Read-only self routes remain available under the key's stored read capability subset.
+  Reopening these writes requires a separate capability and policy decision, not an arbitrary
+  stored permission string. *Approved by Thomas 2026-10-06; see decision log.*
 - `AK-10` **A service key can never be an MCP key** — `CHECK (NOT is_mcp OR person_id IS
   NOT NULL)`. An MCP key is always a personal key owned by a named human (`MC-20`, `MC-21`).
 - `AK-12` **Renaming or removing a capability is a two-phase change, because capability names
@@ -237,6 +270,25 @@ line that is not a policy fails the docs lint rather than being translated at th
 | **Service** key whose creator is deactivated or demoted | Keeps working against its stored subset. Ownership transfers to the workspace administrators, it is flagged for re-attestation, and its next edit or rotation is an elevated admin action (`AK-7`) |
 | Consumer replays an old event | Their responsibility; the timestamp header and event id enable idempotency, and this is documented |
 
+## Out of scope
+
+Only exclusions already recorded elsewhere:
+
+- **The MCP server and its runtime.** Held by owner decision D6 (decision log, 2026-10-10,
+  "Owner integration decisions for the post-P0 consolidation"); tracked by
+  [#48](https://github.com/ThomasHeinThura/ticketing/issues/48) and
+  [#691](https://github.com/ThomasHeinThura/ticketing/issues/691). This spec keeps only the
+  API-key rules the MCP spec depends on (`AK-9`, `AK-10`); [mcp-server.md](mcp-server.md)
+  owns the rest.
+- **Chat-channel and developer-tool integrations.** Deferred beyond P4, one at a time, as
+  `notify.*` plugins or `external_link` consumers ([roadmap.md](../07-planning/roadmap.md),
+  "Explicitly deferred beyond the current three-to-four-month scope"; decision log,
+  2026-09-05, "`notify.email` (SMTP) is core delivery"). The generic signed webhook stays
+  core in P4, which is this feature.
+- **The inherited kaneo generic-webhook integration and its private-destination override.**
+  Removed at fork (decision log, 2026-09-05, "Fork-time removal and disable list"); this
+  spec replaces it rather than extending it.
+
 ## Testing
 
 Integration: SSRF guard rejects private addresses at resolve **and** at connect; signature
@@ -247,6 +299,50 @@ personal key has no write capability until one is ticked (`AK-9`); creating a we
 step-up is refused (`WH-15`).
 
 E2E: create a webhook, send a test, inspect the delivery, rotate the secret, redeliver.
+
+### Named security tests
+
+Checked against `tests/` and `apps/api/src` on 2026-10-15: **no code or test for this
+feature's webhook tables, routes, delivery worker or `WH-9`–`WH-12` exists on `main`** (they
+are P4, [#47](https://github.com/ThomasHeinThura/ticketing/issues/47)). The only
+webhook-destination SSRF guard and test on `main` belong to the inherited notification
+sender (`assertPublicWebhookDestination`, `tests/api/notification-preferences/delivery-ssrf.test.ts`)
+and do not cover this feature's rules (connect-time re-check, redirect refusal, signing). The
+three files below are therefore the names the implementation lane creates; they do not exist
+yet and must not be claimed as passing before then. Each asserts the rule ids shown, with non-vacuous negative
+cases.
+
+| Test file | Rules | Must assert |
+| --- | --- | --- |
+| `tests/api-integration/webhook-ssrf-guard.test.ts` | `WH-9`, `WH-10`, `WH-11`, `WH-12` | private, loopback, link-local and metadata targets refused at resolve **and** at connect (a DNS answer that changes between the two is refused); a redirect to a different host is not followed; non-HTTPS is refused in production; the development relaxation applies only under `NODE_ENV=development`; no production allowlist entry lets a `webhook` target a private range |
+| `tests/api-integration/webhook-signature.test.ts` | `WH-1`, `WH-2` (and `WH-13` for the second signature) | `X-TaskDesk-Signature` verifies against a fixed known vector over the raw body; `X-TaskDesk-Event`, `-Delivery` and `-Timestamp` are present; a rotated secret yields two signatures for 24 hours |
+| `tests/api-integration/api-key-clamped-to-owner.test.ts` | `AK-3` | a personal key's capabilities never exceed its owner's live authority; a demotion takes effect on the next request; a service key is **not** clamped this way (`AK-7`) |
+
+Related coverage that does exist on `main` for the key model as it stands today (better-auth
+`apikey`, not the `api_key` extension): `tests/api-integration/resolve-identity.test.ts`
+(describe "API-key clamping": a key with no stored capability column resolves to an empty
+subset; a deactivated owner or a disabled key is refused),
+`tests/api-integration/api-key-bearer.test.ts` (Bearer authentication; unknown or malformed
+tokens rejected) and `tests/api-integration/api-key-owner-state.test.ts` (owner-state
+refusal). These do not assert `AK-3` as written, because the `capabilities` column it clamps
+does not exist yet.
+
+`webhook-delivery-reach.test.ts` (`WH-14`) and `service-key-cannot-exceed-creator.spec.ts`
+(`AK-7`), named above, are likewise implementation-lane files that do not exist yet.
+
+## Open questions
+
+None open on this spec. Related items that already have their own issues:
+
+- Decided 2026-10-15 (Thomas): a key's effective authority is also clamped by the owner's
+  project role, so a key never exceeds what the owner's session can do in that project
+  ([#724](https://github.com/ThomasHeinThura/ticketing/issues/724); implemented by
+  [PR #784](https://github.com/ThomasHeinThura/ticketing/pull/784), see also
+  [#783](https://github.com/ThomasHeinThura/ticketing/pull/783)). Not an open question; listed
+  so `AK-3` readers find it.
+- Aligning `WH-14`/`WH-15` wording on `sees_all` with the workspace-scoped #319 contract
+  ([#337](https://github.com/ThomasHeinThura/ticketing/issues/337)); follows the close of this
+  spec's review section.
 
 ## Related
 

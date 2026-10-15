@@ -58,6 +58,20 @@
 		"screenshot": "instance-users-directory.png"
 	},
 	{
+		"name": "authentication-providers-list",
+		"inventoryRoute": "/agent/god-mode/authentication",
+		"applicationRoute": "/agent/god-mode/authentication",
+		"test": "authentication providers list screen @visual",
+		"screenshot": "authentication-providers-list.png"
+	},
+	{
+		"name": "authentication-provider-editor",
+		"inventoryRoute": "/agent/god-mode/authentication/{id}",
+		"applicationRoute": "/agent/god-mode/authentication/$id",
+		"test": "authentication provider editor screen @visual",
+		"screenshot": "authentication-provider-editor.png"
+	},
+	{
 		"name": "pending-actions-list",
 		"inventoryRoute": "/agent/settings/profile/pending-actions",
 		"applicationRoute": "/agent/settings/profile/pending-actions",
@@ -136,5 +150,26 @@
 		"applicationRoute": "/agent/settings/sla-policies/$id",
 		"test": "SLA policy editor screen @visual",
 		"screenshot": "sla-policy-editor.png"
+	},
+	{
+		"name": "saved-views-index",
+		"inventoryRoute": "/agent/views",
+		"applicationRoute": "/agent/views",
+		"test": "saved views index screen @visual",
+		"screenshot": "saved-views-index.png"
+	},
+	{
+		"name": "saved-view-detail",
+		"inventoryRoute": "/agent/views/{id}",
+		"applicationRoute": "/agent/views/$id",
+		"test": "saved view detail screen @visual",
+		"screenshot": "saved-view-detail.png"
+	},
+	{
+		"name": "work-item-board",
+		"inventoryRoute": "/agent/projects/{key}/work?layout=board",
+		"applicationRoute": "/agent/projects/$projectKey/work",
+		"test": "work-item board screen @visual",
+		"screenshot": "work-item-board.png"
 	}
 ]

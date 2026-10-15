@@ -1,4 +1,4 @@
-import { and, eq, isNull, max, sql } from "drizzle-orm";
+import { and, eq, isNull, max } from "drizzle-orm";
 import db from "../../database";
 import {
   columnTable,
@@ -9,6 +9,7 @@ import {
 } from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { seedProjectStates } from "../../utils/seed-project-states";
+import { lockProjectCreation } from "../project-creation-lock";
 import {
   grantProjectCreatorLead,
   lockCreatorPerson,
@@ -162,9 +163,7 @@ async function createProjectRow(
     // creates can read the same max(position) and land on the same slot, and a
     // create can interleave with a reorder's renumber. `reorderProjects` takes
     // the same lock with the same key.
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(1524, hashtext(${workspaceId}))`,
-    );
+    await lockProjectCreation(tx, workspaceId);
 
     // #261 F1's delta-confirmation (D1): a slug can be free among LIVE projects (so the
     // `project_slug_unique` constraint below would let it through) while still being

@@ -4,6 +4,8 @@ export const generatedRouteMetadata = {
   agent: [
     // Canonical full paths for this surface.
     "/",
+    "/agent/god-mode/authentication",
+    "/agent/god-mode/authentication/$id",
     "/agent/god-mode/users",
     "/agent/projects/$projectKey/work",
     "/agent/settings/calendars",
@@ -14,6 +16,8 @@ export const generatedRouteMetadata = {
     "/agent/settings/sla-policies",
     "/agent/settings/sla-policies/$id",
     "/agent/triage",
+    "/agent/views",
+    "/agent/views/$id",
     "/agent/work-items/$key",
     "/auth",
     "/auth/check-email",
