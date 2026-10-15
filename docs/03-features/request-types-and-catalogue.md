@@ -82,9 +82,22 @@ as the form itself.
   type, request-type SLA override and default assignee. Submissions record which version
   they used, so edits to the live request type cannot silently remap a queued submission.
   The selected work-item type still supplies its own workflow; a request type has no
-  separate workflow override. Acceptance revalidates that the snapshotted references are
-  still available in the same workspace and fails atomically if they are not; it never
-  substitutes a new mapping.
+  separate workflow override. Acceptance (owner decision, issue #761):
+  - The submission's pinned version supplies the form schema and its field mapping, the
+    request-type SLA override and the default assignee. A missing version fails acceptance
+    with `409`, and the live request type is never consulted instead.
+  - The work-item type and destination project are pre-filled from the snapshot but are the
+    triager's choice (`IQ-7`). The chosen type must exist in the same workspace; otherwise
+    acceptance fails with `422` and nothing is created.
+  - The SLA policy follows `SLA-1` (chosen work-item type, then the snapshotted request-type
+    override, then the project, then the workspace default). A policy that is not in the
+    workspace fails acceptance with `422` and nothing is created. The database also refuses a
+    cross-workspace policy reference in a snapshot.
+  - A snapshotted default assignee who is not an active staff member of the destination
+    project does not fail acceptance. The work item is created unassigned and the
+    `submission.accepted` audit row records `defaultAssigneeSkipped` with the person id and a
+    reason (`not_a_project_member`, `inactive` or `not_staff`). No event key is added.
+  - Acceptance is atomic, and it never substitutes a mapping from the live request type.
 
 **Catalogue**
 
