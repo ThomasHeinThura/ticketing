@@ -26,8 +26,13 @@ const METHODS = new Set([
   "$count",
   "refreshMaterializedView",
 ]);
+// Executable statements must never cross a repository boundary. SQL and SQLWrapper are
+// separately classified below: D2 permits repository-owned fragments composed by another
+// repository. Keep Aliased in the executable family because it is a selectable builder
+// result rather than a predicate fragment.
 const DRIZZLE_QUERY_TYPES =
-  /^(?:Pg(?:Select|SelectBuilder|SelectBase|SelectQueryBuilderBase|Insert|InsertBase|Update|UpdateBase|Delete|DeleteBase|Raw|RelationalQuery|RefreshMaterializedView)|QueryPromise|SQL|SQLWrapper|Aliased)$/;
+  /^(?:Pg(?:Select|SelectBuilder|SelectBase|SelectQueryBuilderBase|Insert|InsertBase|Update|UpdateBase|Delete|DeleteBase|Raw|RelationalQuery|RefreshMaterializedView)|QueryPromise|Aliased)$/;
+const DRIZZLE_SQL_FRAGMENT_TYPES = /^(?:SQL|SQLWrapper)$/;
 const DRIZZLE_DATABASE_TYPES =
   /^(?:PgDatabase|NodePgDatabase|PgTransaction|NodePgTransaction)$/;
 const PG_TYPES = /^(?:Pool|PoolClient|Client|ClientBase)$/;
@@ -201,6 +206,47 @@ function isQueryBuilder(type, checker) {
   }
 }
 
+function hasSqlFragmentType(type, seen = new Set(), depth = 0) {
+  if (!type || depth > 8 || seen.has(type.id)) return false;
+  seen.add(type.id);
+  if (symbolNames(type).some((name) => DRIZZLE_SQL_FRAGMENT_TYPES.test(name)))
+    return true;
+  // Union/intersection members and implemented base interfaces preserve the concrete
+  // fragment identity. Do not follow generic arguments: Promise<SQL> is still a Promise
+  // public shape that must be inspected recursively by exportedQueryBoundary.
+  for (const part of type.getTypes?.() ?? []) {
+    if (hasSqlFragmentType(part, seen, depth + 1)) return true;
+  }
+  try {
+    for (const base of type.getBaseTypes?.() ?? []) {
+      if (hasSqlFragmentType(base, seen, depth + 1)) return true;
+    }
+  } catch {
+    // Non-class/interface types have no base types.
+  }
+  const target = type.getTarget?.();
+  return target && target.id !== type.id
+    ? hasSqlFragmentType(target, seen, depth + 1)
+    : false;
+}
+
+function isSqlFragment(type) {
+  return hasSqlFragmentType(type);
+}
+
+function isQueryOutput(type, checker) {
+  if (isQueryBuilder(type, checker) || isSqlFragment(type)) return true;
+  try {
+    return checker
+      .getSignaturesOfType(type, 0)
+      .some((signature) =>
+        isSqlFragment(checker.getReturnTypeOfSignature(signature)),
+      );
+  } catch {
+    return false;
+  }
+}
+
 function exportedQueryBoundary(
   type,
   checker,
@@ -221,7 +267,10 @@ function exportedQueryBoundary(
       ? { kind: "builder" }
       : { kind: "unresolved" };
   }
+  // A query builder can also implement SQLWrapper. Check the executable families first so
+  // a wrapper around a pending statement cannot be mistaken for a composable predicate.
   if (isQueryBuilder(type, checker)) return { kind: "builder" };
+  if (isSqlFragment(type)) return { kind: "fragment" };
   if (depth >= 20 || seen.size >= 512) return { kind: "limit" };
   if (seen.has(type.id)) return { kind: "safe" };
   seen.add(type.id);
@@ -244,7 +293,7 @@ function exportedQueryBoundary(
         seen,
         depth + 1,
       );
-      if (nested.kind !== "safe") return nested;
+      if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
     }
   }
 
@@ -259,7 +308,7 @@ function exportedQueryBoundary(
         seen,
         depth + 1,
       );
-      if (nested.kind !== "safe") return nested;
+      if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
     }
   } catch {
     // Non-reference types do not have generic arguments.
@@ -273,7 +322,7 @@ function exportedQueryBoundary(
       seen,
       depth + 1,
     );
-    if (nested.kind !== "safe") return nested;
+    if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
   }
 
   for (const signatureKind of [0, 1]) {
@@ -285,7 +334,7 @@ function exportedQueryBoundary(
         seen,
         depth + 1,
       );
-      if (nested.kind !== "safe") return nested;
+      if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
     }
   }
 
@@ -337,7 +386,7 @@ function exportedQueryBoundary(
       seen,
       depth + 1,
     );
-    if (nested.kind !== "safe") return nested;
+    if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
   }
   for (const indexInfo of checker.getIndexInfosOfType(type)) {
     const nested = exportedQueryBoundary(
@@ -361,7 +410,7 @@ function isSqlFactorySymbol(checker, node) {
   }
   // A tag whose callable type returns Drizzle SQL is a raw SQL fragment constructor. This
   // catches aliased imports and local function aliases without relying on source spelling.
-  return isQueryBuilder(type, checker);
+  return isQueryOutput(type, checker);
 }
 
 function symbolComesFromPg(checker, node, seen = new Set(), depth = 0) {
@@ -634,7 +683,7 @@ function isQueryFunctionReference(checker, node, seen = new Set(), depth = 0) {
   } catch {
     return false;
   }
-  return isQueryBuilder(type, checker) || symbolComesFromPg(checker, node);
+  return isQueryOutput(type, checker) || symbolComesFromPg(checker, node);
 }
 
 /** Analyze already-parsed TypeScript source files using the project checker. */
@@ -725,7 +774,7 @@ export function analyzeQueryOwnership({
       }
       const drizzle = hasNamedType(receiverType, DRIZZLE_DATABASE_TYPES);
       const pg = hasNamedType(receiverType, PG_TYPES);
-      const resultBuilder = resultType && isQueryBuilder(resultType, checker);
+      const resultBuilder = resultType && isQueryOutput(resultType, checker);
       const knownSql =
         node.kind === ts.SyntaxKind.TaggedTemplateExpression &&
         isSqlFactorySymbol(checker, node.tag);

@@ -254,6 +254,38 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       "database/sql-aliased-escape.repository.ts",
       'import { sql } from "drizzle-orm"; export const fragment = sql`select 1`.as("alias");',
     ],
+    [
+      "database/reach-fragment.repository.ts",
+      'import { and, eq, sql, type SQL } from "drizzle-orm"; import { userTable } from "../../database/schema"; export function userReach(id: string): SQL { return and(eq(userTable.id, id), sql`true`)!; } export const reachAlias = userReach; export const fragmentRecord = { predicate: sql`true` };',
+    ],
+    [
+      "database/reach-fragment-consumer.repository.ts",
+      'import db from "../../database"; import { userTable } from "../../database/schema"; import { userReach } from "./reach-fragment.repository"; export async function findReachable(id: string) { return await db.select().from(userTable).where(userReach(id)); }',
+    ],
+    [
+      "database/reach-fragment-reexport.repository.ts",
+      'export { userReach as predicate } from "./reach-fragment.repository";',
+    ],
+    [
+      "database/reach-fragment-namespace.repository.ts",
+      'export * as fragments from "./reach-fragment.repository";',
+    ],
+    [
+      "controllers/reach-fragment-call.ts",
+      'import { userReach } from "../database/reach-fragment.repository"; export const predicate = userReach("id");',
+    ],
+    [
+      "controllers/reach-fragment-compose.ts",
+      `import { sql } from "drizzle-orm"; import { userReach } from "../database/reach-fragment.repository"; export const predicate = sql\`(\${userReach("id")})\`;`,
+    ],
+    [
+      "database/promise-builder-escape.repository.ts",
+      'import { eq } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; const query = db.select().from(userTable).where(eq(userTable.id, "id")); export function buildRows(): Promise<typeof query> { return new Promise((resolve) => resolve(query)); }',
+    ],
+    [
+      "database/sqlwrapper-builder-escape.repository.ts",
+      'import { eq, type SQLWrapper } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; const query = db.select().from(userTable).where(eq(userTable.id, "id")); export const pending = query as SQLWrapper & typeof query;',
+    ],
   ]);
   const absoluteFiles = [];
   for (const [relative, source] of fixtureFiles) {
@@ -386,10 +418,29 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       ["database/namespace.repository.ts", /exposes a query builder/],
       ["database/sql-aliased-escape.repository.ts", /exposes a query builder/],
       [
+        "database/promise-builder-escape.repository.ts",
+        /exposes a query builder/,
+      ],
+      [
+        "database/sqlwrapper-builder-escape.repository.ts",
+        /exposes a query builder/,
+      ],
+      [
+        "controllers/reach-fragment-call.ts",
+        /database operation userReach is outside an allowed repository/,
+      ],
+      [
+        "controllers/reach-fragment-compose.ts",
+        /raw SQL fragment construction is outside an allowed repository/,
+      ],
+      [
         "database/generic-identity.repository.ts",
         /exported repository value shape is unresolved or exceeds safe inspection limits/,
       ],
-      ["database/generic-sql.repository.ts", /exposes a query builder/],
+      [
+        "database/generic-sql.repository.ts",
+        /exported repository value shape is unresolved or exceeds safe inspection limits/,
+      ],
       [
         "database/generic-object-escape.repository.ts",
         /exported repository value shape is unresolved or exceeds safe inspection limits/,
@@ -398,7 +449,6 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
         "database/generic-union.repository.ts",
         /exported repository value shape is unresolved or exceeds safe inspection limits/,
       ],
-      ["database/imported-sql-shape.repository.ts", /exposes a query builder/],
       [
         "database/generic-callback.repository.ts",
         /exported repository value shape is unresolved or exceeds safe inspection limits/,
@@ -506,6 +556,19 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       false,
       "namespace runtime exports preserve async thenable assimilation for completed queries",
     );
+    for (const relative of [
+      "database/reach-fragment.repository.ts",
+      "database/reach-fragment-consumer.repository.ts",
+      "database/reach-fragment-reexport.repository.ts",
+      "database/reach-fragment-namespace.repository.ts",
+      "database/imported-sql-shape.repository.ts",
+    ]) {
+      assert.equal(
+        byFile.has(key(relative)),
+        false,
+        `${relative} may expose or compose typed SQL fragments within repository modules: ${byFile.get(key(relative)) ?? "<none>"}`,
+      );
+    }
     assert.equal(
       byFile.has(key("database/recursive-api.repository.ts")),
       false,
