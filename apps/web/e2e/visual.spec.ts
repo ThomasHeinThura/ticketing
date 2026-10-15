@@ -50,6 +50,35 @@ const project = {
   columns: [],
 };
 
+const visualIdentityConnection = {
+  id: "visual-connection",
+  providerType: "entra",
+  portalScope: "agent",
+  organisationId: null,
+  defaultWorkspaceId: "visual-workspace",
+  displayName: "Staff Entra",
+  issuer: "https://login.example.test/tenant/v2.0",
+  tenantId: "11111111-1111-4111-8111-111111111111",
+  clientId: "22222222-2222-4222-8222-222222222222",
+  clientSecretConfigured: true,
+  redirectUri: "https://desk.example.test/api/auth/callback/visual-connection",
+  scopes: ["openid", "profile", "email"],
+  claimMapping: { version: 1, displayName: "name" },
+  claimMappingState: "valid",
+  domainBindings: ["example.test"],
+  jitPolicy: {
+    enabled: false,
+    default_role_id: null,
+    required_entra_app_role: "TaskDesk.User",
+  },
+  maxRoleRank: 10,
+  mfaUpstreamMode: "off",
+  enabled: false,
+  configVersion: 7,
+  healthState: "healthy",
+  healthCheckedAt: null,
+};
+
 const visualRequestType = {
   id: "visual-request-type",
   key: "visual-access",
@@ -430,6 +459,12 @@ async function installAuthenticatedFixture(page: Page) {
           isPlaceholder: false,
         },
       };
+    } else if (path === "/api/instance/identity-connections") {
+      body = { data: [visualIdentityConnection] };
+    } else if (
+      path === "/api/instance/identity-connections/visual-connection/scim"
+    ) {
+      body = { data: {}, configVersion: 7 };
     } else if (path === "/api/instance/users") {
       body = {
         data: [
@@ -759,6 +794,48 @@ test("instance users directory screen @visual", async ({ page }) => {
     page.getByText("taylor@example.test", { exact: true }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("instance-users-directory.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("authentication providers list screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/god-mode/authentication");
+  await expect(
+    page.getByRole("heading", {
+      name: "Authentication providers",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("Staff Entra", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("authentication-providers-list.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("authentication provider editor screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/god-mode/authentication/visual-connection");
+  await expect(
+    page.getByRole("heading", {
+      name: "Connection configuration",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Connection name")).toBeVisible();
+  await expect(page).toHaveScreenshot("authentication-provider-editor.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

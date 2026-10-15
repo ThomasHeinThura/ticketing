@@ -12713,6 +12713,1155 @@
 				"import",
 				"usage"
 			]
+		},
+		"identityConnections": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"common": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"retry": {
+							"type": "string"
+						},
+						"reload": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						}
+					},
+					"required": ["retry", "reload", "saving"]
+				},
+				"list": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"add": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"configured": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"deniedTitle": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"storedInvalid": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						},
+						"provider": {
+							"type": "string"
+						},
+						"staffPortal": {
+							"type": "string"
+						},
+						"customerPortal": {
+							"type": "string"
+						},
+						"enabled": {
+							"type": "string"
+						},
+						"disabled": {
+							"type": "string"
+						},
+						"healthInvalid": {
+							"type": "string"
+						},
+						"customerManaged": {
+							"type": "string"
+						},
+						"manage": {
+							"type": "string"
+						},
+						"view": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"add",
+						"loading",
+						"configured",
+						"unavailable",
+						"deniedTitle",
+						"loadFailed",
+						"storedInvalid",
+						"emptyTitle",
+						"empty",
+						"provider",
+						"staffPortal",
+						"customerPortal",
+						"enabled",
+						"disabled",
+						"healthInvalid",
+						"customerManaged",
+						"manage",
+						"view"
+					]
+				},
+				"detail": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"createTitle": {
+							"type": "string"
+						},
+						"back": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"notFoundTitle": {
+							"type": "string"
+						},
+						"customerTitle": {
+							"type": "string"
+						},
+						"customerManaged": {
+							"type": "string"
+						},
+						"tabs": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"connection": {
+									"type": "string"
+								},
+								"scim": {
+									"type": "string"
+								},
+								"events": {
+									"type": "string"
+								}
+							},
+							"required": ["connection", "scim", "events"]
+						}
+					},
+					"required": [
+						"title",
+						"createTitle",
+						"back",
+						"loading",
+						"unavailable",
+						"loadFailed",
+						"notFoundTitle",
+						"customerTitle",
+						"customerManaged",
+						"tabs"
+					]
+				},
+				"stepUp": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						},
+						"password": {
+							"type": "string"
+						},
+						"authenticatorCode": {
+							"type": "string"
+						},
+						"backupCode": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"method",
+						"password",
+						"authenticatorCode",
+						"backupCode"
+					]
+				},
+				"errors": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"denied": {
+							"type": "string"
+						},
+						"step_up": {
+							"type": "string"
+						},
+						"conflict": {
+							"type": "string"
+						},
+						"conflictVersion": {
+							"type": "string"
+						},
+						"duplicate": {
+							"type": "string"
+						},
+						"not_found": {
+							"type": "string"
+						},
+						"invalid": {
+							"type": "string"
+						},
+						"rate_limited": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"unknown": {
+							"type": "string"
+						},
+						"factor_required": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"denied",
+						"step_up",
+						"conflict",
+						"conflictVersion",
+						"duplicate",
+						"not_found",
+						"invalid",
+						"rate_limited",
+						"unavailable",
+						"unknown",
+						"factor_required"
+					]
+				},
+				"editor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"addTitle": {
+							"type": "string"
+						},
+						"editTitle": {
+							"type": "string"
+						},
+						"intro": {
+							"type": "string"
+						},
+						"introCreate": {
+							"type": "string"
+						},
+						"createsDisabled": {
+							"type": "string"
+						},
+						"notSaved": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"savedDescription": {
+							"type": "string"
+						},
+						"unchanged": {
+							"type": "string"
+						},
+						"facts": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"issuer": {
+									"type": "string"
+								},
+								"redirectUri": {
+									"type": "string"
+								},
+								"health": {
+									"type": "string"
+								},
+								"version": {
+									"type": "string"
+								},
+								"versionValue": {
+									"type": "string"
+								},
+								"secret": {
+									"type": "string"
+								},
+								"secretConfigured": {
+									"type": "string"
+								},
+								"secretMissing": {
+									"type": "string"
+								},
+								"mfa": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"issuer",
+								"redirectUri",
+								"health",
+								"version",
+								"versionValue",
+								"secret",
+								"secretConfigured",
+								"secretMissing",
+								"mfa"
+							]
+						},
+						"health": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"unknown": {
+									"type": "string"
+								},
+								"healthy": {
+									"type": "string"
+								},
+								"degraded": {
+									"type": "string"
+								},
+								"invalid": {
+									"type": "string"
+								}
+							},
+							"required": ["unknown", "healthy", "degraded", "invalid"]
+						},
+						"mfa": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"off": {
+									"type": "string"
+								},
+								"claim": {
+									"type": "string"
+								},
+								"static": {
+									"type": "string"
+								}
+							},
+							"required": ["off", "claim", "static"]
+						},
+						"healthInvalidTitle": {
+							"type": "string"
+						},
+						"healthInvalid": {
+							"type": "string"
+						},
+						"claimInvalidTitle": {
+							"type": "string"
+						},
+						"claimInvalid": {
+							"type": "string"
+						},
+						"repairClaim": {
+							"type": "string"
+						},
+						"connectionName": {
+							"type": "string"
+						},
+						"tenantId": {
+							"type": "string"
+						},
+						"immutable": {
+							"type": "string"
+						},
+						"clientId": {
+							"type": "string"
+						},
+						"clientSecret": {
+							"type": "string"
+						},
+						"replaceSecret": {
+							"type": "string"
+						},
+						"secretHelp": {
+							"type": "string"
+						},
+						"scopes": {
+							"type": "string"
+						},
+						"domains": {
+							"type": "string"
+						},
+						"domainsHelp": {
+							"type": "string"
+						},
+						"jitAccess": {
+							"type": "string"
+						},
+						"enableJit": {
+							"type": "string"
+						},
+						"requiredAppRole": {
+							"type": "string"
+						},
+						"requiredAppRoleHelp": {
+							"type": "string"
+						},
+						"workspaceId": {
+							"type": "string"
+						},
+						"defaultRole": {
+							"type": "string"
+						},
+						"idHelp": {
+							"type": "string"
+						},
+						"maxRoleRank": {
+							"type": "string"
+						},
+						"maxRoleRankHelp": {
+							"type": "string"
+						},
+						"enableConnection": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"createDisabled": {
+							"type": "string"
+						},
+						"errors": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"displayName": {
+									"type": "string"
+								},
+								"tenantId": {
+									"type": "string"
+								},
+								"clientId": {
+									"type": "string"
+								},
+								"clientSecret": {
+									"type": "string"
+								},
+								"domains": {
+									"type": "string"
+								},
+								"requiredAppRole": {
+									"type": "string"
+								},
+								"maxRoleRank": {
+									"type": "string"
+								},
+								"defaultWorkspaceId": {
+									"type": "string"
+								},
+								"defaultRoleId": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"displayName",
+								"tenantId",
+								"clientId",
+								"clientSecret",
+								"domains",
+								"requiredAppRole",
+								"maxRoleRank",
+								"defaultWorkspaceId",
+								"defaultRoleId"
+							]
+						}
+					},
+					"required": [
+						"addTitle",
+						"editTitle",
+						"intro",
+						"introCreate",
+						"createsDisabled",
+						"notSaved",
+						"saved",
+						"savedDescription",
+						"unchanged",
+						"facts",
+						"health",
+						"mfa",
+						"healthInvalidTitle",
+						"healthInvalid",
+						"claimInvalidTitle",
+						"claimInvalid",
+						"repairClaim",
+						"connectionName",
+						"tenantId",
+						"immutable",
+						"clientId",
+						"clientSecret",
+						"replaceSecret",
+						"secretHelp",
+						"scopes",
+						"domains",
+						"domainsHelp",
+						"jitAccess",
+						"enableJit",
+						"requiredAppRole",
+						"requiredAppRoleHelp",
+						"workspaceId",
+						"defaultRole",
+						"idHelp",
+						"maxRoleRank",
+						"maxRoleRankHelp",
+						"enableConnection",
+						"save",
+						"createDisabled",
+						"errors"
+					]
+				},
+				"events": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						},
+						"listLabel": {
+							"type": "string"
+						},
+						"older": {
+							"type": "string"
+						},
+						"newest": {
+							"type": "string"
+						},
+						"unknown": {
+							"type": "string"
+						},
+						"kinds": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"userCreated": {
+									"type": "string"
+								},
+								"userUpdated": {
+									"type": "string"
+								},
+								"userDeactivated": {
+									"type": "string"
+								},
+								"userReactivated": {
+									"type": "string"
+								},
+								"groupDirectoryChanged": {
+									"type": "string"
+								},
+								"groupMappingChanged": {
+									"type": "string"
+								},
+								"groupMemberAdded": {
+									"type": "string"
+								},
+								"groupMemberRemoved": {
+									"type": "string"
+								},
+								"requestDenied": {
+									"type": "string"
+								},
+								"authFailed": {
+									"type": "string"
+								},
+								"tokenRotated": {
+									"type": "string"
+								},
+								"tokenRevoked": {
+									"type": "string"
+								},
+								"connectionChanged": {
+									"type": "string"
+								},
+								"syncFailed": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"userCreated",
+								"userUpdated",
+								"userDeactivated",
+								"userReactivated",
+								"groupDirectoryChanged",
+								"groupMappingChanged",
+								"groupMemberAdded",
+								"groupMemberRemoved",
+								"requestDenied",
+								"authFailed",
+								"tokenRotated",
+								"tokenRevoked",
+								"connectionChanged",
+								"syncFailed"
+							]
+						},
+						"outcomes": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"succeeded": {
+									"type": "string"
+								},
+								"denied": {
+									"type": "string"
+								},
+								"failed": {
+									"type": "string"
+								}
+							},
+							"required": ["succeeded", "denied", "failed"]
+						},
+						"actors": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"person": {
+									"type": "string"
+								},
+								"scim": {
+									"type": "string"
+								},
+								"oidc": {
+									"type": "string"
+								}
+							},
+							"required": ["person", "scim", "oidc"]
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"loading",
+						"unavailable",
+						"loadFailed",
+						"emptyTitle",
+						"empty",
+						"listLabel",
+						"older",
+						"newest",
+						"unknown",
+						"kinds",
+						"outcomes",
+						"actors"
+					]
+				},
+				"scim": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"storedInvalid": {
+							"type": "string"
+						},
+						"endpoint": {
+							"type": "string"
+						},
+						"endpointNote": {
+							"type": "string"
+						},
+						"statusNote": {
+							"type": "string"
+						},
+						"verifyEach": {
+							"type": "string"
+						},
+						"notSaved": {
+							"type": "string"
+						},
+						"savedTitle": {
+							"type": "string"
+						},
+						"enableInvalidHint": {
+							"type": "string"
+						},
+						"notice": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"settings": {
+									"type": "string"
+								},
+								"profile": {
+									"type": "string"
+								},
+								"enabled": {
+									"type": "string"
+								},
+								"disabled": {
+									"type": "string"
+								},
+								"mappingCreated": {
+									"type": "string"
+								},
+								"mappingUpdated": {
+									"type": "string"
+								},
+								"rotated": {
+									"type": "string"
+								},
+								"revoked": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"settings",
+								"profile",
+								"enabled",
+								"disabled",
+								"mappingCreated",
+								"mappingUpdated",
+								"rotated",
+								"revoked"
+							]
+						},
+						"token": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"rotate": {
+									"type": "string"
+								},
+								"revoke": {
+									"type": "string"
+								},
+								"issuedTitle": {
+									"type": "string"
+								},
+								"issuedWarning": {
+									"type": "string"
+								},
+								"issuedLabel": {
+									"type": "string"
+								},
+								"copy": {
+									"type": "string"
+								},
+								"copied": {
+									"type": "string"
+								},
+								"clipboardFailed": {
+									"type": "string"
+								},
+								"dismiss": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"rotate",
+								"revoke",
+								"issuedTitle",
+								"issuedWarning",
+								"issuedLabel",
+								"copy",
+								"copied",
+								"clipboardFailed",
+								"dismiss"
+							]
+						},
+						"settings": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"stateEnabled": {
+									"type": "string"
+								},
+								"stateDisabled": {
+									"type": "string"
+								},
+								"enable": {
+									"type": "string"
+								},
+								"disable": {
+									"type": "string"
+								},
+								"enableHelp": {
+									"type": "string"
+								},
+								"resources": {
+									"type": "string"
+								},
+								"users": {
+									"type": "string"
+								},
+								"usersRequired": {
+									"type": "string"
+								},
+								"groups": {
+									"type": "string"
+								},
+								"lifecycle": {
+									"type": "string"
+								},
+								"endMemberships": {
+									"type": "string"
+								},
+								"keepMemberships": {
+									"type": "string"
+								},
+								"lifecycleHelp": {
+									"type": "string"
+								},
+								"match": {
+									"type": "string"
+								},
+								"matchHelp": {
+									"type": "string"
+								},
+								"matchRequired": {
+									"type": "string"
+								},
+								"save": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"stateEnabled",
+								"stateDisabled",
+								"enable",
+								"disable",
+								"enableHelp",
+								"resources",
+								"users",
+								"usersRequired",
+								"groups",
+								"lifecycle",
+								"endMemberships",
+								"keepMemberships",
+								"lifecycleHelp",
+								"match",
+								"matchHelp",
+								"matchRequired",
+								"save"
+							]
+						},
+						"profile": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								},
+								"email": {
+									"type": "string"
+								},
+								"jobTitle": {
+									"type": "string"
+								},
+								"locale": {
+									"type": "string"
+								},
+								"unmapped": {
+									"type": "string"
+								},
+								"save": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"name",
+								"email",
+								"jobTitle",
+								"locale",
+								"unmapped",
+								"save"
+							]
+						},
+						"groups": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"emptyTitle": {
+									"type": "string"
+								},
+								"empty": {
+									"type": "string"
+								},
+								"listLabel": {
+									"type": "string"
+								},
+								"role": {
+									"type": "string"
+								},
+								"enabled": {
+									"type": "string"
+								},
+								"disabled": {
+									"type": "string"
+								},
+								"edit": {
+									"type": "string"
+								},
+								"add": {
+									"type": "string"
+								},
+								"addUnavailable": {
+									"type": "string"
+								},
+								"close": {
+									"type": "string"
+								},
+								"missingTitle": {
+									"type": "string"
+								},
+								"missing": {
+									"type": "string"
+								},
+								"addTitle": {
+									"type": "string"
+								},
+								"editTitle": {
+									"type": "string"
+								},
+								"externalId": {
+									"type": "string"
+								},
+								"externalIdHelp": {
+									"type": "string"
+								},
+								"displayName": {
+									"type": "string"
+								},
+								"displayNameHelp": {
+									"type": "string"
+								},
+								"workspace": {
+									"type": "string"
+								},
+								"chooseWorkspace": {
+									"type": "string"
+								},
+								"eligibleRole": {
+									"type": "string"
+								},
+								"chooseRole": {
+									"type": "string"
+								},
+								"rolesLoading": {
+									"type": "string"
+								},
+								"rank": {
+									"type": "string"
+								},
+								"rolesFailed": {
+									"type": "string"
+								},
+								"customerTarget": {
+									"type": "string"
+								},
+								"customerUnavailable": {
+									"type": "string"
+								},
+								"optionsLoading": {
+									"type": "string"
+								},
+								"optionsUnavailable": {
+									"type": "string"
+								},
+								"optionsFailed": {
+									"type": "string"
+								},
+								"mappingEnabled": {
+									"type": "string"
+								},
+								"evidenceNote": {
+									"type": "string"
+								},
+								"save": {
+									"type": "string"
+								},
+								"create": {
+									"type": "string"
+								},
+								"cancel": {
+									"type": "string"
+								},
+								"errors": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"externalId": {
+											"type": "string"
+										},
+										"snapshot": {
+											"type": "string"
+										},
+										"target": {
+											"type": "string"
+										}
+									},
+									"required": ["externalId", "snapshot", "target"]
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"emptyTitle",
+								"empty",
+								"listLabel",
+								"role",
+								"enabled",
+								"disabled",
+								"edit",
+								"add",
+								"addUnavailable",
+								"close",
+								"missingTitle",
+								"missing",
+								"addTitle",
+								"editTitle",
+								"externalId",
+								"externalIdHelp",
+								"displayName",
+								"displayNameHelp",
+								"workspace",
+								"chooseWorkspace",
+								"eligibleRole",
+								"chooseRole",
+								"rolesLoading",
+								"rank",
+								"rolesFailed",
+								"customerTarget",
+								"customerUnavailable",
+								"optionsLoading",
+								"optionsUnavailable",
+								"optionsFailed",
+								"mappingEnabled",
+								"evidenceNote",
+								"save",
+								"create",
+								"cancel",
+								"errors"
+							]
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"loading",
+						"unavailable",
+						"loadFailed",
+						"storedInvalid",
+						"endpoint",
+						"endpointNote",
+						"statusNote",
+						"verifyEach",
+						"notSaved",
+						"savedTitle",
+						"enableInvalidHint",
+						"notice",
+						"token",
+						"settings",
+						"profile",
+						"groups"
+					]
+				}
+			},
+			"required": [
+				"common",
+				"list",
+				"detail",
+				"stepUp",
+				"errors",
+				"editor",
+				"events",
+				"scim"
+			]
 		}
 	},
 	"required": [
@@ -12734,6 +13883,7 @@
 		"intake",
 		"requestTypes",
 		"slaPolicies",
-		"serviceCalendars"
+		"serviceCalendars",
+		"identityConnections"
 	]
 }

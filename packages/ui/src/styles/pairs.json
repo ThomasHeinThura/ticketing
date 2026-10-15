@@ -2002,6 +2002,50 @@
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimSettingsSection",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimProfileMappingSection",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/step-up-fields.tsx:StepUpFields",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -3245,6 +3289,50 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/work-item-board.tsx:BoardCard",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimSettingsSection",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimProfileMappingSection",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/step-up-fields.tsx:StepUpFields",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -6932,7 +7020,8 @@
       "apps/web/src/components/work-item/work-item-journey.tsx::TransitionSection::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-journey.tsx::TransitionSection::section[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/work-item/work-item-journey.tsx::AssignmentSection::section[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/work-item/work-item-journey.tsx::AssignmentSection::section[0]/div[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/components/work-item/work-item-journey.tsx::AssignmentSection::section[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -9238,6 +9327,63 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/work-item-board.tsx:BoardCard",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:/_layout/_authenticated/agent/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimSettingsSection",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimProfileMappingSection",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/step-up-fields.tsx:StepUpFields",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -9403,7 +9549,8 @@
       "apps/web/src/components/work-item/work-item-journey.tsx::TransitionSection::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-journey.tsx::TransitionSection::section[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/work-item/work-item-journey.tsx::AssignmentSection::section[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/work-item/work-item-journey.tsx::AssignmentSection::section[0]/div[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/components/work-item/work-item-journey.tsx::AssignmentSection::section[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -11709,6 +11856,63 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/work-item-board.tsx:BoardCard",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:/_layout/_authenticated/agent/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimSettingsSection",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimProfileMappingSection",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/step-up-fields.tsx:StepUpFields",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -12293,7 +12497,9 @@
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/work-item/work-item-board.tsx::BoardCard::li[0]/div[1]::text-muted-foreground#0"
+      "apps/web/src/components/work-item/work-item-board.tsx::BoardCard::li[0]/div[1]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -14528,6 +14734,63 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/work-item-board.tsx:WorkItemBoard",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:IdentityConnectionsRoute",
+          "jsx:main[0]/section[0]/Card[0]/CardContent[0]/div[0]/div[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:IdentityConnectionsRoute",
+          "jsx:main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/identity-connection-events.tsx:IdentityConnectionEvents",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:ScimGroupMappingsSettings",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:IdentityConnectionsRoute",
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
         "backdropLayers": []
@@ -14728,7 +14991,9 @@
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/work-item/work-item-board.tsx::BoardCard::li[0]/div[1]::text-muted-foreground#0"
+      "apps/web/src/components/work-item/work-item-board.tsx::BoardCard::li[0]/div[1]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -16963,6 +17228,63 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/work-item-board.tsx:WorkItemBoard",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:IdentityConnectionsRoute",
+          "jsx:main[0]/section[0]/Card[0]/CardContent[0]/div[0]/div[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:IdentityConnectionsRoute",
+          "jsx:main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/identity-connection-events.tsx:IdentityConnectionEvents",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:ScimGroupMappingsSettings",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:IdentityConnectionsRoute",
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
         "backdropLayers": []
@@ -27672,6 +27994,24 @@
         "backdropLayers": [
           "bg-background"
         ]
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/tabs.tsx:TabsList",
+          "jsx:TabsPrimitive.List[0]>bg-muted",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication/$id.tsx:/_layout/_authenticated/agent/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:/_layout/_authenticated/agent/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
       }
     ]
   },
@@ -27814,6 +28154,24 @@
           "jsx:TabsPrimitive.List[0]>bg-muted",
           "packages/ui/.storybook/preview.ts:imports tailwind.css",
           "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/tabs.tsx:TabsList",
+          "jsx:TabsPrimitive.List[0]>bg-muted",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication/$id.tsx:/_layout/_authenticated/agent/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:/_layout/_authenticated/agent/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": [
           "bg-background"
@@ -38589,6 +38947,66 @@
         "backdropLayers": [
           "bg-popover"
         ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimSettingsSection",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimProfileMappingSection",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/step-up-fields.tsx:StepUpFields",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
       }
     ]
   },
@@ -39640,6 +40058,66 @@
         "backdropLayers": [
           "bg-popover"
         ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimSettingsSection",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/scim-settings-sections.tsx:ScimProfileMappingSection",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/step-up-fields.tsx:StepUpFields",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
       }
     ]
   },
@@ -40526,6 +41004,24 @@
         "backdropLayers": [
           "bg-background"
         ]
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/tabs.tsx:TabsList",
+          "jsx:TabsPrimitive.List[0]>*:data-[slot=tabs-tab]:hover:bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication/$id.tsx:/_layout/_authenticated/agent/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:/_layout/_authenticated/agent/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
       }
     ]
   },
@@ -40562,6 +41058,24 @@
           "jsx:TabsPrimitive.List[0]>*:data-[slot=tabs-tab]:hover:bg-accent",
           "packages/ui/.storybook/preview.ts:imports tailwind.css",
           "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/tabs.tsx:TabsList",
+          "jsx:TabsPrimitive.List[0]>*:data-[slot=tabs-tab]:hover:bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication/$id.tsx:/_layout/_authenticated/agent/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:/_layout/_authenticated/agent/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": [
           "bg-background"
@@ -42296,6 +42810,39 @@
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/identity-connection-events.tsx:IdentityConnectionEvents",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:ScimGroupMappingsSettings",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:IdentityConnectionsRoute",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -42459,6 +43006,39 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/work-item-board.tsx:WorkItemBoard",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/identity-connection-events.tsx:IdentityConnectionEvents",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:ScimGroupMappingsSettings",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx:IdentityConnectionsRoute",
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
         "backdropLayers": []
