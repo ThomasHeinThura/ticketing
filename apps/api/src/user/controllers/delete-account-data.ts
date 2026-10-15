@@ -248,6 +248,26 @@ async function deleteAccountDataInTransaction(
 
   // Before anything is deleted or invalidated: a workspace others still reach through
   // SCIM/OIDC provisioning must be transferred or removed first, never erased around them.
+  // First pass WITHOUT the table lock: a refused erasure must not take an instance-wide lock,
+  // or any user could repeat a refused call to stall every provisioning writer. Only an erasure
+  // that passes this cheap check goes on to lock, and the same check is then re-run under the
+  // lock, so the race guard below is unchanged.
+  const refuseIfOthersHaveAccess = async () => {
+    const withOtherAccess = await workspacesWithOtherAccess(
+      tx,
+      plan.workspaceIdsToDelete,
+      userId,
+    );
+    if (withOtherAccess.length > 0) {
+      throw new APIError("CONFLICT", {
+        message: formatOtherAccessMessage(
+          withOtherAccess.map((workspace) => workspace.name),
+        ),
+      });
+    }
+  };
+  await refuseIfOthersHaveAccess();
+
   if (plan.workspaceIdsToDelete.length > 0) {
     // Nothing may grant access between the check and the delete. The writers that create
     // identity-provisioned, direct and project-scope rows take no workspace-level lock (and
@@ -282,18 +302,8 @@ async function deleteAccountDataInTransaction(
     // The bound is for acquiring this lock only; later statements keep the session default.
     await tx.execute(sql`SELECT set_config('lock_timeout', '0', true)`);
   }
-  const withOtherAccess = await workspacesWithOtherAccess(
-    tx,
-    plan.workspaceIdsToDelete,
-    userId,
-  );
-  if (withOtherAccess.length > 0) {
-    throw new APIError("CONFLICT", {
-      message: formatOtherAccessMessage(
-        withOtherAccess.map((workspace) => workspace.name),
-      ),
-    });
-  }
+  // Re-run under the lock (a no-op repeat when no workspace is being deleted).
+  if (plan.workspaceIdsToDelete.length > 0) await refuseIfOthersHaveAccess();
 
   if (accountDeletion) await invalidateAccountDeletionCredentials(userId, tx);
 

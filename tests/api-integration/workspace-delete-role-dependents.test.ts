@@ -1078,6 +1078,61 @@ describe("#734 account erasure and IdP-provisioned members", () => {
     ).toHaveLength(1);
   });
 
+  it("a refused erasure never takes the table lock: it answers the access 409 at once even while a writer holds a conflicting lock", async () => {
+    const { owner, wsRole } = await soleLegacyMemberWorkspace();
+    const other = await createWorkspaceMember({ role: "owner" });
+    const otherPerson = await personIdFor(other.user.id);
+    // Committed: another person already has access, so the first-pass check refuses.
+    await db.insert(schema.membershipTable).values({
+      personId: otherPerson,
+      scope: "workspace",
+      scopeId: owner.workspace.id,
+      roleId: wsRole.id,
+    });
+    const before = await snapshot();
+
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let written: () => void = () => {};
+    const writtenSignal = new Promise<void>((resolve) => {
+      written = resolve;
+    });
+    // An unrelated writer holds ROW EXCLUSIVE on membership_grant (conflicts with the
+    // erasure's SHARE ROW EXCLUSIVE table lock) and does not commit.
+    const writer = db.transaction(async (tx) => {
+      await tx.insert(schema.membershipGrantTable).values({
+        personId: otherPerson,
+        scope: "workspace",
+        scopeId: `unrelated-${randomUUID()}`,
+        roleId: wsRole.id,
+        sourceKind: "direct",
+        directOrigin: "system_backfill",
+      });
+      written();
+      await gate;
+    });
+    await writtenSignal;
+
+    const started = Date.now();
+    const caught = await deleteAccountData(owner.user.id).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    const elapsed = Date.now() - started;
+    release();
+    await writer;
+
+    // The lock timeout is 3 s; a call that had tried the lock would have waited for it.
+    expect(elapsed).toBeLessThan(1500);
+    expect(String((caught as Error).message)).toMatch(
+      /Other people still have access to/u,
+    );
+    expect(String((caught as Error).message)).not.toMatch(/busy/u);
+    expect(await snapshot()).toEqual({ ...before, grants: before.grants + 1 });
+  }, 30_000);
+
   it("a lock timeout answers 409 with nothing deleted, and leaves the writer untouched", async () => {
     const { owner, wsRole } = await soleLegacyMemberWorkspace();
     const other = await createWorkspaceMember({ role: "owner" });
