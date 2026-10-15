@@ -13,7 +13,7 @@
  * - an API key must carry the `project:manage_settings` scope as well.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -313,18 +313,18 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
     );
   });
 
-  it("refuses a customer-side role that stored a legacy project:update claim", async () => {
-    const { actor, project } = await actorWithLegacyMap(
-      "customer",
-      LEGACY_UPDATE,
-      null,
-    );
+  it("refuses a genuine customer identity from the agent project-settings API", async () => {
+    const staff = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: staff.workspace.id,
+    });
     const organisation = await db
       .insert(schema.organisationTable)
       .values({
         key: `comment-visibility-customer-${randomUUID()}`,
         name: "Comment visibility customer",
         isInternal: false,
+        active: true,
         portalAccess: true,
       })
       .returning()
@@ -342,16 +342,25 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
       .returning()
       .then(([row]) => row);
     if (!customerRole) throw new Error("customer role missing");
+    const [customerUser] = await db
+      .insert(schema.userTable)
+      .values({
+        name: "Comment visibility customer",
+        email: `comment-visibility-customer-${randomUUID()}@example.com`,
+        emailVerified: true,
+      })
+      .returning();
+    if (!customerUser) throw new Error("customer user missing");
     const [person] = await db
-      .select({ id: schema.personTable.id })
-      .from(schema.personTable)
-      .where(eq(schema.personTable.userId, actor.user.id))
-      .limit(1);
+      .insert(schema.personTable)
+      .values({
+        userId: customerUser.id,
+        organisationId: organisation.id,
+        side: "customer",
+        displayName: "Comment visibility customer",
+      })
+      .returning();
     if (!person) throw new Error("customer person missing");
-    await db
-      .update(schema.personTable)
-      .set({ side: "customer", organisationId: organisation.id })
-      .where(eq(schema.personTable.id, person.id));
     await db.insert(schema.membershipTable).values({
       personId: person.id,
       scope: "organisation",
@@ -363,7 +372,37 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
       .update(schema.projectTable)
       .set({ organisationId: organisation.id })
       .where(eq(schema.projectTable.id, project.id));
-    mockAuthenticatedSession(actor.user);
+
+    const workspaceUsers = await db
+      .select({ userId: schema.workspaceUserTable.userId })
+      .from(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.userId, customerUser.id));
+    expect(workspaceUsers).toEqual([]);
+    const memberships = await db
+      .select({
+        scope: schema.membershipTable.scope,
+        scopeId: schema.membershipTable.scopeId,
+      })
+      .from(schema.membershipTable)
+      .where(eq(schema.membershipTable.personId, person.id));
+    expect(memberships).toEqual([
+      { scope: "organisation", scopeId: organisation.id },
+    ]);
+    const workspaceCustomerRoles = await db
+      .select({ id: schema.roleTable.id })
+      .from(schema.roleTable)
+      .where(
+        and(
+          eq(schema.roleTable.scope, "workspace"),
+          eq(schema.roleTable.workspaceId, staff.workspace.id),
+          eq(schema.roleTable.key, customerRole.key),
+        ),
+      );
+    expect(workspaceCustomerRoles).toEqual([]);
+    expect(customerRole.scope).toBe("organisation");
+    expect(customerRole.workspaceId).toBeNull();
+
+    mockAuthenticatedSession(customerUser);
     const { app } = createApp();
 
     const response = await putProject(
