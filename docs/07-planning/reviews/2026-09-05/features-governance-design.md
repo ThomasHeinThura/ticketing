@@ -132,6 +132,8 @@ Capabilities used — `project:read`, `project:manage_settings`, `workspace:mana
 
 ## 7. `webhooks-and-api-keys.md`
 
+## Historical webhooks and API keys findings — 2026-09-05 review
+
 **Verdict: ready-with-fixes**, with one high-severity storage gap. The SSRF rules
 (`WH-9`–`WH-12`, especially `WH-10`'s connect-time re-check against DNS rebinding) are the
 best security writing in the corpus and need no change. The problems are the columns the
@@ -166,21 +168,38 @@ block does not claim runtime delivery, tests or stage acceptance.
 | 1 | `webhook_delivery` cannot store payload or attempt | RESOLVED | `data-model.md` §webhook_delivery row (L477): `attempt`, `request_body jsonb`, `response_body` (truncated); 30-day retention row (L831). Both options the finding offered are met. |
 | 2 | `webhook` has no owner | RESOLVED | `data-model.md` L476 `created_by`, plus `disabled_at`/`disabled_reason`; `events.md` L152 `webhook.auto_disabled`; recipients "the webhook's creator, plus holders of `webhook:manage`" in `notifications.md` L70; spec `WH-7`, `WH-14` (owner leaves ⇒ paused, re-owned). |
 | 3 | API-key storage undefined | RESOLVED | `data-model.md` L139 `api_key` extension of better-auth's `apikey`: `workspace_id`/`person_id` with a check that exactly one is set, `capabilities jsonb`, `ip_allowlist inet[]`, `rate_limit_per_minute`, `expires_at`, `last_used_at`, `last_used_ip`, `prefix`, `is_mcp`, `disabled_*`; `CHECK (NOT is_mcp OR person_id IS NOT NULL)` (spec `AK-10`). |
-| 4 | Policy forms `PolicyMap` cannot express | RESOLVED | Routes were split as the finding proposed: spec API block L212-L219 uses `{ authenticated: true, self: true }` for `/api/me/api-keys` and `{ capability: 'api_key:manage', scope: 'workspace' }` for `/api/workspaces/{id}/api-keys`; `rbac.md` L669 defines the `self` kind in `PolicyMap`; every line is registry syntax and is parsed by `check:route-policy-syntax`. |
-| 5 | Third elevated-action list (`rotate-secret`) | RESOLVED | Folded into the single list: `rbac.md` L959 "Rotating a webhook secret" and L960 (`WH-15`); spec API L209 declares `elevated: true, sessionOnly: true`. |
+| 4 | Policy forms `PolicyMap` cannot express | RESOLVED | Routes were split as the finding proposed: spec API block L245-L252 (at `33c53817`) uses `{ authenticated: true, self: true }` for `/api/me/api-keys` and `{ capability: 'api_key:manage', scope: 'workspace' }` for `/api/workspaces/{id}/api-keys`; `rbac.md` L669 defines the `self` kind in `PolicyMap`; every line is registry syntax and is parsed by `check:route-policy-syntax`. |
+| 5 | Third elevated-action list (`rotate-secret`) | RESOLVED | Folded into the single list: `rbac.md` L959 "Rotating a webhook secret" and L960 (`WH-15`); spec API L242 declares `elevated: true, sessionOnly: true`. |
 | 6 | No secret-rotation overlap window | RESOLVED | Spec `WH-13` (24 h overlap, `X-TaskDesk-Signature` and `X-TaskDesk-Signature-Previous`); `data-model.md` L476 `secret_previous`, `secret_rotated_at`. |
 | 7 | Missing screen rows | RESOLVED | `screen-inventory.md` L146-L148: Workspace webhooks, Webhook editor (`/agent/settings/webhooks/{id}`), Webhook delivery history (`…/{id}/deliveries`), all P4 ⬜. |
 | 8 | `WH-12` development allowlist has no home | RESOLVED (by the finding's second option) | No new variable: the relaxation is a `NODE_ENV=development` behaviour only (spec `WH-12`); `configuration-reference.md` L81 and L90 record it as removed from `.env` ("there is no separate variable"); decision log 2026-09-06 "Removed … the dev webhook allowlist"; the production egress allowlist cannot widen a webhook (`security-model.md` § SSRF / egress). |
-| 9 | No `## Data`, `## Out of scope`, `## Open questions` | STILL OPEN | The spec's headings are Purpose, Webhooks out, API keys in, Permissions, Screens, API, Edge cases, Testing, Related. The columns it relies on are now in `data-model.md` (rows 1-3, 6) so a Data section can cite them. Tracked in #777. |
-| 10 | `GET /api/webhooks` has no workspace context | RESOLVED | `api-design.md` § Workspace context (L586: `X-Workspace-Id` header or `?workspace=`, validated before the policy check; absent ⇒ 400, non-member ⇒ 404); `rbac.md` L806 names `/api/webhooks`; spec API L204 "(workspace from X-Workspace-Id)". |
+| 9 | No `## Data`, `## Out of scope`, `## Open questions` | RESOLVED | The spec now has all three (#777, merged here as `2a7d2d6d`). Each claim was checked against `schema.ts`, `tests/`, the decision log, the roadmap and the issues it cites (independent review `777-review-d-sonnet.md`): the Data section states which of the designed tables exist on `main` (`outbox` and better-auth `apikey` only; `webhook`, `webhook_delivery` and the `api_key` extension do not); Out of scope cites only recorded exclusions (D6 MCP hold, deferred chat integrations, fork-time removal); Open questions is empty and links existing issues #724 and #337 without inventing any. |
+| 10 | `GET /api/webhooks` has no workspace context | RESOLVED | `api-design.md` § Workspace context (L586: `X-Workspace-Id` header or `?workspace=`, validated before the policy check; absent ⇒ 400, non-member ⇒ 404); `rbac.md` L806 names `/api/webhooks`; spec API L237 "(workspace from X-Workspace-Id)". |
 | 11 | Event list omits `work_item.field_changed` | RESOLVED | The spec no longer keeps its own list: it cites the **W** column of `events.md` (the canonical catalogue); `events.md` L170 states `work_item.field_changed` is not a key but `work_item.updated` with a condition on `changes[].field`, i.e. one event, not two. |
-| 12 | SSRF and signature tests are prose, not named files | STILL OPEN | Spec Testing L240-L247 is still prose for the SSRF guard, signature vector and key clamping; only `webhook-delivery-reach.test.ts` (`WH-14`) and `service-key-cannot-exceed-creator.spec.ts` (`AK-7`) are named. The three files the finding proposes (`webhook-ssrf-guard`, `webhook-signature`, `api-key-clamped-to-owner`) are not named; no webhook SSRF test exists on `main` (the only SSRF test is the notification one, `tests/api/notification-preferences/delivery-ssrf.test.ts`). Tracked in #777. |
+| 12 | SSRF and signature tests are prose, not named files | RESOLVED (design closure; creation of the tests stays with #47, see reasoning) | The spec's Testing section now names `tests/api-integration/webhook-ssrf-guard.test.ts` (`WH-9`-`WH-12`), `webhook-signature.test.ts` (`WH-1`, `WH-2`, `WH-13`) and `api-key-clamped-to-owner.test.ts` (`AK-3`, with the `AK-7` contrast) with the assertions each must make, states they do not exist yet and must not be claimed as passing, and lists the related tests that do exist on `main` and what they do not cover. The only webhook-destination SSRF test on `main` is the notification sender's `tests/api/notification-preferences/delivery-ssrf.test.ts`; the spec says so and that it does not cover these rules. |
 
-Tally: 10 RESOLVED, 0 SUPERSEDED, 2 STILL OPEN, 0 OUT OF SCOPE. Rows 9 and 12 keep this
-section non-empty, so `check:reviews` correctly continues to refuse edits to
-`webhooks-and-api-keys.md` until #777 closes them; the section is split under a
-"Historical" heading, as for notifications above, only then. #337 (workspace-scoped `sees_all`
-wording in `WH-14`/`WH-15`) stays blocked on that and is a wording change, not a §7 finding.
+Tally: 12 RESOLVED, 0 SUPERSEDED, 0 STILL OPEN, 0 OUT OF SCOPE. (An earlier version of this block,
+dated the same day, recorded rows 9 and 12 as still open, tracked in #777; the #777 text has
+since been added and independently reviewed.)
+
+*Why row 12 is RESOLVED and not OUT OF SCOPE.* The finding's own fix was "deserve named files":
+a statement about what the spec says, not a request that the tests already pass. That fix is
+now done and verified. Webhooks themselves are not built (#47, P4), so no test can exist yet;
+that is the implementation lane's obligation and the spec says so explicitly, but it is not what
+this design finding asked for. The register's own precedent for the same situation is the
+notifications disposition above, which closed the design finding because the spec "names the
+planned tests while explicitly marking unimplemented integration and browser acceptance as
+pending". Calling row 12 OUT OF SCOPE would have implied the finding is not about this spec; it
+is, and it is satisfied. What is *not* claimed: that any named test exists, passes, or that
+webhook delivery, SSRF protection or key clamping is implemented. #47 owns that.
+
+*Reviewer note.* The #777 review found one inaccurate sentence ("no webhook code or webhook test
+exists on `main`'; main holds the inherited notification sender's guard and test). It is corrected
+in `33c53817`, so this disposition rests on the corrected text.
+
+With every row dispositioned, the findings sit under the heading below, as for notifications.
+#337 (workspace-scoped `sees_all` wording in `WH-14`/`WH-15`) is a wording change, not a §7
+finding, and may now proceed.
 
 ---
 
