@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { availableParallelism, cpus, release as osRelease } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
@@ -145,8 +146,30 @@ const TIMELINE_EVENT_NAMES = new Set([
   "LargestContentfulPaint::Candidate",
   "ParseHTML",
   "ParseAuthorStyleSheet",
+  "BeginFrame",
+  "BeginMainThreadFrame",
+  "DrawFrame",
+  "FrameStarted",
+  "Commit",
+  "SubmitCompositorFrame",
   "TimeStamp",
   "UserTiming",
+]);
+
+const FOCUSED_DRAG_TIMELINE_EVENT_NAMES = new Set([
+  "UpdateLayoutTree",
+  "RecalculateStyles",
+  "Layout",
+  "PrePaint",
+  "Paint",
+  "CompositeLayers",
+  "EventDispatch",
+  "BeginFrame",
+  "BeginMainThreadFrame",
+  "DrawFrame",
+  "FrameStarted",
+  "Commit",
+  "SubmitCompositorFrame",
 ]);
 
 const CLOCK_MARKS = new Set([
@@ -157,6 +180,10 @@ const CLOCK_MARKS = new Set([
   "assignment-start",
   "assignment-paint",
   "board-paint",
+  "board-drag-start",
+  "board-drag-end",
+  "board-drag-frame-window-start",
+  "board-drag-frame-window-end",
 ]);
 
 function safeTimelineAsset(value: string) {
@@ -172,6 +199,7 @@ function safeTimelineAsset(value: string) {
 
 function sanitizeTimelineEvent(
   event: RawTimelineEvent,
+  allowedEventNames: ReadonlySet<string> = TIMELINE_EVENT_NAMES,
 ): BrowserTimelineEvent | undefined {
   if (!event.name) return undefined;
   const data = event.args?.data;
@@ -183,7 +211,7 @@ function sanitizeTimelineEvent(
   const markDocumentId = markerMatch?.[1];
   const mark = markerMatch?.[2];
   if (markerMatch && (!mark || !CLOCK_MARKS.has(mark))) return undefined;
-  if (!mark && !TIMELINE_EVENT_NAMES.has(event.name)) return undefined;
+  if (!mark && !allowedEventNames.has(event.name)) return undefined;
   const callFrames = data?.stackTrace?.callFrames;
   const stack = Array.isArray(callFrames)
     ? callFrames.slice(0, 12).map((frame) => ({
@@ -262,6 +290,25 @@ declare global {
     __g11InitialDiagnostic?: {
       lcp: { startTime: number; element: string; textLength: number } | null;
       longTasks: Array<{ start: number; duration: number }>;
+    };
+    __g11DiagnosticMark?: (
+      name: string,
+      boundaryPerformanceNowMs: number,
+    ) => void;
+    __g11BoardDragProfile?: {
+      active: boolean;
+      finished: boolean;
+      frameTimestamps: number[];
+      frameWindow?: {
+        startMark: string;
+        endMark: string;
+        startPerformanceNowMs: number;
+        endPerformanceNowMs?: number;
+        frameTimestamps: number[];
+      };
+      pointerFrameTimestamps: number[];
+      startPerformanceNowMs?: number;
+      endPerformanceNowMs?: number;
     };
   }
 }
@@ -701,6 +748,15 @@ type DiagnosticBoundary = {
   startPerformanceNowMs: number;
   endPerformanceNowMs: number;
   source: string;
+  frameTimestamps?: number[];
+  frameWindow?: {
+    startMark: string;
+    endMark: string;
+    startPerformanceNowMs: number;
+    endPerformanceNowMs: number;
+    frameTimestamps: number[];
+  };
+  deviceHardwareConcurrency?: number;
 } | null;
 
 function createRawCaptureArtifact(
@@ -747,6 +803,7 @@ async function withDiagnosticProfile(
   throttled: boolean,
   prepare: (page: Page) => Promise<void>,
   visit: (page: Page) => Promise<DiagnosticBoundary>,
+  allowedTimelineEventNames: ReadonlySet<string> = TIMELINE_EVENT_NAMES,
 ): Promise<DiagnosticCapture> {
   const context = await browser.newContext({
     baseURL: ORIGIN,
@@ -767,6 +824,8 @@ async function withDiagnosticProfile(
   const invalidTraceProfileKeys = new Set<string>();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
   let timelineOverflow = false;
+  const directCpuProfiler =
+    name === "legacy board drag pointerdown to pointerup";
   cdp.on("Tracing.dataCollected", ({ value }) => {
     for (const event of value ?? []) {
       if (event.name === "Profile" || event.name === "ProfileChunk") {
@@ -820,7 +879,7 @@ async function withDiagnosticProfile(
           traceProfile.nodes.set(node.id, node);
         traceProfile.samples.push(...(timedSamples ?? []));
       }
-      const sanitized = sanitizeTimelineEvent(event);
+      const sanitized = sanitizeTimelineEvent(event, allowedTimelineEventNames);
       if (!sanitized) continue;
       if (timelineEvents.length >= 20_000) {
         timelineOverflow = true;
@@ -830,110 +889,109 @@ async function withDiagnosticProfile(
     }
   });
   await installPerformanceApiFixture(page);
-  await page.addInitScript(() => {
-    const allowedMarks = new Set([
-      "document-start",
-      "initial-lcp",
-      "state-start",
-      "state-paint",
-      "assignment-start",
-      "assignment-paint",
-      "board-paint",
-    ]);
-    const marks: Array<{
-      name: string;
-      documentId: string;
-      boundaryPerformanceNowMs: number;
-      beforeMarkPerformanceNowMs: number;
-      afterMarkPerformanceNowMs: number;
-    }> = [];
-    const documentId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
-      .map((value) => value.toString(16).padStart(2, "0"))
-      .join("");
-    const mark = (name: string, boundaryPerformanceNowMs: number) => {
-      if (!allowedMarks.has(name) || !Number.isFinite(boundaryPerformanceNowMs))
-        return;
-      const beforeMarkPerformanceNowMs = performance.now();
-      console.timeStamp(`g11-diagnostic:${documentId}:${name}`);
-      const afterMarkPerformanceNowMs = performance.now();
-      marks.push({
-        name,
-        documentId,
-        boundaryPerformanceNowMs,
-        beforeMarkPerformanceNowMs,
-        afterMarkPerformanceNowMs,
-      });
-    };
-    (
-      window as Window & { __g11DiagnosticClockMarks?: typeof marks }
-    ).__g11DiagnosticClockMarks = marks;
-    const metrics = (
-      window as Window & {
-        __g11Metrics?: Record<string, number>;
-      }
-    ).__g11Metrics;
-    if (metrics) {
-      mark("document-start", metrics.documentStart);
-      for (const [key, startKey, suffix] of [
-        ["stateStart", "", "state-start"],
-        ["statePaint", "stateStart", "state-paint"],
-        ["assignmentStart", "", "assignment-start"],
-        ["assignmentPaint", "assignmentStart", "assignment-paint"],
-        ["boardPaint", "documentStart", "board-paint"],
-      ] as const) {
-        const descriptor = Object.getOwnPropertyDescriptor(metrics, key);
-        if (!descriptor || !("value" in descriptor))
-          throw new Error(
-            `The canonical ${key} recorder field is unavailable.`,
-          );
-        let current = descriptor.value;
-        Object.defineProperty(metrics, key, {
-          configurable: descriptor.configurable,
-          enumerable: descriptor.enumerable,
-          get: () => current,
-          set: (next: number) => {
-            current = next;
-            if (typeof next !== "number" || next <= 0) return;
-            const boundaryValue = startKey ? metrics[startKey] + next : next;
-            mark(suffix, boundaryValue);
-          },
+  await page.addInitScript(
+    (allowedMarkNames: string[]) => {
+      const allowedMarks = new Set(allowedMarkNames);
+      const marks: Array<{
+        name: string;
+        documentId: string;
+        boundaryPerformanceNowMs: number;
+        beforeMarkPerformanceNowMs: number;
+        afterMarkPerformanceNowMs: number;
+      }> = [];
+      const documentId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+        .map((value) => value.toString(16).padStart(2, "0"))
+        .join("");
+      const mark = (name: string, boundaryPerformanceNowMs: number) => {
+        if (
+          !allowedMarks.has(name) ||
+          !Number.isFinite(boundaryPerformanceNowMs)
+        )
+          return;
+        const beforeMarkPerformanceNowMs = performance.now();
+        console.timeStamp(`g11-diagnostic:${documentId}:${name}`);
+        const afterMarkPerformanceNowMs = performance.now();
+        marks.push({
+          name,
+          documentId,
+          boundaryPerformanceNowMs,
+          beforeMarkPerformanceNowMs,
+          afterMarkPerformanceNowMs,
         });
-      }
-    }
-    const state = {
-      lcp: null as {
-        startTime: number;
-        element: string;
-        textLength: number;
-      } | null,
-      longTasks: [] as Array<{ start: number; duration: number }>,
-    };
-    window.__g11InitialDiagnostic = state;
-    new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        const candidate = entry as PerformanceEntry & {
-          element?: Element | null;
-        };
-        state.lcp = {
-          startTime: candidate.startTime,
-          element: candidate.element?.tagName.toLowerCase() ?? "no-element",
-          textLength: candidate.element?.textContent?.trim().length ?? 0,
-        };
-        mark("initial-lcp", candidate.startTime);
-      }
-    }).observe({ type: "largest-contentful-paint", buffered: true });
-    try {
-      new PerformanceObserver((list) => {
-        for (const entry of list.getEntries())
-          state.longTasks.push({
-            start: entry.startTime,
-            duration: entry.duration,
+      };
+      window.__g11DiagnosticMark = mark;
+      (
+        window as Window & { __g11DiagnosticClockMarks?: typeof marks }
+      ).__g11DiagnosticClockMarks = marks;
+      const metrics = (
+        window as Window & {
+          __g11Metrics?: Record<string, number>;
+        }
+      ).__g11Metrics;
+      if (metrics) {
+        mark("document-start", metrics.documentStart);
+        for (const [key, startKey, suffix] of [
+          ["stateStart", "", "state-start"],
+          ["statePaint", "stateStart", "state-paint"],
+          ["assignmentStart", "", "assignment-start"],
+          ["assignmentPaint", "assignmentStart", "assignment-paint"],
+          ["boardPaint", "documentStart", "board-paint"],
+        ] as const) {
+          const descriptor = Object.getOwnPropertyDescriptor(metrics, key);
+          if (!descriptor || !("value" in descriptor))
+            throw new Error(
+              `The canonical ${key} recorder field is unavailable.`,
+            );
+          let current = descriptor.value;
+          Object.defineProperty(metrics, key, {
+            configurable: descriptor.configurable,
+            enumerable: descriptor.enumerable,
+            get: () => current,
+            set: (next: number) => {
+              current = next;
+              if (typeof next !== "number" || next <= 0) return;
+              const boundaryValue = startKey ? metrics[startKey] + next : next;
+              mark(suffix, boundaryValue);
+            },
           });
-      }).observe({ type: "longtask", buffered: true });
-    } catch {
-      // Long-task observation is browser-dependent; CPUProfile and LCP remain required.
-    }
-  });
+        }
+      }
+      const state = {
+        lcp: null as {
+          startTime: number;
+          element: string;
+          textLength: number;
+        } | null,
+        longTasks: [] as Array<{ start: number; duration: number }>,
+      };
+      window.__g11InitialDiagnostic = state;
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const candidate = entry as PerformanceEntry & {
+            element?: Element | null;
+          };
+          state.lcp = {
+            startTime: candidate.startTime,
+            element: candidate.element?.tagName.toLowerCase() ?? "no-element",
+            textLength: candidate.element?.textContent?.trim().length ?? 0,
+          };
+          mark("initial-lcp", candidate.startTime);
+        }
+      }).observe({ type: "largest-contentful-paint", buffered: true });
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries())
+            state.longTasks.push({
+              start: entry.startTime,
+              duration: entry.duration,
+            });
+        }).observe({ type: "longtask", buffered: true });
+      } catch {
+        // Long-task observation is browser-dependent; CPUProfile and LCP remain required.
+      }
+    },
+    [...CLOCK_MARKS],
+  );
 
   try {
     if (throttled) {
@@ -957,8 +1015,40 @@ async function withDiagnosticProfile(
         "devtools.timeline,v8.execute,blink.user_timing,disabled-by-default-devtools.timeline,disabled-by-default-v8.cpu_profiler",
       options: "record-as-much-as-possible",
     });
+    if (directCpuProfiler) {
+      // Keep the established trace markers/timeline, but request the CPU profile
+      // through CDP's explicit Profiler domain as an independent capture path.
+      await cdp.send("Profiler.enable");
+      await cdp.send("Profiler.setSamplingInterval", { interval: 1000 });
+      await cdp.send("Profiler.start");
+    }
     console.info(`G11 diagnostic phase started: ${name}`);
     boundary = await visit(page);
+    if (directCpuProfiler) {
+      const { profile } = await cdp.send("Profiler.stop");
+      const nodes = new Map<number, TraceCpuNode>();
+      for (const node of profile.nodes ?? []) nodes.set(node.id, node);
+      const samples: TraceCpuProfile["samples"] = [];
+      let sampleStart = Number(profile.startTime);
+      const sampleIds: number[] = profile.samples ?? [];
+      const deltas: number[] = profile.timeDeltas ?? [];
+      for (let index = 0; index < sampleIds.length; index += 1) {
+        const duration = Number(deltas[index]);
+        const nodeId = Number(sampleIds[index]);
+        if (Number.isFinite(duration) && duration > 0 && nodes.has(nodeId))
+          samples.push({ nodeId, start: sampleStart, duration });
+        sampleStart += Number.isFinite(duration) && duration > 0 ? duration : 0;
+      }
+      traceCpuProfilesByThread.set("direct-cdp-profiler", {
+        id: "direct-cdp-profiler",
+        source: "direct-cdp-profiler",
+        pid: 0,
+        tid: 0,
+        nodes,
+        samples,
+      });
+      await cdp.send("Profiler.disable");
+    }
     clockMarks = await page.evaluate(
       () =>
         (
@@ -1217,6 +1307,187 @@ async function visitBoardTaskDetailsSheet(page: Page) {
   return null;
 }
 
+async function visitLegacyBoardDragProfile(page: Page) {
+  await page.goto(
+    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/board`,
+    { waitUntil: "domcontentloaded" },
+  );
+  await expect(page.locator('[data-task-id^="legacy-task-"]')).toHaveCount(
+    200,
+    { timeout: 30_000 },
+  );
+  await page.waitForTimeout(400);
+
+  let versionedWriteResponses = 0;
+  let unsuccessfulVersionedWrites = 0;
+  page.on("response", (response) => {
+    const request = response.request();
+    if (
+      request.method() === "PUT" &&
+      new URL(response.url()).pathname.match(/^\/api\/v2\/task\/[^/]+$/)
+    ) {
+      versionedWriteResponses += 1;
+      if (response.status() !== 200) unsuccessfulVersionedWrites += 1;
+    }
+  });
+
+  const source = await page
+    .getByText("Seeded legacy task 1", { exact: true })
+    .boundingBox();
+  const destination = await page
+    .getByText("Seeded legacy task 51", { exact: true })
+    .boundingBox();
+  if (!source || !destination)
+    throw new Error("The seeded board cards have no browser bounding boxes.");
+
+  await page.evaluate(() => {
+    const profile = {
+      active: false,
+      finished: false,
+      frameTimestamps: [] as number[],
+      pointerFrameTimestamps: [] as number[],
+      frameWindow: undefined as
+        | {
+            startMark: string;
+            endMark: string;
+            startPerformanceNowMs: number;
+            endPerformanceNowMs?: number;
+            frameTimestamps: number[];
+          }
+        | undefined,
+      startPerformanceNowMs: undefined as number | undefined,
+      endPerformanceNowMs: undefined as number | undefined,
+    };
+    window.__g11BoardDragProfile = profile;
+    const samplePointerFrame = (now: number) => {
+      if (profile.finished) return;
+      if (profile.active) profile.pointerFrameTimestamps.push(now);
+      requestAnimationFrame(samplePointerFrame);
+    };
+    requestAnimationFrame(samplePointerFrame);
+
+    const frameWindowStart = performance.now();
+    const frameWindowStopAt = frameWindowStart + 2200;
+    const frameWindow = {
+      startMark: "board-drag-frame-window-start",
+      endMark: "board-drag-frame-window-end",
+      startPerformanceNowMs: frameWindowStart,
+      endPerformanceNowMs: undefined as number | undefined,
+      frameTimestamps: profile.frameTimestamps,
+    };
+    profile.frameWindow = frameWindow;
+    window.__g11DiagnosticMark?.(frameWindow.startMark, frameWindowStart);
+    const sampleCanonicalFrameWindow = (now: number) => {
+      profile.frameTimestamps.push(now);
+      if (now < frameWindowStopAt) {
+        requestAnimationFrame(sampleCanonicalFrameWindow);
+        return;
+      }
+      frameWindow.endPerformanceNowMs = now;
+      window.__g11DiagnosticMark?.(frameWindow.endMark, now);
+    };
+    requestAnimationFrame(sampleCanonicalFrameWindow);
+    document.addEventListener(
+      "pointerdown",
+      (event) => {
+        const target = event.target;
+        const card =
+          target instanceof Element ? target.closest("[data-task-id]") : null;
+        if (
+          profile.active ||
+          card?.getAttribute("data-task-id") !== "legacy-task-1"
+        )
+          return;
+        const start = performance.now();
+        profile.startPerformanceNowMs = start;
+        window.__g11DiagnosticMark?.("board-drag-start", start);
+        profile.active = true;
+      },
+      true,
+    );
+    document.addEventListener(
+      "pointerup",
+      () => {
+        if (!profile.active) return;
+        const end = performance.now();
+        profile.endPerformanceNowMs = end;
+        window.__g11DiagnosticMark?.("board-drag-end", end);
+        profile.active = false;
+        profile.finished = true;
+      },
+      true,
+    );
+  });
+
+  const fromX = source.x + source.width / 2;
+  const fromY = source.y + source.height / 2;
+  const toX = destination.x + destination.width / 2;
+  const toY = destination.y + destination.height / 2;
+  await page.mouse.move(fromX, fromY);
+  await page.mouse.down();
+  for (let step = 1; step <= 125; step += 1) {
+    const progress = step / 125;
+    await page.mouse.move(
+      fromX + (toX - fromX) * progress,
+      fromY + (toY - fromY) * progress,
+    );
+    await page.waitForTimeout(16);
+  }
+  await page.mouse.up();
+
+  const dragCapture = await page.evaluate(() => {
+    const profile = window.__g11BoardDragProfile;
+    if (
+      !profile ||
+      profile.startPerformanceNowMs === undefined ||
+      profile.endPerformanceNowMs === undefined ||
+      !profile.frameWindow ||
+      profile.frameWindow.endPerformanceNowMs === undefined
+    )
+      throw new Error(
+        "The legacy board drag pointer boundary was not captured.",
+      );
+    return {
+      startPerformanceNowMs: profile.startPerformanceNowMs,
+      endPerformanceNowMs: profile.endPerformanceNowMs,
+      frameTimestamps: [...profile.pointerFrameTimestamps],
+      frameWindow: {
+        startMark: profile.frameWindow.startMark,
+        endMark: profile.frameWindow.endMark,
+        startPerformanceNowMs: profile.frameWindow.startPerformanceNowMs,
+        endPerformanceNowMs: profile.frameWindow.endPerformanceNowMs,
+        frameTimestamps: [...profile.frameWindow.frameTimestamps],
+      },
+      deviceHardwareConcurrency: navigator.hardwareConcurrency,
+    };
+  });
+
+  await expect
+    .poll(() => versionedWriteResponses, { timeout: 30_000 })
+    .toBe(100);
+  expect(unsuccessfulVersionedWrites).toBe(0);
+  const movedCardColumn = await page
+    .locator('[data-task-id="legacy-task-1"]')
+    .locator("xpath=ancestor::*[@data-column-id]")
+    .getAttribute("data-column-id");
+  const destinationCardColumn = await page
+    .locator('[data-task-id="legacy-task-51"]')
+    .locator("xpath=ancestor::*[@data-column-id]")
+    .getAttribute("data-column-id");
+  expect(movedCardColumn).toBe(destinationCardColumn);
+
+  return {
+    startMark: "board-drag-start",
+    endMark: "board-drag-end",
+    startPerformanceNowMs: dragCapture.startPerformanceNowMs,
+    endPerformanceNowMs: dragCapture.endPerformanceNowMs,
+    source: "captured pointerdown through pointerup on legacy-task-1",
+    frameTimestamps: dragCapture.frameTimestamps,
+    frameWindow: dragCapture.frameWindow,
+    deviceHardwareConcurrency: dragCapture.deviceHardwareConcurrency,
+  };
+}
+
 test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   browser,
 }) => {
@@ -1428,4 +1699,440 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     ),
     "The diagnostic must retain all observed requests without truncation.",
   ).toBe(true);
+});
+
+test("hosted manual diagnostic - legacy board drag CPU profile", async ({
+  browser,
+}) => {
+  test.setTimeout(180_000);
+  await mkdir(RESULT_DIR, { recursive: true, mode: 0o700 });
+  await chmod(RESULT_DIR, 0o700);
+  const focusedResultDir = await mkdtemp(
+    path.join(RESULT_DIR, "focused-board-drag-run-"),
+  );
+  await chmod(focusedResultDir, 0o700);
+  const capture = await withDiagnosticProfile(
+    browser,
+    "legacy board drag pointerdown to pointerup",
+    false,
+    async () => {},
+    visitLegacyBoardDragProfile,
+    FOCUSED_DRAG_TIMELINE_EVENT_NAMES,
+  );
+  const profileAssetNames = new Set(
+    capture.traceCpuProfiles.flatMap((traceProfile) =>
+      [...traceProfile.nodes.values()]
+        .map((node) => node.callFrame?.url)
+        .filter(
+          (url): url is string =>
+            typeof url === "string" && url.startsWith(`${ORIGIN}/assets/`),
+        )
+        .map(safeAssetName),
+    ),
+  );
+  const build = await getBuildIdentity(profileAssetNames);
+  const rawDirectory = path.join(
+    focusedResultDir,
+    "raw-captures",
+    "focused-board-drag",
+  );
+  const rawArtifact = {
+    ...createRawCaptureArtifact(capture, 1, build),
+    schemaVersion: 1 as const,
+    captureIndex: 1,
+  };
+  await mkdir(rawDirectory, { recursive: true, mode: 0o700 });
+  await chmod(rawDirectory, 0o700);
+  await writeFile(
+    path.join(rawDirectory, "window-01.json"),
+    `${JSON.stringify(rawArtifact, null, 2)}\n`,
+    { encoding: "utf8", flag: "wx", mode: 0o600 },
+  );
+
+  const [profileWindow] = await aggregateDiagnosticCapturesWithFailureReceipt(
+    rawDirectory,
+    [capture],
+    build,
+    (current) => {
+      const alignment = alignBoundaryToTrace(current);
+      if (!alignment)
+        throw new Error(`${current.name} has no pointer interval alignment.`);
+      const frameWindow = current.boundary?.frameWindow;
+      if (!current.boundary || !frameWindow)
+        throw new Error(`${current.name} has no canonical RAF window.`);
+      const frameWindowCapture: DiagnosticCapture = {
+        ...current,
+        boundary: {
+          ...current.boundary,
+          startMark: frameWindow.startMark,
+          endMark: frameWindow.endMark,
+          startPerformanceNowMs: frameWindow.startPerformanceNowMs,
+          endPerformanceNowMs: frameWindow.endPerformanceNowMs,
+          frameTimestamps: frameWindow.frameTimestamps,
+          source: "G11 2.2 second RAF sample window",
+        },
+      };
+      const frameWindowAlignment = alignBoundaryToTrace(frameWindowCapture);
+      if (!frameWindowAlignment)
+        throw new Error(`${current.name} has no RAF-window clock alignment.`);
+      const clippedProfiles = current.traceCpuProfiles
+        .map((profile) =>
+          sanitizeTraceCpuProfile(
+            profile,
+            alignment.startTraceMicroseconds,
+            alignment.endTraceMicroseconds,
+          ),
+        )
+        .filter((profile) => profile !== undefined);
+      const frameWindowProfiles = current.traceCpuProfiles
+        .map((profile) =>
+          sanitizeTraceCpuProfile(
+            profile,
+            frameWindowAlignment.startTraceMicroseconds,
+            frameWindowAlignment.endTraceMicroseconds,
+          ),
+        )
+        .filter((profile) => profile !== undefined);
+      const clippedSamples = clippedProfiles.flatMap((profile) =>
+        profile.samples.map((sample) => ({
+          start: sample.startMicroseconds,
+          end: sample.startMicroseconds + sample.durationMicroseconds,
+        })),
+      );
+      const cpuCoverage = summarizeProfileCoverage(
+        clippedSamples,
+        alignment.startTraceMicroseconds,
+        alignment.endTraceMicroseconds,
+      );
+      const frameWindowSamples = frameWindowProfiles.flatMap((profile) =>
+        profile.samples.map((sample) => ({
+          start: sample.startMicroseconds,
+          end: sample.startMicroseconds + sample.durationMicroseconds,
+        })),
+      );
+      const frameWindowCpuCoverage = summarizeProfileCoverage(
+        frameWindowSamples,
+        frameWindowAlignment.startTraceMicroseconds,
+        frameWindowAlignment.endTraceMicroseconds,
+      );
+      const frameTimestamps = current.boundary?.frameTimestamps ?? [];
+      const frameIntervals = frameTimestamps
+        .slice(1)
+        .flatMap((timestamp, index) => {
+          const previous = frameTimestamps[index];
+          return previous === undefined ? [] : [timestamp - previous];
+        })
+        .filter((interval) => interval > 0);
+      const sortedFrameIntervals = [...frameIntervals].sort(
+        (left, right) => left - right,
+      );
+      const canonicalFrameTimestamps = frameWindow.frameTimestamps;
+      const canonicalFrameIntervals = canonicalFrameTimestamps
+        .slice(1)
+        .flatMap((timestamp, index) => {
+          const previous = canonicalFrameTimestamps[index];
+          return previous === undefined ? [] : [timestamp - previous];
+        })
+        .filter((interval) => interval > 0);
+      const sortedCanonicalFrameIntervals = [...canonicalFrameIntervals].sort(
+        (left, right) => left - right,
+      );
+      const canonicalTimelineEvents = clipTimelineEvents(
+        current.browserPerformance.timelineEvents,
+        frameWindowAlignment.startTraceMicroseconds,
+        frameWindowAlignment.endTraceMicroseconds,
+      );
+      return {
+        name: current.name,
+        documentId: alignment.documentId,
+        scope: "pointerdown-to-pointerup; no canonical G11 metric",
+        recorderBoundary: alignment.boundary,
+        clockAlignment: {
+          ...alignment.transform,
+          calibratedStartTraceMicroseconds: alignment.startTraceMicroseconds,
+          calibratedEndTraceMicroseconds: alignment.endTraceMicroseconds,
+          v8TraceProfileCount: current.traceCpuProfiles.length,
+        },
+        cpuSampleCoverage: {
+          scope: "observed ProfileChunk samples; not a completeness guarantee",
+          intervalStartMicroseconds: alignment.startTraceMicroseconds,
+          intervalEndMicroseconds: alignment.endTraceMicroseconds,
+          observedStartMicroseconds: cpuCoverage.observedStart,
+          observedEndMicroseconds: cpuCoverage.observedEnd,
+          uncoveredPrefixMicroseconds: cpuCoverage.uncoveredPrefix,
+          uncoveredSuffixMicroseconds: cpuCoverage.uncoveredSuffix,
+          unionCoverageMicroseconds: cpuCoverage.unionCoverage,
+          clockAlignmentUncertaintyMicroseconds:
+            alignment.transform.uncertaintyMicroseconds,
+        },
+        frameSampling: {
+          timestampClock: "window.performance.now() milliseconds",
+          timestamps: frameTimestamps,
+          intervalCount: frameIntervals.length,
+          medianIntervalMs:
+            sortedFrameIntervals.length > 0
+              ? sortedFrameIntervals[
+                  Math.floor(sortedFrameIntervals.length / 2)
+                ]
+              : null,
+          p95IntervalMs:
+            sortedFrameIntervals.length > 0
+              ? sortedFrameIntervals[
+                  Math.ceil(sortedFrameIntervals.length * 0.95) - 1
+                ]
+              : null,
+          intervalsOver20Ms: frameIntervals.filter((value) => value > 20)
+            .length,
+          intervalsOver33Ms: frameIntervals.filter((value) => value > 33)
+            .length,
+        },
+        topInclusiveCpuFrames: inclusiveTraceFrames(clippedProfiles),
+        traceCpuProfiles: clippedProfiles,
+        timelineEvents: clipTimelineEvents(
+          current.browserPerformance.timelineEvents,
+          alignment.startTraceMicroseconds,
+          alignment.endTraceMicroseconds,
+        ),
+        wholeWindowPerformanceMetrics: {
+          scope: "context-only deltas; not clipped to the drag interval",
+          values: current.browserPerformance.metrics,
+        },
+        canonicalRafWindow: {
+          scope:
+            "G11-compatible RAF sampling: 2200 ms deadline begins before initial mouse.move; profile/timeline clipped to the sampler's first RAF at or beyond that deadline",
+          requestedWindowMs: 2200,
+          elapsedWindowMs:
+            frameWindow.endPerformanceNowMs - frameWindow.startPerformanceNowMs,
+          firstFrameAtMs: canonicalFrameTimestamps[0] ?? null,
+          lastFrameAtMs: canonicalFrameTimestamps.at(-1) ?? null,
+          clockAlignment: {
+            ...frameWindowAlignment.transform,
+            calibratedStartTraceMicroseconds:
+              frameWindowAlignment.startTraceMicroseconds,
+            calibratedEndTraceMicroseconds:
+              frameWindowAlignment.endTraceMicroseconds,
+            profilerThreadCount: current.traceCpuProfiles.length,
+          },
+          cpuSampleCoverage: {
+            scope:
+              "observed explicit Profiler samples clipped to the 2.2-second RAF window; not a completeness guarantee",
+            intervalStartMicroseconds:
+              frameWindowAlignment.startTraceMicroseconds,
+            intervalEndMicroseconds: frameWindowAlignment.endTraceMicroseconds,
+            observedStartMicroseconds: frameWindowCpuCoverage.observedStart,
+            observedEndMicroseconds: frameWindowCpuCoverage.observedEnd,
+            uncoveredPrefixMicroseconds: frameWindowCpuCoverage.uncoveredPrefix,
+            uncoveredSuffixMicroseconds: frameWindowCpuCoverage.uncoveredSuffix,
+            unionCoverageMicroseconds: frameWindowCpuCoverage.unionCoverage,
+            clockAlignmentUncertaintyMicroseconds:
+              frameWindowAlignment.transform.uncertaintyMicroseconds,
+          },
+          frameSampling: {
+            timestampClock: "window.performance.now() milliseconds",
+            timestamps: canonicalFrameTimestamps,
+            intervalCount: canonicalFrameIntervals.length,
+            medianIntervalMs:
+              sortedCanonicalFrameIntervals.length > 0
+                ? sortedCanonicalFrameIntervals[
+                    Math.floor(sortedCanonicalFrameIntervals.length / 2)
+                  ]
+                : null,
+            p95IntervalMs:
+              sortedCanonicalFrameIntervals.length > 0
+                ? sortedCanonicalFrameIntervals[
+                    Math.ceil(sortedCanonicalFrameIntervals.length * 0.95) - 1
+                  ]
+                : null,
+            intervalsOver20Ms: canonicalFrameIntervals.filter(
+              (value) => value > 20,
+            ).length,
+            intervalsOver33Ms: canonicalFrameIntervals.filter(
+              (value) => value > 33,
+            ).length,
+          },
+          topInclusiveCpuFrames: inclusiveTraceFrames(frameWindowProfiles),
+          traceCpuProfiles: frameWindowProfiles,
+          timelineEvents: canonicalTimelineEvents,
+        },
+      };
+    },
+  );
+  expect(
+    profileWindow?.frameSampling?.intervalCount ?? 0,
+    "The hosted drag diagnostic must include RAF timing samples.",
+  ).toBeGreaterThan(0);
+  expect(
+    profileWindow?.topInclusiveCpuFrames?.length ?? 0,
+    "The hosted drag diagnostic must include sampled application JavaScript frames.",
+  ).toBeGreaterThan(0);
+  expect(
+    profileWindow?.cpuSampleCoverage?.unionCoverageMicroseconds ?? 0,
+    "The hosted drag diagnostic must include aligned direct Profiler samples.",
+  ).toBeGreaterThan(0);
+  expect(
+    profileWindow?.canonicalRafWindow?.frameSampling?.intervalCount ?? 0,
+    "The hosted drag diagnostic must include the canonical 2.2 second RAF window.",
+  ).toBeGreaterThan(0);
+  expect(
+    profileWindow?.canonicalRafWindow?.topInclusiveCpuFrames?.length ?? 0,
+    "The canonical RAF window must contain sampled application JavaScript frames.",
+  ).toBeGreaterThan(0);
+  expect(
+    profileWindow?.canonicalRafWindow?.cpuSampleCoverage
+      ?.unionCoverageMicroseconds ?? 0,
+    "The canonical RAF window must contain aligned direct Profiler samples.",
+  ).toBeGreaterThan(0);
+  const runtimeMetadata = {
+    sourceCommitSha: build.sourceCommitSha,
+    sourceTreeSha256: build.sourceTreeSha256,
+    manifestSha256: build.manifestSha256,
+    canonicalFixtureSha256: build.canonicalFixtureSha256,
+    nodeVersion: process.version,
+    platform: process.platform,
+    architecture: process.arch,
+    osRelease: osRelease(),
+    cpuModel: cpus()[0]?.model ?? "unknown",
+    logicalCpuCount: cpus().length,
+    availableParallelism: availableParallelism(),
+    chromiumVersion: browser.version(),
+    playwrightWorkerIndex: test.info().workerIndex,
+    playwrightParallelIndex: test.info().parallelIndex,
+    invocationWorkerCount: 1,
+    browserHardwareConcurrency:
+      capture.boundary?.deviceHardwareConcurrency ?? null,
+    profilerThreads: capture.traceCpuProfiles.map((profile) => ({
+      pid: profile.pid,
+      tid: profile.tid,
+      source: profile.source,
+      nodeCount: profile.nodes.size,
+      sampleCount: profile.samples.length,
+    })),
+  };
+  const result = {
+    schemaVersion: 1,
+    diagnosticOnly: true,
+    sourceAndRuntime: runtimeMetadata,
+    fixture: "canonical G11 performance fixture: 200 legacy board cards",
+    dragInputs: {
+      route: `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/board`,
+      from: "legacy-task-1",
+      to: "legacy-task-51",
+      moveSteps: 125,
+      delayPerStepMs: 16,
+      networkCpuThrottling: "none",
+    },
+    profileWindow,
+    topModulesByAsset: build.modulesByAsset,
+    networkSummary: capture.network,
+  };
+  const serialized = `${JSON.stringify(result, null, 2)}\n`;
+  await writeFile(
+    path.join(focusedResultDir, "board-drag-profile.json"),
+    serialized,
+    {
+      encoding: "utf8",
+      mode: 0o600,
+    },
+  );
+
+  const normalizeSourceBinding = (specifier: string) => {
+    const normalized = specifier.replaceAll("\\", "/").split("?")[0] ?? "";
+    const nodeModulesIndex = normalized.lastIndexOf("/node_modules/");
+    if (nodeModulesIndex >= 0)
+      return `dependency/${normalized.slice(nodeModulesIndex + 14)}`;
+    const localSource = normalized.match(
+      /(?:^|\/)(apps|packages)\/[^?#]+|(?:^|\/)src\/[^?#]+/,
+    )?.[0];
+    if (localSource?.startsWith("src/")) return `apps/web/${localSource}`;
+    if (localSource?.startsWith("/src/")) return `apps/web${localSource}`;
+    if (localSource) return localSource.replace(/^\//, "");
+    return path.posix.basename(normalized);
+  };
+  const canonicalRafWindow = profileWindow.canonicalRafWindow;
+  const activeAssets = new Set([
+    ...profileWindow.topInclusiveCpuFrames.map((frame) => frame.asset),
+    ...canonicalRafWindow.topInclusiveCpuFrames.map((frame) => frame.asset),
+  ]);
+  const sourceBindings = [...activeAssets].sort().map((asset) => ({
+    asset,
+    sources: [
+      ...new Set(
+        (build.modulesByAsset[asset] ?? []).map(normalizeSourceBinding),
+      ),
+    ].sort(),
+  }));
+  const countTimelineEvents = (events: BrowserTimelineEvent[]) =>
+    Object.fromEntries(
+      Object.entries(
+        events.reduce<Record<string, number>>((counts, event) => {
+          counts[event.name] = (counts[event.name] ?? 0) + 1;
+          return counts;
+        }, {}),
+      ).sort(([left], [right]) => left.localeCompare(right)),
+    );
+  const hostedSummary = {
+    schemaVersion: 1,
+    diagnosticOnly: true,
+    purpose: "hosted root-cause investigation; no G11 budget evaluation",
+    sourceAndRuntime: runtimeMetadata,
+    fixture: "canonical G11 performance fixture: 200 legacy board cards",
+    dragInputs: result.dragInputs,
+    canonicalRafWindow: {
+      requestedWindowMs: canonicalRafWindow.requestedWindowMs,
+      elapsedWindowMs: canonicalRafWindow.elapsedWindowMs,
+      frameSampling: {
+        intervalCount: canonicalRafWindow.frameSampling.intervalCount,
+        medianIntervalMs: canonicalRafWindow.frameSampling.medianIntervalMs,
+        p95IntervalMs: canonicalRafWindow.frameSampling.p95IntervalMs,
+        intervalsOver20Ms: canonicalRafWindow.frameSampling.intervalsOver20Ms,
+        intervalsOver33Ms: canonicalRafWindow.frameSampling.intervalsOver33Ms,
+      },
+      cpuSampleCoverage: canonicalRafWindow.cpuSampleCoverage,
+      appFrameCount: canonicalRafWindow.topInclusiveCpuFrames.length,
+      topAppFrames: canonicalRafWindow.topInclusiveCpuFrames.slice(0, 20),
+      timelineEventCounts: countTimelineEvents(
+        canonicalRafWindow.timelineEvents,
+      ),
+    },
+    pointerContext: {
+      durationMs:
+        (capture.boundary?.endPerformanceNowMs ?? 0) -
+        (capture.boundary?.startPerformanceNowMs ?? 0),
+      frameSampling: {
+        intervalCount: profileWindow.frameSampling.intervalCount,
+        medianIntervalMs: profileWindow.frameSampling.medianIntervalMs,
+        p95IntervalMs: profileWindow.frameSampling.p95IntervalMs,
+        intervalsOver20Ms: profileWindow.frameSampling.intervalsOver20Ms,
+        intervalsOver33Ms: profileWindow.frameSampling.intervalsOver33Ms,
+      },
+      cpuSampleCoverage: profileWindow.cpuSampleCoverage,
+      appFrameCount: profileWindow.topInclusiveCpuFrames.length,
+      timelineEventCounts: countTimelineEvents(profileWindow.timelineEvents),
+    },
+    sourceBindings,
+  };
+  const summarySerialized = `${JSON.stringify(hostedSummary, null, 2)}\n`;
+  expect(summarySerialized).not.toMatch(
+    /(?:\/Users\/|\/home\/|raw-captures|traceCpuProfiles|"timelineEvents"|networkSummary|authorization|x-taskdesk-csrf)/i,
+  );
+  await writeFile(
+    path.join(focusedResultDir, "hosted-board-drag-summary.json"),
+    summarySerialized,
+    { encoding: "utf8", flag: "wx", mode: 0o600 },
+  );
+  await test.info().attach("g11-board-drag-profile.json", {
+    body: serialized,
+    contentType: "application/json",
+  });
+  console.info(
+    "G11 focused legacy board drag profile",
+    JSON.stringify({
+      durationMs:
+        (capture.boundary?.endPerformanceNowMs ?? 0) -
+        (capture.boundary?.startPerformanceNowMs ?? 0),
+      frameIntervals: profileWindow?.frameSampling?.intervalCount ?? 0,
+      appFrameBuckets: profileWindow?.topInclusiveCpuFrames?.length ?? 0,
+      profilerThreads: runtimeMetadata.profilerThreads.length,
+    }),
+  );
 });
