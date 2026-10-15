@@ -7,6 +7,7 @@ import {
   inArray,
   isNull,
   lte,
+  max,
   or,
   type SQL,
   sql,
@@ -24,6 +25,7 @@ import {
   taskTable,
   userTable,
   workspaceTable,
+  workspaceUserTable,
 } from "../database/schema";
 
 /**
@@ -181,8 +183,8 @@ export async function findTaskAssigneeId(taskId: string) {
   return existingTask;
 }
 
-export async function findUserName(userId: string) {
-  const [user] = await executorOrDefault()
+export async function findUserName(userId: string, executor?: Executor) {
+  const [user] = await executorOrDefault(executor)
     .select({ name: userTable.name })
     .from(userTable)
     .where(eq(userTable.id, userId))
@@ -443,4 +445,316 @@ export async function insertAsset(
     .values(values)
     .returning({ id: assetTable.id });
   return asset;
+}
+
+// ---- create / import / move / bulk (batch 9b) -----------------------------------------------
+
+export async function findWorkspaceMembershipId(
+  userId: string,
+  workspaceId: string,
+) {
+  const [membership] = await executorOrDefault()
+    .select({ id: workspaceUserTable.id })
+    .from(workspaceUserTable)
+    .where(
+      and(
+        eq(workspaceUserTable.userId, userId),
+        eq(workspaceUserTable.workspaceId, workspaceId),
+      ),
+    )
+    .limit(1);
+  return membership;
+}
+
+/**
+ * The requested tasks that sit in a live (not archived, not deleted) project of `workspaceId`,
+ * with their project; the workspace predicate is in the statement.
+ */
+export async function listWorkspaceScopedTasks(
+  taskIds: string[],
+  workspaceId: string,
+) {
+  return await executorOrDefault()
+    .select({
+      id: taskTable.id,
+      projectId: taskTable.projectId,
+      workspaceId: projectTable.workspaceId,
+    })
+    .from(taskTable)
+    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
+    .where(
+      and(
+        inArray(taskTable.id, taskIds),
+        eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.archivedAt),
+        isNull(projectTable.deletedAt),
+      ),
+    );
+}
+
+/** A label by id that belongs to the workspace (or is legacy workspace-less). */
+export async function findLabelInWorkspaceScope(
+  executor: Executor,
+  labelId: string,
+  workspaceId: string,
+) {
+  const scope = and(
+    eq(labelTable.id, labelId),
+    or(eq(labelTable.workspaceId, workspaceId), isNull(labelTable.workspaceId)),
+  );
+  return await executor.query.labelTable.findFirst({ where: scope });
+}
+
+export async function updateTaskRowReturningId(
+  executor: Executor,
+  taskId: string,
+  values: Partial<typeof taskTable.$inferInsert>,
+) {
+  const [updated] = await executor
+    .update(taskTable)
+    .set({ ...values, version: sql`${taskTable.version} + 1` })
+    .where(eq(taskTable.id, taskId))
+    .returning({ id: taskTable.id });
+  return updated;
+}
+
+export async function deleteTaskReturningId(
+  executor: Executor,
+  taskId: string,
+) {
+  const [deleted] = await executor
+    .delete(taskTable)
+    .where(eq(taskTable.id, taskId))
+    .returning({ id: taskTable.id });
+  return deleted;
+}
+
+export async function findTaskLabelByName(
+  executor: Executor,
+  taskId: string,
+  name: string,
+) {
+  return await executor.query.labelTable.findFirst({
+    where: and(eq(labelTable.name, name), eq(labelTable.taskId, taskId)),
+  });
+}
+
+export async function insertTaskLabelOnConflictDoNothing(
+  executor: Executor,
+  values: { name: string; color: string; workspaceId: string; taskId: string },
+) {
+  const [inserted] = await executor
+    .insert(labelTable)
+    .values(values)
+    .onConflictDoNothing({
+      target: [labelTable.taskId, labelTable.name],
+    })
+    .returning({ id: labelTable.id });
+  return inserted;
+}
+
+export async function deleteTaskLabelByName(
+  executor: Executor,
+  input: { workspaceId: string; name: string; taskId: string },
+) {
+  const [deleted] = await executor
+    .delete(labelTable)
+    .where(
+      and(
+        eq(labelTable.workspaceId, input.workspaceId),
+        eq(labelTable.name, input.name),
+        eq(labelTable.taskId, input.taskId),
+      ),
+    )
+    .returning();
+  return deleted;
+}
+
+/** Highest task position in a project's column (or status when the column is unknown). */
+export async function findMaxTaskPositionInColumnOrStatus(
+  executor: Executor,
+  projectId: string,
+  status: string,
+  columnId: string | undefined,
+) {
+  const [maxPositionResult] = await executor
+    .select({ maxPosition: max(taskTable.position) })
+    .from(taskTable)
+    .where(
+      and(
+        eq(taskTable.projectId, projectId),
+        columnId
+          ? eq(taskTable.columnId, columnId)
+          : eq(taskTable.status, status),
+      ),
+    );
+  return maxPositionResult;
+}
+
+/** Highest task position among a project's tasks with this status AND column (task move). */
+export async function findMaxTaskPositionInStatusAndColumn(
+  executor: Executor,
+  projectId: string,
+  status: string,
+  columnId: string,
+) {
+  const [maxPositionResult] = await executor
+    .select({ maxPosition: max(taskTable.position) })
+    .from(taskTable)
+    .where(
+      and(
+        eq(taskTable.projectId, projectId),
+        eq(taskTable.status, status),
+        eq(taskTable.columnId, columnId),
+      ),
+    );
+  return maxPositionResult;
+}
+
+export async function insertTask(
+  executor: Executor,
+  values: typeof taskTable.$inferInsert,
+) {
+  const [task] = await executor.insert(taskTable).values(values).returning();
+  return task;
+}
+
+export async function findProjectById(executor: Executor, projectId: string) {
+  const [liveProject] = await executor
+    .select()
+    .from(projectTable)
+    .where(eq(projectTable.id, projectId))
+    .limit(1);
+  return liveProject;
+}
+
+export async function listColumnsForMove(
+  executor: Executor,
+  projectId: string,
+) {
+  return await executor
+    .select({
+      id: columnTable.id,
+      slug: columnTable.slug,
+      position: columnTable.position,
+    })
+    .from(columnTable)
+    .where(eq(columnTable.projectId, projectId))
+    .orderBy(asc(columnTable.position));
+}
+
+/** The source project with its freeze flags (reach preflight for a move). */
+export async function findProjectFreezeState(
+  executor: Executor,
+  projectId: string,
+) {
+  const [sourcePreflight] = await executor
+    .select({
+      id: projectTable.id,
+      workspaceId: projectTable.workspaceId,
+      archivedAt: projectTable.archivedAt,
+      deletedAt: projectTable.deletedAt,
+    })
+    .from(projectTable)
+    .where(eq(projectTable.id, projectId))
+    .limit(1);
+  return sourcePreflight;
+}
+
+/** A live, unarchived project of the given workspace (destination preflight for a move). */
+export async function findLiveUnarchivedProjectInWorkspace(
+  executor: Executor,
+  projectId: string,
+  workspaceId: string,
+) {
+  const [destinationPreflight] = await executor
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+      ),
+    )
+    .limit(1);
+  return destinationPreflight;
+}
+
+/**
+ * Row-lock a live project for a move: `update` for the destination (which gets a new task
+ * number), `share` for the source. A destination lock also pins the source's workspace.
+ */
+export async function lockLiveProjectForMove(
+  executor: Executor,
+  projectId: string,
+  options: { mode: "update" | "share"; workspaceId?: string },
+) {
+  const [liveProject] = await executor
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+        ...(options.workspaceId !== undefined
+          ? [eq(projectTable.workspaceId, options.workspaceId)]
+          : []),
+      ),
+    )
+    .for(options.mode);
+  return liveProject;
+}
+
+export async function findProjectIdentity(
+  executor: Executor,
+  projectId: string,
+) {
+  const [sourceProject] = await executor
+    .select({
+      id: projectTable.id,
+      name: projectTable.name,
+      workspaceId: projectTable.workspaceId,
+    })
+    .from(projectTable)
+    .where(eq(projectTable.id, projectId))
+    .limit(1);
+  return sourceProject;
+}
+
+/** A non-deleted project of the source's workspace: foreign and missing ids stay indistinct. */
+export async function findNotDeletedProjectInWorkspace(
+  executor: Executor,
+  projectId: string,
+  workspaceId: string,
+) {
+  const [destinationProject] = await executor
+    .select({
+      id: projectTable.id,
+      name: projectTable.name,
+    })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.deletedAt),
+      ),
+    )
+    .limit(1);
+  return destinationProject;
+}
+
+/** Move the task's assets with it. */
+export async function reassignTaskAssetsToProject(
+  executor: Executor,
+  taskId: string,
+  projectId: string,
+) {
+  await executor
+    .update(assetTable)
+    .set({ projectId })
+    .where(eq(assetTable.taskId, taskId));
 }
