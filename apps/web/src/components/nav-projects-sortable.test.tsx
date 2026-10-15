@@ -1,6 +1,6 @@
 import { SidebarMenu } from "@taskdesk/ui";
 import { render } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 import SortableProjectList from "./nav-projects-sortable";
 
@@ -17,9 +17,7 @@ const projects = [
   { id: "project-2", name: "Beta" },
 ] as Parameters<typeof SortableProjectList>[0]["projects"];
 
-afterEach(() => {
-  document.body.innerHTML = "";
-});
+// Rendered trees are unmounted by the shared afterEach(cleanup) in src/test/setup.ts.
 
 describe("SortableProjectList accessibility", () => {
   it("keeps the sidebar menu list limited to list items", () => {
