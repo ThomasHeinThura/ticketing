@@ -502,6 +502,61 @@ function clipTimelineEvents(
   });
 }
 
+type CorrelationClock = {
+  originTraceMicroseconds: number;
+  offsetMicroseconds: number;
+  microsecondsPerMillisecond: number;
+  uncertaintyMicroseconds: number;
+  scaleUncertaintyMicrosecondsPerMillisecond: number;
+  extrapolationMilliseconds: number;
+};
+
+function performanceNowToRelativeTraceMicroseconds(
+  performanceNowMs: number,
+  clock: CorrelationClock,
+) {
+  if (
+    !Number.isFinite(performanceNowMs) ||
+    !Number.isFinite(clock.originTraceMicroseconds) ||
+    !Number.isFinite(clock.offsetMicroseconds) ||
+    !Number.isFinite(clock.microsecondsPerMillisecond) ||
+    clock.microsecondsPerMillisecond <= 0 ||
+    !Number.isFinite(clock.uncertaintyMicroseconds) ||
+    clock.uncertaintyMicroseconds < 0 ||
+    !Number.isFinite(clock.scaleUncertaintyMicrosecondsPerMillisecond) ||
+    clock.scaleUncertaintyMicrosecondsPerMillisecond < 0 ||
+    !Number.isFinite(clock.extrapolationMilliseconds) ||
+    clock.extrapolationMilliseconds < 0
+  )
+    throw new Error("The correlation clock mapping is invalid.");
+  return (
+    clock.offsetMicroseconds +
+    clock.microsecondsPerMillisecond * performanceNowMs -
+    clock.originTraceMicroseconds
+  );
+}
+
+function summarizeCorrelatedFrameIntervals(
+  timestamps: number[],
+  clock: CorrelationClock,
+  windowEndTraceMicroseconds: number,
+) {
+  const span = windowEndTraceMicroseconds - clock.originTraceMicroseconds;
+  if (!Number.isFinite(span) || span <= 0 || span > 10_000_000)
+    throw new Error("The canonical RAF window has invalid trace bounds.");
+  return timestamps.slice(1, 5_001).flatMap((timestamp, index) => {
+    const previous = timestamps[index];
+    if (!Number.isFinite(timestamp) || !Number.isFinite(previous)) return [];
+    const rawStart = performanceNowToRelativeTraceMicroseconds(previous, clock);
+    const rawEnd = performanceNowToRelativeTraceMicroseconds(timestamp, clock);
+    const start = Math.max(0, Math.min(span, rawStart));
+    const end = Math.max(start, Math.min(span, rawEnd));
+    return end > start
+      ? [{ startOffsetMicroseconds: start, durationMicroseconds: end - start }]
+      : [];
+  });
+}
+
 function sanitizeTraceCpuProfile(
   profile: TraceCpuProfile,
   startMicroseconds?: number,
@@ -2101,37 +2156,58 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
       };
     });
   };
-  const summarizeRelativeFrameIntervals = (
-    timestamps: number[],
-    elapsedWindowMs: number,
-  ) => {
-    if (
-      !Number.isFinite(elapsedWindowMs) ||
-      elapsedWindowMs <= 0 ||
-      elapsedWindowMs > 10_000
-    )
-      throw new Error("The canonical RAF window has invalid bounds.");
-    const first = timestamps[0];
-    if (!Number.isFinite(first)) return [];
-    return timestamps.slice(1, 5_001).flatMap((timestamp, index) => {
-      const previous = timestamps[index];
-      if (!Number.isFinite(timestamp) || !Number.isFinite(previous)) return [];
-      const rawStart = previous - first;
-      const rawEnd = timestamp - first;
-      const start = Math.max(0, Math.min(elapsedWindowMs, rawStart));
-      const end = Math.max(start, Math.min(elapsedWindowMs, rawEnd));
-      return end > start
-        ? [{ startOffsetMs: start, durationMs: end - start }]
-        : [];
-    });
-  };
   const canonicalWindowStart =
     canonicalRafWindow.cpuSampleCoverage.intervalStartMicroseconds;
   const canonicalWindowEnd =
     canonicalRafWindow.cpuSampleCoverage.intervalEndMicroseconds;
   const canonicalFrameTimestamps = canonicalRafWindow.frameSampling.timestamps;
+  const canonicalClock = canonicalRafWindow.clockAlignment;
+  const correlationClock: CorrelationClock = {
+    originTraceMicroseconds: canonicalWindowStart,
+    offsetMicroseconds: canonicalClock.offsetMicroseconds,
+    microsecondsPerMillisecond: canonicalClock.microsecondsPerMillisecond,
+    uncertaintyMicroseconds: canonicalClock.uncertaintyMicroseconds,
+    scaleUncertaintyMicrosecondsPerMillisecond:
+      canonicalClock.scaleUncertaintyMicrosecondsPerMillisecond,
+    extrapolationMilliseconds: canonicalClock.extrapolationMilliseconds,
+  };
+  const delayedFirstRafProbeClock: CorrelationClock = {
+    originTraceMicroseconds: 5_000,
+    offsetMicroseconds: 1_000,
+    microsecondsPerMillisecond: 1_000,
+    uncertaintyMicroseconds: 2,
+    scaleUncertaintyMicrosecondsPerMillisecond: 0.01,
+    extrapolationMilliseconds: 30,
+  };
+  const delayedFirstRafProbeIntervals = summarizeCorrelatedFrameIntervals(
+    [10, 26],
+    delayedFirstRafProbeClock,
+    30_000,
+  );
+  const delayedFirstRafProbeEvent = summarizeRelativeTimeline(
+    [
+      {
+        name: "Layout",
+        phase: "X",
+        startMicroseconds: 13_000,
+        durationMicroseconds: 1_000,
+      },
+    ],
+    delayedFirstRafProbeClock.originTraceMicroseconds,
+    30_000,
+  )[0];
+  expect(delayedFirstRafProbeIntervals[0]?.startOffsetMicroseconds).toBe(6_000);
+  expect(delayedFirstRafProbeEvent?.startOffsetMicroseconds).toBe(8_000);
+  expect(delayedFirstRafProbeEvent?.startOffsetMicroseconds).toBeGreaterThan(
+    delayedFirstRafProbeIntervals[0]?.startOffsetMicroseconds ??
+      Number.POSITIVE_INFINITY,
+  );
+  expect(delayedFirstRafProbeEvent?.startOffsetMicroseconds).toBeLessThan(
+    (delayedFirstRafProbeIntervals[0]?.startOffsetMicroseconds ?? 0) +
+      (delayedFirstRafProbeIntervals[0]?.durationMicroseconds ?? 0),
+  );
   const hostedSummary = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     diagnosticOnly: true,
     purpose: "hosted root-cause investigation; no G11 budget evaluation",
     sourceAndRuntime: runtimeMetadata,
@@ -2140,15 +2216,33 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
     canonicalRafWindow: {
       requestedWindowMs: canonicalRafWindow.requestedWindowMs,
       elapsedWindowMs: canonicalRafWindow.elapsedWindowMs,
+      correlationClock: {
+        origin:
+          "canonicalRafWindow.cpuSampleCoverage.intervalStartMicroseconds",
+        unit: "trace microseconds relative to canonical RAF trace-window start",
+        rafTimestampMapping:
+          "relativeTraceUs = offsetMicroseconds + microsecondsPerMillisecond * performanceNowMs - originTraceMicroseconds",
+        originTraceMicroseconds: correlationClock.originTraceMicroseconds,
+        offsetMicroseconds: correlationClock.offsetMicroseconds,
+        microsecondsPerMillisecond: correlationClock.microsecondsPerMillisecond,
+        scaleUncertaintyMicrosecondsPerMillisecond:
+          correlationClock.scaleUncertaintyMicrosecondsPerMillisecond,
+        extrapolationMilliseconds: correlationClock.extrapolationMilliseconds,
+        conservativeClockAlignmentUncertaintyMicroseconds:
+          correlationClock.uncertaintyMicroseconds,
+        eventClock: "CDP trace monotonic microseconds",
+        rafClock: "window.performance.now() milliseconds via affine mapping",
+      },
       frameSampling: {
         intervalCount: canonicalRafWindow.frameSampling.intervalCount,
         medianIntervalMs: canonicalRafWindow.frameSampling.medianIntervalMs,
         p95IntervalMs: canonicalRafWindow.frameSampling.p95IntervalMs,
         intervalsOver20Ms: canonicalRafWindow.frameSampling.intervalsOver20Ms,
         intervalsOver33Ms: canonicalRafWindow.frameSampling.intervalsOver33Ms,
-        relativeIntervals: summarizeRelativeFrameIntervals(
+        relativeIntervals: summarizeCorrelatedFrameIntervals(
           canonicalFrameTimestamps,
-          canonicalRafWindow.elapsedWindowMs,
+          correlationClock,
+          canonicalWindowEnd,
         ),
       },
       cpuSampleCoverage: canonicalRafWindow.cpuSampleCoverage,
