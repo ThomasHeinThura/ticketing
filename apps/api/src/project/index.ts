@@ -1,3 +1,4 @@
+import type { ProjectReachFacts } from "@taskdesk/permissions";
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
@@ -14,6 +15,10 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import {
+  evaluateProjectRead,
+  resolveCallerIdentity,
+} from "../utils/has-project-reach";
 import {
   listReachOf,
   requireReachFilteredList,
@@ -828,7 +833,12 @@ const deleteDocumentLinkRoute = createRoute({
   },
 });
 
-const project = apiRouter<BaseVariables & { workspaceId: string }>()
+const project = apiRouter<
+  BaseVariables & {
+    workspaceId: string;
+    projectReachFacts?: ProjectReachFacts;
+  }
+>()
   .openapi(listCustomerOrganisationsRoute, async (c) => {
     const rows = await db
       .select({
@@ -974,12 +984,19 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
       if (!workspaceId || !userId) {
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
-      await assertCallerHasCapability(
-        workspaceId,
-        userId,
-        "project:manage_settings",
-        capabilityCredential(c.get("apiKey")),
-      );
+      const identity = await resolveCallerIdentity(c, userId);
+      const projectReachFacts = c.get("projectReachFacts");
+      const decision = projectReachFacts
+        ? evaluateProjectRead(
+            identity,
+            "project:manage_settings",
+            "project",
+            projectReachFacts,
+          )
+        : null;
+      if (!decision?.capable) {
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
     }
     const [current] = await db
       .select({

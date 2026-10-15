@@ -20,6 +20,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectManageAccess,
+  grantProjectRole,
 } from "./helpers/fixtures";
 
 type App = ReturnType<typeof createApp>["app"];
@@ -67,6 +68,7 @@ async function readProject(projectId: string) {
 async function actorWithLegacyMap(
   role: string,
   legacy: Record<string, string[]>,
+  projectCapabilities?: readonly string[],
 ) {
   const actor = await createWorkspaceMember({ role });
   const now = new Date();
@@ -92,7 +94,11 @@ async function actorWithLegacyMap(
   const { project } = await createProjectFixture({
     workspaceId: actor.workspace.id,
   });
-  await grantProjectManageAccess(actor.user.id, project.id);
+  if (projectCapabilities) {
+    await grantProjectRole(actor.user.id, project.id, projectCapabilities);
+  } else {
+    await grantProjectManageAccess(actor.user.id, project.id);
+  }
   return { actor, project };
 }
 
@@ -233,6 +239,43 @@ describe("API integration: PUT /api/project/{id} engagement fields need project:
       expect(row.serviceCalendarId).toBe(calendar.id);
     },
   );
+
+  it("honors a narrow project role over workspace manager settings authority for sessions and keys", async () => {
+    const { actor, project } = await actorWithLegacyMap(
+      "manager",
+      LEGACY_UPDATE,
+      ["project:read", "project:update"],
+    );
+    mockAuthenticatedSession(actor.user);
+    const { app } = createApp();
+    const rawKey = await createApiKeyFor(actor.user.id, {
+      project: ["read", "update", "manage_settings"],
+    });
+
+    const credentials: Record<string, string>[] = [{}, { "x-api-key": rawKey }];
+    for (const headers of credentials) {
+      const deniedEngagement = await putProject(
+        app,
+        project.id,
+        fullBody(project, { supportLevel: "L2" }),
+        headers,
+      );
+      expect(deniedEngagement.status).toBe(403);
+      const deniedVisibility = await putProject(
+        app,
+        project.id,
+        fullBody(project, { defaultCommentVisibility: "public" }),
+        headers,
+      );
+      expect(deniedVisibility.status).toBe(403);
+
+      const row = await readProject(project.id);
+      expect(row.kind).toBe("project");
+      expect(row.supportLevel).toBeNull();
+      expect(row.serviceCalendarId).toBeNull();
+      expect(row.defaultCommentVisibility).toBe("internal");
+    }
+  });
 
   it("keeps health on project:update for a lead-like caller", async () => {
     const { actor, project } = await actorWithLegacyMap("lead", LEGACY_UPDATE);
