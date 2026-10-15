@@ -147,7 +147,8 @@ work-item/
 ├── response.ts       Zod schemas for responses — nothing else reaches the wire
 ├── policy.ts         the policy each route declares  (mandatory — one of the five kinds in rbac.md)
 ├── repository.ts     the ONLY place db.select()/insert()/update() on this feature's tables may appear;
-│                     exposes forIdentity(identity) scoped queries (multi-tenancy.md). Enforced by check:queries
+│                     takes explicit tenant parameters (workspaceId / projectId / identity) on its functions
+│                     (multi-tenancy.md; conductor decision, PR #780, decision log 2026-10-15). Enforced by check:queries
 ├── controllers/
 │   ├── create-work-item.ts
 │   ├── update-work-item.ts

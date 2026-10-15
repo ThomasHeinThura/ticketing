@@ -14,12 +14,13 @@ import db, { type DatabaseInstance } from "./index";
  * });
  * ```
  *
- * Convention for repository functions that can take part in a transaction: the executor
- * is the FIRST parameter, named `executor`, typed `Executor`. A function that is only
- * ever called outside a transaction may use the default `db` instead and omit it, or
- * take `executor?: Executor` as its last parameter and resolve it with
- * `executorOrDefault`. Repositories never open or commit a transaction on a handle they
- * were given, and always await their statement and return rows (never a query builder).
+ * Convention (same wording as docs/04-engineering/coding-standards.md, "Query ownership"):
+ * a repository function that always runs inside a caller's transaction takes
+ * `executor: Executor` as its FIRST parameter. A function that is callable both inside and
+ * outside a transaction takes `executor?: Executor` as its LAST parameter and resolves it
+ * with `executorOrDefault`. A function that never joins a transaction may use the shared
+ * `db` directly. Repositories never open or commit a transaction on a handle they were
+ * given, and always await their statement and return rows (never a query builder).
  */
 
 /** The transaction handle Drizzle passes to a `db.transaction` callback. */
