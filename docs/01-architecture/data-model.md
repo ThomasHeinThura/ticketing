@@ -398,8 +398,8 @@ which version was active, so history remains interpretable after a workflow chan
 
 | Table | Key columns |
 | --- | --- |
-| `request_type` | `workspace_id`, `key`, `name`, `description`, `icon`, `group`, `work_item_type_id`, `form_schema jsonb` (shape incl. `showIf` in [request-types-and-catalogue.md](../03-features/request-types-and-catalogue.md)), `sla_policy_id`, `default_assignee_id`, `auto_accept`, `customer_visible`, `force_private`, `position`. **v** |
-| `request_type_version` | `request_type_id`, `number`, `form_schema`, `effective_from` |
+| `request_type` | `workspace_id`, `key` (opaque CUID2, independently generated from `id`, instance-unique and immutable), `name`, `description`, `icon`, `group`, `work_item_type_id`, `form_schema jsonb` (shape incl. `showIf` in [request-types-and-catalogue.md](../03-features/request-types-and-catalogue.md)), `sla_policy_id`, `default_assignee_id`, `auto_accept`, `customer_visible`, `force_private`, `position`. **v** |
+| `request_type_version` | `workspace_id`, `request_type_id`, `number`, immutable `form_schema`, `work_item_type_id`, nullable `default_project_id`, nullable `sla_policy_id`, `auto_accept`, nullable `default_assignee_id`, `effective_from`, `created_at`. The `RT-6` snapshot. Composite FKs bind the request type, default project, work-item type and SLA policy to the same workspace. Unique `(request_type_id, number)` |
 | `organisation_request_type` | `organisation_id`, `request_type_id` — the per-organisation catalogue. **No row ⇒ not visible and not submittable** |
 | `submission` | `number` (from an instance-wide sequence, never reused; rendered `SUB-n`), `organisation_id`, `requester_id`, `request_type_id`, `request_type_version_id`, `form_data jsonb`, `state` (`new`\|`clarifying`\|`accepted`\|`declined`\|`duplicate`\|`withdrawn`), `claimed_by`, `claimed_at`, `customer_visibility`, `work_item_id`, `created_at` |
 | `submission_message` | `submission_id`, `author_id`, `actor_type`, `body`, `created_at` |

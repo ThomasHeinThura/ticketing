@@ -1,15 +1,19 @@
-import { createId } from "@paralleldrive/cuid2";
-import { BUILT_IN_ROLES } from "@taskdesk/permissions";
-import { and, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
-import db, { schema } from "../database";
+import db from "../database";
 import { projectMembershipKeys } from "../identity/membership-projection";
 import { revokeProjectCreatorGrantsOnSeesAll } from "../project/project-creator-grant";
 import {
-  isGenuineBuiltInRoleGrant,
-  resolveMembershipRoleFrom,
-  workspaceMemberRoles,
-} from "../utils/workspace-member-roles";
+  createWorkspaceAdminReachRole,
+  desiredWorkspaceAdminReachRole,
+  findActiveWorkspaceAdminReachGrantForUpdate,
+  findWorkspaceAdminReachPersonForUpdate,
+  findWorkspaceAdminReachRole,
+  insertWorkspaceAdminReachGrant,
+  listWorkspaceAdminReachReconcileCandidates,
+  lockWorkspaceAdminReachPersonsInOrder,
+  revokeWorkspaceAdminReachGrant,
+  updateWorkspaceAdminReachGrant,
+} from "./workspace-admin-reach.repository";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -49,88 +53,6 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
  * every user whose legacy role may have changed. It is idempotent and derives everything
  * from the current `workspace_member` rows, so calling it for an unchanged member is safe.
  */
-const REACH_ROLE_KEYS = ["owner", "admin"] as const;
-type ReachRoleKey = (typeof REACH_ROLE_KEYS)[number];
-
-function isReachRoleKey(value: string): value is ReachRoleKey {
-  return (REACH_ROLE_KEYS as readonly string[]).includes(value);
-}
-
-/** The reach-carrying role this user's legacy membership resolves to, or `null`. */
-async function desiredReachRoleKey(
-  tx: Tx,
-  workspaceId: string,
-  userId: string,
-): Promise<ReachRoleKey | null> {
-  const resolution = resolveMembershipRoleFrom(
-    await workspaceMemberRoles(tx, workspaceId, userId),
-  );
-  // Ambiguous (duplicate rows), malformed or absent membership: fail closed, no grant.
-  if (!resolution.ok || !isReachRoleKey(resolution.role)) return null;
-  if (resolution.role === "admin") {
-    // A custom `workspace_role` that merely took the name `admin` is not the built-in.
-    const [row] = await tx
-      .select({ isSystem: schema.workspaceRoleTable.isSystem })
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-          eq(schema.workspaceRoleTable.role, "admin"),
-        ),
-      )
-      .limit(1);
-    if (!isGenuineBuiltInRoleGrant("admin", row?.isSystem === true)) {
-      return null;
-    }
-  }
-  return resolution.role;
-}
-
-async function ensureReachRole(
-  tx: Tx,
-  workspaceId: string,
-  key: ReachRoleKey,
-): Promise<string | null> {
-  const select = () =>
-    tx
-      .select({
-        id: schema.roleTable.id,
-        isSystem: schema.roleTable.isSystem,
-      })
-      .from(schema.roleTable)
-      .where(
-        and(
-          eq(schema.roleTable.scope, "workspace"),
-          eq(schema.roleTable.workspaceId, workspaceId),
-          eq(schema.roleTable.key, key),
-        ),
-      )
-      .limit(1);
-  let [row] = await select();
-  if (!row) {
-    const builtIn = BUILT_IN_ROLES[key];
-    await tx
-      .insert(schema.roleTable)
-      .values({
-        id: createId(),
-        scope: "workspace",
-        workspaceId,
-        key,
-        name: key === "owner" ? "Owner" : "Admin",
-        description:
-          "Workspace-wide reach carrier (explicit sees_all). Authority is not read from this row.",
-        rank: builtIn.rank,
-        capabilities: [],
-        isSystem: true,
-        isEditable: false,
-      })
-      .onConflictDoNothing();
-    [row] = await select();
-  }
-  // A same-keyed custom row is never trusted as the carrier: fail closed (no reach).
-  return row?.isSystem === true ? row.id : null;
-}
-
 /**
  * LOCK ORDER (checked for deadlocks against the audit chain). This function takes the
  * person row `FOR UPDATE` first, then the grant rows, and only at the very end the audit
@@ -151,42 +73,27 @@ export async function syncWorkspaceAdminReach(
   workspaceId: string,
   userId: string,
 ): Promise<void> {
-  const [person] = await tx
-    .select({
-      id: schema.personTable.id,
-      side: schema.personTable.side,
-      organisationId: schema.personTable.organisationId,
-    })
-    .from(schema.personTable)
-    .where(eq(schema.personTable.userId, userId))
-    .for("update")
-    .limit(1);
+  const person = await findWorkspaceAdminReachPersonForUpdate(tx, userId);
   // No provisioned staff person: there is nothing to hold a grant.
   if (person?.side !== "staff") return;
 
-  const desired = await desiredReachRoleKey(tx, workspaceId, userId);
-  const roleId =
-    desired === null ? null : await ensureReachRole(tx, workspaceId, desired);
+  const desired = await desiredWorkspaceAdminReachRole(tx, workspaceId, userId);
+  let roleId: string | null = null;
+  if (desired !== null) {
+    let role = await findWorkspaceAdminReachRole(tx, workspaceId, desired);
+    if (!role) {
+      await createWorkspaceAdminReachRole(tx, workspaceId, desired);
+      role = await findWorkspaceAdminReachRole(tx, workspaceId, desired);
+    }
+    // A same-keyed custom row is never trusted as the carrier: fail closed (no reach).
+    roleId = role?.isSystem === true ? role.id : null;
+  }
 
-  const [existing] = await tx
-    .select({
-      id: schema.membershipGrantTable.id,
-      roleId: schema.membershipGrantTable.roleId,
-      seesAll: schema.membershipGrantTable.seesAll,
-      directOrigin: schema.membershipGrantTable.directOrigin,
-    })
-    .from(schema.membershipGrantTable)
-    .where(
-      and(
-        eq(schema.membershipGrantTable.personId, person.id),
-        eq(schema.membershipGrantTable.scope, "workspace"),
-        eq(schema.membershipGrantTable.scopeId, workspaceId),
-        eq(schema.membershipGrantTable.sourceKind, "direct"),
-        isNull(schema.membershipGrantTable.revokedAt),
-      ),
-    )
-    .for("update")
-    .limit(1);
+  const existing = await findActiveWorkspaceAdminReachGrantForUpdate(
+    tx,
+    person.id,
+    workspaceId,
+  );
 
   // An explicit admin-made direct grant is not ours to change, in either direction.
   if (existing && existing.directOrigin !== "system_backfill") return;
@@ -196,33 +103,13 @@ export async function syncWorkspaceAdminReach(
   if (roleId === null) {
     if (!existing) return;
     change = "revoked";
-    await tx
-      .update(schema.membershipGrantTable)
-      .set({
-        revokedAt: now,
-        revocationReason: "direct_removed",
-        membershipId: null,
-        updatedAt: now,
-      })
-      .where(eq(schema.membershipGrantTable.id, existing.id));
+    await revokeWorkspaceAdminReachGrant(tx, existing.id, now);
   } else if (!existing) {
     change = "granted";
-    await tx.insert(schema.membershipGrantTable).values({
-      id: createId(),
-      personId: person.id,
-      scope: "workspace",
-      scopeId: workspaceId,
-      roleId,
-      sourceKind: "direct",
-      directOrigin: "system_backfill",
-      seesAll: true,
-    });
+    await insertWorkspaceAdminReachGrant(tx, person.id, workspaceId, roleId);
   } else if (existing.roleId !== roleId || !existing.seesAll) {
     change = "granted";
-    await tx
-      .update(schema.membershipGrantTable)
-      .set({ roleId, seesAll: true, updatedAt: now })
-      .where(eq(schema.membershipGrantTable.id, existing.id));
+    await updateWorkspaceAdminReachGrant(tx, existing.id, roleId, now);
   }
 
   await projectMembershipKeys(tx, [
@@ -276,12 +163,7 @@ export async function lockPersonsInOrder(
   tx: Tx,
   userIds: readonly string[],
 ): Promise<void> {
-  await tx
-    .select({ id: schema.personTable.id })
-    .from(schema.personTable)
-    .where(inArray(schema.personTable.userId, [...userIds]))
-    .orderBy(schema.personTable.id)
-    .for("update");
+  await lockWorkspaceAdminReachPersonsInOrder(tx, userIds);
 }
 
 /**
@@ -300,40 +182,7 @@ export async function reconcileWorkspaceAdminReach(): Promise<{
   failed: number;
 }> {
   const database = db;
-  const candidates = await database
-    .select({
-      workspaceId: schema.workspaceUserTable.workspaceId,
-      userId: schema.workspaceUserTable.userId,
-      personId: schema.personTable.id,
-    })
-    .from(schema.workspaceUserTable)
-    .innerJoin(
-      schema.personTable,
-      eq(schema.personTable.userId, schema.workspaceUserTable.userId),
-    )
-    .where(
-      and(
-        inArray(schema.workspaceUserTable.role, [...REACH_ROLE_KEYS]),
-        eq(schema.personTable.side, "staff"),
-        notExists(
-          database
-            .select({ one: sql`1` })
-            .from(schema.membershipGrantTable)
-            .where(
-              and(
-                eq(schema.membershipGrantTable.personId, schema.personTable.id),
-                eq(schema.membershipGrantTable.scope, "workspace"),
-                eq(
-                  schema.membershipGrantTable.scopeId,
-                  schema.workspaceUserTable.workspaceId,
-                ),
-                eq(schema.membershipGrantTable.sourceKind, "direct"),
-                isNull(schema.membershipGrantTable.revokedAt),
-              ),
-            ),
-        ),
-      ),
-    );
+  const candidates = await listWorkspaceAdminReachReconcileCandidates();
   // Each member is fail-safe: one bad row (corrupt data, a failed audit write) must never
   // abort API boot. A failure is logged with the workspace and person ids, counted, and
   // the next member is tried; the member simply keeps no grant until the next boot or role
