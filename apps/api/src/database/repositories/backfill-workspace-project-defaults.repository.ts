@@ -4,6 +4,7 @@ import {
   seedDefaultStateTemplates,
   seedDefaultWorkItemTypes,
 } from "../../utils/seed-workspace-defaults";
+import type { Executor } from "../executor";
 import db, { schema } from "../index";
 
 export type WorkspaceBackfillSummary = {
@@ -28,6 +29,39 @@ export type BackfillSummary = {
   workspaces: WorkspaceBackfillSummary;
   projects: ProjectBackfillSummary;
 };
+
+export async function workspaceHasWorkItemTypes(
+  executor: Executor,
+  workspaceId: string,
+): Promise<boolean> {
+  const [existingType] = await executor
+    .select({ id: schema.workItemTypeTable.id })
+    .from(schema.workItemTypeTable)
+    .where(eq(schema.workItemTypeTable.workspaceId, workspaceId))
+    .limit(1);
+  return Boolean(existingType);
+}
+
+export async function workspaceHasStateTemplates(
+  executor: Executor,
+  workspaceId: string,
+): Promise<boolean> {
+  const [existingTemplate] = await executor
+    .select({ id: schema.stateTemplateTable.id })
+    .from(schema.stateTemplateTable)
+    .where(eq(schema.stateTemplateTable.workspaceId, workspaceId))
+    .limit(1);
+  return Boolean(existingTemplate);
+}
+
+export async function lockWorkspaceForProjectStateSeed(
+  executor: Executor,
+  workspaceId: string,
+): Promise<void> {
+  await executor.execute(
+    sql`SELECT pg_advisory_xact_lock(1524, hashtext(${workspaceId}))`,
+  );
+}
 
 /**
  * Issue #316: backfill the default `work_item_type`/`state_template`/`state` rows for
@@ -197,25 +231,17 @@ async function backfillLegacyWorkspaceDefaults(): Promise<WorkspaceBackfillSumma
   for (const workspace of candidates) {
     try {
       const result = await db.transaction(async (tx) => {
-        const [existingType] = await tx
-          .select({ id: schema.workItemTypeTable.id })
-          .from(schema.workItemTypeTable)
-          .where(eq(schema.workItemTypeTable.workspaceId, workspace.id))
-          .limit(1);
-        const [existingTemplate] = await tx
-          .select({ id: schema.stateTemplateTable.id })
-          .from(schema.stateTemplateTable)
-          .where(eq(schema.stateTemplateTable.workspaceId, workspace.id))
-          .limit(1);
+        const hasTypes = await workspaceHasWorkItemTypes(tx, workspace.id);
+        const hasTemplates = await workspaceHasStateTemplates(tx, workspace.id);
 
         let seededTypes = false;
         let seededTemplates = false;
 
-        if (!existingType) {
+        if (!hasTypes) {
           await seedDefaultWorkItemTypes(workspace.id, tx);
           seededTypes = true;
         }
-        if (!existingTemplate) {
+        if (!hasTemplates) {
           await seedDefaultStateTemplates(workspace.id, tx);
           seededTemplates = true;
         }
@@ -296,9 +322,7 @@ async function backfillLegacyProjectStates(): Promise<ProjectBackfillSummary> {
         // Same lock, same key, same reason as `create-project.ts`'s own comment on
         // `pg_advisory_xact_lock(1524, hashtext(workspaceId))`: serialize per workspace so
         // this can never race a live project create or another replica's backfill pass.
-        await tx.execute(
-          sql`SELECT pg_advisory_xact_lock(1524, hashtext(${project.workspaceId}))`,
-        );
+        await lockWorkspaceForProjectStateSeed(tx, project.workspaceId);
         await seedProjectStates(project.id, project.workspaceId, tx);
       });
       seeded += 1;
