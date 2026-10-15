@@ -119,6 +119,29 @@ export async function transitionWorkItem(c: Context) {
 **Repositories own queries.** `db.select()` outside `*/repository.ts` is a lint error, so
 an unscoped query cannot creep into a controller.
 
+### Query ownership (issue #580)
+
+- **Where queries may live.** Drizzle/SQL statements are written only in `**/repository.ts`,
+  `**/repository/**`, and the persistence layer `apps/api/src/database/**` (schema, migration
+  runner, role bootstrap). Controllers, middleware, services, routes and scheduler code call
+  repository functions. Startup SQL outside `database/` (for example `utils/migrate-*`) moves
+  into `database/` or a repository. This is a structural rule; there is no per-site allowlist
+  or baseline.
+- **Transactions.** A service may open `db.transaction(...)` as orchestration. Every statement
+  inside it goes through a repository function that accepts the handle. Opening a transaction is
+  not query construction; running a statement outside a repository is.
+- **Executor.** Repository functions that can join a transaction take
+  `executor: Executor` (`apps/api/src/database/executor.ts`: the shared connection or a
+  transaction handle) as their first parameter. `executorOrDefault(executor)` resolves an
+  optional handle to the shared connection. A repository never opens, commits or rolls back a
+  transaction it was handed.
+- **Results.** Repository functions await their statement and return rows, DTOs or scalars,
+  never an un-awaited query builder, so a caller cannot keep composing the statement.
+- **Raw SQL and fragments.** Raw `execute`/`sql` statements follow the same rule. SQL fragment
+  helpers (for example a project-scope predicate) live in repository modules and are composed
+  there.
+- **Out of scope.** `apps/api/scripts/**` (dev and seed tooling, not shipped in the image).
+
 **Domain is pure.** No Drizzle import, no Hono import, no `Date.now()` — pass `now` in.
 This is what makes it testable.
 
