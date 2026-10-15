@@ -167,6 +167,109 @@ function isQueryBuilder(type, checker) {
   }
 }
 
+function exportedQueryBoundary(
+  type,
+  checker,
+  source,
+  publicMembers,
+  seen = new Set(),
+  depth = 0,
+) {
+  if (!type) return { kind: "unresolved" };
+  if (isQueryBuilder(type, checker)) return { kind: "builder" };
+  if (depth >= 20 || seen.size >= 512) return { kind: "limit" };
+  if (seen.has(type.id)) return { kind: "safe" };
+  seen.add(type.id);
+
+  if (
+    isAnyOrError(type) ||
+    ["any", "unknown", "<error>"].includes(checker.typeToString(type))
+  )
+    return { kind: "unresolved" };
+
+  // Promise type arguments must be inspected before their awaited result: async function
+  // return inference can otherwise reduce a returned builder to its assimilated row type.
+  try {
+    for (const argument of checker.getTypeArguments?.(type) ?? []) {
+      const nested = exportedQueryBoundary(
+        argument,
+        checker,
+        source,
+        publicMembers,
+        seen,
+        depth + 1,
+      );
+      if (nested.kind !== "safe") return nested;
+    }
+  } catch {
+    // Non-reference types do not have generic arguments.
+  }
+  const awaited = checker.getAwaitedType?.(type);
+  if (awaited && awaited !== type) {
+    const nested = exportedQueryBoundary(
+      awaited,
+      checker,
+      source,
+      publicMembers,
+      seen,
+      depth + 1,
+    );
+    if (nested.kind !== "safe") return nested;
+  }
+
+  for (const signature of checker.getSignaturesOfType(type, 0)) {
+    const nested = exportedQueryBoundary(
+      checker.getReturnTypeOfSignature(signature),
+      checker,
+      source,
+      publicMembers,
+      seen,
+      depth + 1,
+    );
+    if (nested.kind !== "safe") return nested;
+  }
+
+  // Walk only declarations that form source-level public object/class APIs. This avoids
+  // recursively inspecting every method on imported table/schema implementation types.
+  for (const property of checker.getPropertiesOfType(type)) {
+    const declarations =
+      property.declarations ?? property.getDeclarations?.() ?? [];
+    const publicApi = declarations.some((declaration) => {
+      if (
+        (declaration.path ?? declaration.getSourceFile?.().fileName) !==
+        (source.path ?? source.fileName)
+      )
+        return false;
+      if (!publicMembers.has(declaration.index)) return false;
+      return [
+        ts.SyntaxKind.MethodDeclaration,
+        ts.SyntaxKind.MethodSignature,
+        ts.SyntaxKind.PropertyAssignment,
+        ts.SyntaxKind.PropertyDeclaration,
+        ts.SyntaxKind.PropertySignature,
+        ts.SyntaxKind.GetAccessor,
+      ].includes(declaration.kind);
+    });
+    if (!publicApi) continue;
+    let propertyType;
+    try {
+      propertyType = checker.getTypeOfSymbolAtLocation(property, source);
+    } catch {
+      return { kind: "unresolved" };
+    }
+    const nested = exportedQueryBoundary(
+      propertyType,
+      checker,
+      source,
+      publicMembers,
+      seen,
+      depth + 1,
+    );
+    if (nested.kind !== "safe") return nested;
+  }
+  return { kind: "safe" };
+}
+
 function isSqlFactorySymbol(checker, node) {
   let type;
   try {
@@ -453,21 +556,24 @@ function isQueryFunctionReference(checker, node, seen = new Set(), depth = 0) {
 }
 
 /** Analyze already-parsed TypeScript source files using the project checker. */
-export function analyzeQueryOwnership({ files, snapshot, root = repoRoot }) {
+export function analyzeQueryOwnership({
+  files,
+  snapshot,
+  root = repoRoot,
+  apiSourceRoot = path.join(root, "apps/api/src"),
+}) {
   const violations = [];
   const add = (relative, line, message) =>
     violations.push(violation(relative, `line ${line}: ${message}`));
-  const fnKinds = new Set([
-    ts.SyntaxKind.ArrowFunction,
-    ts.SyntaxKind.FunctionExpression,
-    ts.SyntaxKind.FunctionDeclaration,
-    ts.SyntaxKind.MethodDeclaration,
-  ]);
-
   for (const absolute of files) {
     const relative = path.relative(root, absolute).split(path.sep).join("/");
-    if (!relative.startsWith("apps/api/src/")) continue;
-    const allowed = isRepositoryPath(relative);
+    const sourceRelative = path
+      .relative(apiSourceRoot, absolute)
+      .split(path.sep)
+      .join("/");
+    if (sourceRelative.startsWith("../") || path.isAbsolute(sourceRelative))
+      continue;
+    const allowed = isRepositoryPath(sourceRelative);
     const project = snapshot.getDefaultProjectForFile(absolute);
     const source = project?.program.getSourceFile(absolute);
     if (!project || !source) {
@@ -655,61 +761,96 @@ export function analyzeQueryOwnership({ files, snapshot, root = repoRoot }) {
 
     // Public repository boundaries return rows/DTOs/scalars, never query builders.
     if (allowed) {
-      for (const statement of source.statements) {
-        if (
-          !statement.modifiers?.some(
-            (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
-          )
-        )
-          continue;
-        const declarations =
-          statement.kind === ts.SyntaxKind.FunctionDeclaration && statement.name
-            ? [[statement.name, statement]]
-            : statement.kind === ts.SyntaxKind.VariableStatement
-              ? statement.declarationList.declarations
-                  .filter(
-                    (decl) =>
-                      decl.name.kind === ts.SyntaxKind.Identifier &&
-                      decl.initializer &&
-                      fnKinds.has(decl.initializer.kind),
-                  )
-                  .map((decl) => [decl.name, decl])
-              : [];
-        for (const [name, declaration] of declarations) {
-          let type;
-          try {
-            type = checker.getTypeAtLocation(name);
-          } catch {
-            reportNode(
-              declaration,
-              "could not type exported repository function; return shape is unproven",
-            );
-            continue;
-          }
-          const signature = checker.getSignaturesOfType(type, 0)[0];
-          if (!signature) {
-            reportNode(
-              declaration,
-              "exported repository function has no resolvable call signature",
-            );
-            continue;
-          }
-          const result = checker.getReturnTypeOfSignature(signature);
-          if (isQueryBuilder(result, checker))
-            reportNode(
-              declaration,
-              "exported repository function returns a query builder instead of awaited rows, DTOs, or scalars",
-            );
-          const returnText = checker.typeToString(result);
+      const publicMembers = new Set();
+      const memberKinds = new Set([
+        ts.SyntaxKind.MethodDeclaration,
+        ts.SyntaxKind.MethodSignature,
+        ts.SyntaxKind.PropertyAssignment,
+        ts.SyntaxKind.PropertyDeclaration,
+        ts.SyntaxKind.PropertySignature,
+        ts.SyntaxKind.GetAccessor,
+      ]);
+      const collectPublicMembers = (node) => {
+        if (memberKinds.has(node.kind)) {
+          const modifiers = node.modifiers ?? [];
           if (
-            isAnyOrError(result) ||
-            ["any", "unknown", "<error>"].includes(returnText)
+            !modifiers.some((modifier) =>
+              [
+                ts.SyntaxKind.PrivateKeyword,
+                ts.SyntaxKind.ProtectedKeyword,
+              ].includes(modifier.kind),
+            )
           )
-            reportNode(
-              declaration,
-              "exported repository function return type is unresolved; query-builder escape cannot be excluded",
-            );
+            publicMembers.add(node.index);
         }
+        node.forEachChild?.(collectPublicMembers);
+      };
+      collectPublicMembers(source);
+      const exports = [];
+      const hasExport = (node) =>
+        node.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+        );
+      for (const statement of source.statements) {
+        if (hasExport(statement)) {
+          if (
+            statement.kind === ts.SyntaxKind.FunctionDeclaration ||
+            statement.kind === ts.SyntaxKind.ClassDeclaration ||
+            statement.kind === ts.SyntaxKind.EnumDeclaration
+          ) {
+            if (statement.name)
+              exports.push({ node: statement.name, boundary: statement });
+          } else if (statement.kind === ts.SyntaxKind.VariableStatement) {
+            for (const declaration of statement.declarationList.declarations)
+              if (declaration.name.kind === ts.SyntaxKind.Identifier)
+                exports.push({ node: declaration.name, boundary: declaration });
+          }
+        }
+        if (statement.kind === ts.SyntaxKind.ExportAssignment)
+          exports.push({ node: statement.expression, boundary: statement });
+        if (statement.kind === ts.SyntaxKind.ExportDeclaration) {
+          if (statement.isTypeOnly) continue;
+          if (statement.exportClause?.kind === ts.SyntaxKind.NamedExports) {
+            for (const specifier of statement.exportClause.elements)
+              if (!specifier.isTypeOnly)
+                exports.push({ node: specifier.name, boundary: specifier });
+          } else if (!statement.exportClause) {
+            // Star exports cannot be enumerated through the native AST's module symbol surface
+            // with a reliable source location; fail closed rather than silently missing a value.
+            reportNode(
+              source,
+              "export-star repository boundary cannot be enumerated; query-builder escape cannot be excluded",
+            );
+          }
+        }
+      }
+      for (const exported of exports) {
+        let type;
+        try {
+          type = checker.getTypeAtLocation(exported.node);
+        } catch {
+          reportNode(
+            source,
+            "could not type exported repository value; return shape is unproven",
+          );
+          continue;
+        }
+        const result = exportedQueryBoundary(
+          type,
+          checker,
+          source,
+          publicMembers,
+        );
+        if (result.kind === "builder")
+          reportNode(
+            exported.boundary,
+            "exported repository value exposes a query builder instead of awaited rows, DTOs, or scalars",
+          );
+        else if (result.kind !== "safe")
+          reportNode(
+            exported.boundary,
+            "exported repository value shape is unresolved or exceeds safe inspection limits; query-builder escape cannot be excluded",
+          );
       }
     }
   }

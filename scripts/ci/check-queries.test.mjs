@@ -7,8 +7,18 @@ import { analyzeQueryOwnership, isRepositoryPath } from "./check-queries.mjs";
 import { repoRoot } from "./lib/repo.mjs";
 
 test("query ownership checker kills syntactic/type-resolved escapes and keeps valid repository work", async () => {
-  const base = path.join(repoRoot, "apps/api/src");
-  const dir = mkdtempSync(path.join(base, "query-check-fixture-"));
+  const dir = mkdtempSync(
+    path.join(repoRoot, "apps/api/.query-check-fixture-"),
+  );
+  const fixtureConfig = `${dir}.tsconfig.json`;
+  writeFileSync(
+    fixtureConfig,
+    JSON.stringify({
+      extends: "../tsconfig.json",
+      compilerOptions: { rootDir: "." },
+      include: [`./${path.basename(dir)}/**/*.ts`],
+    }),
+  );
   const fixtureFiles = new Map([
     [
       "controllers/direct.ts",
@@ -95,13 +105,79 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       "database/escape.repository.ts",
       `import db from "../../database"; export const escape = () => db.select();`,
     ],
+    [
+      "database/async-escape.repository.ts",
+      `import db from "../../database"; export async function escape() { return db.select(); }`,
+    ],
+    [
+      "database/export-list.repository.ts",
+      `import db from "../../database"; function build() { return db.select(); } export { build };`,
+    ],
+    [
+      "database/reexport-source.repository.ts",
+      `import db from "../../database"; export function build() { return db.select(); }`,
+    ],
+    [
+      "database/reexport.repository.ts",
+      `export { build as exposed } from "./reexport-source.repository";`,
+    ],
+    [
+      "database/object-escape.repository.ts",
+      `import db from "../../database"; export const repository = { build() { return db.select(); } };`,
+    ],
+    [
+      "database/class-escape.repository.ts",
+      `import db from "../../database"; export class Repository { build() { return db.select(); } private internal() { return db.select(); } }`,
+    ],
+    [
+      "database/private-class-method.repository.ts",
+      `import db from "../../database"; export class Repository { private internal() { return db.select(); } protected alsoInternal() { return db.select(); } }`,
+    ],
+    [
+      "database/factory-escape.repository.ts",
+      `import db from "../../database"; export function createRepository() { return { build: async () => db.select() }; }`,
+    ],
+    [
+      "database/async-assimilated.repository.ts",
+      `import db from "../../database"; import { userTable } from "../../database/schema"; export async function listRows() { return db.select().from(userTable); }`,
+    ],
+    [
+      "database/type-only-export.repository.ts",
+      "interface RepositoryShape { readonly label: string } export type { RepositoryShape };",
+    ],
+    [
+      "database/recursive-api.repository.ts",
+      "interface RepositoryShape { next?: RepositoryShape; listRows: () => Promise<{ id: string }[]> } export const repository = {} as RepositoryShape;",
+    ],
   ]);
   const absoluteFiles = [];
   for (const [relative, source] of fixtureFiles) {
     const absolute = path.join(dir, relative);
     const parent = path.dirname(absolute);
     mkdirSync(parent, { recursive: true });
-    writeFileSync(absolute, source);
+    const databaseImport = path
+      .relative(
+        path.dirname(absolute),
+        path.join(repoRoot, "apps/api/src/database/index"),
+      )
+      .replaceAll(path.sep, "/");
+    const schemaImport = path
+      .relative(
+        path.dirname(absolute),
+        path.join(repoRoot, "apps/api/src/database/schema"),
+      )
+      .replaceAll(path.sep, "/");
+    writeFileSync(
+      absolute,
+      source
+        .replaceAll("../../database/schema", schemaImport)
+        .replaceAll(
+          "../../database",
+          databaseImport.startsWith(".")
+            ? databaseImport
+            : `./${databaseImport}`,
+        ),
+    );
     absoluteFiles.push(absolute);
   }
 
@@ -109,13 +185,14 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
   let snapshot;
   try {
     snapshot = api.updateSnapshot({
-      openProjects: [path.join(repoRoot, "apps/api/tsconfig.json")],
+      openProjects: [fixtureConfig],
       openFiles: absoluteFiles,
     });
     const violations = analyzeQueryOwnership({
       files: absoluteFiles,
       snapshot,
-      root: repoRoot,
+      root: dir,
+      apiSourceRoot: dir,
     });
     const byFile = new Map();
     for (const item of violations) {
@@ -124,7 +201,7 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       byFile.set(relative, `${byFile.get(relative) ?? ""}\n${message}`);
     }
     const key = (relative) =>
-      path.relative(repoRoot, path.join(dir, relative)).replaceAll("\\", "/");
+      path.relative(dir, path.join(dir, relative)).replaceAll("\\", "/");
     const expectedViolations = new Map([
       [
         "controllers/direct.ts",
@@ -183,12 +260,20 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
         "controllers/typed-handle.ts",
         /database operation select is outside an allowed repository/,
       ],
+      ["database/escape.repository.ts", /exposes a query builder/],
+      ["database/async-escape.repository.ts", /exposes a query builder/],
+      ["database/export-list.repository.ts", /exposes a query builder/],
+      ["database/reexport-source.repository.ts", /exposes a query builder/],
+      ["database/reexport.repository.ts", /exposes a query builder/],
+      ["database/object-escape.repository.ts", /exposes a query builder/],
+      ["database/class-escape.repository.ts", /exposes a query builder/],
+      ["database/factory-escape.repository.ts", /exposes a query builder/],
     ]);
     for (const [relative, expected] of expectedViolations) {
       assert.match(
         byFile.get(key(relative)) ?? "",
         expected,
-        `${relative} should produce its specific ownership violation`,
+        `${relative} should produce its specific ownership violation; got ${byFile.get(key(relative)) ?? "<none>"}`,
       );
     }
     assert.match(
@@ -223,13 +308,34 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
     );
     assert.match(
       byFile.get(key("database/escape.repository.ts")) ?? "",
-      /returns a query builder/,
+      /exposes a query builder/,
       "an exported builder escape must be rejected even inside a repository",
+    );
+    assert.equal(
+      byFile.has(key("database/async-assimilated.repository.ts")),
+      false,
+      "an async function returning an assimilated row thenable remains valid",
+    );
+    assert.equal(
+      byFile.has(key("database/private-class-method.repository.ts")),
+      false,
+      "private/protected implementation methods do not escape the repository boundary",
+    );
+    assert.equal(
+      byFile.has(key("database/type-only-export.repository.ts")),
+      false,
+      "type-only exports do not form runtime query-builder boundaries",
+    );
+    assert.equal(
+      byFile.has(key("database/recursive-api.repository.ts")),
+      false,
+      "recursive exported DTO APIs with row-returning methods are cycle-safe",
     );
   } finally {
     snapshot?.dispose();
     api.close();
     rmSync(dir, { recursive: true, force: true });
+    rmSync(fixtureConfig, { force: true });
   }
 });
 
