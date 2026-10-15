@@ -10,6 +10,7 @@ const testState = vi.hoisted(() => ({
   listReady: true,
   suspendWorkItemId: undefined as string | undefined,
   suspendedAttempts: 0,
+  listProps: undefined as Record<string, unknown> | undefined,
 }));
 const neverResolve = new Promise<never>(() => {});
 
@@ -19,15 +20,13 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("./work-item-list", () => ({
-  default: ({
-    workItems,
-    isLoading,
-    isError,
-  }: {
+  default: (props: {
     workItems: WorkItemRow[] | undefined;
     isLoading: boolean;
     isError: boolean;
   }) => {
+    const { workItems, isLoading, isError } = props;
+    testState.listProps = props;
     if (
       testState.suspendWorkItemId !== undefined &&
       workItems?.[0]?.id === testState.suspendWorkItemId
@@ -438,5 +437,54 @@ describe("work-item list realtime startup", () => {
     expect(frameCallbacks.size).toBe(1);
     view.unmount();
     expect(frameCallbacks.size).toBe(0);
+  });
+});
+
+describe("work-item panel structured query props", () => {
+  afterEach(cleanup);
+
+  it("forwards the chosen columns and the filtered flag to the list", async () => {
+    render(
+      <WorkItemsPanel
+        {...panelProps({ isLoading: false })}
+        columns={["key", "assignee"]}
+        isFiltered
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("work-item-list-populated"),
+      ).toBeInTheDocument(),
+    );
+    expect(testState.listProps).toMatchObject({
+      columns: ["key", "assignee"],
+      isFiltered: true,
+    });
+  });
+});
+
+describe("work-item panel pagination props", () => {
+  afterEach(cleanup);
+
+  it("forwards the load-more controls to the list", async () => {
+    const onLoadMore = vi.fn();
+    render(
+      <WorkItemsPanel
+        {...panelProps({ isLoading: false })}
+        hasMore
+        isLoadingMore
+        onLoadMore={onLoadMore}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("work-item-list-populated"),
+      ).toBeInTheDocument(),
+    );
+    expect(testState.listProps).toMatchObject({
+      hasMore: true,
+      isLoadingMore: true,
+      onLoadMore,
+    });
   });
 });
