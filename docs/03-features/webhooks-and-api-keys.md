@@ -302,11 +302,14 @@ E2E: create a webhook, send a test, inspect the delivery, rotate the secret, red
 
 ### Named security tests
 
-Checked against `tests/` and `apps/api/src` on 2026-10-15: **no webhook code or webhook
-test exists on `main`** (the webhook tables, routes and delivery worker are P4,
-[#47](https://github.com/ThomasHeinThura/ticketing/issues/47)). The three files below are
-therefore the names the implementation lane creates; they do not exist yet and must not be
-claimed as passing before then. Each asserts the rule ids shown, with non-vacuous negative
+Checked against `tests/` and `apps/api/src` on 2026-10-15: **no code or test for this
+feature's webhook tables, routes, delivery worker or `WH-9`–`WH-12` exists on `main`** (they
+are P4, [#47](https://github.com/ThomasHeinThura/ticketing/issues/47)). The only
+webhook-destination SSRF guard and test on `main` belong to the inherited notification
+sender (`assertPublicWebhookDestination`, `tests/api/notification-preferences/delivery-ssrf.test.ts`)
+and do not cover this feature's rules (connect-time re-check, redirect refusal, signing). The
+three files below are therefore the names the implementation lane creates; they do not exist
+yet and must not be claimed as passing before then. Each asserts the rule ids shown, with non-vacuous negative
 cases.
 
 | Test file | Rules | Must assert |
