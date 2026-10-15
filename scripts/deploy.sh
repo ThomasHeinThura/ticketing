@@ -377,9 +377,10 @@ assert_port_unpublished() {
      TASKDESK_TRUST_PROXY is only sound because the application port is reachable
      from the proxy network alone: published, a client can bypass Traefik and
      forge X-Forwarded-For directly. Compose concatenates \`ports:\` across files,
-     so an overlay with a \`ports:\` entry for the taskdesk service was loaded.
-     No shipped overlay has one; remove the entry from your own overlay, or
-     bring the stack down and re-run without it.
+     so this usually means an overlay with a \`ports:\` entry for the taskdesk
+     service was loaded (no shipped overlay has one), or the container uses host
+     networking. Remove it from your own overlay, or bring the stack down and
+     re-run without it.
      docs/05-operations/traefik-and-domains.md"
   fi
   ok "no application port is published"

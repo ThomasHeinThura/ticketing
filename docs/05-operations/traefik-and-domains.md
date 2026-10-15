@@ -230,8 +230,9 @@ succeeds against it, and `up` reads it as this stack's own and adopts it rather 
 flagging a conflict (harmless — it only means `up` recreates that other checkout's
 containers, which was already true before this port check existed).
 
-**Loopback only (#752).** The local overlays bind every published port to loopback, IPv4
-`127.0.0.1` and IPv6 `[::1]`: Traefik's HTTP and HTTPS ports, and Postgres on `5432`. The
+**Loopback only (#752).** The local overlays bind every published port to loopback:
+Traefik's HTTP and HTTPS ports on IPv4 `127.0.0.1` and IPv6 `[::1]`, and Postgres on
+`127.0.0.1:5432`. The
 application port `5173` is not published at all. Traefik reaches it over the `taskdesk`
 network, `scripts/deploy.sh` probes it from inside the container, and the container health
 check runs inside the container too. A host-published `5173` would bypass Traefik, and with
