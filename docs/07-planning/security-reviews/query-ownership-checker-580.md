@@ -624,3 +624,254 @@ Reproduced the CI focused-test prerequisites with a clean worktree and no worksp
 3. `node --test scripts/ci/check-queries.test.mjs` — passed: 3 tests, 0 failures, 0 skipped; duration 7.3 seconds.
 
 The focused checker tests import actual repository/API types and ran successfully without built workspace outputs. Therefore the proposed TS2307 missing-output failure was not reproduced at this exact head in this environment; no test setup changes were made. No API/build command, full CI script suite, Docker, or runtime test was run. This establishes readiness only for the focused test file; it does not verify the entire `pnpm test:ci-scripts` job. pnpm reported ignored third-party install scripts for Prisma, cpu-features, msw, protobufjs, and ssh2; none blocked these tests.
+
+---
+
+## D2 fragment containment correction — current source
+
+**Reviewed head:** `7b5c54279095f0384e71964adc5bf31f979d8829`
+
+The source now distinguishes valid SQL fragments composed in repository modules from executable builder escapes. A fresh audit found the earlier false positive; the first correction exposed a SQLWrapper-carrier escape, which the ordinary reviewer blocked. The current structural repair traverses public generic/member/signature/intersection graphs and uses proven native Drizzle SQL class provenance only for the opaque leaf, while inspecting its generic payload. Outside-repository calls/composition, real builders and unresolved shapes remain rejected. One strong independent ordinary delta clearance and a further fresh full independent Sol clearance bind the current source. All adverse reports remain below unchanged.
+
+The earlier 5619-instance scan belongs to historical source4a, before fragment classification was corrected. It is neither a current count nor comparable progress; some earlier public-boundary reports were valid repository fragments. No new whole-production count was taken. The checker remains unwired, #764/#780 prerequisites unaccepted, and #580 incomplete. Source-scoped checks on separate candidate branches are not additive whole-program completion evidence.
+
+---
+
+Retained evidence file — 580-query-fragment-contract-audit-sol.md
+
+# #580 SQL fragment contract/classifier audit (read-only)
+
+**Verdict: BLOCKING contract mismatch / real false positive at checker preparation `260e18df6445ed0f4ac1a430507dad30355a9845`.** This is a bounded diagnostic, not an independent security approval of a later fix. Source exemplar is #580 batch-4 `bd5f76d8e7e6a88c34791f94e38ad377ce5c1447`; the accepted contract exists in that tree and the #764 reviewed clarification at `0627093d`. Neither checkout was edited. The scratch probe was deleted.
+
+**Model provenance:** This context was assigned a fresh Sol-tier read-only audit by the conductor. The session identifies me as GPT-6; no runtime tool exposed a more specific model/version string, so this record does not claim one. I did not author `260e18df` or `bd5f76d`; design advice below disqualifies this context from independently approving its eventual fix.
+
+## Contract and exact source
+
+`docs/04-engineering/coding-standards.md:162-166` says repository functions await statements and return rows/DTOs/scalars, never un-awaited query builders; its separate raw-SQL paragraph says SQL fragment helpers, exemplified by a project-scope predicate, live in repository modules **and are composed there**. `docs/07-planning/security-reviews/764-query-ownership.md:153,208,450` confirms D2, with no per-site allowlist or baseline. The contract permits a fragment producer in one repository module to be imported by another repository module and composed into its statement. The `Results` rule governs executable statements returned for downstream composition, not a SQL predicate whose intended use is repository-side composition.
+
+At `bd5f76d`, `apps/api/src/notification/task-reach.repository.ts:58` exports `projectReachPredicate`, which constructs a `drizzle-orm` predicate from `exists`, `and`, `sql` and nested selects. It is consumed within that repository at lines 276 and 301 and by `approval-reach.repository.ts:4,93`. The same file exports `reachableTaskNotificationPredicate` at line 282, consumed by `inbox.repository.ts:23,75-76`. `approval-reach.repository.ts:96` also exports `approvalNotificationReadable`, consumed by `inbox.repository.ts`. Repository production caller search found no service/controller consumers for those symbols. Their result is a predicate (`SQL`/`SQLWrapper`), not a pending executable select/insert/update/delete builder.
+
+`check-queries.mjs:29-30` combines executable Drizzle builders and `SQL|SQLWrapper|Aliased` under one `DRIZZLE_QUERY_TYPES` regex. `isQueryBuilder` at 191-202 and `exportedQueryBoundary` at 204-225 therefore classify every public SQL fragment as `builder`. The module export pass at 842-980 rejects it with the `exported repository value exposes a query builder` message; it does not check whether consumers remain repository modules. The checker correctly has a separate outside-repository call-site check in `checkCandidate` at 710-782: a call returning typed SQL is a query site and is rejected when outside an allowed repository.
+
+## Actual analyzer probes
+
+1. Using the unmodified checker module at `260e18df`, a TypeScript API snapshot of the three actual `bd5f76d` notification repository files reported `task-reach.repository.ts:1` and `approval-reach.repository.ts:1` as `exported repository value exposes a query builder...`; `inbox.repository.ts:1` also reported an unresolved public value shape. The first two are the relevant false positives. The third was not diagnosed here and must not be conflated with this classification finding.
+2. A disposable three-file TypeScript fixture inside `apps/api/src/.query-fragment-audit-*` exported `predicate(id) => sql\`id = ${id}\`` from `reach.repository.ts`, called it from `consumer.repository.ts`, and separately called it from `consumer.service.ts`. Analyzer output rejected both repository exports as builders and rejected the service call as `database operation predicate is outside an allowed repository or explicit persistence-infrastructure file`. This demonstrates both the false positive and that call-site detection already covers a direct outside-repository use. Fixture directory and tsconfig were removed in `finally`; no product or checker source edit was made. An initial probe accidentally placed files under `apps/api/` rather than `apps/api/src/`, so the analyzer correctly skipped them and returned zero; it was corrected before drawing this verdict.
+
+## Minimal contract-consistent correction
+
+Separate typed **SQL fragment** results from executable **Drizzle statement builder** results at the public export boundary. Permit the former only as repository-owned fragment helpers composed within repository modules. Preserve the existing fail-closed checks for true builder exports, unresolved public types/aliases, and raw `execute`/`sql` or SQL-returning calls outside allowed locations. The existing call-site check demonstrated above is enough for direct outside-repository fragment-helper calls; any wider assertion about aliases, namespace references or re-exported fragment values should be proved with regression fixtures before claiming full containment. Avoid a blanket SQL public-export exemption if it leaves a way to import a fragment and construct a statement in a service without a detected call. A structural typed classification plus focused producer/consumer, outside-call, true-builder and unresolved-shape regressions is the narrow path. No new owner vocabulary/contract decision appears necessary: D2 expressly names repository SQL fragment helpers and composition.
+
+**Limits:** This audit did not run the full checker, tests, PostgreSQL, Docker or browser, and did not assess the separate `inbox.repository.ts` unresolved result. It cannot clear #580 or #797 review/merge gates.
+
+---
+
+Retained evidence file — 580-query-fragment-classifier-repair-luna.md
+
+# #580 SQL fragment classifier repair handoff
+
+**Result:** `DONE` for the bounded author repair; awaiting fresh independent ordinary and security review. This note records implementation and validation, not approval, activation, completion of #580, or merge readiness.
+
+## Source and scope
+
+- Worktree: `/Users/heinthura/.codex/worktrees/query-checker-580`
+- Branch: `codex/query-checker-580-prep`
+- Frozen source: `260e18df6445ed0f4ac1a430507dad30355a9845`
+- Commit: `b2edd8cd000cdaa86c8175fdae5bf810e8abba98`
+- Changed files only: `scripts/ci/check-queries.mjs`, `scripts/ci/check-queries.test.mjs`
+- Working tree clean after commit. No push, PR, activation, docs, package/workflow changes, contract edits, allowlist/baseline changes, dependencies, or product-source edits.
+
+## Repair
+
+The previous classifier grouped executable Drizzle builders with `SQL` and `SQLWrapper`, so the public export walk rejected repository fragment helpers. The checker now classifies public fragment results separately from executable builders, checking true builder types first (including types that also implement `SQLWrapper`). Fragment recognition follows direct types, union/intersection constituents and implemented base interfaces, without treating arbitrary generic containers such as `Promise<SQL>` as fragments. Public type graph traversal accepts SQL fragment leaves while retaining unresolved, generic, alias/re-export, namespace, object/interface, and builder checks. Query call-site classification still recognizes SQL-returning calls and constructors so use/composition outside an allowed repository remains rejected.
+
+The typed analyzer fixtures cover repository producer and consumer composition, function alias, explicit re-export, namespace export, imported SQL-shaped interface, SQL fragment object output, rejected external fragment call and external SQL composition, a `Promise<builder>` escape, and a builder type intersected with `SQLWrapper`. Existing true builder, unresolved, generic, object, class, default, namespace and other public-graph cases remain in the fixture suite. The unconstrained-output generic identity case remains unresolved/fail-closed.
+
+## Verification
+
+On exact commit `b2edd8cd000cdaa86c8175fdae5bf810e8abba98`:
+
+- `node --test scripts/ci/check-queries.test.mjs`: 3 tests passed, 0 failed.
+- `pnpm exec biome check scripts/ci/check-queries.mjs scripts/ci/check-queries.test.mjs`: passed.
+- `node --check` on both changed files: passed.
+- `git diff --check`: passed before commit.
+- Final tree clean; commit contains exactly the two authorized files.
+
+During fixture development, the initial focused run exposed a raw-SQL-constructor classification regression and a temporary malformed fixture; both were corrected. The final focused run is green. No whole production analyzer scan, PostgreSQL, Docker or browser verification was run; these are outside this bounded checker repair.
+
+## Counts and limits
+
+The historical `5,619` number in prior #580 evidence is diagnostic instances across production files, not unique queries. This repair did not run a new production scan, and no before/after count or conversion-progress claim is made. The bounded fixtures establish the exercised classifier behaviors only; they do not prove tenant predicate correctness, arbitrary interprocedural executor propagation, production conversion completion, or checker activation.
+
+## Review and next action
+
+The read-only Sol audit at `580-query-fragment-contract-audit-sol.md` found the pre-repair false positive and explicitly cannot independently review its fix. Obtain a fresh strong ordinary review and a different fresh full Sol review at exact head `b2edd8cd000cdaa86c8175fdae5bf810e8abba98`. Do not push or open/update a PR until both required reviews clear. #764 remains reviewed but unaccepted; #780 remains an unaccepted carrier prerequisite. #580 is not complete or accepted by this handoff.
+
+---
+
+Retained evidence file — 580-query-fragment-delta-ordinary-luna.md
+
+# #580 query-fragment repair — independent ordinary review
+
+**Verdict: BLOCKED.** The classifier repair fixes the reported direct fragment false positive, but introduces a fail-open path: classifying an outer public type as an SQL fragment short-circuits inspection of its other public type edges. A fragment carrier can therefore export an executable query builder through a generic argument or member.
+
+## Provenance
+
+- Reviewer: fresh independent review context; did not author, direct, or remediate this change.
+- Model: GPT-6 (runtime exposes no more specific model/version introspection in this context).
+- Role: strong ordinary review of the bounded CI/gate pass/fail repair.
+- Exact candidate: `b2edd8cd000cdaa86c8175fdae5bf810e8abba98`
+- Comparison base: `260e18df6445ed0f4ac1a430507dad30355a9845`
+- Changed scope: `scripts/ci/check-queries.mjs`, `scripts/ci/check-queries.test.mjs`.
+
+## Checks performed
+
+- Read repository `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, active mission and author handoff; inspected the full candidate diff and relevant analyzer/public-graph code.
+- `node --test scripts/ci/check-queries.test.mjs`: pass, 3/3 tests.
+- `pnpm exec biome check scripts/ci/check-queries.mjs scripts/ci/check-queries.test.mjs`: pass.
+- `git diff --check <base>..<candidate>`: pass.
+- Reviewed the preservation fixtures for direct SQL fragment composition, aliases/re-exports/namespaces, outside-repository call/composition, `Promise<builder>`, and builder intersected with `SQLWrapper`.
+
+## Blocking finding
+
+`exportedQueryBoundary()` returns `{ kind: "fragment" }` immediately whenever `isSqlFragment(type)` is true (around lines 269–270). `hasSqlFragmentType()` follows base interfaces and recognizes the name `SQLWrapper`. Thus any public wrapper type that implements `SQLWrapper` is accepted as a fragment before its generic arguments, call signatures, or public members are examined. This is broader than accepting the SQL fragment leaf.
+
+A concrete adversarial shape is:
+
+```ts
+import type { SQLWrapper } from "drizzle-orm";
+import db from "../../database";
+import { userTable } from "../../database/schema";
+const pending = db.select().from(userTable);
+interface FragmentCarrier<T> extends SQLWrapper { value: T }
+export function leak(): FragmentCarrier<typeof pending> {
+  throw new Error("type-shape fixture");
+}
+```
+
+The exported function return type extends `SQLWrapper`, so `isSqlFragment` succeeds and the public graph walk stops before discovering `typeof pending`. A non-generic interface with a public builder property and `SQLWrapper` base has the same issue. This violates the retained guarantee that repository exports cannot expose a query builder anywhere in their public graph, and can permit downstream non-repository code to reach the pending statement through the fragment carrier.
+
+Fix the classifier so fragment acceptance is limited to the actual fragment leaf/type identity without suppressing inspection of unrelated public edges. Add typed regressions for both a fragment wrapper with a builder type argument and a public builder member; preserve genuine SQL/SQLWrapper fragment acceptance and all existing failure cases. This is a bounded structural gap, not a request for a repository allowlist or baseline.
+
+## Non-blocking observations
+
+No other blocking issue found in the inspected delta. The current fixtures meaningfully cover the reported direct producer/consumer and alias/re-export/namespace cases, and the requested outside-repository call/composition negatives remain present. I did not execute an additional fixture because the short-circuit is directly evident from the checker control flow and the type shapes above.
+
+## Limits
+
+No source edits, database, Docker, browser, production scan, or activation were performed. This review does not approve the candidate or supersede the separate required fresh full Sol review. No production population or conversion-completion count is claimed.
+
+---
+
+Retained evidence file — 580-query-fragment-wrapper-repair-luna.md
+
+# #580 SQLWrapper public-graph repair handoff
+
+**Result:** `DONE` for the bounded author repair; fresh independent ordinary review is required, followed by a different fresh full Sol review. This handoff is implementation evidence only, not approval, activation, #580 completion, or merge readiness.
+
+## Source and scope
+
+- Worktree: `/Users/heinthura/.codex/worktrees/query-checker-580`
+- Branch: `codex/query-checker-580-prep`
+- Prior reviewed candidate: `b2edd8cd000cdaa86c8175fdae5bf810e8abba98` (ordinary BLOCKED report preserved separately at `580-query-fragment-delta-ordinary-luna.md`)
+- Repair commit: `7b5c54279095f0384e71964adc5bf31f979d8829`
+- Changed files only: `scripts/ci/check-queries.mjs`, `scripts/ci/check-queries.test.mjs`
+- Working tree clean after commit. No push, PR, docs/package/workflow/contract/path-allowlist/baseline/dependency/product-source changes, or activation.
+
+## Repair
+
+The previous fix treated any type inheriting `SQLWrapper` as an opaque SQL fragment. This revision treats only the Drizzle-declared `SQL` class as the opaque fragment leaf, proving symbol name, class declaration and installed Drizzle declaration provenance. It checks the leaf's generic payload first, so `SQL<typeof pendingBuilder>` is rejected. `SQLWrapper`, its implementers and local types named `SQL` remain ordinary public graphs; their generic arguments, unions/intersections, awaited types, call/construct signatures, members and re-exported members are traversed by the existing fail-closed walker. SQLWrapper call-site results remain recognized so external fragment calls are rejected. Builder classification stays ahead of fragment handling.
+
+Fixtures now exercise a generic SQLWrapper carrier with a pending builder type argument; a non-generic public builder member; intersection, custom class, reflected type alias, named re-export and `SQL<typeof builder>` leaks; and a user-defined class named `SQL` that must not be mistaken for Drizzle's fragment class. Positive cases retain actual Drizzle SQL fragment repository producers/consumers, aliases, re-exports, namespaces, public SQL-shaped interface/object output, and a SQLWrapper-returning fragment helper. Existing Promise-of-builder, unresolved, direct true-builder and unrelated public-shape controls remain.
+
+## Verification
+
+On the source tree committed as `7b5c54279095f0384e71964adc5bf31f979d8829`:
+
+- `node --test scripts/ci/check-queries.test.mjs`: 3 tests passed, 0 failed.
+- `pnpm exec biome check scripts/ci/check-queries.mjs scripts/ci/check-queries.test.mjs`: passed.
+- `node --check` on both changed files: passed.
+- `git diff --check`: passed before commit.
+- Final worktree clean; commit contains exactly the two authorized files.
+
+During implementation, the first focused attempt failed because the native TypeScript API exposes symbol declarations as a `declarations` property rather than `getDeclarations()` in this context, and SQL constructor detection initially missed raw SQL tag results. Both were corrected; the final focused suite, formatter, syntax checks and diff check pass. A temporary test fixture from the failed analyzer probe was removed. No checker population scan, PostgreSQL, Docker or browser verification was run.
+
+## Counts and limits
+
+No new production analyzer count was produced. Historical diagnostic-instance counts remain non-unique and are not compared as progress. The fixtures demonstrate the covered public type-graph cases; they do not prove tenant predicate correctness, arbitrary interprocedural executor propagation, full production conversion, or checker activation.
+
+## Review and next action
+
+Request a fresh strong independent ordinary review at exact head `7b5c54279095f0384e71964adc5bf31f979d8829`. If it clears, obtain a different fresh full Sol review. The prior b2 ordinary BLOCKED report remains unaltered and source-bound. No push or PR action was performed. #764 remains reviewed but unaccepted; #780 remains an unaccepted carrier prerequisite.
+
+---
+
+Retained evidence file — 580-query-fragment-wrapper-ordinary-luna.md
+
+# #580 SQLWrapper public-graph repair — independent ordinary review
+
+**Verdict: CLEAR for the reviewed delta at this exact head.** The revision closes my prior blocker: only the Drizzle-declared `SQL` class is treated as the fragment leaf, its generic payload is checked, and `SQLWrapper` carriers continue through the public type graph. I found no new blocking issue in the bounded change.
+
+## Provenance
+
+- Reviewer: fresh independent review context; did not author, direct, or remediate this revision.
+- Model: GPT-6 (runtime exposes no more specific model/version introspection in this context).
+- Role: strong ordinary delta review of the bounded CI/gate pass/fail repair.
+- Exact candidate: `7b5c54279095f0384e71964adc5bf31f979d8829`
+- Comparison base: `b2edd8cd000cdaa86c8175fdae5bf810e8abba98`
+- Prior ordinary finding: BLOCKED on `b2edd8c`, preserved unchanged in `580-query-fragment-delta-ordinary-luna.md`; this verdict applies only to the remediation delta and current exact head.
+- Changed scope: `scripts/ci/check-queries.mjs`, `scripts/ci/check-queries.test.mjs`.
+
+## Checks performed
+
+- Read the repair handoff and inspected the full exact delta, classifier order, SQL leaf provenance check, fragment generic-payload traversal, public output graph traversal, and the added positive/negative fixtures.
+- Confirmed the installed declaration shape directly: `drizzle-orm@0.45.2` declares `SQL<T = unknown>` as a class and `SQLWrapper` as a separate interface in `sql/sql.d.ts` under the pnpm-installed Drizzle package.
+- `node --test scripts/ci/check-queries.test.mjs`: pass, 3/3 tests.
+- `pnpm exec biome check scripts/ci/check-queries.mjs scripts/ci/check-queries.test.mjs`: pass.
+- `node --check` on both changed files: pass.
+- `git diff --check b2edd8cd000cdaa86c8175fdae5bf810e8abba98..7b5c54279095f0384e71964adc5bf31f979d8829`: pass.
+- No source edits or extra temporary fixtures were needed; the committed typed fixtures exercise the discovered escape shapes.
+
+## Review findings
+
+The previous problematic branch treated any type inheriting `SQLWrapper` as opaque. This delta removes that broad classification. `isDrizzleSqlFragmentLeaf()` resolves import/export aliases, then requires the `SQL` symbol, a class declaration, and Drizzle package declaration provenance. The public boundary handles executable builders first, inspects a native Drizzle `SQL<T>` payload before accepting that leaf, and traverses custom SQLWrapper implementations through their normal type graph. This keeps the useful fragment composition allowance without letting a custom wrapper hide a builder payload.
+
+The new fixtures cover generic and member carriers, an intersection, class implementation, reflected type alias, re-export, native `SQL<Builder>` payload, and a locally declared class named `SQL`. The positive SQLWrapper fragment helper is checked as repository-safe, while the earlier producer/consumer composition and outside-repository call/composition negatives remain. The type provenance predicate is based on the installed Drizzle declaration, not a source-file/customer/repository allowlist or a rendered type name alone.
+
+No blocking or non-blocking findings from this delta. The old finding remains valid as history for `b2edd8c`; it is addressed in the current candidate and is not an unresolved current-head finding.
+
+## Limits and residual gates
+
+This verdict covers ordinary review of the bounded delta only. A separate fresh full Sol security review is still required at `7b5c54279095f0384e71964adc5bf31f979d8829`; the earlier design-audit context cannot approve this fix. No production scan/count, activation, PostgreSQL, Docker, browser, push, or PR action was performed. Checker wiring, #580 completion, and acceptance remain outside this review.
+
+---
+
+Retained evidence file — 580-query-fragment-security-current-sol.md
+
+# #580 SQL fragment wrapper repair — independent full security review
+
+**Verdict: CLEAR** for the bounded, unwired checker repair at exact head `7b5c54279095f0384e71964adc5bf31f979d8829`. I found no blocking or non-blocking issue in this candidate. This verdict does not approve checker activation or #580 completion.
+
+## Provenance and scope
+
+- Fresh independent security reviewer context `/root/query_fragment_security_final`. The conductor dispatched this context with `fork_turns=none` and an explicit `gpt-6-sol` request for a full security pass. The visible runtime identifies as GPT-6 but exposes no independently verifiable Sol subvariant; `gpt-6-sol` is the dispatch designation, not a runtime attestation. I did not author, direct, design, advise on, or remediate this fix. The earlier Sol contract audit that advised a correction is a distinct, disqualified context for reviewing its own design.
+- Candidate/worktree: `codex/query-checker-580-prep`, `/Users/heinthura/.codex/worktrees/query-checker-580`, exact `HEAD` above. Delta base: `b2edd8cd000cdaa86c8175fdae5bf810e8abba98`. The delta changes only `scripts/ci/check-queries.mjs` and `scripts/ci/check-queries.test.mjs`; the worktree was clean after verification.
+- Read repository instructions, active mission, workflow/model policy, provider adapter, the accepted query-ownership contract at `0627093df3ef9a7cf6784d242642a22cf887a077`, the exact source/test delta, the preceding ordinary blocker and its current-head CLEAR review, and the independent contract audit. The prior adverse verdicts remain attached to their own exact heads. This review independently adjudicates the current code, not those verdicts.
+
+## Security adjudication
+
+The contract permits repository-owned SQL predicate helpers to be exported and composed in another repository, while executable statements may not cross that boundary. The prior broad `SQLWrapper` fragment shortcut could hide a pending builder in a custom carrier. The current `exportedQueryBoundary` checks executable builder identity first. It then treats only the installed Drizzle `SQL` **class declaration** as an opaque fragment leaf, requiring the resolved symbol name, class declaration kind, and Drizzle package declaration path. The local class named `SQL` and custom `SQLWrapper` implementations therefore continue through the ordinary public output graph. The leaf's type arguments are recursively inspected; unknown is allowed as Drizzle's default payload, while builder, any/unresolved, and other unproven payloads fail closed.
+
+I traced that ordinary graph through union/intersection constituents, generic arguments, awaited types, call/construct returns, visible properties, index values, imported declarations, and runtime re-export/namespace members. The added typed negatives cover `SQLWrapper` generic, property, intersection, implementation, reflection and re-export carriers, native `SQL<builder>`, and a local lookalike class. They exercise the real analyzer rather than a mocked classifier. The typed positive allows a plain `SQLWrapper` fragment helper. Earlier fixtures continue to reject direct executable builder exports, `Promise<builder>`, `SQL.Aliased`, unresolved generics, outside-repository fragment-helper calls and SQL construction/composition; repository producer/consumer composition stays accepted. I found no per-site exemption, baseline, rendered-type-string-only exemption, or gate activation in this delta.
+
+## Checks actually run
+
+- `node --test scripts/ci/check-queries.test.mjs`: **3 passed, 0 failed, 0 skipped**. This includes the real-analyzer typed fixture and the exact infrastructure-path regression.
+- `pnpm exec biome check scripts/ci/check-queries.mjs scripts/ci/check-queries.test.mjs`: **2 files checked, clean**.
+- `node --check` for each changed `.mjs` file: passed.
+- `git diff --check b2edd8cd000cdaa86c8175fdae5bf810e8abba98..7b5c54279095f0384e71964adc5bf31f979d8829`: passed.
+- `git status --short --branch`: clean branch after tests.
+
+## Limits and disposition
+
+This is security clearance for the two-file checker-preparation delta only. `check:queries` is still unwired, complete production conversion and final scope reconciliation are unaccepted, and the checker does not prove tenant predicates or arbitrary executor propagation. I did not run a full production scan, PostgreSQL, Docker, browser or source acceptance, and make no production finding-count or completion claim. No source edits, commit, push, PR or merge action occurred in this review.
