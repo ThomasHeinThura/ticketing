@@ -9,6 +9,7 @@ import {
   lockPendingActionLifecycle,
   reportPendingActionAuditFailures,
 } from "../pending-action/lifecycle-invalidation";
+import { invalidateNativeAuthorization } from "../ws";
 import { retryIdentityGrantClosure } from "./membership-projection";
 import { transitionPersonLifecycleInTransaction } from "./person-lifecycle";
 import { getScimExternalIdentity } from "./repository";
@@ -34,7 +35,20 @@ export async function setScimIdentityActive(
   );
   if (!changed) return false;
   await reportPendingActionAuditFailures(changed.pendingActionAuditFailures);
+  await announceScimDeactivation(changed.revokedUserId);
   return true;
+}
+
+/**
+ * A SCIM deactivation deletes the person's sessions and disables their keys inside its
+ * transaction, which no session hook sees. Announce it once committed so legacy and native
+ * sockets recheck at once instead of waiting for the next event or the 60-second floor (#632).
+ */
+export async function announceScimDeactivation(
+  revokedUserId: string | null | undefined,
+) {
+  if (revokedUserId)
+    await invalidateNativeAuthorization({ userId: revokedUserId });
 }
 
 /** Caller must take the pending-action lifecycle gate before its first row lock. */
@@ -125,5 +139,6 @@ export async function setScimIdentityActiveInTransaction(
   }
   return {
     pendingActionAuditFailures: changed.pendingActionAuditFailures,
+    revokedUserId: changed.revokedUserId,
   };
 }
