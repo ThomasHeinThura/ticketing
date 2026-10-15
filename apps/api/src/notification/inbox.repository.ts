@@ -159,6 +159,15 @@ function canReadInstanceAlerts(identity: ResolvedIdentity | null) {
   );
 }
 
+function requiresInstanceAdmin(
+  notification: Pick<NotificationRow, "resourceType" | "type">,
+) {
+  return (
+    notification.resourceType === "instance" ||
+    notification.type === "audit_write_failed"
+  );
+}
+
 async function readableNativeRows(
   tx: InboxExecutor,
   rows: readonly NotificationRow[],
@@ -194,15 +203,22 @@ async function selectCandidatePage(
   userId: string,
   cursor: Cursor | undefined,
   credentialCanReadTask?: boolean,
-  excludeInstanceAlerts = false,
+  excludeInstanceAdminRows = false,
 ) {
   const selfScoped = and(
     eq(notificationTable.userId, userId),
     approvalNotificationReadable(userId),
     taskNotificationReadable(userId, credentialCanReadTask),
   );
-  const visibleToUser = excludeInstanceAlerts
-    ? and(selfScoped, ne(notificationTable.type, "audit_write_failed"))
+  const visibleToUser = excludeInstanceAdminRows
+    ? and(
+        selfScoped,
+        or(
+          isNull(notificationTable.resourceType),
+          ne(notificationTable.resourceType, "instance"),
+        ),
+        ne(notificationTable.type, "audit_write_failed"),
+      )
     : selfScoped;
   const cursorFilter = cursorPredicate(cursor);
   return tx
@@ -303,7 +319,7 @@ export async function markOwnReadableNotificationRead(
     if (!row) return undefined;
     const notification = row.notification;
     if (
-      notification.type === "audit_write_failed" &&
+      requiresInstanceAdmin(notification) &&
       !canReadInstanceAlerts(await resolveInboxIdentity(tx, userId))
     ) {
       return undefined;

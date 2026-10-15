@@ -121,6 +121,25 @@ async function plantAuditFailureNotifications(userId: string, count = 1) {
     .returning({ id: schema.notificationTable.id });
 }
 
+async function plantInstanceSecurityAlert(userId: string) {
+  return requireRow(
+    await db
+      .insert(schema.notificationTable)
+      .values({
+        userId,
+        title: "Instance administrator authority changed",
+        content:
+          "An instance administrator grant operation was recorded. Review the instance audit log if you did not expect this change.",
+        type: "security_alert",
+        eventData: { kind: "instance_admin_granted", userId: "target-user" },
+        resourceId: "singleton",
+        resourceType: "instance",
+      })
+      .returning(),
+    "instance security alert",
+  );
+}
+
 async function revokeProjectReach(userId: string, projectId: string) {
   const [person] = await db
     .select({ id: schema.personTable.id })
@@ -208,6 +227,78 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
     expect(keyRows.map((row) => row.id)).not.toContain(alert.id);
   });
 
+  it("gates the whole instance resource family for list, mark, and bulk mutations", async () => {
+    const { user } = await fixture();
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, user.id));
+    const markedAsAdmin = await plantInstanceSecurityAlert(user.id);
+    expect(
+      (await getNotifications(user.id, true)).map((row) => row.id),
+    ).toContain(markedAsAdmin.id);
+    await expect(
+      markNotificationAsRead(markedAsAdmin.id, user.id),
+    ).resolves.toMatchObject({ id: markedAsAdmin.id, isRead: true });
+
+    const bulkReadAsAdmin = await plantInstanceSecurityAlert(user.id);
+    await markAllNotificationsAsRead(user.id);
+    const [readAsAdmin] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, bulkReadAsAdmin.id));
+    expect(readAsAdmin).toEqual({ isRead: true });
+
+    const clearedAsAdmin = await plantInstanceSecurityAlert(user.id);
+    await clearNotifications(user.id);
+    const clearedRow = await db
+      .select({ id: schema.notificationTable.id })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, clearedAsAdmin.id));
+    expect(clearedRow).toHaveLength(0);
+
+    const revoked = await plantInstanceSecurityAlert(user.id);
+    const apiKeyRows = await getNotifications(user.id, true, {
+      apiKey: {
+        id: `instance-alert-clamp-${randomUUID()}`,
+        userId: user.id,
+        enabled: true,
+        permissions: {},
+      },
+    });
+    expect(apiKeyRows.map((row) => row.id)).not.toContain(revoked.id);
+
+    const foreignAdmin = await createWorkspaceMember({ role: "member" });
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, foreignAdmin.user.id));
+    expect(
+      (await getNotifications(foreignAdmin.user.id, true)).map((row) => row.id),
+    ).not.toContain(revoked.id);
+    await expect(
+      markNotificationAsRead(revoked.id, foreignAdmin.user.id),
+    ).rejects.toMatchObject({ status: 404 });
+
+    await db
+      .update(schema.userTable)
+      .set({ role: "member" })
+      .where(eq(schema.userTable.id, user.id));
+    expect(
+      (await getNotifications(user.id, true)).map((row) => row.id),
+    ).not.toContain(revoked.id);
+    await expect(
+      markNotificationAsRead(revoked.id, user.id),
+    ).rejects.toMatchObject({ status: 404 });
+    await markAllNotificationsAsRead(user.id);
+    await clearNotifications(user.id);
+    const [afterRevocation] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, revoked.id));
+    expect(afterRevocation).toEqual({ isRead: false });
+  });
+
   it("filters hidden alerts before paging and preserves authorized bulk behavior past 100 rows", async () => {
     const hiddenOwner = await fixture();
     const hiddenAlerts = await plantAuditFailureNotifications(
@@ -245,7 +336,7 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
       adminOwner.user.id,
       105,
     );
-    expect(await getNotifications(adminOwner.user.id, true)).toHaveLength(105);
+    expect(await getNotifications(adminOwner.user.id, true)).toHaveLength(50);
     await markAllNotificationsAsRead(adminOwner.user.id);
     const readRows = await db
       .select({
