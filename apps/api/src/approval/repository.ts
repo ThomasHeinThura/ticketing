@@ -1,5 +1,6 @@
 import {
   type Approval,
+  type ApprovalKind,
   evaluateApprovalWithdrawalDecision,
 } from "@taskdesk/domain";
 import {
@@ -15,59 +16,55 @@ import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import type { Transaction } from "../database/executor";
 import type { ApiKey } from "../openapi";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { dbClockUtc } from "../utils/db-time";
 import { apiKeyHasCapabilityScope } from "../utils/require-api-key-permission-scope";
 
 const approverPerson = alias(schema.personTable, "approver_person");
-type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type DueApprovalRow = Awaited<
   ReturnType<typeof selectDueApprovalRows>
 >[number];
 
 async function selectDueApprovalRows(tx: Transaction, limit: number) {
-  return (
-    tx
-      .select({
-        id: schema.approvalTable.id,
-        workItemId: schema.approvalTable.workItemId,
-        transitionId: schema.approvalTable.transitionId,
-        kind: schema.approvalTable.kind,
-        requestedBy: schema.approvalTable.requestedBy,
-        approverId: schema.approvalTable.approverId,
-        state: schema.approvalTable.state,
-        createdAt: schema.approvalTable.createdAt,
-        expiresAt: schema.approvalTable.expiresAt,
-        reminder50SentAt: schema.approvalTable.reminder50SentAt,
-        reminder90SentAt: schema.approvalTable.reminder90SentAt,
-        decidedAt: schema.approvalTable.decidedAt,
-        decisionNote: schema.approvalTable.decisionNote,
-        now: sql<Date>`clock_timestamp()`,
-        workspaceId: schema.approvalTable.workspaceId,
-        projectId: schema.workItemTable.projectId,
-        organisationId: schema.workspaceTable.organisationId,
-      })
-      .from(schema.approvalTable)
-      .innerJoin(
-        schema.workItemTable,
-        and(
-          eq(schema.workItemTable.id, schema.approvalTable.workItemId),
-          eq(
-            schema.workItemTable.workspaceId,
-            schema.approvalTable.workspaceId,
-          ),
-        ),
-      )
-      .innerJoin(
-        schema.workspaceTable,
-        eq(schema.workspaceTable.id, schema.approvalTable.workspaceId),
-      )
-      .where(
-        and(
-          eq(schema.approvalTable.state, "pending"),
-          sql`(
+  return await tx
+    .select({
+      id: schema.approvalTable.id,
+      workItemId: schema.approvalTable.workItemId,
+      transitionId: schema.approvalTable.transitionId,
+      kind: schema.approvalTable.kind,
+      requestedBy: schema.approvalTable.requestedBy,
+      approverId: schema.approvalTable.approverId,
+      state: schema.approvalTable.state,
+      createdAt: schema.approvalTable.createdAt,
+      expiresAt: schema.approvalTable.expiresAt,
+      reminder50SentAt: schema.approvalTable.reminder50SentAt,
+      reminder90SentAt: schema.approvalTable.reminder90SentAt,
+      decidedAt: schema.approvalTable.decidedAt,
+      decisionNote: schema.approvalTable.decisionNote,
+      now: sql<Date>`clock_timestamp()`,
+      workspaceId: schema.approvalTable.workspaceId,
+      projectId: schema.workItemTable.projectId,
+      organisationId: schema.workspaceTable.organisationId,
+    })
+    .from(schema.approvalTable)
+    .innerJoin(
+      schema.workItemTable,
+      and(
+        eq(schema.workItemTable.id, schema.approvalTable.workItemId),
+        eq(schema.workItemTable.workspaceId, schema.approvalTable.workspaceId),
+      ),
+    )
+    .innerJoin(
+      schema.workspaceTable,
+      eq(schema.workspaceTable.id, schema.approvalTable.workspaceId),
+    )
+    .where(
+      and(
+        eq(schema.approvalTable.state, "pending"),
+        sql`(
         ${schema.approvalTable.expiresAt} <= ${dbClockUtc()}
         OR (
           ${schema.approvalTable.reminder50SentAt} IS NULL
@@ -78,13 +75,12 @@ async function selectDueApprovalRows(tx: Transaction, limit: number) {
           AND ${schema.approvalTable.createdAt} + (${schema.approvalTable.expiresAt} - ${schema.approvalTable.createdAt}) * 0.9 <= ${dbClockUtc()}
         )
       )`,
-        ),
-      )
-      .orderBy(schema.approvalTable.expiresAt, schema.approvalTable.id)
-      .limit(limit)
-      // Lock only the approval rows: the joined work item and workspace rows are not ours.
-      .for("update", { skipLocked: true, of: schema.approvalTable })
-  );
+      ),
+    )
+    .orderBy(schema.approvalTable.expiresAt, schema.approvalTable.id)
+    .limit(limit)
+    // Lock only the approval rows: the joined work item and workspace rows are not ours.
+    .for("update", { skipLocked: true, of: schema.approvalTable });
 }
 
 /** Lock one bounded batch and run each state/event writer inside the same transaction. */
@@ -827,4 +823,202 @@ export async function canWithdrawApproval(
     return { authorized: false, actionable: false };
   }
   return withdrawal;
+}
+
+/**
+ * Insert one pending approval request. `workspaceId` is the one anchored from the locked work
+ * item. `createdAt` and (without an explicit `expiresAt`) the expiry are stamped by the
+ * database clock after the work-item lock is held, so the row is ordered against the activity
+ * row of a transition that ran under that same lock.
+ */
+export async function insertPendingApproval(
+  tx: Transaction,
+  input: {
+    id: string;
+    workspaceId: string;
+    workItemId: string;
+    transitionId: string;
+    kind: ApprovalKind;
+    requestedBy: string;
+    approverId: string;
+    expiresAt?: Date;
+    expiryDays: number;
+  },
+) {
+  const [row] = await tx
+    .insert(schema.approvalTable)
+    .values({
+      id: input.id,
+      // Anchored from the loaded, locked work item, never from the request.
+      workspaceId: input.workspaceId,
+      workItemId: input.workItemId,
+      transitionId: input.transitionId,
+      kind: input.kind,
+      requestedBy: input.requestedBy,
+      approverId: input.approverId,
+      state: "pending",
+      // Stamped by the database clock after the work-item lock is held, so it is ordered
+      // against the activity row of a transition that ran under that same lock.
+      createdAt: dbClockUtc(),
+      expiresAt:
+        input.expiresAt ??
+        sql`(${dbClockUtc()} + make_interval(days => ${input.expiryDays}::int))`,
+    })
+    .returning();
+  return row;
+}
+
+/** Record a decision, only while the approval is still pending in the caller's workspace. */
+export async function recordApprovalDecision(
+  tx: Transaction,
+  input: {
+    id: string;
+    workspaceId: string;
+    state: "approved" | "rejected";
+    decidedAt: Date;
+    decisionNote: string | null;
+  },
+) {
+  const [updated] = await tx
+    .update(schema.approvalTable)
+    .set({
+      state: input.state,
+      decidedAt: input.decidedAt,
+      decisionNote: input.decisionNote,
+    })
+    .where(
+      and(
+        eq(schema.approvalTable.id, input.id),
+        eq(schema.approvalTable.workspaceId, input.workspaceId),
+        eq(schema.approvalTable.state, "pending"),
+      ),
+    )
+    .returning();
+  return updated;
+}
+
+/** Withdraw an approval, only while it is still pending in the caller's workspace. */
+export async function recordApprovalWithdrawal(
+  tx: Transaction,
+  input: { id: string; workspaceId: string; decidedAt: Date },
+) {
+  const [updated] = await tx
+    .update(schema.approvalTable)
+    .set({ state: "withdrawn", decidedAt: input.decidedAt })
+    .where(
+      and(
+        eq(schema.approvalTable.id, input.id),
+        eq(schema.approvalTable.workspaceId, input.workspaceId),
+        eq(schema.approvalTable.state, "pending"),
+      ),
+    )
+    .returning();
+  return updated;
+}
+
+/** Expire a due approval (reminder scan), only while it is still pending. */
+export async function expirePendingApproval(
+  tx: Transaction,
+  input: { id: string; workspaceId: string; decidedAt: Date },
+) {
+  const [updated] = await tx
+    .update(schema.approvalTable)
+    .set({ state: "expired", decidedAt: input.decidedAt })
+    .where(
+      and(
+        eq(schema.approvalTable.id, input.id),
+        eq(schema.approvalTable.workspaceId, input.workspaceId),
+        eq(schema.approvalTable.state, "pending"),
+      ),
+    )
+    .returning({ id: schema.approvalTable.id });
+  return updated;
+}
+
+/** Stamp a sent reminder, only while the approval is still pending. */
+export async function markApprovalReminderSent(
+  tx: Transaction,
+  input: {
+    id: string;
+    workspaceId: string;
+    reminder: "reminder_50" | "reminder_90";
+    sentAt: Date;
+  },
+) {
+  const [updated] = await tx
+    .update(schema.approvalTable)
+    .set(
+      input.reminder === "reminder_50"
+        ? { reminder50SentAt: input.sentAt }
+        : { reminder90SentAt: input.sentAt },
+    )
+    .where(
+      and(
+        eq(schema.approvalTable.id, input.id),
+        eq(schema.approvalTable.workspaceId, input.workspaceId),
+        eq(schema.approvalTable.state, "pending"),
+      ),
+    )
+    .returning({ id: schema.approvalTable.id });
+  return updated;
+}
+
+/** Close every still-pending approval for one transition on one work item (terminal `expired`). */
+export async function closePendingApprovalsForTransition(
+  tx: Transaction,
+  input: { workspaceId: string; workItemId: string; transitionId: string },
+) {
+  return await tx
+    .update(schema.approvalTable)
+    .set({ state: "expired", decidedAt: dbClockUtc() })
+    .where(
+      and(
+        eq(schema.approvalTable.workspaceId, input.workspaceId),
+        eq(schema.approvalTable.workItemId, input.workItemId),
+        eq(schema.approvalTable.transitionId, input.transitionId),
+        eq(schema.approvalTable.state, "pending"),
+      ),
+    )
+    .returning({
+      id: schema.approvalTable.id,
+      kind: schema.approvalTable.kind,
+      approverId: schema.approvalTable.approverId,
+    });
+}
+
+/** The person row of a user id (approval audit rows carry the person id). */
+export async function findPersonIdByUserId(tx: Transaction, userId: string) {
+  const [actorPerson] = await tx
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  return actorPerson;
+}
+
+export async function findWorkspaceOrganisationId(
+  tx: Transaction,
+  workspaceId: string,
+) {
+  const [workspace] = await tx
+    .select({ organisationId: schema.workspaceTable.organisationId })
+    .from(schema.workspaceTable)
+    .where(eq(schema.workspaceTable.id, workspaceId))
+    .limit(1);
+  return workspace;
+}
+
+/** Remove the inbox rows of the given approvals. */
+export async function deleteApprovalNotifications(
+  tx: Transaction,
+  approvalIds: string[],
+) {
+  await tx
+    .delete(schema.notificationTable)
+    .where(
+      and(
+        eq(schema.notificationTable.resourceType, "approval"),
+        inArray(schema.notificationTable.resourceId, approvalIds),
+      ),
+    );
 }

@@ -1,13 +1,15 @@
 import { createId } from "@paralleldrive/cuid2";
 import { dueReminder, isApprovalOverdue } from "@taskdesk/domain";
-import { and, eq } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
-import { schema } from "../database";
 import { eventScope } from "../events/outbox";
 import { enqueueNotificationEvent } from "../notification/fanout";
 import { resolveApprovalEventRecipients } from "../notification/recipient-resolvers";
 import { withJobLease } from "../scheduler/leader-lock";
-import { withDueApprovalRows } from "./repository";
+import {
+  expirePendingApproval,
+  markApprovalReminderSent,
+  withDueApprovalRows,
+} from "./repository";
 
 const JOB_NAME = "reminder-scan";
 const BATCH_SIZE = 100;
@@ -54,17 +56,11 @@ export async function scanApprovalReminders(): Promise<ApprovalReminderOutcome> 
             };
 
             if (isApprovalOverdue(approval, now)) {
-              const [updated] = await tx
-                .update(schema.approvalTable)
-                .set({ state: "expired", decidedAt: now })
-                .where(
-                  and(
-                    eq(schema.approvalTable.id, row.id),
-                    eq(schema.approvalTable.workspaceId, row.workspaceId),
-                    eq(schema.approvalTable.state, "pending"),
-                  ),
-                )
-                .returning({ id: schema.approvalTable.id });
+              const updated = await expirePendingApproval(tx, {
+                id: row.id,
+                workspaceId: row.workspaceId,
+                decidedAt: now,
+              });
               if (!updated) return "unchanged" as const;
               const occurredAt = now.toISOString();
               await enqueueNotificationEvent(
@@ -104,21 +100,12 @@ export async function scanApprovalReminders(): Promise<ApprovalReminderOutcome> 
             const reminder = dueReminder(approval, now);
             if (!reminder) return "unchanged" as const;
             const pctElapsed = reminder === "reminder_50" ? 50 : 90;
-            const [updated] = await tx
-              .update(schema.approvalTable)
-              .set(
-                reminder === "reminder_50"
-                  ? { reminder50SentAt: now }
-                  : { reminder90SentAt: now },
-              )
-              .where(
-                and(
-                  eq(schema.approvalTable.id, row.id),
-                  eq(schema.approvalTable.workspaceId, row.workspaceId),
-                  eq(schema.approvalTable.state, "pending"),
-                ),
-              )
-              .returning({ id: schema.approvalTable.id });
+            const updated = await markApprovalReminderSent(tx, {
+              id: row.id,
+              workspaceId: row.workspaceId,
+              reminder,
+              sentAt: now,
+            });
             if (!updated) return "unchanged" as const;
             await enqueueNotificationEvent(
               tx,
