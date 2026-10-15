@@ -117,5 +117,5 @@ export function formatOtherAccessMessage(names: string[]) {
       ? quoted[0]
       : `${quoted.slice(0, -1).join(", ")} and ${quoted[quoted.length - 1]}`;
 
-  return `Other people still have access to ${list} through your identity provider. Transfer ${names.length === 1 ? "it" : "them"} or remove ${names.length === 1 ? "it" : "them"} before deleting your account.`;
+  return `Other people still have access to ${list}. Transfer ${names.length === 1 ? "it" : "them"} or remove ${names.length === 1 ? "it" : "them"} before deleting your account.`;
 }

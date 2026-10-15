@@ -786,7 +786,7 @@ describe("#734 account erasure and IdP-provisioned members", () => {
     const before = await snapshot();
 
     await expect(deleteAccountData(owner.user.id)).rejects.toThrow(
-      /Other people still have access to ".*" through your identity provider/u,
+      /Other people still have access to ".*"\. Transfer it or remove it/u,
     );
 
     expect(await snapshot()).toEqual(before);
@@ -823,7 +823,7 @@ describe("#734 account erasure and IdP-provisioned members", () => {
     const before = await snapshot();
 
     await expect(deleteAccountData(owner.user.id)).rejects.toThrow(
-      /Other people still have access/u,
+      /Other people still have access to/u,
     );
     expect(await snapshot()).toEqual(before);
   });
@@ -843,7 +843,209 @@ describe("#734 account erasure and IdP-provisioned members", () => {
     const before = await snapshot();
 
     await expect(deleteAccountData(owner.user.id)).rejects.toThrow(
-      /Other people still have access/u,
+      /Other people still have access to/u,
+    );
+    expect(await snapshot()).toEqual(before);
+  });
+
+  /**
+   * Another person's provisioned access whose OWN scope and role are in a different
+   * workspace, linked to the doomed workspace only through the group mapping it derives from.
+   * `seedProvisioningRows` creates both an OIDC and a SCIM grant on the workspace; this moves
+   * every row of that person to `elsewhere` and drops the grant of the other kind, so the
+   * one remaining link is the mapping arm under test.
+   */
+  async function mappingOnlyAccess(kind: "oidc" | "scim") {
+    const { owner, wsRole } = await soleLegacyMemberWorkspace();
+    const other = await createWorkspaceMember({ role: "owner" });
+    const elsewhereRole = await createRole(other.workspace.id, "workspace");
+    await seedProvisioningRows(owner.workspace.id, wsRole.id, other.user.id);
+    const otherPerson = await personIdFor(other.user.id);
+    const drop = kind === "oidc" ? "scim_group" : "oidc_group";
+    const dropped = await db
+      .select({ id: schema.membershipGrantTable.id })
+      .from(schema.membershipGrantTable)
+      .where(eq(schema.membershipGrantTable.sourceKind, drop));
+    const droppedIds = dropped.map((row) => row.id);
+    await db
+      .delete(schema.scimGroupMemberTable)
+      .where(
+        inArray(schema.scimGroupMemberTable.membershipGrantId, droppedIds),
+      );
+    await db
+      .delete(schema.membershipGrantTable)
+      .where(inArray(schema.membershipGrantTable.id, droppedIds));
+    if (kind === "oidc") {
+      // The SCIM member row pointed at the dropped SCIM grant and is gone with it.
+    }
+    await db
+      .update(schema.membershipTable)
+      .set({
+        scope: "workspace",
+        scopeId: other.workspace.id,
+        roleId: elsewhereRole.id,
+      })
+      .where(eq(schema.membershipTable.personId, otherPerson));
+    await db
+      .update(schema.membershipGrantTable)
+      .set({
+        scope: "workspace",
+        scopeId: other.workspace.id,
+        roleId: elsewhereRole.id,
+      })
+      .where(eq(schema.membershipGrantTable.personId, otherPerson));
+    return { owner, other };
+  }
+
+  it.each(["oidc", "scim"] as const)(
+    "stops when another person's grant reaches the workspace only through its %s group mapping",
+    async (kind) => {
+      const { owner } = await mappingOnlyAccess(kind);
+      const before = await snapshot();
+
+      await expect(deleteAccountData(owner.user.id)).rejects.toThrow(
+        /Other people still have access to/u,
+      );
+      expect(await snapshot()).toEqual(before);
+    },
+  );
+
+  async function customerOrganisationInWorkspace(
+    options: { active?: boolean } = {},
+  ) {
+    const { owner } = await soleLegacyMemberWorkspace();
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const organisation = requireRow(
+      await db
+        .insert(schema.organisationTable)
+        .values({ key: `cust-${randomUUID()}`, name: "Customer Org" })
+        .returning(),
+      "customer organisation",
+    );
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: organisation.id })
+      .where(eq(schema.projectTable.id, project.id));
+    const customerUser = await createWorkspaceMember({ role: "member" });
+    await personIdFor(customerUser.user.id);
+    await db
+      .update(schema.personTable)
+      .set({
+        side: "customer",
+        organisationId: organisation.id,
+        active: options.active ?? true,
+      })
+      .where(eq(schema.personTable.userId, customerUser.user.id));
+    return { owner, project, organisation, customerUser };
+  }
+
+  it("stops when a signed-in customer of an organisation served by the workspace would lose their projects", async () => {
+    const { owner } = await customerOrganisationInWorkspace();
+    const before = await snapshot();
+
+    await expect(deleteAccountData(owner.user.id)).rejects.toThrow(
+      /Other people still have access to/u,
+    );
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("is not blocked by an inactive customer, or by a customer of an organisation the workspace does not serve", async () => {
+    const inactive = await customerOrganisationInWorkspace({ active: false });
+    await deleteAccountData(inactive.owner.user.id);
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, inactive.owner.workspace.id)),
+    ).toHaveLength(0);
+
+    const { owner } = await soleLegacyMemberWorkspace();
+    const unrelated = await customerOrganisationInWorkspace();
+    // The unrelated organisation is bound to a project of ANOTHER workspace only.
+    await deleteAccountData(owner.user.id);
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, owner.workspace.id)),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, unrelated.owner.workspace.id)),
+    ).toHaveLength(1);
+  });
+
+  it("a grant written concurrently, while erasure waits for its lock, is seen by the check (no silent loss)", async () => {
+    const { owner, wsRole } = await soleLegacyMemberWorkspace();
+    const other = await createWorkspaceMember({ role: "owner" });
+    const otherPerson = await personIdFor(other.user.id);
+
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let written: () => void = () => {};
+    const writtenSignal = new Promise<void>((resolve) => {
+      written = resolve;
+    });
+    // Connection 1: an uncommitted write of another person's grant on the workspace.
+    const writer = db.transaction(async (tx) => {
+      await tx.insert(schema.membershipGrantTable).values({
+        personId: otherPerson,
+        scope: "workspace",
+        scopeId: owner.workspace.id,
+        roleId: wsRole.id,
+        sourceKind: "direct",
+        directOrigin: "system_backfill",
+      });
+      written();
+      await gate;
+    });
+    await writtenSignal;
+    // Connection 2: erasure runs its check; it must wait for the writer, then see the row.
+    const erasure = deleteAccountData(owner.user.id);
+    const settled = await Promise.race([
+      erasure.then(
+        () => "finished",
+        () => "finished",
+      ),
+      new Promise((resolve) => setTimeout(() => resolve("waiting"), 800)),
+    ]);
+    expect(settled).toBe("waiting");
+    release();
+    await writer;
+    await expect(erasure).rejects.toThrow(/Other people still have access to/u);
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, owner.workspace.id)),
+    ).toHaveLength(1);
+    expect(await db.select().from(schema.membershipGrantTable)).toHaveLength(1);
+  });
+
+  it("still counts access held by a deactivated person (a dormant account is not an excuse to erase around it)", async () => {
+    const { owner, wsRole } = await soleLegacyMemberWorkspace();
+    const other = await createWorkspaceMember({ role: "owner" });
+    const otherPerson = await personIdFor(other.user.id);
+    await db.insert(schema.membershipTable).values({
+      personId: otherPerson,
+      scope: "workspace",
+      scopeId: owner.workspace.id,
+      roleId: wsRole.id,
+    });
+    await db
+      .update(schema.personTable)
+      .set({ active: false })
+      .where(eq(schema.personTable.id, otherPerson));
+    const before = await snapshot();
+
+    await expect(deleteAccountData(owner.user.id)).rejects.toThrow(
+      /Other people still have access to/u,
     );
     expect(await snapshot()).toEqual(before);
   });

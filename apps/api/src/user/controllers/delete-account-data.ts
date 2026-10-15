@@ -1,5 +1,14 @@
 import { APIError } from "better-auth/api";
-import { and, eq, inArray, isNull, notInArray, or } from "drizzle-orm";
+import {
+  and,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  notInArray,
+  sql,
+} from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import db from "../../database";
 import {
@@ -7,7 +16,6 @@ import {
   membershipTable,
   personTable,
   projectTable,
-  roleTable,
   userTable,
   workflowTable,
   workspaceTable,
@@ -21,7 +29,10 @@ import {
   requestAccountDeletionRetry,
 } from "../../pending-action/credential-invalidation";
 import { revokeProjectCreatorGrantsForMember } from "../../project/project-creator-grant";
-import { deleteWorkspaceRoleDependents } from "../../workspace/controllers/delete-workspace-role-dependents";
+import {
+  deleteWorkspaceRoleDependents,
+  workspaceDependentPredicates,
+} from "../../workspace/controllers/delete-workspace-role-dependents";
 import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
 import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
 
@@ -92,15 +103,19 @@ async function collectMemberships(
 
 /**
  * Workspaces among `workspaceIds` that someone other than the erasing user can still reach
- * through the identity-provisioned tables (owner decision, 2026-10-15, #734).
+ * (owner decision, 2026-10-15, #734: nobody else loses access silently).
  *
- * The legacy `workspace_member` count only sees people added the legacy way. SCIM and OIDC
- * provisioning writes `membership` and `membership_grant` rows instead, and erasing a "sole
- * member" workspace deletes those rows with it. Erasure must not silently remove anyone's
- * access, so a workspace is only deletable when every access row that targets it (the
- * workspace, one of its projects, or a role the workspace owns) belongs to the erasing user's
- * own person. Rows scoped to something else that merely shares the id (for example an
- * organisation) are not access to the workspace and do not count.
+ * The legacy `workspace_member` count only sees people added the legacy way. Erasing a
+ * "sole member" workspace also deletes everything `deleteWorkspaceRoleDependents` removes, so
+ * the check is built from the SAME predicates (`workspaceDependentPredicates`): any
+ * `membership` row, or non-revoked `membership_grant` row (direct, JIT, OIDC or SCIM, including
+ * one that only derives from one of the workspace's group mappings), that the deletion would
+ * remove and that belongs to another person, blocks it. Rows of another scope that merely share
+ * the workspace id are not in that set and do not count.
+ *
+ * Customers are counted too: a project bound to a customer organisation gives that
+ * organisation's signed-in people reach to it (rbac.md, Reach step 6), and deleting the
+ * workspace deletes the project and its work items, so those people would lose access.
  */
 async function workspacesWithOtherAccess(
   tx: AccountDeletionTransaction,
@@ -116,39 +131,15 @@ async function workspacesWithOtherAccess(
   ).map((row) => row.id);
   const blocked: { id: string; name: string }[] = [];
   for (const workspaceId of workspaceIds) {
-    const projectIds = tx
-      .select({ id: projectTable.id })
-      .from(projectTable)
-      .where(eq(projectTable.workspaceId, workspaceId));
-    const roleIds = tx
-      .select({ id: roleTable.id })
-      .from(roleTable)
-      .where(eq(roleTable.workspaceId, workspaceId));
-    const inScope = (
-      scope: AnyPgColumn,
-      scopeId: AnyPgColumn,
-      roleId: AnyPgColumn,
-    ) =>
-      or(
-        and(eq(scope, "workspace"), eq(scopeId, workspaceId)),
-        and(eq(scope, "project"), inArray(scopeId, projectIds)),
-        inArray(roleId, roleIds),
-      );
+    const { membershipWhere, grantWhere } = workspaceDependentPredicates(tx, [
+      workspaceId,
+    ]);
     const others = (personId: AnyPgColumn) =>
       ownPersonIds.length > 0 ? notInArray(personId, ownPersonIds) : undefined;
     const [membership] = await tx
       .select({ id: membershipTable.id })
       .from(membershipTable)
-      .where(
-        and(
-          inScope(
-            membershipTable.scope,
-            membershipTable.scopeId,
-            membershipTable.roleId,
-          ),
-          others(membershipTable.personId),
-        ),
-      )
+      .where(and(membershipWhere, others(membershipTable.personId)))
       .limit(1);
     const [grant] = membership
       ? []
@@ -157,18 +148,41 @@ async function workspacesWithOtherAccess(
           .from(membershipGrantTable)
           .where(
             and(
-              inScope(
-                membershipGrantTable.scope,
-                membershipGrantTable.scopeId,
-                membershipGrantTable.roleId,
-              ),
+              grantWhere,
               others(membershipGrantTable.personId),
               // A revoked grant is no longer access.
               isNull(membershipGrantTable.revokedAt),
             ),
           )
           .limit(1);
-    if (membership || grant) {
+    const [customer] =
+      membership || grant
+        ? []
+        : await tx
+            .select({ id: personTable.id })
+            .from(personTable)
+            .where(
+              and(
+                eq(personTable.side, "customer"),
+                eq(personTable.active, true),
+                isNotNull(personTable.userId),
+                ne(personTable.userId, userId),
+                inArray(
+                  personTable.organisationId,
+                  tx
+                    .select({ id: projectTable.organisationId })
+                    .from(projectTable)
+                    .where(
+                      and(
+                        eq(projectTable.workspaceId, workspaceId),
+                        isNotNull(projectTable.organisationId),
+                      ),
+                    ) as never,
+                ),
+              ),
+            )
+            .limit(1);
+    if (membership || grant || customer) {
       const [workspace] = await tx
         .select({ name: workspaceTable.name })
         .from(workspaceTable)
@@ -228,6 +242,16 @@ async function deleteAccountDataInTransaction(
 
   // Before anything is deleted or invalidated: a workspace others still reach through
   // SCIM/OIDC provisioning must be transferred or removed first, never erased around them.
+  if (plan.workspaceIdsToDelete.length > 0) {
+    // Nothing may grant access between the check and the delete. The writers that create
+    // identity-provisioned, direct and project-scope rows take no workspace-level lock (and
+    // some of these rows have no foreign key to lock through), so the tables themselves are
+    // locked against writes for the rest of this transaction. Reads are unaffected, and only an
+    // erasure that is about to delete a workspace takes it.
+    await tx.execute(
+      sql`LOCK TABLE membership, membership_grant, person IN SHARE ROW EXCLUSIVE MODE`,
+    );
+  }
   const withOtherAccess = await workspacesWithOtherAccess(
     tx,
     plan.workspaceIdsToDelete,

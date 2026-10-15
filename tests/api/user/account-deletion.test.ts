@@ -120,13 +120,13 @@ describe("formatBlockedWorkspacesMessage", () => {
 describe("formatOtherAccessMessage", () => {
   it("names one workspace and says what to do", () => {
     expect(formatOtherAccessMessage(["Acme"])).toBe(
-      'Other people still have access to "Acme" through your identity provider. Transfer it or remove it before deleting your account.',
+      'Other people still have access to "Acme". Transfer it or remove it before deleting your account.',
     );
   });
 
   it("lists several workspaces", () => {
     expect(formatOtherAccessMessage(["A", "B", "C"])).toBe(
-      'Other people still have access to "A", "B" and "C" through your identity provider. Transfer them or remove them before deleting your account.',
+      'Other people still have access to "A", "B" and "C". Transfer them or remove them before deleting your account.',
     );
   });
 });
