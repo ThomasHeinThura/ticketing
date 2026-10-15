@@ -286,6 +286,42 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       "database/sqlwrapper-builder-escape.repository.ts",
       'import { eq, type SQLWrapper } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; const query = db.select().from(userTable).where(eq(userTable.id, "id")); export const pending = query as SQLWrapper & typeof query;',
     ],
+    [
+      "database/sqlwrapper-generic-leak.repository.ts",
+      'import { eq, type SQLWrapper } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; const pending = db.select().from(userTable).where(eq(userTable.id, "id")); interface FragmentCarrier<T> extends SQLWrapper { value: T } export function leak(): FragmentCarrier<typeof pending> { throw new Error("type-shape fixture"); }',
+    ],
+    [
+      "database/sqlwrapper-member-leak.repository.ts",
+      'import { eq, type SQLWrapper } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; const pending = db.select().from(userTable); interface FragmentCarrier extends SQLWrapper { value: typeof pending } export const carrier = {} as FragmentCarrier;',
+    ],
+    [
+      "database/sqlwrapper-intersection-leak.repository.ts",
+      'import { eq, type SQLWrapper } from "drizzle-orm"; import { sql } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; const pending = db.select().from(userTable).where(eq(userTable.id, "id")); export const carrier = { getSQL() { return sql`true`; }, value: pending } as SQLWrapper & { value: typeof pending };',
+    ],
+    [
+      "database/sqlwrapper-class-leak.repository.ts",
+      'import { eq, type SQLWrapper } from "drizzle-orm"; import { sql } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; const pending = db.select().from(userTable); class FragmentCarrier implements SQLWrapper { value = pending; getSQL() { return sql`true`; } } export const carrier = new FragmentCarrier();',
+    ],
+    [
+      "database/sqlwrapper-reflected-leak.repository.ts",
+      'import { eq, type SQLWrapper } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; const pending = db.select().from(userTable); type Pending = typeof pending; type Reflected = SQLWrapper & { value: Pending }; export const carrier = {} as Reflected;',
+    ],
+    [
+      "database/sqlwrapper-leak-reexport.repository.ts",
+      'export { leak as exposed } from "./sqlwrapper-generic-leak.repository";',
+    ],
+    [
+      "database/sqlwrapper-fragment.repository.ts",
+      'import { sql, type SQLWrapper } from "drizzle-orm"; export function fragment(): SQLWrapper { return sql`true`; }',
+    ],
+    [
+      "database/sql-payload-leak.repository.ts",
+      'import { eq, type SQL } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; const pending = db.select().from(userTable).where(eq(userTable.id, "id")); export const fragment = {} as SQL<typeof pending>;',
+    ],
+    [
+      "database/user-sql-class-leak.repository.ts",
+      'import { eq, type SQLWrapper, sql } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; const pending = db.select().from(userTable); class SQL implements SQLWrapper { value = pending; getSQL() { return sql`true`; } } export const fragment = new SQL();',
+    ],
   ]);
   const absoluteFiles = [];
   for (const [relative, source] of fixtureFiles) {
@@ -426,6 +462,32 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
         /exposes a query builder/,
       ],
       [
+        "database/sqlwrapper-generic-leak.repository.ts",
+        /exposes a query builder/,
+      ],
+      [
+        "database/sqlwrapper-member-leak.repository.ts",
+        /exposes a query builder/,
+      ],
+      [
+        "database/sqlwrapper-intersection-leak.repository.ts",
+        /exposes a query builder/,
+      ],
+      [
+        "database/sqlwrapper-class-leak.repository.ts",
+        /exposes a query builder/,
+      ],
+      [
+        "database/sqlwrapper-reflected-leak.repository.ts",
+        /exposes a query builder/,
+      ],
+      [
+        "database/sqlwrapper-leak-reexport.repository.ts",
+        /exposes a query builder/,
+      ],
+      ["database/sql-payload-leak.repository.ts", /exposes a query builder/],
+      ["database/user-sql-class-leak.repository.ts", /exposes a query builder/],
+      [
         "controllers/reach-fragment-call.ts",
         /database operation userReach is outside an allowed repository/,
       ],
@@ -562,6 +624,7 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       "database/reach-fragment-reexport.repository.ts",
       "database/reach-fragment-namespace.repository.ts",
       "database/imported-sql-shape.repository.ts",
+      "database/sqlwrapper-fragment.repository.ts",
     ]) {
       assert.equal(
         byFile.has(key(relative)),

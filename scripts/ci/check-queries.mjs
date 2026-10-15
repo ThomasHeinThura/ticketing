@@ -32,7 +32,8 @@ const METHODS = new Set([
 // result rather than a predicate fragment.
 const DRIZZLE_QUERY_TYPES =
   /^(?:Pg(?:Select|SelectBuilder|SelectBase|SelectQueryBuilderBase|Insert|InsertBase|Update|UpdateBase|Delete|DeleteBase|Raw|RelationalQuery|RefreshMaterializedView)|QueryPromise|Aliased)$/;
-const DRIZZLE_SQL_FRAGMENT_TYPES = /^(?:SQL|SQLWrapper)$/;
+const DRIZZLE_SQL_WRAPPER_TYPES = /^SQLWrapper$/;
+const UNKNOWN_TYPE_FLAG = 2;
 const DRIZZLE_DATABASE_TYPES =
   /^(?:PgDatabase|NodePgDatabase|PgTransaction|NodePgTransaction)$/;
 const PG_TYPES = /^(?:Pool|PoolClient|Client|ClientBase)$/;
@@ -206,42 +207,58 @@ function isQueryBuilder(type, checker) {
   }
 }
 
-function hasSqlFragmentType(type, seen = new Set(), depth = 0) {
-  if (!type || depth > 8 || seen.has(type.id)) return false;
-  seen.add(type.id);
-  if (symbolNames(type).some((name) => DRIZZLE_SQL_FRAGMENT_TYPES.test(name)))
-    return true;
-  // Union/intersection members and implemented base interfaces preserve the concrete
-  // fragment identity. Do not follow generic arguments: Promise<SQL> is still a Promise
-  // public shape that must be inspected recursively by exportedQueryBoundary.
-  for (const part of type.getTypes?.() ?? []) {
-    if (hasSqlFragmentType(part, seen, depth + 1)) return true;
-  }
-  try {
-    for (const base of type.getBaseTypes?.() ?? []) {
-      if (hasSqlFragmentType(base, seen, depth + 1)) return true;
+function isDrizzleSqlFragmentLeaf(type, checker) {
+  const candidates = [type?.getSymbol?.(), type?.getAliasSymbol?.()].filter(
+    Boolean,
+  );
+  for (const candidate of candidates) {
+    let symbol = candidate;
+    const declarationsOf = (value) =>
+      value?.declarations ?? value?.getDeclarations?.() ?? [];
+    if (
+      importAlias(symbol) ||
+      declarationsOf(symbol).some(
+        (declaration) => declaration.kind === ts.SyntaxKind.ExportSpecifier,
+      )
+    ) {
+      try {
+        symbol = checker.getAliasedSymbol(symbol);
+      } catch {
+        continue;
+      }
     }
-  } catch {
-    // Non-class/interface types have no base types.
+    if (symbol.name !== "SQL") continue;
+    for (const declaration of declarationsOf(symbol)) {
+      const file = String(
+        declaration.getSourceFile?.().fileName ?? declaration.path ?? "",
+      ).replaceAll("\\", "/");
+      // Treat only Drizzle's declared SQL class as the opaque fragment leaf. SQLWrapper
+      // implementations and locally named lookalikes remain ordinary public graphs.
+      if (
+        declaration.kind === ts.SyntaxKind.ClassDeclaration &&
+        /\/node_modules\/(?:.*\/)?drizzle-orm(?:@[^/]+)?\//.test(file)
+      )
+        return true;
+    }
   }
-  const target = type.getTarget?.();
-  return target && target.id !== type.id
-    ? hasSqlFragmentType(target, seen, depth + 1)
-    : false;
-}
-
-function isSqlFragment(type) {
-  return hasSqlFragmentType(type);
+  return false;
 }
 
 function isQueryOutput(type, checker) {
-  if (isQueryBuilder(type, checker) || isSqlFragment(type)) return true;
+  if (
+    isQueryBuilder(type, checker) ||
+    hasNamedType(type, DRIZZLE_SQL_WRAPPER_TYPES) ||
+    isDrizzleSqlFragmentLeaf(type, checker)
+  )
+    return true;
   try {
-    return checker
-      .getSignaturesOfType(type, 0)
-      .some((signature) =>
-        isSqlFragment(checker.getReturnTypeOfSignature(signature)),
+    return checker.getSignaturesOfType(type, 0).some((signature) => {
+      const result = checker.getReturnTypeOfSignature(signature);
+      return (
+        hasNamedType(result, DRIZZLE_SQL_WRAPPER_TYPES) ||
+        isDrizzleSqlFragmentLeaf(result, checker)
       );
+    });
   } catch {
     return false;
   }
@@ -270,7 +287,27 @@ function exportedQueryBoundary(
   // A query builder can also implement SQLWrapper. Check the executable families first so
   // a wrapper around a pending statement cannot be mistaken for a composable predicate.
   if (isQueryBuilder(type, checker)) return { kind: "builder" };
-  if (isSqlFragment(type)) return { kind: "fragment" };
+  if (isDrizzleSqlFragmentLeaf(type, checker)) {
+    // Drizzle's SQL<T> is the actual composed fragment leaf. Inspect its type payload
+    // before treating the library implementation as opaque; default unknown carries no
+    // executable builder surface, while an explicit builder payload must fail.
+    try {
+      for (const argument of checker.getTypeArguments?.(type) ?? []) {
+        if (argument.flags & UNKNOWN_TYPE_FLAG) continue;
+        const nested = exportedQueryBoundary(
+          argument,
+          checker,
+          source,
+          seen,
+          depth + 1,
+        );
+        if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
+      }
+    } catch {
+      return { kind: "unresolved" };
+    }
+    return { kind: "fragment" };
+  }
   if (depth >= 20 || seen.size >= 512) return { kind: "limit" };
   if (seen.has(type.id)) return { kind: "safe" };
   seen.add(type.id);
