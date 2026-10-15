@@ -19,7 +19,10 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import { callerReach } from "./caller-reach";
-import { projectReadDecision } from "./has-project-reach";
+import {
+  projectCapabilityRefused,
+  projectReadDecision,
+} from "./has-project-reach";
 import { isCustomerPrincipal } from "./is-customer-principal";
 import { WORK_ITEM_REACH_MARK, type WorkItemReachMark } from "./reach-mark";
 import { rejectNulByte } from "./reject-nul-byte";
@@ -592,9 +595,11 @@ export function workspaceAccessMiddleware(
         throw new HTTPException(404, { message: notFoundMessage });
       }
       if (
-        !decision.capable &&
-        config.deferCapability !== true &&
-        !(config.deferApiKeyCapability === true && apiKey)
+        projectCapabilityRefused(decision, {
+          deferCapability: config.deferCapability,
+          deferApiKeyCapability: config.deferApiKeyCapability,
+          isApiKey: Boolean(apiKey),
+        })
       ) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(403, { message: "Insufficient permissions" });

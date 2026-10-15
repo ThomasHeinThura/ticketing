@@ -4,6 +4,7 @@ import type { Context } from "hono";
 import db, { schema } from "../database";
 import {
   hasProjectReadCapability,
+  ownerAuthorityView,
   resolveCallerIdentity,
 } from "./has-project-reach";
 
@@ -104,16 +105,16 @@ export async function callerReach(c: Context, userId: string) {
       return reaches(identity, await facts(row));
     },
     /**
-     * Whether the caller holds `capability` on the row at project level. An API-key
-     * credential carries no canonical capability subset, so for keys this returns `true`
-     * and the caller's own key-aware gate decides (the same split `deferApiKeyCapability`
-     * makes on the single-item routes).
+     * Whether the caller holds `capability` on the row at project level. For an API key this is
+     * the OWNER's authority in the row's project (workspace role overridden by the project
+     * role, #724); the key's own scope stays with the caller's key-aware gate, which speaks
+     * the stored legacy statements. A key therefore never does what its owner's session could
+     * not do in the project.
      */
     async can(capability: Capability, row: ReachRow): Promise<boolean> {
       if (!identity) return false;
-      if (credentialIsKey) return true;
       return hasProjectReadCapability(
-        identity,
+        credentialIsKey ? ownerAuthorityView(identity) : identity,
         capability,
         "work_item",
         await facts(row),

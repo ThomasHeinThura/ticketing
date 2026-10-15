@@ -7,7 +7,10 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
-import { projectReadDecision } from "../utils/has-project-reach";
+import {
+  projectCapabilityRefused,
+  projectReadDecision,
+} from "../utils/has-project-reach";
 import { isCustomerPrincipal } from "../utils/is-customer-principal";
 import {
   WORK_ITEM_REACH_MARK,
@@ -146,9 +149,11 @@ export function requireAttachmentReach(
         throw new HTTPException(404, { message: "Attachment not found" });
       }
       if (
-        !decision.capable &&
-        options.deferCapability !== true &&
-        !(options.deferApiKeyCapability === true && apiKey)
+        projectCapabilityRefused(decision, {
+          deferCapability: options.deferCapability,
+          deferApiKeyCapability: options.deferApiKeyCapability,
+          isApiKey: Boolean(apiKey),
+        })
       ) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(403, { message: "Insufficient permissions" });

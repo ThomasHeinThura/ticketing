@@ -2,6 +2,7 @@ import {
   type Capability,
   can,
   isCapabilityPolicy,
+  isKeyCredential,
   normaliseRouteKey,
   type ProjectReachFacts,
   type ResolvedIdentity,
@@ -19,11 +20,55 @@ import {
 
 export type ProjectReadDecision = {
   readonly reachable: boolean;
+  /**
+   * The credential's own capability: for a session the owner's authority in the project; for
+   * a key the owner's authority in the project INTERSECTED with the key's stored scope.
+   */
   readonly capable: boolean;
+  /**
+   * The OWNER's authority in this project (workspace role overridden by the project role),
+   * ignoring any key scope. Equal to `capable` for a session. A key's effective authority is
+   * its stored scope ∩ this (#724), so the key can never do what the owner's session could
+   * not do in the project. Gates that leave the key SCOPE to a downstream legacy check must
+   * still require this.
+   */
+  readonly ownerCapable: boolean;
 } | null;
 
-export function hasProjectReadCapability(
+/** The authority this identity's OWNER holds, with any key credential's scope removed. */
+export function ownerAuthorityView(
   identity: ResolvedIdentity,
+): Pick<ResolvedIdentity, "authority" | "keyCapabilities" | "credential"> {
+  return {
+    authority: identity.authority,
+    credential: "session",
+    keyCapabilities: undefined,
+  };
+}
+
+/**
+ * Whether a gate must refuse a caller that is reachable but not capable. A key whose scope is
+ * judged by a downstream legacy gate (`deferApiKeyCapability`) is still held to its owner's
+ * project authority here; `deferCapability` leaves the whole decision to the handler.
+ */
+export function projectCapabilityRefused(
+  decision: { readonly capable: boolean; readonly ownerCapable: boolean },
+  options: {
+    readonly deferCapability?: boolean;
+    readonly deferApiKeyCapability?: boolean;
+    readonly isApiKey: boolean;
+  },
+): boolean {
+  if (options.deferCapability === true) return false;
+  if (options.isApiKey && options.deferApiKeyCapability === true)
+    return !decision.ownerCapable;
+  return !decision.capable;
+}
+
+export function hasProjectReadCapability(
+  identity: Pick<ResolvedIdentity, "authority" | "keyCapabilities"> & {
+    readonly credential?: ResolvedIdentity["credential"];
+  },
   capability: Capability,
   scope: Extract<Scope, "project" | "work_item">,
   facts: ProjectReachFacts & { readonly workItemId?: string },
@@ -46,10 +91,20 @@ export function evaluateProjectRead(
   scope: Extract<Scope, "project" | "work_item">,
   facts: ProjectReachFacts & { readonly workItemId?: string },
 ): ProjectReadDecision {
-  if (!identity) return { reachable: false, capable: false };
+  if (!identity)
+    return { reachable: false, capable: false, ownerCapable: false };
+  const capable = hasProjectReadCapability(identity, capability, scope, facts);
   return {
     reachable: reaches(identity, facts),
-    capable: hasProjectReadCapability(identity, capability, scope, facts),
+    capable,
+    ownerCapable: isKeyCredential(identity.credential)
+      ? hasProjectReadCapability(
+          ownerAuthorityView(identity),
+          capability,
+          scope,
+          facts,
+        )
+      : capable,
   };
 }
 
@@ -127,7 +182,8 @@ export async function projectReadDecision(
     entry.policy.scope,
     facts,
   );
-  if (!identity || !decision || decision.capable) return decision;
+  if (!identity || !decision || (decision.capable && decision.ownerCapable))
+    return decision;
   // `orSelfTarget` / `orOwner` are conjunctions the handler settles against the row or body
   // (assign by self, clear own assignment). Reach is still decided here; the capability is
   // satisfied at this layer when the caller holds the primary OR a declared branch
@@ -137,8 +193,18 @@ export async function projectReadDecision(
     entry.policy.orSelfTarget?.capability,
     entry.policy.orOwner?.capability,
   ].filter((cap): cap is Capability => cap !== undefined);
-  const capable = branchCapabilities.some((cap) =>
-    hasProjectReadCapability(identity, cap, scope, facts),
-  );
-  return { reachable: decision.reachable, capable };
+  const owner = ownerAuthorityView(identity);
+  return {
+    reachable: decision.reachable,
+    capable:
+      decision.capable ||
+      branchCapabilities.some((cap) =>
+        hasProjectReadCapability(identity, cap, scope, facts),
+      ),
+    ownerCapable:
+      decision.ownerCapable ||
+      branchCapabilities.some((cap) =>
+        hasProjectReadCapability(owner, cap, scope, facts),
+      ),
+  };
 }
