@@ -13,6 +13,7 @@
  * - an API key must carry the `project:manage_settings` scope as well.
  */
 import { createHash, randomUUID } from "node:crypto";
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -333,11 +334,14 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
     const customerRole = await db
       .insert(schema.roleTable)
       .values({
-        scope: "organisation",
-        key: `comment-visibility-customer-${randomUUID()}`,
-        name: "Comment visibility customer",
-        rank: 0,
-        capabilities: [],
+        scope: BUILT_IN_ROLES.customer.scope,
+        key: BUILT_IN_ROLES.customer.key,
+        name: "Customer",
+        rank: BUILT_IN_ROLES.customer.rank,
+        capabilities: BUILT_IN_ROLES.customer.capabilities,
+        workspaceId: null,
+        isSystem: true,
+        isEditable: BUILT_IN_ROLES.customer.isEditable,
       })
       .returning()
       .then(([row]) => row);
@@ -399,8 +403,17 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
         ),
       );
     expect(workspaceCustomerRoles).toEqual([]);
+    expect(customerRole.key).toBe(BUILT_IN_ROLES.customer.key);
     expect(customerRole.scope).toBe("organisation");
     expect(customerRole.workspaceId).toBeNull();
+    expect(customerRole.rank).toBe(BUILT_IN_ROLES.customer.rank);
+    expect(customerRole.capabilities).toEqual(
+      BUILT_IN_ROLES.customer.capabilities,
+    );
+    expect(customerRole.isSystem).toBe(true);
+    expect(customerRole.isEditable).toBe(false);
+    expect(customerRole.capabilities).not.toContain("project:update");
+    expect(customerRole.capabilities).not.toContain("project:manage_settings");
 
     mockAuthenticatedSession(customerUser);
     const { app } = createApp();
