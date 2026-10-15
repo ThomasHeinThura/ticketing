@@ -11,7 +11,9 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -22,6 +24,7 @@ import {
   json,
   makeApiKey,
   ROUTES,
+  seedLegacy,
   setAmbientHeaders,
   setupWorld,
   snapshot,
@@ -395,5 +398,219 @@ describe("API integration: API key authority is clamped by the owner's project r
         expect(keyStatus).toBe(sessionStatus);
       });
     }
+  });
+
+  describe("rows the key's owner authored themselves (ownership cannot mask the project-role clamp)", () => {
+    const OWN_ROW_ROUTES = ROUTES.filter((route) =>
+      [
+        "DELETE /api/attachments/{id}",
+        "POST /api/attachments/{id}/complete",
+        "PATCH /api/comments/{id}",
+        "DELETE /api/comments/{id}",
+      ].includes(route.matrixKey),
+    );
+
+    for (const route of OWN_ROW_ROUTES) {
+      it(`${route.matrixKey}: a workspace admin with a read-only project role, refused as a session, is refused with a full-scope key too`, async () => {
+        const world = await setupWorld();
+        const { app } = createApp();
+        const target = await createItem(app, world, TITLE);
+        const item = { key: target.key, neighbourId: "", parentKey: "" };
+        await route.prepare?.(world, item, app);
+        // A workspace admin passes every legacy workspace statement; only the project role
+        // (read-only) can refuse them. They authored the row, so ownership cannot refuse either.
+        const reader = await addMember(world.workspaceId, "admin");
+        await grantProjectRole(reader.user.id, world.project.id, [
+          "project:read",
+          "work_item:read",
+        ]);
+        if (item.attachmentId)
+          await db
+            .update(schema.attachmentTable)
+            .set({ uploadedBy: reader.personId })
+            .where(eq(schema.attachmentTable.id, item.attachmentId));
+        if (item.commentId)
+          await db
+            .update(schema.commentTable)
+            .set({ authorId: reader.user.id })
+            .where(eq(schema.commentTable.id, item.commentId));
+        const before = await snapshot();
+
+        mockAuthenticatedSession(reader.user);
+        const session = await route.call(app, world, item);
+        expect(session.status, await session.clone().text()).toBe(403);
+
+        mockAnonymousSession();
+        setAmbientHeaders({
+          "x-api-key": await makeApiKey(reader.user.id, FULL_SCOPE),
+        });
+        const withKey = await route.call(app, world, item);
+        setAmbientHeaders({});
+        expect(withKey.status, await withKey.text()).toBe(403);
+        expect(await snapshot()).toBe(before);
+      });
+    }
+  });
+
+  describe("legacy task relations (assertWorkItemProjectReach with a deferred key scope)", () => {
+    it("POST and DELETE /api/task-relation: a workspace admin with a read-only project role is refused as a session and with a full-scope key", async () => {
+      const world = await setupWorld();
+      const { app } = createApp();
+      const reader = await addMember(world.workspaceId, "admin");
+      await grantProjectRole(reader.user.id, world.project.id, [
+        "project:read",
+        "work_item:read",
+      ]);
+      const seed = await seedLegacy(world, reader.user.id);
+      const create = () =>
+        json(app, "POST", "/api/task-relation", {
+          sourceTaskId: seed.otherTaskId,
+          targetTaskId: seed.taskId,
+          relationType: "blocks",
+        });
+      const remove = () =>
+        json(app, "DELETE", `/api/task-relation/${seed.relationId}`);
+      const relationRows = async () =>
+        JSON.stringify(await db.select().from(schema.taskRelationTable));
+      const before = await relationRows();
+
+      mockAuthenticatedSession(reader.user);
+      for (const call of [create, remove]) {
+        const response = await call();
+        expect(response.status, await response.text()).toBe(403);
+      }
+
+      mockAnonymousSession();
+      setAmbientHeaders({
+        "x-api-key": await makeApiKey(reader.user.id, FULL_SCOPE),
+      });
+      for (const call of [create, remove]) {
+        const response = await call();
+        expect(response.status, await response.text()).toBe(403);
+      }
+      setAmbientHeaders({});
+      expect(await relationRows()).toBe(before);
+    });
+
+    it("a capable project member's key still creates and deletes relations", async () => {
+      const world = await setupWorld();
+      const { app } = createApp();
+      const seed = await seedLegacy(world, world.projectMember.user.id);
+      mockAnonymousSession();
+      setAmbientHeaders({
+        "x-api-key": await makeApiKey(world.projectMember.user.id, FULL_SCOPE),
+      });
+      const removed = await json(
+        app,
+        "DELETE",
+        `/api/task-relation/${seed.relationId}`,
+      );
+      expect(removed.status, await removed.text()).toBe(200);
+      setAmbientHeaders({});
+    });
+  });
+
+  describe("owner authority is not narrowed by a key's CANONICAL subset on a deferred-scope route", () => {
+    it("DELETE /api/attachments/{id}: the route's policy capability (attachment:delete_own) is not in the key scope, but the legacy statement the route checks (work_item:update) is, and the owner holds both: allowed", async () => {
+      const world = await setupWorld();
+      const { app } = createApp();
+      const target = await createItem(app, world, TITLE);
+      mockAuthenticatedSession(world.projectMember.user);
+      const presign = await json(
+        app,
+        "POST",
+        `/api/work-items/${target.key}/attachments/presign`,
+        { filename: "probe.png", contentType: "image/png", size: 1024 },
+      );
+      expect(presign.status, await presign.clone().text()).toBe(200);
+      const { attachmentId } = (await presign.json()) as {
+        attachmentId: string;
+      };
+      mockAnonymousSession();
+      setAmbientHeaders({
+        "x-api-key": await makeApiKey(world.projectMember.user.id, {
+          project: ["read"],
+          work_item: ["read", "update"],
+        }),
+      });
+      const response = await json(
+        app,
+        "DELETE",
+        `/api/attachments/${attachmentId}`,
+      );
+      setAmbientHeaders({});
+      expect(response.status, await response.text()).toBe(200);
+    });
+  });
+
+  describe("a key scope narrower than its owner's authority (deferred-scope routes)", () => {
+    it("the owner's project authority alone does not widen a key: a read-only key of a capable member cannot write, a matching key can", async () => {
+      const world = await setupWorld();
+      const { app } = createApp();
+      const item = await createItem(app, world, TITLE);
+      const before = await snapshot();
+      mockAnonymousSession();
+
+      // Narrower than the owner: read-only scope, owner could write.
+      setAmbientHeaders({
+        "x-api-key": await makeApiKey(world.projectMember.user.id, {
+          project: ["read"],
+          work_item: ["read"],
+        }),
+      });
+      const narrow = await json(
+        app,
+        "PATCH",
+        `/api/work-items/${item.key}`,
+        { title: "x" },
+        { "if-match": '"1"' },
+      );
+      expect(narrow.status, await narrow.text()).toBe(403);
+      expect(await snapshot()).toBe(before);
+
+      // Exactly the capability the route needs: allowed, because the owner holds it too.
+      setAmbientHeaders({
+        "x-api-key": await makeApiKey(world.projectMember.user.id, {
+          project: ["read"],
+          work_item: ["read", "update"],
+        }),
+      });
+      const matching = await json(
+        app,
+        "PATCH",
+        `/api/work-items/${item.key}`,
+        { title: "Renamed by a narrow key" },
+        { "if-match": '"1"' },
+      );
+      setAmbientHeaders({});
+      expect(matching.status, await matching.text()).toBe(200);
+    });
+
+    it("a key whose scope is wide but whose owner's project role is narrow stays refused even where the legacy workspace statement would allow it", async () => {
+      const world = await setupWorld();
+      const { app } = createApp();
+      const item = await createItem(app, world, TITLE);
+      const owner = await addMember(world.workspaceId, "admin");
+      await grantProjectRole(owner.user.id, world.project.id, [
+        "project:read",
+        "work_item:read",
+        "work_item:update",
+      ]);
+      mockAnonymousSession();
+      setAmbientHeaders({
+        "x-api-key": await makeApiKey(owner.user.id, FULL_SCOPE),
+      });
+      const allowed = await json(
+        app,
+        "PATCH",
+        `/api/work-items/${item.key}`,
+        { title: "Renamed within the role" },
+        { "if-match": '"1"' },
+      );
+      expect(allowed.status, await allowed.text()).toBe(200);
+      const refused = await json(app, "DELETE", `/api/work-items/${item.key}`);
+      setAmbientHeaders({});
+      expect(refused.status, await refused.text()).toBe(403);
+    });
   });
 });
