@@ -7,13 +7,15 @@
 - **#761 — IQ-7 governs the work-item type at accept.** The triager may override the type; the request-type pre-fill is a suggestion. The published snapshot still pins the form schema, SLA override and default assignee. An ineligible snapshotted default assignee leaves the work item unassigned, and the reason is recorded in the acceptance audit. RT-6 is amended to match.
 - **#718 item 1 — not deferred.** The open 2026-09-05 review findings for `webhooks-and-api-keys.md` are mapped to evidence and dispositioned by an independent reviewer before the self-row paragraph merges.
 
-**Supersedes:** in the 2026-10-14 entry "Submission accept answers an unreachable destination exactly like a missing one", the consequence "A failed accept leaves the submission claimed by the caller" (now: no claim is left). The 2026-10-13 recovered RT-6 wording "fails atomically if they are unavailable" for the type and default assignee (now: IQ-7 type choice; unassigned with a recorded reason).
+**Supersedes:**
+- **2026-10-14 accept entry.** In "Submission accept answers an unreachable destination exactly like a missing one", every statement that a failed accept is answered *after the claim has committed* and leaves the submission claimed. That covers the claim-ordering clause, the "A failed accept leaves the submission claimed by the caller" consequence, the IQ-16a rationale tied to it, and the reversal text that assumed it. Now the claim is taken in the conversion transaction, and a failed accept leaves no claim. The "unreachable looks missing" answer itself is unchanged.
+- **2026-10-13 recovered RT-6 wording.** "fails atomically if they are unavailable", for the type and default assignee. Now: IQ-7 type choice; an ineligible assignee leaves the item unassigned with a recorded reason.
 
 **Reversal:** each decision reverses by a new owner entry; the code changes are confined to the PRs for each issue.
 
 ### 2026-10-15 · Conductor implementation decisions: query ownership contract and identity admin UI
 
-**Decisions (conductor, under existing contracts; reversible):**
+**Decisions (conductor, under existing contracts; reversible), plus one owner decision marked as such:**
 - **#580 query ownership** (under `monorepo-layout.md`: `repository.ts` is the only place feature queries appear):
   - D1: opening a `db.transaction` is orchestration and may stay outside repositories; every statement inside goes through repository functions that receive the handle (`Executor`).
   - D2: raw `execute`/`sql` statements are in scope; SQL fragment helpers live in repositories.
@@ -21,7 +23,7 @@
   - D4: `apps/api/scripts/**` dev and seed tooling is outside the gate.
   - `forIdentity` is satisfied by explicit tenant parameters on repository functions.
   - The enforced `check:queries` gate is enabled only by the final batch.
-- **#713 God Mode Authentication/SCIM UI** may expose the accepted API's staff-connection and SCIM enable actions. No decision-log hold covers them (the holds are registration, invitations and typed-domain SSO). The laptop SIT activates no real identity provider; only closed or fixture states are tested.
+- **#713 God Mode Authentication/SCIM UI — owner decision (Thomas, 2026-10-15), not a conductor one.** The screen ships the accepted API's step-up-protected staff-connection and SCIM enable/disable actions. The standing hold on "unapproved identity/notification activation" still applies: nothing is activated on the laptop SIT, UAT or production without Thomas's approval, and SIT tests only fixture or closed states. Registration, invitations and typed-domain SSO stay held.
 
 **Supersedes:** nothing. **Reversal:** a later conductor or owner entry; D1–D4 also live in `coding-standards.md`.
 
