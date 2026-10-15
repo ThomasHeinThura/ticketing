@@ -118,6 +118,61 @@ export function godModeUserActionBinding(
   return userId && action ? `${userId}:${action}` : "";
 }
 
+export const IDENTITY_CONNECTION_TABS = [
+  "connection",
+  "scim",
+  "events",
+] as const;
+export type IdentityConnectionTab = (typeof IDENTITY_CONNECTION_TABS)[number];
+
+/** URL state of `/agent/god-mode/authentication/{id}`: the open tab, the events page and the open SCIM mapping form. */
+export type IdentityConnectionEditorSearch = {
+  tab?: Exclude<IdentityConnectionTab, "connection">;
+  /** Opaque events cursor (base64url, produced by the API). Only meaningful on the events tab. */
+  eventsCursor?: string;
+  /** A SCIM group mapping id being edited, or `new` for the add form. Only meaningful on the scim tab. */
+  mapping?: string;
+};
+
+const EVENTS_CURSOR_PATTERN = /^[A-Za-z0-9_-]{1,512}$/u;
+
+export function parseIdentityConnectionEditorSearch(
+  raw: unknown,
+): IdentityConnectionEditorSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  if (value.tab === "events") {
+    return {
+      tab: "events",
+      ...(typeof value.eventsCursor === "string" &&
+      EVENTS_CURSOR_PATTERN.test(value.eventsCursor)
+        ? { eventsCursor: value.eventsCursor }
+        : {}),
+    };
+  }
+  if (value.tab === "scim") {
+    return {
+      tab: "scim",
+      ...(typeof value.mapping === "string" &&
+      value.mapping.length > 0 &&
+      value.mapping.length <= 128
+        ? { mapping: value.mapping }
+        : {}),
+    };
+  }
+  return {};
+}
+
+export function parseIdentityConnectionEditorSearchFromQueryString(
+  queryString: string,
+): IdentityConnectionEditorSearch {
+  const params = new URLSearchParams(queryString);
+  return parseIdentityConnectionEditorSearch({
+    tab: params.get("tab") ?? undefined,
+    eventsCursor: params.get("eventsCursor") ?? undefined,
+    mapping: params.get("mapping") ?? undefined,
+  });
+}
+
 export type PendingActionsSearch = { cursor?: string };
 export type SavedViewsSearch = { query?: string };
 /**
@@ -527,6 +582,29 @@ export const routes = {
       return suffix
         ? `/agent/god-mode/users?${suffix}`
         : "/agent/god-mode/users";
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "Authentication providers". */
+  identityConnections: {
+    path: "/agent/god-mode/authentication" as const,
+    build: () => "/agent/god-mode/authentication",
+  },
+  /** `docs/02-design/screen-inventory.md` "Provider editor"; the id `new` opens the create form. */
+  identityConnectionEditor: {
+    path: "/agent/god-mode/authentication/$id" as const,
+    build: (
+      params: { id: string },
+      search: IdentityConnectionEditorSearch = {},
+    ) => {
+      const resolved = parseIdentityConnectionEditorSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.tab) query.set("tab", resolved.tab);
+      if (resolved.eventsCursor)
+        query.set("eventsCursor", resolved.eventsCursor);
+      if (resolved.mapping) query.set("mapping", resolved.mapping);
+      const suffix = query.toString();
+      const path = `/agent/god-mode/authentication/${encodeURIComponent(params.id)}`;
+      return suffix ? `${path}?${suffix}` : path;
     },
   },
   /** PA-6 requester-owned browser approval list and item. */
