@@ -105,7 +105,7 @@ export async function transitionWorkItem(c: Context) {
   const body = c.req.valid('json');
   const identity = c.get('identity');
 
-  const item = await workItems.forIdentity(identity).byKey(key);
+  const item = await workItems.findByKey(identity, key);
   const workflow = await workflows.activeFor(item.typeId);
 
   // domain decides; the controller does not
@@ -116,10 +116,12 @@ export async function transitionWorkItem(c: Context) {
 }
 ```
 
-**Repositories own queries.** Controllers, middleware and services never build a query, so an
-unscoped query cannot creep into a controller. The rule, its exact locations and its
-conventions are under [Query ownership](#query-ownership-issue-580) below; the gate that
-enforces it is `check:queries` (issue #580).
+**Repositories own queries.** Controllers, middleware and services never build a query. A
+repository call that can return cross-organisation data receives its tenant scope explicitly
+and applies that scope in the statement predicate; repository location alone does not guarantee
+scoping. The ownership rule and conventions are under [Query ownership](#query-ownership-issue-580)
+below. `check:queries` (issue #580) is planned but not currently wired, and will enforce query
+locations rather than tenant-predicate semantics.
 
 ### Query ownership (issue #580)
 
