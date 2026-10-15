@@ -1032,6 +1032,97 @@ describe("PA-9 explicit credential revocation", () => {
     });
   });
 
+  it("a refused account erasure (other people still have access) leaves the session, API key, pending action and account untouched", async () => {
+    const { app } = createApp();
+    const setup = await setupCredentialOwner(app);
+    const otherUser = (await createWorkspaceMember({ role: "owner" })).user;
+    await ensureStaffPersonForUser(otherUser.id);
+    const otherPerson = requireRow(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, otherUser.id))
+        .limit(1),
+      "other person",
+    );
+    const role = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: setup.workspace.id,
+          key: `erasure-${randomUUID()}`,
+          name: "Erasure fixture",
+          rank: 1,
+          capabilities: ["project:read"],
+        })
+        .returning(),
+      "workspace role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId: otherPerson.id,
+      scope: "workspace",
+      scopeId: setup.workspace.id,
+      roleId: role.id,
+    });
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+    const apiKey = await insertApiKey(setup.user.id);
+
+    const response = await csrfRequest(
+      app,
+      "/api/auth/delete-user",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password: TEST_PASSWORD }),
+      },
+      setup.cookie,
+    );
+
+    expect(response.status, await response.clone().text()).toBe(409);
+    expect(await response.text()).toMatch(/Other people still have access/u);
+    // Nothing was invalidated or deleted.
+    expect(await stateOf(pending.id)).toEqual({
+      state: "pending",
+      invalidationReason: null,
+    });
+    expect(
+      await db
+        .select({ id: schema.sessionTable.id })
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.id, setup.session.id)),
+    ).toHaveLength(1);
+    expect(
+      await db
+        .select({ enabled: schema.apikeyTable.enabled })
+        .from(schema.apikeyTable)
+        .where(eq(schema.apikeyTable.id, apiKey.id)),
+    ).toEqual([{ enabled: true }]);
+    expect(
+      await db
+        .select({ id: schema.userTable.id })
+        .from(schema.userTable)
+        .where(eq(schema.userTable.id, setup.user.id)),
+    ).toHaveLength(1);
+    expect(
+      await db
+        .select({ id: schema.workspaceTable.id })
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, setup.workspace.id)),
+    ).toHaveLength(1);
+    // The refused request left the session usable.
+    const stillSignedIn = await app.request("/api/auth/get-session", {
+      headers: { cookie: setup.cookie },
+    });
+    expect(stillSignedIn.status).toBe(200);
+  });
+
   it("rolls back residual account-deletion invalidation when its decision outbox insert fails", async () => {
     const { app } = createApp();
     const setup = await setupCredentialOwner(app);
