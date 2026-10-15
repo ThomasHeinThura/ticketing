@@ -11,10 +11,12 @@ The conductor (Claude Opus 5.5) implemented the change. The reviewers below are 
 - Security review by Claude Opus 5.5: CLEAR at `0ef6db6b`. A step timeout fails the job, and the sign/publish job is skipped, so nothing unscanned is signed or published. Permissions, triggers, concurrency and signing identity are unchanged.
 - Mechanical security rebind by Claude Opus 5.5: CLEAR at `28325153`, a clean merge of `main` `8ed5fef2` (#756, docs only); merge-tree equality checked.
 - Mechanical security rebind by Claude Opus 5.5: CLEAR at `24ca1f09`, a clean merge of `main` `1455ed80` (#755 and #757); `release.yml` unchanged.
+- Mechanical security rebind by Claude Opus 5.5: CLEAR at `f27cf6dc`, a clean merge of `main` `c35666c5` (#763, two web test files); `release.yml` unchanged.
 
 **Reviewed head:** `0ef6db6ba05c7461e47c138a21abf89c83128008`
 **Reviewed head:** `28325153ea446b8c3b9026a1db819d2b34a28d1e`
 **Reviewed head:** `24ca1f0916061bc265e6101f5a6776ad54b8d0bd`
+**Reviewed head:** `f27cf6dcedc535503b559598db5d73f6fd659043`
 
 ## Context index
 
@@ -24,7 +26,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `758-ordinary-a-sonnet.md` | Ordinary review A (main..0ef6db6b) | Claude Sonnet 5.5 | `0ef6db6b` | APPROVE | `626d8b2a6de65fd567e38f3dcf8a50743f8e54105301a772afaed739bdb7ee18` |
 | 2 | `758-ordinary-b-sonnet.md` | Ordinary review B (main..0ef6db6b) | Claude Sonnet 5.5 | `0ef6db6b` | APPROVE | `a1cb7d84173fbc91fbd36775ef7818d173a4af52719bca63d298e6d977cf888b` |
-| 3 | `758-security-opus.md` | Security review (main..0ef6db6b) | Claude Opus 5.5 | `0ef6db6b` | CLEAR | `a2f173105cb18b09a6406db2bff32976203ef82106f705c7c16e2c79bd55fd06` |
+| 3 | `758-security-opus.md` | Security review (main..0ef6db6b) | Claude Opus 5.5 | `0ef6db6b` | CLEAR | `3c53e67e2f4e03ac4b4c67ff7407c7b0c7912029b674e7d562118670a5f26610` |
 
 ## Embedded reports
 
@@ -117,7 +119,7 @@ Cannot prove the 35-minute figure against real run history from the repository; 
 **Verdict:** APPROVE
 <!-- END REPORT (sha256 a1cb7d84173fbc91fbd36775ef7818d173a4af52719bca63d298e6d977cf888b) -->
 
-<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/758-security-opus.md; Claude Opus 5.5; sha256 a2f173105cb18b09a6406db2bff32976203ef82106f705c7c16e2c79bd55fd06) -->
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/758-security-opus.md; Claude Opus 5.5; sha256 3c53e67e2f4e03ac4b4c67ff7407c7b0c7912029b674e7d562118670a5f26610) -->
 # #758 security review (Opus 5.5) — step timeout on the multi-architecture release build (#753)
 
 **Reviewed head:** 0ef6db6ba05c7461e47c138a21abf89c83128008
@@ -228,4 +230,26 @@ None.
 **Interaction:** none with this PR's change. `release.yml` does package `compose.yml`, `deploy/` and `scripts/deploy.sh` into the versioned deployment archive. Main changed the content of those files, already security-reviewed under #755. The workflow's packaging, signing, permissions and step timeout are unchanged.
 
 **Verdict:** CLEAR
-<!-- END REPORT (sha256 a2f173105cb18b09a6406db2bff32976203ef82106f705c7c16e2c79bd55fd06) -->
+
+---
+
+## Rebind — merge of main `c35666c5` (Opus 5.5, mechanical)
+
+**Reviewed head:** f27cf6dcedc535503b559598db5d73f6fd659043
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), same independent review context as above
+
+**Comparison base:** `cafef5a1467e2353c361ba9c2e49bcac2f22b9c8`. That is my CLEAR head `24ca1f09` plus one commit, which edits only the security-review note.
+
+| Check | Result |
+| --- | --- |
+| live head (`gh pr view 758`, `git ls-remote`) | `f27cf6dcedc535503b559598db5d73f6fd659043` |
+| parents of `f27cf6dc` | `cafef5a1467e2353c361ba9c2e49bcac2f22b9c8`, `c35666c531c4b84c300bac5432fd4dc8dca3ed4f` |
+| `git diff --stat 24ca1f09 cafef5a1` | 1 file: `docs/07-planning/security-reviews/758-release-build-timeout.md` (+27/−3) |
+| `git merge-tree --write-tree cafef5a1 c35666c5` | `c11760ab7b8128fcc6c556e80146e7a2a29de26a`, equal to the tree of `f27cf6dc`, so the merge was clean with no hand edits |
+| `git diff --stat cafef5a1 f27cf6dc` | 2 web test files only: `apps/web/src/test/setup.ts`, `apps/web/src/components/nav-projects-sortable.test.tsx` |
+| `git diff --stat 0ef6db6b f27cf6dc -- .github` | empty: `release.yml` is byte-identical to the head I cleared |
+
+**Interaction:** none. Main brought only web test setup and one web test file. Neither is part of the image build inputs that the workflow scans or signs differently, and the workflow is unchanged.
+
+**Verdict:** CLEAR
+<!-- END REPORT (sha256 3c53e67e2f4e03ac4b4c67ff7407c7b0c7912029b674e7d562118670a5f26610) -->
