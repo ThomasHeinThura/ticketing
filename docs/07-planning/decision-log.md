@@ -13,6 +13,24 @@
 
 **Reversal:** make the reach check in `acceptSubmission` throw 404 before the claim and update the reach tests in `tests/api-integration/project-reach-writes.test.ts`. The cost is that a missing destination and an unreachable one then differ in status and side effect.
 
+### 2026-10-15 · Continue the remaining #589 integration after alpha.4; laptop SIT hostnames and loopback
+
+**Decision (Thomas, 2026-10-15):** the conductor leaves Hold and continues the remaining approved integration associated with historical PR #589. This is a continuation, not a restart.
+- **Baseline kept:** v2.0.0-alpha.4 (source `d159704be626136e728df7ddef0381dc37cf7756`), its reviews, deployment evidence, backups, restore results and independent audit are a completed checkpoint. P0's scoped closure and #626's deferrals are unchanged.
+- **Selected units:** #580 (M1, repository query ownership and the enforced `check:queries` gate), #713 (M2), #714 (M3), #715 (M4), #716 (M6) and #718 (M9), rebuilt on current `main` with #589 as reference source only. #717 (M7) is complete through #738 (merge `6015f016`) and is not reimplemented. #589's branch and the conservation ledger are kept.
+- **#589 closure:** only after every selected unit is merged and verified, proven equivalent on `main`, or explicitly deferred by Thomas. Moving work into an issue is not closure.
+- **Then:** one combined `main` SHA, one signed prerelease through the existing GHCR/GitHub path (the next permitted unused version, not alpha.4), consistent backup and isolated restore, deployment of the exact signed digest to laptop SIT, real-browser workflows, a fresh independent Opus audit, report, Hold.
+- **Laptop SIT hostnames:** `https://ticketing.localhost` (agent) and `https://portal.localhost` on Traefik HTTPS 443 are the canonical laptop SIT endpoints for this continuation. This supersedes the planned `ticket.localhost` agent name for this scope only. A health-only response from `ticket.localhost` is not acceptance of the agent application. No hostname migration and no session, certificate or origin change for naming.
+- **Loopback (#752):** the laptop SIT is restricted to loopback with the minimum reviewed local-overlay change. The application port 5173 is not published unless an existing supported diagnostic needs it, and then only on loopback. Database, cache, storage-administration and management ports are never published to the LAN.
+
+**Holds kept:** request-type deletion, export resource limits (F3), manual SLA pause (D1), team-lead saved-view editing and automatic ownership transfer, held workflow effects (`set_field`), MCP, registration/invitations/typed-domain SSO, outbound notification activation, and unapproved identity/notification activation.
+
+**Not authorized:** remote UAT or production changes, Docker Hub publication, pruning Docker volumes, deleting backups, resetting databases, rewriting Git history, disabling security controls, a final 2.0.0 or P4 claim, new runner infrastructure or a reproducible-build framework (#753 gets only bounded reliability repairs).
+
+**Supersedes:** for this scope only, the `ticket.localhost` laptop agent name in the 2026-10-09 mission sequence and the "Hold" state recorded at the alpha.4 handover. Everything else in the 2026-10-09 mission stands.
+
+**Reversal:** Thomas returns the conductor to Hold; merged successors stay on `main` and #589 stays open with its residual rows.
+
 ### 2026-10-14 · A project's creator holds a project-lead membership
 
 **Decision (Thomas, 2026-10-14):**
