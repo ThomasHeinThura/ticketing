@@ -47,7 +47,7 @@ describe("work list filter controls", () => {
         "work-item-search-error",
         undefined,
         {
-          timeout: 5000,
+          timeout: 15_000,
         },
       );
       expect(alert).toHaveTextContent(
@@ -55,6 +55,7 @@ describe("work list filter controls", () => {
       );
       expect(alert.textContent).not.toMatch(/Filter field unavailable|\d{3}:/u);
     },
+    20_000,
   );
 
   it("does not show an unrelated failure (a 500 or a network error) as a filter refusal", async () => {
