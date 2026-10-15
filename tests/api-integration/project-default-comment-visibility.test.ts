@@ -71,6 +71,7 @@ async function readProject(projectId: string) {
 async function actorWithLegacyMap(
   role: string,
   legacy: Record<string, string[]>,
+  projectCapabilities?: readonly string[] | null,
 ) {
   const actor = await createWorkspaceMember({ role });
   const now = new Date();
@@ -96,7 +97,13 @@ async function actorWithLegacyMap(
   const { project } = await createProjectFixture({
     workspaceId: actor.workspace.id,
   });
-  await grantProjectManageAccess(actor.user.id, project.id);
+  // `undefined` preserves the helper's broad default; an array installs a precise project
+  // override; `null` deliberately leaves no project membership (for the real customer case).
+  if (projectCapabilities === undefined) {
+    await grantProjectManageAccess(actor.user.id, project.id);
+  } else if (projectCapabilities !== null) {
+    await grantProjectRole(actor.user.id, project.id, projectCapabilities);
+  }
   return { actor, project };
 }
 
@@ -132,6 +139,7 @@ async function createApiKeyFor(
 }
 
 const LEGACY_UPDATE = { project: ["read", "update"] };
+const NARROW_PROJECT_UPDATE = ["project:read", "project:update"] as const;
 
 describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)", () => {
   beforeEach(async () => {
@@ -253,7 +261,11 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
   it.each(["member", "lead"])(
     "refuses %s (legacy project:update, no strict project:manage_settings) with 403 and writes nothing",
     async (role) => {
-      const { actor, project } = await actorWithLegacyMap(role, LEGACY_UPDATE);
+      const { actor, project } = await actorWithLegacyMap(
+        role,
+        LEGACY_UPDATE,
+        NARROW_PROJECT_UPDATE,
+      );
       mockAuthenticatedSession(actor.user);
       const { app } = createApp();
 
@@ -305,7 +317,52 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
     const { actor, project } = await actorWithLegacyMap(
       "customer",
       LEGACY_UPDATE,
+      null,
     );
+    const organisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `comment-visibility-customer-${randomUUID()}`,
+        name: "Comment visibility customer",
+        isInternal: false,
+        portalAccess: true,
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!organisation) throw new Error("customer organisation missing");
+    const customerRole = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "organisation",
+        key: `comment-visibility-customer-${randomUUID()}`,
+        name: "Comment visibility customer",
+        rank: 0,
+        capabilities: [],
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!customerRole) throw new Error("customer role missing");
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, actor.user.id))
+      .limit(1);
+    if (!person) throw new Error("customer person missing");
+    await db
+      .update(schema.personTable)
+      .set({ side: "customer", organisationId: organisation.id })
+      .where(eq(schema.personTable.id, person.id));
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "organisation",
+      scopeId: organisation.id,
+      roleId: customerRole.id,
+      seesAll: false,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: organisation.id })
+      .where(eq(schema.projectTable.id, project.id));
     mockAuthenticatedSession(actor.user);
     const { app } = createApp();
 
@@ -381,6 +438,7 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
       const { actor, project } = await actorWithLegacyMap(
         "member",
         LEGACY_UPDATE,
+        NARROW_PROJECT_UPDATE,
       );
       mockAuthenticatedSession(actor.user);
       const { app } = createApp();

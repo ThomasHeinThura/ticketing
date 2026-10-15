@@ -995,7 +995,12 @@ const project = apiRouter<
           )
         : null;
       if (!decision?.capable) {
-        throw new HTTPException(403, { message: "Insufficient permissions" });
+        throw new HTTPException(403, {
+          message:
+            c.get("apiKey") && decision?.ownerCapable
+              ? "Insufficient API key scope"
+              : "Insufficient permissions",
+        });
       }
     }
     const [current] = await db

@@ -173,7 +173,10 @@ describe("API integration: PUT /api/project/{id} engagement fields need project:
   it.each(["member", "lead"])(
     "refuses %s (legacy project:update, no strict manage_settings) for each engagement field and writes nothing",
     async (role) => {
-      const { actor, project } = await actorWithLegacyMap(role, LEGACY_UPDATE);
+      const { actor, project } = await actorWithLegacyMap(role, LEGACY_UPDATE, [
+        "project:read",
+        "project:update",
+      ]);
       const calendar = await makeCalendar(actor.workspace.id, actor.user.id);
       mockAuthenticatedSession(actor.user);
       const { app } = createApp();
@@ -353,6 +356,7 @@ describe("API integration: PUT /api/project/{id} engagement fields need project:
       const { actor, project } = await actorWithLegacyMap(
         "lead",
         LEGACY_UPDATE,
+        ["project:read", "project:update"],
       );
       mockAuthenticatedSession(actor.user);
       const { app } = createApp();
