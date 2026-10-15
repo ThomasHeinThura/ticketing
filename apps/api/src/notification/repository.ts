@@ -267,7 +267,7 @@ export async function findApprovalNotificationContext(
   return row ?? null;
 }
 
-export function listApprovalWatcherPersonIds(
+export async function listApprovalWatcherPersonIds(
   tx: DbTransaction,
   workItemId: string,
 ) {
@@ -277,7 +277,7 @@ export function listApprovalWatcherPersonIds(
     .where(eq(schema.watcherTable.workItemId, workItemId));
 }
 
-export function listApprovalParticipantPersonIds(
+export async function listApprovalParticipantPersonIds(
   tx: DbTransaction,
   workItemId: string,
 ) {

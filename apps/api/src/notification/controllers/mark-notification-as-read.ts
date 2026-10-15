@@ -1,41 +1,19 @@
-import { and, eq, isNull, ne, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { notificationTable } from "../../database/schema";
 import { isCurrentInstanceAdmin } from "../../instance/observability/audit-failure-notifier";
-import { approvalNotificationReadable } from "../approval-reach";
-import { reachableTaskNotificationPredicate } from "../task-reach";
+import {
+  findOwnNotificationType,
+  markOwnReadableNotificationRead,
+} from "../inbox.repository";
 
 async function markNotificationAsRead(id: string, userId: string) {
-  const [existing] = await db
-    .select({ type: notificationTable.type })
-    .from(notificationTable)
-    .where(
-      and(eq(notificationTable.id, id), eq(notificationTable.userId, userId)),
-    )
-    .limit(1);
+  const existing = await findOwnNotificationType(id, userId);
   if (
     existing?.type === "audit_write_failed" &&
     !(await isCurrentInstanceAdmin(userId))
   ) {
     throw new HTTPException(404, { message: "Notification not found" });
   }
-  const [notification] = await db
-    .update(notificationTable)
-    .set({ isRead: true })
-    .where(
-      and(
-        eq(notificationTable.id, id),
-        eq(notificationTable.userId, userId),
-        approvalNotificationReadable(userId),
-        or(
-          isNull(notificationTable.resourceType),
-          ne(notificationTable.resourceType, "task"),
-          reachableTaskNotificationPredicate(userId),
-        ),
-      ),
-    )
-    .returning();
+  const notification = await markOwnReadableNotificationRead(id, userId);
 
   if (!notification) {
     throw new HTTPException(404, {

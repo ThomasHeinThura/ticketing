@@ -1,12 +1,12 @@
-import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
-  personTable,
-  workflowTable,
-  workflowTransitionTable,
-  workflowVersionTable,
-} from "../../database/schema";
+  findPersonIdByUserId,
+  findWorkflowVersion,
+  listVersionTransitions,
+  setActiveWorkflowVersion,
+  stampVersionPublished,
+} from "../repository";
 
 /**
  * Publishes `number` for `workflowId`: stamps `published_at`/`published_by` on that
@@ -20,43 +20,24 @@ async function publishWorkflowVersion(
   number: number,
   userId: string,
 ) {
-  const [version] = await db
-    .select()
-    .from(workflowVersionTable)
-    .where(
-      and(
-        eq(workflowVersionTable.workflowId, workflowId),
-        eq(workflowVersionTable.number, number),
-      ),
-    )
-    .limit(1);
+  const version = await findWorkflowVersion(workflowId, number);
 
   if (!version) {
     throw new HTTPException(404, { message: "Workflow version not found" });
   }
 
-  const [caller] = await db
-    .select({ id: personTable.id })
-    .from(personTable)
-    .where(eq(personTable.userId, userId))
-    .limit(1);
+  const caller = await findPersonIdByUserId(userId);
 
   return db.transaction(async (tx) => {
-    const [published] = await tx
-      .update(workflowVersionTable)
-      .set({ publishedAt: new Date(), publishedBy: caller?.id ?? null })
-      .where(eq(workflowVersionTable.id, version.id))
-      .returning();
+    const published = await stampVersionPublished(
+      tx,
+      version.id,
+      caller?.id ?? null,
+    );
 
-    await tx
-      .update(workflowTable)
-      .set({ activeVersionId: version.id })
-      .where(eq(workflowTable.id, workflowId));
+    await setActiveWorkflowVersion(tx, workflowId, version.id);
 
-    const transitions = await tx
-      .select()
-      .from(workflowTransitionTable)
-      .where(eq(workflowTransitionTable.versionId, version.id));
+    const transitions = await listVersionTransitions(version.id, tx);
 
     return { ...published, transitions };
   });

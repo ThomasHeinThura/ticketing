@@ -1,7 +1,8 @@
-import { sql } from "drizzle-orm";
-import db from "../database";
-import { dbNowUtc } from "../utils/db-time";
 import { withJobLease } from "./leader-lock";
+import {
+  purgeExpiredOutboxReservations,
+  purgeExpiredSessions,
+} from "./repository";
 
 /**
  * `session-cleanup` — `docs/01-architecture/background-jobs.md`.
@@ -49,44 +50,6 @@ export type SessionCleanupOutcome = {
 };
 
 /**
- * The hold rule, in one place.
- *
- * A row is covered by an open hold when the *person* it belongs to is held, or that person's
- * *organisation* is. Both are reached through `person` — for a `session` that is
- * `session.user_id → person.user_id`, which is why this predicate can be written today while
- * the project purge's cannot (`person.organisation_id` exists; `workspace.organisation_id`
- * does not).
- *
- * `lifted_at is null` is the definition of "open" (`data-model.md` §2: "An **open** row
- * (`lifted_at is null`) suspends ... every hard delete for that scope"). The partial unique
- * index on the table means there is at most one open hold per scope, so this can never
- * double-count.
- *
- * Written as `NOT EXISTS` rather than a join or a NOT IN: it short-circuits per row, it does
- * not change the row count of the statement it is embedded in (a join against a second
- * matching hold would duplicate rows and make `rowCount` wrong), and it is NULL-safe in the
- * way that matters here — if the person row is missing, or its `organisation_id` is null,
- * every comparison is NULL, the subquery yields no rows, and the row is treated as *not*
- * held. That is correct for a session: a user with no `person` row yet is not a tenant's
- * retained data. It would NOT be correct for a project, which is part of why that half is
- * not here.
- */
-export const NOT_UNDER_OPEN_LEGAL_HOLD_FOR_SESSION = sql`
-  NOT EXISTS (
-    SELECT 1
-    FROM "legal_hold"
-    LEFT JOIN "person" ON "person"."user_id" = "session"."user_id"
-    WHERE "legal_hold"."lifted_at" IS NULL
-      AND (
-        ("legal_hold"."scope" = 'person'
-          AND "legal_hold"."scope_id" = "person"."id")
-        OR ("legal_hold"."scope" = 'organisation'
-          AND "legal_hold"."scope_id" = "person"."organisation_id")
-      )
-  )
-`;
-
-/**
  * Deletes sessions that have already expired, minus any held scope's.
  *
  * The cutoff is `dbNowUtc()`, not `now()`, and that is load-bearing rather than cosmetic:
@@ -106,13 +69,7 @@ export const NOT_UNDER_OPEN_LEGAL_HOLD_FOR_SESSION = sql`
  * the predicate itself.
  */
 export async function deleteExpiredSessions(): Promise<number> {
-  const result = await db.execute(sql`
-    DELETE FROM "session"
-    WHERE "session"."expires_at" <= ${dbNowUtc()}
-      AND ${NOT_UNDER_OPEN_LEGAL_HOLD_FOR_SESSION};
-  `);
-
-  return result.rowCount ?? 0;
+  return purgeExpiredSessions();
 }
 
 /**
@@ -122,12 +79,7 @@ export async function deleteExpiredSessions(): Promise<number> {
  * delivery history live in their separate retained rows.
  */
 export async function deleteExpiredNotificationReservations(): Promise<number> {
-  const result = await db.execute(sql`
-    DELETE FROM "outbox_dedupe_reservation"
-    WHERE "lease_expires_at" <= clock_timestamp() AT TIME ZONE 'UTC';
-  `);
-
-  return result.rowCount ?? 0;
+  return purgeExpiredOutboxReservations();
 }
 
 /**

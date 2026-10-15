@@ -8,19 +8,19 @@ import {
   type WorkflowState,
   type WorkflowTransition,
 } from "@taskdesk/domain";
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
 import {
-  roleTable,
-  stateTable,
-  stateTemplateTable,
-  workflowTable,
-  workflowTransitionTable,
-  workflowVersionTable,
-  workItemTable,
-  workItemTypeTable,
-} from "../../database/schema";
+  findWorkflowVersionId,
+  findWorkflowWorkspaceId,
+  listDefaultStateTemplates,
+  listEnabledProjectStates,
+  listLiveItemsWithStateTemplate,
+  listProjectIdsWithItemsOfTypes,
+  listReferenceableRoleIds,
+  listStateTemplates,
+  listVersionTransitions,
+  listWorkflowTypeIds,
+} from "../repository";
 
 export type WorkflowVersionProjectValidation = {
   projectId: string;
@@ -60,42 +60,23 @@ export async function validateWorkflowVersion(
   workflowId: string,
   number: number,
 ): Promise<WorkflowVersionValidationResult> {
-  const [workflow] = await db
-    .select({ workspaceId: workflowTable.workspaceId })
-    .from(workflowTable)
-    .where(eq(workflowTable.id, workflowId))
-    .limit(1);
+  const workflow = await findWorkflowWorkspaceId(workflowId);
   if (!workflow) {
     throw new HTTPException(404, { message: "Workflow not found" });
   }
 
-  const [version] = await db
-    .select({ id: workflowVersionTable.id })
-    .from(workflowVersionTable)
-    .where(
-      and(
-        eq(workflowVersionTable.workflowId, workflowId),
-        eq(workflowVersionTable.number, number),
-      ),
-    )
-    .limit(1);
+  const version = await findWorkflowVersionId(workflowId, number);
   if (!version) {
     throw new HTTPException(404, { message: "Workflow version not found" });
   }
 
-  const templateRows = await db
-    .select({ id: stateTemplateTable.id, group: stateTemplateTable.group })
-    .from(stateTemplateTable)
-    .where(eq(stateTemplateTable.workspaceId, workflow.workspaceId));
+  const templateRows = await listStateTemplates(workflow.workspaceId);
   const states: WorkflowState[] = templateRows.map((row) => ({
     id: asStateTemplateId(row.id),
     group: row.group as WorkflowState["group"],
   }));
 
-  const transitionRows = await db
-    .select()
-    .from(workflowTransitionTable)
-    .where(eq(workflowTransitionTable.versionId, version.id));
+  const transitionRows = await listVersionTransitions(version.id);
   const transitions: WorkflowTransition[] = transitionRows.map((row) => ({
     id: row.id,
     fromStateTemplateId:
@@ -114,15 +95,7 @@ export async function validateWorkflowVersion(
     effects: row.effects as WorkflowTransition["effects"],
   }));
 
-  const roleRows = await db
-    .select({ id: roleTable.id })
-    .from(roleTable)
-    .where(
-      or(
-        eq(roleTable.workspaceId, workflow.workspaceId),
-        isNull(roleTable.workspaceId),
-      ),
-    );
+  const roleRows = await listReferenceableRoleIds(workflow.workspaceId);
   const roleIds = roleRows.map((r) => r.id);
 
   const noOutboundIds = noOutboundStateIds(states, transitions);
@@ -130,20 +103,14 @@ export async function validateWorkflowVersion(
 
   // Adopting projects: every project with at least one work item of a type whose
   // `workflow_id` is this workflow -- see this function's own doc comment.
-  const typeRows = await db
-    .select({ id: workItemTypeTable.id })
-    .from(workItemTypeTable)
-    .where(eq(workItemTypeTable.workflowId, workflowId));
+  const typeRows = await listWorkflowTypeIds(workflowId);
   const typeIds = typeRows.map((t) => t.id);
 
   const projects: WorkflowVersionProjectValidation[] = [];
   let unreachableIds: StateTemplateId[] = [];
 
   if (typeIds.length > 0) {
-    const adoptingProjectRows = await db
-      .selectDistinct({ projectId: workItemTable.projectId })
-      .from(workItemTable)
-      .where(inArray(workItemTable.typeId, typeIds));
+    const adoptingProjectRows = await listProjectIdsWithItemsOfTypes(typeIds);
     const projectIds = adoptingProjectRows.map((r) => r.projectId);
 
     // Every adopting project's own default state's TEMPLATE -- `unreachableStates`'
@@ -153,18 +120,7 @@ export async function validateWorkflowVersion(
     const defaultStateRows =
       projectIds.length === 0
         ? []
-        : await db
-            .select({
-              projectId: stateTable.projectId,
-              stateTemplateId: stateTable.stateTemplateId,
-            })
-            .from(stateTable)
-            .where(
-              and(
-                inArray(stateTable.projectId, projectIds),
-                eq(stateTable.isDefault, true),
-              ),
-            );
+        : await listDefaultStateTemplates(projectIds);
     const initialStateIds = [
       ...new Set(
         defaultStateRows.map((r) => asStateTemplateId(r.stateTemplateId)),
@@ -173,18 +129,7 @@ export async function validateWorkflowVersion(
     unreachableIds = unreachableStates(states, transitions, initialStateIds);
 
     for (const projectId of projectIds) {
-      const enabledRows = await db
-        .select({
-          stateTemplateId: stateTable.stateTemplateId,
-          isDefault: stateTable.isDefault,
-        })
-        .from(stateTable)
-        .where(
-          and(
-            eq(stateTable.projectId, projectId),
-            isNull(stateTable.archivedAt),
-          ),
-        );
+      const enabledRows = await listEnabledProjectStates(projectId);
       const enabledStateIds = enabledRows.map((r) =>
         asStateTemplateId(r.stateTemplateId),
       );
@@ -204,20 +149,7 @@ export async function validateWorkflowVersion(
       const stuckRows =
         noOutboundIdSet.size === 0
           ? []
-          : await db
-              .select({
-                key: workItemTable.key,
-                stateTemplateId: stateTable.stateTemplateId,
-              })
-              .from(workItemTable)
-              .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
-              .where(
-                and(
-                  eq(workItemTable.projectId, projectId),
-                  isNull(workItemTable.archivedAt),
-                  isNull(workItemTable.deletedAt),
-                ),
-              );
+          : await listLiveItemsWithStateTemplate(projectId);
       const stuckWorkItemKeys = stuckRows
         .filter((row) =>
           noOutboundIdSet.has(asStateTemplateId(row.stateTemplateId)),

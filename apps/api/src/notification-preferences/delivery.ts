@@ -11,7 +11,7 @@ import {
   userTable,
   workspaceTable,
 } from "../database/schema";
-import { userCanReachTask } from "../notification/task-reach";
+import { userCanReachTask } from "../notification/task-reach.repository";
 import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
 import { reachableWorkspacePredicate } from "../utils/workspace-access-middleware";
 import { decryptSecret } from "./secrets";

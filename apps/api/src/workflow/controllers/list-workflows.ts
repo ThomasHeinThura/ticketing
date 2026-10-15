@@ -1,12 +1,7 @@
-import { eq } from "drizzle-orm";
-import db from "../../database";
-import { workflowTable } from "../../database/schema";
+import { listWorkflowsInWorkspace } from "../repository";
 
 async function listWorkflows(workspaceId: string) {
-  return db
-    .select()
-    .from(workflowTable)
-    .where(eq(workflowTable.workspaceId, workspaceId));
+  return listWorkflowsInWorkspace(workspaceId);
 }
 
 export default listWorkflows;

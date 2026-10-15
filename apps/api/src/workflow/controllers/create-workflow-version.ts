@@ -4,18 +4,18 @@ import {
   type WorkflowState,
   type WorkflowTransition,
 } from "@taskdesk/domain";
-import { eq, inArray, isNull, max, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  personTable,
-  roleTable,
-  stateTemplateTable,
-  workflowTable,
-  workflowTransitionTable,
-  workflowVersionTable,
-} from "../../database/schema";
 import type { z } from "../../openapi";
+import {
+  findWorkflowWorkspaceId,
+  getMaxVersionNumber,
+  insertWorkflowTransitions,
+  insertWorkflowVersion,
+  listExistingPersonIds,
+  listReferenceableRoleIds,
+  listStateTemplates,
+} from "../repository";
 import type { createWorkflowVersionBody } from "../schema";
 
 type TransitionInput = z.infer<
@@ -44,20 +44,13 @@ async function createWorkflowVersion(
     });
   }
 
-  const [workflow] = await db
-    .select({ workspaceId: workflowTable.workspaceId })
-    .from(workflowTable)
-    .where(eq(workflowTable.id, workflowId))
-    .limit(1);
+  const workflow = await findWorkflowWorkspaceId(workflowId);
 
   if (!workflow) {
     throw new HTTPException(404, { message: "Workflow not found" });
   }
 
-  const templates = await db
-    .select({ id: stateTemplateTable.id, group: stateTemplateTable.group })
-    .from(stateTemplateTable)
-    .where(eq(stateTemplateTable.workspaceId, workflow.workspaceId));
+  const templates = await listStateTemplates(workflow.workspaceId);
 
   const states: WorkflowState[] = templates.map((t) => ({
     id: asStateTemplateId(t.id),
@@ -77,15 +70,7 @@ async function createWorkflowVersion(
   // names one outside it, before anything is persisted.
   const stateIds = new Set(states.map((s) => s.id));
 
-  const roleRows = await db
-    .select({ id: roleTable.id })
-    .from(roleTable)
-    .where(
-      or(
-        eq(roleTable.workspaceId, workflow.workspaceId),
-        isNull(roleTable.workspaceId),
-      ),
-    );
+  const roleRows = await listReferenceableRoleIds(workflow.workspaceId);
   const roleIds = new Set(roleRows.map((r) => r.id));
 
   // Opus security review of PR #457 (B2's "defence in depth" ask, alongside the
@@ -115,12 +100,9 @@ async function createWorkflowVersion(
     assigneeEffectPersonIds.size === 0
       ? new Set<string>()
       : new Set(
-          (
-            await db
-              .select({ id: personTable.id })
-              .from(personTable)
-              .where(inArray(personTable.id, [...assigneeEffectPersonIds]))
-          ).map((p) => p.id),
+          (await listExistingPersonIds([...assigneeEffectPersonIds])).map(
+            (p) => p.id,
+          ),
         );
 
   for (const t of transitions) {
@@ -189,40 +171,35 @@ async function createWorkflowVersion(
   }
 
   return db.transaction(async (tx) => {
-    const [maxRow] = await tx
-      .select({ nextNumber: max(workflowVersionTable.number) })
-      .from(workflowVersionTable)
-      .where(eq(workflowVersionTable.workflowId, workflowId));
+    const maxRow = await getMaxVersionNumber(tx, workflowId);
 
-    const [version] = await tx
-      .insert(workflowVersionTable)
-      .values({ workflowId, number: (maxRow?.nextNumber ?? 0) + 1 })
-      .returning();
+    const version = await insertWorkflowVersion(tx, {
+      workflowId,
+      number: (maxRow?.nextNumber ?? 0) + 1,
+    });
 
     if (!version) {
       throw new Error("Failed to create workflow version");
     }
 
     const insertedTransitions = transitions.length
-      ? await tx
-          .insert(workflowTransitionTable)
-          .values(
-            transitions.map((t) => ({
-              versionId: version.id,
-              fromStateTemplateId: t.fromStateTemplateId,
-              toStateTemplateId: t.toStateTemplateId,
-              roleId: t.roleId,
-              notePolicy: t.notePolicy,
-              noteVisibility: t.noteVisibility,
-              requiresApproval: t.requiresApproval,
-              approvalPolicy: t.approvalPolicy,
-              requiresCab: t.requiresCab,
-              isReopen: t.isReopen,
-              guards: t.guards,
-              effects: t.effects,
-            })),
-          )
-          .returning()
+      ? await insertWorkflowTransitions(
+          tx,
+          transitions.map((t) => ({
+            versionId: version.id,
+            fromStateTemplateId: t.fromStateTemplateId,
+            toStateTemplateId: t.toStateTemplateId,
+            roleId: t.roleId,
+            notePolicy: t.notePolicy,
+            noteVisibility: t.noteVisibility,
+            requiresApproval: t.requiresApproval,
+            approvalPolicy: t.approvalPolicy,
+            requiresCab: t.requiresCab,
+            isReopen: t.isReopen,
+            guards: t.guards,
+            effects: t.effects,
+          })),
+        )
       : [];
 
     return { ...version, transitions: insertedTransitions };

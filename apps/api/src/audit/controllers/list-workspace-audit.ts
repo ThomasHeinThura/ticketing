@@ -1,17 +1,13 @@
-import { and, desc, eq, inArray, isNull, or, type SQL } from "drizzle-orm";
 import type { Context } from "hono";
-import db from "../../database";
 import {
-  auditLogTable,
-  membershipTable,
-  personTable,
-} from "../../database/schema";
-import {
+  type AuditProjectReach,
   type AuditQuery,
-  auditListFilters,
-  combineFilters,
-  writeAuditRead,
-} from "./audit-read-common";
+  findPersonIdByUserId,
+  holdsWorkspaceSeesAll,
+  listProjectMembershipIds,
+  listWorkspaceAuditRows,
+} from "../repository";
+import { writeAuditRead } from "./audit-read-common";
 
 /**
  * `GET /api/workspaces/{workspaceId}/audit` — AU-10: workspace administrators see
@@ -55,92 +51,48 @@ export async function listWorkspaceAudit(
   workspaceId: string,
   query: AuditQuery,
 ) {
-  const reachFilter = await projectReachFilter(c, workspaceId);
-  const rows = await db
-    .select()
-    .from(auditLogTable)
-    .where(
-      combineFilters([
-        eq(auditLogTable.workspaceId, workspaceId),
-        reachFilter,
-        ...auditListFilters(query),
-      ]),
-    )
-    .orderBy(desc(auditLogTable.seq))
-    .limit(query.limit);
+  const reach = await projectReach(c, workspaceId);
+  const rows = await listWorkspaceAuditRows(workspaceId, reach, query);
 
   await writeAuditRead(c, { workspaceId });
   return rows;
 }
 
 /**
- * `project_id IS NULL OR project_id IN (reachable)` — or `undefined` (no constraint)
- * when the caller holds the per-workspace `sees_all` grant, which by #319/#334 is the
- * grant that means "every project in THIS workspace".
+ * The caller's project reach: `"all"` (no project constraint) when they hold the
+ * per-workspace `sees_all` grant, which by #319/#334 is the grant that means "every
+ * project in THIS workspace", otherwise the reachable project ids. The repository turns
+ * the ids into `project_id IS NULL OR project_id IN (reachable)`.
  *
  * Two reads, both keyed to facts other routes already treat as authoritative:
  *   - the caller's person (`person.user_id`, unique by `person_user_unique`);
  *   - their project memberships on rows where `sees_all` is set at workspace scope.
- * A caller with neither a person row nor `sees_all` gets a filter that matches only the
- * `IS NULL` arm — fail-closed. The two-project test pins the NON-empty branch (a
+ * A caller with neither a person row nor `sees_all` gets an empty list, which the
+ * repository turns into a filter matching only the `IS NULL` arm — fail-closed. The two-project test pins the NON-empty branch (a
  * reader with one project membership), and a dedicated test pins this empty one; the
  * two are deliberately separate, because a single test cannot catch a regression that
  * only affects the other.
  */
-async function projectReachFilter(
+async function projectReach(
   c: Context,
   workspaceId: string,
-): Promise<SQL | undefined> {
+): Promise<AuditProjectReach> {
   const userId = c.get("userId") as string | undefined;
   if (userId === undefined) {
     // The middleware chain has already required membership; a missing user id here is
     // a programmer error, and fail-closed is the only safe reading of it.
-    return isNull(auditLogTable.projectId);
+    return [];
   }
 
-  const [person] = await db
-    .select({ id: personTable.id })
-    .from(personTable)
-    .where(eq(personTable.userId, userId))
-    .limit(1);
+  const person = await findPersonIdByUserId(userId);
 
   if (person === undefined) {
-    return isNull(auditLogTable.projectId);
+    return [];
   }
 
-  const [seesAll] = await db
-    .select({ personId: membershipTable.personId })
-    .from(membershipTable)
-    .where(
-      and(
-        eq(membershipTable.personId, person.id),
-        eq(membershipTable.scope, "workspace"),
-        eq(membershipTable.scopeId, workspaceId),
-        eq(membershipTable.seesAll, true),
-      ),
-    )
-    .limit(1);
-
-  if (seesAll !== undefined) {
-    return undefined;
+  if (await holdsWorkspaceSeesAll(person.id, workspaceId)) {
+    return "all";
   }
 
-  const reachable = (
-    await db
-      .select({ projectId: membershipTable.scopeId })
-      .from(membershipTable)
-      .where(
-        and(
-          eq(membershipTable.personId, person.id),
-          eq(membershipTable.scope, "project"),
-        ),
-      )
-  ).map((row) => row.projectId);
-
-  return reachable.length === 0
-    ? isNull(auditLogTable.projectId)
-    : or(
-        isNull(auditLogTable.projectId),
-        inArray(auditLogTable.projectId, reachable),
-      );
+  return listProjectMembershipIds(person.id);
 }

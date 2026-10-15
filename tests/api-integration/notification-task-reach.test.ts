@@ -8,7 +8,7 @@ import createNotification from "../../apps/api/src/notification/controllers/crea
 import getNotifications from "../../apps/api/src/notification/controllers/get-notifications";
 import markAllNotificationsAsRead from "../../apps/api/src/notification/controllers/mark-all-notifications-as-read";
 import markNotificationAsRead from "../../apps/api/src/notification/controllers/mark-notification-as-read";
-import { userCanReachTask } from "../../apps/api/src/notification/task-reach";
+import { userCanReachTask } from "../../apps/api/src/notification/task-reach.repository";
 import { deliverNotification } from "../../apps/api/src/notification-preferences/delivery";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";

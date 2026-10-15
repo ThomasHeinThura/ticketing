@@ -1,7 +1,7 @@
 import { and, eq, exists, isNull, ne, or } from "drizzle-orm";
 import db, { schema } from "../database";
 import { notificationTable, projectTable } from "../database/schema";
-import { projectReachPredicate } from "./task-reach";
+import { projectReachPredicate } from "./task-reach.repository";
 
 /**
  * Current-reach read predicate for inbox rows with `resource_type = 'approval'` (pre-wiring

@@ -1,7 +1,4 @@
 import { expandCapabilities } from "@taskdesk/permissions";
-import { eq } from "drizzle-orm";
-import db from "../database";
-import { projectTable, taskTable } from "../database/schema";
 import { subscribeToEvent } from "../events";
 import {
   apiRouter,
@@ -17,6 +14,7 @@ import createNotification from "./controllers/create-notification";
 import getNotifications from "./controllers/get-notifications";
 import markAllNotificationsAsRead from "./controllers/mark-all-notifications-as-read";
 import markAsRead from "./controllers/mark-notification-as-read";
+import { findProjectWorkspaceId, findTaskProjectId } from "./inbox.repository";
 import {
   bulkResultSchema,
   notificationListSchema,
@@ -164,11 +162,7 @@ subscribeToEvent<{
   projectId: string;
 }>("task.created", async (data) => {
   if (data.userId && data.userId !== data.currentUserId) {
-    const [project] = await db
-      .select({ workspaceId: projectTable.workspaceId })
-      .from(projectTable)
-      .where(eq(projectTable.id, data.projectId))
-      .limit(1);
+    const project = await findProjectWorkspaceId(data.projectId);
 
     await createNotification({
       userId: data.userId,
@@ -212,19 +206,11 @@ subscribeToEvent<{
   assigneeId?: string;
 }>("task.status_changed", async (data) => {
   if (data.assigneeId && data.assigneeId !== data.userId) {
-    const [task] = await db
-      .select({ projectId: taskTable.projectId })
-      .from(taskTable)
-      .where(eq(taskTable.id, data.taskId))
-      .limit(1);
+    const task = await findTaskProjectId(data.taskId);
 
-    const [project] = task
-      ? await db
-          .select({ workspaceId: projectTable.workspaceId })
-          .from(projectTable)
-          .where(eq(projectTable.id, task.projectId))
-          .limit(1)
-      : [];
+    const project = task
+      ? await findProjectWorkspaceId(task.projectId)
+      : undefined;
 
     await createNotification({
       userId: data.assigneeId,
@@ -251,19 +237,11 @@ subscribeToEvent<{
   title: string;
 }>("task.assignee_changed", async (data) => {
   if (data.newAssigneeId) {
-    const [task] = await db
-      .select({ projectId: taskTable.projectId })
-      .from(taskTable)
-      .where(eq(taskTable.id, data.taskId))
-      .limit(1);
+    const task = await findTaskProjectId(data.taskId);
 
-    const [project] = task
-      ? await db
-          .select({ workspaceId: projectTable.workspaceId })
-          .from(projectTable)
-          .where(eq(projectTable.id, task.projectId))
-          .limit(1)
-      : [];
+    const project = task
+      ? await findProjectWorkspaceId(task.projectId)
+      : undefined;
 
     await createNotification({
       userId: data.newAssigneeId,
@@ -287,19 +265,11 @@ subscribeToEvent<{
   taskTitle?: string;
 }>("time-entry.created", async (data) => {
   if (data.taskOwnerId && data.taskOwnerId !== data.userId) {
-    const [task] = await db
-      .select({ projectId: taskTable.projectId })
-      .from(taskTable)
-      .where(eq(taskTable.id, data.taskId))
-      .limit(1);
+    const task = await findTaskProjectId(data.taskId);
 
-    const [project] = task
-      ? await db
-          .select({ workspaceId: projectTable.workspaceId })
-          .from(projectTable)
-          .where(eq(projectTable.id, task.projectId))
-          .limit(1)
-      : [];
+    const project = task
+      ? await findProjectWorkspaceId(task.projectId)
+      : undefined;
 
     await createNotification({
       userId: data.taskOwnerId,

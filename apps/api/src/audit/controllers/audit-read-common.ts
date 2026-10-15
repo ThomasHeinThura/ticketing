@@ -1,48 +1,10 @@
-import { and, gte, like, lt, type SQL } from "drizzle-orm";
 import type { Context } from "hono";
 import db from "../../database";
-import { auditLogTable } from "../../database/schema";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../../instance/observability/runtime";
 import { appendAuditLog } from "../audit-writer";
 
-export type AuditQuery = {
-  readonly limit: number;
-  readonly action?: string | undefined;
-  readonly since?: string | undefined;
-  readonly until?: string | undefined;
-};
-
-/**
- * Shared WHERE construction for both audit list routes. The `action` filter is a
- * dotted-key PREFIX match (`auth.` selects the whole auth-lifecycle group). `%`, `_`
- * and backslash in the caller's prefix are backslash-escaped; PostgreSQL's LIKE treats
- * backslash as its default escape character, so a crafted prefix cannot become a
- * wildcard scan of every action.
- */
-export function auditListFilters(query: AuditQuery): (SQL | undefined)[] {
-  const actionFilter =
-    query.action === undefined
-      ? undefined
-      : like(
-          auditLogTable.action,
-          `${query.action.replace(/[\\%_]/g, (m) => `\\${m}`)}%`,
-        );
-  return [
-    actionFilter,
-    query.since === undefined
-      ? undefined
-      : gte(auditLogTable.createdAt, new Date(query.since)),
-    query.until === undefined
-      ? undefined
-      : lt(auditLogTable.createdAt, new Date(query.until)),
-  ];
-}
-
-export function combineFilters(filters: (SQL | undefined)[]): SQL | undefined {
-  const defined = filters.filter((f): f is SQL => f !== undefined);
-  return defined.length === 0 ? undefined : and(...defined);
-}
+export type { AuditQuery } from "../repository";
 
 /**
  * AU-13: every read of the log is itself audited — one `audit.read` row, no batching,
