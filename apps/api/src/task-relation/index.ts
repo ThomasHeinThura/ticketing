@@ -1,8 +1,5 @@
-import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db from "../database";
-import { projectTable, taskRelationTable, taskTable } from "../database/schema";
 import {
   apiRouter,
   type BaseVariables,
@@ -20,6 +17,7 @@ import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createTaskRelation from "./controllers/create-task-relation";
 import deleteTaskRelation from "./controllers/delete-task-relation";
 import getTaskRelations from "./controllers/get-task-relations";
+import { findRelationEndpoints, findTaskReachRow } from "./repository";
 import {
   taskRelationSchema,
   taskRelationWithTasksListSchema,
@@ -35,17 +33,7 @@ async function workspaceIdOfTask(taskId: string) {
 }
 
 async function taskReachRow(taskId: string) {
-  const [task] = await db
-    .select({
-      workspaceId: projectTable.workspaceId,
-      projectId: taskTable.projectId,
-      taskId: taskTable.id,
-    })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(eq(taskTable.id, taskId))
-    .limit(1);
-  return task ?? null;
+  return (await findTaskReachRow(taskId)) ?? null;
 }
 
 function requireUserId(c: Context) {
@@ -122,14 +110,7 @@ async function scopeToRelation(c: Context, next: Next) {
   if (id) {
     rejectNulByte(id, "Task relation id");
   }
-  const [rel] = await db
-    .select({
-      sourceTaskId: taskRelationTable.sourceTaskId,
-      targetTaskId: taskRelationTable.targetTaskId,
-    })
-    .from(taskRelationTable)
-    .where(eq(taskRelationTable.id, id ?? ""))
-    .limit(1);
+  const rel = await findRelationEndpoints(id ?? "");
   if (!rel) {
     throw new HTTPException(404, { message: "Task relation not found" });
   }

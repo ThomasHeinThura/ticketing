@@ -1,22 +1,14 @@
-import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskRelationTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   lockLegacyTaskRow,
   lockProjectsAndAssertLive,
 } from "../../task/assert-task-project-live";
+import { deleteTaskRelationById, findRelationEndpoints } from "../repository";
 
 async function deleteTaskRelation(id: string, userId: string) {
-  const [rel] = await db
-    .select({
-      sourceTaskId: taskRelationTable.sourceTaskId,
-      targetTaskId: taskRelationTable.targetTaskId,
-    })
-    .from(taskRelationTable)
-    .where(eq(taskRelationTable.id, id))
-    .limit(1);
+  const rel = await findRelationEndpoints(id);
 
   if (!rel) {
     throw new HTTPException(404, {
@@ -37,10 +29,7 @@ async function deleteTaskRelation(id: string, userId: string) {
       firstTask.projectId,
       secondTask.projectId,
     ]);
-    const [relation] = await tx
-      .delete(taskRelationTable)
-      .where(eq(taskRelationTable.id, id))
-      .returning();
+    const relation = await deleteTaskRelationById(tx, id);
     return { relation, projectId: sourceTask.projectId };
   });
 
