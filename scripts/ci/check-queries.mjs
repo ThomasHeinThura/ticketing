@@ -183,6 +183,18 @@ function exportedQueryBoundary(
   depth = 0,
 ) {
   if (!type) return { kind: "unresolved" };
+  if (type.isTypeParameter?.()) {
+    let constraint;
+    try {
+      constraint = checker.getConstraintOfTypeParameter(type);
+    } catch {
+      return { kind: "unresolved" };
+    }
+    if (!constraint) return { kind: "unresolved" };
+    return isQueryBuilder(constraint, checker)
+      ? { kind: "builder" }
+      : { kind: "unresolved" };
+  }
   if (isQueryBuilder(type, checker)) return { kind: "builder" };
   if (depth >= 20 || seen.size >= 512) return { kind: "limit" };
   if (seen.has(type.id)) return { kind: "safe" };

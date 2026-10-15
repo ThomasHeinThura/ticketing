@@ -166,6 +166,26 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       "interface RepositoryShape { next?: RepositoryShape; listRows: () => Promise<{ id: string }[]> } export const repository = {} as RepositoryShape;",
     ],
     [
+      "database/generic-identity.repository.ts",
+      "export function identity<T>(value: T): T { return value; }",
+    ],
+    [
+      "database/generic-sql.repository.ts",
+      'import type { SQL } from "drizzle-orm"; export function identity<T extends SQL>(value: T): T { return value; }',
+    ],
+    [
+      "database/generic-object-escape.repository.ts",
+      "export const repository = { identity<T>(value: T): T { return value; } };",
+    ],
+    [
+      "database/generic-callback.repository.ts",
+      "export function defer<T>(callback: () => Promise<T>): Promise<T> { return callback(); }",
+    ],
+    [
+      "database/generic-row-projection.repository.ts",
+      "export function project<T extends { id: string }>(value: T): { id: string } { return { id: value.id }; }",
+    ],
+    [
       "database/default-anonymous-function.repository.ts",
       `import db from "../../database"; export default function () { return db.select(); }`,
     ],
@@ -329,6 +349,19 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       ["database/namespace.repository.ts", /exposes a query builder/],
       ["database/sql-aliased-escape.repository.ts", /exposes a query builder/],
       [
+        "database/generic-identity.repository.ts",
+        /exported repository value shape is unresolved or exceeds safe inspection limits/,
+      ],
+      ["database/generic-sql.repository.ts", /exposes a query builder/],
+      [
+        "database/generic-object-escape.repository.ts",
+        /exported repository value shape is unresolved or exceeds safe inspection limits/,
+      ],
+      [
+        "database/generic-callback.repository.ts",
+        /exported repository value shape is unresolved or exceeds safe inspection limits/,
+      ],
+      [
         "database/namespace-drizzle.repository.ts",
         /exposes a query builder|query-builder escape cannot be excluded/,
       ],
@@ -338,6 +371,19 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
         byFile.get(key(relative)) ?? "",
         expected,
         `${relative} should produce its specific ownership violation; got ${byFile.get(key(relative)) ?? "<none>"}`,
+      );
+    }
+    for (const relative of [
+      "database/generic-identity.repository.ts",
+      "database/generic-sql.repository.ts",
+      "database/generic-object-escape.repository.ts",
+      "database/generic-callback.repository.ts",
+      "database/generic-row-projection.repository.ts",
+    ]) {
+      assert.doesNotMatch(
+        byFile.get(key(relative)) ?? "",
+        /TypeScript (?:parse error|could not prove this file's types)/,
+        `${relative} must be type-clean so its specific generic-boundary result is meaningful`,
       );
     }
     assert.match(
@@ -384,6 +430,11 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       byFile.has(key("database/default-async-assimilated.repository.ts")),
       false,
       "an anonymous default async function returning rows remains valid",
+    );
+    assert.equal(
+      byFile.has(key("database/generic-row-projection.repository.ts")),
+      false,
+      "a generic input projected to a concrete row shape has a proven output",
     );
     assert.equal(
       byFile.has(key("database/private-class-method.repository.ts")),
