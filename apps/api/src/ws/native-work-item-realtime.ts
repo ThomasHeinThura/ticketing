@@ -2,14 +2,18 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { WSContext } from "hono/ws";
 import { z } from "zod";
 import db, { schema } from "../database";
-import { resolveIdentity } from "../permissions/resolve-identity";
 import { evaluateProjectRead } from "../utils/has-project-reach";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import type {
   NativeAuthorizationInvalidation,
   NativeBroadcastMessage,
 } from "./broadcast-adapter";
+import { MAX_REALTIME_CONNECTIONS_PER_PERSON } from "./limits";
 import { logRealtimeFailure } from "./log-realtime-failure";
+import {
+  authorizeProjectSocketRead,
+  resolveSocketIdentity,
+} from "./project-read-authorization";
 
 type NativeCredential = {
   userId: string;
@@ -17,6 +21,7 @@ type NativeCredential = {
   apiKeyEnabled?: boolean;
   apiKeyOwnerUserId?: string;
   apiKeyPermissions?: Record<string, string[]> | null;
+  impersonated?: boolean;
   portal: "agent" | "customer" | null;
 };
 
@@ -61,7 +66,6 @@ const authorizationInvalidationSchema = z
 const nativeConnections = new Set<NativeConnection>();
 const MAX_FRAME_BYTES = 8 * 1024;
 const MAX_TOPICS = 50;
-const MAX_CONNECTIONS_PER_PERSON = 5;
 const FRAME_WINDOW_MS = 1_000;
 const MAX_FRAMES_PER_WINDOW = 20;
 const REAUTH_INTERVAL_MS = 60_000;
@@ -93,74 +97,13 @@ export async function authorizeNativeTopic(
 } | null> {
   if (!credential.userId) return null;
   if (topic.startsWith("project:")) {
-    const projectId = topic.slice("project:".length);
-    if (!projectId || projectId.includes("\u0000")) return null;
-    const [project] = await db
-      .select({
-        id: schema.projectTable.id,
-        workspaceId: schema.projectTable.workspaceId,
-        organisationId: schema.workspaceTable.organisationId,
-      })
-      .from(schema.projectTable)
-      .innerJoin(
-        schema.workspaceTable,
-        eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
-      )
-      .where(
-        and(
-          eq(schema.projectTable.id, projectId),
-          isNull(schema.projectTable.deletedAt),
-          isNull(schema.projectTable.archivedAt),
-        ),
-      )
-      .limit(1);
-    if (!project) return null;
-    const identity = await resolveIdentity({
-      userId: credential.userId,
-      credential: credential.apiKeyId ? "api_key" : "session",
-      ...(credential.apiKeyId
-        ? {
-            apiKey: {
-              enabled: credential.apiKeyEnabled === true,
-              ownerUserId: credential.apiKeyOwnerUserId ?? "",
-            },
-          }
-        : {}),
-    });
-    const facts = {
-      projectId,
-      workspaceId: project.workspaceId,
-      organisationId: project.organisationId,
-      ancestorProjectIds: [],
-      ownerTeamId: null,
-    } as const;
-    if (!identity) return null;
-    const decision = evaluateProjectRead(
-      identity,
-      "project:read",
-      "project",
-      facts,
+    // #748: one rule for both sockets; see `authorizeProjectSocketRead`.
+    const authorized = await authorizeProjectSocketRead(
+      credential,
+      topic.slice("project:".length),
     );
-    if (!decision?.reachable || !decision.capable) return null;
-    try {
-      await validateWorkspaceAccess(
-        credential.userId,
-        project.workspaceId,
-        credential.apiKeyId,
-      );
-    } catch {
-      return null;
-    }
-    if (
-      credential.apiKeyPermissions &&
-      !credential.apiKeyPermissions.work_item?.includes("read")
-    )
-      return null;
-    return {
-      projectId,
-      workspaceId: project.workspaceId,
-      customerVisible: true,
-    };
+    if (!authorized) return null;
+    return { ...authorized, customerVisible: true };
   }
 
   if (topic.startsWith("work_item:")) {
@@ -192,18 +135,7 @@ export async function authorizeNativeTopic(
       )
       .limit(1);
     if (!item) return null;
-    const identity = await resolveIdentity({
-      userId: credential.userId,
-      credential: credential.apiKeyId ? "api_key" : "session",
-      ...(credential.apiKeyId
-        ? {
-            apiKey: {
-              enabled: credential.apiKeyEnabled === true,
-              ownerUserId: credential.apiKeyOwnerUserId ?? "",
-            },
-          }
-        : {}),
-    });
+    const identity = await resolveSocketIdentity(credential);
     const facts = {
       projectId: item.projectId,
       workspaceId: item.workspaceId,
@@ -250,7 +182,7 @@ export function addNativeConnection(
   const samePersonConnections = [...nativeConnections].filter(
     (connection) => connection.credential.userId === credential.userId,
   );
-  if (samePersonConnections.length >= MAX_CONNECTIONS_PER_PERSON) {
+  if (samePersonConnections.length >= MAX_REALTIME_CONNECTIONS_PER_PERSON) {
     ws.close(1008, "connection limit");
     return null;
   }

@@ -9,8 +9,10 @@ vi.mock("../../../apps/api/src/events", () => ({
 
 import {
   addConnection,
+  addConnectionWithinLimit,
   removeConnection,
 } from "../../../apps/api/src/ws/index";
+import { MAX_REALTIME_CONNECTIONS_PER_PERSON } from "../../../apps/api/src/ws/limits";
 
 function makeFakeWs() {
   return {
@@ -103,5 +105,41 @@ describe("addConnection / removeConnection", () => {
     tracked.length = 0;
     // Second removal should be a no-op
     expect(() => removeConnection("proj-1", conn)).not.toThrow();
+  });
+});
+
+describe("addConnectionWithinLimit (#748)", () => {
+  const open = (projectId: string, userId: string) => {
+    const conn = addConnectionWithinLimit(
+      projectId,
+      makeFakeWs(),
+      userId,
+      userId,
+      async () => true,
+    );
+    if (conn) tracked.push({ projectId, conn });
+    return conn;
+  };
+
+  it("matches the native limit and counts a person across projects", () => {
+    expect(MAX_REALTIME_CONNECTIONS_PER_PERSON).toBe(5);
+    for (let i = 0; i < 5; i++)
+      expect(open(`proj-${i}`, "limit-user")).not.toBeNull();
+    expect(open("proj-0", "limit-user")).toBeNull();
+    expect(open("proj-9", "limit-user")).toBeNull();
+    expect(open("proj-0", "someone-else")).not.toBeNull();
+  });
+
+  it("releases a slot exactly once, however often a socket is removed", () => {
+    // All on one project, so the repeated removal reaches a set that still has members.
+    const held = Array.from({ length: 5 }, () => open("proj-0", "slot-user"));
+    expect(open("proj-0", "slot-user")).toBeNull();
+    const [first] = held;
+    if (!first) throw new Error("no connection");
+    removeConnection("proj-0", first);
+    removeConnection("proj-0", first);
+    expect(open("proj-0", "slot-user")).not.toBeNull();
+    // Only ONE slot was freed: the repeated removal did not free a second.
+    expect(open("proj-0", "slot-user")).toBeNull();
   });
 });

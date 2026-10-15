@@ -12,6 +12,30 @@ export function getWsUrl(projectId: string) {
 const MAX_RETRIES = 5;
 const BASE_DELAY = 1000; // 1 second
 
+/** The server closes a person's sixth project socket with exactly this code and reason (#748). */
+export const CONNECTION_LIMIT_CLOSE_CODE = 1008;
+export const CONNECTION_LIMIT_CLOSE_REASON = "connection limit";
+
+/**
+ * How long to wait before reconnecting after a close, or `null` to stop. A close for the
+ * per-person connection limit is terminal for that tab: the server accepts the upgrade and then
+ * closes, so retrying (and resetting the count on open) would reconnect about once a second for
+ * as long as the other tabs stay open. Any other close keeps the exponential backoff.
+ */
+export function reconnectDelay(
+  close: { code: number; reason: string },
+  retries: number,
+): number | null {
+  if (
+    close.code === CONNECTION_LIMIT_CLOSE_CODE &&
+    close.reason === CONNECTION_LIMIT_CLOSE_REASON
+  ) {
+    return null;
+  }
+  if (retries >= MAX_RETRIES) return null;
+  return BASE_DELAY * 2 ** retries; // 1s, 2s, 4s, 8s, 16s
+}
+
 // Cloudflare closes idle WebSocket connections after 100 seconds of no traffic.
 // We send a lightweight ping every 30 seconds to keep the connection alive.
 const WS_PING_INTERVAL_MS = 30_000;
@@ -116,15 +140,18 @@ export function useProjectWebSocket(projectId: string) {
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         clearPing();
         wsRef.current = null;
 
-        if (retriesRef.current < MAX_RETRIES) {
-          const delay = BASE_DELAY * 2 ** retriesRef.current; // 1s, 2s, 4s, 8s, 16s
-          retriesRef.current += 1;
-          timeoutRef.current = setTimeout(connect, delay);
+        const delay = reconnectDelay(event, retriesRef.current);
+        if (delay === null) {
+          // Stop for good for this tab; the page keeps working without live updates.
+          retriesRef.current = MAX_RETRIES;
+          return;
         }
+        retriesRef.current += 1;
+        timeoutRef.current = setTimeout(connect, delay);
       };
     }
     connect();

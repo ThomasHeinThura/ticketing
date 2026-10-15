@@ -12,7 +12,11 @@ import type {
   UserBroadcast,
   UserBroadcastMessage,
 } from "./broadcast-adapter";
-import { createLegacyConnectionAuthorization } from "./legacy-connection-authorization";
+import {
+  createLegacyConnectionAuthorization,
+  LEGACY_AUTHORIZATION_REUSE_MS,
+} from "./legacy-connection-authorization";
+import { MAX_REALTIME_CONNECTIONS_PER_PERSON } from "./limits";
 import { logRealtimeFailure } from "./log-realtime-failure";
 import {
   deliverNativeBroadcast,
@@ -285,13 +289,33 @@ function deliverToLocalConnections(
   }
 }
 
+/** Open legacy project sockets per person (#748), counted across every project. */
+const projectConnectionsPerPerson = new Map<string, number>();
+
+/**
+ * Registers a legacy project socket, or returns `null` when this person already holds
+ * `MAX_REALTIME_CONNECTIONS_PER_PERSON` of them (#748). The caller closes the refused socket.
+ */
+export function addConnectionWithinLimit(
+  ...args: Parameters<typeof addConnection>
+): ProjectConnection | null {
+  const [, , userId] = args;
+  if (
+    (projectConnectionsPerPerson.get(userId) ?? 0) >=
+    MAX_REALTIME_CONNECTIONS_PER_PERSON
+  ) {
+    return null;
+  }
+  return addConnection(...args);
+}
+
 export function addConnection(
   projectId: string,
   ws: WSContext,
   userId: string,
   initiatorId: string,
   authorize: () => Promise<boolean> = async () => false,
-) {
+): ProjectConnection {
   if (!projectConnections.has(projectId)) {
     projectConnections.set(projectId, new Set());
   }
@@ -299,11 +323,18 @@ export function addConnection(
     ws,
     userId,
     initiatorId,
-    authorization: createLegacyConnectionAuthorization(ws, authorize, () =>
-      removeConnection(projectId, conn),
+    authorization: createLegacyConnectionAuthorization(
+      ws,
+      authorize,
+      () => removeConnection(projectId, conn),
+      LEGACY_AUTHORIZATION_REUSE_MS,
     ),
   };
   projectConnections.get(projectId)?.add(conn);
+  projectConnectionsPerPerson.set(
+    userId,
+    (projectConnectionsPerPerson.get(userId) ?? 0) + 1,
+  );
   return conn;
 }
 
@@ -311,7 +342,14 @@ export function removeConnection(projectId: string, conn: ProjectConnection) {
   conn.authorization.dispose();
   const connections = projectConnections.get(projectId);
   if (connections) {
-    connections.delete(conn);
+    // Only an actual removal releases a slot: a rejected socket is removed once by its
+    // authorization and again by its close handler.
+    if (connections.delete(conn)) {
+      const remaining = (projectConnectionsPerPerson.get(conn.userId) ?? 1) - 1;
+      if (remaining > 0)
+        projectConnectionsPerPerson.set(conn.userId, remaining);
+      else projectConnectionsPerPerson.delete(conn.userId);
+    }
     if (connections.size === 0) {
       projectConnections.delete(projectId);
     }
@@ -324,13 +362,14 @@ async function reauthorizeLegacyConnections(
   const checks: Array<Promise<void>> = [];
   for (const [userId, connections] of userConnections) {
     if (target.userId && target.userId !== userId) continue;
-    for (const conn of connections) checks.push(conn.authorization.check());
+    for (const conn of connections)
+      checks.push(conn.authorization.check(undefined, { fresh: true }));
   }
   for (const [projectId, connections] of projectConnections) {
     if (target.projectId && target.projectId !== projectId) continue;
     for (const conn of connections) {
       if (target.userId && target.userId !== conn.userId) continue;
-      checks.push(conn.authorization.check());
+      checks.push(conn.authorization.check(undefined, { fresh: true }));
     }
   }
   await Promise.all(checks);

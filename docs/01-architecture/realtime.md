@@ -36,9 +36,25 @@ one socket and explicit `subscribe` / `unsubscribe` frames for work-item topics.
 their existing clients; they are not sources for native work-item event delivery. Their
 retirement requires migrating those consumers separately. Both legacy sockets reauthenticate
 before every event and on the 60-second floor, including private identity invalidation
-signals. The project socket also rereads its project's current workspace reach before
-delivery. Loss of the original credential, an inactive or banned identity, or lost project
-reach closes that legacy connection without sending the queued event. A failed authority
+signals. The project socket decides exactly what the native `project:{projectId}` topic
+decides: one shared rule (`authorizeProjectSocketRead`) applies **project reach**, the
+**`project:read`** capability, an API key's stored scope (the key must hold `project:read` and
+`work_item:read`), the project's own customer organisation (`rbac.md` Reach step 6) and the
+exclusion of archived and soft-deleted projects. A project the caller cannot reach, one in
+another workspace, an archived or soft-deleted one, an unknown id, a caller without the
+capability and a key without the scope are all refused with the same `401` before the upgrade
+(`1008` on a later recheck), so no subscription exists for them. An instance admin with no
+workspace role holds reach but no `project:read`, and is refused on both sockets. The socket
+rereads that decision before delivery. A person may hold at most **five** legacy project
+sockets **per API replica** (the native limit, counted in each process, so N replicas allow up to 5N); a sixth is closed with `1008` and reason "connection limit". To
+keep a burst of events from repeating the whole lookup (about eleven queries) once per event per
+connection, a legacy project socket reuses one passing lookup for **1.5 seconds**: a
+revocation that is announced on the control channel (membership, role, project, session or
+archive changes publish `identity.invalidate`) and the 60-second floor always look again at
+once, and a revocation that is written without being announced is noticed by the next event
+after the window. Loss of the original credential, an inactive or banned identity, or lost
+project reach (including a removed project membership) closes that legacy connection without
+sending the queued event. A failed authority
 lookup fails closed. Event checks are ordered per connection; disconnecting discards in-flight
 delivery, and an exhausted bounded authorization queue closes the connection so the client
 can reconnect and refetch. The native handshake authenticates
@@ -57,8 +73,9 @@ returns `{ "type": "subscribed", "topic": "…" }`. A missing, foreign, archived
 otherwise unreadable resource returns the same `{ "type": "subscription_denied" }`
 shape; the server does not reveal whether it exists. The topic identifier is resolved from
 the database and compared to authoritative project/work-item containment, never trusted as
- a request hint. `project:{projectId}` requires the same workspace reach and `work_item:read`
-used by the project work-item list. `work_item:{key}` requires the same `work_item:read`
+ a request hint. `project:{projectId}` requires project reach (not only workspace
+membership) and the `project:read` capability, plus `work_item:read` scope for an API key,
+the same decision the legacy project socket makes. `work_item:{key}` requires the same `work_item:read`
 capability and row/project reach as `GET /api/work-items/{key}`. `user:` and `instance` topics are reserved for later protocol migrations and are denied by the native P0 work-item endpoint. Existing notification delivery continues over the legacy user socket.
 
 Subscription authorization is refreshed on the 60-second floor and on existing identity,
@@ -108,7 +125,7 @@ policy.
 
 | Topic | Who subscribes | Carries |
 | --- | --- | --- |
-| `project:{projectId}` | Native P0: readers with workspace reach and `work_item:read` | Work item create/update and state changes |
+| `project:{projectId}` | Native P0: readers with project reach and `project:read` (a key also needs `work_item:read`); the legacy `/api/ws/{projectId}` socket applies the same rule | Work item create/update and state changes |
 | `work_item:{key}` | Native P0: readers with item reach and `work_item:read` | Work item detail and visible activity invalidations |
 | `user:{personId}` | Legacy user socket during migration; native topic reserved | Notifications, assignment to you, approval requests |
 | `instance` | Later protocol scope; denied by native P0 endpoint | Plugin config changes, job failures, import progress (`import.chunk_completed`) |
@@ -284,6 +301,7 @@ small "live updates unavailable" indicator. The application remains fully usable
 | `ws-explicit-credential-origin.test.ts` | On the agent host, a valid explicit `x-api-key` and bearer API key without `Origin` retain access subject to existing reach policy; a supplied foreign Origin is refused. An invalid explicit bearer token or key with a valid cookie cannot fall back to that cookie. |
 | `ws-portal-session.test.ts` | The agent host rejects non-agent, unbound legacy, and revoked session rows before upgrade. The portal public edge returns CP-19's generic 404 without session resolution; internal portal session binding tests do not assert public socket reachability. |
 | `ws-subscribe-policy.test.ts` | Subscribing to an out-of-reach project is refused, indistinguishably from a non-existent one |
+| `ws-project-reach.test.ts` | The legacy `/api/ws/{projectId}` socket: an in-reach member (session and scoped API key) and a workspace owner or admin subscribe and receive events; a same-workspace member without project reach, a member whose project role lacks `project:read`, a key scoped to anything but `project:read` and `work_item:read`, an instance admin with no workspace role, another workspace's member, and a missing, archived or soft-deleted project receive the identical `401` with no upgrade; revoking project membership or the capability closes an open socket; a customer and an archived project are decided identically to the native socket, from the project's own customer organisation; at most five sockets per person across credentials; a burst of events costs one authority lookup; an unannounced revocation closes within the reuse window and an announced one at once |
 | `ws-reauthorize.test.ts` | Subscribe, revoke the membership, assert no further events arrive |
 | `ws-frame-validation.test.ts` | Malformed frames and `user:` topics for another person are refused |
 | `ws-fanout.test.ts` | Two clients, one mutation, both receive it once |

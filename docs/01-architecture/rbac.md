@@ -568,6 +568,23 @@ runs after reach, so an outsider never learns the project exists from that `403`
 `project-reach-guard.test.ts` fails any such route that omits project reach, and the
 integration tables (`project-scoped-reach.test.ts`) drive the real middleware per route.
 
+**The legacy project socket requires project reach and `project:read`** (#745, #748).
+`GET /api/ws/{projectId}` is a delegated WebSocket route (there is no response for a policy
+middleware to shape), so its own upgrade gate decides: the origin policy first, then the one
+rule the native `project:{id}` topic also uses (`authorizeProjectSocketRead`): `reaches()` over
+the project's persisted facts (instance admin, `sees_all` in the workspace, project membership;
+a customer only the projects whose own customer organisation, read from the project row, is
+theirs), the `project:read` capability on that project, and, for an API key, the key's stored
+scope (the key must hold `project:read` and `work_item:read`). Reach is not authority: an
+instance admin with no workspace role reaches every project but holds no `project:read`, and is
+refused on both sockets. A project the caller cannot reach, one in another workspace, a
+soft-deleted or archived one, an unknown id, a caller without the capability and a key without
+the scope all answer the same `401` before any upgrade, so no subscription is created. The
+check re-runs on the 60-second floor, on every announced authority change and before delivered
+events (reusing one passing lookup for 1.5 seconds per socket, see
+[realtime.md](realtime.md)). `project-reach-guard.test.ts` requires the route to carry the
+project-reach mark and `ws-project-reach.test.ts` drives it.
+
 **Acting on a specific task requires reach to that task's project** (#720, decision 720-A).
 This holds for the routes outside the work-item surface that name a task:
 

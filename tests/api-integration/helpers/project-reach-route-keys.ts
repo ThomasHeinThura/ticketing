@@ -79,6 +79,14 @@ export const TASK_TARGET_WORK_ITEM_ROUTE_KEYS = [
 ] as const;
 
 /**
+ * WebSocket upgrade routes addressed to one project (#745). Their policy is `delegated:
+ * "websocket"` (there is no Hono response for a policy middleware to shape), so the upgrade
+ * handler itself must decide PROJECT reach and carries the reach mark the guard reads.
+ * `ws-project-reach.test.ts` drives every key here against the real listener.
+ */
+export const PROJECT_SOCKET_ROUTE_KEYS = ["GET /api/ws/{projectId}"] as const;
+
+/**
  * Workspace-level LIST and SEARCH routes that return rows from more than one project (#740).
  * Each declares `requireReachFilteredList` and restricts its rows to the caller's reachable
  * projects in SQL; `project-reach-reads.test.ts` drives them for sessions and API keys.

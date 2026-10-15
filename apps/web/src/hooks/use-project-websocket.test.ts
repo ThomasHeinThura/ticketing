@@ -4,7 +4,7 @@ vi.mock("@taskdesk/libs", () => ({
   windowId: "test-window-id",
 }));
 
-import { getWsUrl } from "./use-project-websocket";
+import { getWsUrl, reconnectDelay } from "./use-project-websocket";
 
 describe("getWsUrl", () => {
   beforeEach(() => {
@@ -57,5 +57,38 @@ describe("getWsUrl", () => {
       `${expectedScheme}//${window.location.host}/api/ws/project-123?windowId=test-window-id`,
     );
     expect(() => new WebSocket(url)).not.toThrow();
+  });
+});
+
+describe("reconnectDelay", () => {
+  it("backs off exponentially for ordinary closes", () => {
+    const close = { code: 1006, reason: "" };
+    expect([0, 1, 2, 3, 4].map((n) => reconnectDelay(close, n))).toEqual([
+      1000, 2000, 4000, 8000, 16000,
+    ]);
+  });
+
+  it("gives up after the retry budget", () => {
+    expect(reconnectDelay({ code: 1006, reason: "" }, 5)).toBeNull();
+  });
+
+  it("retries a 1008 that is not the connection limit (for example lost authorization)", () => {
+    expect(
+      reconnectDelay({ code: 1008, reason: "authorization unavailable" }, 0),
+    ).toBe(1000);
+  });
+
+  it("never retries a connection-limit close, whatever the retry count", () => {
+    for (const retries of [0, 1, 4]) {
+      expect(
+        reconnectDelay({ code: 1008, reason: "connection limit" }, retries),
+      ).toBeNull();
+    }
+  });
+
+  it("does not treat the same reason under another code as terminal", () => {
+    expect(reconnectDelay({ code: 1011, reason: "connection limit" }, 0)).toBe(
+      1000,
+    );
   });
 });
