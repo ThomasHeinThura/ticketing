@@ -1,4 +1,6 @@
 import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@testing-library/react";
+import { afterEach } from "vitest";
 import { installJSDOMLayoutStubs } from "./jsdom-layout";
 import { installJSDOMLocalStorage } from "./jsdom-local-storage";
 
@@ -13,3 +15,12 @@ installJSDOMLocalStorage(testGlobal.jsdom.window);
 installJSDOMLayoutStubs(
   globalThis as unknown as Parameters<typeof installJSDOMLayoutStubs>[0],
 );
+
+// Testing Library registers its automatic cleanup only when test globals are
+// enabled, and this suite runs without them. Unmount every rendered tree after
+// each test, so no React work is still scheduled when the JSDOM environment is
+// torn down ("window is not defined" from the scheduler, reported as an
+// unhandled error that fails the run even though every test passed).
+afterEach(() => {
+  cleanup();
+});
