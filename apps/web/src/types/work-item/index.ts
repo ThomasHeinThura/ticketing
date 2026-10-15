@@ -55,7 +55,13 @@ const VALID_PRIORITIES: ReadonlySet<string> = new Set([
  * field -- a key whose trailing number doesn't match `row.number` is exactly as
  * untrustworthy as one with no trailing number at all.
  */
-export type WorkItemField = "key" | "title" | "priority" | "dueDate";
+export type WorkItemField =
+  | "key"
+  | "title"
+  | "priority"
+  | "dueDate"
+  | "stateName"
+  | "assigneeName";
 
 export type WorkItemRow = WorkItem & {
   unavailableFields: WorkItemField[];
@@ -118,12 +124,27 @@ export function parseWorkItemRow(raw: WorkItem): WorkItemRow {
   const validDueDate = hasValidDueDate(raw.dueDate);
   if (!validDueDate) unavailableFields.push("dueDate");
 
+  // The structured list can show State and Assignee columns, so the resolved names are
+  // validated like the other displayed fields. A null `assigneeName` is a valid wire value
+  // (unassigned, or an assignee with no linked login); only a malformed one is unavailable.
+  const validStateName =
+    typeof raw.stateName === "string" && raw.stateName.trim().length > 0;
+  if (!validStateName) unavailableFields.push("stateName");
+
+  const validAssigneeName =
+    raw.assigneeName === null ||
+    (typeof raw.assigneeName === "string" &&
+      raw.assigneeName.trim().length > 0);
+  if (!validAssigneeName) unavailableFields.push("assigneeName");
+
   return {
     ...raw,
     key: validKey ? raw.key : "",
     title: validTitle ? raw.title : "",
     priority: validPriority ? raw.priority : null,
     dueDate: validDueDate ? raw.dueDate : null,
+    stateName: validStateName ? raw.stateName : "",
+    assigneeName: validAssigneeName ? raw.assigneeName : null,
     unavailableFields,
   };
 }
