@@ -6,8 +6,8 @@
 # Compose *concatenates* `ports:` across files: an overlay can add a published
 # port, it cannot take one away. `TASKDESK_TRUST_PROXY` is only sound because
 # port 5173 is reachable from the proxy network alone, so publishing it here
-# would publish it in production too. Publishing 5173 is the job of
-# deploy/compose.local.yml, which production never loads.
+# would publish it in production too. No overlay publishes it either: the local
+# stack reaches it through its own Traefik (#752).
 #   docs/05-operations/traefik-and-domains.md
 #
 # Never use this file on its own — always base + one overlay:
