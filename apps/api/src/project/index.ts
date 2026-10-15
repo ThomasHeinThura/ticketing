@@ -1020,7 +1020,16 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
         slug,
         description,
         workspaceId,
-        configuration,
+        // Write only the engagement fields the caller SENT. `configuration` above merges
+        // the stored values for PR-9 validation; writing that merge back would let a
+        // plain `project:update` rename revert a concurrent `project:manage_settings`
+        // change it read before (#767 security review, finding 2).
+        {
+          kind: body.kind,
+          supportLevel: body.supportLevel,
+          serviceCalendarId: body.serviceCalendarId,
+          defaultCommentVisibility: body.defaultCommentVisibility,
+        },
       );
       return c.json(updatedProject, 200);
     } catch (error) {

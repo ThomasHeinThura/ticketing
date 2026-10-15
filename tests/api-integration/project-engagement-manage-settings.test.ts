@@ -9,7 +9,8 @@
  */
 import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { Client } from "pg";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { createCalendar } from "../../apps/api/src/service-calendar/repository";
@@ -325,5 +326,52 @@ describe("API integration: PUT /api/project/{id} engagement fields need project:
       expect(denied.status).toBe(403);
       await expectEngagementUnchanged(project.id);
     });
+  });
+});
+
+describe("plain updates never write engagement columns (#767 security review, finding 2)", () => {
+  beforeEach(async () => resetTestDatabase());
+
+  it("a project:update rename issues an UPDATE that leaves kind, support level and calendar alone", async () => {
+    const { actor, project } = await actorWithLegacyMap("lead", LEGACY_UPDATE);
+    mockAuthenticatedSession(actor.user);
+    const { app } = createApp();
+
+    const statements: string[] = [];
+    const originalQuery = Client.prototype.query;
+    const spy = vi
+      .spyOn(Client.prototype, "query")
+      .mockImplementation(function (this: Client, ...args: unknown[]) {
+        const [query] = args;
+        const text =
+          typeof query === "string"
+            ? query
+            : query && typeof query === "object" && "text" in query
+              ? String((query as { text: unknown }).text)
+              : "";
+        if (/^\s*update\s+"project"\s/i.test(text)) statements.push(text);
+        return (originalQuery as (...a: unknown[]) => unknown).apply(
+          this,
+          args,
+        );
+      } as unknown as typeof Client.prototype.query);
+    try {
+      const renamed = await putProject(app, project.id, {
+        ...fullBody(project),
+        name: "Renamed without engagement fields",
+      });
+      expect(renamed.status).toBe(200);
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(statements.length).toBeGreaterThan(0);
+    for (const text of statements) {
+      // Only the SET clause: RETURNING lists every column.
+      const setClause = text.split(/\swhere\s/i)[0] ?? text;
+      expect(setClause).not.toMatch(
+        /"kind"|"support_level"|"service_calendar_id"/,
+      );
+    }
   });
 });
