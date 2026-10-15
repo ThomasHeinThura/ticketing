@@ -94,8 +94,8 @@ while [ $# -gt 0 ]; do
 done
 
 # ---------------------------------------------------------------------------
-# Compose file selection. The base file publishes no application port; the
-# local overlay is the only one that does, and production never loads it.
+# Compose file selection. No file publishes the application port: the base and
+# production overlay never did, and the local overlay stopped in #752.
 # ---------------------------------------------------------------------------
 COMPOSE_FILES=(-f compose.yml)
 case "$MODE" in
@@ -377,8 +377,9 @@ assert_port_unpublished() {
      TASKDESK_TRUST_PROXY is only sound because the application port is reachable
      from the proxy network alone: published, a client can bypass Traefik and
      forge X-Forwarded-For directly. Compose concatenates \`ports:\` across files,
-     so this usually means a local overlay was loaded. Bring the stack down and
-     re-run without deploy/compose.local.yml.
+     so an overlay with a \`ports:\` entry for the taskdesk service was loaded.
+     No shipped overlay has one; remove the entry from your own overlay, or
+     bring the stack down and re-run without it.
      docs/05-operations/traefik-and-domains.md"
   fi
   ok "no application port is published"

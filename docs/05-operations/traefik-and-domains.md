@@ -85,9 +85,9 @@ Both hostnames reach the same container. The application selects the bundle from
 `Host` header, and the portal boundary middleware rejects a session that does not match.
 
 **The application port is never published in production.** Neither the base `compose.yml`
-nor `deploy/compose.prod.yml` declares `ports:` on the `taskdesk` service; publishing 5173 is
-the job of `deploy/compose.local.yml`, which production never loads. It has to be that way
-round — Compose concatenates `ports:` across files, so an overlay can add a published port
+nor `deploy/compose.prod.yml` declares `ports:` on the `taskdesk` service, and since #752
+neither does `deploy/compose.local.yml`; the local stack reaches 5173 through its own
+Traefik. It has to be that way round — Compose concatenates `ports:` across files, so an overlay can add a published port
 but cannot remove one ([deployment.md](deployment.md)). In production, port 5173 is reachable
 only on the Docker network Traefik shares with the container.
 
@@ -96,8 +96,8 @@ through exactly one proxy hop, so `X-Forwarded-For` at that hop is the client an
 header is discarded. In the **shared-Traefik** pattern below the same rule holds — TaskDesk
 attaches to the existing proxy network and publishes nothing — and `install.sh` refuses a
 `--env production` install if it finds 5173 already bound on the host
-([one-line-install.md](one-line-install.md)). Locally, 5173 being bound is the expected
-state, so the check does not apply.
+([one-line-install.md](one-line-install.md)). That check applies to production installs
+only.
 
 **One hop is the count for this arrangement, not a default to carry elsewhere.** Where a CDN
 or load balancer sits in front of Traefik there are two appending hops and the value is `2`.
