@@ -6,6 +6,23 @@ import { API } from "typescript/unstable/sync";
 import { analyzeQueryOwnership, isRepositoryPath } from "./check-queries.mjs";
 import { repoRoot } from "./lib/repo.mjs";
 
+const infrastructureFiles = [
+  "schema.ts",
+  "relations.ts",
+  "index.ts",
+  "executor.ts",
+  "resolve-database-url.ts",
+  "wait-for-database.ts",
+  "prepare-database-startup.ts",
+  "migration-schema.ts",
+  "migrate-membership-provenance.ts",
+  "ensure-application-role.ts",
+  "assert-application-role-is-not-privileged.ts",
+  "assert-no-migration-url-in-api-process.ts",
+  "append-only-tables.ts",
+  "scram-sha-256.ts",
+];
+
 test("query ownership checker kills syntactic/type-resolved escapes and keeps valid repository work", async () => {
   const dir = mkdtempSync(
     path.join(repoRoot, "apps/api/.query-check-fixture-"),
@@ -186,6 +203,26 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       "export function project<T extends { id: string }>(value: T): { id: string } { return { id: value.id }; }",
     ],
     [
+      "database/generic-union.repository.ts",
+      "export function maybeIdentity<T>(value: T): T | undefined { return value; }",
+    ],
+    [
+      "database/imported-sql-shape.ts",
+      'import type { SQL } from "drizzle-orm"; export interface Escape { read(): SQL }',
+    ],
+    [
+      "database/imported-sql-shape.repository.ts",
+      'import { sql } from "drizzle-orm"; import type { Escape } from "./imported-sql-shape"; export const repository: Escape = { read() { return sql`select 1`; } };',
+    ],
+    [
+      "database/imported-row-shape.ts",
+      "export interface Rows { read(): Promise<{ id: string }[]> }",
+    ],
+    [
+      "database/imported-row-shape.repository.ts",
+      'import type { Rows } from "./imported-row-shape"; export const repository: Rows = { async read() { return [{ id: "id" }]; } };',
+    ],
+    [
       "database/default-anonymous-function.repository.ts",
       `import db from "../../database"; export default function () { return db.select(); }`,
     ],
@@ -358,6 +395,11 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
         /exported repository value shape is unresolved or exceeds safe inspection limits/,
       ],
       [
+        "database/generic-union.repository.ts",
+        /exported repository value shape is unresolved or exceeds safe inspection limits/,
+      ],
+      ["database/imported-sql-shape.repository.ts", /exposes a query builder/],
+      [
         "database/generic-callback.repository.ts",
         /exported repository value shape is unresolved or exceeds safe inspection limits/,
       ],
@@ -379,6 +421,9 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       "database/generic-object-escape.repository.ts",
       "database/generic-callback.repository.ts",
       "database/generic-row-projection.repository.ts",
+      "database/generic-union.repository.ts",
+      "database/imported-sql-shape.repository.ts",
+      "database/imported-row-shape.repository.ts",
     ]) {
       assert.doesNotMatch(
         byFile.get(key(relative)) ?? "",
@@ -437,6 +482,11 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       "a generic input projected to a concrete row shape has a proven output",
     );
     assert.equal(
+      byFile.has(key("database/imported-row-shape.repository.ts")),
+      false,
+      "an imported public interface with a concrete row-returning method remains valid",
+    );
+    assert.equal(
       byFile.has(key("database/private-class-method.repository.ts")),
       false,
       "private/protected implementation methods do not escape the repository boundary",
@@ -470,24 +520,8 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
 });
 
 test("repository scope is the static exact list, with no database-directory wildcard", () => {
-  const infrastructure = [
-    "schema.ts",
-    "relations.ts",
-    "index.ts",
-    "executor.ts",
-    "resolve-database-url.ts",
-    "wait-for-database.ts",
-    "prepare-database-startup.ts",
-    "migration-schema.ts",
-    "migrate-membership-provenance.ts",
-    "ensure-application-role.ts",
-    "assert-application-role-is-not-privileged.ts",
-    "assert-no-migration-url-in-api-process.ts",
-    "append-only-tables.ts",
-    "scram-sha-256.ts",
-  ];
-  assert.equal(infrastructure.length, 14);
-  for (const file of infrastructure)
+  assert.equal(infrastructureFiles.length, 14);
+  for (const file of infrastructureFiles)
     assert.equal(isRepositoryPath(`apps/api/src/database/${file}`), true, file);
   assert.equal(isRepositoryPath("apps/api/src/database/new-file.ts"), false);
   assert.equal(isRepositoryPath("apps/api/src/database/helper.ts"), false);
@@ -500,4 +534,57 @@ test("repository scope is the static exact list, with no database-directory wild
     isRepositoryPath("apps/api/src/example/repository/nested/query.ts"),
     true,
   );
+});
+
+test("the real analyzer honors all exact persistence files and rejects a nearby unlisted file", async () => {
+  const dir = mkdtempSync(
+    path.join(repoRoot, "apps/api/src/database/.query-scope-fixture-"),
+  );
+  const neighbor = path.join(dir, "neighbor.ts");
+  writeFileSync(
+    neighbor,
+    'import db from "../index"; export const run = () => db.select();',
+  );
+  const infra = infrastructureFiles.map((file) =>
+    path.join(repoRoot, "apps/api/src/database", file),
+  );
+  const files = [...infra, neighbor];
+  const api = new API({ cwd: repoRoot });
+  let snapshot;
+  try {
+    snapshot = api.updateSnapshot({
+      openProjects: [path.join(repoRoot, "apps/api/tsconfig.json")],
+      openFiles: files,
+    });
+    const violations = analyzeQueryOwnership({
+      files,
+      snapshot,
+      root: repoRoot,
+    });
+    const locationViolations = violations.filter((item) =>
+      /outside an allowed repository or explicit persistence-infrastructure file/.test(
+        item,
+      ),
+    );
+    assert.equal(
+      locationViolations.some((item) =>
+        item.includes("apps/api/src/database/.query-scope-fixture-"),
+      ),
+      true,
+      "the nearby unlisted source must be rejected by the actual analyzer",
+    );
+    assert.equal(
+      locationViolations.some((item) =>
+        infrastructureFiles.some((file) =>
+          item.includes(`apps/api/src/database/${file}`),
+        ),
+      ),
+      false,
+      "all 14 exact infrastructure sources must be allowed by the actual analyzer",
+    );
+  } finally {
+    snapshot?.dispose();
+    api.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

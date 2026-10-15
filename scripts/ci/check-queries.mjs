@@ -119,6 +119,33 @@ function diagnosticMessage(value) {
   return parts.join(" ") || "unavailable diagnostic message";
 }
 
+function isTypeScriptLibraryDeclaration(declaration) {
+  const file = String(
+    declaration.path ?? declaration.getSourceFile?.().fileName ?? "",
+  ).replaceAll("\\", "/");
+  return /(?:\/typescript\/lib|\/@typescript\/typescript-[^/]+\/lib)\/lib\.[^/]+\.d\.ts$/.test(
+    file,
+  );
+}
+
+function visibleMemberDeclaration(declaration) {
+  let node = declaration;
+  if (typeof declaration.resolve === "function") {
+    try {
+      node = declaration.resolve();
+    } catch {
+      return undefined;
+    }
+  }
+  if (!node) return undefined;
+  const modifiers = node.modifiers ?? [];
+  return !modifiers.some((modifier) =>
+    [ts.SyntaxKind.PrivateKeyword, ts.SyntaxKind.ProtectedKeyword].includes(
+      modifier.kind,
+    ),
+  );
+}
+
 function importAlias(symbol) {
   return (symbol?.getDeclarations?.() ?? []).some(
     (declaration) =>
@@ -178,7 +205,6 @@ function exportedQueryBoundary(
   type,
   checker,
   source,
-  publicMembers,
   seen = new Set(),
   depth = 0,
 ) {
@@ -206,6 +232,22 @@ function exportedQueryBoundary(
   )
     return { kind: "unresolved" };
 
+  // Every constituent of a union or intersection is part of the public output graph.
+  // In particular, T | undefined must not hide an unconstrained type parameter.
+  const constituents = type.getTypes?.() ?? [];
+  if (constituents.length) {
+    for (const constituent of constituents) {
+      const nested = exportedQueryBoundary(
+        constituent,
+        checker,
+        source,
+        seen,
+        depth + 1,
+      );
+      if (nested.kind !== "safe") return nested;
+    }
+  }
+
   // Promise type arguments must be inspected before their awaited result: async function
   // return inference can otherwise reduce a returned builder to its assimilated row type.
   try {
@@ -214,7 +256,6 @@ function exportedQueryBoundary(
         argument,
         checker,
         source,
-        publicMembers,
         seen,
         depth + 1,
       );
@@ -229,7 +270,6 @@ function exportedQueryBoundary(
       awaited,
       checker,
       source,
-      publicMembers,
       seen,
       depth + 1,
     );
@@ -242,7 +282,6 @@ function exportedQueryBoundary(
         checker.getReturnTypeOfSignature(signature),
         checker,
         source,
-        publicMembers,
         seen,
         depth + 1,
       );
@@ -250,28 +289,41 @@ function exportedQueryBoundary(
     }
   }
 
-  // Walk only declarations that form source-level public object/class APIs. This avoids
-  // recursively inspecting every method on imported table/schema implementation types.
+  // A visible imported interface is part of the same public output contract as a local
+  // declaration. Follow every member type edge and exclude only members whose declarations
+  // prove private/protected visibility. Known database/query implementation types are
+  // classified above before their internals are traversed.
   for (const property of checker.getPropertiesOfType(type)) {
-    const declarations =
-      property.declarations ?? property.getDeclarations?.() ?? [];
-    const publicApi = declarations.some((declaration) => {
-      if (
-        (declaration.path ?? declaration.getSourceFile?.().fileName) !==
-        (source.path ?? source.fileName)
-      )
-        return false;
-      if (!publicMembers.has(declaration.index)) return false;
-      return [
+    const declarations = (
+      property.declarations ??
+      property.getDeclarations?.() ??
+      []
+    ).filter((declaration) => !isTypeScriptLibraryDeclaration(declaration));
+    // Built-in prototype methods (Array/Function/Date, etc.) do not represent the
+    // repository's returned data contract; their element/value types are followed through
+    // type arguments and signatures above.
+    if (!declarations.length) continue;
+    const memberDeclarations = declarations.filter((declaration) =>
+      [
         ts.SyntaxKind.MethodDeclaration,
         ts.SyntaxKind.MethodSignature,
         ts.SyntaxKind.PropertyAssignment,
         ts.SyntaxKind.PropertyDeclaration,
         ts.SyntaxKind.PropertySignature,
         ts.SyntaxKind.GetAccessor,
-      ].includes(declaration.kind);
-    });
-    if (!publicApi) continue;
+        ts.SyntaxKind.SetAccessor,
+        ts.SyntaxKind.Parameter,
+      ].includes(declaration.kind),
+    );
+    if (!memberDeclarations.length) {
+      return { kind: "unresolved" };
+    }
+    const visibility = memberDeclarations.map(visibleMemberDeclaration);
+    if (visibility.includes(undefined)) return { kind: "unresolved" };
+    const publicDeclarations = memberDeclarations.filter(
+      (_declaration, index) => visibility[index],
+    );
+    if (!publicDeclarations.length) continue;
     let propertyType;
     try {
       propertyType = checker.getTypeOfSymbolAtLocation(property, source);
@@ -282,7 +334,16 @@ function exportedQueryBoundary(
       propertyType,
       checker,
       source,
-      publicMembers,
+      seen,
+      depth + 1,
+    );
+    if (nested.kind !== "safe") return nested;
+  }
+  for (const indexInfo of checker.getIndexInfosOfType(type)) {
+    const nested = exportedQueryBoundary(
+      indexInfo.valueType,
+      checker,
+      source,
       seen,
       depth + 1,
     );
@@ -588,13 +649,11 @@ export function analyzeQueryOwnership({
     violations.push(violation(relative, `line ${line}: ${message}`));
   for (const absolute of files) {
     const relative = path.relative(root, absolute).split(path.sep).join("/");
-    const sourceRelative = path
-      .relative(apiSourceRoot, absolute)
-      .split(path.sep)
-      .join("/");
+    const sourceRelative = path.relative(apiSourceRoot, absolute);
     if (sourceRelative.startsWith("../") || path.isAbsolute(sourceRelative))
       continue;
-    const allowed = isRepositoryPath(sourceRelative);
+    // `INFRA` and repository path patterns use repository-root-relative paths.
+    const allowed = isRepositoryPath(relative);
     const project = snapshot.getDefaultProjectForFile(absolute);
     const source = project?.program.getSourceFile(absolute);
     if (!project || !source) {
@@ -781,32 +840,10 @@ export function analyzeQueryOwnership({
     visit(source);
 
     // Public repository boundaries return rows/DTOs/scalars, never query builders.
-    if (allowed) {
-      const publicMembers = new Set();
-      const memberKinds = new Set([
-        ts.SyntaxKind.MethodDeclaration,
-        ts.SyntaxKind.MethodSignature,
-        ts.SyntaxKind.PropertyAssignment,
-        ts.SyntaxKind.PropertyDeclaration,
-        ts.SyntaxKind.PropertySignature,
-        ts.SyntaxKind.GetAccessor,
-      ]);
-      const collectPublicMembers = (node) => {
-        if (memberKinds.has(node.kind)) {
-          const modifiers = node.modifiers ?? [];
-          if (
-            !modifiers.some((modifier) =>
-              [
-                ts.SyntaxKind.PrivateKeyword,
-                ts.SyntaxKind.ProtectedKeyword,
-              ].includes(modifier.kind),
-            )
-          )
-            publicMembers.add(node.index);
-        }
-        node.forEachChild?.(collectPublicMembers);
-      };
-      collectPublicMembers(source);
+    // The exact infrastructure files are permitted to expose the low-level handles,
+    // schema, and migration plumbing repositories consume. The public result-shape rule
+    // applies to repository modules, not those explicit infrastructure modules.
+    if (allowed && !INFRA.has(relative)) {
       // Use the compiler's runtime module surface as the invariant. Syntax-only export
       // enumeration misses anonymous defaults and namespace/star re-exports; AST is used
       // solely to distinguish explicitly type-only aliases, which have no runtime value.
@@ -902,6 +939,7 @@ export function analyzeQueryOwnership({
               return;
             }
             for (const member of members) inspectExport(member, depth + 1);
+            return;
           }
 
           let type;
@@ -917,12 +955,7 @@ export function analyzeQueryOwnership({
             );
             return;
           }
-          const result = exportedQueryBoundary(
-            type,
-            checker,
-            source,
-            publicMembers,
-          );
+          const result = exportedQueryBoundary(type, checker, source);
           if (result.kind === "builder")
             reportNode(
               source,
