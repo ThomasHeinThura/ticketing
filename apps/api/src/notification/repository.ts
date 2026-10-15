@@ -1,15 +1,22 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { schema } from "../database";
 import type { DbTransaction } from "../events/outbox";
 import { isSupportedNotificationResourceEvent } from "./resource-contract";
 
 export type CurrentNotificationResource = {
+  workItemId?: string;
   workspaceId: string;
   projectId: string | null;
   organisationId: string | null;
   visibleToPersonIds: readonly string[] | null;
   customerVisible: boolean;
   staffUrl: string | null;
+};
+
+export type NativeNotificationResourceRequest = {
+  resourceType: "work_item" | "comment";
+  resourceId: string;
+  eventKind: string;
 };
 
 type ResourceRow = {
@@ -34,6 +41,177 @@ function visiblePeople(
   return customerVisibility === "private"
     ? [...new Set([...(requesterId ? [requesterId] : []), ...participantIds])]
     : null;
+}
+
+function resourceKey(resourceType: string, resourceId: string) {
+  return `${resourceType}\u0000${resourceId}`;
+}
+
+/** Batch-load current native inbox resource facts: one item query, one comment query,
+ * and one participant query per candidate page, not one lookup per notification. */
+export async function findCurrentNotificationResources(
+  tx: DbTransaction,
+  requests: readonly NativeNotificationResourceRequest[],
+): Promise<Map<string, CurrentNotificationResource>> {
+  const valid = requests.filter(
+    (request) =>
+      request.resourceId.length > 0 &&
+      isSupportedNotificationResourceEvent(
+        request.resourceType,
+        request.eventKind,
+      ),
+  );
+  const workItemIds = [
+    ...new Set(
+      valid
+        .filter((request) => request.resourceType === "work_item")
+        .map(({ resourceId }) => resourceId),
+    ),
+  ];
+  const commentIds = [
+    ...new Set(
+      valid
+        .filter((request) => request.resourceType === "comment")
+        .map(({ resourceId }) => resourceId),
+    ),
+  ];
+  const workItems: ResourceRow[] = workItemIds.length
+    ? await tx
+        .select({
+          id: schema.workItemTable.id,
+          key: schema.workItemTable.key,
+          workspaceId: schema.workItemTable.workspaceId,
+          projectId: schema.workItemTable.projectId,
+          organisationId: schema.workspaceTable.organisationId,
+          requesterId: schema.workItemTable.requesterId,
+          customerVisibility: schema.workItemTable.customerVisibility,
+        })
+        .from(schema.workItemTable)
+        .innerJoin(
+          schema.projectTable,
+          eq(schema.projectTable.id, schema.workItemTable.projectId),
+        )
+        .innerJoin(
+          schema.workspaceTable,
+          eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
+        )
+        .where(
+          and(
+            or(
+              inArray(schema.workItemTable.id, workItemIds),
+              inArray(schema.workItemTable.key, workItemIds),
+            ),
+            isNull(schema.workItemTable.deletedAt),
+            isNull(schema.workItemTable.archivedAt),
+            isNull(schema.projectTable.deletedAt),
+            isNull(schema.workspaceTable.deletedAt),
+          ),
+        )
+    : [];
+  const comments = commentIds.length
+    ? await tx
+        .select({
+          id: schema.commentTable.id,
+          visibility: schema.commentTable.visibility,
+          workItemId: schema.workItemTable.id,
+          key: schema.workItemTable.key,
+          workspaceId: schema.workItemTable.workspaceId,
+          projectId: schema.workItemTable.projectId,
+          organisationId: schema.workspaceTable.organisationId,
+          requesterId: schema.workItemTable.requesterId,
+          customerVisibility: schema.workItemTable.customerVisibility,
+        })
+        .from(schema.commentTable)
+        .innerJoin(
+          schema.workItemTable,
+          eq(schema.workItemTable.id, schema.commentTable.workItemId),
+        )
+        .innerJoin(
+          schema.projectTable,
+          eq(schema.projectTable.id, schema.workItemTable.projectId),
+        )
+        .innerJoin(
+          schema.workspaceTable,
+          eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
+        )
+        .where(
+          and(
+            inArray(schema.commentTable.id, commentIds),
+            isNull(schema.commentTable.deletedAt),
+            sql`${schema.commentTable.body} IS NOT NULL`,
+            isNull(schema.workItemTable.deletedAt),
+            isNull(schema.workItemTable.archivedAt),
+            isNull(schema.projectTable.deletedAt),
+            isNull(schema.workspaceTable.deletedAt),
+          ),
+        )
+    : [];
+  const privateWorkItemIds = [
+    ...new Set([
+      ...workItems
+        .filter(({ customerVisibility }) => customerVisibility === "private")
+        .map(({ id }) => id),
+      ...comments
+        .filter(({ customerVisibility }) => customerVisibility === "private")
+        .map(({ workItemId }) => workItemId),
+    ]),
+  ];
+  const participants = privateWorkItemIds.length
+    ? await tx
+        .select({
+          workItemId: schema.requestParticipantTable.workItemId,
+          personId: schema.requestParticipantTable.personId,
+        })
+        .from(schema.requestParticipantTable)
+        .where(
+          inArray(
+            schema.requestParticipantTable.workItemId,
+            privateWorkItemIds,
+          ),
+        )
+    : [];
+  const peopleByWorkItem = new Map<string, string[]>();
+  for (const participant of participants) {
+    if (participant.workItemId === null) continue;
+    const people = peopleByWorkItem.get(participant.workItemId) ?? [];
+    people.push(participant.personId);
+    peopleByWorkItem.set(participant.workItemId, people);
+  }
+  const facts = new Map<string, CurrentNotificationResource>();
+  for (const row of workItems) {
+    const resource: CurrentNotificationResource = {
+      workItemId: row.id,
+      workspaceId: row.workspaceId,
+      projectId: row.projectId,
+      organisationId: row.organisationId,
+      visibleToPersonIds: visiblePeople(
+        row.requesterId,
+        row.customerVisibility,
+        peopleByWorkItem.get(row.id) ?? [],
+      ),
+      customerVisible: true,
+      staffUrl: `/agent/work-items/${encodeURIComponent(row.key)}`,
+    };
+    facts.set(resourceKey("work_item", row.id), resource);
+    facts.set(resourceKey("work_item", row.key), resource);
+  }
+  for (const row of comments) {
+    if (row.visibility !== "public" && row.visibility !== "internal") continue;
+    facts.set(resourceKey("comment", row.id), {
+      workItemId: row.workItemId,
+      workspaceId: row.workspaceId,
+      projectId: row.projectId,
+      organisationId: row.organisationId,
+      visibleToPersonIds: visiblePeople(
+        row.requesterId,
+        row.customerVisibility,
+        peopleByWorkItem.get(row.workItemId) ?? [],
+      ),
+      customerVisible: row.visibility === "public",
+      staffUrl: null,
+    });
+  }
+  return facts;
 }
 
 async function findWorkItemResource(
@@ -69,6 +247,7 @@ async function findWorkItemResource(
     );
   }
   return {
+    workItemId: row.id,
     workspaceId: row.workspaceId,
     projectId: row.projectId,
     organisationId: row.organisationId,
@@ -140,6 +319,7 @@ export async function findCurrentNotificationResource(
         FROM comment c
         JOIN work_item wi ON wi.id = c.work_item_id
        WHERE c.id = ${input.resourceId}
+         AND c.deleted_at IS NULL
          AND c.body IS NOT NULL
          AND (${input.canonicalWorkItem?.id ?? null}::text IS NULL OR wi.id = ${input.canonicalWorkItem?.id ?? null})
          AND (${input.canonicalWorkItem?.key ?? null}::text IS NULL OR wi.key = ${input.canonicalWorkItem?.key ?? null})

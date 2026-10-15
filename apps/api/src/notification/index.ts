@@ -116,6 +116,12 @@ const notification = apiRouter()
     const notifications = await getNotifications(
       c.get("userId"),
       credentialCanReadTask,
+      {
+        ...(apiKey ? { apiKey } : {}),
+        impersonatedBy: (
+          c.get("session") as { impersonatedBy?: string | null } | null
+        )?.impersonatedBy,
+      },
     );
     // This route's completed query filters by the authenticated caller's userId.
     // Record only this proven self-read boundary; a failed query remains unknown.
