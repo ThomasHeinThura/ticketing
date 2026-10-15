@@ -183,12 +183,18 @@ describe("API integration: PUT /api/project/{id} engagement fields need project:
       }
 
       // Explicit null is still "sent" (it would clear the calendar / level).
-      const denyNull = await putProject(
-        app,
-        project.id,
-        fullBody(project, { serviceCalendarId: null }),
-      );
-      expect(denyNull.status).toBe(403);
+      for (const nulled of [
+        { serviceCalendarId: null },
+        { supportLevel: null },
+      ]) {
+        const denyNull = await putProject(
+          app,
+          project.id,
+          fullBody(project, nulled),
+        );
+        expect(denyNull.status, JSON.stringify(nulled)).toBe(403);
+        await expectEngagementUnchanged(project.id);
+      }
 
       // The same caller updating only name keeps today's behaviour.
       const plain = await putProject(app, project.id, {
