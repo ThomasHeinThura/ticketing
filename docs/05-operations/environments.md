@@ -36,6 +36,12 @@ scripts/deploy.sh local
 Runs at `https://ticket.localhost` and `https://portal.localhost` via local Traefik with a
 self-signed certificate.
 
+**Laptop SIT (decision log 2026-10-15):** the owner's laptop SIT serves the agent at
+`https://ticketing.localhost` and the portal at `https://portal.localhost` on Traefik HTTPS
+443, loopback only. `ticketing.localhost` is routed by that host's own untracked Traefik
+dynamic file and its `TASKDESK_AGENT_URL`; `ticket.localhost` there answers health checks
+only and is not an agent-application test.
+
 Two hostnames means either `/etc/hosts` entries or `dnsmasq` for `*.localhost`. The script
 prints exactly what to add.
 
