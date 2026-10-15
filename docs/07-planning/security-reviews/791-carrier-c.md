@@ -504,3 +504,66 @@ I did not run PostgreSQL integration, Docker/image, browser/Playwright, or the f
 **Reviewed head:** `7a99905d63a3b52c42aebf4d6e35d1104976696f`
 
 The final independent Sol report above approves this exact source and closes S1. Only this PR’s additive review-record publication may follow under the per-commit review-record rule. All current required checks and normal protection remain mandatory.
+
+## Strict current-main composition — additive authentic delta records
+
+Protected main requires the candidate to include its latest head. Automatic merge `d8fc639f7cb276cc35f54c51c94d3215560412fb` imports accepted #792 records from `a07df324`; only status/queue change relative to the preceding carrier. Product/test/build/dependency/gate inputs remain identical to independently approved `7a99905d`. No additional main merge will be made while final carrier checks run. Earlier remote CI attempts remain source-labelled, including normal concurrency cancellations.
+
+### carrier-records-main-composition-luna.md
+
+SHA-256 `bf60652e4f29cffe2e374d4845960864a1c31344ac035da19982998d6e9bbab4`; authentic report bytes follow unchanged.
+
+# Carrier C current-main composition review
+
+**Model/provenance:** independent GPT-6 Luna-tier composition review. Platform dispatch selected `gpt-6-luna`; runtime identity is not independently exposed here. This is a narrow parent/tree compatibility review; it is not a repeated product review, a security review, or merge authorization.
+
+**Exact candidate:** merge commit `d8fc639f7cb276cc35f54c51c94d3215560412fb`, with parents `3ee463ff18cf2c122242d1e68c32c5aae1708a40` (Carrier C at `7a99905d63a3b52c42aebf4d6e35d1104976696f` plus the published carrier review record) and `a07df32424185559a079002144f91df17d004798` (merged records PR #792, parent `9bb28099a69d1e599e1d7451ebdf6225e380546c`). Live `origin/main` is `a07df324...`; `gh pr view 792` reports merged at `2026-10-15T15:06:33Z`. Live PR #791 remains open and still points at `3ee463ff...`; the reviewed composition commit is local/unpushed at review time.
+
+## Verdict: APPROVE this current-main composition delta
+
+The records parent adds only 55 lines to `docs/07-planning/status.md` and `docs/07-planning/integration-execution-queue.md` relative to the original base. The merge tree differs from the Carrier C review-record parent by exactly those two files (+55 lines). No shipping source, tests, dependencies, configuration, gate inputs, or component manifests changed when bringing current main into the reviewed carrier. The review note already present in the carrier parent is retained unchanged.
+
+I independently checked the exact two-parent commit and its composition. `git merge-tree --write-tree 3ee463ff a07df324` returned tree `c71d2978ee9e07dcc501d3ebebdaaf026b37c441`, identical to `d8fc639f^{tree}`; there are no conflicts. The merge commit preserves both exact parents. The imported main history from `9bb28099` to `a07df324` is limited to the same two records files. The local carrier branch is clean at `d8fc639f`.
+
+Prior-review reuse is authentic and bound to the reviewed product source. The published `docs/07-planning/security-reviews/791-carrier-c.md` contains the initial A/B/C reviews, the visual repair and delta reviews, the #734 production and test-delta review records, and the final independent Sol security report. It preserves the original A and C visual-fixture requests for changes, their exact repair deltas, the later A test-gap request, and the test-only closure at `7a99905d`; it does not erase the history of findings. I computed SHA-256 for the retained source evidence reports and matched every listed digest for A/B/C initial reports, the A/C visual deltas, original Sol S1 report, A/B/C erasure deltas, A/C erasure test deltas, and final Sol delta report. The published text also records each exact reviewed SHA, scope, verdict, model/dispatch provenance, and test attribution. My own ordinary A test-delta report at `7a99905d` is included with its exact matching digest `ed53cb6f...0193c0e`; the final Sol report is likewise preserved with matching digest.
+
+This composition reuses prior approvals only for exact source `7a99905d`; the merge changes no product/test source after that point. The newer current-main commit contributes records only, which resolves the strict required-status-check base freshness concern without reopening the feature/security review. It does not make stale PR #791 checks current: the PR head is still `3ee463ff` on live GitHub and the composed `d8fc639f` head must be published and all required checks rerun on its exact SHA. No CI, build, browser, PostgreSQL, or Docker check was run in this composition review.
+
+**Commands/checks:** `git show -s` for candidate and both parents; `git ls-remote origin refs/heads/main`; `gh pr view 792` and `gh pr view 791`; `git diff --name-status 9bb28099..a07df324`, `7a99905d..d8fc639f`, and `3ee463ff..d8fc639f`; `git merge-tree --write-tree 3ee463ff a07df324`; `git diff --check 3ee463ff..d8fc639f`; SHA-256 comparison of retained prior ordinary/Sol reports against their published review-record digests. The product-source comparison was not rerun because it is unchanged from the already-reviewed exact `7a99905d` head.
+
+**Limits:** this approves only the records-only current-main composition at exact local merge commit `d8fc639f`. Live #791 still points at its pre-composition head, current exact-head checks are outstanding, and the repository's protected merge gates remain mandatory. This is not approval to merge or a substitute for final exact-head CI/security evidence.
+
+### carrier-security-records-main-delta-sol.md
+
+SHA-256 `027391ef04e26e0d6866e823136879cf605479bd980e112c79c9addce8aa453e`; authentic report bytes follow unchanged.
+
+# Independent Sol-tier confirmation — Carrier C accepted-main records composition
+
+**Verdict: APPROVE lightweight security confirmation** for exact local head `d8fc639f7cb276cc35f54c51c94d3215560412fb`. The approved Carrier C product and test source at `7a99905d63a3b52c42aebf4d6e35d1104976696f` is unchanged. This is a records/main-composition confirmation; the full source security approval and S1 closure remain in the preserved `carrier-security-delta-sol.md` report at their original reviewed head. No new authority or gate pass/fail semantics were introduced.
+
+**Head and parents:** `d8fc639f7cb276cc35f54c51c94d3215560412fb` is a merge of first parent `3ee463ff18cf2c122242d1e68c32c5aae1708a40` (Carrier C's authentic review-note publication over approved `7a99905d`) and second parent `a07df32424185559a079002144f91df17d004798` (accepted main records checkpoint). The carrier's original product base was `9bb28099a69d1e599e1d7451ebdf6225e380546c`.
+
+**Model / independence:** Platform dispatch selected `gpt-6-sol`, `fork_turns=none`; runtime-visible identity is generic GPT-6 with no Sol/version suffix exposed. I am the same independent security-review context that identified S1 and approved its repaired source; I did not author, direct, design, remediate, or merge this candidate. I inspected immutable commit/diff evidence and made no candidate edit.
+
+## Delta and evidence disposition
+
+- Against the merge's **first parent** `3ee463ff`, the merge adds only 27 lines to `docs/07-planning/integration-execution-queue.md` and 28 lines to `docs/07-planning/status.md`. There are no conflicts or deletions in that delta. These are dated takeover checkpoints describing task state, earlier review findings, evidence and next actions. They do not set a new mission, decision, capability, route policy, review tier, waiver, security model, check algorithm, or gate exception. They are not consumed as pass/fail input by the checked CI scripts. The explicit references to S1, older CI, image and GitGuardian are labelled historical snapshots, not current-head approvals.
+- Against the previously approved `7a99905d`, the full tree difference also includes `docs/07-planning/security-reviews/791-carrier-c.md`, added by the preceding `3ee463ff` note-publication commit. That file publishes the initial adverse and final approving Sol reports, preserving earlier ordinary adverse and clearance reports. I byte-compared both Sol sections in the committed note with their restricted evidence originals; each matched exactly, and the note's recorded SHA-256 values match those originals. It ends with `**Reviewed head:**` for `7a99905d`, accurately binding that earlier source review. It does not forge an approval of `d8fc639f`.
+- `git diff --quiet 7a99905d d8fc639f` over application, packages, tests, build/dependency files, CI/control paths, feature/architecture/engineering/operations contracts and decision log returned zero (identical). The accepted-main advance from `9bb28099` to `a07df324` likewise changes only status and queue. Thus the earlier security review's code/contract inputs are unchanged and its S1 closure remains valid for this composition. No new full review of unchanged product source is needed.
+- Review-record publication and accepted records still change the commit graph: the prior `7a99905d` binding alone does not claim that required current-head checks pass. A separate authentic note line for `d8fc639f` may record this confirmation; required GitHub statuses must run and pass on the final exact pushed head under strict main protection. This report grants no gate waiver or merge authority.
+
+**Blocking security findings:** none for this records/main delta. `#783`/`#784` remain separate API-key work and are not claimed fixed. GitGuardian incident 38240567 remains the negative URL-parser fixture `never-in-url`; this report does not dispose of its external machine status.
+
+## Commands and limits
+
+- `git status --short --branch`, `git rev-parse HEAD`, `git show --no-patch --format='%H %P %s' HEAD`, and `git show --format= --name-status 3ee463ff`: confirmed the clean worktree, exact merge parents, and one-file review-record publication.
+- `git diff --name-status`, `--numstat`, and source inspection for `3ee463ff..d8fc639f`: two records files, +55/-0; `git diff --check` for this first-parent merge delta passed.
+- `git diff --name-status 7a99905d..d8fc639f`: the same two records plus the one review note. `git diff --check` on this wider range reported trailing spaces in the added review note's Markdown hard-break lines; this is inherited verbatim review text, not a security finding or new merge conflict. No source change was made to normalize those bytes.
+- `git diff --name-only 9bb28099..a07df324`: status and queue only. `rg` of CI scripts confirmed status references are explanatory/test fixtures, with `status.md` explicitly listed as a path that must not require a routine security review.
+- Independently extracted both published Sol sections from `791-carrier-c.md` and compared them byte for byte to `carrier-security-sol.md` and `carrier-security-delta-sol.md`: both equal; their recorded SHA-256 digests matched.
+
+No tests, PostgreSQL, browser, Docker, or remote CI were run for this records-only merge confirmation. Existing test/image/browser results remain bound to their documented source heads. The GitHub PR head/status check must be read again after the planned additive note and push; this report does not assert remote merge readiness.
+
+**Reviewed head:** `d8fc639f7cb276cc35f54c51c94d3215560412fb`
+
+The independent ordinary composition review and Sol confirmation approve that exact automatic merge. Publication after it is restricted to this PR’s additive authentic own review records; every required GitHub status must be green on the actual final publication commit.
