@@ -1,10 +1,17 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { availableParallelism, cpus, release as osRelease } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, type TestInfo, test } from "@playwright/test";
 import { summarizeProfileCoverage } from "../src/lib/performance-profile-intervals";
 import {
   anchorTraceProfile,
@@ -894,6 +901,7 @@ type DiagnosticCapture = {
     timelineEvents: BrowserTimelineEvent[];
   };
   traceCpuProfiles: TraceCpuProfile[];
+  playwrightTraceRecorder?: PlaywrightTraceRecorderObservation;
   clockMarks: Array<{
     name: string;
     documentId: string;
@@ -903,6 +911,64 @@ type DiagnosticCapture = {
   }>;
   boundary: DiagnosticBoundary;
 };
+
+type PlaywrightTraceRecorderObservation = {
+  expectedState: "off" | "on";
+  recorderApi: "BrowserContext.tracing";
+  screenshots: boolean;
+  snapshots: boolean;
+  sources: boolean;
+  attachments: boolean;
+  stateEvidence: string;
+  retention: string;
+  traceArchiveBytes?: number;
+  traceArchiveName?: string;
+  screencastFrameCount?: number;
+};
+
+type DragComparisonCase = {
+  caseId: string;
+  caseIndex: 1 | 2 | 3 | 4;
+  recorderState: "off" | "on";
+};
+
+function assertHostedSummaryIsSanitized(value: unknown): void {
+  const forbiddenKey = /^(?:traceCpuProfiles|timelineEvents|networkSummary)$/i;
+  const sensitiveKey =
+    /(?:authorization|csrf|headers?|cookies?|tokens?|secrets?)/i;
+  const privatePathOrRawCapture = /(?:\/Users\/|\/home\/|raw-captures)/i;
+  const csrfOrAuthorizationValue = /(?:authorization|x-taskdesk-csrf)/i;
+  const safeSourceBindingPath =
+    /^dependency\/[A-Za-z0-9._@/-]+\.(?:mjs|js|ts|tsx|jsx)$/;
+  const visit = (item: unknown, inSourceBindings = false): void => {
+    if (typeof item === "string") {
+      if (privatePathOrRawCapture.test(item))
+        throw new Error(
+          "Hosted summary contains a private path or raw capture reference.",
+        );
+      if (
+        csrfOrAuthorizationValue.test(item) &&
+        !(inSourceBindings && safeSourceBindingPath.test(item))
+      )
+        throw new Error(
+          "Hosted summary contains a sensitive header or credential reference.",
+        );
+      return;
+    }
+    if (Array.isArray(item)) {
+      for (const child of item) visit(child, inSourceBindings);
+      return;
+    }
+    if (item && typeof item === "object") {
+      for (const [key, child] of Object.entries(item)) {
+        if (forbiddenKey.test(key) || sensitiveKey.test(key))
+          throw new Error(`Hosted summary contains forbidden field ${key}.`);
+        visit(child, inSourceBindings || key === "sourceBindings");
+      }
+    }
+  };
+  visit(value);
+}
 
 type DiagnosticBoundary = {
   startMark: string;
@@ -966,11 +1032,55 @@ async function withDiagnosticProfile(
   prepare: (page: Page) => Promise<void>,
   visit: (page: Page) => Promise<DiagnosticBoundary>,
   allowedTimelineEventNames: ReadonlySet<string> = TIMELINE_EVENT_NAMES,
+  recorderCase?: {
+    expectedState: "off" | "on";
+    traceArchivePath: string;
+    traceArchiveName: string;
+  },
 ): Promise<DiagnosticCapture> {
   const context = await browser.newContext({
     baseURL: ORIGIN,
     viewport: { width: 1280, height: 720 },
   });
+  const traceOptions = {
+    screenshots: true,
+    snapshots: false,
+    sources: true,
+  } as const;
+  let traceStarted = false;
+  let playwrightTraceRecorder: PlaywrightTraceRecorderObservation | undefined;
+  if (recorderCase?.expectedState === "on") {
+    // This public API uses Playwright's BrowserContext tracing engine and starts
+    // its trace chunk before page creation, like the pinned test runner does.
+    // It omits TestInfo attachments/runner retention behavior by design.
+    await context.tracing.start({
+      ...traceOptions,
+      name: recorderCase.traceArchiveName,
+      title: recorderCase.traceArchiveName,
+    });
+    traceStarted = true;
+  }
+  if (recorderCase) {
+    playwrightTraceRecorder = {
+      expectedState: recorderCase.expectedState,
+      recorderApi: "BrowserContext.tracing",
+      screenshots: recorderCase.expectedState === "on",
+      snapshots: false,
+      sources: recorderCase.expectedState === "on",
+      attachments: false,
+      stateEvidence:
+        recorderCase.expectedState === "on"
+          ? "public tracing start and stop succeeded; archive screencast frames verified"
+          : "tracing.start was not called for this case",
+      retention:
+        recorderCase.expectedState === "on"
+          ? "explicit private stop-to-file after the sample; public context API has no TestInfo attachment option"
+          : "tracing.start was not called for this case",
+      ...(recorderCase.expectedState === "on"
+        ? { traceArchiveName: recorderCase.traceArchiveName }
+        : {}),
+    };
+  }
   const page = await context.newPage();
   const networkCapture = attachPerformanceNetworkCapture(context, ORIGIN, {
     maxRequests: 512,
@@ -980,6 +1090,7 @@ async function withDiagnosticProfile(
   let boundary: DiagnosticBoundary | undefined;
   let metrics: InitialDocumentMetrics | undefined;
   let browserPerformance: DiagnosticCapture["browserPerformance"] | undefined;
+  let traceStopError: unknown;
   const timelineEvents: BrowserTimelineEvent[] = [];
   const traceCpuProfilesByThread = new Map<string, TraceCpuProfile>();
   const traceProfileClocks = new Map<string, TraceProfileClock>();
@@ -1234,9 +1345,58 @@ async function withDiagnosticProfile(
     metrics = await collectDocumentMetrics(page);
     console.info(`G11 diagnostic phase completed: ${name}`);
   } finally {
-    await cdp.detach();
-    await context.close();
+    try {
+      if (traceStarted && recorderCase && playwrightTraceRecorder) {
+        try {
+          await context.tracing.stop({ path: recorderCase.traceArchivePath });
+          const archiveStat = await stat(recorderCase.traceArchivePath);
+          if (archiveStat.isFile() && archiveStat.size > 0) {
+            await chmod(recorderCase.traceArchivePath, 0o600);
+            playwrightTraceRecorder.traceArchiveBytes = archiveStat.size;
+            const traceJsonLines = execFileSync(
+              "unzip",
+              ["-p", recorderCase.traceArchivePath, "trace.trace"],
+              {
+                encoding: "utf8",
+                maxBuffer: 64 * 1024 * 1024,
+                stdio: ["ignore", "pipe", "ignore"],
+              },
+            );
+            const screencastFrameCount = traceJsonLines
+              .split("\n")
+              .filter((line) => {
+                if (!line) return false;
+                try {
+                  return (
+                    (JSON.parse(line) as { type?: unknown }).type ===
+                    "screencast-frame"
+                  );
+                } catch {
+                  return false;
+                }
+              }).length;
+            if (screencastFrameCount <= 0)
+              traceStopError = new Error(
+                "The private Playwright trace archive has no screencast frames.",
+              );
+            else
+              playwrightTraceRecorder.screencastFrameCount =
+                screencastFrameCount;
+          } else {
+            traceStopError = new Error(
+              "The public Playwright tracing API produced no archive.",
+            );
+          }
+        } catch (error) {
+          traceStopError = error;
+        }
+      }
+    } finally {
+      await cdp.detach();
+      await context.close();
+    }
   }
+  if (traceStopError) throw traceStopError;
   if (!metrics || !browserPerformance)
     throw new Error(`The ${name} diagnostic profile did not finish.`);
   if (boundary) {
@@ -1252,6 +1412,7 @@ async function withDiagnosticProfile(
     network: JSON.parse(networkCapture.finish()),
     browserPerformance,
     traceCpuProfiles: [...traceCpuProfilesByThread.values()],
+    ...(playwrightTraceRecorder ? { playwrightTraceRecorder } : {}),
     clockMarks,
     boundary,
   };
@@ -1863,17 +2024,21 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   ).toBe(true);
 });
 
-test("hosted manual diagnostic - legacy board drag CPU profile", async ({
-  browser,
-}) => {
+async function runFocusedBoardDragCase(
+  browser: import("@playwright/test").Browser,
+  testInfo: TestInfo,
+  comparisonCase: DragComparisonCase,
+) {
   test.setTimeout(180_000);
   assertDirectCpuProfileIsolationProbe();
   await mkdir(RESULT_DIR, { recursive: true, mode: 0o700 });
   await chmod(RESULT_DIR, 0o700);
   const focusedResultDir = await mkdtemp(
-    path.join(RESULT_DIR, "focused-board-drag-run-"),
+    path.join(RESULT_DIR, `focused-board-drag-${comparisonCase.caseId}-`),
   );
   await chmod(focusedResultDir, 0o700);
+  const traceArchiveName = `${comparisonCase.caseId}.zip`;
+  const traceArchivePath = path.join(focusedResultDir, traceArchiveName);
   const capture = await withDiagnosticProfile(
     browser,
     "legacy board drag pointerdown to pointerup",
@@ -1881,6 +2046,11 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
     async () => {},
     visitLegacyBoardDragProfile,
     FOCUSED_DRAG_TIMELINE_EVENT_NAMES,
+    {
+      expectedState: comparisonCase.recorderState,
+      traceArchivePath,
+      traceArchiveName,
+    },
   );
   const directCpuProfile = selectUniqueDirectCpuProfile(
     capture.traceCpuProfiles,
@@ -2199,6 +2369,8 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
   const result = {
     schemaVersion: 1,
     diagnosticOnly: true,
+    comparisonCase,
+    playwrightTraceRecorder: capture.playwrightTraceRecorder,
     sourceAndRuntime: runtimeMetadata,
     fixture: "canonical G11 performance fixture: 200 legacy board cards",
     dragInputs: {
@@ -2340,9 +2512,15 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
       (delayedFirstRafProbeIntervals[0]?.durationMicroseconds ?? 0),
   );
   const hostedSummary = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     diagnosticOnly: true,
     purpose: "hosted root-cause investigation; no G11 budget evaluation",
+    comparisonCase: {
+      ...comparisonCase,
+      order: "ABBA",
+      sameWorkerInvocation: true,
+    },
+    playwrightTraceRecorder: capture.playwrightTraceRecorder,
     sourceAndRuntime: runtimeMetadata,
     fixture: "canonical G11 performance fixture: 200 legacy board cards",
     dragInputs: result.dragInputs,
@@ -2419,15 +2597,13 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
     sourceBindings,
   };
   const summarySerialized = `${JSON.stringify(hostedSummary, null, 2)}\n`;
-  expect(summarySerialized).not.toMatch(
-    /(?:\/Users\/|\/home\/|raw-captures|traceCpuProfiles|"timelineEvents"|networkSummary|authorization|x-taskdesk-csrf)/i,
-  );
+  assertHostedSummaryIsSanitized(hostedSummary);
   await writeFile(
     path.join(focusedResultDir, "hosted-board-drag-summary.json"),
     summarySerialized,
     { encoding: "utf8", flag: "wx", mode: 0o600 },
   );
-  await test.info().attach("g11-board-drag-profile.json", {
+  await testInfo.attach("g11-board-drag-profile.json", {
     body: serialized,
     contentType: "application/json",
   });
@@ -2442,4 +2618,42 @@ test("hosted manual diagnostic - legacy board drag CPU profile", async ({
       profilerThreads: runtimeMetadata.profilerThreads.length,
     }),
   );
+}
+
+test("hosted manual diagnostic - legacy board drag CPU profile - ABBA paired capture", async ({
+  browser,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  expect(() =>
+    assertHostedSummaryIsSanitized({
+      sourceBindings: [
+        "dependency/better-auth/dist/plugins/device-authorization/client.mjs",
+      ],
+    }),
+  ).not.toThrow();
+  expect(() =>
+    assertHostedSummaryIsSanitized({ source: "device-authorization" }),
+  ).toThrow();
+  expect(() =>
+    assertHostedSummaryIsSanitized({ asset: "/Users/private/source.ts" }),
+  ).toThrow();
+  expect(() =>
+    assertHostedSummaryIsSanitized({ headers: ["private"] }),
+  ).toThrow();
+  expect(() => assertHostedSummaryIsSanitized({ cookie: "private" })).toThrow();
+  expect(() => assertHostedSummaryIsSanitized({ token: "private" })).toThrow();
+  expect(() =>
+    assertHostedSummaryIsSanitized({ header: "x-taskdesk-csrf" }),
+  ).toThrow();
+  expect(() =>
+    assertHostedSummaryIsSanitized({ raw: "raw-captures/profile.json" }),
+  ).toThrow();
+  const cases: DragComparisonCase[] = [
+    { caseId: "abba-1-off", caseIndex: 1, recorderState: "off" },
+    { caseId: "abba-2-on", caseIndex: 2, recorderState: "on" },
+    { caseId: "abba-3-on", caseIndex: 3, recorderState: "on" },
+    { caseId: "abba-4-off", caseIndex: 4, recorderState: "off" },
+  ];
+  for (const comparisonCase of cases)
+    await runFocusedBoardDragCase(browser, testInfo, comparisonCase);
 });
