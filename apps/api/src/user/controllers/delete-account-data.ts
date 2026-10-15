@@ -1,12 +1,6 @@
 import { APIError } from "better-auth/api";
-import { and, eq, inArray } from "drizzle-orm";
 import db from "../../database";
-import {
-  userTable,
-  workflowTable,
-  workspaceTable,
-  workspaceUserTable,
-} from "../../database/schema";
+import type { Executor, Transaction } from "../../database/executor";
 import {
   AccountDeletionRetryError,
   currentAccountDeletionTransaction,
@@ -19,10 +13,6 @@ import { deleteWorkspaceRoleDependents } from "../../workspace/controllers/delet
 import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
 import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
 
-type AccountDeletionTransaction = Parameters<
-  Parameters<typeof db.transaction>[0]
->[0];
-
 import {
   formatBlockedWorkspacesMessage,
   hasOwnerRole,
@@ -30,18 +20,20 @@ import {
   planAccountDeletion,
   type WorkspaceMembershipSummary,
 } from "../account-deletion";
+import {
+  deleteUserMemberships,
+  deleteWorkflowsInWorkspaces,
+  deleteWorkspacesByIds,
+  listMembersOfWorkspaces,
+  listUserMemberships,
+  lockUserRow,
+} from "../repository";
 
 async function collectMemberships(
-  database: AccountDeletionTransaction | typeof db,
+  database: Executor,
   userId: string,
 ): Promise<WorkspaceMembershipSummary[]> {
-  const memberships = await database
-    .select({
-      workspaceId: workspaceUserTable.workspaceId,
-      role: workspaceUserTable.role,
-    })
-    .from(workspaceUserTable)
-    .where(eq(workspaceUserTable.userId, userId));
+  const memberships = await listUserMemberships(database, userId);
 
   if (memberships.length === 0) {
     return [];
@@ -49,18 +41,7 @@ async function collectMemberships(
 
   const workspaceIds = memberships.map((membership) => membership.workspaceId);
 
-  const members = await database
-    .select({
-      workspaceId: workspaceUserTable.workspaceId,
-      workspaceName: workspaceTable.name,
-      role: workspaceUserTable.role,
-    })
-    .from(workspaceUserTable)
-    .innerJoin(
-      workspaceTable,
-      eq(workspaceUserTable.workspaceId, workspaceTable.id),
-    )
-    .where(inArray(workspaceUserTable.workspaceId, workspaceIds));
+  const members = await listMembersOfWorkspaces(database, workspaceIds);
 
   return memberships.map((membership) => {
     const workspaceMembers = members.filter(
@@ -98,7 +79,7 @@ export async function deleteAccountData(userId: string) {
 
 async function deleteAccountDataInTransaction(
   userId: string,
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: Transaction,
   accountDeletion: boolean,
 ) {
   const before = await collectMemberships(tx, userId);
@@ -107,11 +88,7 @@ async function deleteAccountDataInTransaction(
   ].sort()) {
     await lockWorkspaceRoleAssignment(tx, workspaceId);
   }
-  await tx
-    .select({ id: userTable.id })
-    .from(userTable)
-    .where(eq(userTable.id, userId))
-    .for("update");
+  await lockUserRow(tx, userId);
   const memberships = await collectMemberships(tx, userId);
   const beforeIds = before.map((row) => row.workspaceId).sort();
   const afterIds = memberships.map((row) => row.workspaceId).sort();
@@ -138,28 +115,17 @@ async function deleteAccountDataInTransaction(
     // `workflow_version`/`workflow_transition`/`scheduled_transition` before the
     // workspace delete cascades into the `state_template`/`role` rows those
     // transitions restrict against.
-    await tx
-      .delete(workflowTable)
-      .where(inArray(workflowTable.workspaceId, plan.workspaceIdsToDelete));
+    await deleteWorkflowsInWorkspaces(tx, plan.workspaceIdsToDelete);
 
     // Issue #180: RESTRICT role FKs (membership, grants, group mappings) must be
     // cleared explicitly or the workspace delete below 500s.
     await deleteWorkspaceRoleDependents(tx, plan.workspaceIdsToDelete);
 
-    await tx
-      .delete(workspaceTable)
-      .where(inArray(workspaceTable.id, plan.workspaceIdsToDelete));
+    await deleteWorkspacesByIds(tx, plan.workspaceIdsToDelete);
   }
 
   if (plan.workspaceIdsToLeave.length > 0) {
-    await tx
-      .delete(workspaceUserTable)
-      .where(
-        and(
-          eq(workspaceUserTable.userId, userId),
-          inArray(workspaceUserTable.workspaceId, plan.workspaceIdsToLeave),
-        ),
-      );
+    await deleteUserMemberships(tx, userId, plan.workspaceIdsToLeave);
     for (const workspaceId of plan.workspaceIdsToLeave) {
       await syncWorkspaceAdminReach(tx, workspaceId, userId);
       await revokeProjectCreatorGrantsForMember(tx, workspaceId, userId);

@@ -1,12 +1,7 @@
-import { eq } from "drizzle-orm";
-import db from "../../database";
-import { userAvatarTable } from "../../database/schema";
+import { deleteAvatarByUserId } from "../repository";
 
 export async function deleteAvatar(userId: string) {
-  const deleted = await db
-    .delete(userAvatarTable)
-    .where(eq(userAvatarTable.userId, userId))
-    .returning({ id: userAvatarTable.id });
+  const deleted = await deleteAvatarByUserId(userId);
 
   return { deleted: deleted.length > 0 };
 }

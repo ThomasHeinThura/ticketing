@@ -1,5 +1,4 @@
-import { and, eq } from "drizzle-orm";
-import db, { schema } from "../../database";
+import { cancelPendingInvitation, findInvitationStatus } from "../repository";
 import {
   InvitationNotFoundError,
   InvitationNotPendingError,
@@ -31,14 +30,7 @@ export type CanceledInvitation = {
 async function cancelInvitation(
   invitationId: string,
 ): Promise<CanceledInvitation> {
-  const [invitation] = await db
-    .select({
-      id: schema.invitationTable.id,
-      status: schema.invitationTable.status,
-    })
-    .from(schema.invitationTable)
-    .where(eq(schema.invitationTable.id, invitationId))
-    .limit(1);
+  const invitation = await findInvitationStatus(invitationId);
   if (!invitation) {
     throw new InvitationNotFoundError();
   }
@@ -46,16 +38,7 @@ async function cancelInvitation(
     throw new InvitationNotPendingError();
   }
 
-  const [updated] = await db
-    .update(schema.invitationTable)
-    .set({ status: "canceled" })
-    .where(
-      and(
-        eq(schema.invitationTable.id, invitationId),
-        eq(schema.invitationTable.status, "pending"),
-      ),
-    )
-    .returning({ id: schema.invitationTable.id });
+  const updated = await cancelPendingInvitation(invitationId);
 
   if (!updated) {
     // Lost the race to a concurrent accept/cancel/reject between the read
