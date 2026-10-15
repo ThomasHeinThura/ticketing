@@ -2371,21 +2371,3 @@ export async function findOrganisationDefaultCustomerVisibility(
     .limit(1);
   return organisation;
 }
-
-/** The project facts a submission's linked work item is reached through, or `undefined`. */
-export async function findWorkItemProjectOwner(workItemId: string) {
-  const [owner] = await db
-    .select({
-      projectId: schema.projectTable.id,
-      workspaceId: schema.projectTable.workspaceId,
-      organisationId: schema.projectTable.organisationId,
-    })
-    .from(schema.workItemTable)
-    .innerJoin(
-      schema.projectTable,
-      eq(schema.projectTable.id, schema.workItemTable.projectId),
-    )
-    .where(eq(schema.workItemTable.id, workItemId))
-    .limit(1);
-  return owner;
-}

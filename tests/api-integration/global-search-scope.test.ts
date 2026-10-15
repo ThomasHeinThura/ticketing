@@ -9,7 +9,10 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createProjectFixture } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+} from "./helpers/fixtures";
 import { createSeesAllWorkspaceMember } from "./helpers/project-reach-world";
 
 type Result = {
@@ -204,6 +207,42 @@ describe("API integration: global search scope and ranking", () => {
     expect(projectsOnly.results.map((r) => r.type)).toEqual(["project"]);
   });
 
+  it("applies the relevance order before the limit even when the weaker hit is newer", async () => {
+    const member = await createSeesAllWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const strong = await seedTask(
+      project.id,
+      columns.todo.id,
+      1,
+      "Axolotl in the title",
+    );
+    const weak = await seedTask(
+      project.id,
+      columns.todo.id,
+      2,
+      "Plain title",
+      "axolotl only in the description",
+    );
+    await db
+      .update(schema.taskTable)
+      .set({ createdAt: new Date("2026-01-01T00:00:00Z") })
+      .where(eq(schema.taskTable.id, strong.id));
+    await db
+      .update(schema.taskTable)
+      .set({ createdAt: new Date("2026-02-01T00:00:00Z") })
+      .where(eq(schema.taskTable.id, weak.id));
+    mockAuthenticatedSession(member.user);
+
+    const limited = await search(
+      member.workspace.id,
+      "axolotl",
+      "&type=tasks&limit=1",
+    );
+    expect(limited.results.map((r) => r.id)).toEqual([strong.id]);
+  });
+
   it("puts the exact short-id task first with the top score and lists it once", async () => {
     const member = await createSeesAllWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
@@ -265,5 +304,131 @@ describe("API integration: global search scope and ranking", () => {
       "activity",
       "comment",
     ]);
+  });
+
+  it("treats `_` and `%` in a short-id project key literally, not as LIKE wildcards", async () => {
+    const member = await createSeesAllWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      slug: "dep",
+    });
+    await seedTask(project.id, columns.todo.id, 23, "Unrelated words");
+    mockAuthenticatedSession(member.user);
+
+    // Exact key still resolves it.
+    const exact = await search(member.workspace.id, "DEP-23", "&type=tasks");
+    expect(exact.results[0]?.relevanceScore).toBe(10);
+
+    // `_` would match the `P` and `%` would match `EP` if they were not escaped.
+    for (const query of ["DE_-23", "D%-23", "%-23"]) {
+      const result = await search(member.workspace.id, query, "&type=tasks");
+      expect(result.results, query).toEqual([]);
+    }
+  });
+
+  it("scores and orders projects, workspaces and activity by their SQL relevance", async () => {
+    const member = await createSeesAllWorkspaceMember({ role: "admin" });
+    const second = await createWorkspaceMember({ role: "admin" });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: second.workspace.id,
+      userId: member.user.id,
+      role: "admin",
+      joinedAt: new Date(),
+    });
+    await db
+      .update(schema.workspaceTable)
+      .set({ name: "Lemur home", description: null })
+      .where(eq(schema.workspaceTable.id, member.workspace.id));
+    await db
+      .update(schema.workspaceTable)
+      .set({ name: "Plain home", description: "about a lemur" })
+      .where(eq(schema.workspaceTable.id, second.workspace.id));
+
+    const nameHit = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      name: "Lemur project",
+    });
+    const descriptionHit = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      name: "Plain project",
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ description: "a lemur is mentioned" })
+      .where(eq(schema.projectTable.id, descriptionHit.project.id));
+    mockAuthenticatedSession(member.user);
+
+    const projects = await search(
+      member.workspace.id,
+      "lemur",
+      "&type=projects&limit=1",
+    );
+    expect(projects.results).toHaveLength(1);
+    expect(projects.results[0]).toMatchObject({
+      id: nameHit.project.id,
+      relevanceScore: 3,
+    });
+    const bothProjects = await search(
+      member.workspace.id,
+      "lemur",
+      "&type=projects",
+    );
+    expect(bothProjects.results.map((r) => r.relevanceScore)).toEqual([3, 2]);
+
+    const workspaces = await search(
+      member.workspace.id,
+      "lemur",
+      "&type=workspaces&limit=1",
+    );
+    expect(workspaces.results[0]).toMatchObject({
+      id: member.workspace.id,
+      relevanceScore: 3,
+    });
+    const bothWorkspaces = await search(
+      member.workspace.id,
+      "lemur",
+      "&type=workspaces",
+    );
+    // The workspace query left-joins members, so a workspace with two members lists twice.
+    const workspaceScores = bothWorkspaces.results.map((r) => r.relevanceScore);
+    expect(workspaceScores[0]).toBe(3);
+    expect(workspaceScores.slice(1).length).toBeGreaterThan(0);
+    expect(workspaceScores.slice(1).every((score) => score === 2)).toBe(true);
+
+    const host = await seedTask(
+      nameHit.project.id,
+      nameHit.columns.todo.id,
+      1,
+      "Titled lemur host",
+    );
+    await db.insert(schema.taskActivityTable).values([
+      {
+        taskId: host.id,
+        type: "comment",
+        userId: member.user.id,
+        content: "lemur said it in the body",
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+      },
+      {
+        taskId: host.id,
+        type: "comment",
+        userId: member.user.id,
+        content: "only the title matches",
+        createdAt: new Date("2026-01-02T00:00:00Z"),
+      },
+    ]);
+    const activities = await search(
+      member.workspace.id,
+      "lemur",
+      "&type=comments&limit=1",
+    );
+    expect(activities.results).toHaveLength(1);
+    expect(activities.results[0]).toMatchObject({ relevanceScore: 2 });
+    const bothActivities = await search(
+      member.workspace.id,
+      "lemur",
+      "&type=comments",
+    );
+    expect(bothActivities.results.map((r) => r.relevanceScore)).toEqual([2, 1]);
   });
 });

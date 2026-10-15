@@ -1,4 +1,4 @@
-import { findWorkItemProjectOwner } from "./repository";
+import { findWorkItemProjectOwner } from "./linked-work-item.repository";
 
 /**
  * ONE rule for every staff exposure of a submission's converted work item (#740): once a

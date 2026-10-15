@@ -4,6 +4,7 @@
  * these pin the predicates (type/null filters, provider, workspace, soft-delete, reach)
  * and result shape the callers rely on.
  */
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { listTaskCommentRows } from "../../apps/api/src/comment/repository";
@@ -15,7 +16,10 @@ import {
   findWorkspaceIntakeFlag,
 } from "../../apps/api/src/intake/repository";
 import { findCustomAccountIdToken } from "../../apps/api/src/oauth/repository";
-import { findReachableLiveProject } from "../../apps/api/src/ws/repository";
+import {
+  findLiveWorkItemSocketScope,
+  findReachableLiveProject,
+} from "../../apps/api/src/ws/repository";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -280,5 +284,99 @@ describe("API integration: leaf-module repositories", () => {
     expect(
       await findReachableLiveProject("none", member.user.id),
     ).toBeUndefined();
+  });
+
+  it("findLiveWorkItemSocketScope needs a live item in a live, unarchived project", async () => {
+    const member = await createWorkspaceMember({ role: "member" });
+    const now = new Date();
+    const [type] = await db
+      .insert(schema.workItemTypeTable)
+      .values({
+        workspaceId: member.workspace.id,
+        key: `type-${randomUUID()}`,
+        name: "Task",
+        category: "delivery",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    const [template] = await db
+      .insert(schema.stateTemplateTable)
+      .values({
+        workspaceId: member.workspace.id,
+        key: `state-${randomUUID()}`,
+        name: "Backlog",
+        group: "backlog",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    async function item(
+      project: { id: string },
+      number: number,
+      overrides: Partial<typeof schema.workItemTable.$inferInsert> = {},
+    ) {
+      const [state] = await db
+        .insert(schema.stateTable)
+        .values({
+          projectId: project.id,
+          stateTemplateId: template?.id ?? "",
+          isDefault: false,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+      const key = `SOCK-${randomUUID().slice(0, 8)}`;
+      await db.insert(schema.workItemTable).values({
+        workspaceId: member.workspace.id,
+        projectId: project.id,
+        typeId: type?.id ?? "",
+        stateId: state?.id ?? "",
+        number,
+        key,
+        title: "Socket item",
+        createdAt: now,
+        updatedAt: now,
+        ...overrides,
+      });
+      return key;
+    }
+
+    const live = (
+      await createProjectFixture({ workspaceId: member.workspace.id })
+    ).project;
+    const archivedProject = (
+      await createProjectFixture({ workspaceId: member.workspace.id })
+    ).project;
+    const deletedProject = (
+      await createProjectFixture({ workspaceId: member.workspace.id })
+    ).project;
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: now })
+      .where(eq(schema.projectTable.id, archivedProject.id));
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: now, purgeAfter: now })
+      .where(eq(schema.projectTable.id, deletedProject.id));
+
+    const liveKey = await item(live, 1);
+    const archivedItemKey = await item(live, 2, { archivedAt: now });
+    const deletedItemKey = await item(live, 3, { deletedAt: now });
+    const inArchivedProject = await item(archivedProject, 1);
+    const inDeletedProject = await item(deletedProject, 1);
+
+    expect(await findLiveWorkItemSocketScope(liveKey)).toMatchObject({
+      projectId: live.id,
+      workspaceId: member.workspace.id,
+    });
+    expect(await findLiveWorkItemSocketScope(archivedItemKey)).toBeUndefined();
+    expect(await findLiveWorkItemSocketScope(deletedItemKey)).toBeUndefined();
+    expect(
+      await findLiveWorkItemSocketScope(inArchivedProject),
+    ).toBeUndefined();
+    expect(await findLiveWorkItemSocketScope(inDeletedProject)).toBeUndefined();
+    expect(await findLiveWorkItemSocketScope("SOCK-missing")).toBeUndefined();
   });
 });
