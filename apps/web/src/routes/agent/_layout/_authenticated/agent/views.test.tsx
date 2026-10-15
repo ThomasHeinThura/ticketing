@@ -8,7 +8,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 import { translate } from "@/test/en-translation";
@@ -83,22 +83,24 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
 vi.mock("@/components/saved-view/saved-view-audience-fields", () => ({
   SavedViewAudienceFields: (props: Record<string, unknown>) => {
     mocks.audienceProps = props;
+    const MockButton = (p: ComponentProps<"button">) => (
+      // ui-exempt: test double standing in for the shared design-system button.
+      <button type="button" {...p} />
+    );
     return (
       <div>
-        <button
-          type="button"
+        <MockButton
           onClick={() =>
             (props.onVisibilityChange as (v: string) => void)("team")
           }
         >
           pick-team
-        </button>
-        <button
-          type="button"
+        </MockButton>
+        <MockButton
           onClick={() => (props.onTeamChange as (v: string) => void)("team-1")}
         >
           pick-team-id
-        </button>
+        </MockButton>
       </div>
     );
   },
