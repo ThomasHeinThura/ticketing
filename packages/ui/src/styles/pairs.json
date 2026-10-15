@@ -9373,6 +9373,28 @@
         "backdropLayers": []
       },
       {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/project-layout.tsx:ProjectLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/task-layout.tsx:TaskLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
         "id": "apps/web/src/components/work-item/work-item-filter-editor.tsx::FilterNodeEditor::div[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-filter-editor.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
@@ -11911,6 +11933,28 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-board.tsx:BoardCard",
           "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/project-layout.tsx:ProjectLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/task-layout.tsx:TaskLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
         ],
         "backdropLayers": []
       },
