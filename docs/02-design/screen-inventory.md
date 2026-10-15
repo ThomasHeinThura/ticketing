@@ -50,7 +50,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Project overview | `/agent/projects/{key}` | route | P1 | ⬜ |
-| Work — board | `/agent/projects/{key}/work?layout=board` | route | P1 | ⬜ |
+| Work — board | `/agent/projects/{key}/work?layout=board` | route | P1 | 🟡 |
 | Work — list | `/agent/projects/{key}/work?layout=list` | route | P1 | 🟡 |
 | Work — table | `/agent/projects/{key}/work?layout=table` | route | P1 | ⬜ |
 | Work — calendar | `/agent/projects/{key}/work?layout=calendar` | route | P5 | ⬜ |

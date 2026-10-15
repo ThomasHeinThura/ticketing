@@ -164,5 +164,12 @@
 		"applicationRoute": "/agent/views/$id",
 		"test": "saved view detail screen @visual",
 		"screenshot": "saved-view-detail.png"
+	},
+	{
+		"name": "work-item-board",
+		"inventoryRoute": "/agent/projects/{key}/work?layout=board",
+		"applicationRoute": "/agent/projects/$projectKey/work",
+		"test": "work-item board screen @visual",
+		"screenshot": "work-item-board.png"
 	}
 ]

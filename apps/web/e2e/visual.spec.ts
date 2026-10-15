@@ -1046,3 +1046,24 @@ test("saved view detail screen @visual", async ({ page }) => {
     includeAA: true,
   });
 });
+
+test("work-item board screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/work?layout=board");
+  await expect(
+    page.getByRole("heading", { name: "In progress" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Customer cannot reset their password"),
+  ).toBeVisible();
+  await expect(page.getByTestId("realtime-unavailable")).toBeVisible();
+  await expect(page).toHaveScreenshot("work-item-board.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
