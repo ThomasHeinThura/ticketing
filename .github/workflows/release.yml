@@ -158,9 +158,9 @@ jobs:
 
       - name: Build the multi-architecture candidate image
         id: build
-        # A healthy build takes 8-14 minutes. The emulated arm64 stage has hung
-        # once (#753) and then held the job until its 60-minute timeout; fail it
-        # sooner so a hang is visible and re-runnable well inside the job budget.
+        # A healthy build takes 8-15 minutes. The emulated arm64 stage has hung
+        # and held the job until its 60-minute timeout (#753); fail it sooner so
+        # a hang is visible and re-runnable well inside the job budget.
         timeout-minutes: 35
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
