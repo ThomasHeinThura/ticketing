@@ -1,14 +1,20 @@
 import { createId } from "@paralleldrive/cuid2";
-import { and, count, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../../database";
+import db from "../../database";
 import {
   createAttachmentUploadUrl,
   getFileExtension,
   sanitizePathSegment,
 } from "../../storage";
 import { isMimeTypeAllowedForExtension } from "../magic-bytes";
-import { getAttachmentSettings } from "../repository";
+import {
+  countSubmissionAttachments,
+  findSubmissionFormSchema,
+  findSubmissionForPresign,
+  getAttachmentSettings,
+  insertSubmissionAttachment,
+  lockSubmissionForPresign,
+} from "../repository";
 
 export async function presignSubmissionAttachment(input: {
   submissionId: string;
@@ -20,26 +26,7 @@ export async function presignSubmissionAttachment(input: {
   size: number;
   apiBaseUrl: string;
 }) {
-  const [submission] = await db
-    .select({
-      id: schema.submissionTable.id,
-      requesterId: schema.submissionTable.requesterId,
-      state: schema.submissionTable.state,
-      organisationId: schema.submissionTable.organisationId,
-    })
-    .from(schema.submissionTable)
-    .innerJoin(
-      schema.requestTypeTable,
-      eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
-    )
-    .where(
-      and(
-        eq(schema.submissionTable.id, input.submissionId),
-        eq(schema.submissionTable.requesterId, input.requesterId),
-        eq(schema.requestTypeTable.workspaceId, input.workspaceId),
-      ),
-    )
-    .limit(1);
+  const [submission] = await findSubmissionForPresign(db, input);
   if (
     !submission ||
     (submission.state !== "new" && submission.state !== "clarifying")
@@ -105,42 +92,21 @@ export async function presignSubmissionAttachment(input: {
     safeName,
   ].join("/");
   const [row] = await db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select({
-        id: schema.submissionTable.id,
-        requesterId: schema.submissionTable.requesterId,
-        state: schema.submissionTable.state,
-        requestTypeVersionId: schema.submissionTable.requestTypeVersionId,
-      })
-      .from(schema.submissionTable)
-      .where(
-        and(
-          eq(schema.submissionTable.id, input.submissionId),
-          eq(schema.submissionTable.requesterId, input.requesterId),
-        ),
-      )
-      .for("update")
-      .limit(1);
+    const [locked] = await lockSubmissionForPresign(tx, input);
     if (!locked || (locked.state !== "new" && locked.state !== "clarifying"))
       throw new HTTPException(409, {
         message: "Submission changed before upload",
       });
-    const [countRow] = await tx
-      .select({ value: count() })
-      .from(schema.attachmentTable)
-      .where(eq(schema.attachmentTable.submissionId, input.submissionId));
+    const [countRow] = await countSubmissionAttachments(tx, input.submissionId);
     if ((countRow?.value ?? 0) >= maxPerParent)
       throw new HTTPException(400, {
         message: `This submission already has the maximum of ${maxPerParent} attachments.`,
       });
     if (input.fieldKey) {
-      const [snapshot] = await tx
-        .select({ formSchema: schema.requestTypeVersionTable.formSchema })
-        .from(schema.requestTypeVersionTable)
-        .where(
-          eq(schema.requestTypeVersionTable.id, locked.requestTypeVersionId),
-        )
-        .limit(1);
+      const [snapshot] = await findSubmissionFormSchema(
+        tx,
+        locked.requestTypeVersionId,
+      );
       const fields =
         (
           snapshot?.formSchema as
@@ -162,38 +128,29 @@ export async function presignSubmissionAttachment(input: {
           message: "The attachment field is not part of this submitted form.",
         });
       if (!field.multiple) {
-        const [existing] = await tx
-          .select({ value: count() })
-          .from(schema.attachmentTable)
-          .where(
-            and(
-              eq(schema.attachmentTable.submissionId, input.submissionId),
-              eq(schema.attachmentTable.submissionFieldKey, input.fieldKey),
-            ),
-          );
+        const [existing] = await countSubmissionAttachments(
+          tx,
+          input.submissionId,
+          input.fieldKey,
+        );
         if ((existing?.value ?? 0) > 0)
           throw new HTTPException(409, {
             message: "This form field accepts one file.",
           });
       }
     }
-    const [created] = await tx
-      .insert(schema.attachmentTable)
-      .values({
-        id: attachmentId,
-        workspaceId: input.workspaceId,
-        organisationId: submission.organisationId,
-        submissionId: input.submissionId,
-        submissionFieldKey: input.fieldKey ?? null,
-        objectKey,
-        filename: input.filename.slice(0, 255),
-        mimeType: input.contentType,
-        size: input.size,
-        state: "pending",
-        customerVisible: true,
-        uploadedBy: input.requesterId,
-      })
-      .returning({ id: schema.attachmentTable.id });
+    const [created] = await insertSubmissionAttachment(tx, {
+      id: attachmentId,
+      workspaceId: input.workspaceId,
+      organisationId: submission.organisationId,
+      submissionId: input.submissionId,
+      fieldKey: input.fieldKey,
+      objectKey,
+      filename: input.filename,
+      contentType: input.contentType,
+      size: input.size,
+      requesterId: input.requesterId,
+    });
     return [created];
   });
   if (!row)

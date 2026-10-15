@@ -1,6 +1,5 @@
-import { and, eq, isNull, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../../database";
+import db from "../../database";
 import {
   deleteStorageObject,
   finalizeStorageObject,
@@ -8,6 +7,14 @@ import {
   toFinalAttachmentObjectKey,
 } from "../../storage";
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
+import {
+  deletePendingSubmissionAttachment,
+  findAttachmentObjectKey,
+  findSubmissionCompletionAttachment,
+  getSubmissionAttachmentSizeLimit,
+  lockSubmissionForCompletion,
+  markSubmissionAttachmentReady,
+} from "../repository";
 
 const MAX_SNIFF_BYTES = 512;
 const FALLBACK_MAX_BYTES = 25 * 1024 * 1024;
@@ -21,27 +28,7 @@ export async function completeSubmissionAttachment(input: {
 }) {
   const result = await db
     .transaction(async (tx) => {
-      const [submission] = await tx
-        .select({
-          id: schema.submissionTable.id,
-          requesterId: schema.submissionTable.requesterId,
-          state: schema.submissionTable.state,
-          workItemId: schema.submissionTable.workItemId,
-        })
-        .from(schema.submissionTable)
-        .innerJoin(
-          schema.requestTypeTable,
-          eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
-        )
-        .where(
-          and(
-            eq(schema.submissionTable.id, input.submissionId),
-            eq(schema.submissionTable.requesterId, input.requesterId),
-            eq(schema.requestTypeTable.workspaceId, input.workspaceId),
-          ),
-        )
-        .for("update", { of: schema.submissionTable })
-        .limit(1);
+      const [submission] = await lockSubmissionForCompletion(tx, input);
       if (!submission)
         throw new HTTPException(404, { message: "Submission not found" });
       const acceptedParentId =
@@ -55,36 +42,20 @@ export async function completeSubmissionAttachment(input: {
         !acceptedParentId
       )
         throw new HTTPException(404, { message: "Submission not found" });
-      const [attachment] = await tx
-        .select()
-        .from(schema.attachmentTable)
-        .where(
-          and(
-            eq(schema.attachmentTable.id, input.attachmentId),
-            eq(schema.attachmentTable.workspaceId, input.workspaceId),
-            acceptedParentId
-              ? or(
-                  eq(schema.attachmentTable.submissionId, input.submissionId),
-                  eq(schema.attachmentTable.workItemId, acceptedParentId),
-                )
-              : eq(schema.attachmentTable.submissionId, input.submissionId),
-            eq(schema.attachmentTable.uploadedBy, input.requesterId),
-            eq(schema.attachmentTable.customerVisible, true),
-            isNull(schema.attachmentTable.deletedAt),
-          ),
-        )
-        .for("update")
-        .limit(1);
+      const [attachment] = await findSubmissionCompletionAttachment(tx, {
+        id: input.attachmentId,
+        workspaceId: input.workspaceId,
+        submissionId: input.submissionId,
+        acceptedParentId,
+        requesterId: input.requesterId,
+      });
       if (!attachment)
         throw new HTTPException(404, { message: "Attachment not found" });
       if (attachment.state !== "pending")
         throw new HTTPException(409, {
           message: `Attachment is already "${attachment.state}", not "pending".`,
         });
-      const [settings] = await tx
-        .select({ maxBytes: schema.instanceSettingTable.attachmentMaxBytes })
-        .from(schema.instanceSettingTable)
-        .limit(1);
+      const [settings] = await getSubmissionAttachmentSizeLimit(tx);
       const maxBytes = settings?.maxBytes ?? FALLBACK_MAX_BYTES;
       const finalKey = toFinalAttachmentObjectKey(attachment.objectKey);
       await finalizeStorageObject(attachment.objectKey, finalKey).catch(() => {
@@ -103,14 +74,7 @@ export async function completeSubmissionAttachment(input: {
         });
       });
       if (contentLength === undefined || contentLength > maxBytes) {
-        await tx
-          .delete(schema.attachmentTable)
-          .where(
-            and(
-              eq(schema.attachmentTable.id, attachment.id),
-              eq(schema.attachmentTable.state, "pending"),
-            ),
-          );
+        await deletePendingSubmissionAttachment(tx, attachment.id);
         return {
           finalKey,
           error:
@@ -120,29 +84,17 @@ export async function completeSubmissionAttachment(input: {
         };
       }
       if (!magicBytesMatchDeclaredMime(header, attachment.mimeType)) {
-        await tx
-          .delete(schema.attachmentTable)
-          .where(
-            and(
-              eq(schema.attachmentTable.id, attachment.id),
-              eq(schema.attachmentTable.state, "pending"),
-            ),
-          );
+        await deletePendingSubmissionAttachment(tx, attachment.id);
         return {
           finalKey,
           error: `The uploaded file's content does not match its declared type (${attachment.mimeType}).`,
         };
       }
-      const [ready] = await tx
-        .update(schema.attachmentTable)
-        .set({ state: "ready", size: contentLength, objectKey: finalKey })
-        .where(
-          and(
-            eq(schema.attachmentTable.id, attachment.id),
-            eq(schema.attachmentTable.state, "pending"),
-          ),
-        )
-        .returning();
+      const [ready] = await markSubmissionAttachmentReady(tx, {
+        id: attachment.id,
+        size: contentLength,
+        objectKey: finalKey,
+      });
       if (!ready)
         return {
           finalKey,
@@ -153,11 +105,7 @@ export async function completeSubmissionAttachment(input: {
     .catch(async (error: unknown) => {
       if (error instanceof HTTPException && error.status === 400) {
         // The final object is unreferenced whenever verification fails.
-        const [row] = await db
-          .select({ objectKey: schema.attachmentTable.objectKey })
-          .from(schema.attachmentTable)
-          .where(eq(schema.attachmentTable.id, input.attachmentId))
-          .limit(1);
+        const [row] = await findAttachmentObjectKey(db, input.attachmentId);
         if (row)
           await deleteStorageObject(
             toFinalAttachmentObjectKey(row.objectKey),
