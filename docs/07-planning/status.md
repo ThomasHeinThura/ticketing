@@ -1,3 +1,31 @@
+## Codex takeover checkpoint — 2026-10-15
+
+Thomas designated Codex `/root` as replacement conductor in two direct takeover instructions after the Claude quota interruption. The existing #589 continuation, accepted scope, owner holds and alpha.4 recovery material remain. No new phase or roadmap work is authorized. Both retained Codex automations remain PAUSED; no automatic continuation mechanism is asserted verified. The active session owns the queue.
+
+**Accepted remote main:** `9bb28099a69d1e599e1d7451ebdf6225e380546c`. **Carrier:** draft [#791](https://github.com/ThomasHeinThura/ticketing/pull/791), branch `codex/carrier-2026-10-15-c`, initially pushed source `9ccdeed432c73c3c8d139df3ccd2698713096fd7`. The carrier and its eleven component heads were retained, including #768 through #769. No takeover merge yet. The dirty primary checkout is older (`8ddb9de8`) and remains untouched.
+
+**Recovery:** 223 registered worktrees were inventoried and all 13 dirty trees snapshotted outside the repository in restricted evidence. A confirmed temporary label-ID mutation in #580 batch 9 was restored from its exact retained original; its untracked regression test was preserved. Batch 10 has legitimate uncommitted startup/seed repository work and tests; no active mutant was found. Authentication/saved-view/structured-list retained trees are clean at their recorded heads, not assumed to contain newer work merely from the handoff description. Private evidence: `~/.codex/taskdesk-evidence/2026-10-15/takeover/` (`worktrees.json`, recovery receipts, authentic review reports).
+
+| Unit | Owner | State | Exact source / next action |
+| --- | --- | --- | --- |
+| Carrier #791 | Codex `/root` | RUNNING | Initial ordinary A/B/C reviews completed at `9ccdeed4`. A/C found dropped board states fixture; independent delta clearance at local `5893afeda2a8750a81ccb351b7c70882eaaa5531`. |
+| Carrier security S1 / #734 | Luna repair context | RUNNING | Fresh independent Sol at `5893afed` requests changes for concurrent customer-project binding during erasure. Reproduce on isolated PostgreSQL, repair only the verified defect, review current delta. |
+| #580 batch 9 | recovered, conductor assigns next | READY | Local `869362fa` is unpushed; untracked regression test retained; after carrier, verify and review the recovered bounded batch. |
+| #580 batch 10 | recovered, conductor assigns next | READY | Local `c32ab85f` plus uncommitted startup/seed conversion/tests; verify and finish under the current inventory definition. |
+| #580 remaining conversion/checker | conductor | BLOCKED | Depends on accepted source conversions and final structural fail-closed checker; `check:queries` remains genuinely unwired, never claimed enabled. |
+| #783 / #784 API keys | conductor | WAITING_REVIEW | Existing dependent heads `e0d5e9c2` / `1bd68514`; preserve paired capability/clamp acceptance before release. |
+| #631 / #632 | conductor | READY | Reconcile existing source/evidence, run actual clock and legacy revocation cases; no closure inferred. |
+| #713–#716 / #718 | conductor | BLOCKED | Frozen selected source is in #791; incomplete acceptance and later follow-up work remain separately accounted for. #717 remains complete via #738. |
+| #589 disposition | conductor | BLOCKED | Selected-unit completion, equivalence or explicit Thomas deferral required; issue reassignment is not completion. |
+| Combined release / SIT / restore / audit | conductor | BLOCKED | Depends on all selected units; alpha.4 remains deployed. No updated release/deployment/final audit or phase closure claimed. |
+
+**Verification at initial pushed `9ccdeed4`:** hosted unit/component 12 tasks, including 215 web files / 1,390 tests and 119 API files / 857 tests; browser suite 123/123 including Authentication/SCIM, saved views, structured search and engagement cases; G11 22/22; accessibility passed. Real PostgreSQL integration is still running at this checkpoint. G8 failed on the missing board-state fixture (23/24 application cases passed); draft template/security note check is honestly red pending reviews/publication. GitGuardian incident 38240567 is independently adjudicated by Sol as a negative URL-parser literal rather than a credential; external status remains red. Required checks must run on the final candidate; none is inherited from this head.
+
+**Local image at `5893afed`:** build passed (`sha256:df4e9a6d2d9b44c2cb366671c9d34eef3c68c49c823d1467a635ab25e9f5d183`), isolated PostgreSQL 18 migration exited 0 (125 migration rows), runtime UID 10001, documented `/api/public/health/live` and `/api/public/health/ready` returned 200, no published ports. Initial probes omitted `/api` and returned 404; that failed attempt is retained separately from the corrected successful proof. All owned disposable containers/network were removed; persistent SIT was untouched. This image predates S1 remediation and is not final-source or signed SIT acceptance.
+
+**Next:** verify S1, complete its bounded repair/reviews, publish authentic carrier reviews with per-commit review-record accounting, obtain all final-head checks and image/runtime/browser evidence, then protected expected-head merge if eligible. Advance the remaining selected-unit queue afterwards. No gate is waived and no phase completion is claimed.
+
+
 ## Delivery integration checkpoint — 2026-10-12 04:17:41 UTC
 
 **P0–P7 / acceptance boundary:** P0 remains accepted within #624/#628 and #626's exact deferrals. No later phase completion, consolidated artifact publication, laptop SIT acceptance/recovery, final audit or handover completion is claimed. Thomas's “FINISH EXISTING DELIVERY, DO NOT RESTART” addendum retains the existing mission, conductor, queue, workers and sole continuation. Its original attachment remains preserved; the private `finish-existing-delivery-addendum-receipt.json` records its path and SHA-256. Priorities are real Comments/D9, Users, approved customer intake, auth correction and remaining unique #609/#512 journeys; existing holds and predecessor conservation remain.
