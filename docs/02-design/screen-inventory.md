@@ -103,8 +103,8 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Dashboard | `/agent/dashboard` | route | P5 | ⬜ |
 | Dashboard editor | `/agent/dashboard/edit` | route | P5 | ⬜ |
 | Timesheet | `/agent/timesheet` | route | P5 | ⬜ |
-| Saved views index | `/agent/views` | route | P1 | ⬜ |
-| Saved view | `/agent/views/{id}` | route | P1 | ⬜ |
+| Saved views index | `/agent/views` | route | P1 | 🟡 |
+| Saved view | `/agent/views/{id}` | route | P1 | 🟡 |
 
 ## Agent — settings
 

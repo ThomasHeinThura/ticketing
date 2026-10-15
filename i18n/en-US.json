@@ -1354,7 +1354,8 @@
 			"members": "Members",
 			"invitations": "Invitations",
 			"more": "More",
-			"backToBoard": "Back to board"
+			"backToBoard": "Back to board",
+			"savedViews": "Saved views"
 		},
 		"projectList": {
 			"viewProject": "View Project",
@@ -3135,6 +3136,89 @@
 			"confirmRequest": "Request deletion",
 			"deleteRequested": "Deletion requested. Approve it to complete.",
 			"deleteError": "Deletion could not be requested."
+		}
+	},
+	"savedViews": {
+		"title": "Saved views",
+		"description": "Views available to you in this workspace. Each one is a stored search you can open, share by its link, pin and copy.",
+		"search": "Filter saved views",
+		"createForm": "New saved view",
+		"name": "View name",
+		"create": "Create view",
+		"creating": "Creating…",
+		"createError": "The saved view could not be created.",
+		"createForbidden": "You can't create a view with that audience.",
+		"loading": "Loading saved views",
+		"loadError": "Saved views could not be loaded.",
+		"retry": "Try again",
+		"empty": "No saved views are available.",
+		"emptySearch": "No saved view matches that name.",
+		"pinned": "Pinned",
+		"pin": "Pin",
+		"unpin": "Unpin",
+		"pinNamed": "Pin {{name}}",
+		"unpinNamed": "Unpin {{name}}",
+		"pinError": "The pin could not be changed.",
+		"duplicate": "Duplicate",
+		"duplicateNamed": "Duplicate {{name}} as a private view",
+		"duplicateError": "The view could not be duplicated.",
+		"requestDelete": "Request deletion",
+		"requestDeleteNamed": "Request deletion of {{name}}",
+		"requesting": "Requesting…",
+		"deleteError": "A deletion request could not be created.",
+		"deleteForbidden": "Only the owner of a view, or someone who manages workspace settings, can request its deletion.",
+		"deleteAlreadyRequested": "A deletion request for this view is already waiting for approval.",
+		"summary": "Visibility: {{visibility}}",
+		"count_one": "{{count}} matching work item",
+		"count_other": "{{count}} matching work items",
+		"countLoading": "Counting matching work items…",
+		"visibility": {
+			"label": "Visibility",
+			"private": "Private",
+			"team": "Team",
+			"workspace": "Workspace"
+		},
+		"team": {
+			"label": "Team",
+			"placeholder": "Choose a team",
+			"loadError": "The teams you can share with could not be loaded."
+		},
+		"sharedViewName": "Shared view",
+		"loadingView": "Loading saved view…",
+		"viewUnavailable": "This saved view isn't available to you, or it no longer exists.",
+		"sharedLinkNotice": "You can't open the saved view behind this link. This is the query it carries, run with your own access, so you see only the work items you are allowed to.",
+		"modifiedNotice": "This is not the saved definition. Save the view to keep these changes.",
+		"projectUnavailable": "This project is unavailable to your account.",
+		"layoutUnavailable": "This view uses a layout or query that is not supported here yet.",
+		"clone": "Clone as private view",
+		"edit": "Edit view",
+		"cancelEdit": "Cancel editing",
+		"save": "Save view",
+		"loadingMore": "Loading more…",
+		"loadMore": "Load more",
+		"saveError": "The saved view could not be updated.",
+		"forbidden": "You can't make that change to this view.",
+		"queryNotEditable": "This view's query can't be edited here. You can still rename it and change who can see it.",
+		"sort": "Sort work items",
+		"directionLabel": "Sort direction",
+		"direction": {
+			"asc": "Ascending",
+			"desc": "Descending"
+		},
+		"sortField": {
+			"key": "Key",
+			"title": "Title",
+			"priority": "Priority",
+			"dueDate": "Due date"
+		},
+		"columns": "Visible columns",
+		"columnName": {
+			"key": "Key",
+			"title": "Title",
+			"state": "State",
+			"assignee": "Assignee",
+			"priority": "Priority",
+			"dueDate": "Due date"
 		}
 	}
 }

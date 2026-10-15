@@ -6,7 +6,10 @@ import {
   type WorkItemSortDirection,
   type WorkItemSortField,
 } from "@/lib/routes";
-import { parseWorkItemFilterText } from "@/lib/work-item-filter";
+import {
+  parseWorkItemFilterText,
+  type WorkItemFilter,
+} from "@/lib/work-item-filter";
 import { parseWorkItemRow, type WorkItemRow } from "@/types/work-item";
 
 export type StructuredWorkItemsResult = {
@@ -14,6 +17,8 @@ export type StructuredWorkItemsResult = {
   hasPartialFailure: boolean;
   hasMore: boolean;
   nextCursor?: string | null;
+  /** `meta.total`: the exact count of reachable matches, not just this page. */
+  total?: number;
 };
 
 const MAX_ERROR_DETAIL_LENGTH = 512;
@@ -64,12 +69,68 @@ export function toSearchSort(
   return isWorkItemSearchSortField(sort) ? [{ field: sort, order: dir }] : [];
 }
 
+export type WorkItemSearchSort = {
+  field: "key" | "title" | "priority" | "dueDate";
+  order: "asc" | "desc";
+};
+
 /**
- * `POST /api/work-items/search` (`work_item:read`, workspace from the body). The list's
- * project is added as a leading `project` clause: the endpoint's own scope is the workspace
- * and the actor's reach, never the page the user happens to be on. Absent columns are not
- * synthesised, and an empty sort is omitted rather than defaulted, so the stored query
- * document carries only what the user chose.
+ * `POST /api/work-items/search` with an already-built filter AST. The saved-view screens and
+ * the work list share this one boundary: it validates every row, keeps the server's refusal
+ * detail, and sends only what the caller chose -- an absent `sort` or `columns` is omitted,
+ * never defaulted, so a stored query document is not rewritten by being run.
+ */
+export async function postWorkItemSearch(input: {
+  workspaceId: string;
+  filter?: WorkItemFilter;
+  sort?: WorkItemSearchSort[];
+  columns?: WorkItemSearchColumn[];
+  cursor?: string;
+}): Promise<StructuredWorkItemsResult> {
+  const response = await client["work-items"].search.$post({
+    json: {
+      workspaceId: input.workspaceId,
+      ...(input.cursor ? { cursor: input.cursor } : {}),
+      query: {
+        entity: "work_item",
+        ...(input.filter ? { filter: input.filter } : {}),
+        ...(input.sort && input.sort.length > 0 ? { sort: input.sort } : {}),
+        ...(input.columns ? { columns: input.columns } : {}),
+      },
+    },
+  });
+  if (!response.ok) {
+    throw new HttpError(response.status, await readErrorDetail(response));
+  }
+  const { data, page, meta } = await response.json();
+  const items = data.map(parseWorkItemRow);
+  return {
+    items,
+    hasPartialFailure: items.some((item) => item.unavailableFields.length > 0),
+    hasMore: page.hasMore,
+    nextCursor: page.nextCursor,
+    total: meta?.total,
+  };
+}
+
+/** Parses filter text from a URL, failing as a 400 the user can fix; it is never sent. */
+export function parseFilterTextOrThrow(
+  text: string,
+): WorkItemFilter | undefined {
+  try {
+    return parseWorkItemFilterText(text);
+  } catch (error) {
+    throw new HttpError(
+      400,
+      error instanceof Error ? error.message : "Invalid filter text.",
+    );
+  }
+}
+
+/**
+ * The work list's read: the list's project becomes a leading `project` clause (the endpoint's
+ * own scope is the workspace and the actor's reach, never the page the user is on), with the
+ * list's sort and the chosen columns.
  */
 export default async function searchWorkItems(input: {
   workspaceId: string;
@@ -79,46 +140,18 @@ export default async function searchWorkItems(input: {
   dir: WorkItemSortDirection;
   columns?: WorkItemSearchColumn[];
 }): Promise<StructuredWorkItemsResult> {
-  let filter: ReturnType<typeof parseWorkItemFilterText>;
-  try {
-    filter = parseWorkItemFilterText(input.filter);
-  } catch (error) {
-    // A malformed filter arriving from the URL is a bad request the user can fix in the
-    // editor; it is never sent to the endpoint.
-    throw new HttpError(
-      400,
-      error instanceof Error ? error.message : "Invalid filter text.",
-    );
-  }
+  const filter = parseFilterTextOrThrow(input.filter);
   const projectFilter = {
     field: "project",
     op: "eq",
     value: input.projectSlug,
   } as const;
-  const scopedFilter = filter
-    ? { op: "and" as const, clauses: [projectFilter, filter] }
-    : projectFilter;
-  const sort = toSearchSort(input.sort, input.dir);
-  const response = await client["work-items"].search.$post({
-    json: {
-      workspaceId: input.workspaceId,
-      query: {
-        entity: "work_item",
-        filter: scopedFilter,
-        ...(sort.length > 0 ? { sort } : {}),
-        ...(input.columns ? { columns: input.columns } : {}),
-      },
-    },
+  return postWorkItemSearch({
+    workspaceId: input.workspaceId,
+    filter: filter
+      ? { op: "and", clauses: [projectFilter, filter] }
+      : projectFilter,
+    sort: toSearchSort(input.sort, input.dir),
+    columns: input.columns,
   });
-  if (!response.ok) {
-    throw new HttpError(response.status, await readErrorDetail(response));
-  }
-  const { data, page } = await response.json();
-  const items = data.map(parseWorkItemRow);
-  return {
-    items,
-    hasPartialFailure: items.some((item) => item.unavailableFields.length > 0),
-    hasMore: page.hasMore,
-    nextCursor: page.nextCursor,
-  };
 }

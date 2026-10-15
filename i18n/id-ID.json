@@ -1353,7 +1353,8 @@
 			"members": "Anggota",
 			"invitations": "Undangan",
 			"more": "Lainnya",
-			"backToBoard": "Kembali ke papan"
+			"backToBoard": "Kembali ke papan",
+			"savedViews": "Saved views"
 		},
 		"projectList": {
 			"viewProject": "Lihat Proyek",
@@ -3127,6 +3128,88 @@
 			"confirmRequest": "Request deletion",
 			"deleteRequested": "Deletion requested. Approve it to complete.",
 			"deleteError": "Deletion could not be requested."
+		}
+	},
+	"savedViews": {
+		"cancelEdit": "Cancel editing",
+		"clone": "Clone as private view",
+		"columnName": {
+			"assignee": "Assignee",
+			"dueDate": "Due date",
+			"key": "Key",
+			"priority": "Priority",
+			"state": "State",
+			"title": "Title"
+		},
+		"columns": "Visible columns",
+		"count_other": "{{count}} matching work items",
+		"countLoading": "Counting matching work items…",
+		"create": "Create view",
+		"createError": "The saved view could not be created.",
+		"createForbidden": "You can't create a view with that audience.",
+		"createForm": "New saved view",
+		"creating": "Creating…",
+		"deleteAlreadyRequested": "A deletion request for this view is already waiting for approval.",
+		"deleteError": "A deletion request could not be created.",
+		"deleteForbidden": "Only the owner of a view, or someone who manages workspace settings, can request its deletion.",
+		"description": "Views available to you in this workspace. Each one is a stored search you can open, share by its link, pin and copy.",
+		"direction": {
+			"asc": "Ascending",
+			"desc": "Descending"
+		},
+		"directionLabel": "Sort direction",
+		"duplicate": "Duplicate",
+		"duplicateError": "The view could not be duplicated.",
+		"duplicateNamed": "Duplicate {{name}} as a private view",
+		"edit": "Edit view",
+		"empty": "No saved views are available.",
+		"emptySearch": "No saved view matches that name.",
+		"forbidden": "You can't make that change to this view.",
+		"layoutUnavailable": "This view uses a layout or query that is not supported here yet.",
+		"loadError": "Saved views could not be loaded.",
+		"loading": "Loading saved views",
+		"loadingMore": "Loading more…",
+		"loadingView": "Loading saved view…",
+		"loadMore": "Load more",
+		"modifiedNotice": "This is not the saved definition. Save the view to keep these changes.",
+		"name": "View name",
+		"pin": "Pin",
+		"pinError": "The pin could not be changed.",
+		"pinNamed": "Pin {{name}}",
+		"pinned": "Pinned",
+		"projectUnavailable": "This project is unavailable to your account.",
+		"queryNotEditable": "This view's query can't be edited here. You can still rename it and change who can see it.",
+		"requestDelete": "Request deletion",
+		"requestDeleteNamed": "Request deletion of {{name}}",
+		"requesting": "Requesting…",
+		"retry": "Try again",
+		"save": "Save view",
+		"saveError": "The saved view could not be updated.",
+		"search": "Filter saved views",
+		"sharedLinkNotice": "You can't open the saved view behind this link. This is the query it carries, run with your own access, so you see only the work items you are allowed to.",
+		"sharedViewName": "Shared view",
+		"sort": "Sort work items",
+		"sortField": {
+			"dueDate": "Due date",
+			"key": "Key",
+			"priority": "Priority",
+			"title": "Title"
+		},
+		"summary": "Visibility: {{visibility}}",
+		"team": {
+			"label": "Team",
+			"loadError": "The teams you can share with could not be loaded.",
+			"placeholder": "Choose a team"
+		},
+		"title": "Saved views",
+		"unpin": "Unpin",
+		"unpinNamed": "Unpin {{name}}",
+		"viewUnavailable": "This saved view isn't available to you, or it no longer exists.",
+		"visibility": {
+			"label": "Visibility",
+			"private": "Private",
+			"team": "Team",
+			"workspace": "Workspace"
 		}
 	}
 }
