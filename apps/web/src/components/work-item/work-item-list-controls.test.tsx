@@ -8,7 +8,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 import { translate } from "@/test/en-translation";
 import WorkItemListControls from "./work-item-list-controls";
@@ -19,6 +19,16 @@ vi.mock("react-i18next", () => ({
       translate(key, options),
   }),
 }));
+
+// The controls load the filter editor through React.lazy. The first dynamic import of that chunk
+// transforms the editor and the design-system primitives it pulls in, which under a loaded
+// machine took longer than a test's own timeout (the first test to render it timed out in
+// 2 of 3 loaded runs). Importing the same module once here, with its own generous hook
+// timeout, makes every test below start with the chunk already resolved, so each keeps the
+// default timeouts and the assertions stay exactly as strict.
+beforeAll(async () => {
+  await import("./work-item-filter-editor");
+}, 120_000);
 
 afterEach(cleanup);
 
@@ -43,19 +53,12 @@ describe("work list filter controls", () => {
           onApply={noop}
         />,
       );
-      const alert = await screen.findByTestId(
-        "work-item-search-error",
-        undefined,
-        {
-          timeout: 15_000,
-        },
-      );
+      const alert = await screen.findByTestId("work-item-search-error");
       expect(alert).toHaveTextContent(
         translate(`workItems:filter.errors.${key}`),
       );
       expect(alert.textContent).not.toMatch(/Filter field unavailable|\d{3}:/u);
     },
-    20_000,
   );
 
   it("does not show an unrelated failure (a 500 or a network error) as a filter refusal", async () => {
