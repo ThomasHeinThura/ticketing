@@ -47,15 +47,22 @@ What does not change: omission stays detectable in the application — see
 
 ### Query scoping
 
-Every query that can return cross-organisation data passes through a scoped repository
-helper that takes the resolved identity:
+Every query that can return cross-organisation data passes through a repository function
+that takes the tenant explicitly (`workspaceId`, `projectId`, or the resolved identity) and
+puts it in the statement's predicate:
 
 ```ts
-const items = await workItems.forIdentity(identity).inProject(projectId).list(filter);
+const items = await listWorkItemsInProject(workspaceId, projectId, filter);
 ```
 
-A lint rule forbids calling `db.select().from(workItem)` outside
-`apps/api/src/*/repository.ts`, so ad-hoc unscoped queries cannot creep into controllers.
+This replaces the earlier `workItems.forIdentity(identity).inProject(projectId)` wrapper
+shape: repositories take explicit tenant parameters and no wrapper type is introduced
+(conductor decision recorded in PR #780, decision log 2026-10-15, "Conductor
+implementation decisions"; see also
+[coding-standards.md](../04-engineering/coding-standards.md)).
+
+`check:queries` (issue #580) forbids building a query such as `db.select().from(workItem)`
+outside repository modules, so ad-hoc unscoped queries cannot creep into controllers.
 
 ### The 404 rule
 
