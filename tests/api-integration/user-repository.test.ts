@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import {
@@ -93,4 +93,67 @@ describe("user repository (#580)", () => {
       (await listUserMemberships(db, b.user.id)).map((r) => r.workspaceId),
     ).toEqual([b.workspace.id]);
   });
+
+  it("listMembersOfWorkspaces returns the members of every named workspace in one call", async () => {
+    // A user who belongs to two workspaces, each with another member: account deletion
+    // planning counts members and owners per workspace from this one result, so a listing
+    // truncated to the first workspace would let a sole owner orphan the second.
+    const a = await createWorkspaceMember({ role: "owner" });
+    const b = await createWorkspaceMember({ role: "owner" });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: b.workspace.id,
+      userId: a.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+
+    const members = await listMembersOfWorkspaces(db, [
+      a.workspace.id,
+      b.workspace.id,
+    ]);
+    const perWorkspace = new Map<string, number>();
+    for (const row of members) {
+      perWorkspace.set(
+        row.workspaceId,
+        (perWorkspace.get(row.workspaceId) ?? 0) + 1,
+      );
+    }
+    expect(perWorkspace.get(a.workspace.id)).toBe(1);
+    expect(perWorkspace.get(b.workspace.id)).toBe(2);
+    expect(perWorkspace.size).toBe(2);
+  });
+
+  it("lockUserRow holds a row lock that a second connection cannot take until the transaction ends", async () => {
+    const a = await createWorkspaceMember();
+    await db.transaction(async (holder) => {
+      expect(await lockUserRow(holder, a.user.id)).toEqual([{ id: a.user.id }]);
+      expect(await userRowLockedByOther(a.user.id)).toBe(true);
+    });
+    expect(await userRowLockedByOther(a.user.id)).toBe(false);
+  });
 });
+
+/** True when another pooled connection cannot immediately lock the user row (SQLSTATE 55P03). */
+async function userRowLockedByOther(userId: string) {
+  try {
+    await db.transaction(async (other) => {
+      await other.execute(
+        sql`select 1 from "user" where id = ${userId} for update nowait`,
+      );
+    });
+    return false;
+  } catch (error) {
+    const chain: string[] = [];
+    for (let e: unknown = error; e; e = (e as { cause?: unknown }).cause) {
+      chain.push(
+        String((e as { code?: unknown }).code ?? ""),
+        String((e as { message?: unknown }).message ?? ""),
+      );
+    }
+    const text = chain.join(" ");
+    if (text.includes("55P03") || text.includes("could not obtain lock")) {
+      return true;
+    }
+    throw error;
+  }
+}
