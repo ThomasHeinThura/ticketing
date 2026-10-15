@@ -1,3 +1,4 @@
+import type { JsonValue } from "@taskdesk/domain";
 import { and, eq, inArray, isNull, max, or } from "drizzle-orm";
 import db from "../database";
 import { type Executor, executorOrDefault } from "../database/executor";
@@ -26,6 +27,68 @@ export type NewWorkflowTransition = Omit<
   "id" | "createdAt"
 >;
 
+function queryWorkflowTree(id: string) {
+  return db.query.workflowTable.findFirst({
+    where: eq(workflowTable.id, id),
+    with: {
+      versions: {
+        with: { transitions: true },
+      },
+    },
+  });
+}
+
+type DatabaseWorkflowTree = NonNullable<
+  Awaited<ReturnType<typeof queryWorkflowTree>>
+>;
+type DatabaseWorkflowVersion = DatabaseWorkflowTree["versions"][number];
+type DatabaseWorkflowTransition =
+  DatabaseWorkflowVersion["transitions"][number];
+type MaterializedWorkflowTransition = Omit<
+  DatabaseWorkflowTransition,
+  "guards" | "effects"
+> & {
+  guards: JsonValue;
+  effects: JsonValue;
+};
+type MaterializedWorkflowVersion = Omit<
+  DatabaseWorkflowVersion,
+  "transitions"
+> & {
+  transitions: MaterializedWorkflowTransition[];
+};
+type MaterializedWorkflowTree = Omit<DatabaseWorkflowTree, "versions"> & {
+  versions: MaterializedWorkflowVersion[];
+};
+
+/**
+ * The non-null workflow-transition JSONB columns are decoded by the app's standard
+ * node-postgres JSONB parser (`JSON.parse`) and Drizzle passes decoded values through.
+ * Narrow only these persisted JSON leaves to the existing JsonValue contract; do not
+ * claim that persisted values satisfy the workflow guard/effect domain unions.
+ */
+function materializeWorkflowTree(
+  tree: DatabaseWorkflowTree,
+): MaterializedWorkflowTree {
+  return {
+    ...tree,
+    versions: tree.versions.map((version) => ({
+      ...version,
+      transitions: version.transitions.map(materializeWorkflowTransition),
+    })),
+  };
+}
+
+function materializeWorkflowTransition(
+  transition: DatabaseWorkflowTransition,
+): MaterializedWorkflowTransition {
+  return {
+    ...transition,
+    guards: transition.guards as JsonValue,
+    effects: transition.effects as JsonValue,
+  };
+}
+
 export async function insertWorkflow(values: {
   workspaceId: string;
   key: string;
@@ -36,15 +99,11 @@ export async function insertWorkflow(values: {
 }
 
 /** One workflow with its versions and each version's transitions. */
-export async function findWorkflowTree(id: string) {
-  return db.query.workflowTable.findFirst({
-    where: eq(workflowTable.id, id),
-    with: {
-      versions: {
-        with: { transitions: true },
-      },
-    },
-  });
+export async function findWorkflowTree(
+  id: string,
+): Promise<MaterializedWorkflowTree | undefined> {
+  const workflow = await queryWorkflowTree(id);
+  return workflow ? materializeWorkflowTree(workflow) : undefined;
 }
 
 export async function listWorkflowsInWorkspace(workspaceId: string) {
@@ -131,10 +190,11 @@ export async function listVersionTransitions(
   versionId: string,
   executor?: Executor,
 ) {
-  return executorOrDefault(executor)
+  const transitions = await executorOrDefault(executor)
     .select()
     .from(workflowTransitionTable)
     .where(eq(workflowTransitionTable.versionId, versionId));
+  return transitions.map(materializeWorkflowTransition);
 }
 
 export async function listStateTemplates(workspaceId: string) {
@@ -187,7 +247,11 @@ export async function insertWorkflowTransitions(
   executor: Executor,
   rows: NewWorkflowTransition[],
 ) {
-  return executor.insert(workflowTransitionTable).values(rows).returning();
+  const inserted = await executor
+    .insert(workflowTransitionTable)
+    .values(rows)
+    .returning();
+  return inserted.map(materializeWorkflowTransition);
 }
 
 export async function listWorkflowTypeIds(workflowId: string) {

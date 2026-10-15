@@ -1,4 +1,5 @@
 import { expandCapabilities } from "@taskdesk/permissions";
+import type { notificationTable } from "../database/schema";
 import { subscribeToEvent } from "../events";
 import {
   apiRouter,
@@ -21,6 +22,8 @@ import {
   notificationSchema,
 } from "./response";
 import { createNotificationBody, notificationParam } from "./schema";
+
+type NotificationTransportRow = typeof notificationTable.$inferSelect;
 
 const listNotificationsRoute = createRoute({
   method: "get",
@@ -123,10 +126,11 @@ const notification = apiRouter()
         )?.impersonatedBy,
       },
     );
+    const response: NotificationTransportRow[] = notifications;
     // This route's completed query filters by the authenticated caller's userId.
     // Record only this proven self-read boundary; a failed query remains unknown.
     setShadowLegacyAuthorization(c, "allowed");
-    return c.json(notifications, 200);
+    return c.json(response, 200);
   })
   .openapi(createNotificationRoute, async (c) => {
     const {
@@ -137,22 +141,23 @@ const notification = apiRouter()
       relatedEntityId,
       relatedEntityType,
     } = c.req.valid("json");
-    return c.json(
-      await createNotification({
-        userId: c.get("userId"),
-        title,
-        content: message,
-        type,
-        eventData,
-        resourceId: relatedEntityId,
-        resourceType: relatedEntityType,
-      }),
-      200,
-    );
+    const created = await createNotification({
+      userId: c.get("userId"),
+      title,
+      content: message,
+      type,
+      eventData,
+      resourceId: relatedEntityId,
+      resourceType: relatedEntityType,
+    });
+    const response: NotificationTransportRow | null | undefined = created;
+    return c.json(response, 200);
   })
-  .openapi(markAsReadRoute, async (c) =>
-    c.json(await markAsRead(c.req.valid("param").id, c.get("userId")), 200),
-  )
+  .openapi(markAsReadRoute, async (c) => {
+    const updated = await markAsRead(c.req.valid("param").id, c.get("userId"));
+    const response: NotificationTransportRow = updated;
+    return c.json(response, 200);
+  })
   .openapi(markAllAsReadRoute, async (c) =>
     c.json(await markAllNotificationsAsRead(c.get("userId")), 200),
   )

@@ -1,3 +1,4 @@
+import type { JsonValue } from "@taskdesk/domain";
 import { can, type ResolvedIdentity } from "@taskdesk/permissions";
 import { and, desc, eq, isNull, lt, ne, or } from "drizzle-orm";
 import db from "../database";
@@ -23,6 +24,24 @@ import {
 import { reachableTaskNotificationPredicate } from "./task-reach.repository";
 
 type NotificationRow = typeof notificationTable.$inferSelect;
+interface MaterializedNotificationRow {
+  id: NotificationRow["id"];
+  userId: NotificationRow["userId"];
+  title: NotificationRow["title"];
+  content: NotificationRow["content"];
+  type: NotificationRow["type"];
+  eventData: JsonValue | null;
+  isRead: NotificationRow["isRead"];
+  resourceId: NotificationRow["resourceId"];
+  resourceType: NotificationRow["resourceType"];
+  personId: NotificationRow["personId"];
+  eventId: NotificationRow["eventId"];
+  kind: NotificationRow["kind"];
+  body: NotificationRow["body"];
+  readAt: NotificationRow["readAt"];
+  createdAt: NotificationRow["createdAt"];
+  updatedAt: NotificationRow["updatedAt"];
+}
 type NativeInboxCredential = {
   apiKey?: AuthenticatedApiKey;
   impersonatedBy?: string | null;
@@ -31,6 +50,18 @@ type InboxExecutor = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 type Cursor = { createdAt: Date; id: string };
 const CANDIDATE_PAGE_SIZE = 100;
+
+/**
+ * `event_data` is PostgreSQL JSONB. The app Pool installs no custom parser;
+ * node-postgres' JSONB parser uses `JSON.parse`, and Drizzle's JSONB mapper returns
+ * that materialized JSON value unchanged. Narrow only this persisted JSON leaf to the
+ * domain's existing JSON value type; preserve every value, including SQL/JSON null.
+ */
+function materializeNotification(
+  row: NotificationRow,
+): MaterializedNotificationRow {
+  return { ...row, eventData: row.eventData as JsonValue | null };
+}
 
 function isSerializationFailure(error: unknown) {
   let current: unknown = error;
@@ -302,7 +333,7 @@ export async function findOwnNotificationType(id: string, userId: string) {
 export async function markOwnReadableNotificationRead(
   id: string,
   userId: string,
-) {
+): Promise<MaterializedNotificationRow | undefined> {
   return inboxTransaction(async (tx) => {
     const [row] = await tx
       .select({ notification: notificationTable })
@@ -343,7 +374,7 @@ export async function markOwnReadableNotificationRead(
         ),
       )
       .returning();
-    return updated;
+    return updated ? materializeNotification(updated) : undefined;
   });
 }
 
@@ -353,13 +384,19 @@ export async function listVisibleNotificationRows(params: {
   userId: string;
   credentialCanReadTask: boolean;
   credential?: NativeInboxCredential;
-}) {
+}): Promise<
+  Array<{
+    notification: MaterializedNotificationRow;
+    projectId: string | null;
+    workspaceId: string | null;
+  }>
+> {
   const { userId, credentialCanReadTask, credential = {} } = params;
   return inboxTransaction(async (tx) => {
     const identity = await resolveInboxIdentity(tx, userId, credential);
     const includeInstanceAlerts = canReadInstanceAlerts(identity);
     const results: Array<{
-      notification: NotificationRow;
+      notification: MaterializedNotificationRow;
       projectId: string | null;
       workspaceId: string | null;
     }> = [];
@@ -385,7 +422,10 @@ export async function listVisibleNotificationRows(params: {
         ) {
           continue;
         }
-        results.push(item);
+        results.push({
+          ...item,
+          notification: materializeNotification(item.notification),
+        });
         if (results.length === 50) break;
       }
       const last = page.at(-1)?.notification;
@@ -404,12 +444,12 @@ export async function findNotificationPreferenceRow(userId: string) {
 
 export async function insertNotificationRow(
   values: typeof notificationTable.$inferInsert,
-) {
+): Promise<MaterializedNotificationRow | undefined> {
   const [notification] = await db
     .insert(notificationTable)
     .values(values)
     .returning();
-  return notification;
+  return notification ? materializeNotification(notification) : undefined;
 }
 
 /** The project's workspace id, or `undefined`. */

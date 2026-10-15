@@ -37,6 +37,31 @@ export type AuditQuery = {
   readonly until?: string | undefined;
 };
 
+type AuditListRow = Omit<
+  typeof auditLogTable.$inferSelect,
+  "before" | "after"
+> & {
+  before: JsonValue | null;
+  after: JsonValue | null;
+};
+
+/**
+ * Drizzle leaves JSONB columns as `unknown`. These fields are materialized by the
+ * configured node-postgres/Drizzle JSONB path: PostgreSQL stores JSON values, pg-types
+ * decodes JSONB with `JSON.parse`, and Drizzle returns the decoded value unchanged.
+ * Keep the persisted value and row shape intact while exposing the existing JsonValue
+ * contract to repository callers.
+ */
+function materializeAuditRows(
+  rows: (typeof auditLogTable.$inferSelect)[],
+): AuditListRow[] {
+  return rows.map((row) => ({
+    ...row,
+    before: row.before as JsonValue | null,
+    after: row.after as JsonValue | null,
+  }));
+}
+
 /**
  * Shared WHERE construction for both audit list routes. The `action` filter is a
  * dotted-key PREFIX match (`auth.` selects the whole auth-lifecycle group). `%`, `_`
@@ -70,12 +95,13 @@ function combineFilters(filters: (SQL | undefined)[]): SQL | undefined {
 
 /** Every audit row matching the filters, newest first (instance administrators). */
 export async function listInstanceAuditRows(query: AuditQuery) {
-  return db
+  const rows = await db
     .select()
     .from(auditLogTable)
     .where(combineFilters(auditListFilters(query)))
     .orderBy(desc(auditLogTable.seq))
     .limit(query.limit);
+  return materializeAuditRows(rows);
 }
 
 /**
@@ -149,7 +175,7 @@ export async function listWorkspaceAuditRows(
             isNull(auditLogTable.projectId),
             inArray(auditLogTable.projectId, [...reach]),
           );
-  return db
+  const rows = await db
     .select()
     .from(auditLogTable)
     .where(
@@ -161,10 +187,10 @@ export async function listWorkspaceAuditRows(
     )
     .orderBy(desc(auditLogTable.seq))
     .limit(query.limit);
+  return materializeAuditRows(rows);
 }
 
-export interface AuditLogChainRow {
-  [key: string]: unknown;
+export type AuditLogChainRow = {
   id: string;
   seq: string;
   actor_id: string | null;
@@ -183,7 +209,7 @@ export interface AuditLogChainRow {
   created_at_iso: string;
   prev_hash: string;
   row_hash: string;
-}
+};
 
 /** Every row's hash inputs in `seq` order, `created_at` as the exact UTC ISO string. */
 export async function listAuditChainRows(executor: Executor) {
