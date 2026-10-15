@@ -334,8 +334,12 @@ does not exist yet.
 
 None open on this spec. Related questions that already have their own issues:
 
-- Whether a key's effective authority should also intersect the owner's project role
-  ([#724](https://github.com/ThomasHeinThura/ticketing/issues/724)); pending an owner decision.
+- Decided 2026-10-15 (Thomas): a key's effective authority is also clamped by the owner's
+  project role, so a key never exceeds what the owner's session can do in that project
+  ([#724](https://github.com/ThomasHeinThura/ticketing/issues/724); implemented by
+  [PR #784](https://github.com/ThomasHeinThura/ticketing/pull/784), see also
+  [#783](https://github.com/ThomasHeinThura/ticketing/pull/783)). Not an open question; listed
+  so `AK-3` readers find it.
 - Aligning `WH-14`/`WH-15` wording on `sees_all` with the workspace-scoped #319 contract
   ([#337](https://github.com/ThomasHeinThura/ticketing/issues/337)); follows the close of this
   spec's review section.
