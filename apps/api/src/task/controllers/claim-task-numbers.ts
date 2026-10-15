@@ -1,22 +1,16 @@
-import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { projectTable } from "../../database/schema";
+import type { Executor } from "../../database/executor";
+import { advanceProjectTaskNumber } from "../repository";
 
-type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbOrTx = Executor;
 
 async function claimTaskNumbers(
   projectId: string,
   count: number,
   dbOrTx: DbOrTx = db,
 ) {
-  const [updated] = await dbOrTx
-    .update(projectTable)
-    .set({
-      lastTaskNumber: sql`${projectTable.lastTaskNumber} + ${count}`,
-    })
-    .where(eq(projectTable.id, projectId))
-    .returning({ lastTaskNumber: projectTable.lastTaskNumber });
+  const updated = await advanceProjectTaskNumber(dbOrTx, projectId, count);
 
   if (!updated) {
     throw new HTTPException(404, {

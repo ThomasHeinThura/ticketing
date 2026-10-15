@@ -1,9 +1,8 @@
-import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { findColumnBySlug, updateTaskRow } from "../repository";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 async function updateTaskStatus({
@@ -18,21 +17,11 @@ async function updateTaskStatus({
   const { existingTask, updatedTask } = await db.transaction(async (tx) => {
     const existingTask = await lockTaskAndAssertProjectLive(tx, id);
     await assertValidTaskStatus(status, existingTask.projectId, tx);
-    const column = await tx.query.columnTable.findFirst({
-      where: and(
-        eq(columnTable.projectId, existingTask.projectId),
-        eq(columnTable.slug, status),
-      ),
+    const column = await findColumnBySlug(tx, existingTask.projectId, status);
+    const updatedTask = await updateTaskRow(tx, id, {
+      status,
+      columnId: column?.id ?? null,
     });
-    const [updatedTask] = await tx
-      .update(taskTable)
-      .set({
-        status,
-        columnId: column?.id ?? null,
-        version: sql`${taskTable.version} + 1`,
-      })
-      .where(eq(taskTable.id, id))
-      .returning();
     return { existingTask, updatedTask };
   });
 
