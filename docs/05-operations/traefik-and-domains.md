@@ -85,9 +85,9 @@ Both hostnames reach the same container. The application selects the bundle from
 `Host` header, and the portal boundary middleware rejects a session that does not match.
 
 **The application port is never published in production.** Neither the base `compose.yml`
-nor `deploy/compose.prod.yml` declares `ports:` on the `taskdesk` service; publishing 5173 is
-the job of `deploy/compose.local.yml`, which production never loads. It has to be that way
-round — Compose concatenates `ports:` across files, so an overlay can add a published port
+nor `deploy/compose.prod.yml` declares `ports:` on the `taskdesk` service, and since #752
+neither does `deploy/compose.local.yml`; the local stack reaches 5173 through its own
+Traefik. It has to be that way round — Compose concatenates `ports:` across files, so an overlay can add a published port
 but cannot remove one ([deployment.md](deployment.md)). In production, port 5173 is reachable
 only on the Docker network Traefik shares with the container.
 
@@ -96,8 +96,8 @@ through exactly one proxy hop, so `X-Forwarded-For` at that hop is the client an
 header is discarded. In the **shared-Traefik** pattern below the same rule holds — TaskDesk
 attaches to the existing proxy network and publishes nothing — and `install.sh` refuses a
 `--env production` install if it finds 5173 already bound on the host
-([one-line-install.md](one-line-install.md)). Locally, 5173 being bound is the expected
-state, so the check does not apply.
+([one-line-install.md](one-line-install.md)). That check applies to production installs
+only.
 
 **One hop is the count for this arrangement, not a default to carry elsewhere.** Where a CDN
 or load balancer sits in front of Traefik there are two appending hops and the value is `2`.
@@ -229,6 +229,18 @@ already-running local Traefik shares that Compose project, `docker compose port 
 succeeds against it, and `up` reads it as this stack's own and adopts it rather than
 flagging a conflict (harmless — it only means `up` recreates that other checkout's
 containers, which was already true before this port check existed).
+
+**Loopback only (#752).** The local overlays bind every published port to loopback:
+Traefik's HTTP and HTTPS ports on IPv4 `127.0.0.1` and IPv6 `[::1]`, and Postgres on
+`127.0.0.1:5432`. The
+application port `5173` is not published at all. Traefik reaches it over the `taskdesk`
+network, `scripts/deploy.sh` probes it from inside the container, and the container health
+check runs inside the container too. A host-published `5173` would bypass Traefik, and with
+`TASKDESK_TRUST_PROXY=1` anything that reached it could forge `X-Forwarded-For`. A local
+stack is therefore not reachable from another machine. To reach it from one deliberately,
+add your own untracked Compose overlay that re-publishes Traefik's ports on the address you
+choose (`ports: !override`), and only Traefik's ports: never the application, database,
+cache or mail ports.
 
 `scripts/deploy.sh local` prints this. It creates a self-signed **leaf** certificate for
 the local routes in `deploy/local/certs/`; it is not a certificate authority. Trust
