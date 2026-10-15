@@ -17,6 +17,18 @@ import WorkItemBoard from "./work-item-board";
 const rankWorkItem = vi.hoisted(() => vi.fn());
 const transitionWorkItem = vi.hoisted(() => vi.fn());
 const getWorkItemTransitions = vi.hoisted(() => vi.fn());
+// Lets one test make `rankNeighbours` find nothing to rank against, the stale-column case the
+// board's own bounds checks otherwise make unreachable from the keyboard.
+const noNeighbours = vi.hoisted(() => ({ active: false }));
+
+vi.mock("@/lib/work-item-board", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/work-item-board")>();
+  return {
+    ...actual,
+    rankNeighbours: (...args: Parameters<typeof actual.rankNeighbours>) =>
+      noNeighbours.active ? undefined : actual.rankNeighbours(...args),
+  };
+});
 
 vi.mock("@/fetchers/work-item/rank-work-item", () => ({
   default: (...args: unknown[]) => rankWorkItem(...args),
@@ -693,22 +705,78 @@ describe("failure handling for rank (404, 409, 422, 400, 403)", () => {
   });
 
   it("a keyboard move that finds no neighbours (a no-op) leaves no focus target either", async () => {
-    // Moving the only card of a column has no neighbours to rank against.
-    const view = board({
-      canRank: true,
-      workItems: [item("WLP-1", "s-open", "1"), item("WLP-4", "s-done", "1")],
-    });
-    expect(
-      screen.getByRole("button", { name: "Move down: WLP-1 in Open" }),
-    ).toBeDisabled();
-    const elsewhere = screen.getByRole("link", { name: /WLP-4/ });
-    elsewhere.focus();
-    view.rerender({
-      canRank: true,
-      workItems: [item("WLP-4", "s-done", "1"), item("WLP-1", "s-open", "1")],
-    });
-    await Promise.resolve();
-    expect(screen.getByRole("link", { name: /WLP-4/ })).toHaveFocus();
+    noNeighbours.active = true;
+    try {
+      const view = board({ canRank: true });
+      const down = screen.getByRole("button", {
+        name: "Move down: WLP-1 in Open",
+      });
+      expect(down).toBeEnabled();
+      down.focus();
+      fireEvent.click(down);
+      // The move ran and resolved as a no-op: nothing was written, nothing is announced.
+      await waitFor(() => expect(down).toBeEnabled());
+      expect(rankWorkItem).not.toHaveBeenCalled();
+      const elsewhere = screen.getByRole("link", { name: /WLP-5/ });
+      elsewhere.focus();
+      view.rerender({
+        canRank: true,
+        workItems: [
+          item("WLP-2", "s-open", "1"),
+          item("WLP-1", "s-open", "2"),
+          item("WLP-3", "s-open", "3"),
+          item("WLP-4", "s-done", "1"),
+          item("WLP-5", "s-done", "2"),
+        ],
+      });
+      await Promise.resolve();
+      expect(screen.getByRole("link", { name: /WLP-5/ })).toHaveFocus();
+    } finally {
+      noNeighbours.active = false;
+    }
+  });
+
+  it("a move whose write throws past its own handling leaves no focus target and surfaces the error", async () => {
+    // The rank write fails and then the refresh inside the handler fails too, so the task
+    // rejects instead of returning an error notice.
+    rankWorkItem.mockRejectedValue(new HttpError(409, "x"));
+    const view = board({ canRank: true });
+    vi.spyOn(view.client, "invalidateQueries").mockRejectedValue(
+      new Error("refresh failed"),
+    );
+    const escaped: unknown[] = [];
+    const previous = process.listeners("unhandledRejection");
+    process.removeAllListeners("unhandledRejection");
+    process.on("unhandledRejection", (reason) => escaped.push(reason));
+    try {
+      const down = screen.getByRole("button", {
+        name: "Move down: WLP-1 in Open",
+      });
+      down.focus();
+      fireEvent.click(down);
+      await waitFor(() => expect(escaped).toHaveLength(1));
+      expect((escaped[0] as Error).message).toBe("refresh failed");
+      // The guard is released, so the controls work again.
+      await waitFor(() => expect(down).toBeEnabled());
+      const elsewhere = screen.getByRole("link", { name: /WLP-5/ });
+      elsewhere.focus();
+      view.rerender({
+        canRank: true,
+        workItems: [
+          item("WLP-2", "s-open", "1"),
+          item("WLP-1", "s-open", "2"),
+          item("WLP-3", "s-open", "3"),
+          item("WLP-4", "s-done", "1"),
+          item("WLP-5", "s-done", "2"),
+        ],
+      });
+      await Promise.resolve();
+      expect(screen.getByRole("link", { name: /WLP-5/ })).toHaveFocus();
+    } finally {
+      process.removeAllListeners("unhandledRejection");
+      for (const listener of previous)
+        process.on("unhandledRejection", listener);
+    }
   });
 
   it("re-enables the controls after a failed move", async () => {
