@@ -31,8 +31,8 @@ type CalendarActor = {
 
 type CalendarTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export function getCalendarWorkspace(id: string) {
-  return db
+export async function getCalendarWorkspace(id: string) {
+  return await db
     .select({ workspaceId: serviceCalendarTable.workspaceId })
     .from(serviceCalendarTable)
     .where(eq(serviceCalendarTable.id, id))
