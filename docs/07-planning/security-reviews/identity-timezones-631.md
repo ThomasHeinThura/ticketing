@@ -207,3 +207,77 @@ The new main records do not affect source behavior, the test inputs, or gate pas
 ## Limits and residuals
 
 I ran **0 tests**, **0** PostgreSQL checks, and **0** image, container, browser, or hosted CI checks in this review; the conductor owns the current runtime window. The original author report's zone runs and revert probes are author evidence, not my executions. Existing legacy timestamp defaults beyond the bounded #631 fix remain outside this verdict. Required hosted checks, exact-head image/boot/runtime acceptance, authentic review publication, and any issue/PR disposition remain separate. No merge, release, stage, or issue closure is claimed.
+
+---
+
+## Current CI repair clearance
+
+**Reviewed head:** `569b1a161de71088599fbbfadef8e681519afd50`
+
+One strong independent ordinary review and a fresh full independent Sol review clear the bounded unused-import and four exact historical non-credential finding corrections. The prior source and composition reports remain unchanged. Local web typecheck passed. Hosted checks on the final head and shipping-image runtime proof remain pending; no gate or image pass is inferred.
+
+## Retained report — 631-ci-repair-ordinary-luna.md
+
+Origin SHA-256: `807085ed4ddc55594f69fa11489c5fb338947894a699b384407412eb558ddd02`.
+
+# #631 CI repair delta — independent ordinary review
+
+**Verdict: CLEAR for the bounded delta at exact local head `569b1a161de71088599fbbfadef8e681519afd50`.** No blocking or non-blocking findings.
+
+## Reviewer and scope
+
+- **Model:** GPT-6 Luna, fresh reviewer context dispatched for this review.
+- **Role and independence:** one strong ordinary review of the bounded CI/security-scope repair. I did not author, direct, or remediate this candidate or the original #631 source.
+- **Base and candidate:** `aea7da52bddab201a6de5882e70551e7da0cc55c` → `569b1a161de71088599fbbfadef8e681519afd50` on `codex/identity-db-timezones-631`.
+- **Scope:** the exact three-path delta in `.gitleaksignore`, `apps/api/src/identity/oidc-login.ts`, and `docs/07-planning/decision-log.md`. The original product source was not re-reviewed; prior original-head ordinary and full Sol reviews and current-main composition reviews remain separate evidence.
+
+## Checks and findings
+
+I inspected the exact object diff, the existing immutable-fingerprint entries and CI secret-scan configuration, the affected import use, the four unchanged report lines in the published note, and the new technical disposition. `git diff --check aea7da52..569b1a1` passed. The local checkout is at the candidate SHA, clean, and one commit ahead of the branch's remote tracking ref.
+
+The four added ignores are exact `commit:file:rule:line` fingerprints for `generic-api-key` findings at lines 45, 77, 146 and 178 of the unchanged `aea7da52` publication note. I inspected the restricted local finding metadata without printing the matched values: all four values equal the public A/B and current-main composition report filenames. They are not adjacent report digests. The entries do not broaden to another commit, path, rule, or line, and the reviewer reports and Git history remain unchanged. This matches the repository's existing exact-fingerprint precedent.
+
+I independently inspected the retained private probe summary and structured output. With the candidate ignore list, the original history probe exits 0 with zero findings. A fresh commit containing the same public report prose still produces four filename findings, and the independent synthetic-credential negative control produces a fifth finding. The proof records zero unexpected matches. The local scanner is Gitleaks 8.30.1; the prior hosted failure was Gitleaks 8.24.3. The local probe supports the disposition but does not establish hosted success on this candidate.
+
+The `sql` import removal is correct: the import was unused and no `sql` references remain in this file. The decision-log entry accurately describes this as a technical disposition pending independent ordinary and Sol clearance; it claims no owner authorization or waiver and keeps the required secret scan mandatory.
+
+No tests, typecheck, Docker, image, browser or hosted checks were run by this reviewer. The private existing evidence records the earlier hosted static failure as TS6133 for this import, and the current PR body/check state still needs exact-head refresh.
+
+## Live state and residual gates
+
+At review time, `gh pr view 795` showed the remote PR head still at `aea7da52bddab201a6de5882e70551e7da0cc55c`; this review is for the unpushed local candidate `569b1a1`. Hosted CI has therefore not run on the reviewed head. Earlier hosted checks at `aea7da52` include failures for static, PR-template/security-review, and secret scan; they are not cleared or reused here. The full independent GPT-6 Sol review required for this bounded security/gate repair remains pending, as do candidate-head required checks and shipping-image verification.
+
+**Conclusion:** CLEAR for this exact delta's ordinary review. This report does not claim hosted gate success, image/runtime acceptance, merge readiness, or completion of issue #631.
+
+## Retained report — 631-ci-repair-security-sol.md
+
+Origin SHA-256: `54fa1d34b940bc41e73904c98943fd8a28a9c2da4f16e253d47a2ae43063b8ad`.
+
+# #631 CI repair delta — independent full security review
+
+**Verdict: CLEAR for the bounded delta at exact local head `569b1a161de71088599fbbfadef8e681519afd50`.** I found no blocking or non-blocking security defect in this three-file repair. This verdict does not claim hosted gate success or merge readiness.
+
+**Reviewed head:** `569b1a161de71088599fbbfadef8e681519afd50`
+
+## Reviewer, independence, and source
+
+- **Role:** fresh independent full Sol-tier security reviewer. I did not author, direct, remediate, or ordinarily review this candidate or the original #631 product change.
+- **Model provenance:** the conductor dispatched this context with selector `gpt-6-sol`, `fork_turns=none`. The served backend/version is not introspectable in this runtime; this states the dispatch, not a measured backend identity.
+- **Branch and comparison:** `codex/identity-db-timezones-631`; `aea7da52bddab201a6de5882e70551e7da0cc55c` → `569b1a161de71088599fbbfadef8e681519afd50`. The local checkout was clean and one commit ahead of its remote tracking branch at review time.
+- **Scope:** exact-object diff of `.gitleaksignore`, `apps/api/src/identity/oidc-login.ts`, and `docs/07-planning/decision-log.md`; the immutable publication note, the hosted failure log and restricted local scanner metadata; the retained negative-control proof; governing review and secret-scan rules. The previously reviewed #631 product patch was not re-reviewed in this delta pass. I read the prior ordinary/full security source reports and current-main composition confirmations as separate evidence, plus the fresh ordinary delta review.
+
+## Security assessment
+
+The hosted Gitleaks 8.24.3 failure reports four `generic-api-key` fingerprints at lines 45, 77, 146 and 178 of `docs/07-planning/security-reviews/identity-timezones-631.md` in immutable publication commit `aea7da52...`. I compared its logged commit, file, rule and line fields against each proposed `.gitleaksignore` entry. All four match exactly. I inspected the local restricted structured findings without publishing the raw `Match` or `Secret` fields: each `Secret` equals the corresponding public ordinary A/B or current-main composition report filename on that note line. None equals an adjacent report digest, credential, token or access-bearing value. The note and historical commit are unchanged by this repair.
+
+Each ignore entry is bound to one historical commit, one file, one rule and one line. It grants no path-wide, rule-wide, arbitrary-hash or future-commit exemption. This follows the existing exact-fingerprint convention for immutable public review prose. The scanner remains a required CI check; this is a narrow non-secret classification, not a gate waiver. The decision-log entry accurately records technical rationale, its limits and reversal, and expressly claims no Thomas authorization to ignore a real credential.
+
+I independently inspected the retained local proof JSON: scanning current history with the candidate ignore list recorded zero findings; a fresh commit containing identical report prose produced four filename findings, and a separate synthetic-credential negative control produced one more finding. The five fresh findings had unique fingerprints and no unexpected matches. These results support that future copies and actual credential-shaped content remain visible. The local binary was Gitleaks 8.30.1; the final hosted 8.24.3 run on this exact candidate remains required.
+
+The only API code change removes an unused `sql` import. A source search found no `sql` reference left in `oidc-login.ts`; the change does not alter an expression, authorization condition, session expiry check, OIDC binding, or runtime path. The owner's web typecheck log shows the invoked `tsc` commands but has no explicit exit status; I did not run typecheck myself.
+
+## Checks, findings, and remaining gates
+
+I inspected `git diff` and `git log` for both exact objects, the published note lines, hosted scanner finding metadata, restricted local finding metadata, the prior review records, and the retained proof JSON. `git diff --check aea7da52... 569b1a1...` passed. I ran **0** new tests, Gitleaks scans, PostgreSQL checks, Docker/image checks, browser checks, or hosted CI jobs in this reviewer context; the local proof and typecheck are evidence produced by the repair owner, not my runs.
+
+No blocking or non-blocking finding remains within this review scope. The local head is not yet the remote PR head, so required GitHub checks on `569b1a1...` cannot be inferred from earlier runs. The hosted secret scan must confirm this repair with Gitleaks 8.24.3, and the complete required check set, image build/boot/health, and other candidate acceptance gates remain with the conductor. This review does not approve a push, merge, waiver, issue closure, or stage completion.
