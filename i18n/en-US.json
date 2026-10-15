@@ -3226,6 +3226,11 @@
 			"assignee": "Assignee",
 			"priority": "Priority",
 			"dueDate": "Due date"
+		},
+		"errors": {
+			"invalid": "This view's filter could not be applied. Check its syntax and values.",
+			"forbidden": "You don't have access to filter by one of this view's fields.",
+			"unavailable": "A field in this view's filter isn't available yet."
 		}
 	}
 }

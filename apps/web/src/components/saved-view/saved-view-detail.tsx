@@ -44,6 +44,7 @@ import {
   savedViewStoredSearch,
   savedViewUrlContextMatches,
 } from "@/lib/saved-view-query";
+import { workItemSearchRefusal } from "@/lib/work-item-search-error";
 
 /**
  * `docs/02-design/screen-inventory.md` "Saved view" (`/agent/views/{id}`), `SV-14`..`SV-21`.
@@ -513,9 +514,9 @@ export default function SavedViewDetail({
         </Button>
       ) : null}
       {results.error instanceof HttpError &&
-      [400, 403, 422].includes(results.error.status) ? (
+      workItemSearchRefusal(results.error.status) ? (
         <p role="alert" className="text-destructive text-sm">
-          {`${results.error.status}: ${results.error.message}`}
+          {t(`errors.${workItemSearchRefusal(results.error.status)}`)}
         </p>
       ) : null}
       {save.isError || pin.isError || clone.isError ? (

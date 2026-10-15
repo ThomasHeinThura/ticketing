@@ -567,3 +567,24 @@ describe("editing, sharing, pinning (permissions come from the server)", () => {
     });
   });
 });
+
+describe("a refused run is explained in translated words", () => {
+  it.each([
+    [400, "invalid"],
+    [403, "forbidden"],
+    [422, "unavailable"],
+  ])(
+    "maps the endpoint's %s to a message and never shows its own text",
+    async (status, key) => {
+      mocks.runSavedView.mockRejectedValue(
+        new HttpError(status, "Filter field unavailable: label"),
+      );
+      renderDetail(storedSearch);
+      const alert = await screen.findByText(
+        translate(`savedViews:errors.${key}`),
+      );
+      expect(alert).toBeInTheDocument();
+      expect(screen.queryByText(/Filter field unavailable/u)).toBeNull();
+    },
+  );
+});
