@@ -2352,7 +2352,9 @@
 			"assigneeInactive": "(inactive)",
 			"boardLayout": "Board",
 			"layoutGroup": "Layout",
-			"listLayout": "List"
+			"listLayout": "List",
+			"emptyFilteredDescription": "Change or clear the filter to see more of this project's work items.",
+			"emptyFilteredTitle": "No work items match this filter"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -2506,6 +2508,61 @@
 			"selectMode": "Select items",
 			"modeOff": "Selection mode off. Selection cleared.",
 			"modeOn": "Selection mode on. Use the checkboxes to choose work items."
+		},
+		"filter": {
+			"addCondition": "Add condition",
+			"addGroup": "Add group",
+			"apply": "Apply filter",
+			"boardNotice": "The board does not apply this filter. Switch to the list to see the filtered work items.",
+			"cannotOpenVisually": "This filter cannot be opened visually: {{error}}",
+			"datePlaceholder": "YYYY-MM-DD or 7d",
+			"field": "Filter field",
+			"fieldPlaceholder": "Field",
+			"fields": {
+				"assignee": "Assignee",
+				"createdAt": "Created date",
+				"dueDate": "Due date",
+				"priority": "Priority",
+				"project": "Project",
+				"stateGroup": "State group",
+				"type": "Type",
+				"watcher": "Watcher"
+			},
+			"formLabel": "Work item filters",
+			"groupOperator": "Group operator",
+			"invalidText": "Invalid filter text.",
+			"listPlaceholder": "value1, value2",
+			"loading": "Loading the filter editor",
+			"match": "Match",
+			"matchAll": "all (AND)",
+			"matchAny": "any (OR)",
+			"modeGroup": "Filter editor mode",
+			"modeText": "Text",
+			"modeVisual": "Visual",
+			"noFilters": "No filters are active.",
+			"notRepresentable": "This filter cannot be represented in text mode. Remove or edit the unsupported clause.",
+			"operatorFor": "Operator for {{field}}",
+			"operators": {
+				"contains": "contains",
+				"eq": "is",
+				"gt": "after / greater than",
+				"gte": "at or after / at least",
+				"in": "is one of",
+				"lt": "before / less than",
+				"lte": "at or before / at most"
+			},
+			"removeFilter": "Remove {{field}} filter",
+			"removeGroup": "Remove filter group",
+			"textLabel": "Filter work items",
+			"textPlaceholder": "assignee:@me state:started OR priority:>=high",
+			"unavailableField": "This field is not available yet. Applying it shows the server's answer for this field.",
+			"unavailableHint": "This field is not available yet. Apply the filter to see the server's answer for it.",
+			"unsupportedField": "Unsupported field. Edit it in text mode or remove it.",
+			"valueFor": "Value for {{field}}",
+			"valuePlaceholder": "Value",
+			"valuesFor": "Values for {{field}}",
+			"toggle": "Filter",
+			"toggleActive": "Filter (on)"
 		}
 	},
 	"portal": {

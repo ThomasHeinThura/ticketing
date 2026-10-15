@@ -7,6 +7,13 @@
 export { generatedRouteMetadata } from "./generated-route-metadata";
 
 import { generatedRouteMetadata } from "./generated-route-metadata";
+import {
+  appendWorkItemQueryState,
+  parseWorkItemListSearch,
+  type WorkItemListSearch,
+} from "./work-item-list-search";
+
+export * from "./work-item-list-search";
 
 export type RouteSurface = keyof typeof generatedRouteMetadata;
 
@@ -59,17 +66,6 @@ export function parseGeneratedRouteUrl(
   return { pathname: url.pathname, params };
 }
 
-export const WORK_ITEM_SORT_FIELDS = [
-  "key",
-  "position",
-  "title",
-  "priority",
-  "dueDate",
-] as const;
-export type WorkItemSortField = (typeof WORK_ITEM_SORT_FIELDS)[number];
-
-export const WORK_ITEM_SORT_DIRECTIONS = ["asc", "desc"] as const;
-export type WorkItemSortDirection = (typeof WORK_ITEM_SORT_DIRECTIONS)[number];
 export type WorkItemActivityFilter = "everything" | "comments" | "public";
 export type WorkItemDetailSearch = {
   activity?: Exclude<WorkItemActivityFilter, "everything">;
@@ -161,20 +157,6 @@ export function parseGodModeUsersSearch(raw: unknown): GodModeUsersSearch {
   };
 }
 
-// The screen inventory names three `layout` values on this one route
-// (`/agent/projects/{key}/work?layout=board|list|table`). `list` and `board` are built;
-// table is a separate, not-yet-built P1 row in `docs/02-design/screen-inventory.md`.
-// `layout` is parsed from the URL, so a bookmark naming a not-yet-built layout degrades
-// to `list` instead of 404ing and starts working once that layout ships.
-export const WORK_ITEM_LIST_LAYOUTS = ["list", "board"] as const;
-export type WorkItemListLayout = (typeof WORK_ITEM_LIST_LAYOUTS)[number];
-
-export type WorkItemListSearch = {
-  layout: WorkItemListLayout;
-  sort: WorkItemSortField;
-  dir: WorkItemSortDirection;
-};
-
 export type ServiceCalendarListSearch = { cursor?: string };
 export type SlaPolicyListSearch = { cursor?: string };
 
@@ -209,55 +191,6 @@ export function parseServiceCalendarListSearchFromQueryString(
   return parseServiceCalendarListSearch({
     cursor: params.get("cursor"),
   });
-}
-
-export const DEFAULT_WORK_ITEM_LIST_SEARCH: WorkItemListSearch = {
-  layout: "list",
-  sort: "key",
-  dir: "asc",
-};
-
-function isWorkItemSortField(value: unknown): value is WorkItemSortField {
-  return (
-    typeof value === "string" &&
-    (WORK_ITEM_SORT_FIELDS as readonly string[]).includes(value)
-  );
-}
-
-function isWorkItemSortDirection(
-  value: unknown,
-): value is WorkItemSortDirection {
-  return (
-    typeof value === "string" &&
-    (WORK_ITEM_SORT_DIRECTIONS as readonly string[]).includes(value)
-  );
-}
-
-function isWorkItemListLayout(value: unknown): value is WorkItemListLayout {
-  return (
-    typeof value === "string" &&
-    (WORK_ITEM_LIST_LAYOUTS as readonly string[]).includes(value)
-  );
-}
-
-/**
- * Parses a raw, possibly malformed search object (a hand-edited URL, an old bookmark, an
- * unset param) into a valid `WorkItemListSearch`, falling back to the default for any
- * missing or invalid field. Never throws -- this is also this route's `validateSearch`.
- */
-export function parseWorkItemListSearch(raw: unknown): WorkItemListSearch {
-  const candidate = (raw ?? {}) as Record<string, unknown>;
-  return {
-    layout: isWorkItemListLayout(candidate.layout)
-      ? candidate.layout
-      : DEFAULT_WORK_ITEM_LIST_SEARCH.layout,
-    sort: isWorkItemSortField(candidate.sort)
-      ? candidate.sort
-      : DEFAULT_WORK_ITEM_LIST_SEARCH.sort,
-    dir: isWorkItemSortDirection(candidate.dir)
-      ? candidate.dir
-      : DEFAULT_WORK_ITEM_LIST_SEARCH.dir,
-  };
 }
 
 export type IntakeQueueSearch = {
@@ -332,13 +265,6 @@ export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
     stage: stage ?? "email",
     factor: value.factor === "backup" ? "backup" : "totp",
   };
-}
-
-/** The inverse direction, for a column-header sort toggle. */
-export function toggleWorkItemSortDirection(
-  dir: WorkItemSortDirection,
-): WorkItemSortDirection {
-  return dir === "asc" ? "desc" : "asc";
 }
 
 export const routes = {
@@ -446,6 +372,11 @@ export const routes = {
         sort: resolved.sort,
         dir: resolved.dir,
       });
+      appendWorkItemQueryState(query, {
+        filter: resolved.filter,
+        filterMode: resolved.filterMode,
+        columns: resolved.columns,
+      });
       return `/agent/projects/${encodeURIComponent(params.projectKey)}/work?${query.toString()}`;
     },
   },
@@ -524,5 +455,8 @@ export function parseWorkItemListSearchFromQueryString(
     layout: params.get("layout") ?? undefined,
     sort: params.get("sort") ?? undefined,
     dir: params.get("dir") ?? undefined,
+    filter: params.get("filter") ?? undefined,
+    filterMode: params.get("filterMode") ?? undefined,
+    columns: params.get("columns") ?? undefined,
   });
 }

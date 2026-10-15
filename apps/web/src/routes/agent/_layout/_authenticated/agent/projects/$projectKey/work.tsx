@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
+import { Alert, AlertDescription, Button } from "@taskdesk/ui";
+import { ListFilter } from "lucide-react";
 import {
   lazy,
   Suspense,
@@ -60,12 +61,18 @@ const WorkItemBoardView = lazy(
 const BulkAssignToolbar = lazy(
   () => import("@/components/work-item/bulk-assign-toolbar"),
 );
+// The structured filter editor is only fetched once the user opens it, or when the URL already
+// carries a filter, so the default list route's graph does not include it (G11).
+const WorkItemListControls = lazy(
+  () => import("@/components/work-item/work-item-list-controls"),
+);
 const WorkItemSelectionToggle = lazy(
   () => import("@/components/work-item/work-item-selection-toggle"),
 );
 
 import {
   parseWorkItemListSearch,
+  type WorkItemFilterMode,
   type WorkItemListSearch,
   type WorkItemSortDirection,
   type WorkItemSortField,
@@ -97,7 +104,9 @@ function WorkItemsRouteComponent() {
 
 function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { t } = useTranslation();
-  const { layout, sort, dir } = Route.useSearch();
+  const { layout, sort, dir, filter, filterMode, columns } = Route.useSearch();
+  const isFiltered = !!filter?.trim();
+  const [isFilterOpen, setIsFilterOpen] = useState(isFiltered);
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   // The dialog composition is warmed by the create trigger once it is visible (G11), so create
@@ -231,9 +240,14 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     data: workItemsResult,
     isLoading: isWorkItemsLoading,
     isError: isWorkItemsError,
+    error: workItemsError,
     refetch: refetchWorkItems,
   } = useGetWorkItems({
     projectId: project?.id,
+    projectSlug: project?.slug,
+    workspaceId: workspace?.id,
+    filter,
+    columns,
     sort,
     dir,
     enabled: layout === "list",
@@ -272,6 +286,32 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           dir: nextDir,
         }),
         replace: true,
+      });
+    },
+    [navigate],
+  );
+
+  // Applying a filter or switching the editor mode is a navigation, not a replacement, so the
+  // back button steps through the queries the user tried (`VW-1`, AGENTS.md rule 4).
+  const handleFilterApply = useCallback(
+    (nextFilter: string) => {
+      navigate({
+        search: (prev: WorkItemListSearch) => ({
+          ...prev,
+          filter: nextFilter.trim() ? nextFilter : undefined,
+        }),
+      });
+    },
+    [navigate],
+  );
+
+  const handleFilterModeChange = useCallback(
+    (nextMode: WorkItemFilterMode) => {
+      navigate({
+        search: (prev: WorkItemListSearch) => ({
+          ...prev,
+          filterMode: nextMode,
+        }),
       });
     },
     [navigate],
@@ -365,7 +405,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
       />
       <div
         className={`flex h-full flex-col gap-4 overflow-y-auto p-6${
-          layout === "board" ? " w-full min-w-0" : ""
+          layout === "board" || isFilterOpen ? " w-full min-w-0" : ""
         }`}
       >
         <p className="sr-only" role="status" aria-live="polite">
@@ -413,6 +453,21 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                 {t("workItems:list.boardLayout")}
               </Button>
             </fieldset>
+            {layout === "list" ? (
+              <Button
+                variant={isFiltered ? "secondary" : "outline"}
+                size="sm"
+                aria-pressed={isFilterOpen}
+                aria-expanded={isFilterOpen}
+                aria-controls="work-item-filter-controls"
+                onClick={() => setIsFilterOpen((open) => !open)}
+              >
+                <ListFilter />
+                {isFiltered
+                  ? t("workItems:filter.toggleActive")
+                  : t("workItems:filter.toggle")}
+              </Button>
+            ) : null}
             {project ? (
               <Suspense fallback={null}>
                 <WorkItemCreateTrigger
@@ -424,6 +479,30 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             ) : null}
           </div>
         </div>
+        {layout === "list" && isFilterOpen ? (
+          <div id="work-item-filter-controls">
+            <Suspense fallback={null}>
+              <WorkItemListControls
+                filter={filter ?? ""}
+                mode={filterMode ?? "visual"}
+                workItemsError={workItemsError}
+                onModeChange={handleFilterModeChange}
+                onApply={handleFilterApply}
+              />
+            </Suspense>
+          </div>
+        ) : null}
+        {layout === "board" && isFiltered ? (
+          <Alert
+            variant="warning"
+            role="status"
+            data-testid="board-filter-notice"
+          >
+            <AlertDescription>
+              {t("workItems:filter.boardNotice")}
+            </AlertDescription>
+          </Alert>
+        ) : null}
         {createDialogLoad === "failed" ? (
           <div
             role="alert"
@@ -470,6 +549,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               onSortChange={handleSortChange}
               onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
               onRetry={handleRetry}
+              columns={columns}
+              isFiltered={isFiltered}
               selectedKeys={selectedKeys}
               canBulkAssign={canBulkAssign}
               onSelectionChange={handleSelectionChange}

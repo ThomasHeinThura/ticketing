@@ -42,6 +42,7 @@ import { getPriorityIcon } from "@/lib/priority";
 import {
   routes,
   toggleWorkItemSortDirection,
+  type WorkItemSearchColumn,
   type WorkItemSortDirection,
   type WorkItemSortField,
 } from "@/lib/routes";
@@ -60,6 +61,13 @@ export type WorkItemListProps = {
   dir: WorkItemSortDirection;
   onSortChange: (sort: WorkItemSortField, dir: WorkItemSortDirection) => void;
   onRetry: () => void;
+  /**
+   * The chosen columns in display order (`columns` in the URL / saved query, `VW-19`).
+   * Absent means every column in the default order, so an unconfigured list is unchanged.
+   */
+  columns?: WorkItemSearchColumn[];
+  /** A structured filter is applied, so an empty result means "no match", not "no items". */
+  isFiltered?: boolean;
   /** Keys currently selected for a bulk action (`VW-3`). */
   selectedKeys?: string[];
   onSelectionChange?: (key: string, checked: boolean) => void;
@@ -68,12 +76,42 @@ export type WorkItemListProps = {
   canBulkAssign?: boolean;
 };
 
-const SORT_COLUMNS: Array<{ field: WorkItemSortField; labelKey: string }> = [
-  { field: "key", labelKey: "workItems:list.columnKey" },
-  { field: "title", labelKey: "workItems:list.columnTitle" },
-  { field: "priority", labelKey: "workItems:list.columnPriority" },
-  { field: "dueDate", labelKey: "workItems:list.columnDueDate" },
+const DEFAULT_COLUMNS: WorkItemSearchColumn[] = [
+  "key",
+  "title",
+  "priority",
+  "dueDate",
+  "state",
+  "assignee",
 ];
+
+const COLUMN_LABEL_KEYS: Record<WorkItemSearchColumn, string> = {
+  key: "workItems:list.columnKey",
+  title: "workItems:list.columnTitle",
+  state: "workItems:list.columnState",
+  assignee: "workItems:list.columnAssignee",
+  priority: "workItems:list.columnPriority",
+  dueDate: "workItems:list.columnDueDate",
+};
+
+/** The columns the list route can sort by; State and Assignee have no sort. */
+const SORTABLE_COLUMNS: Partial<
+  Record<WorkItemSearchColumn, WorkItemSortField>
+> = {
+  key: "key",
+  title: "title",
+  priority: "priority",
+  dueDate: "dueDate",
+};
+
+const COLUMN_WIDTH_CLASSES: Record<WorkItemSearchColumn, string> = {
+  key: "w-[11%]",
+  title: "w-[32%]",
+  priority: "w-[12%]",
+  dueDate: "w-[13%]",
+  state: "w-[15%]",
+  assignee: "w-[17%]",
+};
 
 /**
  * The Assignee column's three cases (`work-item-list.tsx`'s own file comment has the
@@ -98,6 +136,8 @@ const FIELD_LABEL_KEYS: Record<WorkItemField, string> = {
   title: "workItems:list.columnTitle",
   priority: "workItems:list.columnPriority",
   dueDate: "workItems:list.columnDueDate",
+  stateName: "workItems:list.columnState",
+  assigneeName: "workItems:list.columnAssignee",
 };
 
 /** Renders a field marked unavailable by `parseWorkItemRow` -- a visible "Unavailable"
@@ -162,6 +202,8 @@ function WorkItemList({
   dir,
   onSortChange,
   onRetry,
+  columns = DEFAULT_COLUMNS,
+  isFiltered = false,
   selectedKeys = [],
   onSelectionChange = () => {},
   onSelectAll = () => {},
@@ -329,9 +371,15 @@ function WorkItemList({
           <EmptyMedia variant="icon">
             <ListTodo />
           </EmptyMedia>
-          <EmptyTitle>{t("workItems:list.emptyTitle")}</EmptyTitle>
+          <EmptyTitle>
+            {isFiltered
+              ? t("workItems:list.emptyFilteredTitle")
+              : t("workItems:list.emptyTitle")}
+          </EmptyTitle>
           <EmptyDescription>
-            {t("workItems:list.emptyDescription")}
+            {isFiltered
+              ? t("workItems:list.emptyFilteredDescription")
+              : t("workItems:list.emptyDescription")}
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent />
@@ -366,12 +414,9 @@ function WorkItemList({
       >
         <colgroup>
           {canBulkAssign && <col className="w-10" />}
-          <col className="w-[11%]" />
-          <col className="w-[32%]" />
-          <col className="w-[12%]" />
-          <col className="w-[13%]" />
-          <col className="w-[15%]" />
-          <col className="w-[17%]" />
+          {columns.map((column) => (
+            <col key={column} className={COLUMN_WIDTH_CLASSES[column]} />
+          ))}
         </colgroup>
         <TableHeader>
           <TableRow>
@@ -389,24 +434,31 @@ function WorkItemList({
                 </Suspense>
               </TableHead>
             )}
-            {SORT_COLUMNS.map(({ field, labelKey }) => (
-              <TableHead
-                key={field}
-                aria-sort={sortAriaValue(field, sort, dir)}
-              >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="-mx-2 h-auto gap-1 px-2 py-1 font-medium text-muted-foreground"
-                  onClick={() => handleHeaderClick(field)}
+            {columns.map((column) => {
+              const sortField = SORTABLE_COLUMNS[column];
+              return (
+                <TableHead
+                  key={column}
+                  aria-sort={
+                    sortField ? sortAriaValue(sortField, sort, dir) : undefined
+                  }
                 >
-                  {t(labelKey)}
-                  <SortIcon field={field} sort={sort} dir={dir} />
-                </Button>
-              </TableHead>
-            ))}
-            <TableHead>{t("workItems:list.columnState")}</TableHead>
-            <TableHead>{t("workItems:list.columnAssignee")}</TableHead>
+                  {sortField ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="-mx-2 h-auto gap-1 px-2 py-1 font-medium text-muted-foreground"
+                      onClick={() => handleHeaderClick(sortField)}
+                    >
+                      {t(COLUMN_LABEL_KEYS[column])}
+                      <SortIcon field={sortField} sort={sort} dir={dir} />
+                    </Button>
+                  ) : (
+                    t(COLUMN_LABEL_KEYS[column])
+                  )}
+                </TableHead>
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -414,6 +466,79 @@ function WorkItemList({
             const detailHref = item.unavailableFields.includes("key")
               ? undefined
               : routes.workItemDetail.build({ key: item.key });
+
+            const renderCell = (column: WorkItemSearchColumn) => {
+              switch (column) {
+                case "key":
+                  return (
+                    <div className="work-item-list-cell-content">
+                      {item.unavailableFields.includes("key") ? (
+                        <UnavailableField field="key" t={t} />
+                      ) : (
+                        <a
+                          href={detailHref}
+                          data-work-item-key={item.key}
+                          className="font-medium text-primary underline-offset-2 hover:underline"
+                        >
+                          {item.key}
+                        </a>
+                      )}
+                    </div>
+                  );
+                case "title":
+                  return (
+                    <div className="work-item-list-cell-content truncate">
+                      {item.unavailableFields.includes("title") ? (
+                        <UnavailableField field="title" t={t} />
+                      ) : item.unavailableFields.includes("key") ? (
+                        <span title={item.title}>{item.title}</span>
+                      ) : (
+                        <a
+                          href={detailHref}
+                          data-work-item-key={item.key}
+                          className="hover:underline"
+                          title={item.title}
+                        >
+                          {item.title}
+                        </a>
+                      )}
+                    </div>
+                  );
+                case "priority":
+                  return (
+                    <div className="work-item-list-cell-content">
+                      {item.unavailableFields.includes("priority") ? (
+                        <UnavailableField field="priority" t={t} />
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5">
+                          {getPriorityIcon(item.priority ?? "no-priority")}
+                          {getPriorityLabel(item.priority)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                case "dueDate":
+                  return item.unavailableFields.includes("dueDate") ? (
+                    <UnavailableField field="dueDate" t={t} />
+                  ) : item.dueDate ? (
+                    formatDateShort(item.dueDate)
+                  ) : (
+                    noDueDateLabel
+                  );
+                case "state":
+                  return item.unavailableFields.includes("stateName") ? (
+                    <UnavailableField field="stateName" t={t} />
+                  ) : (
+                    <Badge variant="outline">{item.stateName}</Badge>
+                  );
+                case "assignee":
+                  return item.unavailableFields.includes("assigneeName") ? (
+                    <UnavailableField field="assigneeName" t={t} />
+                  ) : (
+                    assigneeLabel(item, assigneeLabels)
+                  );
+              }
+            };
 
             return (
               <TableRow key={item.id}>
@@ -433,64 +558,18 @@ function WorkItemList({
                     </Suspense>
                   </TableCell>
                 )}
-                <TableCell>
-                  <div className="work-item-list-cell-content">
-                    {item.unavailableFields.includes("key") ? (
-                      <UnavailableField field="key" t={t} />
-                    ) : (
-                      <a
-                        href={detailHref}
-                        data-work-item-key={item.key}
-                        className="font-medium text-primary underline-offset-2 hover:underline"
-                      >
-                        {item.key}
-                      </a>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="max-w-xs truncate whitespace-nowrap">
-                  <div className="work-item-list-cell-content truncate">
-                    {item.unavailableFields.includes("title") ? (
-                      <UnavailableField field="title" t={t} />
-                    ) : item.unavailableFields.includes("key") ? (
-                      <span title={item.title}>{item.title}</span>
-                    ) : (
-                      <a
-                        href={detailHref}
-                        data-work-item-key={item.key}
-                        className="hover:underline"
-                        title={item.title}
-                      >
-                        {item.title}
-                      </a>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="work-item-list-cell-content">
-                    {item.unavailableFields.includes("priority") ? (
-                      <UnavailableField field="priority" t={t} />
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5">
-                        {getPriorityIcon(item.priority ?? "no-priority")}
-                        {getPriorityLabel(item.priority)}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {item.unavailableFields.includes("dueDate") ? (
-                    <UnavailableField field="dueDate" t={t} />
-                  ) : item.dueDate ? (
-                    formatDateShort(item.dueDate)
-                  ) : (
-                    noDueDateLabel
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">{item.stateName}</Badge>
-                </TableCell>
-                <TableCell>{assigneeLabel(item, assigneeLabels)}</TableCell>
+                {columns.map((column) => (
+                  <TableCell
+                    key={column}
+                    className={
+                      column === "title"
+                        ? "max-w-xs truncate whitespace-nowrap"
+                        : undefined
+                    }
+                  >
+                    {renderCell(column)}
+                  </TableCell>
+                ))}
               </TableRow>
             );
           })}

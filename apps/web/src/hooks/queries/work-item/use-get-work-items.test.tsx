@@ -19,10 +19,14 @@ import useGetWorkItems from "./use-get-work-items";
 
 const mocks = vi.hoisted(() => ({
   getWorkItems: vi.fn(),
+  searchWorkItems: vi.fn(),
 }));
 
 vi.mock("@/fetchers/work-item/get-work-items", () => ({
   default: mocks.getWorkItems,
+}));
+vi.mock("@/fetchers/work-item/search-work-items", () => ({
+  default: mocks.searchWorkItems,
 }));
 
 function createWrapper() {
@@ -127,5 +131,132 @@ describe("useGetWorkItems: placeholderData scoping (#310 delta review finding)",
       expect(result.current.data).toEqual(makeResult(["b1"])),
     );
     expect(result.current.isLoading).toBe(false);
+  });
+});
+
+describe("useGetWorkItems: structured filter (SV-11)", () => {
+  beforeEach(() => {
+    mocks.getWorkItems.mockReset();
+    mocks.searchWorkItems.mockReset();
+  });
+
+  it("reads the list route when no structured filter is set", async () => {
+    mocks.getWorkItems.mockResolvedValue(makeResult(["a1"]));
+    const { result } = renderHook(
+      () =>
+        useGetWorkItems({
+          projectId: "proj-a",
+          projectSlug: "OPS",
+          workspaceId: "ws-1",
+          filter: "  ",
+          sort: "title",
+          dir: "desc",
+        }),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mocks.getWorkItems).toHaveBeenCalledWith("proj-a", "title", "desc");
+    expect(mocks.searchWorkItems).not.toHaveBeenCalled();
+  });
+
+  it("reads through structured search, scoped to the workspace and project, for a filter", async () => {
+    mocks.searchWorkItems.mockResolvedValue(makeResult(["s1"]));
+    const { result } = renderHook(
+      () =>
+        useGetWorkItems({
+          projectId: "proj-a",
+          projectSlug: "OPS",
+          workspaceId: "ws-1",
+          filter: "assignee:@me",
+          columns: ["key", "state"],
+          sort: "priority",
+          dir: "desc",
+        }),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mocks.searchWorkItems).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      projectSlug: "OPS",
+      filter: "assignee:@me",
+      sort: "priority",
+      dir: "desc",
+      columns: ["key", "state"],
+    });
+    expect(mocks.getWorkItems).not.toHaveBeenCalled();
+  });
+
+  it("waits for the workspace instead of searching without a scope", () => {
+    renderHook(
+      () =>
+        useGetWorkItems({
+          projectId: "proj-a",
+          projectSlug: "OPS",
+          filter: "assignee:@me",
+          sort: "key",
+          dir: "asc",
+        }),
+      { wrapper: createWrapper() },
+    );
+    expect(mocks.searchWorkItems).not.toHaveBeenCalled();
+    expect(mocks.getWorkItems).not.toHaveBeenCalled();
+  });
+
+  it("keeps every read under [work-items, projectId] so realtime and mutation invalidations reach it", async () => {
+    mocks.searchWorkItems.mockResolvedValue(makeResult(["s1"]));
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { result } = renderHook(
+      () =>
+        useGetWorkItems({
+          projectId: "proj-a",
+          projectSlug: "OPS",
+          workspaceId: "ws-1",
+          filter: "assignee:@me",
+          sort: "key",
+          dir: "asc",
+        }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        ),
+      },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["work-items", "proj-a"] }),
+    ).toHaveLength(1);
+    mocks.searchWorkItems.mockClear();
+    await queryClient.invalidateQueries({ queryKey: ["work-items", "proj-a"] });
+    expect(mocks.searchWorkItems).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not show another project's filtered rows while a project switch loads", async () => {
+    mocks.searchWorkItems.mockResolvedValueOnce(makeResult(["a1"]));
+    const { result, rerender } = renderHook(
+      ({ projectId }: { projectId: string }) =>
+        useGetWorkItems({
+          projectId,
+          projectSlug: "OPS",
+          workspaceId: "ws-1",
+          filter: "priority:high",
+          sort: "key",
+          dir: "asc",
+        }),
+      { wrapper: createWrapper(), initialProps: { projectId: "proj-a" } },
+    );
+    await waitFor(() =>
+      expect(result.current.data).toEqual(makeResult(["a1"])),
+    );
+    const second = deferred<WorkItemsResult>();
+    mocks.searchWorkItems.mockReturnValueOnce(second.promise);
+    rerender({ projectId: "proj-b" });
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.data).toBeUndefined();
   });
 });
