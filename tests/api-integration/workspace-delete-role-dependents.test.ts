@@ -1028,6 +1028,108 @@ describe("#734 account erasure and IdP-provisioned members", () => {
     expect(await db.select().from(schema.membershipGrantTable)).toHaveLength(1);
   });
 
+  it("does not deadlock a writer that locks person first and then writes membership (lock order person, membership_grant, membership)", async () => {
+    const { owner, wsRole } = await soleLegacyMemberWorkspace();
+    const other = await createWorkspaceMember({ role: "owner" });
+    const otherPerson = await personIdFor(other.user.id);
+
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let started: () => void = () => {};
+    const startedSignal = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    // The provisioning writers' order: person row first, then membership.
+    const writer = db.transaction(async (tx) => {
+      await tx
+        .update(schema.personTable)
+        .set({ updatedAt: new Date() })
+        .where(eq(schema.personTable.id, otherPerson));
+      started();
+      await gate;
+      await tx.insert(schema.membershipTable).values({
+        personId: otherPerson,
+        scope: "workspace",
+        scopeId: owner.workspace.id,
+        roleId: wsRole.id,
+      });
+    });
+    await startedSignal;
+    const erasure = deleteAccountData(owner.user.id);
+    const erasureOutcome = erasure.then(
+      () => "erased",
+      (error: unknown) => error,
+    );
+    // Erasure is queued on `person` and holds nothing the writer needs next.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    release();
+    await writer; // would block or deadlock if erasure already held `membership`
+    const outcome = await erasureOutcome;
+    expect(String((outcome as Error).message)).toMatch(
+      /Other people still have access to/u,
+    );
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, owner.workspace.id)),
+    ).toHaveLength(1);
+  });
+
+  it("a lock timeout answers 409 with nothing deleted, and leaves the writer untouched", async () => {
+    const { owner, wsRole } = await soleLegacyMemberWorkspace();
+    const other = await createWorkspaceMember({ role: "owner" });
+    const otherPerson = await personIdFor(other.user.id);
+    const before = await snapshot();
+
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let written: () => void = () => {};
+    const writtenSignal = new Promise<void>((resolve) => {
+      written = resolve;
+    });
+    const writer = db.transaction(async (tx) => {
+      await tx.insert(schema.membershipGrantTable).values({
+        personId: otherPerson,
+        scope: "workspace",
+        scopeId: owner.workspace.id,
+        roleId: wsRole.id,
+        sourceKind: "direct",
+        directOrigin: "system_backfill",
+      });
+      written();
+      await gate;
+    });
+    await writtenSignal;
+    // The writer never commits inside the lock timeout, so erasure gives up.
+    const erasure = deleteAccountData(owner.user.id);
+    const caught = await erasure.then(
+      () => null,
+      (error: unknown) => error,
+    );
+    expect(caught).toMatchObject({ status: "CONFLICT" });
+    expect(String((caught as Error).message)).toMatch(
+      /busy updating access\. Nothing was deleted/u,
+    );
+    release();
+    await writer;
+    // Only the writer's own grant exists beyond the starting state; nothing was deleted.
+    expect(await snapshot()).toEqual({
+      ...before,
+      grants: before.grants + 1,
+    });
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, owner.workspace.id)),
+    ).toHaveLength(1);
+  }, 30_000);
+
   it("still counts access held by a deactivated person (a dormant account is not an excuse to erase around it)", async () => {
     const { owner, wsRole } = await soleLegacyMemberWorkspace();
     const other = await createWorkspaceMember({ role: "owner" });

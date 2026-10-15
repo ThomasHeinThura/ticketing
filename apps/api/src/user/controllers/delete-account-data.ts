@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import db from "../../database";
+import { isLockNotAvailable } from "../../utils/is-lock-not-available";
 import {
   membershipGrantTable,
   membershipTable,
@@ -193,6 +194,11 @@ async function workspacesWithOtherAccess(
   return blocked;
 }
 
+/** Longest this request waits for the identity-table write lock below. */
+const ERASURE_LOCK_TIMEOUT = "3s";
+const ERASURE_LOCK_BUSY_MESSAGE =
+  "Your account cannot be deleted right now because the system is busy updating access. Nothing was deleted; try again in a moment.";
+
 export async function deleteAccountData(userId: string) {
   if (!hasAccountDeletionTransaction()) {
     return db.transaction((tx) =>
@@ -248,9 +254,33 @@ async function deleteAccountDataInTransaction(
     // some of these rows have no foreign key to lock through), so the tables themselves are
     // locked against writes for the rest of this transaction. Reads are unaffected, and only an
     // erasure that is about to delete a workspace takes it.
+    //
+    // Lock order is `person`, `membership_grant`, `membership`: the order the provisioning
+    // writers already take (OIDC JIT login and SCIM user create/update write `person` first;
+    // `workspace-admin-reach` locks `person` then grants; the IP-22 SCIM/OIDC closure locks
+    // grants parent-first, and only then projects into `membership` in
+    // `identity/repository.ts`). Taking them in any other order can deadlock against a writer.
+    //
+    // The wait is bounded: one slow writer must not queue every later writer on these tables
+    // behind this request. On timeout (55P03) nothing has been deleted and the transaction
+    // rolls back; the caller gets the same 409 mechanism as the other refusals here.
     await tx.execute(
-      sql`LOCK TABLE membership, membership_grant, person IN SHARE ROW EXCLUSIVE MODE`,
+      sql`SELECT set_config('lock_timeout', ${ERASURE_LOCK_TIMEOUT}, true)`,
     );
+    try {
+      await tx.execute(
+        sql`LOCK TABLE person, membership_grant, membership IN SHARE ROW EXCLUSIVE MODE`,
+      );
+    } catch (error) {
+      if (isLockNotAvailable(error)) {
+        throw new APIError("CONFLICT", {
+          message: ERASURE_LOCK_BUSY_MESSAGE,
+        });
+      }
+      throw error;
+    }
+    // The bound is for acquiring this lock only; later statements keep the session default.
+    await tx.execute(sql`SELECT set_config('lock_timeout', '0', true)`);
   }
   const withOtherAccess = await workspacesWithOtherAccess(
     tx,
