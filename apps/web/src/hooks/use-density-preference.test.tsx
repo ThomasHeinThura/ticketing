@@ -454,4 +454,53 @@ describe("density preference sync (VW-6, ST-17)", () => {
     sync.unmount();
     again.unmount();
   });
+
+  it("does not re-send a pending value when an older overlapping write settles first", async () => {
+    // The server still holds the older value, so a reconcile would push local.
+    serverHas("compact");
+    const deferred = () => {
+      let resolve: (value: unknown) => void = () => {};
+      const promise = new Promise((r) => {
+        resolve = r;
+      });
+      return { promise, resolve };
+    };
+    const first = deferred();
+    const second = deferred();
+    mocks.put
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const shared = wrapper("user-overlap");
+    const page = renderHook(() => useDensityPreference(), { wrapper: shared });
+
+    act(() => page.result.current.setDensity("compact"));
+    act(() => page.result.current.setDensity("comfortable"));
+    await waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(1));
+
+    // The older write settles while the newer one is still queued/in flight.
+    await act(async () => {
+      first.resolve({});
+    });
+    await waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(2));
+    expect(mocks.put).toHaveBeenLastCalledWith({ density: "comfortable" });
+
+    // The sync mounts now: its reconcile sees the still-dirty local value that
+    // is already in flight, and must not send it a third time.
+    const sync = renderHook(() => useDensityPreferenceSync(), {
+      wrapper: shared,
+    });
+    await waitFor(() => expect(mocks.get).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    // A duplicate would queue behind the in-flight write, so let that settle
+    // before counting sends.
+    await act(async () => {
+      second.resolve({});
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(mocks.put).toHaveBeenCalledTimes(2);
+    sync.unmount();
+    page.unmount();
+  });
 });
