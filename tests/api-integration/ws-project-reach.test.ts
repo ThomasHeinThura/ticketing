@@ -30,6 +30,7 @@ import {
   findSocketProject,
   resolveSocketIdentity,
 } from "../../apps/api/src/ws/project-read-authorization";
+import { findLiveWorkItemSocketScope } from "../../apps/api/src/ws/repository";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -733,8 +734,22 @@ describe("project socket reach (#745)", () => {
       }),
     ).toBe(false);
 
-    // ...but the customer role holds no `project:read`, so neither socket admits one, and
-    // both say so in the same way.
+    // The native work-item lookup must use the project's customer organisation in its
+    // current-reach SQL, not the workspace's operating organisation. The foreign project's
+    // facts remain undiscoverable through that same query.
+    await expect(
+      findLiveWorkItemSocketScope(identity, ownItem.key),
+    ).resolves.toEqual({
+      projectId: own.id,
+      workspaceId: workspace.id,
+      organisationId: org.id,
+    });
+    await expect(
+      findLiveWorkItemSocketScope(identity, otherItem.key),
+    ).resolves.toBeUndefined();
+
+    // Reach is not authority. The customer grant satisfies only organisation-scope
+    // policies, so neither socket admits these project/work-item subscriptions.
     for (const projectId of [own.id, other.id]) {
       await expect(
         callerReachesLegacySocketProject(context, user.id, projectId),
@@ -747,7 +762,7 @@ describe("project socket reach (#745)", () => {
     const customerCredential = { ...credential, portal: "customer" as const };
     await expect(
       authorizeNativeTopic(customerCredential, `work_item:${ownItem.key}`),
-    ).resolves.toMatchObject({ projectId: own.id, workspaceId: workspace.id });
+    ).resolves.toBeNull();
     await expect(
       authorizeNativeTopic(customerCredential, `work_item:${otherItem.key}`),
     ).resolves.toBeNull();
