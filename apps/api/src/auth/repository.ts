@@ -1,5 +1,6 @@
 import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
+import { dbNowUtc } from "../utils/db-time";
 
 export function getAuthUserLocale(email: string) {
   return db
@@ -294,7 +295,9 @@ export function lockActiveStepUpSession(
         eq(schema.sessionTable.id, sessionId),
         eq(schema.sessionTable.userId, userId),
         eq(schema.sessionTable.portal, "agent"),
-        gt(schema.sessionTable.expiresAt, sql`now()`),
+        // `session.expires_at` is a UTC wall clock in a `timestamp without time zone` column: a
+        // bare `now()` would be coerced through the session TimeZone (#631).
+        gt(schema.sessionTable.expiresAt, dbNowUtc()),
       ),
     )
     .for("update")

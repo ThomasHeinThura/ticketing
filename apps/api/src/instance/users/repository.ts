@@ -2,6 +2,7 @@ import type { SQL } from "drizzle-orm";
 import { and, desc, eq, gt, isNull, ne, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../../database";
+import { dbNowUtc } from "../../utils/db-time";
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -183,7 +184,7 @@ export function lockActiveAgentSession(
         eq(schema.sessionTable.id, sessionId),
         eq(schema.sessionTable.userId, userId),
         eq(schema.sessionTable.portal, "agent"),
-        gt(schema.sessionTable.expiresAt, sql`now()`),
+        gt(schema.sessionTable.expiresAt, dbNowUtc()),
       ),
     )
     .for("update")
