@@ -281,3 +281,84 @@ I checked the D1–D4 boundary: repositories return materialized rows through aw
 ## Residual and acceptance boundary
 
 No PostgreSQL-backed integration or concurrency test, Docker build/boot/health, browser verification, or current-head hosted CI was run by me. The retained #790 remote PR was reported at old head `c3932308` in the ordinary evidence; this report does not assert that remote PR or hosted checks now target `ac330d31`. The #764/#780 decision-carrier acceptance prerequisite remains separate and unaccepted in the evidence provided. Previous component and old-head checks stay bound to their actual SHAs. The conductor must independently verify exact-head hosted gates, prerequisites, and runtime acceptance before any merge or completion claim; no gate is waived here.
+
+## Accepted editor-lifecycle repair composition
+
+**Reviewed head:** `67b934a94e93c8a1348c3a01ea57a7a190d9aad9`
+
+The prior e49 complete unit run remains FAILED on uncaught delayed real-editor destruction despite passing assertions; its PG205files2933tests/5tasks is historical. Current source imports only protected accepted800's existing task-description unit and its own note frommaind93, byte-for-byte. Every other path remains identical toe49 and retains the three ordinary/full Sol source coverage onac330. Strong independent ordinary verifies this current composition and ran the real focused editor test1file2tests. Fresh independent current lightweight Sol confirms no new authority/query behavior in this accepted two-path import. Conductor dispatch explicitly usedgpt-6-luna ordinary andgpt-6-sol security withforknone; runtime subtype limits remain in unchanged reports. Source import is reviewed as an actual delta, not treated as an own-note exception.
+
+Required new exact-head CI/realPG/image and764/780 remain pending. Neither prior failed unit nor current local focused test is a complete hosted pass. The accepted raw note's EOF blank line is preserved, with the diff-check warning recorded; no fabricated clean diff or gate waiver. Publication adds only this own note.
+
+---
+
+### Authentic record: 580-reach790-editor-main-ordinary-luna.md
+
+# Independent ordinary composition review — #580 / #790 plus accepted editor teardown repair
+
+- **Reviewed head:** `67b934a94e93c8a1348c3a01ea57a7a190d9aad9`
+- **First parent / comparison source:** `e49e88c97b96ba16293aab9f35e684e1446bfd18`
+- **Second parent:** `d93c0967ecc7b1a1d721ff25202737cd72430a0d` (accepted #800 merge)
+- **Role and independence:** Fresh read-only ordinary reviewer context. I did not author, direct, or remediate either parent or this composition. The task assigned an ordinary review; the platform exposes only the GPT-6 family label here, not a verifiable Luna selector or exact serving variant. This report does not claim a more specific model/runtime identity.
+- **Scope:** Exact two-path composition delta, source-parent/merge conservation, the real Tiptap editor teardown test lifecycle, and preservation of the #580 review evidence already published on the first parent.
+- **Verdict:** **CLEAR for this bounded composition delta, with one non-blocking documentation whitespace finding.** The finding is the final blank line in the byte-identical accepted #800 review-note import, reported by `git diff --check`. No blocking code or evidence-integrity finding. This does not accept #580, clear prior runtime/hosted gates, or establish merge readiness.
+
+## Exact-head and conservation checks
+
+- `git rev-parse HEAD` matched the reviewed head; the checkout was clean before and after review.
+- `git merge-base --is-ancestor e49e88c97b96ba16293aab9f35e684e1446bfd18 67b934a94e93c8a1348c3a01ea57a7a190d9aad9` passed. The candidate has the stated first parent and accepted #800 merge as second parent.
+- `git diff --name-status e49e88c97b96ba16293aab9f35e684e1446bfd18..67b934a94e93c8a1348c3a01ea57a7a190d9aad9` lists only:
+  - `apps/web/src/components/task/task-description.test.tsx`
+  - `docs/07-planning/security-reviews/776-task-description-editor-teardown.md`
+- The imported test blob is `11b2e727ca163fd090e9d3cd408dd7a2d823f29d`, equal to the accepted #800 merge's blob. The imported evidence-note blob is `c272c8e89149b0255d0aaebd93c473cf0128349d`, also equal to that merge's blob. Thus the only main-side imports are byte-identical to the accepted #800 merge, and every other candidate path remains equal to the frozen #580/#790 first parent.
+- `git diff --check e49e88c97b96ba16293aab9f35e684e1446bfd18..67b934a94e93c8a1348c3a01ea57a7a190d9aad9` — reports one trailing blank line at EOF in the imported #776 review note (line 127); the test-source delta is clean. This is a non-blocking documentation whitespace finding in the byte-identical accepted #800 import.
+
+## Source review and focused check
+
+The imported source delta is confined to the existing `task-description.test.tsx`. It wraps the real `@tiptap/react` `useEditor`, returns the real editor unchanged, records each observed editor's actual `destroy` event, unmounts with Testing Library cleanup, and awaits those events before the JSDOM test hook finishes. An already-destroyed editor resolves immediately. This holds JSDOM open through Tiptap's delayed destruction path implicated by the retained hosted `window is not defined` exception. It does not suppress errors, substitute a fake editor, add a delay, or change runtime/application code. The source diff adds only this tracking and asynchronous cleanup harness at the top of the file; the existing navigation and undo test body/assertions remain intact.
+
+I ran `pnpm --filter @taskdesk/web exec vitest run --config vitest.config.ts src/components/task/task-description.test.tsx` at the exact candidate: **1 file / 2 tests passed**, exit 0. Vite printed its existing native-config-loader warning about `__dirname` and extensionless imports. `git diff --check` found only the imported-note trailing blank line described above; no source whitespace issue was reported. I did not rerun PostgreSQL, Docker, browser, or the full unit suite.
+
+## Preserved #580 evidence and limits
+
+The first-parent note `docs/07-planning/security-reviews/query-ownership-reach-580.md` remains byte-identical at the candidate. It retains the three fresh ordinary CLEAR reports and the separate full Sol CLEAR report bound to original composition `ac330d3165e74db5ee65ad6b322e93a28b94afde`, including their exact scopes, findings, checks and runtime/model introspection limits. The new #776 note is additive and preserves the historical #790 hosted failure as a failure; it does not rewrite those #580 reports or claim their old head is the current candidate.
+
+The imported #776 note records the source-level repair and its earlier focused/typecheck evidence but says current complete hosted unit rerun is still required. The external readiness record supplied for this review identifies full hosted checks for PR #800 at `259a6648b04ad9b9adc7987df80c6e9c51074401`; I did not independently query GitHub, and that evidence is not substituted here for a current post-push run on `67b934a`. No PostgreSQL, Docker/image, runtime, browser, or release acceptance is established by this review.
+
+
+---
+
+### Authentic record: 580-reach790-editor-main-security-sol.md
+
+# #580 / #790 accepted editor repair import — independent security confirmation
+
+- **Reviewed head:** `67b934a94e93c8a1348c3a01ea57a7a190d9aad9`
+- **First parent / prior source:** `e49e88c97b96ba16293aab9f35e684e1446bfd18`
+- **Second parent / accepted #800 merge:** `d93c0967ecc7b1a1d721ff25202737cd72430a0d`
+- **Role and provenance:** Fresh independent Sol-tier security reviewer context, assigned the exact-head import confirmation by the conductor. The dispatch identifies GPT-6 Sol; this runtime does not expose a way for me to measure its serving variant, so that is a dispatch identity, not an introspected model-version claim. I did not author, direct, remediate, or conduct the ordinary review of either parent or this composition.
+- **Time:** 2026-10-16 00:18 UTC.
+- **Verdict:** **CLEAR for the exact two-path import/composition delta.** No blocking security finding. One non-blocking trailing blank line in the byte-identical accepted review-note import. This is a lightweight current-head confirmation, paired with the retained full Sol review of `ac330d3165e74db5ee65ad6b322e93a28b94afde` for the unchanged substantive API/auth/reach source and the full Sol review of the accepted editor fix preserved in the imported #776 note. It does not replace either full review or clear runtime/hosted gates.
+
+## Scope and evidence
+
+I read accepted repository authority, active mission, workflow review/evidence-reuse rules, the `ci-cd.md` security-scope list, the exact source delta, the unchanged #580 review note, the accepted #776 review note, the fresh ordinary composition review, the existing test body, and web setup cleanup. The current candidate is a two-parent merge. An independent tree comparison over all paths finds precisely two first-parent changes:
+
+1. `apps/web/src/components/task/task-description.test.tsx`: blob `11b2e727ca163fd090e9d3cd408dd7a2d823f29d`, identical to accepted #800 merge.
+2. `docs/07-planning/security-reviews/776-task-description-editor-teardown.md`: blob `c272c8e89149b0255d0aaebd93c473cf0128349d`, identical to accepted #800 merge.
+
+Every other candidate path is byte-identical to `e49e88c9`; the #580 review note is unchanged (blob `604f977d3dc64e4dd0f49acc99c88eaafbf5c44e`). Thus none of the prior API, auth, tenant reach, permissions, query ownership, CI-control or contract source changed in this import. GitHub reports PR #800 merged at 2026-10-16 00:04:46 UTC with merge commit `d93c0967...`; `origin/main` contains it. The local `main` ref in this worktree lags `origin/main`, so I do not use that local ref as acceptance evidence.
+
+The imported test wraps `@tiptap/react` `useEditor` but calls the actual hook and returns its actual editor. It observes each real editor's `destroy` event, invokes Testing Library cleanup and waits for destruction before the JSDOM hook ends. It changes no product behavior, authorization decision, tenant scope, or security-control assertion. The original navigation/undo test bodies and assertions are unchanged. It neither suppresses uncaught errors nor skips tests; an editor that never destroys leaves the hook pending and fails by timeout. This import can change the unit run outcome for the known delayed-destroy race, but its bytes and full prior ordinary/Sol review are those of accepted #800. No new gate pass/fail semantics arise from composing it with the unchanged reach source. The separate fresh ordinary composition review is CLEAR on this exact head.
+
+## Checks actually performed
+
+- `git rev-parse HEAD`, parent inspection, `git diff-tree`, `git ls-tree` and an all-path tree comparison: exact SHA/parents and two-path conservation as above; checkout clean.
+- `git diff e49e88c9..67b934a9`: inspected both imported paths and verified unchanged test assertions.
+- `git diff --check e49e88c9..67b934a9`: reports one new blank line at EOF, line 127 of the accepted #776 note; no test-source whitespace finding. The accepted blob is deliberately preserved.
+- `gh pr view 800 --json number,state,mergedAt,mergeCommit,headRefOid`: confirmed merged #800 and its accepted merge SHA.
+- The independent ordinary reviewer separately ran the focused current-head web test: one file, two tests passed. I did not rerun tests in this lightweight confirmation and do not claim that result as my own execution.
+
+## Residual and gate boundary
+
+The original hosted #790 full unit job at `e49e88c9` failed with one uncaught Tiptap teardown exception; its passing per-file test counts are not a passing job. The accepted #800 repair was reviewed and hosted at its own source; this review does not claim the current `67b934a9` complete hosted unit run passed. Current exact-head CI, PostgreSQL-backed checks, image build/boot/health, and #764/#780 prerequisites still require conductor verification. No browser, Docker, PostgreSQL, release, SIT or phase-finalizer proof was run or inferred here. The verdict is security/source clearance for this import only, not merge readiness or #580 completion.
+
