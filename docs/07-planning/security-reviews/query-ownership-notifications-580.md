@@ -3953,3 +3953,203 @@ Retained evidence file — notification-bc-report-preservation-recovery.json
   "rawTranscriptPublished": false,
   "sourceChanged": false
 }
+
+
+## Hosted PostgreSQL regression and fixture correction — 2026-10-16
+
+**Reviewed head:** `cb1c37a358b18eaf3cdb91739effa377d8794eda`
+
+The full hosted publication81b5 run38892882301/job116946373395 FAILED8/3195tests across5/212files (3187tests and207files passed;4/5tasks successful). Its full private log7107609B SHAfdc3200896bf062cae53ef3d716b50a268be94b8af320e5bd9ffdeff86c31b76 remains unchanged. No unchanged-head rerun was requested. The candidate remains acceptance-held until its own exact-head complete CI/runtime/image evidence is green.
+
+The local author first reproduced the same8failures/61passes in5files (69total) on an owned disposable PG; after five test-fixture repairs, the same5files passed71tests, including two additional generic denials for hidden empty and archived workspace projects. Product, spec, policy, dependency and environment bytes are unchanged. Canonical person/resource/event fixtures retain the original negative controls; the MFA positive case supplies its canonical target person without changing production orphan-user behavior. The direct WF-9/WF-19 owner decisions remain intact.
+
+Two fresh independent ordinary contexts CLEAR this test delta; a further fresh GPT-6.1 Sol exact-head security confirmation clears it while retaining unchanged full source472 coverage and its residuals. Dispatches were explicitgpt-6-luna andgpt-6.1-sol/forknone. Focused PG success and source review do not override the old hosted failure.
+
+Five reports follow. The diagnosis is retained as its actual earlier evidence; its MFA fixture uncertainty is followed by the contract-based remediation, with no new production policy inferred. The author report is an explicitly labelled, separately verified public redaction: exactly one disposable PostgreSQL connection URI is withheld, original privateSHA052406135f759558228a67ee59795b4165e469862d8e3f30c26e6b1f2a1e5ed1 unchanged; publiccopySHA9c8863c5bb9427ad468440bd808cee6ae1f6e9181cf519021c815d32d5d467b4. Ordinary B independently verifies that exact transform below, satisfying the redacted copy header condition. Every other report is byte-exact. The original default-listener authentication failure and owned cleanup history remain disclosed.
+
+### Retained report notification785-pg-failure-diagnosis-luna.md
+
+# #785 hosted PostgreSQL failure diagnosis — GPT-6 Luna
+
+**Scope:** Read-only diagnosis of the frozen publication candidate. **Candidate SHA:** `81b5bef0fb4893e37a1544e836b7d4f72d13fd2a`; **source:** `472ca631db2faf0b34945da221675720e3e2e503`; **accepted base:** `1a34e5792ee9c42b15004b032e3c5410e5def44e`. Worktree was clean at candidate HEAD. No source changes, test rerun, database/build/browser/CI action, push, waiver, or report alteration.
+
+**Hosted evidence supplied by conductor:** run `38892882301`, job `116946373395`, 3,195 tests (3,187 passed, 8 failed), 212 files (207 passed, 5 failed). Restricted raw log is retained separately; this note does not copy it or any private notification payload. The 8 assertions correspond to the following 5 test files.
+
+## Failure-by-failure disposition
+
+1. **`api-key-self-mutations.test.ts` — session self-read returned 404 (assertion’s second status).** The fixture inserts an `info` notification with no `resourceType`/`resourceId`, then expects session PATCH read to succeed. At this head, `registeredNotificationResource()` admits only the closed resource set; null resource classes fail closed, and direct mutation additionally rechecks current reach. The test’s key-denial assertions passed; the 404 is consistent with the invalid bare fixture row being unreadable. **Classification: fixture mismatch**, unless the owning notification contract is deliberately changed to permit resource-free rows (no evidence for that change).
+
+2. **`local-factor-policy.test.ts` — MFA reset expected one `security_alert`, database had none.** The test creates `factor-reset-target` directly in `user`, but calls `ensureStaffPersonForUser()` only for the administrator. Production reset code selects the target’s canonical `person` row and inserts the alert only when one exists; valid notice identity is `resourceType=person`, `resourceId=person.id`, `personId=person.id`, `eventData.kind=mfa_reset`. **Classification: fixture/contract precondition mismatch is most likely**, not evidence of inbox filtering: the failing assertion queries the table directly. A target without a person cannot receive this canonical person-scoped alert as implemented. Uncertainty: product behavior for reset targets without a staff `person` is not explicit in the inspected feature contract; establish whether such targets are valid and should be materialized before changing the implementation. Do not weaken resource identity or create an unbound alert.
+
+3. **`notification-scheduler-workflow-audit-repositories.test.ts` — three inbox repository tests return `[]`:** (a) “every statement is scoped to the owner's rows”; (b) “hides audit_write_failed alerts unless the reader may read instance alerts”; (c) “task notifications need current reach and a credential that may read tasks.” The setup uses helper `notification()` with default `{type:'info'}` and does not supply a canonical resource class. Current candidate SQL filters rows through `registeredNotificationResource()`; plain null-resource info rows are rejected. Additionally task rows in this test use `type:'info'`, whereas `readableNativeRows()` allows only the closed task notification type set. **Classification: fixture mismatch** for all three; update fixtures only to canonical resource/type facts matching each intended branch, preserving owner/current reach assertions. Do not broaden production filters.
+
+4. **`permissions-shadow-mode.test.ts` — two notification read tests return no rows:** first seeds caller/other `info` rows with no resource discriminator; second seeds task-linked rows as type `info`. The current candidate requires registered resource classes and, for legacy task rows, an allowed task type. The test comment already documents that task reach is project-scoped, and the positive task row is given a project grant; the row still fails its type whitelist. **Classification: fixture mismatch**; use valid current notification category and resource facts, retaining negative other-user/unreachable controls. Shadow comparison must continue to test the same live policy.
+
+5. **`workflow-validate.test.ts` — expected 200, received 403.** The test creates one project in the owner’s workspace but grants no project reach to the owner. At this candidate the workflow repository’s `hasCompleteWorkflowProjectReach()` refuses if any workspace project is unreachable; `listWorkflowAdoptingProjectIds()` likewise requires project reach. The current approved WF-9 answer is stronger than the old test comment: **every project in the workflow workspace, including empty and archived projects**, must be reached; otherwise respond with a generic refusal and disclose no project/item detail. The test’s “adopting project” comment still assumes only projects with workflow-bound types, which is superseded. **Classification: fixture/spec-comment stale under current contract.** Repair test setup to establish canonical owner reach to every project included in the workspace and test an inaccessible empty/archived project separately as a generic refusal with no details. Do not narrow the project set or weaken the refusal. Current implementation’s 403 message is fixed generic text (`Workflow project access required`), with no IDs/counts; this is compatible with generic refusal at the inspected boundary.
+
+## Contract and authority evidence
+
+- `docs/03-features/notifications.md` § Customer notifications: inbox operations require recipient ownership **and current resource reach**; unreachable/deleted rows are omitted and direct reads return not found. Resource type is a closed discriminator; missing/unknown type and missing/deleted resources fail closed. `person/security_alert` is only the affected user’s own row.
+- `apps/api/src/notification/inbox.repository.ts`: `registeredNotificationResource()` excludes null; person alerts require `security_alert`, `eventKind=mfa_reset`, and matching person/user identities; task rows are constrained by current reach and an allowed notification type.
+- `apps/api/src/instance/reset-mfa.ts`: canonical person identity lookup gates the MFA notice insert.
+- `docs/03-features/workflows.md` WF-9 and `docs/07-planning/decision-log.md` entries dated 2026-10-16: all workspace projects, including empty and archived; full reach required; otherwise generic refusal with no project/item details. The same decision-log section confirms WF-19 authoring is shape-only and unknown assignee IDs may be saved; eligibility is checked at execution. These decisions are distinct and neither authorizes relaxing WF-9.
+- `apps/api/src/workflow/repository.ts`: current SQL implements workspace-wide project enumeration and a scalar missing-reach check before detail loading.
+- `apps/api/drizzle/0123_workspace_owner_admin_sees_all.sql` describes `sees_all` as a persisted direct-grant fact with strict owner/admin eligibility; it is not implicit from the legacy role label. Tests must establish canonical reach facts, not assume role names imply project access.
+
+## Minimal repair proposal and limits
+
+The likely minimal repair is test-fixture-only: (1) seed existing notification rows with currently supported resource/type fields for the behavior under assertion; (2) give the MFA-reset target a valid staff person if that is the supported target class, or first resolve the intended target-without-person contract; (3) establish canonical reach to every WF-9 project in the success test and add explicit hidden empty/archived-project refusal coverage. Then run only through the conductor’s authorized later test window and standard gates. No evidence here proves these fixes pass.
+
+No production regression is demonstrated by the six bare/incorrect notification fixture assertions or the WF-9 reach refusal. The MFA notice absence is explained by missing canonical target identity in the test, but remains a product-contract question if real reset targets may lack a person. No test was rerun, so runtime behavior beyond the recorded hosted assertions remains unverified. WF-19 unknown-ID behavior must remain unchanged.
+
+### Retained report notification785-pg81-fixture-remediation-public-redacted.md
+
+> Conductor-labelled redaction: one disposable database connection URI is withheld. Original private report SHA-256: `052406135f759558228a67ee59795b4165e469862d8e3f30c26e6b1f2a1e5ed1`. Original report remains unchanged; this public-safe copy requires independent redaction verification before publication.
+
+# #785 notification/WF-9 fixture remediation — GPT-6 Luna
+
+**Candidate base:** `81b5bef0fb4893e37a1544e836b7d4f72d13fd2a`. Changes are limited to the five hosted-failing integration test files listed below. No production, feature-spec, policy, review-note, dependency or environment change. No full suite, build, browser, CI, push or merge.
+
+## Reproduction and verification
+
+- First command used the integration harness default localhost:5432, which failed PostgreSQL authentication before the requested reproduction could complete. Inspection showed that listener/container belonged to another worktree; no test database there was reset. No raw credentials were printed.
+- Created a disposable PostgreSQL 18 Alpine container owned/labeled `taskdesk-notification785-pg-luna`, using tmpfs storage and loopback-only port 55691. Tests explicitly used `TASKDESK_DATABASE_URL=[redacted disposable PostgreSQL connection URI]`; the harness verified the `_test` name and created/migrated that DB.
+- Before edits, ran the five-file Vitest integration command. Result reproduced the hosted failure set: 5 files, 8 failed / 61 passed / 69 total. The other failing lines in the first misconfigured attempt were connection-auth failures and are not counted as reproduction evidence.
+- After edits, reran the same command against the same isolated DB. Result: **5 files passed; 71 tests passed, 0 failed**. This includes the 69 original tests and the two new refusal cases. The PG container was removed by its exact owned name; `docker ps -a --filter name=taskdesk-notification785-pg-luna` returned no container.
+- No test was skipped, focused, deleted or weakened. The isolated DB is volatile tmpfs and disappears with the owned container. No listener restart, global cleanup or unrelated container mutation occurred.
+
+## Repairs and contract basis
+
+1. `tests/api-integration/api-key-self-mutations.test.ts`: the session-read control now seeds the caller’s own canonical `person/security_alert` (`mfa_reset`) row. This keeps the original key self-write denials and valid session read assertion while avoiding a resource-less notification, which notifications.md treats as missing required resource data and fails closed.
+2. `tests/api-integration/local-factor-policy.test.ts`: the MFA reset target receives a canonical staff person fixture before the operation. The production contract maps `person/security_alert` to the affected user’s own person row; missing/deleted resources are not created/returned. No production behavior was introduced for orphan users.
+3. `tests/api-integration/notification-scheduler-workflow-audit-repositories.test.ts`: the shared notification fixture now seeds a self-owned canonical person alert for neutral inbox assertions. The audit alert uses the closed `instance/singleton` resource and payload fields for operation/time. The task row now uses the supported legacy task event type and actual task id. The assertions for owner scoping, current reach, task-readable credentials, admin-only audit alerts, read/mutate, and deletion remain intact.
+4. `tests/api-integration/permissions-shadow-mode.test.ts`: the self-read pair now contains canonical person alerts bound to each user. The task cases use a supported task-created type while preserving same-user, foreign-user, cross-workspace, deleted-task/project and no-reach cases. Existing project read grant remains required for the one visible task. This supplies the canonical facts that the inbox query now evaluates; it does not alter the policy or shadow assertions.
+5. `tests/api-integration/workflow-validate.test.ts`: the positive validation fixture now explicitly grants canonical `project:read` to the owner for its project. Its old comment claiming only workflow-bound work item projects belong in WF-9 was removed. Two additional cases independently confirm a hidden empty active project and a hidden empty archived project each produce the fixed generic 403 with no project id/name disclosure. Existing success assertion and unreachable/malformed/foreign workflow controls remain.
+
+The current WF-9 authority is `workflows.md` plus the direct owner answer recorded 2026-10-16 in `decision-log.md`: every workspace project including empty/archived, complete project reach required, generic refusal without project/item details. WF-19 shape-only authoring for unknown assignee IDs was not changed. The implementation and specs were not edited.
+
+## Exact changed files
+
+- `tests/api-integration/api-key-self-mutations.test.ts`
+- `tests/api-integration/local-factor-policy.test.ts`
+- `tests/api-integration/notification-scheduler-workflow-audit-repositories.test.ts`
+- `tests/api-integration/permissions-shadow-mode.test.ts`
+- `tests/api-integration/workflow-validate.test.ts`
+
+The worktree changes are uncommitted and ready for ordinary review. No independent review is claimed by this remediation note.
+
+
+## Handoff addendum
+
+The reviewed diff passed `git diff --check` and was committed locally as `cb1c37a358b18eaf3cdb91739effa377d8794eda` (`test: align notification and workflow reach fixtures`). Worktree is clean and branch is one commit ahead of its remote tracking ref. No push performed. The commit hook ran Biome on the five files: no fixes applied; it reported 23 existing `noNonNullAssertion` warnings in the shared repository test file outside the edited hunks, with no diagnostic on the changed hunks. This is recorded for review and was not suppressed or modified.
+
+### Retained report notification785-pg81-fixtures-ordinary-a-luna.md
+
+# #785 fixture remediation — ordinary review A
+
+**Model:** GPT-6 Luna (this independent review context)
+**Role:** Ordinary reviewer A; not author, director, or fixer of the remediation.
+**Candidate:** `cb1c37a358b18eaf3cdb91739effa377d8794eda`
+**Comparison base:** frozen publication candidate `81b5bef0fb4893e37a1544e836b7d4f72d13fd2a`
+**Underlying product source:** `472ca631db2faf0b34945da221675720e3e2e503`
+**Verdict:** CLEAR — fixture-only remediation is consistent with the current contracts by static review.
+
+## Scope and checks
+
+Reviewed the five-file diff against the base, current notifications resource/reach contract, WF-9 and WF-19, the 2026-10-16 owner decision, the frozen-candidate failure diagnosis, and the separately redacted public remediation report. Rechecked exact changed paths, repository status, diff whitespace, and whether product/spec/policy/dependency paths changed. Commands included:
+
+- `git status --short --branch`, `git rev-parse HEAD`
+- `git diff --name-status BASE..HEAD`, `git diff --stat BASE..HEAD`
+- `git diff --unified=50 BASE..HEAD -- <five named test files>`
+- `git diff --check BASE..HEAD`
+- `git diff --quiet SOURCE..HEAD -- apps docs packages .github pnpm-lock.yaml package.json`
+- targeted `rg`/`sed` reads of `notifications.md`, `workflows.md`, `decision-log.md`, workflow and inbox source references
+
+Observed exact HEAD `cb1c37a358b18eaf3cdb91739effa377d8794eda`, clean worktree, five test files only, 137 insertions/11 deletions. No production, specification, policy, note, dependency, or environment changes. Source-path comparison confirms product/spec/control source is unchanged from the stated source commit. `git diff --check` was clean. No tests, PostgreSQL, build, browser, CI, push, or source edits were run/performed in this review.
+
+## Findings
+
+No blocking or non-blocking findings.
+
+The notification fixture changes provide supported, canonical resource/type identities for the behavior each test intends to exercise. The `person/security_alert` rows bind `personId` and `resourceId` to the recipient's actual person row and use the accepted `mfa_reset` event kind. The reset test creates the target's staff person before invoking reset; it does not introduce orphan-user alert behavior. The audit row uses the fixed `instance/singleton` resource with the required closed operation/time payload and remains subject to the existing administrator visibility check. The task inbox fixture uses the supported legacy `task_created` class, the actual task id, and retains no-reach / no-task-credential denials before granting reach. Shadow-mode tests preserve caller/other-user separation, cross-workspace and deleted-resource controls, and the same-user project-reach positive case. Thus the repair does not suppress the defect by broadening production reach or weakening the deny oracle.
+
+The WF-9 success fixture now establishes explicit `project:read` reach to its project. The two added cases independently exercise hidden empty active and hidden empty archived workspace projects; both require the existing fixed generic 403 text and assert it contains neither project id nor name. This matches the 2026-10-16 owner answer and WF-9: every project in the workflow workspace counts, including empty and archived projects; complete reach is required, with a generic refusal otherwise. No owner-role-to-reach inference is added. The change does not touch WF-19 shape-only authoring for unknown assignee IDs.
+
+The recorded isolated PostgreSQL before/after reproduction in the public remediation report is consistent with the described fixture-only repair (5 files, 8 failures reproduced; then 5 files and 71 passing tests including two new cases). I did not independently rerun it under this task's explicit limits. The original hosted failure record remains preserved and is not erased by the local result.
+
+## Limits
+
+This is static ordinary review, not runtime verification, hosted CI evidence, security review, or publication approval. The private remediation report and raw database log were not opened or reproduced here; the public-safe report was the report copy inspected. Current hosted status and any later candidate SHA are outside this verdict. The required fresh Sol review remains pending after ordinary reviews clear.
+
+### Retained report notification785-pg81-fixtures-ordinary-b-luna.md
+
+# Notification #785 PG fixture repair — ordinary review B
+
+**Model:** GPT-6 Luna  
+**Role:** Independent ordinary reviewer B  
+**Independence:** Fresh review context; did not author, direct, or remediate this candidate.  
+**Reviewed head:** `cb1c37a358b18eaf3cdb91739effa377d8794eda`  
+**Comparison base:** `81b5bef0fb4893e37a1544e836b7d4f72d13fd2a`  
+**Source:** `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, clean at the reviewed head.
+
+## Scope checked
+
+Reviewed the complete five-file test-only diff (137 additions, 11 deletions): API-key self-mutation notification fixture; local-factor reset person fixtures; notification scheduler/workflow/audit repository fixtures; notification shadow-mode fixtures; and workflow validation fixtures. Read the canonical notification and workflow contracts, WF-9 owner decisions and current mission/workflow instructions. Checked retained negative assertions and the new empty/archived project refusal cases. No production source, spec, or review-note changes are present in the candidate.
+
+## Findings
+
+No blocking or non-blocking findings.
+
+The notification fixtures now satisfy the persisted notification shape with canonical person association, supported event/resource discriminators, and event payloads appropriate to the fixture. Existing recipient ownership, unread/read, reach denial, and payload privacy assertions remain intact. Test-only `task_created` uses preserve the intended task-resource paths; the sentinel-`singleton` instance audit fixture is explicit.
+
+The workflow additions follow the approved WF-9 contract: every project in the workspace counts, including empty and archived projects; an inaccessible project yields the generic 403 refusal; and the response is checked not to expose that project's identifier or name. The success fixture now grants canonical `project:read`, consistent with complete-reach semantics. WF-19 unknown-person authoring behavior is outside these edits and no decision is contradicted.
+
+## Checks and limits
+
+- `git status --short --branch`, `git rev-parse HEAD`, and `git diff --stat 81b5bef0fb4893e37a1544e836b7d4f72d13fd2a..cb1c37a358b18eaf3cdb91739effa377d8794eda`: clean exact head; five expected files, 137 additions/11 deletions.
+- `pnpm exec biome check` on the five changed files: completed; reports 23 warnings, all at unchanged pre-existing assertions. No warning maps to a changed assertion; the added notification helper's non-null guard is ordinary control flow.
+- Inspected the full test diff and related notification/workflow contracts. No PostgreSQL integration test was run by this review; no build, browser run, or hosted CI result is claimed. This report does not establish PostgreSQL acceptance or whole-feature acceptance.
+
+## Verdict
+
+**CLEAR** for ordinary review B of exact head `cb1c37a358b18eaf3cdb91739effa377d8794eda`, limited to the five changed test files and the contract alignment described above. Fresh ordinary reviewer A and the current-head Sol review remain separate required gates.
+
+## Separate labelled-redaction verification
+
+**Verdict: CLEAR — redaction transform verified.** Private source `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/notification785-pg81-fixture-remediation-luna.md` SHA-256 is `052406135f759558228a67ee59795b4165e469862d8e3f30c26e6b1f2a1e5ed1`. Public copy `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/notification785-pg81-fixture-remediation-public-redacted.md` SHA-256 is `9c8863c5bb9427ad468440bd808cee6ae1f6e9181cf519021c815d32d5d467b4`. An in-memory scan found exactly one URI-shaped PostgreSQL connection string in the private source. Replacing only that span with `[redacted disposable PostgreSQL connection URI]` and prepending the public copy's single conductor-labelled redaction header reproduces the public file byte-for-byte. No URI value or log payload is reproduced here. This approves the redaction transformation and provenance only; it does not approve or alter the private report's technical verdict.
+
+### Retained report notification785-pg81-fixtures-security-61-sol.md
+
+# #785 fixture repair — independent security delta confirmation
+
+**Model:** GPT-6.1 Sol (dispatch role; no separately verifiable serving-version attestation is exposed to this context).
+**Context:** /root/notification785_fixture_security_sol.
+**Role and independence:** Fresh independent security reviewer; did not author, direct, advise on, remediate or perform ordinary review of this candidate.
+**Reviewed head:** cb1c37a358b18eaf3cdb91739effa377d8794eda
+**Comparison base:** 81b5bef0fb4893e37a1544e836b7d4f72d13fd2a
+**Retained full-security source:** 472ca631db2faf0b34945da221675720e3e2e503.
+**Verdict:** CLEAR for this exact-head fixture-only security delta. No blocking or non-blocking finding in this delta. This is source/test-intent clearance, not merge readiness or runtime acceptance.
+
+## Depth and retained coverage
+
+I read current AGENTS, workflow review tiers/evidence reuse, active mission and CLAUDE; both fresh ordinary CLEAR reports; the separately redacted public author report; and the authentic committed full-security report at 472ca631. The earlier full source-security assessment and its explicit held key-addressed native-work-item producer residual remain labelled to their original source. They are not rewritten or silently broadened here.
+
+I independently inspected both intervening commits with raw per-commit Git paths/modes. The first modifies only the designated security note (964 additions, zero deletions); a byte-prefix comparison confirms the prior note is preserved. The second modifies exactly the five named integration test files (137 additions, 11 deletions). The complete source-to-head changed-path inventory contains only that note and those five tests. All remaining product, specification, policy, control, dependency and environment paths are byte-conserved. Thus the earlier full source assessment remains applicable to unchanged source inputs, while this new mandatory current-head security pass assesses the changed test inputs. Repeating the 69-path full assessment would add no changed-source coverage.
+
+## Security assessment
+
+The new person/security_alert fixtures bind recipient user, personId and resourceId to the actual canonical person, using the closed mfa_reset payload. They do not turn arbitrary resource-less notifications into valid rows. The API-key self-write denial attempts remain intact; the valid session-read control remains meaningful. Creating the MFA target's person supplies the supported account-notice subject without adding orphan-user production behavior.
+
+The repository helper's neutral alerts are self-owned person notices. Its explicit audit alert instead uses instance/singleton and closed operation/time payload; the non-admin exclusion and admin positive remain. Its task fixture uses the supported task event class and real task resource, retaining no-reach, unread-hidden-row, foreign-recipient and task-credential restrictions before the positive grant. Shadow fixtures preserve other-user separation, cross-workspace/private payload and deleted-resource controls. The changed task event classes make these controls exercise supported resource-policy paths. No test skip/focus/deletion or denial-to-success weakening occurs in the diff.
+
+WF-9's positive fixture adds explicit project:read rather than inferring reach from workspace ownership. The two new active-empty and archived-empty project cases omit project reach, demand the fixed generic 403 response, and reject disclosure of the hidden project id/name. This matches the current canonical all-workspace-project contract. WF-19 unknown-person shape-only authoring is unchanged. The repair changes no production privilege, transaction, recipient, event writer, policy or authorization predicate.
+
+## Actual commands and verification
+
+Commands run in /Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2: cat/sed/rg reads of the above instructions, reports, notification/workflow contracts and relevant surrounding tests; git status --porcelain; git rev-parse HEAD; git diff --stat and full diff BASE HEAD; git diff --check BASE HEAD (clean); git diff --name-status FULL_SOURCE HEAD; git log --format and raw --no-abbrev --no-renames FULL_SOURCE..HEAD; git diff --numstat FULL_SOURCE BASE; git diff --quiet FULL_SOURCE HEAD -- apps packages .github scripts package.json pnpm-lock.yaml (exit 0). A Python subprocess check asserted the exact six-path inventory and byte-preserved historical-note prefix. Worktree was clean at the exact head.
+
+No unit or integration tests were executed in this review. No PostgreSQL, Docker, build, browser, hosted CI, push, publication or source edits were performed. Only this mode-0600 private report was written. I did not open the credential-bearing private author original or raw database logs. The inspected public copy's separate labelled-redaction verification is ordinary reviewer B's evidence, not a transformation performed by this context.
+
+## Limits and adverse evidence
+
+The public author report records an initial default-listener authentication failure before reset, then an owned disposable PostgreSQL reproduction of 8 failures/61 passes across 69 tests, followed by 71 passes in five files including the two new cases. These are attributed author receipts, not my reruns. The original hosted eight-failure record remains adverse evidence until applicable current-head hosted verification clears it; a focused local pass cannot override required CI. Required exact-head checks and applicable image/runtime/browser gates remain with the conductor. Existing full-review residuals remain. No merge authority, gate waiver, SIT acceptance, whole-580 or stage-completion claim is made.
