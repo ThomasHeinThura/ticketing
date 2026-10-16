@@ -1565,3 +1565,155 @@ This clarification supplements the reviewer identity field above. The selector r
 No tests, builds, Docker/PostgreSQL operations, browser actions, CI, push, PR, or repository edits were performed by this reviewer. Only this private evidence file was created. Live hosted checks were not queried; this report does not establish merge readiness.
 
 Prior full `09e3` and B9 composition `0f8e` reviews retain only their actual recorded scope; this confirmation does not extend or replace them. The required existing G11 assignment217.2 strict `<200` performance finding persists and is not disposed by this fixture correction or its focused pass. No performance fix, whole-PR acceptance, stage closure, or gate waiver is asserted.
+
+
+## Complete unordered-row fixture repair — 2026-10-16
+
+The prior bb298 full PostgreSQL job117184850227 failed220/222files3281/3283tests/four of five tasks: another exact two-row assertion at1107 depended on unspecified row order in both real clock wrappers. Raw7171938bytes SHA25675813d672ab6e770f0d9999da5e1ea77365bf047106d80030e78f0955389cce1 remains adverse. The current one-file batch audits the whole fixture and uses exact sorted copies across all six affected collections; cardinality, duplicate multiplicity, every field and denial/read-state oracle remain. No product query, skip, timer, policy, tolerance or new dependency changes.
+
+Actual root focused PostgreSQL at435a4895 passes3files177tests/native0/99.627seconds; raw392975bytes SHA256273ad449bfb4d910e1186d4390858d72c44edf6f1368c685f63fbb2754318a85. Exact owned cleanup returns23containers109volumes7networks unchanged. All earlier failure records remain source-bound. Current new publication requires its own full CI/G11/image evidence; bb298 passes are not inherited.
+
+Dispatch provenance: the conductor explicitly launched the ordinary context b9_809_435_order_batch_ordinary_luna with model gpt-6-luna and fork_turns none, and security context b9_809_435_order_batch_security_sol with model gpt-6.1-sol, fork_turns none and high effort. The authentic reports retain their exposed generic GPT-6 label and disclose unavailable served fingerprints. Requested route identity is recorded; no independently verified served fingerprint is invented. These are independent bounded confirmations after the earlier full source review, not new full31path claims.
+
+## Evidence file
+
+`b9-809-notification-order-batch-author-luna.md`
+
+# #809 unordered notification-state fixture repair — author handoff
+
+- **Candidate:** `435a4895f7f769d8fa713b167ab3273129aec017`
+- **Parent:** `bb298c181c213e695c5a8e857679536d355df8aa`
+- **Net changed files:** `tests/api-integration/work-item-comment.test.ts` only
+- **Commit:** `test: normalize unordered notification state rows`
+- **Worktree:** clean after commit; local branch is one commit ahead of its tracking ref. Not pushed.
+
+## Change and preserved oracles
+
+Added a test-local `expectRowsById` helper. It makes row comparison deterministic by ID, then by serialized selected row as a tie-breaker. The helper sorts copies and retains a strict deep equality check over the complete selected row objects. Thus cardinality, duplicate rows, every selected field, and every `isRead` value still matter.
+
+Applied the helper to the unordered notification-state collections in this file:
+
+- `bulkAfterRevocation`: preserves the exact five expected notification IDs and the no-write `isRead: false` state after identity revocation and bulk read.
+- `retainedAfterClear`: preserves the exact five retained IDs after an inaccessible clear operation.
+- `forbiddenRows`: preserves the exact two forbidden assignment rows, both unread; this is the two-row assertion that failed on both clock wrappers in the current PostgreSQL run.
+- `afterBulkRead`: replaces `arrayContaining` with exact equality for all nine expected rows and their read states, retaining both eligible reads and the unread internal/missing/forbidden/unknown cases.
+- `afterClear`: preserves the exact two rows expected to remain after clear.
+- `mutationState`: preserves the exact own/foreign rows and their true/false states after bulk read.
+
+No production query ordering, timing, collation, timezone configuration, fixtures, skips, or product behavior changed. Explicitly order-sensitive assertions were not altered.
+
+## Full-file audit notes
+
+Reviewed all SQL selections and array-equality assertions in `tests/api-integration/work-item-comment.test.ts`, including `toEqual` / `toStrictEqual`, notification `isRead` checks, and unordered multi-row query projections.
+
+Already order-independent or unaffected cases:
+
+- The `listedAfterTombstone` and `customerNotifications` / `notificationsAfterInternalComment` array equalities expect one row, so there is no row-order choice.
+- Empty-result `toEqual([])` checks remain exact zero-row no-write assertions; ordering is immaterial.
+- `retainedForeign` is a single-ID query asserted as one exact row; `deletedOwn` asserts zero rows.
+- The two-watcher check uses exact `toContainEqual` rows plus exact length two; the mention-event and mention-notification projections use explicit cardinality and unordered expected-ID containment. Those checks were already order-independent and were not being treated as exact full-row state equality by this fix.
+- List projections that use `toContain` / `not.toContain` intentionally assert reach membership, not ordering. Scalar/destructured single-row checks and ordered API/activity assertions were left unchanged.
+- Existing sorted ID-only checks and the existing inline-sorted two-row mutation check were consolidated onto the same helper so all unordered SQL exact-row comparisons use one treatment.
+
+## Verification and limits
+
+- `git diff --check` — passed.
+- `pnpm exec biome format --write tests/api-integration/work-item-comment.test.ts` — formatted the one changed file.
+- `pnpm exec biome check tests/api-integration/work-item-comment.test.ts` — no errors; reports five pre-existing `noUnusedVariables` warnings elsewhere in this file (four unused `project` bindings and one unused `creator` binding). No warning is in the changed lines.
+- `pnpm exec tsc --noEmit -p apps/api/tsconfig.tests.json` — passed.
+- No unit, PostgreSQL, integration, full-suite, build, browser, or Docker tests were run, as instructed. The frozen-candidate PostgreSQL run remains the conductor's next verification.
+
+## Adverse evidence retained
+
+The prior exact-base PostgreSQL run remains failed and is not represented as repaired runtime evidence: `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/809-bb298-pg-failure-receipt.json` records run `117184850227`, 220/222 files, 3281/3283 tests, and the two clock-wrapper failures at the unordered `forbiddenRows` assertion. The raw log remains at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/809-bb298-pg-full.log`, SHA-256 `75813d672ab6e770f0d9999da5e1ea77365bf047106d80030e78f0955389cce1`. Earlier same-class failures and remediation evidence remain preserved in their existing records. Only the conductor's run at this frozen new SHA can establish the next PostgreSQL result.
+
+
+## Evidence file
+
+`b9-809-435-order-batch-ordinary-luna.md`
+
+# #809 notification-order batch — independent ordinary review
+
+- **Reviewed head:** `435a4895f7f769d8fa713b167ab3273129aec017`
+- **Comparison base:** `bb298c181c213e695c5a8e857679536d355df8aa`
+- **Requested reviewer model:** GPT-6 Luna (strong ordinary review)
+- **Actual platform model:** GPT-6; exact model/version fingerprint is unavailable in this reviewer context. This report does not claim Luna-specific provenance.
+- **Independence:** Fresh reviewer context; did not author, direct, or remediate the candidate. No author conversation inherited.
+- **Scope:** Sole changed file `tests/api-integration/work-item-comment.test.ts`; helper semantics, changed unordered row assertions, and full-file scan for remaining multi-row exact array assertions. No other files reviewed as part of the candidate verdict.
+- **Commands:** `git status --porcelain=v1`; `git rev-parse HEAD`; `git diff --no-ext-diff --unified=80 bb298c181c213e695c5a8e857679536d355df8aa 435a4895f7f769d8fa713b167ab3273129aec017 -- tests/api-integration/work-item-comment.test.ts`; `rg -n "(toEqual|toStrictEqual|forbiddenRows|bulkAfterRevocation|retainedAfterClear|afterBulkRead|afterClear|mutationState|ORDER BY|orderBy|sort\(|toContainEqual)" tests/api-integration/work-item-comment.test.ts`; manual inspection of surrounding sections; `git diff --check ... -- tests/api-integration/work-item-comment.test.ts`; `git diff --name-only ...`; `rg -n -U "expect\([^\n]*\)\.(toEqual|toStrictEqual)\(\s*\[" tests/api-integration/work-item-comment.test.ts`.
+- **Tests/reproductions:** None run, per assignment. No PG, integration, build, browser, or CI claim is made.
+
+## Findings
+
+No blocking or non-blocking findings in the assigned scope.
+
+`expectRowsById` sorts copies (so it does not mutate query results) by ID with serialized selected-row content as a tie-breaker, then uses strict deep equality via Vitest `toEqual`. For these selected row objects, it retains exact cardinality and duplicate multiplicity, IDs, all selected fields, and each `isRead` value. Applying it to `afterBulkRead` closes the former `arrayContaining` gap by requiring exactly the nine expected rows and states.
+
+The full-file scan found no remaining unordered multi-row exact full-row array equality requiring this treatment. Remaining literal exact array checks are empty arrays or single-row expectations. `listedAfterTombstone` is a one-row API expectation; its semantic ordering case is retained. Multi-row membership assertions paired with explicit length checks (`toContainEqual` / expected-ID containment) remain order-independent and were not treated as exact full-row snapshots. Other ordered API/activity expectations and scalar checks are unchanged.
+
+## Verdict
+
+**PASS — ordinary review of the assigned one-file delta.**
+
+## Residuals
+
+This pass validates only the fixture assertion normalization in the named test file. It establishes no PostgreSQL runtime result, product-query behavior, policy behavior, timing behavior, skip/fixture changes, browser evidence, or CI status. The conductor's frozen-candidate PostgreSQL run and required independent GPT-6 Sol review remain necessary; this report does not grant security approval or complete the broader review panel.
+
+
+## Evidence file
+
+`b9-809-435-order-batch-security-61-sol.md`
+
+# #809 unordered notification-state batch — independent bounded security confirmation
+
+- **Reviewed head:** `435a4895f7f769d8fa713b167ab3273129aec017`
+- **Comparison base:** `bb298c181c213e695c5a8e857679536d355df8aa`
+- **Requested reviewer model and role:** GPT-6.1 Sol, independent security confirmation.
+- **Platform model disclosure:** This reviewer context exposes the generic identity GPT-6. Exact served model/version fingerprint is unavailable. The requested tier is recorded as requested, not as an invented served fingerprint. The conductor must retain the dispatch provenance alongside this report.
+- **Reviewer context:** `/root/b9_809_435_order_batch_security_sol`.
+- **Independence:** Fresh context; did not author, direct or remediate this candidate. No author conversation was supplied to this reviewer; the bounded task packet and existing reports were treated as claims to verify against source.
+- **Ordinary review prerequisite:** Read `b9-809-435-order-batch-ordinary-luna.md`, which records PASS at this exact head/base and discloses its requested tier and unavailable model fingerprint. This confirmation follows that ordinary verdict; it does not independently authenticate the conductor's dispatch metadata.
+
+## Scope and source pin
+
+**PASS — bounded security confirmation of the one-file test-only delta.** No blocking or non-blocking findings.
+
+Verified clean checkout at the exact candidate. The sole intervening commit is `435a4895 test: normalize unordered notification state rows`. Raw diff is one mode-preserving modification of `tests/api-integration/work-item-comment.test.ts` (42 insertions, 28 deletions). No product query, route, policy, timer, timezone, fixture identity, skip, tolerance, build configuration or dependency changes are present. `apps` tree is unchanged at `3ac06c1ab00566959b34d7b675d365b3e9654d11`; `packages` tree is unchanged at `e79520b9dfb0a42a9d06a616da9d1b637b5b1ee5`.
+
+Read the full 2,606-line affected test file, the exact diff, current accepted `origin/main` policy-equivalent guides, notification reach/customer-privacy rules, relevant comment permissions, testing strategy and CI security path definition. The local `main` ref is stale; `origin/main` was `c022915a8768b96b460c798feafafd7d48214d5c`. AGENTS, CLAUDE, workflow and active-mission files have no diff against that accepted remote-tracking ref. Live PR809 still exposed head `bb298c181c213e695c5a8e857679536d355df8aa` when checked; this review binds the local candidate, not that older hosted head.
+
+## Security assessment
+
+`expectRowsById` sorts copies of both collections, compares ID first and serialized selected row as a tie-breaker, then retains Vitest deep equality of the complete selected objects. It does not project away fields, deduplicate rows, filter denied rows or coerce booleans. Exact length and duplicate multiplicity remain part of equality. Its six call sites select string IDs, with `isRead` booleans where relevant; serialization is only a sorting tie-breaker and is not the equality oracle.
+
+- `bulkAfterRevocation`: now requires the exact five planted IDs, each unread, after membership revocation. This strengthens the prior length-plus-every-false check while preserving the denied direct-read and zero-visible-row checks.
+- `retainedAfterClear`: exact same five IDs must survive the inaccessible clear operation.
+- `forbiddenRows`: exact two assignment rows remain unread, independent of SQL return order. Direct forbidden mutations still must return undefined.
+- `afterBulkRead`: requires exactly nine expected rows. Eligible comment/mention/transition rows must be read; internal, missing-resource, assignment, unassignment and unknown-event rows must remain unread. This is stronger than the former `arrayContaining` assertion, which permitted additional rows.
+- `afterClear`: exact inaccessible assignment/internal-comment rows must remain; eligible transition row must be absent.
+- `mutationState`: exact own row read and foreign row unread; the adjacent foreign direct-read denial, foreign retention and own deletion checks remain unchanged.
+
+The full-file assertion-class audit found no missed unordered multi-row full-row equality of the same class. Remaining direct database-array equalities expect zero or one row. Two-customer watcher checks use exact full-row membership plus exact length two; mention-event and mention-notification ID checks use expected-ID containment plus exact length two. API preflight arrays encode response semantics and were not normalized. Scalar/destructured checks, activity responses, negative membership checks, denial statuses and no-write assertions remain intact. No security behavior is hidden by imposing production SQL ordering.
+
+## Commands and evidence actually checked
+
+Read-only commands: `pwd`; `git status --short` / `git status --porcelain=v1`; `git rev-parse HEAD`; `git rev-parse main origin/main`; `git log --oneline bb298c181c213e695c5a8e857679536d355df8aa..435a4895f7f769d8fa713b167ab3273129aec017`; `git diff --stat`, `git diff --no-ext-diff`, `git diff --raw --no-renames`, and `git diff --check` for that range; `git rev-parse <head-or-base>:apps <head-or-base>:packages`; `git diff --name-status origin/main -- AGENTS.md CLAUDE.md docs/04-engineering/agent-workflow.md docs/07-planning/active-mission.md`; source reads in bounded `sed` ranges; `wc -l`; `rg` of all equality, selection, sorting, containment and helper call sites. `git diff --check` passed and the final checkout was clean at the reviewed SHA.
+
+Live read-only checks: `gh pr list --state open --json number,title,headRefName,headRefOid`; `gh issue list --state open --limit 15 --json number,title`; `gh pr view 809 --json number,title,headRefName,headRefOid,baseRefName,mergeable,reviewDecision,statusCheckRollup`.
+
+Read private ordinary/author reports and `809-bb298-pg-failure-receipt.json`. The latter retains the adverse bb298 result: 220/222 files and 3281/3283 tests; both clock wrappers failed at reversed exact two-row unread results. That failure is not converted into a pass by this review.
+
+**Tests run by this reviewer: none**, per the assignment. No PG/container/build/browser/CI job was started or rerun; no repository edits were made. Read the conductor-owned `b9-runtime-435a4895/` candidate check, runtime receipt, invocation and completed log: these identify this candidate and the three focused files (work-item-comment plus both non-UTC clock wrappers), with log summary **3 files / 177 tests passed**. This is observed external focused-run evidence, not reviewer-executed testing or a full-suite result. The retained container cleanup receipt names the exact owned container; this reviewer performed no container action.
+
+## Residuals and acceptance boundary
+
+This verdict covers only this test assertion repair relative to bb298. It is not a new full #809 production-scope or 31-file review, and it does not expand historical review coverage. The conductor must preserve and trace the earlier source, accepted-main composition and test-delta reviews at their actual scopes; this report does not reauthenticate or silently enlarge them.
+
+Current required CI, including full PostgreSQL integration, G11 and all applicable image build/boot/health proof remain mandatory for acceptance. No old bb298 status is inherited, no gate is waived, no merge readiness is asserted, and no feature/stage/runtime/SIT acceptance is claimed. No open finding was created in this bounded delta.
+
+
+## Current reviewed source binding
+
+**Reviewed head:** `435a4895f7f769d8fa713b167ab3273129aec017`
+
+Only this regular100644 own review note may follow the reviewed source. No gate is waived.
