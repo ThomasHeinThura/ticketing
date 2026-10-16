@@ -817,3 +817,175 @@ The source still has a stale comment naming `assertCallerHasCapability` in the p
 **Blocking findings:** none found in the inspected source.  
 **Residual:** current-head hosted PostgreSQL and all required CI/runtime gates must be judged separately by the conductor. The review makes no claim about simultaneous revocation races or full release acceptance.
 
+
+## Legal customer credential boundary and accepted-main composition
+
+**Reviewed head:** `8d52a7f7cf2731a132c0bfd3bcb526d062bae41e`
+
+Published17675375 real PostgreSQL remains FAILED:206files/2999tests, one failed customer deny assertion,2998passed. The earlier canonical customer fixture still mocked an impossible agent session; actual404 came from workspace membership lookup before field authority. The corrected test02d59f4f explicitly supplies a customer portal session to the configured agent host and asserts401Unauthorized plus persisted no-write. Staff in-reach403/no-write and key-subset cases are unchanged. This is a real credential/origin boundary oracle, not a production permission relaxation.
+
+Accepted main d93c0967 is protected #800. Composition8d52a7f7 imports only its existing task-description test and authentic own note, byte-equal accepted main; every other path remains byte-equal reviewed02d. Strong ordinary confirms host fixture and composition; full independent Sol clears8d source. PostgreSQL/image/requiredCI remain outstanding, and #782 disposition still depends on unacceptedcarrier791.
+
+Explicit conductor provenance: ordinary context dispatchedgpt-6-luna; independent security context originally spawned `model:gpt-6-sol`, `fork_turns:none`, did not author/direct the host fix and independently reviewed the current delta. The denial advisor did not approve implementation. Actual runtime introspection limits are retained in the unchanged reports below.
+
+---
+
+### Authentic record: apikey-customer-denial-adjudication-sol.md
+
+# #784 remaining PostgreSQL customer-denial adjudication — read-only advisory
+
+**Exact source:** `bb1c79466c79a39904f9fec61fac3b58f0ab7660`; frozen clean worktree `api750` at `176753750bdc5245f2068885f76d0947c8689ee5`. **Role:** fresh bounded source/contract adjudication; I did not author or remediate this candidate. This is not an approval of a future fix or a replacement for required exact-head review.
+
+**Observed hosted result:** private `784-pg-17675375.log` reports five tasks, four passed; PostgreSQL integration 206 files, one failed, 205 passed; 2,999 tests, one failed, 2,998 passed. The sole test is `project-default-comment-visibility.test.ts`, “refuses a genuine customer identity from the agent project-settings API”: asserted 403, observed 404. I inspected only the safe failure summary from the log, not printed SQL, parameters or fixture payloads. No PostgreSQL, Docker, browser, CI or mutation was run for this adjudication.
+
+## The denial seam
+
+1. `mockAuthenticatedSession(customerUser)` in the failing test creates an **agent** session by default (`tests/api-integration/helpers/auth.ts`, `createSession`: `portal: overrides.portal ?? "agent"`). The user and person are otherwise canonical customer-side: one built-in organisation-scoped customer membership, linked active external organisation, no workspace user or project membership. The test sends `PUT /api/project/{id}` through the agent request path.
+2. That route installs `workspaceAccess.fromProject("id", {requireProjectReach:true, deferApiKeyCapability:true})` before `requireWorkspacePermission({project:["update"]})` and before its handler's `project:manage_settings` field check (`apps/api/src/project/index.ts`, route declaration and handler). The field check is therefore never reached in this failure.
+3. `workspace-access-middleware.ts` runs `lookupWorkspaceId("project", ...)`. Its SQL uses `reachableWorkspacePredicate(project.workspaceId, userId, apiKeyId)`, which accepts an instance admin or a matching `workspace_user` row. The genuine customer has neither, so the lookup returns no row. With `requireProjectReach`, middleware throws `HTTPException(404, {message:"Project not found"})` before its subsequent `projectReadDecision` or legacy capability gate. This is the source-predicted error body; the hosted log excerpt confirms the status, not a captured body.
+4. The project lookup also selects `workspace.organisationId` for `projectReachFacts` rather than the project's own `organisationId`, even though RBAC reach step 6 and `caller-reach.ts` require the project's customer organisation. That is a distinct latent reach-facts concern if this path is later made customer-reachable; it is not necessary to explain the observed 404 and must not be bundled into a status-only patch without a scoped diagnosis.
+
+## Contract judgment
+
+The current 404 is a fail-closed native denial of this **fabricated agent-portal credential**, not evidence that a real customer can update settings. It is not the handler's in-reach, missing-capability 403. `rbac.md` says project reach step 6 includes the project's customer organisation and generally maps in-reach insufficient capability to 403, but its explicit customer-on-agent-API 403 rule names **item-scoped work-item and legacy task routes**; it does not prescribe a 403 for `PUT /api/project/{id}`. The accepted two-origin ADR requires customer sessions to match the portal host, and the agent API is not on the portal surface. `authenticate-api-request.ts` returns 401 when a customer-portal session is presented to the agent host; `customer-portal.md` CP-19 returns a generic 404 for agent API paths on the portal host before auth. Thus the existing test's forced agent session is not a legitimate end-to-end customer credential, and making this route return 403 by adding workspace or project authority to that fixture would violate the canonical identity boundary. Changing the assertion to 404 alone would preserve an artificial credential and would not test the real boundary.
+
+**Minimum repair recommendation:** replace this one case's call with a customer-portal session (`mockAuthenticatedSession(customerUser, {portal:"customer"})`) sent explicitly to the configured agent host; assert 401 and the persisted `defaultCommentVisibility === "internal"`. Assert the expected unauthorized body if stable in the auth response contract. A second explicit portal-host request may assert CP-19's generic 404 and no write, but existing boundary coverage should be checked first to avoid duplicating it. Preserve the canonical customer fixture; do not create a workspace user, project grant, staff role, or fake agent session. If the intended additional guarantee is the pure **reachable but lacks `project:manage_settings`** decision, test that at `resolveIdentity`/`evaluateProjectRead` with facts from `project.organisationId`, including positive reach, negative capability, and unchanged row for the route denial. Do not demand a 403 end-to-end through a customer credential that the host/session boundary must reject earlier.
+
+**Structural regression oracle:** model credential portal, request origin, target reach, and capability as separate preconditions. For a real customer: customer session × agent origin → 401 before route lookup; customer session × portal origin × agent path → generic 404 before auth; for an admitted staff session with target reach but no settings capability → 403/no write; for an out-of-reach project → same 404 shape as absent. This avoids another fixture-specific status flip after repeated failures on the same mechanism. Verify only the repaired case first on isolated PostgreSQL, then the required full exact-head gate; freeze a new SHA and obtain review of that delta. The current full Sol source CLEAR at `bb1c7946` did not include hosted PostgreSQL and cannot approve the later fix.
+
+**Checks:** read repository `AGENTS.md`, active mission, agent workflow, `CLAUDE.md`, RBAC, auth/session, customer portal and project contracts, current source/test, prior ordinary and Sol review reports, and the summarized hosted failure. Confirmed `git rev-parse HEAD` as the frozen SHA and `git status --short` empty. No source, test, PR, prior review note or repository file was edited; only this private advisory was created.
+
+
+---
+
+### Authentic record: apikey-customer-host-fixture-repair-luna.md
+
+# Customer host-boundary fixture repair for #784
+
+- Frozen parent source head: `176753750bdc5245f2068885f76d0947c8689ee5`
+- Repair commit: `02d59f4f09ca591af63a02e67132784580ddd432`
+- Branch: `codex/api-key-project-role-clamp-724`
+- Changed file: `tests/api-integration/project-default-comment-visibility.test.ts` only
+
+## Source and contract basis
+
+Read the fresh Sol advisory `apikey-customer-denial-adjudication-sol.md`, which traced hosted 404 to `workspaceAccess.fromProject` and showed that the test had supplied an agent session for a genuine customer identity. `tests/api-integration/helpers/auth.ts` makes agent the default portal, so the old request represented an impossible cross-portal credential. `apps/api/src/utils/authenticate-api-request.ts` selects auth from the request Host and returns 401 when `session.portal` does not match the selected origin. `tests/api-integration/setup.ts` configures `TASKDESK_AGENT_URL` to `http://localhost:1337`; the shared `withConfiguredAgentAuthority` helper applies that configured authority to in-process requests. The customer portal spec's CP-19 separately makes agent API paths on the portal origin generic 404; that redundant oracle was not added here.
+
+The case is now named for what it proves: a customer portal session is rejected at the agent project-settings API boundary before project lookup. It keeps the separately created customer user/person, active external organisation, canonical built-in customer role, sole organisation membership, and explicit no-workspace-user/no-workspace-or-project-membership/no-project-authority assertions from the previous repair. It mocks `portal: "customer"`, targets the configured agent origin through `withConfiguredAgentAuthority`, and asserts the documented 401 body `Unauthorized` plus unchanged persisted `defaultCommentVisibility === "internal"`. It no longer claims a handler-level missing-capability 403 for a customer crossing into the agent API.
+
+All staff narrow-project-role 403/no-write checks and API-key owner/subset cases remain unchanged. There are no production, host-routing, workspace-reach, project capability, route-policy, or permission changes.
+
+## Checks actually run
+
+- `pnpm exec biome check tests/api-integration/project-default-comment-visibility.test.ts` — passed.
+- `pnpm --filter @taskdesk/api typecheck` — passed.
+- `pnpm --filter @taskdesk/api test:unit` — passed: 119 files, 855 tests.
+- `git diff --check` — passed.
+- Commit hook ran Biome on the staged file and passed.
+- PostgreSQL integration was not run: no local PostgreSQL/Docker runtime is available. No runtime pass is claimed.
+
+## Provenance and limits
+
+This report records the authoring Codex agent context; runtime did not expose a verifiable routed model/version label, so no specific Luna/Sol identity is asserted. Earlier source/ordinary/hosted-failure reports remain unchanged. This correction does not independently reproduce or clear the hosted PostgreSQL failure; the repaired integration test still needs the authorized hosted run and exact-head review.
+
+
+---
+
+### Authentic record: apikey-customer-host-ordinary-current-luna.md
+
+# #784 customer host-boundary correction — independent ordinary review
+
+**Verdict:** CLEAR at the ordinary-review tier for exact source `02d59f4f09ca591af63a02e67132784580ddd432`. The test now presents a valid customer-portal session to the configured agent origin and checks the required host/session rejection before project lookup. Its fixture remains canonical, and the narrow delta preserves the project-setting and API-key regression matrix. This verdict is not security clearance or acceptance.
+
+**Model provenance:** GPT-6 Codex runtime; no more specific platform model/version was exposed. Fresh independent ordinary-review context; I did not author, direct, or remediate the candidate.
+
+**Source and scope:** Branch `codex/api-key-project-role-clamp-724`, exact head `02d59f4f09ca591af63a02e67132784580ddd432`, compared with `176753750bdc5245f2068885f76d0947c8689ee5`. The worktree was clean when checked. The only changed path in the candidate delta is `tests/api-integration/project-default-comment-visibility.test.ts`. I read the independent Sol adjudication as advice, then verified its claims against the actual auth helper, agent-authority helper, auth middleware, integration setup, customer/host contracts, canonical identity, and final test.
+
+## Review result
+
+The customer remains a separate user and customer-side person with an active external organisation, canonical `BUILT_IN_ROLES.customer` persisted in the correct organisation scope, and exactly one organisation membership. There is no workspace-user row, workspace/project membership, or project authority. The project is bound to the customer's organisation. The request now sets `portal: "customer"` and passes through `withConfiguredAgentAuthority`, which uses the configured `TASKDESK_AGENT_URL` origin and Host header; integration setup sets that value to `http://localhost:1337`.
+
+The request middleware selects the agent auth instance from that host. `getSession` rejects a session whose portal does not match the selected origin with `HTTPException(401, { message: "Unauthorized" })`; the test asserts status 401 and exact response body before any project lookup. This is the legal two-origin outcome. It no longer treats an impossible agent session as a customer credential or claims the project handler's missing-capability branch was reached. It retains the persisted `defaultCommentVisibility === "internal"` no-write assertion. The separate staff member/lead project-role negatives continue to assert 403 and no write, so the route's actual capability boundary remains covered with a legal staff credential. The owner/key-scope allows and denials elsewhere in the bounded matrix are unchanged.
+
+The latest previous hosted result remains adverse evidence: at `17675375`, the full integration run had 206 files, 1 failed / 205 passed and 2,999 tests, 1 failed / 2,998 passed; the sole failure was the prior impossible-customer test expecting 403 but receiving 404 before the handler. The current candidate intentionally tests the contractually correct 401 host/session boundary. I did not run PostgreSQL, so this report does not claim that the latest hosted failure has been reproduced or cleared in CI.
+
+The Sol advisory also identified a separate latent question about which organisation ID project lookup places into reach facts if a customer were ever made route-reachable. This test now stops at the required host boundary, and the delta changes no source or reachability behavior. That separate observation is outside this fixture-only review and should be tracked only if a future contract authorizes customer reach to the agent route.
+
+## Verification
+
+- `pnpm exec biome check tests/api-integration/project-default-comment-visibility.test.ts` — passed, 1 file.
+- `pnpm --filter @taskdesk/api typecheck` — passed across configured API TypeScript projects.
+- `git diff --check 17675375..02d59f4f09ca591af63a02e67132784580ddd432` — passed.
+- PostgreSQL integration, Docker, and browser checks were not run, as assigned. The source/type and authorization controls in the surrounding matrix remain as previously reviewed; I did not rerun the full unit suite for this one-file integration-test change.
+
+No source, prior ordinary/adverse report, PR, or repository note was changed. No push or merge was performed. Fresh full GPT-6 Sol review and an exact-head hosted PostgreSQL result remain required; the separate #782 review dependency remains outstanding.
+
+
+---
+
+### Authentic record: apikey-editor-main-ordinary-luna.md
+
+# #784 accepted-main composition — independent ordinary review
+
+**Verdict:** CLEAR for exact composition head `8d52a7f7cf2731a132c0bfd3bcb526d062bae41e`. The reviewed API source and customer host-boundary test are preserved byte-for-byte from `02d59f4f09ca591af63a02e67132784580ddd432`; the only other paths are the two requested imports, each byte-equal to accepted main `d93c0967ecc7b1a1d721ff25202737cd72430a0d`. I found one inherited whitespace warning in the imported main review note, recorded below. No source or test behavior changed.
+
+**Model provenance:** GPT-6 Codex runtime; no more-specific platform model/version was exposed. Fresh bounded review context; I did not author, direct, or remediate the candidate.
+
+## Composition evidence
+
+- The worktree was clean at review start; `HEAD` is exactly `8d52a7f7cf2731a132c0bfd3bcb526d062bae41e`.
+- Candidate parents are exactly the prior reviewed source `02d59f4f09ca591af63a02e67132784580ddd432` and accepted main `d93c0967ecc7b1a1d721ff25202737cd72430a0d`. The merge base with main is `d93c0967ecc7b1a1d721ff25202737cd72430a0d`.
+- `git diff --name-status 02d59f4f09ca591af63a02e67132784580ddd432..8d52a7f7cf2731a132c0bfd3bcb526d062bae41e` shows exactly:
+  - modified `apps/web/src/components/task/task-description.test.tsx`;
+  - added `docs/07-planning/security-reviews/776-task-description-editor-teardown.md`.
+- Independent blob IDs confirm the imported test is `11b2e727ca163fd090e9d3cd408dd7a2d823f29d` on both accepted main and candidate; the imported note is `c272c8e89149b0255d0aaebd93c473cf0128349d` on both.
+- The unchanged API source blob is `751565e274bd47e54e6cf07e9f40466f1b95ac0f` on both prior source and candidate. The customer host-boundary integration test blob is `2ba8071e2aab4443a98dd90cc7eb31944f45e00d` on both.
+- This agrees with the supplied `apikey-editor-main-conservation.json`; the ancestry, changed-path set, and blob IDs were checked independently.
+
+The API review scope therefore remains exactly the ordinary-reviewed `02d59f4` candidate. Its host-boundary test still uses a canonical customer portal session against configured agent authority, expects 401 before project lookup, and asserts persisted no-write. Staff project-setting 403/no-write controls and API-key scope/owner controls are unchanged. This composition adds no API/runtime change and did not warrant rerunning those tests.
+
+## Whitespace note
+
+`git diff --check 02d59f4f09ca591af63a02e67132784580ddd432..8d52a7f7cf2731a132c0bfd3bcb526d062bae41e` reports `docs/07-planning/security-reviews/776-task-description-editor-teardown.md:127: new blank line at EOF`. This is present in the byte-identical accepted-main source and is not introduced by a divergent edit. I left the import exact as assigned. The API test and source blobs are unchanged and the check reported no issue for them. The conductor can decide whether a later documentation-only cleanup is warranted; it is not a composition discrepancy.
+
+No PostgreSQL, Docker, browser, source edit, report edit beyond this new private review, push, or merge action was performed. No tests were rerun because the API source and integration test are byte-identical to the previously reviewed exact head. The previous hosted PostgreSQL failure remains adverse evidence; exact current-host hosted PG and fresh full GPT-6 Sol review are still required. The separate #782 dependency remains outstanding.
+
+
+---
+
+### Authentic record: apikey-customer-host-security-current-sol.md
+
+# #784 customer-host fixture and accepted-main composition — full independent security review
+
+**Verdict: CLEAR** for source security at exact head `8d52a7f7cf2731a132c0bfd3bcb526d062bae41e`. No blocking finding in the current fixture correction, accepted-main import, or rechecked API-key/project authority seams. This verdict does not establish an exact-head PostgreSQL pass or any other acceptance gate.
+
+**Reviewed head:** `8d52a7f7cf2731a132c0bfd3bcb526d062bae41e`  
+**Host-fixture parent:** `02d59f4f09ca591af63a02e67132784580ddd432`  
+**Accepted-main merge parent:** `d93c0967ecc7b1a1d721ff25202737cd72430a0d`  
+**Prior full security head:** `bb1c79466c79a39904f9fec61fac3b58f0ab7660`  
+**Role and provenance:** Fresh independent full security reviewer context dispatched for the Sol-tier role. I did not author, direct, or remediate the host-fixture correction or merge. This runtime identifies itself as Codex based on GPT-6, but does not expose a verifiable finer routed model/version label. The `-sol` report name and role request are not independent model evidence; the conductor should preserve its actual spawn arguments when publishing.
+
+I read `AGENTS.md`, active mission, agent workflow and `CLAUDE.md`; the approved RBAC, API-key, project/engagement and customer-portal contracts and two-origin ADR; the earlier full security and ordinary reports; the latest hosted PG adverse summary; the bounded Sol adjudication as advice only; the fixture author report; and both new ordinary CLEAR reports. I inspected the actual `17675375..02d59f4f` fixture diff, the `02d59f4f..8d52a7f7` merge diff, the request/auth helpers and the composed project route, identity and reach paths. The candidate was clean/frozen at the exact head before and after this read-only review.
+
+## Security assessment
+
+The latest real PostgreSQL evidence at `176753750bdc5245f2068885f76d0947c8689ee5` still has one failed test: 206 files, 205 passed / 1 failed; 2,999 tests, 2,998 passed / 1 failed. The customer fixture asserted 403 but received 404. Source explains it: `mockAuthenticatedSession` defaulted to an agent session even for the otherwise genuine customer, while project workspace lookup required a workspace user and returned 404 before the handler. This was an invalid customer credential for the intended two-origin scenario. The advisory did not approve a later fix, and I independently checked its source trace.
+
+The one-file correction gives the existing canonical customer `portal: "customer"` and sends the PUT to the configured agent origin using `withConfiguredAgentAuthority`. Integration setup sets `TASKDESK_AGENT_URL` to `http://localhost:1337`; the helper constructs that URL and Host. `authenticateApiRequest` selects the auth instance from Host, then `getSession` rejects a session whose portal differs from the selected origin with 401 `Unauthorized` before project lookup. The test asserts that exact 401 body and rereads `defaultCommentVisibility === "internal"`. It no longer claims the project handler's in-reach capability denial for a customer who should never enter the agent API. The customer remains a separate customer-side person in an active external organisation, with the built-in organisation-scoped `customer` role on its sole membership, no workspace user/project membership, and no project update or settings authority.
+
+The legal staff member/lead controls still exercise 403 at the strict target-project settings guard and assert persisted no-write. The API-key controls still distinguish an owner-capable but key-unscoped denial from an owner-incapable key, preserve project-role override and stored-subset intersection, and require authorized key success where the contract permits it. The `comment:update_own` positive retains exact persisted-body proof; task-update key denial retains unchanged task/version proof. The production project guard and its middleware/evaluator/identity sources are byte-identical to the prior full security-reviewed head. No source in the current delta expands authority or changes a denial to success.
+
+The `8d52a7f7` merge imports only `apps/web/src/components/task/task-description.test.tsx` and `docs/07-planning/security-reviews/776-task-description-editor-teardown.md` from accepted main. I independently confirmed each imported blob is byte-equal to `d93c0967` (test `11b2e727ca163fd090e9d3cd408dd7a2d823f29d`, note `c272c8e89149b0255d0aaebd93c473cf0128349d`). The API production file blob `751565e274bd47e54e6cf07e9f40466f1b95ac0f` and customer integration test blob `2ba8071e2aab4443a98dd90cc7eb31944f45e00d` are byte-equal to `02d59f4f`. The imported web path is a test-only accepted-main correction; no API or runtime source changes in the composition.
+
+**Blocking findings:** none found. **Non-blocking observation:** `git diff --check 02d59f4f..8d52a7f7` reports a new blank line at EOF in the imported `776` review note, inherited byte-for-byte from accepted main. It is documentation whitespace, not an authority or composition discrepancy. The previous project guard's stale explanatory comment naming `assertCallerHasCapability` also remains unchanged; executable code uses the project-aware evaluator.
+
+## Checks and limits
+
+- `pnpm --filter @taskdesk/api typecheck`: passed across configured API TypeScript projects at current head.
+- `pnpm exec biome check tests/api-integration/project-default-comment-visibility.test.ts apps/web/src/components/task/task-description.test.tsx`: passed, 2 files.
+- `git diff --check 17675375..02d59f4f`: passed for the actual fixture correction. The accepted-main note whitespace warning above remains on the composition diff.
+- Verified exact HEAD, clean worktree, merge parents, changed path set and blob equality independently of the supplied conservation report.
+- PostgreSQL integration, Docker/image/container/health, browser, hosted CI and PR mutation: **not run** in this review. The 17675375 hosted result remains adverse until a real exact-head run; this source verdict does not call it passing. The separate #782 register disposition dependency is not modified, weakened or waived.
+
+The Sol advisory also noted a possible project-versus-workspace organisation reach-fact discrepancy if a future contract made a customer reachable on this agent route. This candidate changes no such source path; the valid customer session is rejected at the host boundary. I do not claim a new customer-agent route permission or a runtime proof of the repaired test.
+
