@@ -567,3 +567,132 @@ No tests, PostgreSQL, browser, Docker, or remote CI were run for this records-on
 **Reviewed head:** `d8fc639f7cb276cc35f54c51c94d3215560412fb`
 
 The independent ordinary composition review and Sol confirmation approve that exact automatic merge. Publication after it is restricted to this PR’s additive authentic own review records; every required GitHub status must be green on the actual final publication commit.
+
+## Accepted-main compatibility import and retained G11 blocker
+
+**Reviewed head:** `edd3e17be4059aecc7f0fffbf6a5b4948beec6e3`
+
+This normal merge imports accepted main dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e into the existing Carrier C history. All16 changed paths match accepted main; original carrier/API/E2E/board source and eleven-component ancestry are retained, except the accepted editor test teardown import. The prior99ff three ordinary and full Sol reviews remain bound to their actual scope; one fresh strong ordinary and a separate lightweight Sol confirmation cover only this accepted import. Advice and author reports are not independent approval counts. The old required99ff G11 failure33.4/33.4/33.4ms against<20 remains unresolved. Normal CI on this genuine composition is permitted; no new green status could by itself dispose of the credible old finding. The diagnostic capture path stays stopped, budgets unchanged, diagnostic794 NEVERMERGE. Current publication-SHA full CI/image/runtime proof are pending; no merge, feature, stage, release or SIT acceptance follows from this source preparation.
+
+### Source report — carrier-gate-next-action-adjudication-sol.md
+
+Source SHA-256: `c536bcb35b7d6bb27938e4362335a0f37c09b7fa21c30b99fccaed48ebc25cb4`.
+
+# #791 carrier G11: next-action adjudication (read-only)
+
+**Judgment.** Standing takeover authority permits a genuine composition of #791 with accepted `main` and the consequent normal exact-head CI. It does not permit a commit whose only purpose is to obtain another G11 measurement. The distinction is the independently required work: source conservation and current-main compatibility under the strict up-to-date branch rule. The accepted `main` move to `d93c0967ecc7b1a1d721ff25202737cd72430a0d` creates that work even though #800 changed only a web test and its review note, not application/runtime bytes. Before acting, the conductor should refresh the live refs and establish the minimal semantic merge/import diff. If there is no substantive compatibility work to do yet, defer the composition; do not make a no-op or note-only SHA solely to invoke G11. No new owner permission is needed for a real authorized composition.
+
+**Acceptance boundary.** The historical required G11 result at #791 head `99ff2a81d32712dda046d025f0b70595c52a692a` is a genuine budget failure, not transient provisioning or pre-scoring calibration: the final retry's raw drag p95 was 33.4/33.4/33.4 ms against strict `<20 ms`, with valid unthrottled calibration `F=1.528` on EPYC 7763/four CPUs. The initial set is not printed and has no assigned value. Non-required ABBA run `38776336156` and original full-runner control `38819382652` were fast, but at different diagnostic SHAs/runs. The latter passed 22/22 and the original unprofiled collector's initial set was 16.8/16.8/16.7 ms at `F=1.439` on the same named CPU class/four CPUs. These results show that the high mode did not recur in bounded captures; they neither identify a product hotspot nor classify the failure as infrastructure. The Sol interpretation explicitly said STOP that capture path. No product fix, G11 budget change, or waiver is established.
+
+A new required check on a legitimately composed head must run and its actual result must be recorded. A green status would meet the *status-check-on-exact-SHA* condition for that new head, but it would not retroactively invalidate the 99ff failure or, by itself, independently dispose of the credible unresolved performance finding. Merge readiness also requires **no unresolved blocking finding**, applicable runtime proof and all other gates; #791 remains blocked until a cause-appropriate, source-bound diagnosis/disposition exists and the new head satisfies every gate. Do not label a later green as a product fix, treat the private diagnostic pass as transferable, or merge merely because GitHub status becomes green. Conversely, the repo does not impose a blanket ban on normal CI whenever a required check once failed; the policy targets unchanged/equivalent green-seeking retries and forbids a budget failure rerun under the calibration-only allowance.
+
+**Practical next action.** Leave the private G11 capture line stopped. The conductor can continue dependency-safe, already authorized API, notification, reach and records work with their own exact-head reviews and CI; #801 records can advance under its own gates. Do not touch Docker/OrbStack or existing workloads while the explicit restart question remains unanswered. For #791, either (a) perform a documented minimal current-main composition when needed for the carrier's actual integration path, preserve byte identities and review the delta, allow its unavoidable CI, and keep the old budget failure open regardless of the new status until independently dispositioned; or (b) hold that composition while other lanes progress and pursue only a newly justified diagnostic route based on evidence distinct from the stopped capture path. If technical investigation cannot classify the failure, report that blocker accurately. Thomas is needed only for an actual owner-only choice such as changing the G11 budget/sampling or waiving a gate, not to authorize ordinary composition or technical diagnosis. The unanswered Docker restart is a separate owner/access boundary, not a reason to waive image proof.
+
+**Authority.** The direct takeover instructions in both attached owner texts authorize normal branch/PR/CI/integration work and protected merges of *eligible* candidates while forbidding gate waivers and blind merge. Repository `AGENTS.md` gives the conductor merge authority only after every required gate is satisfied; `docs/04-engineering/definition-of-done.md` merge-ready row requires no unresolved blocking finding and green checks on the exact SHA. `docs/04-engineering/agent-workflow.md` says required GitHub statuses are never reused, while records-only changes do not force product review; `docs/04-engineering/ci-cd.md` describes strict current-main compatibility and full integrated checks for mixed/product candidates. `docs/04-engineering/error-fix-loop.md` says a budget failure stands until a changed candidate with a diagnosis or approved sampling change yields new measurement, an assertion failure must not be rerun unchanged hoping for a pass, and a commit made only to obtain a run counts as a rerun. The 2026-10-13 decision-log entry explicitly restricts Thomas's one allowed G11 rerun to calibration-spread failure **before** budget scoring and says a budget failure never gets that rerun. No authority source read here says every ordinary current-main composition is forbidden after a historical G11 failure.
+
+**Provenance and limits.** Read both takeover attachments; the accepted-worktree `AGENTS.md`, `CLAUDE.md`, active mission, workflow, CI/CD, Definition of Done, error-fix loop and recent decision-log entries; `HANDOVER.md`; the ABBA analysis, next-evidence plan and full-runner interpretation. Read-only `gh pr view 791` returned live head `99ff2a81` with required `performance - budgets (G11)` failed and template failed; its reported base was `a07df324`. Local records worktree `origin/main` was `d93c0967`, local records head `d5253299` with only status/queue/review-note differences from main. These are observations at this read, not a future-head approval. I ran no test, CI dispatch, browser, PostgreSQL or Docker action; made no source/ref/PR/check change. This report is an advisory on next action and cannot approve a later candidate or independently disposition the G11 failure.
+
+### Source report — carrier-accepted-main-dfbb-composition-luna.md
+
+Source SHA-256: `40c2d50f06c80be05ba4beb5902519b5a1663aae0e327d918667a7ebb2a2c819`.
+
+# Carrier C accepted-main composition handoff
+
+**Result:** local composition complete. This is source preparation only, not review, CI, merge acceptance, or a G11 disposition.
+
+## Exact state
+
+- Worktree: `/Users/heinthura/.codex/worktrees/carrier1/Ticketing.v2`
+- Branch: `codex/carrier-2026-10-15-c`
+- Before: clean at `99ff2a81d32712dda046d025f0b70595c52a692a`.
+- Accepted main: `dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e` (protected #782 merge).
+- Result: `edd3e17be4059aecc7f0fffbf6a5b4948beec6e3`, with exact parents `99ff2a81d32712dda046d025f0b70595c52a692a` and `dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e`.
+- Worktree is clean after commit. No push, PR write, CI dispatch, or main merge occurred.
+
+## Composition and conservation
+
+A normal Git merge applied without conflicts. The merge commit adds no manual conflict resolution. Its first parent is the exact prior carrier head, preserving the original carrier history and all eleven selected components, including #768 through #769. The original component set and source remain in ancestry; no unaccepted #764 source was imported.
+
+The first-parent tree delta has 16 changed paths. It imports accepted-main material: the #780/#782 owner decision and webhooks disposition records, accepted status and queue records, updated webhooks spec disposition, CI/definition-of-done policy, and the hosted shipping-image smoke workflow/script and its tests. The only application-tree path changed is `apps/web/src/components/task/task-description.test.tsx`, an accepted #800 test teardown repair. `apps/api` is unchanged. No product implementation, feature, performance fix, query conversion, or visual/browser component was added.
+
+The exact E2E tree is identical to first parent `99ff2a81`; the work-item board implementation is identical. The original visual fixture manifest and snapshots remain untouched. All component heads remain represented through the first-parent history.
+
+The accepted #782 webhooks spec correction was merged automatically and is retained byte-for-byte from accepted main. No semantic conflict required choosing sides. The imported #782, #780 and hosted-image proof/review records are preserved unchanged. No #764 worktree or candidate was accessed or changed.
+
+## Checks and limits
+
+- `git status --porcelain` was empty before and after composition.
+- Confirmed exact commit parents, first-parent path list, clean automatic merge, unchanged E2E tree and board implementation.
+- `git diff --cached --check` reported whitespace in the newly imported authentic review records (review provenance lines intentionally end with Markdown hard-break spaces, plus blank EOF lines). These records match accepted main; they were not edited or normalized.
+- No tests, CI, browser, PostgreSQL, Docker, image build, or runtime were run. The imported task-description test repair did not warrant a run under this bounded static-only assignment.
+- Required #791 G11 remains failed at the original frozen head: drag p95 `33.4/33.4/33.4 ms` against strict `<20 ms`. Per the independent adjudication, the stopped capture path was not rerun, no threshold changed, and this composition is not a G11 disposition or clearance. The diagnostic original-runner control at 22/22 and 16.8 ms does not explain the original failure.
+- Prior ordinary and full Sol review coverage remains only for its actual source and scope. This report is not independent review evidence, and the local composition does not establish merge readiness.
+
+## Next owner
+
+Source is frozen at `edd3e17be4059aecc7f0fffbf6a5b4948beec6e3`. The top-level conductor decides the later main refresh, required delta review and exact-head CI, and separate adjudication of the old G11 blocker.
+
+### Source report — carrier-dfbb-import-ordinary-luna.md
+
+Source SHA-256: `2546bcbda391ab2222e81fd6cb080488f997522bfa3cce581848bad8c91e64ed`.
+
+# Carrier C accepted-main import — ordinary review
+
+**Candidate:** `edd3e17be4059aecc7f0fffbf6a5b4948beec6e3`  
+**Comparison base:** prior carrier `99ff2a81d32712dda046d025f0b70595c52a692a`; accepted main `dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e`  
+**Role / independence:** fresh independent ordinary import review. I did not author, direct, or remediate this composition. GPT-6 context assigned to the Luna-tier ordinary import role; no narrower runtime model/version label was exposed.  
+**Scope:** exact parents and tree delta; accepted-main material conservation; preservation of prior carrier history and established source-review coverage; import-specific application and gate semantics. This is not a fresh review of the original carrier implementation, runtime acceptance, G11 disposition, or merge-readiness determination.
+
+## Verdict: CLEAR for this bounded import
+
+No blocking finding in the accepted-main composition. Existing original-carrier review coverage remains applicable to its unchanged source scope. This report does not clear the required G11 failure and does not make the candidate merge-ready.
+
+## Evidence checked
+
+- `HEAD` is the requested exact candidate and the merge parents are exactly `99ff2a81d32712dda046d025f0b70595c52a692a` and `dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e`. The previous carrier is an ancestor. The merge is a normal merge commit, not a squash or replacement.
+- First-parent delta contains 16 paths. Each candidate blob for those paths is byte-for-byte identical to accepted main `dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e`. The paths comprise the accepted #780/#782 owner decisions and disposition records, accepted planning/status records, webhooks specification disposition, CI/definition-of-done updates, and shipping-image smoke workflow/helper/tests.
+- The only application-tree path in that import is `apps/web/src/components/task/task-description.test.tsx`, the accepted #800 test teardown repair. `apps/api` and `apps/web/e2e` are unchanged from the prior carrier. The work-item board implementation is unchanged. No product/API implementation, query conversion, feature behavior, browser visual input, performance fix, or gate logic was added by this composition.
+- The prior carrier is preserved as first parent, so its eleven selected component merge history is retained, including #768 through #769. I relied on the prior independent carrier reports for their actual reviewed source and findings, rather than repeating the original implementation review. The source map, prior authentic review records and stated #768 dependency preservation were checked in `docs/07-planning/security-reviews/791-carrier-c.md` and the accepted-main composition handoff.
+- `git diff --check` identifies trailing Markdown hard-break spaces and extra final blank lines in newly imported authentic review records. These files are exact accepted-main blobs and were not altered; this is a formatting observation, not a product or gate-semantic blocker.
+- The worktree was clean. No tests, CI, browser, PostgreSQL, Docker, image build, runtime, or external PR operation was run, consistent with the bounded static-only assignment.
+
+## Separate unresolved acceptance blocker
+
+The required #791 G11 board-drag measurement remains failed on the prior frozen carrier: `33.4/33.4/33.4 ms` against strict `<20 ms`. The read-only Sol adjudication stopped the capture path; this import does not rerun that path, change a threshold, substitute the 22/22 diagnostic control (`16.8/16.8/16.7 ms`), or explain the failure. No G11 disposition or merge clearance is given here. The diagnostic draft remains NEVERMERGE.
+
+## Limits
+
+This verdict covers only conservation and semantics of importing accepted main onto the reviewed carrier. It does not freshly re-review implementation content already covered by prior independent reviews, and it does not assess changes that may be introduced by a later main refresh (including a future #764 advancement). Review any such delta at its applicable tier on the then-current exact candidate SHA.
+
+### Source report — carrier-dfbb-import-security-sol.md
+
+Source SHA-256: `acf04560443ebe51cca56db737a12c15bfb540646a9a3f6df92cf8d466588cd8`.
+
+# Carrier C accepted-main import — lightweight security confirmation
+
+**Reviewed head:** `edd3e17be4059aecc7f0fffbf6a5b4948beec6e3`  
+**Comparison:** prior carrier `99ff2a81d32712dda046d025f0b70595c52a692a`; accepted main `dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e`  
+**Role and independence:** fresh independent Sol-tier security reviewer context `/root/carrier_dfbb_import_security_sol`, dispatched with explicit `model=gpt-6-sol` and `fork_turns=none`. I did not author, direct, remediate, or merge the candidate. The selector is provenance supplied by the dispatcher; this runtime does not expose a separate serving-model/version attestation.  
+**Depth:** lightweight confirmation of this accepted-main import. The prior carrier has its separate ordinary panel and full Sol source review; this report neither repeats nor replaces them. The accepted shipping-image helper and #782 normative contract likewise retain their own source-bound review records.
+
+## Verdict
+
+**CLEAR for the bounded import at this exact local head.** No new blocking security finding in the composition. This is not a whole-carrier approval, runtime acceptance, G11 disposition, or merge-readiness determination.
+
+## Checks and reasoning
+
+- `git rev-parse HEAD` matched the reviewed head. Its exact parents are the prior carrier and accepted main named above; the worktree was clean. The first parent preserves the prior carrier's eleven selected component merges, including #768 and #769, and the original review/repair history. This merge does not import unaccepted #764 source.
+- `git diff --name-status` against the first parent listed 16 paths. For **each of the 16**, I compared the candidate blob ID with the same path at accepted main; every pair matched. Thus the merge adds no manual resolution or candidate-specific edit to the imported workflow, CI helper/test, engineering contracts, decision/status/queue records, #780/#782 review records, webhooks spec, or test teardown.
+- The imported `.github/workflows/ci-full.yml`, `scripts/ci/run-shipping-image-smoke.sh`, its test, and `docs/04-engineering/ci-cd.md` are exact accepted-main blobs. The workflow's hosted image step remains in the existing required E2E job. The accepted helper's host-network false-pass was recorded as BLOCKING at `f5b8c361...`, then repaired and given a full independent Sol PASS at `dd619a29...` in `hosted-image-proof-20261016.md`; the adverse report is retained. This import introduces no additional authority, bypass, or gate pass/fail semantics beyond that accepted main source. Real hosted proof on a future exact published carrier head remains a separate gate.
+- The #780 owner/conductor decision record and #782 webhooks disposition/spec are imported from accepted main without alteration. Their preserved records distinguish settled design decisions from proposed #783/#784 and P4 runtime implementation. The #782 Sol caveat remains: the documented self-row read-capability subset is a target contract, not proof of accepted-main enforcement. I found no new key authority, IdP grant, waiver, or change to route-policy source in this import.
+- `apps/api`, `packages/permissions`, and `apps/web/e2e` have no first-parent delta. The E2E and board subtree Git tree IDs equal the prior carrier IDs. The only application-tree import is the accepted #800 `task-description.test.tsx` Tiptap editor teardown; it changes test cleanup, not production task or board behavior.
+- `git diff --check` on the first-parent delta exits 2 for Markdown hard-break trailing spaces and final blank lines in imported authentic review records. Those files are exact accepted-main blobs. I did not normalize historical report text or treat the formatting result as security clearance evidence.
+
+I read the repository authority/workflow guidance, active mission and provider adapter, the independent ordinary import report, the author composition packet, the relevant #780/#782 and hosted-image review records, and the relevant first-parent source diffs. I ran Git object/diff checks only. I did not run suites, CI, PostgreSQL, Docker, image build, browser, performance captures, or external PR operations, and I made no candidate edit.
+
+## Findings and limits
+
+**Blocking findings in this import:** none.  
+**Non-blocking observations:** inherited review-record Markdown whitespace; the previously recorded #782 self-row runtime precision caveat.  
+**Separate unresolved acceptance blocker:** the required #791 G11 board-drag measurement remains failed at `33.4/33.4/33.4 ms` against strict `<20 ms`. The read-only adjudication stopped the capture path. The 22/22 diagnostic control at `16.8/16.8/16.7 ms` does not explain or clear the failure, and its draft is NEVERMERGE. This review does not rerun captures, alter a threshold, or supply G11 disposition.  
+**Future changes:** a later accepted-main advance, including any #764 change, needs its own exact-head delta review. Exact-head required checks and protected merge remain with the conductor; this local import review cannot supply them.
