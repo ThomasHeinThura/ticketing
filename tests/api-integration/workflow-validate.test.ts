@@ -4,6 +4,7 @@
  * `packages/domain`'s already-tested structural checks.
  */
 import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -12,6 +13,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -42,6 +44,69 @@ describe("API integration: workflow version validation (#442)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
   });
+
+  it.each([
+    { label: "empty", archived: false },
+    { label: "archived", archived: true },
+  ])(
+    "returns a generic refusal when an inaccessible $label workspace project exists",
+    async ({ archived }) => {
+      const owner = await createWorkspaceMember({ role: "owner" });
+      mockAuthenticatedSession(owner.user);
+      const { app } = createApp();
+      const backlog = await seedStateTemplate(owner.workspace.id, "backlog");
+      const done = await seedStateTemplate(owner.workspace.id, "completed");
+
+      const workflowResponse = await app.request("/api/workflows", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: owner.workspace.id,
+          key: `inaccessible-${archived ? "archived" : "empty"}`,
+          name: "Inaccessible project workflow",
+        }),
+      });
+      expect(workflowResponse.status).toBe(200);
+      const workflow = (await workflowResponse.json()) as { id: string };
+      const versionResponse = await app.request(
+        `/api/workflows/${workflow.id}/versions`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            transitions: [
+              {
+                fromStateTemplateId: backlog.id,
+                toStateTemplateId: done.id,
+                notePolicy: "none",
+                noteVisibility: "internal",
+              },
+            ],
+          }),
+        },
+      );
+      expect(versionResponse.status).toBe(200);
+      const version = (await versionResponse.json()) as { number: number };
+
+      const { project } = await createProjectFixture({
+        workspaceId: owner.workspace.id,
+        name: `Hidden ${archived ? "archived" : "empty"} project`,
+      });
+      if (archived) {
+        await db
+          .update(schema.projectTable)
+          .set({ archivedAt: new Date() })
+          .where(eq(schema.projectTable.id, project.id));
+      }
+
+      const response = await validateRequest(app, workflow.id, version.number);
+      const refusal = await response.text();
+      expect(response.status).toBe(403);
+      expect(refusal).toBe("Workflow project access required");
+      expect(refusal).not.toContain(project.id);
+      expect(refusal).not.toContain(project.name);
+    },
+  );
 
   it("reports an unreachable state template and a template with no outbound transition", async () => {
     const owner = await createWorkspaceMember({ role: "owner" });
@@ -86,14 +151,14 @@ describe("API integration: workflow version validation (#442)", () => {
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
+    await grantProjectRole(owner.user.id, project.id, ["project:read"]);
     await db.insert(schema.stateTable).values([
       { projectId: project.id, stateTemplateId: backlog.id, isDefault: true },
       { projectId: project.id, stateTemplateId: done.id, isDefault: false },
     ]);
 
-    // An "adopting project": a work item of a type whose `workflow_id` is this
-    // workflow -- the query `validateWorkflowVersion` uses to find every project it
-    // must check (`WF-9`'s "every project whose work item types use this workflow").
+    // WF-9 checks every project in the workflow's workspace, including this empty
+    // project, so the success case establishes canonical reach before validation.
     const type = requireRow(
       await db
         .insert(schema.workItemTypeTable)
