@@ -201,6 +201,13 @@ describe("legacy task repository (#580 b9a)", () => {
     const { project: p3 } = await createProjectFixture({
       workspaceId: a.workspace.id,
     });
+    await grantWorkItemProjectAccess(a.user.id, p3.id);
+    const identity = await resolveIdentity({
+      userId: a.user.id,
+      credential: "session",
+    });
+    if (!identity) throw new Error("expected resolved project lock identity");
+    testIdentity = identity;
     const [p2BeforeAdvance] = await db
       .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
       .from(schema.projectTable)

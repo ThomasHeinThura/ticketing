@@ -60,7 +60,9 @@ const findProjectFreezeState = scopedExecutor(
 );
 const findProjectIdentity = scopedExecutor(taskRepository.findProjectIdentity);
 const findTaskLabelByName = scopedExecutor(taskRepository.findTaskLabelByName);
+const insertAsset = scopedExecutor(taskRepository.insertAsset);
 const insertTask = scopedExecutor(taskRepository.insertTask);
+const insertTaskActivity = scopedExecutor(taskRepository.insertTaskActivity);
 const insertTaskLabelOnConflictDoNothing = scopedExecutor(
   taskRepository.insertTaskLabelOnConflictDoNothing,
 );
@@ -166,6 +168,13 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
     const { project } = await createProjectFixture({
       workspaceId: a.workspace.id,
     });
+    await grantWorkItemProjectAccess(a.user.id, project.id);
+    const identity = await resolveIdentity({
+      userId: a.user.id,
+      credential: "session",
+    });
+    if (!identity) throw new Error("expected resolved task insert identity");
+    testIdentity = identity;
     const otherProjectBefore = await db
       .select({ id: schema.taskTable.id, number: schema.taskTable.number })
       .from(schema.taskTable)
@@ -186,11 +195,65 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
       title: "Supplied values",
       position: 23,
       number: 77,
+      startDate: new Date("2026-04-01T09:00:00.000Z"),
+      dueDate: new Date("2026-04-05T17:00:00.000Z"),
+      createdAt: new Date("2026-04-06T11:22:33.444Z"),
+      updatedAt: new Date("2026-04-07T12:23:34.555Z"),
     });
 
     expect(omitted).toMatchObject({ position: 0, number: 1 });
     expect(explicitNulls).toMatchObject({ position: null, number: null });
     expect(supplied).toMatchObject({ position: 23, number: 77 });
+    expect(supplied?.startDate?.toISOString()).toBe("2026-04-01T09:00:00.000Z");
+    expect(supplied?.dueDate?.toISOString()).toBe("2026-04-05T17:00:00.000Z");
+    expect(supplied?.createdAt.toISOString()).toBe("2026-04-06T11:22:33.444Z");
+    expect(supplied?.updatedAt.toISOString()).toBe("2026-04-07T12:23:34.555Z");
+
+    if (!supplied) throw new Error("expected supplied task insert");
+    const activityCreatedAt = new Date("2026-04-08T13:24:35.666Z");
+    const activityUpdatedAt = new Date("2026-04-09T14:25:36.777Z");
+    const activityEventData = { event: "date-codec", occurrence: 2 };
+    await insertTaskActivity(db, {
+      id: "task-insert-codec-activity",
+      taskId: supplied.id,
+      type: "comment",
+      userId: a.user.id,
+      content: "Activity codec check",
+      eventData: activityEventData,
+      createdAt: activityCreatedAt,
+      updatedAt: activityUpdatedAt,
+    });
+    const [activity] = await db
+      .select()
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.id, "task-insert-codec-activity"));
+    expect(activity?.createdAt.toISOString()).toBe(
+      activityCreatedAt.toISOString(),
+    );
+    expect(activity?.updatedAt.toISOString()).toBe(
+      activityUpdatedAt.toISOString(),
+    );
+    expect(activity?.eventData).toEqual(activityEventData);
+
+    const assetCreatedAt = new Date("2026-04-10T15:26:37.888Z");
+    const asset = await insertAsset(db, {
+      workspaceId: a.workspace.id,
+      projectId: project.id,
+      taskId: supplied.id,
+      objectKey: "task-insert-codec-asset",
+      filename: "codec.png",
+      mimeType: "image/png",
+      size: 1,
+      createdAt: assetCreatedAt,
+    });
+    if (!asset) throw new Error("expected asset insert");
+    const [assetRow] = await db
+      .select()
+      .from(schema.assetTable)
+      .where(eq(schema.assetTable.id, asset.id));
+    expect(assetRow?.createdAt.toISOString()).toBe(
+      assetCreatedAt.toISOString(),
+    );
     expect(
       await db
         .select({ id: schema.taskTable.id, number: schema.taskTable.number })
@@ -402,7 +465,7 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
   });
 
   it("move preflights: freeze flags, workspace-scoped destination, lock modes and identities", async () => {
-    const { a, b, identityB, p1, p2, pb, c1 } = await seed();
+    const { a, b, identityA, identityB, p1, p2, pb, c1 } = await seed();
     expect((await findProjectById(db, p1.id))?.id).toBe(p1.id);
     expect((await findProjectById(db, p2.id))?.id).toBe(p2.id);
     expect(await findProjectById(db, "missing")).toBeUndefined();
@@ -451,6 +514,8 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
     expect((await findProjectIdentity(db, pb.id))?.workspaceId).toBe(
       b.workspace.id,
     );
+    testIdentity = identityA;
+    expect(await findProjectById(db, pb.id)).toBeUndefined();
 
     await db.transaction(async (tx) => {
       expect(

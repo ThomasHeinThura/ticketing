@@ -754,30 +754,51 @@ export async function insertTaskActivity(
 ) {
   const selectedActivity = executor
     .select({
-      id: sql`${values.id === undefined ? createId() : values.id}`.as("id"),
+      id: sql`${sql.param(values.id === undefined ? createId() : values.id, taskActivityTable.id)}`.as(
+        "id",
+      ),
       taskId: taskTable.id,
-      type: sql`${values.type}`.as("type"),
+      type: sql`${sql.param(values.type, taskActivityTable.type)}`.as("type"),
       createdAt:
         values.createdAt !== undefined
-          ? sql`${values.createdAt}`.as("createdAt")
+          ? sql`${sql.param(values.createdAt, taskActivityTable.createdAt)}`.as(
+              "createdAt",
+            )
           : sql`now()`.as("createdAt"),
       updatedAt:
         values.updatedAt !== undefined
-          ? sql`${values.updatedAt}`.as("updatedAt")
+          ? sql`${sql.param(values.updatedAt, taskActivityTable.updatedAt)}`.as(
+              "updatedAt",
+            )
           : sql`now()`.as("updatedAt"),
-      userId: sql`${values.userId ?? null}`.as("userId"),
-      content: sql`${values.content ?? null}`.as("content"),
-      eventData: sql`${values.eventData ?? null}`.as("eventData"),
-      externalUserName: sql`${values.externalUserName ?? null}`.as(
-        "externalUserName",
-      ),
-      externalUserAvatar: sql`${values.externalUserAvatar ?? null}`.as(
-        "externalUserAvatar",
-      ),
-      externalSource: sql`${values.externalSource ?? null}`.as(
-        "externalSource",
-      ),
-      externalUrl: sql`${values.externalUrl ?? null}`.as("externalUrl"),
+      userId:
+        sql`${sql.param(values.userId ?? null, taskActivityTable.userId)}`.as(
+          "userId",
+        ),
+      content:
+        sql`${sql.param(values.content ?? null, taskActivityTable.content)}`.as(
+          "content",
+        ),
+      eventData:
+        sql`${sql.param(values.eventData ?? null, taskActivityTable.eventData)}`.as(
+          "eventData",
+        ),
+      externalUserName:
+        sql`${sql.param(values.externalUserName ?? null, taskActivityTable.externalUserName)}`.as(
+          "externalUserName",
+        ),
+      externalUserAvatar:
+        sql`${sql.param(values.externalUserAvatar ?? null, taskActivityTable.externalUserAvatar)}`.as(
+          "externalUserAvatar",
+        ),
+      externalSource:
+        sql`${sql.param(values.externalSource ?? null, taskActivityTable.externalSource)}`.as(
+          "externalSource",
+        ),
+      externalUrl:
+        sql`${sql.param(values.externalUrl ?? null, taskActivityTable.externalUrl)}`.as(
+          "externalUrl",
+        ),
     })
     .from(taskTable)
     .where(
@@ -857,26 +878,42 @@ export async function insertAsset(
 ) {
   const selectedAsset = executor
     .select({
-      id: sql`${values.id === undefined ? createId() : values.id}`.as("id"),
+      id: sql`${sql.param(values.id === undefined ? createId() : values.id, assetTable.id)}`.as(
+        "id",
+      ),
       workspaceId: workspaceTable.id,
       projectId: projectTable.id,
       taskId: taskTable.id,
-      activityId: sql`${values.activityId ?? null}`.as("activityId"),
-      objectKey: sql`${values.objectKey}`.as("objectKey"),
-      filename: sql`${values.filename}`.as("filename"),
-      mimeType: sql`${values.mimeType}`.as("mimeType"),
-      size: sql`${values.size}`.as("size"),
-      kind: sql`${values.kind === undefined ? "image" : values.kind}`.as(
+      activityId:
+        sql`${sql.param(values.activityId ?? null, assetTable.activityId)}`.as(
+          "activityId",
+        ),
+      objectKey: sql`${sql.param(values.objectKey, assetTable.objectKey)}`.as(
+        "objectKey",
+      ),
+      filename: sql`${sql.param(values.filename, assetTable.filename)}`.as(
+        "filename",
+      ),
+      mimeType: sql`${sql.param(values.mimeType, assetTable.mimeType)}`.as(
+        "mimeType",
+      ),
+      size: sql`${sql.param(values.size, assetTable.size)}`.as("size"),
+      kind: sql`${sql.param(values.kind === undefined ? "image" : values.kind, assetTable.kind)}`.as(
         "kind",
       ),
       surface:
-        sql`${values.surface === undefined ? "description" : values.surface}`.as(
+        sql`${sql.param(values.surface === undefined ? "description" : values.surface, assetTable.surface)}`.as(
           "surface",
         ),
-      createdBy: sql`${values.createdBy ?? null}`.as("createdBy"),
+      createdBy:
+        sql`${sql.param(values.createdBy ?? null, assetTable.createdBy)}`.as(
+          "createdBy",
+        ),
       createdAt:
         values.createdAt !== undefined
-          ? sql`${values.createdAt}`.as("createdAt")
+          ? sql`${sql.param(values.createdAt, assetTable.createdAt)}`.as(
+              "createdAt",
+            )
           : sql`now()`.as("createdAt"),
     })
     .from(taskTable)
@@ -1064,9 +1101,9 @@ export async function insertTaskLabelOnConflictDoNothing(
 ) {
   const selectedLabel = executor
     .select({
-      id: sql`${createId()}`.as("id"),
-      name: sql`${values.name}`.as("name"),
-      color: sql`${values.color}`.as("color"),
+      id: sql`${sql.param(createId(), labelTable.id)}`.as("id"),
+      name: sql`${sql.param(values.name, labelTable.name)}`.as("name"),
+      color: sql`${sql.param(values.color, labelTable.color)}`.as("color"),
       createdAt: sql`now()`.as("createdAt"),
       updatedAt: sql`now()`.as("updatedAt"),
       taskId: taskTable.id,
@@ -1172,37 +1209,60 @@ export async function insertTask(
 ) {
   const selectedTask = executor
     .select({
-      id: sql`${values.id === undefined ? createId() : values.id}`.as("id"),
+      id: sql`${sql.param(values.id === undefined ? createId() : values.id, taskTable.id)}`.as(
+        "id",
+      ),
       projectId: projectTable.id,
-      position: sql`${values.position === undefined ? 0 : values.position}`.as(
-        "position",
+      position:
+        sql`${sql.param(values.position === undefined ? 0 : values.position, taskTable.position)}`.as(
+          "position",
+        ),
+      number:
+        sql`${sql.param(values.number === undefined ? 1 : values.number, taskTable.number)}`.as(
+          "number",
+        ),
+      userId: sql`${sql.param(values.userId ?? null, taskTable.userId)}`.as(
+        "userId",
       ),
-      number: sql`${values.number === undefined ? 1 : values.number}`.as(
-        "number",
-      ),
-      userId: sql`${values.userId ?? null}`.as("userId"),
-      title: sql`${values.title}`.as("title"),
-      description: sql`${values.description ?? null}`.as("description"),
-      status: sql`${values.status === undefined ? "to-do" : values.status}`.as(
-        "status",
-      ),
-      columnId: sql`${values.columnId ?? null}`.as("columnId"),
+      title: sql`${sql.param(values.title, taskTable.title)}`.as("title"),
+      description:
+        sql`${sql.param(values.description ?? null, taskTable.description)}`.as(
+          "description",
+        ),
+      status:
+        sql`${sql.param(values.status === undefined ? "to-do" : values.status, taskTable.status)}`.as(
+          "status",
+        ),
+      columnId:
+        sql`${sql.param(values.columnId ?? null, taskTable.columnId)}`.as(
+          "columnId",
+        ),
       priority:
-        sql`${values.priority === undefined ? "low" : values.priority}`.as(
+        sql`${sql.param(values.priority === undefined ? "low" : values.priority, taskTable.priority)}`.as(
           "priority",
         ),
-      startDate: sql`${values.startDate ?? null}`.as("startDate"),
-      dueDate: sql`${values.dueDate ?? null}`.as("dueDate"),
-      version: sql`${values.version === undefined ? 1 : values.version}`.as(
-        "version",
+      startDate:
+        sql`${sql.param(values.startDate ?? null, taskTable.startDate)}`.as(
+          "startDate",
+        ),
+      dueDate: sql`${sql.param(values.dueDate ?? null, taskTable.dueDate)}`.as(
+        "dueDate",
       ),
+      version:
+        sql`${sql.param(values.version === undefined ? 1 : values.version, taskTable.version)}`.as(
+          "version",
+        ),
       createdAt:
         values.createdAt !== undefined
-          ? sql`${values.createdAt}`.as("createdAt")
+          ? sql`${sql.param(values.createdAt, taskTable.createdAt)}`.as(
+              "createdAt",
+            )
           : sql`now()`.as("createdAt"),
       updatedAt:
         values.updatedAt !== undefined
-          ? sql`${values.updatedAt}`.as("updatedAt")
+          ? sql`${sql.param(values.updatedAt, taskTable.updatedAt)}`.as(
+              "updatedAt",
+            )
           : sql`now()`.as("updatedAt"),
     })
     .from(projectTable)

@@ -17,6 +17,7 @@ import {
   createWorkspaceMember,
   grantProjectAccessToWorkspaceMembers,
   grantProjectManageAccess,
+  grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
 import {
@@ -940,6 +941,11 @@ describe("API integration: legacy task writes respect PR-15 project archive free
         .returning(),
       "same-workspace destination",
     );
+    await grantProjectRole(member.user.id, sortedDestination.id, [
+      "project:read",
+      "work_item:read",
+      "work_item:update",
+    ]);
     const sourceColumn = requireRow(
       await db
         .insert(schema.columnTable)
