@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -9,7 +10,6 @@ import {
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
 import {
   deletePendingSubmissionAttachment,
-  findAttachmentObjectKey,
   findSubmissionCompletionAttachment,
   getSubmissionAttachmentSizeLimit,
   lockSubmissionForCompletion,
@@ -25,7 +25,9 @@ export async function completeSubmissionAttachment(input: {
   submissionWorkItemId: string | null;
   requesterId: string;
   workspaceId: string;
+  identity: ResolvedIdentity | null;
 }) {
+  let authorizedFinalKey: string | undefined;
   const result = await db
     .transaction(async (tx) => {
       const [submission] = await lockSubmissionForCompletion(tx, input);
@@ -42,22 +44,27 @@ export async function completeSubmissionAttachment(input: {
         !acceptedParentId
       )
         throw new HTTPException(404, { message: "Submission not found" });
-      const [attachment] = await findSubmissionCompletionAttachment(tx, {
-        id: input.attachmentId,
-        workspaceId: input.workspaceId,
-        submissionId: input.submissionId,
-        acceptedParentId,
-        requesterId: input.requesterId,
-      });
+      const [attachment] = await findSubmissionCompletionAttachment(
+        tx,
+        input.identity,
+        {
+          id: input.attachmentId,
+          workspaceId: input.workspaceId,
+          submissionId: input.submissionId,
+          acceptedParentId,
+          requesterId: input.requesterId,
+        },
+      );
       if (!attachment)
         throw new HTTPException(404, { message: "Attachment not found" });
       if (attachment.state !== "pending")
         throw new HTTPException(409, {
           message: `Attachment is already "${attachment.state}", not "pending".`,
         });
+      authorizedFinalKey = toFinalAttachmentObjectKey(attachment.objectKey);
       const [settings] = await getSubmissionAttachmentSizeLimit(tx);
       const maxBytes = settings?.maxBytes ?? FALLBACK_MAX_BYTES;
-      const finalKey = toFinalAttachmentObjectKey(attachment.objectKey);
+      const finalKey = authorizedFinalKey;
       await finalizeStorageObject(attachment.objectKey, finalKey).catch(() => {
         throw new HTTPException(400, {
           message:
@@ -104,12 +111,9 @@ export async function completeSubmissionAttachment(input: {
     })
     .catch(async (error: unknown) => {
       if (error instanceof HTTPException && error.status === 400) {
-        // The final object is unreferenced whenever verification fails.
-        const [row] = await findAttachmentObjectKey(db, input.attachmentId);
-        if (row)
-          await deleteStorageObject(
-            toFinalAttachmentObjectKey(row.objectKey),
-          ).catch(() => {});
+        // Use only the locator captured after the scoped, locked authorization read.
+        if (authorizedFinalKey)
+          await deleteStorageObject(authorizedFinalKey).catch(() => {});
       }
       throw error;
     });

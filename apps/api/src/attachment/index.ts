@@ -10,6 +10,7 @@ import {
   z,
 } from "../openapi";
 import { createAttachmentDownloadUrl } from "../storage";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { requirePublicAppOrigin } from "../utils/request-origin";
 import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
@@ -23,8 +24,8 @@ import listWorkItemAttachments from "./controllers/list-work-item-attachments";
 import presignAttachment from "./controllers/presign-attachment";
 import { presignSubmissionAttachment } from "./controllers/presign-submission-attachment";
 import {
-  findAttachment,
   findAttachmentAuditActor,
+  findSubmissionAttachmentContent,
   listPortalSubmissionAttachments,
   listStaffSubmissionAttachments,
 } from "./repository";
@@ -357,7 +358,8 @@ const attachment = apiRouter<
   })
   .openapi(listWorkItemAttachmentsRoute, async (c) => {
     const workItemId = c.get("workItemId") as string;
-    const rows = await listWorkItemAttachments(workItemId);
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    const rows = await listWorkItemAttachments(identity, workItemId);
     return c.json(rows.map(toAttachmentResponse), 200);
   })
   .openapi(completeAttachmentRoute, async (c) => {
@@ -375,6 +377,7 @@ const attachment = apiRouter<
       workItemId,
       actorId,
       actorType,
+      identity: await resolveCallerIdentity(c, c.get("userId")),
     });
     return c.json(toAttachmentResponse(result), 200);
   })
@@ -393,6 +396,7 @@ const attachment = apiRouter<
       actorType,
       apiKeyId: apiKey?.id ?? null,
       apiBaseUrl: requirePublicAppOrigin(c.get("appPublicOrigin")),
+      identity: await resolveCallerIdentity(c, c.get("userId")),
     });
 
     return c.redirect(downloadUrl, 302);
@@ -411,6 +415,7 @@ const attachment = apiRouter<
       userId,
       actorId,
       actorType,
+      identity: await resolveCallerIdentity(c, userId),
     });
     return c.json(toAttachmentResponse(result), 200);
   })
@@ -436,6 +441,7 @@ const attachment = apiRouter<
       submissionWorkItemId: c.get("submissionWorkItemId"),
       requesterId: c.get("requesterId"),
       workspaceId: c.get("workspaceId"),
+      identity: await resolveCallerIdentity(c, c.get("userId")),
     });
     // Customer-facing: the declared shape only, so no storage key reaches the wire.
     return c.json(
@@ -448,14 +454,28 @@ const attachment = apiRouter<
     );
   })
   .openapi(portalSubmissionListRoute, async (c) => {
-    const rows = await listPortalSubmissionAttachments(db, {
-      submissionId: c.get("submissionId"),
-      workItemId: c.get("submissionWorkItemId"),
-    });
+    const rows = await listPortalSubmissionAttachments(
+      db,
+      await resolveCallerIdentity(c, c.get("userId")),
+      {
+        submissionId: c.get("submissionId"),
+        workItemId: c.get("submissionWorkItemId"),
+      },
+    );
     return c.json(rows, 200);
   })
   .openapi(portalSubmissionDownloadRoute, async (c) => {
-    const [row] = await findAttachment(db, c.req.valid("param").id);
+    const [row] = await findSubmissionAttachmentContent(
+      db,
+      await resolveCallerIdentity(c, c.get("userId")),
+      {
+        id: c.req.valid("param").id,
+        workspaceId: c.get("workspaceId"),
+        submissionId: c.get("submissionId"),
+        linkedWorkItemId: c.get("submissionWorkItemId"),
+        portal: true,
+      },
+    );
     if (!row) throw new Error("Authorized submission attachment disappeared");
     const downloadUrl = await createAttachmentDownloadUrl(
       row.objectKey,
@@ -473,14 +493,28 @@ const attachment = apiRouter<
     return c.redirect(downloadUrl, 302);
   })
   .openapi(staffSubmissionListRoute, async (c) => {
-    const rows = await listStaffSubmissionAttachments(db, {
-      submissionId: c.get("submissionId"),
-      workItemId: c.get("submissionWorkItemId"),
-    });
+    const rows = await listStaffSubmissionAttachments(
+      db,
+      await resolveCallerIdentity(c, c.get("userId")),
+      {
+        submissionId: c.get("submissionId"),
+        workItemId: c.get("submissionWorkItemId"),
+      },
+    );
     return c.json(rows, 200);
   })
   .openapi(staffSubmissionDownloadRoute, async (c) => {
-    const [row] = await findAttachment(db, c.req.valid("param").id);
+    const [row] = await findSubmissionAttachmentContent(
+      db,
+      await resolveCallerIdentity(c, c.get("userId")),
+      {
+        id: c.req.valid("param").id,
+        workspaceId: c.get("workspaceId"),
+        submissionId: c.get("submissionId"),
+        linkedWorkItemId: c.get("submissionWorkItemId"),
+        portal: false,
+      },
+    );
     if (!row) throw new Error("Authorized submission attachment disappeared");
     const downloadUrl = await createAttachmentDownloadUrl(
       row.objectKey,

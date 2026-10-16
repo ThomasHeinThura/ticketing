@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { recordWorkItemActivity } from "../../work-item/activity";
@@ -6,8 +7,8 @@ import {
   assertWorkItemStillLive,
 } from "../../work-item/assert-work-item-live";
 import {
-  findAttachment,
   findPersonForAttachmentDelete,
+  findWorkItemAttachment,
   lockWorkItemForAttachmentDelete,
   softDeleteAttachment,
 } from "../repository";
@@ -19,6 +20,7 @@ export type DeleteAttachmentInput = {
   userId: string;
   actorId: string;
   actorType: "person" | "api_key";
+  identity: ResolvedIdentity | null;
 };
 
 /**
@@ -34,12 +36,23 @@ export type DeleteAttachmentInput = {
  * so this route performs the soft delete directly rather than queuing one.
  */
 export async function deleteAttachment(input: DeleteAttachmentInput) {
-  const { attachmentId, workspaceId, workItemId, userId, actorId, actorType } =
-    input;
+  const {
+    attachmentId,
+    workspaceId,
+    workItemId,
+    userId,
+    actorId,
+    actorType,
+    identity,
+  } = input;
 
   const [person] = await findPersonForAttachmentDelete(db, userId);
 
-  const [attachment] = await findAttachment(db, attachmentId);
+  const [attachment] = await findWorkItemAttachment(db, identity, {
+    id: attachmentId,
+    workspaceId,
+    workItemId,
+  });
 
   if (
     !attachment ||
@@ -119,7 +132,11 @@ export async function deleteAttachment(input: DeleteAttachmentInput) {
     // ownership). Re-check the current row and, if it's already deleted, treat it the same
     // idempotent no-op as the early check above -- not a 403, which would misreport a losing
     // racer's own valid delete as a permissions failure.
-    const [current] = await findAttachment(db, attachmentId);
+    const [current] = await findWorkItemAttachment(db, identity, {
+      id: attachmentId,
+      workspaceId,
+      workItemId,
+    });
     if (current?.state === "deleted") {
       return current;
     }

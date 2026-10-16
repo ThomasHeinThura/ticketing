@@ -1,6 +1,21 @@
 import type { JsonValue } from "@taskdesk/domain";
-import { and, count, eq, isNull, ne, or } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import {
+  and,
+  count,
+  eq,
+  exists,
+  inArray,
+  isNull,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import type { Executor } from "../database/executor";
+import {
+  currentProjectReachPredicate,
+  currentWorkspaceReachPredicate,
+} from "../database/repositories/identity-scope.repository";
 import {
   attachmentTable,
   instanceFeatureFlagTable,
@@ -16,8 +31,6 @@ import {
   workspaceTable,
 } from "../database/schema";
 import { getActiveStaffPerson } from "../instance/users/repository";
-
-type SubmissionJsonData = object | string | number | boolean | null;
 
 export async function getAttachmentSettings(executor: Executor) {
   return await executor
@@ -135,7 +148,12 @@ export async function findSubmissionAttachmentParent(
 ) {
   const rows = await executor
     .select({
-      submission: submissionTable,
+      id: submissionTable.id,
+      number: submissionTable.number,
+      requesterId: submissionTable.requesterId,
+      organisationId: submissionTable.organisationId,
+      state: submissionTable.state,
+      workItemId: submissionTable.workItemId,
       workspaceId: requestTypeTable.workspaceId,
     })
     .from(submissionTable)
@@ -152,18 +170,13 @@ export async function findSubmissionAttachmentParent(
       ),
     )
     .limit(1);
-  return rows.map(({ submission, workspaceId }) => ({
-    submission: {
-      ...submission,
-      formData: submission.formData as SubmissionJsonData,
-    },
-    workspaceId: workspaceId,
-  }));
+  return rows;
 }
 
 export async function findReachableSubmissionAttachment(
   executor: Executor,
   input: {
+    identity: ResolvedIdentity | null;
     id: string;
     workspaceId: string;
     submissionId: string;
@@ -174,6 +187,7 @@ export async function findReachableSubmissionAttachment(
     completion: boolean;
   },
 ) {
+  if (!input.identity) return [];
   const parent =
     input.completion && input.accepted && input.linkedWorkItemId
       ? or(
@@ -183,21 +197,174 @@ export async function findReachableSubmissionAttachment(
       : input.download
         ? undefined
         : eq(attachmentTable.submissionId, input.submissionId);
+  const submissionScope =
+    input.identity.side === "customer"
+      ? and(
+          eq(submissionTable.id, input.submissionId),
+          eq(submissionTable.requesterId, input.identity.personId),
+        )
+      : currentWorkspaceReachPredicate(
+          input.identity,
+          requestTypeTable.workspaceId,
+          executor,
+        );
+  const reachableLinkedProject = executor
+    .select({ id: workItemTable.id })
+    .from(workItemTable)
+    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+    .where(
+      and(
+        eq(workItemTable.id, input.linkedWorkItemId ?? ""),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+        currentProjectReachPredicate(
+          input.identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executor,
+        ),
+      ),
+    );
   return await executor
-    .select()
+    .select({
+      id: attachmentTable.id,
+      workItemId: attachmentTable.workItemId,
+      submissionId: attachmentTable.submissionId,
+      state: attachmentTable.state,
+      customerVisible: attachmentTable.customerVisible,
+      uploadedBy: attachmentTable.uploadedBy,
+    })
     .from(attachmentTable)
+    .innerJoin(submissionTable, eq(submissionTable.id, input.submissionId))
+    .innerJoin(
+      requestTypeTable,
+      eq(requestTypeTable.id, submissionTable.requestTypeId),
+    )
     .where(
       and(
         eq(attachmentTable.id, input.id),
         eq(attachmentTable.workspaceId, input.workspaceId),
+        isNull(attachmentTable.deletedAt),
         parent,
+        or(
+          and(
+            eq(attachmentTable.submissionId, input.submissionId),
+            submissionScope,
+          ),
+          input.accepted && input.linkedWorkItemId
+            ? and(
+                eq(submissionTable.state, "accepted"),
+                eq(attachmentTable.workItemId, input.linkedWorkItemId),
+                eq(attachmentTable.workItemId, submissionTable.workItemId),
+                input.identity.side === "customer"
+                  ? eq(submissionTable.requesterId, input.identity.personId)
+                  : undefined,
+                input.identity.side === "staff"
+                  ? inArray(attachmentTable.workItemId, reachableLinkedProject)
+                  : undefined,
+              )
+            : sql`false`,
+        ),
         input.portalDownload
           ? eq(attachmentTable.customerVisible, true)
           : undefined,
-        isNull(attachmentTable.deletedAt),
       ),
     )
     .limit(1);
+}
+
+/** Content read used only after the middleware's minimized authorization-fact check. */
+export async function findSubmissionAttachmentContent(
+  executor: Executor,
+  identity: ResolvedIdentity | null,
+  input: {
+    id: string;
+    workspaceId: string;
+    submissionId: string;
+    linkedWorkItemId: string | null;
+    portal: boolean;
+  },
+) {
+  if (
+    !identity ||
+    (input.portal ? identity.side !== "customer" : identity.side !== "staff")
+  )
+    return [];
+  const submissionArm = and(
+    eq(attachmentTable.submissionId, input.submissionId),
+    identity.side === "customer"
+      ? eq(submissionTable.requesterId, identity.personId)
+      : currentWorkspaceReachPredicate(
+          identity,
+          requestTypeTable.workspaceId,
+          executor,
+        ),
+  );
+  const linkedArm = input.linkedWorkItemId
+    ? and(
+        eq(submissionTable.state, "accepted"),
+        eq(attachmentTable.workItemId, input.linkedWorkItemId),
+        eq(attachmentTable.workItemId, submissionTable.workItemId),
+        identity.side === "customer"
+          ? eq(submissionTable.requesterId, identity.personId)
+          : undefined,
+        identity.side === "staff"
+          ? inArray(
+              attachmentTable.workItemId,
+              executor
+                .select({ id: workItemTable.id })
+                .from(workItemTable)
+                .innerJoin(
+                  projectTable,
+                  eq(projectTable.id, workItemTable.projectId),
+                )
+                .where(
+                  and(
+                    eq(workItemTable.id, input.linkedWorkItemId),
+                    isNull(workItemTable.deletedAt),
+                    isNull(workItemTable.archivedAt),
+                    isNull(projectTable.deletedAt),
+                    currentProjectReachPredicate(
+                      identity,
+                      projectTable.id,
+                      projectTable.workspaceId,
+                      projectTable.organisationId,
+                      executor,
+                    ),
+                  ),
+                ),
+            )
+          : undefined,
+      )
+    : sql`false`;
+  return await executor
+    .select()
+    .from(attachmentTable)
+    .innerJoin(submissionTable, eq(submissionTable.id, input.submissionId))
+    .innerJoin(
+      requestTypeTable,
+      eq(requestTypeTable.id, submissionTable.requestTypeId),
+    )
+    .where(
+      and(
+        eq(attachmentTable.id, input.id),
+        eq(attachmentTable.workspaceId, input.workspaceId),
+        eq(attachmentTable.state, "ready"),
+        isNull(attachmentTable.deletedAt),
+        input.portal ? eq(attachmentTable.customerVisible, true) : undefined,
+        or(
+          and(
+            eq(attachmentTable.submissionId, input.submissionId),
+            submissionArm,
+          ),
+          linkedArm,
+        ),
+      ),
+    )
+    .limit(1)
+    .then((rows) => rows.map(({ attachment }) => attachment));
 }
 
 export async function findSubmissionForPresign(
@@ -318,16 +485,41 @@ export async function insertSubmissionAttachment(
     .returning({ id: attachmentTable.id });
 }
 
-export async function findAttachment(executor: Executor, id: string) {
+export async function findWorkItemAttachment(
+  executor: Executor,
+  identity: ResolvedIdentity | null,
+  input: { id: string; workspaceId: string; workItemId: string },
+) {
+  if (!identity || identity.side !== "staff") return [];
   return await executor
     .select()
     .from(attachmentTable)
-    .where(eq(attachmentTable.id, id))
-    .limit(1);
+    .innerJoin(workItemTable, eq(workItemTable.id, attachmentTable.workItemId))
+    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+    .where(
+      and(
+        eq(attachmentTable.id, input.id),
+        eq(attachmentTable.workspaceId, input.workspaceId),
+        eq(attachmentTable.workItemId, input.workItemId),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+        currentProjectReachPredicate(
+          identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executor,
+        ),
+      ),
+    )
+    .limit(1)
+    .then((rows) => rows.map(({ attachment }) => attachment));
 }
 
 export async function findSubmissionCompletionAttachment(
   executor: Executor,
+  identity: ResolvedIdentity | null,
   input: {
     id: string;
     workspaceId: string;
@@ -336,6 +528,12 @@ export async function findSubmissionCompletionAttachment(
     requesterId: string;
   },
 ) {
+  if (
+    !identity ||
+    identity.side !== "customer" ||
+    identity.personId !== input.requesterId
+  )
+    return [];
   const parent = input.acceptedParentId
     ? or(
         eq(attachmentTable.submissionId, input.submissionId),
@@ -388,11 +586,13 @@ export async function lockSubmissionForCompletion(
 
 export async function listPortalSubmissionAttachments(
   executor: Executor,
+  identity: ResolvedIdentity | null,
   input: {
     submissionId: string;
     workItemId: string | null;
   },
 ) {
+  if (!identity || identity.side !== "customer") return [];
   const parents = [
     eq(attachmentTable.submissionId, input.submissionId),
     ...(input.workItemId
@@ -413,6 +613,24 @@ export async function listPortalSubmissionAttachments(
     .where(
       and(
         or(...parents),
+        exists(
+          executor
+            .select({ one: sql`1` })
+            .from(submissionTable)
+            .where(
+              and(
+                eq(submissionTable.id, input.submissionId),
+                eq(submissionTable.requesterId, identity.personId),
+                or(
+                  eq(attachmentTable.submissionId, submissionTable.id),
+                  and(
+                    eq(submissionTable.state, "accepted"),
+                    eq(attachmentTable.workItemId, submissionTable.workItemId),
+                  ),
+                ),
+              ),
+            ),
+        ),
         eq(attachmentTable.customerVisible, true),
         isNull(attachmentTable.deletedAt),
       ),
@@ -422,8 +640,10 @@ export async function listPortalSubmissionAttachments(
 
 export async function listStaffSubmissionAttachments(
   executor: Executor,
+  identity: ResolvedIdentity | null,
   input: { submissionId: string; workItemId: string | null },
 ) {
+  if (!identity || identity.side !== "staff") return [];
   const parents = [
     eq(attachmentTable.submissionId, input.submissionId),
     ...(input.workItemId
@@ -442,7 +662,56 @@ export async function listStaffSubmissionAttachments(
       createdAt: attachmentTable.createdAt,
     })
     .from(attachmentTable)
-    .where(and(or(...parents), isNull(attachmentTable.deletedAt)))
+    .innerJoin(submissionTable, eq(submissionTable.id, input.submissionId))
+    .where(
+      and(
+        or(...parents),
+        isNull(attachmentTable.deletedAt),
+        or(
+          and(
+            eq(attachmentTable.submissionId, input.submissionId),
+            currentWorkspaceReachPredicate(
+              identity,
+              executor
+                .select({ id: requestTypeTable.workspaceId })
+                .from(requestTypeTable)
+                .where(eq(requestTypeTable.id, submissionTable.requestTypeId)),
+              executor,
+            ),
+          ),
+          input.workItemId
+            ? and(
+                eq(submissionTable.state, "accepted"),
+                eq(attachmentTable.workItemId, submissionTable.workItemId),
+                inArray(
+                  attachmentTable.workItemId,
+                  executor
+                    .select({ id: workItemTable.id })
+                    .from(workItemTable)
+                    .innerJoin(
+                      projectTable,
+                      eq(projectTable.id, workItemTable.projectId),
+                    )
+                    .where(
+                      and(
+                        currentProjectReachPredicate(
+                          identity,
+                          projectTable.id,
+                          projectTable.workspaceId,
+                          projectTable.organisationId,
+                          executor,
+                        ),
+                        isNull(workItemTable.deletedAt),
+                        isNull(projectTable.deletedAt),
+                        isNull(workItemTable.archivedAt),
+                      ),
+                    ),
+                ),
+              )
+            : sql`false`,
+        ),
+      ),
+    )
     .orderBy(attachmentTable.createdAt);
 }
 
@@ -627,27 +896,34 @@ export async function softDeleteAttachment(
     .returning();
 }
 
-export async function findAttachmentObjectKey(executor: Executor, id: string) {
-  return await executor
-    .select({ objectKey: attachmentTable.objectKey })
-    .from(attachmentTable)
-    .where(eq(attachmentTable.id, id))
-    .limit(1);
-}
-
 export async function listWorkItemAttachments(
   executor: Executor,
+  identity: ResolvedIdentity | null,
   workItemId: string,
 ) {
+  if (!identity || identity.side !== "staff") return [];
   return await executor
     .select()
     .from(attachmentTable)
+    .innerJoin(workItemTable, eq(workItemTable.id, attachmentTable.workItemId))
+    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
     .where(
       and(
         eq(attachmentTable.workItemId, workItemId),
         ne(attachmentTable.state, "deleted"),
         isNull(attachmentTable.deletedAt),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+        currentProjectReachPredicate(
+          identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executor,
+        ),
       ),
     )
-    .orderBy(attachmentTable.createdAt);
+    .orderBy(attachmentTable.createdAt)
+    .then((rows) => rows.map(({ attachment }) => attachment));
 }

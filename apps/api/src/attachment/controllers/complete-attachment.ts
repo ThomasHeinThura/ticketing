@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import type { attachmentTable } from "../../database/schema";
@@ -15,7 +16,7 @@ import {
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
 import {
   deletePendingWorkItemAttachment,
-  findAttachment,
+  findWorkItemAttachment,
   getAttachmentSizeLimit,
   lockAttachmentWorkItem,
   updateAttachmentReady,
@@ -54,6 +55,7 @@ export type CompleteAttachmentInput = {
   workItemId: string;
   actorId: string;
   actorType: "person" | "api_key";
+  identity: ResolvedIdentity | null;
 };
 
 /**
@@ -64,9 +66,20 @@ export type CompleteAttachmentInput = {
  * declared `mime_type`.
  */
 export async function completeAttachment(input: CompleteAttachmentInput) {
-  const { attachmentId, workspaceId, workItemId, actorId, actorType } = input;
+  const {
+    attachmentId,
+    workspaceId,
+    workItemId,
+    actorId,
+    actorType,
+    identity,
+  } = input;
 
-  const [attachment] = await findAttachment(db, attachmentId);
+  const [attachment] = await findWorkItemAttachment(db, identity, {
+    id: attachmentId,
+    workspaceId,
+    workItemId,
+  });
 
   if (
     !attachment ||

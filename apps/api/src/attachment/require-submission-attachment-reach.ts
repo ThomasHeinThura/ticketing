@@ -7,6 +7,7 @@ import { portalIdentity } from "../intake/repository";
 import { reachableLinkedWorkItemId } from "../intake/submission-linked-work-item";
 import type { BaseVariables } from "../openapi";
 import { callerReach } from "../utils/caller-reach";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { markReach } from "../utils/reach-mark";
 import {
   findIntakeFeatureFlags,
@@ -60,6 +61,10 @@ export function requireSubmissionAttachmentReach(
     const [person] = mode.startsWith("portal_")
       ? [await portalIdentity(c.get("userId"))]
       : [null];
+    const identity = await resolveCallerIdentity(
+      c as unknown as Context,
+      c.get("userId"),
+    );
     const [row] = await findSubmissionAttachmentParent(db, {
       number,
       ...(person ? { requesterId: person.personId } : {}),
@@ -70,24 +75,23 @@ export function requireSubmissionAttachmentReach(
     // caller who reaches its project; otherwise the link is treated as absent. The portal
     // requester's own view is unchanged.
     const linkedWorkItemId = mode.startsWith("portal_")
-      ? row.submission.workItemId
+      ? row.workItemId
       : await reachableLinkedWorkItemId(
           await callerReach(c as unknown as Context, c.get("userId")),
-          row.submission.workItemId,
+          row.workItemId,
         );
-    const organisationId =
-      person?.organisationId ?? row.submission.organisationId;
+    const organisationId = person?.organisationId ?? row.organisationId;
     c.set("workspaceId", row.workspaceId);
     c.set("workspaceIdSource", "row");
-    c.set("submissionId", row.submission.id);
+    c.set("submissionId", row.id);
     // A duplicate (or any non-accepted) submission may carry a work item link to ANOTHER
     // requester's item: only an accepted submission owns its work item's attachments
     // (CP-16, same rule as download below).
     c.set(
       "submissionWorkItemId",
-      row.submission.state === "accepted" ? linkedWorkItemId : null,
+      row.state === "accepted" ? linkedWorkItemId : null,
     );
-    c.set("requesterId", row.submission.requesterId);
+    c.set("requesterId", row.requesterId);
     c.set("policyOrganisationId", organisationId);
     c.set("policyOrganisationIdSource", "row");
     c.set("portalPredicateSatisfied", mode.startsWith("portal_"));
@@ -97,18 +101,18 @@ export function requireSubmissionAttachmentReach(
         throw new HTTPException(400, { message: "Missing attachment id" });
       const [attachment] = await findReachableSubmissionAttachment(db, {
         id,
+        identity,
         workspaceId: row.workspaceId,
-        submissionId: row.submission.id,
+        submissionId: row.id,
         linkedWorkItemId,
-        accepted: row.submission.state === "accepted",
+        accepted: row.state === "accepted",
         portalDownload: mode.startsWith("portal_") && mode.endsWith("download"),
         download: mode.endsWith("download"),
         completion: mode === "portal_complete",
       });
-      const attachedToSubmission =
-        attachment?.submissionId === row.submission.id;
+      const attachedToSubmission = attachment?.submissionId === row.id;
       const attachedToAcceptedWorkItem =
-        row.submission.state === "accepted" &&
+        row.state === "accepted" &&
         linkedWorkItemId !== null &&
         attachment?.workItemId === linkedWorkItemId;
       if (
@@ -116,7 +120,7 @@ export function requireSubmissionAttachmentReach(
         (!attachedToSubmission && !attachedToAcceptedWorkItem) ||
         (mode === "portal_complete" &&
           (attachment.state !== "pending" ||
-            attachment.uploadedBy !== row.submission.requesterId ||
+            attachment.uploadedBy !== row.requesterId ||
             !attachment.customerVisible ||
             (!attachedToSubmission && !attachedToAcceptedWorkItem))) ||
         (mode.endsWith("download") && attachment.state !== "ready")

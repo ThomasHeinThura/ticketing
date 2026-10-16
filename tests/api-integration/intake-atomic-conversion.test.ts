@@ -8,6 +8,10 @@ import { HTTPException } from "hono/http-exception";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import { completeSubmissionAttachment } from "../../apps/api/src/attachment/controllers/complete-submission-attachment";
+import {
+  listPortalSubmissionAttachments,
+  listStaffSubmissionAttachments,
+} from "../../apps/api/src/attachment/repository";
 import db, { schema } from "../../apps/api/src/database";
 import {
   acceptSubmission,
@@ -15,6 +19,7 @@ import {
   findPortalSubmission,
   publishRequestType,
 } from "../../apps/api/src/intake/repository";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -1210,6 +1215,14 @@ describe("intake atomic conversion", () => {
         .returning(),
       "pending requester upload",
     );
+    const requesterIdentity = await resolveIdentity({
+      userId: customerUser.id,
+      credential: "session",
+    });
+    const staffIdentity = await resolveIdentity({
+      userId: staffUser.id,
+      credential: "session",
+    });
     const staffUpload = requireRow(
       await db
         .insert(schema.attachmentTable)
@@ -1228,6 +1241,24 @@ describe("intake atomic conversion", () => {
         .returning(),
       "pending staff work-item upload",
     );
+    const portalRows = await listPortalSubmissionAttachments(
+      db,
+      requesterIdentity,
+      {
+        submissionId: result.id,
+        workItemId: result.workItemId,
+      },
+    );
+    const staffRows = await listStaffSubmissionAttachments(db, staffIdentity, {
+      submissionId: result.id,
+      workItemId: result.workItemId,
+    });
+    expect(portalRows.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([pendingRequesterUpload.id, staffUpload.id]),
+    );
+    expect(staffRows.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([pendingRequesterUpload.id, staffUpload.id]),
+    );
     await expect(
       completeSubmissionAttachment({
         attachmentId: pendingRequesterUpload.id,
@@ -1235,6 +1266,7 @@ describe("intake atomic conversion", () => {
         submissionWorkItemId: result.workItemId,
         requesterId: requester.id,
         workspaceId: workspace.id,
+        identity: requesterIdentity,
       }),
     ).rejects.toMatchObject({ status: 400 });
     await expect(
@@ -1244,6 +1276,7 @@ describe("intake atomic conversion", () => {
         submissionWorkItemId: result.workItemId,
         requesterId: requester.id,
         workspaceId: workspace.id,
+        identity: requesterIdentity,
       }),
     ).rejects.toMatchObject({ status: 404 });
 

@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import db from "../../database";
 import { listWorkItemAttachments as listRows } from "../repository";
 
@@ -7,8 +8,11 @@ import { listWorkItemAttachments as listRows } from "../repository";
  * work item's own list the instant it is deleted, not just once the object itself is
  * purged.
  */
-export async function listWorkItemAttachments(workItemId: string) {
-  return listRows(db, workItemId);
+export async function listWorkItemAttachments(
+  identity: ResolvedIdentity | null,
+  workItemId: string,
+) {
+  return listRows(db, identity, workItemId);
 }
 
 export default listWorkItemAttachments;

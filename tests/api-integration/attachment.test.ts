@@ -9,8 +9,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  findWorkItemAttachment,
+  listWorkItemAttachments,
+} from "../../apps/api/src/attachment/repository";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -150,6 +155,60 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     root = await mkdtemp(path.join(tmpdir(), "taskdesk-attachment-"));
     process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = root;
     delete process.env.TASKDESK_STORAGE_DRIVER;
+  });
+
+  it("scopes direct attachment repository reads to the resolved project reach", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    if (!item) throw new Error("fixture work item missing");
+    const row = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: workspace.id,
+          organisationId: project.organisationId,
+          workItemId: item.id,
+          objectKey: `scope/${randomUUID()}`,
+          filename: "reachable.txt",
+          mimeType: "text/plain",
+          size: 1,
+          state: "ready",
+          customerVisible: false,
+          uploadedBy: null,
+        })
+        .returning(),
+      "scoped attachment",
+    );
+    const identity = await resolveIdentity({
+      userId: creator.id,
+      credential: "session",
+    });
+    expect(identity).not.toBeNull();
+    const visible = await listWorkItemAttachments(db, identity, item.id);
+    expect(visible.map((entry) => entry.filename)).toContain("reachable.txt");
+    expect(await listWorkItemAttachments(db, null, item.id)).toEqual([]);
+    expect(await listWorkItemAttachments(db, identity, randomUUID())).toEqual(
+      [],
+    );
+    expect(
+      await findWorkItemAttachment(db, identity, {
+        id: row.id,
+        workspaceId: workspace.id,
+        workItemId: randomUUID(),
+      }),
+    ).toEqual([]);
+    expect(
+      await findWorkItemAttachment(db, null, {
+        id: row.id,
+        workspaceId: workspace.id,
+        workItemId: item.id,
+      }),
+    ).toEqual([]);
   });
 
   afterEach(async () => {
