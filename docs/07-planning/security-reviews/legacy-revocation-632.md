@@ -212,3 +212,283 @@ The accepted-main #767 delta adds `project:manage_settings` for engagement-field
 Read-only commands included `git status --short --branch`, `git rev-parse`, `git show -s`, `git merge-base`, exact-object `git diff --stat/--name-status/--numstat`, targeted `git diff` of both parent comparisons, `rg` call-site searches, `sed`/`cat` source and contract reads, and `git diff --check e9df2294fa580fd2885343bbef0cec28e81ead4c..HEAD` (pass). The worktree was clean when checked. I ran **zero tests** and no typecheck, PostgreSQL, Redis, Docker, browser, or image checks; the checker owns the active runtime window. The separate implementation report at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/632-impl-sonnet.md` reports 13/13 new listener tests passing (six SCIM cases failed before the fix) and 70 neighboring tests passing; those are author results, not my executions. The new suite exercises real Node listeners/cookies and SCIM PATCH/PUT/DELETE for both legacy socket types, but does not inject outer rollback or run a real multi-process Redis path. Post-commit ordering and Redis message compatibility above are source findings, not fresh runtime proof.
 
 This verdict is the required independent full security review of the **current composition**. It does not claim exact-head hosted CI, PR approval, image/boot/SIT acceptance, merge, issue closure, or stage completion. The previous full security report remains bound to `e8b57d2214221243d64c995470fc63a274348c10` against `9297362b5f2dd1f17da935c8051c1562b473638a` and is not represented as a review of this merge head.
+
+
+---
+
+## Accepted-main composition review — 2026-10-16
+
+**Reviewed head:** `c9a52ca0f5c3174195f8516efdb88d64fc9d82d5`
+
+Current source normally imports accepted main `1f2ea00404e41e108fad437c2b87caa3bbf56298`. All five unique #632 source/test/note blobs remain identical to prior publication `d20dc4f576f942015335fe28cd0f9619b581903e`; all accepted imports and the shared project-socket authority interaction were checked directly. Original two ordinary reviews and full Sol source/composition reviews remain attributed to their original heads. A fresh ordinary import context and a fresh full GPT-6.1 Sol security context CLEAR this exact composition. The full current security review checks the accepted API-key evaluator and SCIM invalidation join; it is not merely a no-overlap confirmation.
+
+The conductor explicitly dispatched the current preparation/ordinary contexts with `gpt-6-luna`, and the independent security context with `gpt-6.1-sol`, all reviewers with `fork_turns:none`. The raw reports retain actual model-introspection limits; no report is relabelled. The conductor composes and publishes and is not a reviewer. Earlier missing workspace declaration failures and their existing-dependency build correction are preserved below; current API typecheck passes.
+
+These five records are reproduced unchanged. The ordinary report cites earlier API #784 source-review runtime limits; those are historical. The pair actually passed all18 checks, PG209files/3,135tests and image125migrations/UID10001 before accepted main1f2ea004. Those API results do not establish runtime results for this #632 candidate. Current #632 full hosted checks, image proof, deployed journeys and real multiprocess Redis proof remain separate and pending. Both Carrier performance findings remain open. No release, SIT, issue or stage completion is claimed.
+
+## Authentic record — realtime632-accepted795-main-preparation-luna.md
+
+Origin SHA-256 `fb4e8e580ed719a8ecfd669162ab195b064a7e6fe65a25d366ed60ca78f37ee0`; 6169 original bytes.
+
+# #796 / #632 accepted-main local preparation
+
+Prepared 2026-10-16. This is local composition evidence only; it is not current-head review, runtime acceptance, or issue closure.
+
+## Source and guard checks
+
+- Worktree: `/Users/heinthura/.codex/worktrees/legacy-revocation-632/Ticketing.v2`
+- Branch: `codex/legacy-ws-revocation-632`
+- Pre-merge HEAD: `d20dc4f576f942015335fe28cd0f9619b581903e`; clean before mutation.
+- Its first-parent chain preserved: `e8b57d2214221243d64c995470fc63a274348c10` (original #632 source), `3e9021c2555abdde0de150d07f0309e6f74df3d9` (reviewed composition with accepted `e9df2294fa580fd2885343bbef0cec28e81ead4c`), and `d20dc4f576f942015335fe28cd0f9619b581903e` (own security-review publication).
+- Live GitHub `refs/heads/main`, `origin/main`, and the explicitly accepted target all agreed at `81781ab244cc1e6c9fac667f309de17a1e494caa` when checked. PR #796 remained open at head `d20dc4f576f942015335fe28cd0f9619b581903e`; its stored PR base SHA was older (`e9df2294...`). The primary checkout's local `main` is a separate old checkout and was not touched.
+
+## Composition
+
+Local merge completed without conflicts. New HEAD: `bd74c19e3cbad8b3137a97549d85a0995c50ef90`.
+
+- First parent: `d20dc4f576f942015335fe28cd0f9619b581903e`
+- Second parent: `81781ab244cc1e6c9fac667f309de17a1e494caa`
+- Subject: `Merge commit '81781ab244cc1e6c9fac667f309de17a1e494caa' into codex/legacy-ws-revocation-632`
+- Branch is locally ahead of `origin/codex/legacy-ws-revocation-632`; nothing was pushed.
+
+The merge result's 34 first-parent delta paths are the accepted-main import: `.github/workflows/ci-full.yml`, `.gitleaksignore`, `apps/api/src/auth/repository.ts`, `apps/api/src/database/executor.ts`, `apps/api/src/identity/oidc-login.ts`, `apps/api/src/instance/users/repository.ts`, `apps/api/src/pending-action/service.ts`, `apps/api/src/work-item/controllers/create-comment.ts`, `apps/web/src/components/task/task-description.test.tsx`, `docs/01-architecture/{monorepo-layout,multi-tenancy,security-model,tech-stack}.md`, `docs/03-features/webhooks-and-api-keys.md`, `docs/04-engineering/{ci-cd,coding-standards,definition-of-done}.md`, `docs/07-planning/decision-log.md`, `docs/07-planning/integration-execution-queue.md`, `docs/07-planning/reviews/2026-09-05/features-governance-design.md`, accepted-main security review records `764-query-ownership.md`, `776-task-description-editor-teardown.md`, `780-owner-conductor-decisions.md`, `782-webhooks-review-disposition.md`, `hosted-image-proof-20261016.md`, `identity-timezones-631.md`, `takeover-checkpoint-20261016.md`, `docs/07-planning/status.md`, `scripts/ci/run-shipping-image-smoke{,.test.mjs}`, `tests/api-integration/database-executor.test.ts`, `tests/api-integration/identity-clock-{ahead-of-utc,behind-utc}.test.ts`, and `tests/api/database-executor.test.ts`.
+
+No #784, #785, or #803 source paths were brought in by this merge. The imported queue/status/log text records their state, including that #784's live CI repair is still pending; this is records, not product-source import. `.gitleaksignore` and `decision-log.md` were additive, conflict-free accepted-main content. No semantic conflict needed adjudication.
+
+## #632 conservation
+
+These required unique blobs match exactly between pre-merge `d20dc4f5` and merged `bd74c19e`:
+
+| Path | Blob at both heads |
+| --- | --- |
+| `apps/api/src/identity/repository.ts` | `d72a0a93fd47521f201fde8f9bf08802985455a4` |
+| `apps/api/src/identity/scim-lifecycle.ts` | `05e6e43b34247c72ebca636b1c0f1d567ad7239a` |
+| `apps/api/src/identity/scim-protocol.ts` | `551c70e468169358e1cb1c363b77902dd5e429b9` |
+| `tests/api-integration/legacy-ws-revocation.test.ts` | `5568cc91ed845b45f81044f574e655e07d2a604a` |
+| `docs/07-planning/security-reviews/legacy-revocation-632.md` | `032861f87ec4a2289c02ab808a8068b3dcfa6209` |
+
+The original source, reviewed composition, and own-note publication commits remain in first-parent history. The 632 note and all its retained ordinary/full-Sol reports, source-bound test and six-mutant evidence, and adverse runs are byte-preserved; the note still attributes reviews to their original exact source. No route/revocation/proof weakening, source edit, contract, dependency, environment variable, or flag was added.
+
+## Checks and limits
+
+- `git status --short` after merge and frozen install: clean; install artifacts are ignored.
+- `git diff --check HEAD^1 HEAD` reported trailing whitespace and blank-at-EOF warnings only in accepted-main imported review records (including `764-query-ownership.md`, `776-task-description-editor-teardown.md`, `780-owner-conductor-decisions.md`, `782-webhooks-review-disposition.md`, `hosted-image-proof-20261016.md`, `identity-timezones-631.md`, and `takeover-checkpoint-20261016.md`). No 632 file was implicated. These imported historical records were preserved exactly.
+- Initial API typecheck could not start because the worktree lacked `node_modules`. `pnpm install --frozen-lockfile` succeeded without lockfile change. Retried `pnpm --filter api run typecheck`; it failed because workspace declaration outputs for `@taskdesk/permissions`, `@taskdesk/domain`, and `@taskdesk/email` were unavailable, with cascading implicit-any errors. No package build was attempted.
+- No tests, full suite, PostgreSQL/Docker, browser, image build, CI rerun, push, PR edit, or merge-to-main was performed.
+- Existing PR check data was bound to old `d20dc4f5`; it is not evidence on `bd74c19e`. At the old head the template/security-review check was red. This preparation creates no current review or acceptance claim.
+
+## Residuals and next dependency
+
+This is only local preparation. The conductor's sequencing requires the current API-key #784 repair/CI to land before this branch's final accepted-main import/freeze. Then re-import the resulting exact accepted `main` into this branch and obtain the review depth required for the new exact candidate (security scope remains present), followed by current-source runtime/image and remaining acceptance. Preserve the previous-source evidence but do not reuse it as current-head approval. No new multiprocess Redis acceptance claim is made.
+
+
+## Authentic record — realtime632-api-typecheck-prerequisites-luna.md
+
+Origin SHA-256 `f3a38bff8e12c371ab7edb5be9b6b3138371dfe73e8f688275a21bc3d409a646`; 2638 original bytes.
+
+# #796 / #632 API typecheck prerequisite receipt
+
+This follow-up only prepared existing workspace declarations and ran the API typecheck. It did not change source, dependencies, lockfiles, or candidate history.
+
+## Exact source and worktree
+
+- Worktree: `/Users/heinthura/.codex/worktrees/legacy-revocation-632/Ticketing.v2`
+- Branch: `codex/legacy-ws-revocation-632`
+- Exact source HEAD: `bd74c19e3cbad8b3137a97549d85a0995c50ef90`
+- Tracked worktree state: clean before and after; dependency output is under ignored `dist/`.
+- Frozen dependency installation had already completed in the prior preparation (`pnpm install --frozen-lockfile`, lockfile unchanged).
+
+## Failure sequence retained
+
+1. `pnpm --filter api run typecheck` before install exited **1**: `sh: tsc: command not found`, `spawn ENOENT`; pnpm reported the local package tree lacked `node_modules`.
+2. `pnpm install --frozen-lockfile` completed successfully with the existing lockfile and no dependency/lockfile edit.
+3. `pnpm --filter api run typecheck` after install but before package builds exited **1**. `tsc` could not resolve workspace declarations for `@taskdesk/permissions`, `@taskdesk/domain`, and `@taskdesk/email`; those unresolved imports caused cascading implicit-any diagnostics. This is the original failure recorded in the prior prep handoff.
+
+## Minimal build and successful retry
+
+Command: `pnpm exec turbo run build --filter=@taskdesk/api^...`
+
+Exit: **0**. Turbo selected workspace dependency builds for `@taskdesk/domain`, `@taskdesk/email`, and `@taskdesk/permissions` (plus the declaration-only config package in scope). Result: **3 successful build tasks, 3 cached**, no tests executed. The restored output trees contained 132 files under `packages/domain/dist`, 33 under `packages/email/dist`, and 42 under `packages/permissions/dist`.
+
+Command: `pnpm --filter api run typecheck`
+
+Exit: **0**. This ran all five configured TypeScript commands:
+
+- `tsc --noEmit -p tsconfig.json`
+- `tsc --noEmit -p tsconfig.permissions.json`
+- `tsc --noEmit -p tsconfig.tests.json`
+- `tsc --noEmit -p tsconfig.rls-prototype.json`
+- `tsc --noEmit -p ../../tests/e2e/tsconfig.approvals.json`
+
+## Scope and next dependency
+
+Only existing direct workspace build prerequisites were produced; no app build, test suite, PostgreSQL/Docker, image, browser, push, or publication was run. Candidate remains exactly `bd74c19e3cbad8b3137a97549d85a0995c50ef90`. This typecheck does not satisfy current-head review/runtime acceptance. Wait for the API #784 repair to land on accepted `main` before the eventual final composition and freeze; this follow-up made no such import.
+
+
+## Authentic record — realtime632-accepted784-main-composition-luna.md
+
+Origin SHA-256 `02c7f01f2bd55c56fbb42a812319573e1c4ee7e9b36d8f925e0c4f275603dab9`; 5637 original bytes.
+
+# #796 / #632 accepted #784 main composition
+
+Local composition receipt only. No current-head independent review or runtime acceptance is claimed.
+
+## Exact source and accepted target
+
+- Worktree: `/Users/heinthura/.codex/worktrees/legacy-revocation-632/Ticketing.v2`
+- Branch: `codex/legacy-ws-revocation-632`
+- Pre-import source: `bd74c19e3cbad8b3137a97549d85a0995c50ef90`, clean.
+- `gh api repos/ThomasHeinThura/ticketing/git/ref/heads/main --jq '.object.sha'` returned `1f2ea00404e41e108fad437c2b87caa3bbf56298`.
+- `gh pr view 784` returned `MERGED`, merge time `2026-10-16T07:55:21Z`, merge commit `1f2ea00404e41e108fad437c2b87caa3bbf56298`, source head `016978fc362d5c2e3e88a4d909013c53f2bc1885`.
+- `git fetch origin main` succeeded; `FETCH_HEAD` was `1f2ea00404e41e108fad437c2b87caa3bbf56298`.
+- `git rev-parse 016978fc362d5c2e3e88a4d909013c53f2bc1885^{tree}` and `git rev-parse 1f2ea00404e41e108fad437c2b87caa3bbf56298^{tree}` both returned `7734b48fd3ce44ff232cb9c818edfa83f87be3e5`.
+
+## Overlap inspection
+
+The merge base of pre-import source and accepted main is `81781ab244cc1e6c9fac667f309de17a1e494caa`. Path-set intersection between changes from that base on each side was empty.
+
+A tip-to-tip comparison misleadingly lists the three SCIM identity files plus the #632 test and note as differing because they are #632-only additions from the common base. Direct blob checks showed the accepted #784 tree has exactly the same blob as the common base for each SCIM identity file:
+
+| Path | `81781ab` base and accepted `1f2ea004` | #632 pre-merge `bd74c19` |
+| --- | --- | --- |
+| `apps/api/src/identity/repository.ts` | `19affff2102d8c3b7dccedd91d98cc50eafd0da9` | `d72a0a93fd47521f201fde8f9bf08802985455a4` |
+| `apps/api/src/identity/scim-lifecycle.ts` | `a946e3c78b6e409f1018ad0cc26d219e2a438c3f` | `05e6e43b34247c72ebca636b1c0f1d567ad7239a` |
+| `apps/api/src/identity/scim-protocol.ts` | `f0baa1e6564aa48b87caa792341213a7bf8319e0` | `551c70e468169358e1cb1c363b77902dd5e429b9` |
+
+The accepted #784 source delta changes project/key reach paths and their tests; it adds no SCIM lifecycle/revocation implementation. No behavior-changing overlap or manual conflict resolution was needed.
+
+## Composition result and conservation
+
+Normal local merge succeeded without conflicts:
+
+- New HEAD: `c9a52ca0f5c3174195f8516efdb88d64fc9d82d5`
+- First parent: `bd74c19e3cbad8b3137a97549d85a0995c50ef90`
+- Second parent: `1f2ea00404e41e108fad437c2b87caa3bbf56298`
+- Subject: `Merge commit '1f2ea00404e41e108fad437c2b87caa3bbf56298' into codex/legacy-ws-revocation-632`
+
+All five unique #632 blobs remained exact across pre- and post-merge heads:
+
+| Path | Blob at both heads |
+| --- | --- |
+| `apps/api/src/identity/repository.ts` | `d72a0a93fd47521f201fde8f9bf08802985455a4` |
+| `apps/api/src/identity/scim-lifecycle.ts` | `05e6e43b34247c72ebca636b1c0f1d567ad7239a` |
+| `apps/api/src/identity/scim-protocol.ts` | `551c70e468169358e1cb1c363b77902dd5e429b9` |
+| `tests/api-integration/legacy-ws-revocation.test.ts` | `5568cc91ed845b45f81044f574e655e07d2a604a` |
+| `docs/07-planning/security-reviews/legacy-revocation-632.md` | `032861f87ec4a2289c02ab808a8068b3dcfa6209` |
+
+The accepted-main import delta is exactly these 16 paths: `apps/api/src/attachment/require-attachment-reach.ts`, `apps/api/src/project/index.ts`, `apps/api/src/utils/assert-work-item-project-reach.ts`, `apps/api/src/utils/caller-reach.ts`, `apps/api/src/utils/has-project-reach.ts`, `apps/api/src/utils/workspace-access-middleware.ts`, `apps/api/src/work-item/require-work-item-reach.ts`, `docs/07-planning/security-reviews/784-api-key-project-authority.md`, `tests/api-integration/api-key-project-capabilities.test.ts`, `tests/api-integration/api-key-project-role-clamp-strict.test.ts`, `tests/api-integration/api-key-project-role-clamp.test.ts`, `tests/api-integration/project-default-comment-visibility.test.ts`, `tests/api-integration/project-engagement-manage-settings.test.ts`, `tests/api-integration/strict-runtime-enforcement.test.ts`, `tests/api-integration/task-update-concurrency.test.ts`, and `tests/api/utils/require-api-key-permission-scope.test.ts`. No #785 or #803 product paths were imported. No status, queue or decision-log edits were made by this composition.
+
+## Commands and results
+
+- `git fetch origin main` — exit 0; fetched accepted `1f2ea004...`.
+- `git merge --no-ff --no-edit 1f2ea00404e41e108fad437c2b87caa3bbf56298` — exit 0; `ort` merge, no conflicts.
+- `pnpm --filter api run typecheck` — exit 0 at `c9a52ca0...`; all five configured `tsc --noEmit` projects passed (`tsconfig.json`, `tsconfig.permissions.json`, `tsconfig.tests.json`, `tsconfig.rls-prototype.json`, and `tests/e2e/tsconfig.approvals.json`). Existing workspace declarations had been built in the previous bounded preparation.
+- `git diff --check HEAD^1 HEAD` — exit 2 with 85 output lines, all trailing-space warnings in the imported immutable `docs/07-planning/security-reviews/784-api-key-project-authority.md`; no #632 path was flagged. File preserved byte-for-byte from accepted main.
+- Final `git status --short --branch`: clean; branch remains local and ahead of its remote. No push or review-note append.
+
+No tests, PostgreSQL/Docker, browser, image/build, full suite, CI rerun, publication, or merge-to-main was performed. #632 review/evidence is preserved unchanged and remains historical-source evidence only. Root owns fresh independent import review and full current-source/image acceptance. This branch is now locally composed on accepted #784 main; do not freeze it against a newer main if the conductor advances the accepted base before review.
+
+
+## Authentic record — realtime632-c9-import-ordinary-luna.md
+
+Origin SHA-256 `8a8e90974798f632f5262f8aecec8728161224218995e9be0fc34db57e1245ff`; 6451 original bytes.
+
+# #796 / #632 accepted-main import — independent ordinary review
+
+**Verdict: CLEAR for the local accepted-main import at `c9a52ca0f5c3174195f8516efdb88d64fc9d82d5`.** No blocking or non-blocking finding in the reviewed import and its interaction with #632. This report is ordinary source review only; the required fresh Sol confirmation, current hosted checks, and current runtime/image evidence remain separate.
+
+## Identity, source and independence
+
+- **Role:** fresh independent ordinary reviewer; I did not author, direct, or remediate the source or either import.
+- **Model provenance:** assigned by the conductor as an ordinary GPT-6 Luna-tier review. The runtime does not expose a finer independently verifiable served-model/version identifier.
+- **Worktree / branch:** `/Users/heinthura/.codex/worktrees/legacy-revocation-632/Ticketing.v2`, `codex/legacy-ws-revocation-632`.
+- **Exact reviewed head:** `c9a52ca0f5c3174195f8516efdb88d64fc9d82d5`, clean at review time.
+- **Parents:** first parent `bd74c19e3cbad8b3137a97549d85a0995c50ef90`; second parent accepted main `1f2ea00404e41e108fad437c2b87caa3bbf56298`.
+- **Lineage:** `d20dc4f576f942015335fe28cd0f9619b581903e` → merge `bd74c19e` importing accepted `81781ab244cc1e6c9fac667f309de17a1e494caa` (#795), then `c9a52ca0` importing accepted `1f2ea004` (#784). Both main commits are ancestors of the reviewed head; the tree/source-parent metadata agrees with the recorded preparation receipts.
+
+## Checks and source scope
+
+I read `AGENTS.md`, the active mission, agent workflow, `CLAUDE.md`, the identity-provisioning contract (including IP-15/IP-22), auth and RBAC contracts, the retained #632 original reports and exact source, and both requested private accepted-main preparation/composition receipts. I inspected exact Git parents, both import deltas, the SCIM lifecycle and protocol call sites, legacy socket reauthorization, the shared project-socket authorization evaluator, and the #784 source/review record.
+
+Read-only Git checks confirmed:
+
+- `bd74c19e` is a normal merge with parents `d20dc4f5` and accepted main `81781ab2`; its import delta consists of the 34 paths in the preparation receipt.
+- `c9a52ca0` is a normal merge with parents `bd74c19e` and accepted main `1f2ea004`; its import delta is the recorded 16 #784 paths. No source-join conflict was manually resolved. The imported status/queue/decision content is absent from this second import delta.
+- All five required #632-only blobs match exactly between `d20dc4f5` and `c9a52ca0`: `apps/api/src/identity/repository.ts` (`d72a0a93…`), `scim-lifecycle.ts` (`05e6e43b…`), `scim-protocol.ts` (`551c70e4…`), `tests/api-integration/legacy-ws-revocation.test.ts` (`5568cc91…`), and `docs/07-planning/security-reviews/legacy-revocation-632.md` (`032861f8…`).
+- The #632 original implementation remains in history as `e8b57d2214221243d64c995470fc63a274348c10`; the reviewed `3e9021c2…` composition and `d20dc4f5…` report-publication commit remain on the first-parent lineage. Their reviews remain attributed to their original exact source.
+- `git status --porcelain` was empty. No tests, typecheck, PostgreSQL, Redis, Docker, browser, image build, CI, or hosted-runtime checks were run in this review.
+
+## Interaction assessment
+
+There is one real, focused semantic join: #784 changes `evaluateProjectRead`/`has-project-reach`, and that evaluator is also used by `authorizeProjectSocketRead` for legacy project-socket upgrade and reauthorization. The import therefore changes the current project/API-key authority calculation used when a live project socket is rechecked. I followed this through the imported helper and socket call graph rather than treating the shared file as unrelated.
+
+The accepted #784 implementation computes a key's project capability as current owner authority intersected with the stored key scope; missing/malformed scope fails closed. The #632 change sends the existing user-targeted invalidation only after the outer SCIM transaction commits. That reaches the existing legacy reauthorization loop, which performs a fresh check for matching user and project sockets. IP-15's transaction also revokes the user's sessions and API-key rows and sets the person inactive; the fresh identity check therefore refuses the deactivated account. The imported evaluator does not alter the invalidation target, ordering, transaction boundary, or recovery floor. I found no path by which the #784 import preserves access after SCIM person deactivation or weakens the accepted project/key authority ceiling.
+
+#795's imported UTC-time and transaction-related changes do not modify the #632 SCIM lifecycle files, the invalidation channel, or the socket authorization path. No behavioral join requiring a manual merge decision was present. The focused shared-evaluator interaction is security-scope, so the assigned fresh Sol confirmation must explicitly cover it. The accepted #784 review record includes an earlier main-composition blocker about project-settings authority and records its project-target-authority repair and independent ordinary/full-Sol clearance before accepted main; I verified the imported source uses that repaired project-facts path. I did not treat that prior review as review of this #632 composition.
+
+## Evidence limits and residuals
+
+The preserved #632 implementation evidence reports the new real-listener integration file at **13/13 passing**, with the six SCIM-deactivation cases failing against the pre-fix behavior, plus 70 tests in four neighboring files and the named static checks. These remain author-reported historical results; I did not rerun them, mutate source, or independently reproduce PostgreSQL outcomes. The retained #632 reports explicitly leave real multi-process Redis delivery unrerun and note no injected outer-transaction rollback case. No current hosted PostgreSQL/image/runtime proof is established here. The newer #784 accepted-main report also records PostgreSQL regressions as not locally rerun and complete current hosted/image acceptance as pending; those limits remain.
+
+**Verdict: CLEAR** for this bounded ordinary accepted-main import review at exact head `c9a52ca0f5c3174195f8516efdb88d64fc9d82d5`. The focused project-socket authority interaction requires the separately assigned fresh Sol confirmation. This report does not claim current runtime acceptance, exact-head CI, PR approval, merge, issue closure, or stage completion.
+
+
+## Authentic record — realtime632-c9-full-security-61-sol.md
+
+Origin SHA-256 `1950740d1bb4bdd86cfb74edf745f1b8e9def2f82af342242c8b93e7267d7a5d`; 10301 original bytes.
+
+# #796 / #632 — independent full security review of accepted-main composition
+
+**Model:** GPT-6.1 Sol  
+**Reviewed head:** c9a52ca0f5c3174195f8516efdb88d64fc9d82d5  
+**Comparison base:** accepted main 1f2ea00404e41e108fad437c2b87caa3bbf56298  
+**Verdict:** CLEAR — no blocking or non-blocking security defect found in this exact composition.
+
+## Identity and independence
+
+I am the fresh independent full security reviewer context `/root/realtime632_c9_full_security_sol`. I did not author, direct, remediate, or advise the candidate, its imports, or its ordinary review. The conductor assigned this run explicitly as GPT-6.1 Sol; that is the reported dispatch identity, not a claim that I independently introspected the serving backend/version. The runtime exposes no independently verifiable finer backend identity. This report is not relabelled GPT-6 Sol. The accepted workflow model block permits GPT-6.1 Sol. This context fills the security-review role only.
+
+## Source and checks actually performed
+
+I read the repository instructions, active mission, workflow/model and review requirements, CLAUDE provider adapter, IP-15 deactivation contract, relevant RBAC/evaluator contract and implementation, the retained original #632 ordinary/full-security and 3e9021c2 composition reports, the two accepted-main preparation receipts, the current c9 ordinary report, and the accepted #784 security report and final readiness receipt. Historical verdicts were provenance and leads; I checked the combined current call graph directly.
+
+Read-only Git/source commands included rev-parse, show parents, diff/stat/name-only, merge-base ancestry, exact blob comparison via Python/subprocess, rg, sed, cat, and status. I inspected all three changed identity files and the complete new listener test, the legacy routes and ordered authorization helper, native credential refresh/topic reauthorization, the shared project socket authorization, identity resolver, stored key verification and permission projection, canonical can/authorityFor evaluation, and both in-memory and Redis control adapters. No candidate source, PR, branch, or review publication was edited.
+
+The local HEAD is exactly c9a52ca0f5c3174195f8516efdb88d64fc9d82d5, with parents bd74c19e3cbad8b3137a97549d85a0995c50ef90 and accepted 1f2ea00404e41e108fad437c2b87caa3bbf56298. The latter is an ancestor. The 16 first-parent import paths are the accepted #784 paths recorded in the composition receipt; net against accepted main is exactly the five #632-only paths. All five blobs match d20dc4f576f942015335fe28cd0f9619b581903e exactly:
+
+- repository.ts: d72a0a93fd47521f201fde8f9bf08802985455a4
+- scim-lifecycle.ts: 05e6e43b34247c72ebca636b1c0f1d567ad7239a
+- scim-protocol.ts: 551c70e468169358e1cb1c363b77902dd5e429b9
+- legacy-ws-revocation.test.ts: 5568cc91ed845b45f81044f574e655e07d2a604a
+- legacy-revocation-632.md: 032861f87ec4a2289c02ab808a8068b3dcfa6209
+
+Unaccepted #785 e533a9875e47399247b740b53f6fd192fa43ec9d and live #803 head 0fddd1d6edeaedb6e5de2d58f694e26d91485955 are not ancestors (both ancestry commands returned 1). The actual five-path net tree and accepted-parent import contain no extra unaccepted source. `git diff --check 1f2ea004 HEAD` produced no findings. Worktree status was clean.
+
+Read-only GitHub queries confirmed #784 is MERGED at 1f2ea004 on 2026-10-16T07:55:21Z. #796 was still OPEN on remote d20dc4f5 at query time; this report reviews the local c9 candidate, not that older remote SHA. The #784 final protected-readiness receipt records all 18 required checks successful, PostgreSQL 209 files / 3135 tests, and the shipping image proof records 125 migrations, UID 10001 and healthy 200 live/ready. These are accepted-producer evidence, not executions by me. Older #784 reports describing hosted/image work as pending are historical and do not describe its current accepted state.
+
+## Full composition security assessment
+
+There is a real shared authority join: imported #784 changes evaluateProjectRead in has-project-reach, and authorizeProjectSocketRead calls it for legacy project upgrade/reauthorization and native project subscriptions. I traced this join rather than treating disjoint changed paths as proof of independence.
+
+The socket builds its identity with the key's stored permissions projected through apiKeyCapabilitySubset. The identity loader supplies current owner facts; missing/inactive person, banned owner, missing/disabled key facts, and owner mismatch refuse identity. Canonical can first requires current target-scoped owner authority, including project-role override, and then intersects the key subset; missing or malformed key scope has no capability. The project socket consumes decision.capable and decision.reachable, never the new ownerCapable-only/defer helpers. It additionally requires stored work_item:read because the project stream carries work-item events. Thus the new owner-only view cannot widen socket authority. The evaluator's extra ownerCapable calculation does not replace the actual capable result.
+
+Target reach remains based on the project's own persisted workspace and customer organisation, excludes archived/deleted projects and unreachable workspaces, and uses project:read on that target. Hidden, missing and denied projects are refused. No new instance capability, sees_all grant, customer key permission or identity-provider-derived administrator authority is introduced. Native work-item topic authorization still uses its existing separate path; this candidate does not change that path's target construction, and this review makes no claim to redesign it.
+
+Legacy user and project connections retain the original upgrade request credential, and their authorize callbacks rerun authenticateApiRequest and local-factor enforcement. Key requests rerun verifyApiKey against enabled/unexpired persisted key and current active/unbanned owner, then replace the context's key permissions. Cookie requests rerun host/portal-specific Better Auth session lookup; IP-15 deletes every session and cookie caching is disabled by the established contract. Both legacy callbacks verify the same user and agent portal; project sockets then run the shared reach/capability evaluator. Native reauthorization similarly refreshes credentials before reevaluating topics. A previously sufficient stored scope or cached passing project lookup therefore cannot preserve a revoked credential across the forced fresh check.
+
+The #632 lifecycle result carries the linked user id only for deactivation. IP-15 sets the person inactive, deletes sessions, disables keys and retires/reprojects grants in the same transaction. The standalone lifecycle wrapper, SCIM DELETE active-state helper, and PUT/PATCH profile paths all propagate that id out of their OUTER transaction/retry result before announcing. Exceptions/rollback never reach announcement; false/no-change results do not announce, and activation yields null. PUT/PATCH do not publish between the inner lifecycle change and subsequent profile/provisioning writes. The intervening pending-action audit failure notifier catches its bounded database notification failures, preserving the announcement path.
+
+The announcement contains only the server-derived user id on the existing private identity.invalidate control channel. Native invalidation matches credential user ids; legacy invalidation checks all matching user/project connections with fresh:true, bypassing the 1.5-second project delivery reuse. Ordered per-socket checks fail closed and close with 1008; user delivery has no reuse window. The Redis adapter validates the control schema and delivers the same message to local native and legacy handlers on each subscriber. The in-memory adapter and no-adapter local fallback match that shape. This establishes source compatibility, not live multiprocess delivery. Publish failure/message loss retains the established 60-second refresh and delivery-triggered recovery; publication completion is not a distributed acknowledgement barrier. No stronger instantaneous distributed guarantee is claimed.
+
+#795's imported database/UTC-time and auth repository work does not rewrite the three SCIM lifecycle blobs, project authority decision, or invalidation mechanism. The accepted-main additions do not move the new announcement into the transaction or skip the live credential checks. No composition bypass of revoked sessions/keys, inactive owners, stored key subset, or target project reach was found.
+
+## Tests, residuals and verdict
+
+I ran zero tests, typechecks, PostgreSQL, Redis, Docker, browsers, image builds, full suites or CI jobs. This was a full independent security SOURCE review, within the conductor's runtime restrictions. The preserved original author evidence reports 13/13 new real-listener tests passing (six SCIM cases fail without the fix) plus 70 neighboring tests; those are historical author runs, not current-c9 runtime proof. The new test source uses real cookies/listeners and actual PATCH/PUT/DELETE, primes delivery, waits idle for policy closure and verifies no later delivery. It does not inject outer rollback or cover real multiprocess Redis propagation. The rollback conclusion above is from source sequencing.
+
+**Blocking findings:** none.  
+**Non-blocking findings:** none in this bounded composition.  
+**Residuals:** current #632 exact-head CI and shipping-image/runtime gates remain unrun; fresh PostgreSQL/runtime acceptance belongs to the conductor's next verification window. Real multiprocess Redis proof remains absent. Project-only unannounced grant loss retains the separately accepted bounded 1.5-second project reuse behavior; it is not person-wide SCIM deactivation. Existing accepted #784 explanatory-comment/historical-note whitespace observations are not new authority defects in this composition.
+
+**CLEAR** for the full independent security source review of c9a52ca0f5c3174195f8516efdb88d64fc9d82d5 against accepted 1f2ea00404e41e108fad437c2b87caa3bbf56298. This is fresh current-composition review, not a relabelling of original e8 or 3e source reviews. It does not assert PR approval, current runtime acceptance, merge, issue closure, stage completion, SIT acceptance or multiprocess proof. Root alone publishes and merges after all actual current gates pass.
+
