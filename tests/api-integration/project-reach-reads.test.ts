@@ -734,7 +734,9 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         customerIdentity,
         a.world.workspaceId,
       );
-      assertLabels(labels, "visible");
+      // Customer project reach permits project-bound content only. Workspace definitions
+      // remain staff workspace content, and the public route above is denied by its policy.
+      expect(labels.map(({ name }) => name)).toEqual(["Visible task label"]);
       // The legacy search controller requires legitimate workspace membership. Keep its
       // hidden-row/count oracle under a staff member with its own project reach; customers
       // are denied by GET /api/search's workspace:read policy above.
@@ -776,6 +778,21 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         `/api/label/workspace/${a.world.workspaceId}`,
       );
       assertLabels(r.body, "visible");
+    });
+
+    it("a reachable archived project's task-bound label remains listed", async () => {
+      const a = await arrange();
+      await db
+        .update(schema.projectTable)
+        .set({ archivedAt: new Date() })
+        .where(eq(schema.projectTable.id, a.world.otherProject.id));
+      mockAuthenticatedSession(a.seesAll.user);
+      const r = await read<Labels>(
+        a.app,
+        `/api/label/workspace/${a.world.workspaceId}`,
+      );
+      expect(r.status, r.text).toBe(200);
+      assertLabels(r.body, "both");
     });
   });
 });

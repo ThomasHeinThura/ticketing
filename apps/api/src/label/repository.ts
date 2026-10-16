@@ -43,6 +43,7 @@ function currentLabelReach(identity: ResolvedIdentity, executor: Executor) {
         and(
           eq(taskTable.id, labelTable.taskId),
           eq(projectTable.workspaceId, labelTable.workspaceId),
+          isNull(projectTable.deletedAt),
           currentProjectReachPredicate(
             identity,
             projectTable.id,
@@ -173,7 +174,7 @@ export async function findProjectWorkspaces(
   executor: Executor,
   projectIds: string[],
 ) {
-  return executor
+  return await executor
     .select({ id: projectTable.id, workspaceId: projectTable.workspaceId })
     .from(projectTable)
     .where(inArray(projectTable.id, projectIds));
@@ -222,8 +223,27 @@ export async function insertTaskLabelOnConflictDoNothing(
     .onConflictDoNothing({ target: [labelTable.taskId, labelTable.name] })
     .returning({ id: labelTable.id });
   return inserted
-    ? findTaskLabelByName(executor, identity, values.taskId, values.name)
+    ? await findTaskLabelByName(executor, identity, values.taskId, values.name)
     : undefined;
+}
+
+export function buildTaskLabelByNameQuery(
+  executor: Executor,
+  identity: ResolvedIdentity,
+  taskId: string,
+  name: string,
+) {
+  return executor
+    .select()
+    .from(labelTable)
+    .where(
+      and(
+        eq(labelTable.taskId, taskId),
+        eq(labelTable.name, name),
+        currentLabelReach(identity, executor),
+      ),
+    )
+    .limit(1);
 }
 
 export async function findTaskLabelByName(
@@ -232,13 +252,13 @@ export async function findTaskLabelByName(
   taskId: string,
   name: string,
 ) {
-  return executor.query.labelTable.findFirst({
-    where: and(
-      eq(labelTable.taskId, taskId),
-      eq(labelTable.name, name),
-      currentLabelReach(identity, executor),
-    ),
-  });
+  const [label] = await buildTaskLabelByNameQuery(
+    executor,
+    identity,
+    taskId,
+    name,
+  );
+  return label;
 }
 
 export async function insertWorkspaceLabelOnConflictDoNothing(
@@ -278,7 +298,7 @@ export async function insertWorkspaceLabelOnConflictDoNothing(
     })
     .returning({ id: labelTable.id });
   return inserted
-    ? findWorkspaceLabelByName(
+    ? await findWorkspaceLabelByName(
         executor,
         identity,
         values.workspaceId,
@@ -287,24 +307,43 @@ export async function insertWorkspaceLabelOnConflictDoNothing(
     : undefined;
 }
 
+export function buildWorkspaceLabelByNameQuery(
+  executor: Executor,
+  identity: ResolvedIdentity,
+  workspaceId: string,
+  name: string,
+) {
+  return executor
+    .select()
+    .from(labelTable)
+    .where(
+      and(
+        eq(labelTable.workspaceId, workspaceId),
+        eq(labelTable.name, name),
+        isNull(labelTable.taskId),
+        currentWorkspaceReachPredicate(
+          identity,
+          labelTable.workspaceId,
+          executor,
+        ),
+      ),
+    )
+    .limit(1);
+}
+
 export async function findWorkspaceLabelByName(
   executor: Executor,
   identity: ResolvedIdentity,
   workspaceId: string,
   name: string,
 ) {
-  return executor.query.labelTable.findFirst({
-    where: and(
-      eq(labelTable.workspaceId, workspaceId),
-      eq(labelTable.name, name),
-      isNull(labelTable.taskId),
-      currentWorkspaceReachPredicate(
-        identity,
-        labelTable.workspaceId,
-        executor,
-      ),
-    ),
-  });
+  const [label] = await buildWorkspaceLabelByNameQuery(
+    executor,
+    identity,
+    workspaceId,
+    name,
+  );
+  return label;
 }
 
 export async function findLabelById(
@@ -327,7 +366,7 @@ export async function findLabelsByTaskId(
   executor?: Executor,
 ) {
   const db = executorOrDefault(executor);
-  return db
+  return await db
     .select()
     .from(labelTable)
     .where(and(eq(labelTable.taskId, taskId), currentLabelReach(identity, db)));
@@ -403,7 +442,7 @@ export async function listTaskLabelCopiesWithTask(
   workspaceId: string,
   name: string,
 ) {
-  return executor
+  return await executor
     .select({
       labelId: labelTable.id,
       taskId: taskTable.id,
@@ -426,7 +465,7 @@ export async function listTaskLabelCopyTaskIds(
   workspaceId: string,
   name: string,
 ) {
-  return executor
+  return await executor
     .select({ taskId: labelTable.taskId })
     .from(labelTable)
     .where(
@@ -445,7 +484,7 @@ export async function lockTaskLabelCopies(
   name: string,
   taskIds: string[],
 ) {
-  return executor
+  return await executor
     .select({ id: labelTable.id })
     .from(labelTable)
     .where(
@@ -461,7 +500,7 @@ export async function lockTaskLabelCopies(
 }
 
 export async function deleteLabelsByIds(executor: Executor, ids: string[]) {
-  return executor
+  return await executor
     .delete(labelTable)
     .where(inArray(labelTable.id, ids))
     .returning();
@@ -478,7 +517,7 @@ export async function updateLabelById(
     .set(values)
     .where(and(eq(labelTable.id, id), currentLabelReach(identity, executor)))
     .returning({ id: labelTable.id });
-  return updatedLabel ? findLabelById(identity, id, executor) : undefined;
+  return updatedLabel ? await findLabelById(identity, id, executor) : undefined;
 }
 
 export async function updateLabelsByIds(

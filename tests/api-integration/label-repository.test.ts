@@ -7,7 +7,9 @@ import {
   findLabelsByTaskId,
   findProjectWorkspaceId,
   findTaskInWorkspace,
+  findTaskLabelByName,
   findTaskWithWorkspace,
+  findWorkspaceLabelByName,
   insertTaskLabelOnConflictDoNothing,
   insertWorkspaceLabelOnConflictDoNothing,
   listLabelsByWorkspaceId,
@@ -105,6 +107,43 @@ describe("label repository (#580)", () => {
     ).toBe(b.workspace.id);
     expect(
       await findTaskWithWorkspace(identityB, "missing-task"),
+    ).toBeUndefined();
+  });
+
+  it("resolves task and workspace label names through current-reach SQL", async () => {
+    const { a, b, taskA } = await seedTwoWorkspaces();
+    const identityA = await identityFor(a.user.id);
+    const identityB = await identityFor(b.user.id);
+    const definition = must(
+      await insertWorkspaceLabelOnConflictDoNothing(db, identityA, {
+        name: "Scoped",
+        color: "#111111",
+        workspaceId: a.workspace.id,
+      }),
+      "definition",
+    );
+    const taskLabel = must(
+      await insertTaskLabelOnConflictDoNothing(db, identityA, {
+        name: "Scoped",
+        color: "#222222",
+        taskId: taskA.id,
+        workspaceId: a.workspace.id,
+      }),
+      "task label",
+    );
+
+    expect(
+      (await findWorkspaceLabelByName(db, identityA, a.workspace.id, "Scoped"))
+        ?.id,
+    ).toBe(definition.id);
+    expect(
+      (await findTaskLabelByName(db, identityA, taskA.id, "Scoped"))?.id,
+    ).toBe(taskLabel.id);
+    expect(
+      await findWorkspaceLabelByName(db, identityB, a.workspace.id, "Scoped"),
+    ).toBeUndefined();
+    expect(
+      await findTaskLabelByName(db, identityB, taskA.id, "Scoped"),
     ).toBeUndefined();
   });
 
