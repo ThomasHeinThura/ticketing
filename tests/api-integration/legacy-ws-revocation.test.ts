@@ -62,6 +62,15 @@ const WebSocket = apiRequire("ws") as {
 };
 
 type Node = ReturnType<typeof createNodeServer>;
+
+class LoopbackValkeyContainer extends GenericContainer {
+  protected override async beforeContainerCreated(): Promise<void> {
+    this.hostConfig.PortBindings = {
+      ...this.hostConfig.PortBindings,
+      "6379/tcp": [{ HostIp: "127.0.0.1", HostPort: "0" }],
+    };
+  }
+}
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function listening(server: Node["server"]) {
@@ -163,24 +172,41 @@ function startIsolatedApiProcess(valkeyUrl: string) {
 
 async function stopIsolatedApiProcess(child: ChildProcess) {
   if (child.exitCode !== null || child.signalCode !== null) return;
-  let resolveExit!: () => void;
   const exited = new Promise<void>((resolve) => {
-    resolveExit = resolve;
+    if (child.exitCode !== null || child.signalCode !== null) return resolve();
     child.once("exit", () => resolve());
   });
-  if (child.exitCode !== null || child.signalCode !== null) resolveExit();
-  child.send("stop");
-  const timeout = setTimeout(() => {
-    if (child.pid !== undefined) {
-      try {
-        process.kill(-child.pid, "SIGTERM");
-      } catch {
-        // The owned process group may have exited between the check and signal.
-      }
+  const waitBounded = async (ms: number) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const completed = await Promise.race([
+      exited.then(() => true),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(false), ms);
+      }),
+    ]);
+    if (timer) clearTimeout(timer);
+    return completed;
+  };
+  try {
+    child.send("stop", () => {});
+  } catch {
+    // A disconnected IPC channel is handled by the owned-process signal fallback.
+  }
+  if (await waitBounded(5_000)) return;
+  const signalOwnedGroup = (signal: NodeJS.Signals) => {
+    if (child.pid === undefined) return;
+    try {
+      process.kill(-child.pid, signal);
+    } catch {
+      // The owned process group may have exited between the check and signal.
     }
-  }, 5_000);
-  await exited;
-  clearTimeout(timeout);
+  };
+  signalOwnedGroup("SIGTERM");
+  if (await waitBounded(2_000)) return;
+  signalOwnedGroup("SIGKILL");
+  if (!(await waitBounded(2_000))) {
+    throw new Error("Owned API child did not exit after bounded cleanup");
+  }
 }
 
 const KINDS = ["user", "project"] as const;
@@ -444,7 +470,7 @@ describe("legacy sockets after access revocation (#632)", () => {
   it("Valkey: delivers and revokes legacy sockets across independent API processes", async () => {
     const originalValkeyUrl = process.env.TASKDESK_VALKEY_URL;
     const sockets: TestSocket[] = [];
-    const valkey = await new GenericContainer("valkey/valkey:9-alpine")
+    const valkey = await new LoopbackValkeyContainer("valkey/valkey:9-alpine")
       .withExposedPorts(6379)
       .withWaitStrategy(Wait.forListeningPorts())
       .start();
@@ -517,27 +543,22 @@ describe("legacy sockets after access revocation (#632)", () => {
       broadcastToProject(project.id, {
         type: "work_item.updated",
         projectId: project.id,
-        taskId: "TD-cross-instance-signout-prime",
-      });
-      broadcastToUser(reachMember.user.id, { type: "NOTIFICATION_CREATED" });
-      broadcastToProject(project.id, {
-        type: "work_item.updated",
-        projectId: project.id,
-        taskId: "TD-cross-instance-reach-prime",
+        taskId: "TD-cross-instance-project-prime",
       });
       await expect(signoutUserDelivery).resolves.toMatchObject({
         type: "NOTIFICATION_CREATED",
       });
       await expect(signoutProjectDelivery).resolves.toMatchObject({
         type: "work_item.updated",
-        taskId: "TD-cross-instance-signout-prime",
-      });
-      await expect(reachUserDelivery).resolves.toMatchObject({
-        type: "NOTIFICATION_CREATED",
+        taskId: "TD-cross-instance-project-prime",
       });
       await expect(reachProjectDelivery).resolves.toMatchObject({
         type: "work_item.updated",
-        taskId: "TD-cross-instance-reach-prime",
+        taskId: "TD-cross-instance-project-prime",
+      });
+      broadcastToUser(reachMember.user.id, { type: "NOTIFICATION_CREATED" });
+      await expect(reachUserDelivery).resolves.toMatchObject({
+        type: "NOTIFICATION_CREATED",
       });
 
       const signoutMessages: string[] = [];
@@ -604,16 +625,22 @@ describe("legacy sockets after access revocation (#632)", () => {
       expect(reachProjectMessages).toEqual([]);
     } finally {
       for (const socket of sockets) socket.close();
-      if (child) await stopIsolatedApiProcess(child);
-      await shutdownWebSocketAdapter();
-      if (originalValkeyUrl === undefined)
-        delete process.env.TASKDESK_VALKEY_URL;
-      else process.env.TASKDESK_VALKEY_URL = originalValkeyUrl;
-      await valkey.stop({
-        timeout: 5_000,
-        remove: true,
-        removeVolumes: true,
-      });
+      try {
+        if (child) await stopIsolatedApiProcess(child);
+      } finally {
+        try {
+          await shutdownWebSocketAdapter();
+        } finally {
+          if (originalValkeyUrl === undefined)
+            delete process.env.TASKDESK_VALKEY_URL;
+          else process.env.TASKDESK_VALKEY_URL = originalValkeyUrl;
+          await valkey.stop({
+            timeout: 5_000,
+            remove: true,
+            removeVolumes: true,
+          });
+        }
+      }
     }
   });
 });
