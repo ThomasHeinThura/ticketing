@@ -671,6 +671,122 @@ describe("S6a accept (POST /api/invitation/{id}/accept)", () => {
     expect(await membershipRowCount(workspaceId, stranger.user.id)).toBe(0);
   });
 
+  it("reclassifies a persisted recipient email change before the guarded accept write", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Accept Recipient Email Race",
+    );
+    const invitee = await signUpUser(app, {
+      email: "accept-before-change@example.com",
+    });
+    const invited = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: invitee.user.email, role: "member" },
+    );
+    expect(invited.status).toBe(200);
+    const invitation = (await invited.json()) as { id: string };
+
+    const realMarkAccepted = invitationRepository.markInvitationAccepted;
+    const markAccepted = vi.spyOn(
+      invitationRepository,
+      "markInvitationAccepted",
+    );
+    let changedEmail = false;
+    markAccepted.mockImplementation(async (...args) => {
+      // Commit the state change through the real pool after accept's real
+      // recipient/workspace/role checks and immediately before its guarded DML.
+      await db
+        .update(schema.userTable)
+        .set({ email: "accept-after-change@example.com" })
+        .where(eq(schema.userTable.id, invitee.user.id));
+      changedEmail = true;
+      return realMarkAccepted(...args);
+    });
+
+    let accepted: Response;
+    try {
+      accepted = await acceptInvitationNative(
+        app,
+        invitee.cookie,
+        invitation.id,
+      );
+    } finally {
+      markAccepted.mockRestore();
+    }
+
+    expect(changedEmail).toBe(true);
+    expect(accepted.status).toBe(403);
+    await expect(accepted.text()).resolves.toBe(
+      "You are not the recipient of this invitation",
+    );
+    expect((await invitationRow(invitation.id))?.status).toBe("pending");
+    expect(await membershipRowCount(workspaceId, invitee.user.id)).toBe(0);
+    const [currentUser] = await db
+      .select({ email: schema.userTable.email })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, invitee.user.id));
+    expect(currentUser?.email).toBe("accept-after-change@example.com");
+  });
+
+  it("returns not found when an invitation disappears before the guarded accept write", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Accept Missing Invitation Race",
+    );
+    const invitee = await signUpUser(app, {
+      email: "accept-missing@example.com",
+    });
+    const invited = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: invitee.user.email, role: "member" },
+    );
+    expect(invited.status).toBe(200);
+    const invitation = (await invited.json()) as { id: string };
+
+    const realMarkAccepted = invitationRepository.markInvitationAccepted;
+    const markAccepted = vi.spyOn(
+      invitationRepository,
+      "markInvitationAccepted",
+    );
+    let deletedInvitation = false;
+    markAccepted.mockImplementation(async (...args) => {
+      // Delete via the real pool after accept's real positive reads and before
+      // the transaction's guarded UPDATE, then delegate to the real DML.
+      await db
+        .delete(schema.invitationTable)
+        .where(eq(schema.invitationTable.id, invitation.id));
+      deletedInvitation = true;
+      return realMarkAccepted(...args);
+    });
+
+    let accepted: Response;
+    try {
+      accepted = await acceptInvitationNative(
+        app,
+        invitee.cookie,
+        invitation.id,
+      );
+    } finally {
+      markAccepted.mockRestore();
+    }
+
+    expect(deletedInvitation).toBe(true);
+    expect(accepted.status).toBe(404);
+    await expect(accepted.text()).resolves.toBe("Invitation not found");
+    expect(await invitationRow(invitation.id)).toBeUndefined();
+    expect(await membershipRowCount(workspaceId, invitee.user.id)).toBe(0);
+  });
+
   it("refuses an already-accepted invitation with 400", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);

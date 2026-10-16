@@ -19,6 +19,7 @@ import {
   InvitationNotPendingError,
   NotInvitationRecipientError,
 } from "./invitation-action-errors";
+import { refuseRecipientInvitationTransition } from "./recipient-transition-refusal";
 
 export type AcceptedInvitation = {
   invitation: {
@@ -124,7 +125,9 @@ async function acceptInvitation(
     const now = new Date();
 
     const accepted = await markInvitationAccepted(tx, identity, invitationId);
-    if (!accepted) throw new InvitationNotPendingError();
+    if (!accepted) {
+      await refuseRecipientInvitationTransition(identity, invitationId, tx);
+    }
 
     await insertWorkspaceMember(tx, {
       workspaceId: invitation.workspaceId,
