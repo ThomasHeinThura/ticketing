@@ -498,6 +498,8 @@ export async function stableV2ReleaseExists(runner) {
   try {
     result = runner("gh", [
       "api",
+      "--hostname",
+      "github.com",
       "--paginate",
       "--jq",
       'if type != "array" then error("expected a release array") else .[] | if ((.tag_name|type) == "string" and (.draft|type) == "boolean" and (.prerelease|type) == "boolean") then [.tag_name, (.draft|tostring), (.prerelease|tostring)] | @tsv else error("invalid release metadata") end end',

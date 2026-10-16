@@ -374,8 +374,16 @@ test("empty release pages yield no stable release; malformed metadata fails clos
 
 test("stableV2ReleaseExists uses the origin repository and paginated releases endpoint", async () => {
   const calls = [];
+  const ghHostEnvironmentVariable = ["GH", "HOST"].join("_");
+  const originalGhHost = process.env[ghHostEnvironmentVariable];
+  process.env[ghHostEnvironmentVariable] = "redirected.example";
   const runner = (command, args) => {
     calls.push([command, args]);
+    if (command === "gh")
+      assert.equal(
+        process.env[ghHostEnvironmentVariable],
+        "redirected.example",
+      );
     if (command === "git")
       return {
         status: 0,
@@ -384,20 +392,28 @@ test("stableV2ReleaseExists uses the origin repository and paginated releases en
       };
     return { status: 0, stdout: "v2.0.1\tfalse\ttrue\n", stderr: "" };
   };
-  assert.equal(await stableV2ReleaseExists(runner), false);
-  assert.deepEqual(calls, [
-    ["git", ["remote", "get-url", "origin"]],
-    [
-      "gh",
+  try {
+    assert.equal(await stableV2ReleaseExists(runner), false);
+    assert.deepEqual(calls, [
+      ["git", ["remote", "get-url", "origin"]],
       [
-        "api",
-        "--paginate",
-        "--jq",
-        'if type != "array" then error("expected a release array") else .[] | if ((.tag_name|type) == "string" and (.draft|type) == "boolean" and (.prerelease|type) == "boolean") then [.tag_name, (.draft|tostring), (.prerelease|tostring)] | @tsv else error("invalid release metadata") end end',
-        "repos/owner/repo/releases",
+        "gh",
+        [
+          "api",
+          "--hostname",
+          "github.com",
+          "--paginate",
+          "--jq",
+          'if type != "array" then error("expected a release array") else .[] | if ((.tag_name|type) == "string" and (.draft|type) == "boolean" and (.prerelease|type) == "boolean") then [.tag_name, (.draft|tostring), (.prerelease|tostring)] | @tsv else error("invalid release metadata") end end',
+          "repos/owner/repo/releases",
+        ],
       ],
-    ],
-  ]);
+    ]);
+  } finally {
+    if (originalGhHost === undefined)
+      delete process.env[ghHostEnvironmentVariable];
+    else process.env[ghHostEnvironmentVariable] = originalGhHost;
+  }
 });
 
 test("stableV2ReleaseExists detects a release returned on a later paginated page", async () => {
