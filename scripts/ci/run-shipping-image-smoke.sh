@@ -58,6 +58,7 @@ cleanup() {
   else
     cleanup_status=failed
   fi
+  local proof_status=0
   if [[ -f "$proof_file" ]]; then
     node - "$proof_file" "$cleanup_status" "$status" "$down_status" \
       "$network_status" "$image_status" "$temp_status" <<'NODE'
@@ -74,8 +75,9 @@ const proof = JSON.parse(fs.readFileSync(file, "utf8"));
     };
 fs.writeFileSync(file, `${JSON.stringify(proof, null, 2)}\n`, { mode: 0o600 });
 NODE
+    proof_status=$?
   fi
-  if [[ $status -eq 0 && ( $down_status -ne 0 || $network_status -ne 0 || $image_status -ne 0 || $temp_status -ne 0 ) ]]; then
+  if [[ $status -eq 0 && ( $down_status -ne 0 || $network_status -ne 0 || $image_status -ne 0 || $temp_status -ne 0 || $proof_status -ne 0 ) ]]; then
     printf 'shipping image smoke: owned-resource cleanup failed\n' >&2
     status=1
   fi
