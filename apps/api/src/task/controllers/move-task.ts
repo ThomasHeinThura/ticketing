@@ -5,7 +5,6 @@ import type { Executor } from "../../database/executor";
 import { publishEvent } from "../../events";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { assertProjectStillLive } from "../../work-item/assert-work-item-live";
-import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
 import {
   findLiveUnarchivedProjectInWorkspace,
   findMaxTaskPositionInStatusAndColumn,
@@ -14,6 +13,7 @@ import {
   findProjectIdentity,
   listColumnsForMove,
   lockLiveProjectForMove,
+  lockTaskRowForIdentity,
   moveTaskAndAssetsForIdentity,
 } from "../repository";
 import { claimTaskNumberForIdentity } from "./claim-task-numbers";
@@ -101,11 +101,10 @@ async function moveTask({
   // reached a raw `eq(projectTable.id, destinationProjectId)`-shaped query below
   // unvalidated and 500'd, the same class #281 fixed for path/query ids.
   const moveResult = await db.transaction(async (tx) => {
-    const lockedTask = await lockTaskAndAssertProjectLiveForIdentity(
-      tx,
-      taskId,
-      identity,
-    );
+    const lockedTask = await lockTaskRowForIdentity(tx, identity, taskId);
+    if (!lockedTask) {
+      throw new HTTPException(404, { message: "Task not found" });
+    }
     // Malformed destinations cannot be queried safely, but their validation still
     // follows an authoritative source liveness lock. Valid destinations retain the
     // existing source preflight and sorted-lock sequence below.
