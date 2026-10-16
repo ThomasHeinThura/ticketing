@@ -8203,6 +8203,23 @@ preserved at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/s7-mixed-auth
 This authorizes the bounded spec and test-oracle correction, not runtime authorization changes,
 independent review, CI, merge or stage acceptance.
 
+### 2026-10-16 · Owner decisions: workflow validation reach and assignee authoring
+
+**Decisions (Thomas, direct response to Codex request `call_582546f57dbd436ab10d43e1ca364923`, received by the conductor on 2026-10-16; exact response recorded):**
+
+- **WF-9 adopting-project access:** “Require access to every adopting project (Recommended): otherwise return a generic refusal without project or item details.” Validation and publishing must not silently operate on a reachable subset. If the caller cannot access every adopting project, return a generic refusal with no project or item details.
+- **WF-19 assignee validation:** “Check shape only when authoring (Recommended); enforce person eligibility at execution, allowing unknown IDs to be saved.” Authoring may save an unknown person ID. At execution, enforce eligibility against the work item's active project roster; refuse the entire transition if ineligible, with no effects applied.
+
+These are product-contract decisions, not quality-gate waivers. The owning workflow spec is updated in this change. Implementation, tests, review, CI, merge, and acceptance remain separate.
+
+### 2026-10-16 · Owner decision: WF-9 includes every workspace project
+
+**Exact question and answer:** Thomas was asked whether WF-9's adopting-project set should include every project in the workflow's workspace, including empty and archived projects, or only projects containing an existing item of a workflow-bound type. Thomas answered: **“Every project in the workspace, including empty and archived projects (Recommended).”**
+
+**Decision:** WF-9's adopting-project set is every project in the workflow's workspace, including empty and archived projects. Validation and publishing require caller reach to every project in that set; otherwise return a generic refusal with no project or item details. This supplements, and does not replace, the prior WF-9 complete-reach decision or the WF-19 shape-only authoring / execution-time eligibility decision.
+
+**Source:** Thomas's direct conductor-chat response to `request_user_input_async` call `call_be4fae73c6c54175992e413270fc6f0c`, item 0. The provenance record is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/workflow-wf9-adoption-owner-decision-20261016.json`. The conductor record timestamp is 2026-10-16 08:04:55 UTC; the receipt record does not attest an exact receipt second. This is a product-contract decision, not a waiver of independent review, CI, merge, or acceptance.
+
 
 ### 2026-10-16 · Record protected takeover checkpoint at accepted main 3d1894ba
 
