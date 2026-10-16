@@ -158,6 +158,63 @@ describe("legacy task repository (#580 b9a)", () => {
     expect(page.map((t) => t.id)).toEqual([high.id]);
   });
 
+  it("project workspace context requires current reach and stops after revocation", async () => {
+    const actor = await createWorkspaceMember({ role: "member" });
+    const { project: ownProject } = await createProjectFixture({
+      workspaceId: actor.workspace.id,
+    });
+    await grantWorkItemProjectAccess(actor.user.id, ownProject.id);
+    const ownIdentity = await resolveIdentity({
+      userId: actor.user.id,
+      credential: "session",
+    });
+    if (!ownIdentity)
+      throw new Error("expected resolved project actor identity");
+
+    const foreignActor = await createWorkspaceMember({ role: "member" });
+    const { project: foreignProject } = await createProjectFixture({
+      workspaceId: foreignActor.workspace.id,
+    });
+    await grantWorkItemProjectAccess(foreignActor.user.id, foreignProject.id);
+    const foreignIdentity = await resolveIdentity({
+      userId: foreignActor.user.id,
+      credential: "session",
+    });
+    if (!foreignIdentity)
+      throw new Error("expected resolved foreign project identity");
+
+    testIdentity = ownIdentity;
+    expect(await findProjectWorkspaceContext(db, ownProject.id)).toMatchObject({
+      workspaceId: actor.workspace.id,
+    });
+    expect(
+      await findProjectWorkspaceContext(db, foreignProject.id),
+    ).toBeUndefined();
+    testIdentity = foreignIdentity;
+    expect(
+      await findProjectWorkspaceContext(db, foreignProject.id),
+    ).toMatchObject({ workspaceId: foreignActor.workspace.id });
+
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, actor.user.id));
+    if (!person) throw new Error("expected seeded project actor person");
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, person.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, ownProject.id),
+        ),
+      );
+    testIdentity = ownIdentity;
+    expect(
+      await findProjectWorkspaceContext(db, ownProject.id),
+    ).toBeUndefined();
+  });
+
   it("labels are looked up only for the given task ids", async () => {
     const { a, p1 } = await seed();
     const t1 = await seedTask(a.user.id, p1.id, 1);

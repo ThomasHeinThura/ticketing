@@ -6,7 +6,7 @@ import { assertAssignableUserAndLockMembership } from "../../utils/assert-assign
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
 import {
-  findProjectWorkspaceId,
+  findProjectWorkspaceContext,
   findUserName,
   updateTaskRow,
 } from "../repository";
@@ -38,7 +38,11 @@ async function updateTaskAssignee({
       return { existingTask, updatedTask: existingTask };
     }
     if (nextAssigneeId) {
-      const project = await findProjectWorkspaceId(tx, existingTask.projectId);
+      const project = await findProjectWorkspaceContext(
+        tx,
+        identity,
+        existingTask.projectId,
+      );
       if (!project) throw new HTTPException(404, { message: "Task not found" });
       await assertAssignableUserAndLockMembership(
         nextAssigneeId,

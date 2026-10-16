@@ -328,17 +328,6 @@ export async function findLiveProject(
   return project;
 }
 
-export async function findProjectWorkspaceId(
-  executor: Executor,
-  projectId: string,
-) {
-  const [project] = await executor
-    .select({ workspaceId: projectTable.workspaceId })
-    .from(projectTable)
-    .where(eq(projectTable.id, projectId));
-  return project;
-}
-
 /** The workspace that owns a project (joined through the workspace row), for asset contexts. */
 export async function findProjectWorkspaceContext(
   executor: Executor,

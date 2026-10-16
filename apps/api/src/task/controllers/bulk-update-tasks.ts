@@ -14,7 +14,7 @@ import {
   deleteTaskReturningId,
   findColumnBySlugForIdentity,
   findLabelInWorkspaceScope,
-  findProjectWorkspaceId,
+  findProjectWorkspaceContext,
   findTaskLabelByName,
   findUserName,
   findWorkspaceMembershipId,
@@ -206,7 +206,11 @@ async function bulkUpdateTasks({
           taskId,
           identity,
         );
-        const project = await findProjectWorkspaceId(tx, task.projectId);
+        const project = await findProjectWorkspaceContext(
+          tx,
+          identity,
+          task.projectId,
+        );
         if (!project || project.workspaceId !== workspaceId) {
           throw new HTTPException(404, { message: "Task not found" });
         }
