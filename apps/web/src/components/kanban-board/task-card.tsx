@@ -83,49 +83,6 @@ function TaskCard({
     transition,
     isDragging,
   } = useSortable({ id: task.id, disabled: disableDragDrop });
-  const {
-    showAssignees,
-    showPriority,
-    showDueDates,
-    showLabels,
-    showTaskNumbers,
-  } = displayPreferences;
-  const taskItemStats = !displayPreferences.showTaskItemCounts
-    ? null
-    : task.description
-      ? getTaskItemStats(task.description)
-      : EMPTY_TASK_ITEM_STATS;
-  const pullRequests = task.externalLinks?.length
-    ? task.externalLinks.filter((link) => link.resourceType === "pull_request")
-    : EMPTY_PULL_REQUESTS;
-
-  const getPRInfo = (pr: (typeof pullRequests)[number]) => {
-    const isMerged = pr.metadata?.merged === true;
-    const isDraft = pr.metadata?.draft === true;
-
-    if (isMerged) {
-      return {
-        icon: <GitMerge className="h-3 w-3 text-info-foreground" />,
-        status: t("tasks:pr.merged"),
-        statusClass: "text-info-foreground",
-      };
-    }
-
-    if (isDraft) {
-      return {
-        icon: <GitPullRequest className="h-3 w-3 text-muted-foreground" />,
-        status: t("tasks:pr.draft"),
-        statusClass: "text-muted-foreground",
-      };
-    }
-
-    return {
-      icon: <GitPullRequest className="h-3 w-3 text-success-foreground" />,
-      status: t("tasks:pr.open"),
-      statusClass: "text-success-foreground",
-    };
-  };
-
   const style: CSSProperties | undefined =
     transform || isDragging
       ? {
@@ -136,16 +93,6 @@ function TaskCard({
           zIndex: isDragging ? 999 : "auto",
         }
       : undefined;
-
-  const dueDate = showDueDates && task.dueDate ? new Date(task.dueDate) : null;
-  const dueDateStatus = dueDate
-    ? getDueDateStatus(dueDate, taskIsCompleted)
-    : null;
-  const hasMetadataRow =
-    showPriority ||
-    Boolean(taskItemStats?.total) ||
-    Boolean(dueDateStatus) ||
-    pullRequests.length > 0;
 
   function handleTaskCardClick(
     e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>,
@@ -202,6 +149,91 @@ function TaskCard({
       {...attributes}
       onKeyDown={handleCardKeyDown}
     >
+      <TaskCardBody
+        task={task}
+        projectSlug={projectSlug}
+        taskIsCompleted={taskIsCompleted}
+        displayPreferences={displayPreferences}
+        assignee={assignee}
+        t={t}
+      />
+    </div>
+  );
+}
+
+type TaskCardBodyProps = Pick<
+  TaskCardProps,
+  | "task"
+  | "projectSlug"
+  | "taskIsCompleted"
+  | "displayPreferences"
+  | "assignee"
+  | "t"
+>;
+
+const TaskCardBody = memo(function TaskCardBody({
+  task,
+  projectSlug,
+  taskIsCompleted,
+  displayPreferences,
+  assignee,
+  t,
+}: TaskCardBodyProps) {
+  const {
+    showAssignees,
+    showPriority,
+    showDueDates,
+    showLabels,
+    showTaskNumbers,
+  } = displayPreferences;
+  const taskItemStats = !displayPreferences.showTaskItemCounts
+    ? null
+    : task.description
+      ? getTaskItemStats(task.description)
+      : EMPTY_TASK_ITEM_STATS;
+  const pullRequests = task.externalLinks?.length
+    ? task.externalLinks.filter((link) => link.resourceType === "pull_request")
+    : EMPTY_PULL_REQUESTS;
+
+  const getPRInfo = (pr: (typeof pullRequests)[number]) => {
+    const isMerged = pr.metadata?.merged === true;
+    const isDraft = pr.metadata?.draft === true;
+
+    if (isMerged) {
+      return {
+        icon: <GitMerge className="h-3 w-3 text-info-foreground" />,
+        status: t("tasks:pr.merged"),
+        statusClass: "text-info-foreground",
+      };
+    }
+
+    if (isDraft) {
+      return {
+        icon: <GitPullRequest className="h-3 w-3 text-muted-foreground" />,
+        status: t("tasks:pr.draft"),
+        statusClass: "text-muted-foreground",
+      };
+    }
+
+    return {
+      icon: <GitPullRequest className="h-3 w-3 text-success-foreground" />,
+      status: t("tasks:pr.open"),
+      statusClass: "text-success-foreground",
+    };
+  };
+
+  const dueDate = showDueDates && task.dueDate ? new Date(task.dueDate) : null;
+  const dueDateStatus = dueDate
+    ? getDueDateStatus(dueDate, taskIsCompleted)
+    : null;
+  const hasMetadataRow =
+    showPriority ||
+    Boolean(taskItemStats?.total) ||
+    Boolean(dueDateStatus) ||
+    pullRequests.length > 0;
+
+  return (
+    <>
       {showTaskNumbers && (
         <div className="mb-2 text-[10px] font-mono text-muted-foreground">
           {projectSlug}-{task.number}
@@ -392,8 +424,8 @@ function TaskCard({
             })()}
         </div>
       )}
-    </div>
+    </>
   );
-}
+});
 
 export default memo(TaskCard);

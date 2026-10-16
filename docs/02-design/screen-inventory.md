@@ -50,7 +50,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Project overview | `/agent/projects/{key}` | route | P1 | ⬜ |
-| Work — board | `/agent/projects/{key}/work?layout=board` | route | P1 | ⬜ |
+| Work — board | `/agent/projects/{key}/work?layout=board` | route | P1 | 🟡 |
 | Work — list | `/agent/projects/{key}/work?layout=list` | route | P1 | 🟡 |
 | Work — table | `/agent/projects/{key}/work?layout=table` | route | P1 | ⬜ |
 | Work — calendar | `/agent/projects/{key}/work?layout=calendar` | route | P5 | ⬜ |
@@ -103,8 +103,8 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Dashboard | `/agent/dashboard` | route | P5 | ⬜ |
 | Dashboard editor | `/agent/dashboard/edit` | route | P5 | ⬜ |
 | Timesheet | `/agent/timesheet` | route | P5 | ⬜ |
-| Saved views index | `/agent/views` | route | P1 | ⬜ |
-| Saved view | `/agent/views/{id}` | route | P1 | ⬜ |
+| Saved views index | `/agent/views` | route | P1 | 🟡 |
+| Saved view | `/agent/views/{id}` | route | P1 | 🟡 |
 
 ## Agent — settings
 
@@ -165,8 +165,8 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | God Mode home / health | `/agent/god-mode` | route | P4 | ⬜ |
 | General (incl. terminology) | `/agent/god-mode/general` | route | P4 | ⬜ |
 | Branding | `/agent/god-mode/branding` | route | P4 | ⬜ |
-| **Authentication providers** | `/agent/god-mode/authentication` | route | P3 | ⬜ |
-| **Provider editor** | `/agent/god-mode/authentication/{id}` | route | P3 | ⬜ |
+| **Authentication providers** | `/agent/god-mode/authentication` | route | P3 | 🟡 |
+| **Provider editor** | `/agent/god-mode/authentication/{id}` | route | P3 | 🟡 |
 | Organisations | `/agent/god-mode/organisations` | route | P3 | ⬜ |
 | Organisation detail | `/agent/god-mode/organisations/{id}` | route | P3 | ⬜ |
 | **Organisation — Identity** (customer OIDC + SCIM connection) | `/agent/god-mode/organisations/{id}/identity` | route | P3 | ⬜ |

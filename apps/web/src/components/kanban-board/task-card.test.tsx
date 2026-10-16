@@ -1,19 +1,44 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import type { TFunction } from "i18next";
+import { useSyncExternalStore } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { getTaskItemStats } from "@/lib/get-task-item-stats";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
-import TaskCard from "./task-card";
+import TaskCard, { type TaskCardProps } from "./task-card";
 
-const mocks = vi.hoisted(() => ({
-  openContextMenu: vi.fn(),
-  openTask: vi.fn(),
-}));
+const mocks = vi.hoisted(() => {
+  let sortableState: {
+    transform: { x: number; y: number; scaleX: number; scaleY: number } | null;
+    isDragging: boolean;
+  } = { transform: null, isDragging: false };
+  const sortableSubscribers = new Set<() => void>();
+  return {
+    openContextMenu: vi.fn(),
+    openTask: vi.fn(),
+    getSortableState: () => sortableState,
+    subscribeSortable: (callback: () => void) => {
+      sortableSubscribers.add(callback);
+      return () => sortableSubscribers.delete(callback);
+    },
+    updateSortableState: (state: typeof sortableState) => {
+      sortableState = state;
+      for (const subscriber of sortableSubscribers) subscriber();
+    },
+  };
+});
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   vi.restoreAllMocks();
+  mocks.updateSortableState({ transform: null, isDragging: false });
   useBulkSelectionStore.setState({
     selectedTaskIds: new Set(),
     focusedTaskId: null,
@@ -21,22 +46,39 @@ afterEach(() => {
 });
 
 vi.mock("@dnd-kit/sortable", () => ({
-  useSortable: () => ({
-    attributes: { role: "button", tabIndex: 0 },
-    listeners: {},
-    setNodeRef: vi.fn(),
-    transform: null,
-    transition: undefined,
-    isDragging: false,
-  }),
+  useSortable: () => {
+    const sortableState = useSyncExternalStore(
+      mocks.subscribeSortable,
+      mocks.getSortableState,
+      mocks.getSortableState,
+    );
+    return {
+      attributes: { role: "button", tabIndex: 0 },
+      listeners: {},
+      setNodeRef: vi.fn(),
+      transform: sortableState.transform,
+      transition: undefined,
+      isDragging: sortableState.isDragging,
+    };
+  },
 }));
+
+vi.mock("@/lib/get-task-item-stats", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/lib/get-task-item-stats")
+  >("@/lib/get-task-item-stats");
+  return {
+    ...actual,
+    getTaskItemStats: vi.fn(actual.getTaskItemStats),
+  };
+});
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
 
 vi.mock("@taskdesk/ui", async () => {
-  const { Button } =
+  const { Avatar, AvatarFallback, AvatarImage, Badge, Button } =
     await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const passthrough = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -49,6 +91,10 @@ vi.mock("@taskdesk/ui", async () => {
     AlertDialogFooter: passthrough,
     AlertDialogHeader: passthrough,
     AlertDialogTitle: passthrough,
+    Avatar,
+    AvatarFallback,
+    AvatarImage,
+    Badge,
     Button,
     HoverCard: passthrough,
     HoverCardContent: passthrough,
@@ -134,6 +180,134 @@ const displayPreferences = {
 };
 
 describe("TaskCard keyboard context menu", () => {
+  it("keeps presentation work out of sortable hook updates until props change", () => {
+    const taskWithChecklist = {
+      ...task,
+      userId: "user-1",
+      description: "- [ ] first\n- [x] second",
+      externalLinks: [
+        {
+          id: "pr-1",
+          taskId: "task-1",
+          externalId: "42",
+          url: "https://github.com/example/project/pull/42",
+          resourceType: "pull_request",
+          metadata: { draft: true },
+          title: "Draft change",
+        },
+      ],
+    } as Task;
+    const statsSpy = vi.mocked(getTaskItemStats);
+    statsSpy.mockClear();
+    const initialPreferences = {
+      ...displayPreferences,
+      showTaskItemCounts: true,
+    };
+    const initialAssignee = {
+      user: { name: "Alice", image: "https://example.test/alice.png" },
+    } as NonNullable<TaskCardProps["assignee"]>;
+    const initialTranslator = ((key: string) => key) as unknown as TFunction;
+    const props: TaskCardProps = {
+      task: taskWithChecklist,
+      projectSlug: "PRJ",
+      taskIsCompleted: false,
+      displayPreferences: initialPreferences,
+      isSelected: false,
+      isFocused: false,
+      onOpenTask: mocks.openTask,
+      t: initialTranslator,
+      workspaceId: "workspace-1",
+      assignee: initialAssignee,
+      onContextMenuTask: mocks.openContextMenu,
+    };
+
+    const view = render(<TaskCard {...props} />);
+
+    expect(statsSpy).toHaveBeenCalledTimes(1);
+    const card = screen.getByText("Keyboard task").closest('[role="button"]');
+    expect(card).not.toBeNull();
+    act(() => {
+      mocks.updateSortableState({
+        transform: { x: 12, y: 24, scaleX: 1, scaleY: 1 },
+        isDragging: true,
+      });
+    });
+
+    expect(card).toHaveAttribute("data-task-dragging", "true");
+    expect(card).toHaveStyle({
+      transform: "translate3d(12px, 24px, 0) scaleX(1) scaleY(1)",
+    });
+    expect(screen.getByText("1/2")).toBeInTheDocument();
+    expect(statsSpy).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("button", { name: "tasks:pr.draft pull request #42" }),
+    ).toBeInTheDocument();
+
+    const localizedTranslator = ((key: string) =>
+      key === "tasks:pr.draft"
+        ? "Draft pull request"
+        : key) as unknown as TFunction;
+    view.rerender(<TaskCard {...props} t={localizedTranslator} />);
+    expect(
+      screen.getByRole("button", {
+        name: "Draft pull request pull request #42",
+      }),
+    ).toBeInTheDocument();
+    expect(statsSpy).toHaveBeenCalledTimes(2);
+
+    const updatedTask = {
+      ...taskWithChecklist,
+      title: "Updated task title",
+      description: "- [x] completed",
+      labels: [{ id: "label-1", name: "Urgent", color: "red" }],
+      externalLinks: [
+        {
+          ...taskWithChecklist.externalLinks?.[0],
+          metadata: { merged: true },
+        },
+      ],
+    } as Task;
+    const updatedPreferences = {
+      ...initialPreferences,
+      showLabels: true,
+      showTaskNumbers: true,
+      showAssignees: true,
+    };
+    const updatedAssignee = {
+      user: { name: "Bob", image: "https://example.test/bob.png" },
+    } as NonNullable<TaskCardProps["assignee"]>;
+    const mergedTranslator = ((key: string) =>
+      key === "tasks:pr.merged" ? "Merged" : key) as unknown as TFunction;
+    view.rerender(
+      <TaskCard
+        {...props}
+        task={updatedTask}
+        displayPreferences={updatedPreferences}
+        assignee={updatedAssignee}
+        t={mergedTranslator}
+      />,
+    );
+    expect(screen.getByText("Updated task title")).toBeInTheDocument();
+    expect(screen.getByText("Urgent")).toBeInTheDocument();
+    expect(screen.getByText("PRJ-1")).toBeInTheDocument();
+    expect(screen.getByText("BO")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Merged pull request #42" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1/1")).toBeInTheDocument();
+    expect(statsSpy).toHaveBeenCalledTimes(3);
+
+    const openWindow = vi.spyOn(window, "open").mockImplementation(() => null);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Merged pull request #42" }),
+    );
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith(
+      "https://github.com/example/project/pull/42",
+      "_blank",
+    );
+    expect(mocks.openTask).not.toHaveBeenCalled();
+  });
+
   it("G10: opens the focused card menu with Shift+F10", () => {
     const card = renderTaskCard();
 

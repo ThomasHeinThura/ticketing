@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import TaskCrumbSelect from "@/components/common/header/task-crumb-select";
 import Layout from "@/components/common/layout";
+import RealtimeUnavailableNotice from "@/components/common/realtime-unavailable-notice";
 import { shortcuts } from "@/constants/shortcuts";
 import { useProjectWebSocket } from "@/hooks/use-project-websocket";
 
@@ -40,7 +41,7 @@ export default function TaskLayout({
 }: TaskLayoutProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  useProjectWebSocket(projectId);
+  const { status: socketStatus } = useProjectWebSocket(projectId);
 
   const taskLabel =
     projectSlug && taskNumber != null
@@ -114,6 +115,7 @@ export default function TaskLayout({
           </div>
         </Layout.Header>
 
+        <RealtimeUnavailableNotice status={socketStatus} />
         <Layout.Content>
           <div className="flex h-full min-h-0 flex-col overflow-hidden lg:flex-row">
             <div className="order-2 min-h-0 flex-1 overflow-y-auto overscroll-contain lg:order-1">
