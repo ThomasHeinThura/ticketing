@@ -2189,7 +2189,10 @@ export function createNodeServer(
   return { server, websocketServer, close };
 }
 
-export async function startServer(port = DEFAULT_PORT) {
+export async function startServer(
+  port = DEFAULT_PORT,
+  options: Pick<NodeServerShutdownOptions, "hostname"> = {},
+) {
   try {
     await runApiBootTasks();
   } catch {
@@ -2199,8 +2202,19 @@ export async function startServer(port = DEFAULT_PORT) {
 
   let shuttingDown = false;
 
-  const { close, server } = createNodeServer(app, port);
+  const { close, server } = createNodeServer(app, port, options);
   server.on("listening", () => {
+    const address = server.address();
+    if (
+      options.hostname &&
+      (!address ||
+        typeof address === "string" ||
+        address.address !== options.hostname)
+    ) {
+      logHttpLifecycleFailure();
+      void close().finally(() => process.exit(1));
+      return;
+    }
     console.log(
       `⚡ API is running at ${process.env.KANEO_API_URL || `http://localhost:${port}`}`,
     );

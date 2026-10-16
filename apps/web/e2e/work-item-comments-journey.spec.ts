@@ -717,7 +717,6 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
 
       await composer.fill(editedText);
       await expect(composer).toContainText(editedText);
-      await page.waitForTimeout(250);
       expect(commentPosts).toHaveLength(0);
 
       const beforeSend = await page.request.get(

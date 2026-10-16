@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { PostgreSqlContainer } from "../../../apps/api/node_modules/@testcontainers/postgresql";
 
 type PostgreSqlContainerInstance = {
@@ -625,10 +625,15 @@ async function runMfaCsrfApp<T>(
       origin,
       spawnChild: supervisor.spawn.bind(supervisor),
     });
+    const apiEntrypointUrl = pathToFileURL(apiEntrypoint).href;
     apiProcess = await spawnWithPrivateLogs(
       supervisor,
       process.execPath,
-      [apiEntrypoint],
+      [
+        "--input-type=module",
+        "-e",
+        `import { startServer } from ${JSON.stringify(apiEntrypointUrl)}; void startServer(Number(process.env.TASKDESK_PORT), { hostname: "127.0.0.1" });`,
+      ],
       {
         ...bootstrapEnv,
         TASKDESK_ROLE: "web",
