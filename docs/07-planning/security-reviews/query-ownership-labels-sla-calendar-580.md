@@ -1151,3 +1151,148 @@ Current source normally composes full-reviewed e31 with protected accepted799 ma
 This publication adds only this regular review note after the reviewed source; it cannot supply its own independent approval. Operator e31 PG117/117 and actual owned cleanup remain e31 evidence, not new40fe execution. Original Sonnet2f87 reports and failed/blocked attempts are retained as historical evidence, never current acceptance. The original cumulativePR786/7500 branch is preserved; this selective recovery is a focused replacement and does not import unrelated unaccepted stacked history. Close the predecessor only after its unique source is accepted/proven equivalent with evidence.
 
 Current hosted tests/counts, image build/boot/migrations/health/isolation/cleanup and normal protected merge remain pending. No gate waiver, checker wiring, global N1, whole580/feature/stage/finalizer/release/SIT/restore acceptance follows. AT-7 and separate Carrier791/798 performance findings remain undisposed.
+
+
+## PR806 hosted unit failure and reviewed fixture correction
+
+Original hosted unit job117089404964 failed seven label cases. That adverse result remains preserved. The two test-only repair commits model actual lazy query execution and assert successful fallback output/no duplicate event. Production source is unchanged. Current focused unit proof is one file/nine tests, not a new117-test PostgreSQL run. Current hosted exact-publication gates remain required.
+
+
+### Authentic report: label806-unit-repair-luna.md
+
+SHA-256: `eb17a3dcd20b6bc65b92fc26788244e8fb2888d69a35ef389c589865d9ef4b50`. Report bytes follow unchanged.
+
+# PR #806 unit failure repair — Luna implementation report
+
+- Worktree: `/Users/heinthura/.codex/worktrees/786-label-await-scope-repair-luna`
+- Before SHA: `a7765faaef1ad812398f77cf22c18f396efbeadc`
+- After SHA: `d95f3b2ec524b9114da7ad2f28ad793f0090bfda`
+- Commit: `d95f3b2e test(api): repair label assignment query fixtures`
+- Changed file: `tests/api/label/assign-and-unassign-label.test.ts`
+
+## Cause and repair
+
+The hosted unit log records seven failures in this label test file. The 7/9 local reproduction at the before SHA reached `lockLegacyTaskRow` with `Task not found`; one expected HTTP 500 also surfaced as 404. The controller/repository had moved label and task lookups to Drizzle `select` calls and identity reach predicates build nested selects. The fixture's eager promise-backed, FIFO select mock consumed rows while nested query builders were being constructed. It also still mocked the previous `findFirst` query and used the previous `insert(...).values(...)` chain.
+
+The test fixture now models a lazy thenable Drizzle query: only awaited selects consume queued rows. It queues the current label and target task for repository reads, mocks the current `INSERT ... SELECT ... ON CONFLICT ... RETURNING` chain, and supplies the follow-up task-label lookup results. Existing response, idempotency, conflict, and event assertions remain. No production source, authorization behavior, or security assertion changed.
+
+## Verification actually run
+
+- `pnpm --filter @taskdesk/api exec vitest run tests/api/label/assign-and-unassign-label.test.ts` — **1 file, 9 tests passed** at the final source.
+- `pnpm --filter @taskdesk/api exec tsc --noEmit -p tsconfig.tests.json` — passed (exit 0).
+- `pnpm exec biome check tests/api/label/assign-and-unassign-label.test.ts` — passed (1 file).
+- `git diff --check` — passed before commit.
+
+The initial 7-failure local reproduction and hosted 7-failure log remain retained as adverse evidence; they are not represented as successes. The earlier focused PostgreSQL 117/117 result does not cover these unit mocks and is not used as evidence here. No hosted job was rerun or cancelled. PostgreSQL run `38935367931` was still running at handoff; it was left untouched. No broad suite, build, browser, Docker, push, PR mutation, or review clearance is claimed.
+
+
+### Authentic report: label806-d95-unit-delta-ordinary-luna.md
+
+SHA-256: `9bded6187886f288568df3d47f25742146af78b1425debe32a6de3b79d8cf0c2`. Report bytes follow unchanged.
+
+# PR #806 bounded unit-test delta review
+
+- Reviewer role: fresh independent ordinary review of the fixture delta only
+- Candidate SHA: `d95f3b2ec524b9114da7ad2f28ad793f0090bfda`
+- Parent SHA: `a7765faaef1ad812398f77cf22c18f396efbeadc`
+- Scope: `tests/api/label/assign-and-unassign-label.test.ts`
+- Verdict: **BLOCK** — one test-oracle gap in fallback coverage
+
+## Checked
+
+Read repository `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, current status and decision log, the exact test diff, the relevant label controller/repository implementation, and the implementation report at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/label806-unit-repair-luna.md`.
+
+Ran only the affected API unit file:
+
+`pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts tests/api/label/assign-and-unassign-label.test.ts`
+
+Result: 1 file, 9 tests passed (Vitest 4.1.11).
+
+The lazy thenable fixture correctly defers queue consumption until awaited, and the current INSERT ... SELECT ... ON CONFLICT ... RETURNING mock shape aligns with the repository chain. The changed false-negative/404 fixtures now provide the correct initial label/task lookups. No other blocker found in the bounded delta.
+
+## Blocking finding
+
+The test `falls back to the existing task label when the workspace insert returns no row` queues `TASK_LABEL` for the fallback read, but discards `assignLabelToTask`'s return value and asserts only that `mockTxSelect` was called at least once. That generic call may be satisfied by any transaction select; it does not establish that the fallback row was selected/returned to the caller or that this successful fallback emits no duplicate assignment event.
+
+A regression where the fallback row is read but not used (for example returning `undefined`) would still pass this test. The adjacent empty-fallback test establishes the 500 path, but does not close the success-path result oracle. Assert the returned value equals `TASK_LABEL` and assert `mockPublishEvent` was not called; if desired, identify the fallback query specifically rather than relying on any select call.
+
+No fixes were made, per review assignment. No push, hosted job, build, database, browser, or broader suite was run.
+
+
+### Authentic report: label806-fallback-oracle-fix-luna.md
+
+SHA-256: `7046b61dc78efeb99b8fcfaf89a7bd484c00d92567d1e3e1e06b937b40ccc4aa`. Report bytes follow unchanged.
+
+# PR #806 fallback-result oracle correction
+
+- Worktree: `/Users/heinthura/.codex/worktrees/786-label-await-scope-repair-luna`
+- Before SHA: `d95f3b2ec524b9114da7ad2f28ad793f0090bfda`
+- After SHA: `19acc697e00930de0869109ed485e2e724aa6b7d`
+- Commit: `19acc697 test(api): assert label fallback result`
+- Changed file: `tests/api/label/assign-and-unassign-label.test.ts`
+- Scope: addressed the single fallback-result oracle finding in `label806-d95-unit-delta-ordinary-luna.md`.
+
+The successful fallback test now stores the controller result, asserts it equals `TASK_LABEL`, and asserts that no duplicate assignment event is published. Removed the generic `mockTxSelect` called assertion. No production source changed.
+
+## Raw verification evidence
+
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts tests/api/label/assign-and-unassign-label.test.ts` — exit 0; one file, 9 tests passed. Raw output (mode 0600): `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/label806-fallback-unit-vitest-luna.log`.
+- `pnpm exec biome check tests/api/label/assign-and-unassign-label.test.ts` — exit 0; one file checked, no fixes. Raw output (mode 0600): `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/label806-fallback-biome-luna.log`.
+- `git diff --check` — exit 0 before commit.
+
+No PostgreSQL, build, broad suite, hosted job, push, or PR mutation was run. The worktree is clean and two local commits ahead of origin. Independent review of this exact delta remains pending.
+
+
+### Authentic report: label806-19acc-unit-delta-ordinary-luna.md
+
+SHA-256: `cfa9277ba65844908aa033d6242d9c6039b4859bbd4067fe693819c0da01cd25`. Report bytes follow unchanged.
+
+# PR #806 fallback-oracle delta review
+
+- Reviewer role: fresh independent ordinary review of the exact repair delta; same independent context as the prior bounded review
+- Candidate SHA: `19acc697e00930de0869109ed485e2e724aa6b7d`
+- Parent SHA: `d95f3b2ec524b9114da7ad2f28ad793f0090bfda`
+- Scope: `tests/api/label/assign-and-unassign-label.test.ts`
+- Verdict: **CLEAR**
+
+## Review
+
+The sole delta now captures and asserts the controller result equals `TASK_LABEL`, and asserts that no assignment event is published on the conflict/fallback path. These assertions close the prior finding: the fallback row must be reflected in the returned value, while the duplicate insert does not emit a second event. The generic `mockTxSelect` call-count assertion has been removed. No new finding in this exact delta or the affected fallback test.
+
+The earlier bounded review at exact parent `d95f3b2ec524b9114da7ad2f28ad793f0090bfda` covered the test-fixture/query-shape delta and found this one oracle gap; its review report is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/label806-d95-unit-delta-ordinary-luna.md`. That review's focused run was 1 file / 9 tests passed. This review retains that unchanged coverage and does not claim a fresh review of the full implementation/source.
+
+## Evidence checked
+
+Read the exact commit diff and updated affected test, the authentic author report `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/label806-fallback-oracle-fix-luna.md`, and the raw focused Vitest and Biome logs referenced there. Vitest reports 1 file / 9 tests passed; Biome reports 1 file checked with no fixes. `git diff --check` across the exact delta passed. No test rerun, edits, runtime, build, PostgreSQL, browser, hosted job, or push was performed.
+
+
+### Authentic report: label806-19acc-security-61-sol.md
+
+SHA-256: `96636f7e32d8bb9b830a80a4441c18623688cc7665d8953ed39dfc228267c17a`. Report bytes follow unchanged.
+
+# PR806 bounded unit-fixture security confirmation
+
+**Model / role:** GPT-6.1 Sol, explicitly assigned fresh independent security context `/root/label806_19acc_security_sol`. Platform identity is GPT-6; no independently inspectable served-variant fingerprint is exposed. I did not author, direct, remediate or ordinarily review this candidate. No children used.
+**Reviewed head:** 19acc697e00930de0869109ed485e2e724aa6b7d
+**Comparison base:** a7765faaef1ad812398f77cf22c18f396efbeadc
+**Prior reviewed source:** 40fe67d7412400f41f91184e5fd67f5eee3a50cb
+**Verdict:** CLEAR for this bounded test-fixture/security confirmation. Blocking findings: none. Nonblocking findings: none.
+
+## Actual inspection
+
+Verified native HEAD and clean worktree, the two commits d95f3b2ec524b9114da7ad2f28ad793f0090bfda and 19acc697e00930de0869109ed485e2e724aa6b7d, and the complete publication-to-current diff. Exactly one file changes since publication: tests/api/label/assign-and-unassign-label.test.ts (55 insertions, 47 deletions). Relative to40fe, the only additional path is its own historical security-review note. No production, identity, permissions, SQL predicate, dependency, route, gate machinery or authority behavior changed. Diff whitespace check passed.
+
+Read all four required private reports fully: label806-unit-repair-luna.md, label806-d95-unit-delta-ordinary-luna.md, label806-fallback-oracle-fix-luna.md and label806-19acc-unit-delta-ordinary-luna.md. Read the focused raw fallback Vitest and Biome logs. These record native exit0, 1 file/9 tests passed and 1 file checked/no fixes respectively; these are author execution, not my execution. Retained the earlier seven failures and ordinary BLOCK as adverse history. The same independent ordinary context reviewed the repair delta and cleared the exact19acc head; it did not author the fix.
+
+Read the complete current affected test, assign controller and relevant insert/fallback repository implementation. The old eager FIFO select fixture consumed results on builder construction, including nested SQL reach builders. The lazy thenable consumes rows only on await, matching the distinction between embedded subqueries and materialized outer reads. INSERT SELECT conflict-returning now models id-only return and the separate scoped content fetch. Removal of obsolete findFirst mocks reflects actual current query construction. No test is skipped/focused; existing response, event, negative status, idempotency and conflict assertions remain. The corrected fallback test positively requires TASK_LABEL as the result and no duplicate assignment event. The empty fallback still asserts500 with no event, and deletion-before-transaction still asserts404/no write. There is no new bypass or weakening of an authorization assertion in this fixture delta.
+
+Read retained FULL e31 Sol report and40fe composition confirmation in docs/07-planning/security-reviews/query-ownership-labels-sla-calendar-580.md, including exact heads, independence, old S1 BLOCK resolution and explicit limits. The full e31 review covered the19-path implementation and resolved hidden-copy deletion content by taskId-only return/event metadata. The40fe independent composition check retained those source blobs and unchanged shared contracts. Current native diff establishes those production blobs remain untouched. Their original full scope and provenance are retained; this report does not pretend to repeat the complete implementation or accepted-main review.
+
+## Execution and limits
+
+Only read-only filesystem/Git inspection and diff whitespace checking were performed. No tests, runtime, PostgreSQL, Docker, browser, build, source/ref changes, push, PR changes or hosted jobs executed. This unique private report is the only persistent write, created O_EXCL with mode0600. Some broad read output was truncated; required private reports, current test and relevant source/security reports were read in bounded complete outputs.
+
+This confirmation does not supply exact-current-head hosted checks, image acceptance, merge authorization, global N1/checker closure, whole580 or stage/finalizer/release/SIT acceptance. Those remain normal conductor gates. Historical e31 PG117/117 remains attributed to that operator/source; the current unit9/9 is separately attributed author evidence. BROWSER VERIFICATION: BLOCKED — outside this read-only test-delta review. Any subsequent source delta needs its applicable review; an own-note publication must preserve this source target and authenticate these original report bytes.
+
+
+**Reviewed head:** `19acc697e00930de0869109ed485e2e724aa6b7d`
