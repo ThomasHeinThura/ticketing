@@ -2219,3 +2219,180 @@ I ran `git status --porcelain`, `git rev-parse HEAD`, `git diff c84df2..af2d812`
 Live `gh pr view 785` still reports PR head `d17d389721a38999c50eb98861b9560b8dd01cd2`, whose hosted PostgreSQL run failed **5 of 2,947 tests across 206 files** (2,942 passed), and whose current PR checks include failed PostgreSQL and review-template jobs. That result is the repair's input, not a result on `af2d812`. The repaired exact head needs publication to PR #785, real focused/full hosted PostgreSQL execution and all required current-head checks and recorded review before merge. No waiver or stage/source-runtime acceptance is implied by this verdict.
 
 
+
+
+## Canonical role reuse and isolated OIDC fixtures — 2026-10-16
+
+**Reviewed head:** `e9b169fcd19db369dcf4ae3e2356674ad3a8afd2`
+
+The last published d9ffe9eb full PostgreSQL run38836478088/job116766653137 failed one of2948tests across206files (2947passed): its new tampered-role case attempted a second globally unique canonical customer role. The previous five failing cases passed in that run; the full suite did not. Current fixture repairs validate and reuse the global built-in role, use coherent subject/account oracles and reset the token-validator implementation before every test. The retirement regression binds initial and denied attempts to the same principal and original grant. All production apps/packages bytes remain conserved from c84; accepted main d603 is included. Current source has retained five-file ordinary coverage, one strong current role-fixture ordinary delta and independent Sol clearance after two authentic blocked attempts. Seven raw records below include author handoffs and blocked versions; they are not seven approvals. Source clearance does not prove PostgreSQL execution; new exact-publication hosted CI remains pending. Image and #764 remain prerequisites. No role authority, schema, capability, provider activation or owner hold changes.
+
+Platform dispatch provenance: ordinary role selected `model=gpt-6-luna`, security role `model=gpt-6-sol`, fresh `fork_turns=none` contexts; serving-version introspection is unavailable and not fabricated. Root composed/published and is not an independent reviewer.
+
+### Record 1
+
+# Shared built-in customer-role fixture repair
+
+Reviewed source/candidate base: `d9ffe9ebe7b3c5dff06f7365ba081f02f5a53996`. Hosted job `116766653137` had 2,948 tests across 206 files: 2,947 passed and one failed in the OIDC JIT integration test. The sole new failure was the second customer fixture inserting another `(scope=organisation, workspace_id=NULL, key=customer)` role, violating the schema's unique `role_scope_workspace_key_unique` constraint. No raw SQL, parameters, or fixture payloads are reproduced here.
+
+Only `tests/api-integration/identity/oidc-jit-login.test.ts` changed. Its local `ensureCanonicalCustomerRole()` reuses the single exact global built-in customer role after validating scope, null workspace, key, rank, capabilities, `isSystem`, and `isEditable`. It throws on ambiguity or a noncanonical existing row and never repairs/overwrites a tampered role. The JIT test creates separate customer organisations, connections, creators, emails, and subjects while both connections reference the same global built-in role. It asserts both role IDs are shared.
+
+The new test preserves a real first-login positive for the target subject, deletes only its session, tampers the shared role, retries the same connection/subject, and verifies no new customer session/cookie for that exact identity. A second genuine customer session remains persisted as an unrelated-survival control; the test explicitly does not claim it remains usable after shared role tampering. No production uniqueness, auth behavior, migrations, or unrelated sessions are changed.
+
+Validation: `pnpm typecheck` passed (9 packages); scoped Biome passed; `git diff --check` passed. Local PostgreSQL, Docker, and browser were not run. The repaired hosted regression awaits the next runner and independent reviews.
+
+Committed locally as `0152e22b` (`test: reuse canonical customer role fixture`); worktree is clean and nothing was pushed.
+
+
+### Record 2
+
+# Ordinary review — shared canonical customer-role fixture delta
+
+**Verdict: CLEAR for the bounded fixture delta.** The added helper and revised OIDC fixtures address the hosted unique-role collision without mutating or disguising a noncanonical/tampered role. No new blocking or non-blocking findings.
+
+## Provenance
+
+- Role: fresh independent ordinary reviewer, context `/root/notification_pg_repair_ordinary_b`.
+- Model selector: GPT-6 Luna; runtime/version metadata beyond selector was not exposed.
+- Exact reviewed source HEAD: `d66831a1f9a175e3c1a9b850a0e0ad6205a74801`.
+- Fixture delta isolated against prior candidate `d9ffe9ebe7b3c5dff06f7365ba081f02f5a53996`; implementation commit reported by author: `0152e22b25b1e7eb34403285e72516a44e6cf8a4`.
+- HEAD is a merge of that candidate and accepted `main` (`780d603`); per assignment, only the OIDC fixture delta was reviewed. The accepted main imports are covered by the supplied conservation proof, not this review.
+- Worktree: `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`; clean. No files edited.
+
+## Review evidence
+
+- Inspected the full test delta from `d9ffe9ebe7b3c5dff06f7365ba081f02f5a53996` to the current source, the helper in context, the role uniqueness index, and the fixed OIDC test setup.
+- Confirmed the database unique index is on `(scope, COALESCE(workspace_id, ''), key)`, so multiple global organisation/customer rows with null workspace and key `customer` do conflict as reported.
+- `ensureCanonicalCustomerRole()` selects the single global organisation/customer role (limit 2), throws on ambiguity, validates the canonical role fields (scope, null workspace, key, rank, exact capabilities, system and noneditable flags), and only inserts the canonical row when absent. It does not update or repair a malformed row. The test then verifies both connections reuse the same role id.
+- The unrelated and target connections have distinct seeded organisations, creator identities/emails, and OIDC subjects. The unrelated customer is admitted before target setup; the target is admitted before tampering. The test establishes the target identity by exact connection and subject, deletes only that target user's session, mutates the shared role, and retries the same connection/subject. It checks the persisted identity association, validator invocation, missing portal cookie, and absence of a customer session for only the target user. It separately confirms the unrelated session row survives. The comment accurately limits this control to persistence and does not claim continued usability while the shared role is tampered.
+- No update to the role after tampering is present, so failure cannot be hidden by restoring or replacing the tampered state before the retry.
+
+## Validation and limits
+
+- `git diff --check d9ffe9ebe7b3c5dff06f7365ba081f02f5a53996 d66831a1f9a175e3c1a9b850a0e0ad6205a74801` — passed.
+- Author-recorded checks in the supplied repair note: `pnpm typecheck` (9 packages), scoped Biome, and `git diff --check` passed.
+- No local PostgreSQL integration run, hosted rerun, Docker, or browser was performed. The reported hosted failure was 1 of 2,948 tests across 206 files, with the other 2,947 passing; this review does not establish a runtime pass. A fresh exact-head hosted PostgreSQL result remains necessary.
+- This is a focused review of the shared-role fixture delta. It does not replace prior A/B review coverage of the five-test candidate, nor the separate required Sol pass for this security-scope test change.
+
+
+### Record 3
+
+# #785 shared global customer-role fixture — independent security review
+
+**Verdict: BLOCKED at exact source head `d66831a1f9a175e3c1a9b850a0e0ad6205a74801`.** The shared-role fixture matches the database's global uniqueness rule and does not repair a tampered role, but its new target-subject mock makes the positive-login oracle fail before the tampered-role denial can run. This candidate has no valid PostgreSQL regression proof yet.
+
+**Reviewed head:** `d66831a1f9a175e3c1a9b850a0e0ad6205a74801`  
+**Comparison base:** `d9ffe9ebe7b3c5dff06f7365ba081f02f5a53996` for the current fixture repair; `c84df2f56030c375bba4ac9b7af8832852bce2c1` and `af2d812a4569b21ca631abd732e1b7be9ee675e1` for retained source and five-test review coverage.  
+**Role and independence:** fresh `/root/notification_global_role_security_sol` context assigned a bounded full security review by `/root`. I did not author, direct, remediate or ordinarily review this candidate. I made no source or Git changes.  
+**Model provenance:** parent dispatch selected GPT-6 Sol. This context has no independent runtime/version attestation beyond that selector; the selector is provenance, not a measured model claim.  
+**Worktree:** `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, initially clean at the reviewed head. PR #785's published head was still `d9ffe9ebe7b3c5dff06f7365ba081f02f5a53996` when checked; the local repair is not a published exact-head CI result.
+
+## Blocking finding
+
+`tests/api-integration/identity/oidc-jit-login.test.ts:394-411` changes the target token mock to return `oid: attemptedSubject` (`jit-tampered-customer-subject`), then calls `expectJitIdentity()` immediately after the first successful target login. That helper still requires `subject: SUBJECT` and `identityAccountId(ISSUER, SUBJECT)` at lines 284-305, where `SUBJECT` is `jit-first-login-subject`. The successful login necessarily persists the new target subject. Thus the assertion at line 286 fails before the test removes the target session, tampers the role, or asserts the retry denial at lines 423-475. The negative security regression is unexecuted by this test. This is a deterministic source-level finding; I did not run PostgreSQL and do not claim an observed runner failure for the repaired head. The expected remedy is to make the positive helper assert the actual subject of each fixture while keeping the distinct target subject and exact retry binding; the author must choose and implement it, then obtain independent review of the changed head.
+
+## Confirmed bounds
+
+- The actual index in `apps/api/src/database/schema.ts:2149-2153` and migration `0052` is unique on `(scope, COALESCE(workspace_id, ''), key)`. Two null-workspace `organisation/customer` roles conflict. The new `ensureCanonicalCustomerRole()` selects that exact global key, checks at most two matches, validates scope, null workspace, key, rank, exact capability array, system and noneditable flags, and inserts only when absent. It does not overwrite a noncanonical row. Both connections explicitly assert the same role ID. The shared role means the unrelated session can only be claimed to persist after tampering, not to retain usable authority; the test comment correctly limits this claim.
+- The two fixtures use distinct organisation IDs, creator IDs/emails and connection IDs. The unrelated login uses the original subject; the target mock supplies a distinct subject. After the broken assertion, the intended path deletes only the target user's session, retains the exact `(connection, subject)` identity, checks no new target cookie/session, and checks that the unrelated session row remains. These are source intentions, not runtime results at this head.
+- `git diff c84df2..d66831a1 -- apps packages` is empty; no production notification, role, authentication or migration source changed since the prior full source-security review. `git diff 0152e22b..d66831a1 -- tests/api-integration/identity/oidc-jit-login.test.ts` is empty. The three other imported files (`.gitleaksignore`, decision log, #780 review note) are byte-equal to accepted main `d603c068` by direct diff. The supplied conservation JSON agrees. Prior full source and five-test Sol clearances remain evidence for their unchanged scopes, not approval of this broken added fixture.
+- The independent ordinary fixture review recorded CLEAR, but did not identify the helper's fixed-subject assertion. Its verdict does not resolve this blocking security-review finding.
+
+## Checks and limits
+
+I read AGENTS.md, active mission, agent workflow, CLAUDE.md, the RBAC/data-model/identity contracts, the entire changed fixture and diff, actual role index, prior Sol notes, ordinary fixture review, and central conservation record. I ran `git rev-parse HEAD`, `git show 0152e22b`, scoped `git diff`/`rg`/`sed` inspection, `gh pr list --state open`, and the source/import equality commands above. `git diff --check d9ffe9eb d66831a1` reported a trailing blank line in the byte-for-byte accepted-main #780 review note; this does not affect the fixture finding. No local or hosted PostgreSQL, Docker, browser, provider I/O, SIT, typecheck or unit test was run in this context. The previously published `d9ffe9eb` PostgreSQL result failed one of 2,948 tests, at the old duplicate-role insert; it does not prove this repair passes. No waiver, merge authorization or runtime acceptance is implied.
+
+
+### Record 4
+
+# Coherent OIDC expected-principal oracle
+
+Base: `d66831a1f9a175e3c1a9b850a0e0ad6205a74801`; the fresh Sol review found the target custom subject (`jit-tampered-customer-subject`) was minted by the token mock while `expectJitIdentity` still hardcoded `SUBJECT`, so the positive login assertion failed before the tampered-role retry ran.
+
+Only `tests/api-integration/identity/oidc-jit-login.test.ts` changed. `expectJitIdentity` now accepts an `expectedSubject` (defaulting to the standard subject for existing callers) and uses that one value for both persisted `externalIdentity.subject` and `identityAccountId(ISSUER, expectedSubject)`. The tampered-role test passes its same `attemptedSubject` variable both to the mocked token provider and this helper; subsequent identity/session queries use it too. Thus the control proves the intended distinct subject successfully provisions the intended connection before deleting its user session and exercising the denied retry.
+
+The validated global built-in role helper and all repeated fixture invariants are unchanged. No production source changed.
+
+Validation: scoped `pnpm exec biome check --write tests/api-integration/identity/oidc-jit-login.test.ts` passed; `pnpm typecheck` passed (9 packages); `git diff --check` passed. No PostgreSQL, Docker, or browser run. The integration test still awaits the hosted PostgreSQL regression run and independent Sol delta review.
+
+Committed locally as `7135900e3f4a95c7466857783e3ff2c9590cb1ac` (`test: align OIDC identity oracle with fixture subject`). Worktree is clean; no push.
+
+
+### Record 5
+
+# #785 shared customer-role and OIDC subject fixture — independent security delta review
+
+**Verdict: BLOCKED at exact head `7135900e3f4a95c7466857783e3ff2c9590cb1ac`.** The prior fixed-subject positive-oracle blocker is repaired, and the global customer-role fixture still follows the actual unique index. One test-isolation defect remains: its custom token implementation survives into the following test and changes which identity that test creates, so the admission-failure grant-retirement oracle cannot exercise the intended existing principal.
+
+**Reviewed head:** `7135900e3f4a95c7466857783e3ff2c9590cb1ac`  
+**Comparison base:** `d66831a1f9a175e3c1a9b850a0e0ad6205a74801` for this 12-line repair; `d9ffe9ebe7b3c5dff06f7365ba081f02f5a53996` for the shared-role fixture; `c84df2f56030c375bba4ac9b7af8832852bce2c1` and `af2d812a4569b21ca631abd732e1b7be9ee675e1` for earlier unchanged implementation and five-test review scopes.  
+**Role and independence:** `/root/notification_global_role_security_sol`, the independent reviewer who reported the earlier `d66831a1` blocker. I did not author, implement, direct or remediate the new patch; the prior report identified the mismatched invariant. No source, Git, PR or runtime state was changed in this review.  
+**Model provenance:** parent dispatch selected GPT-6 Sol. Runtime/version metadata beyond the selector is not exposed to this context, so this is selector provenance rather than an independently measured model attestation.  
+**Worktree:** `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, clean at the reviewed head. The candidate remained local/unpushed as handed off; no exact-head hosted result is claimed.
+
+## Blocking finding: a custom OIDC principal leaks into the next test
+
+In `tests/api-integration/identity/oidc-jit-login.test.ts`, the tampered-customer test changes the module mock of `validateEntraIdToken` at lines 395-409 to emit `attemptedSubject = "jit-tampered-customer-subject"`. It clears only call history at line 447. The file's `beforeEach` at line 73 calls `vi.clearAllMocks()`, which likewise clears call state but leaves the mock implementation. The common integration setup's `afterEach` calls `vi.restoreAllMocks()`, but the imported validator is a module-level `vi.fn(...)` rather than a `vi.spyOn` spy. In installed Vitest 4.1.11, `restoreAllMocks()` traverses only spy restorers, while `clearAllMocks()` calls `mockClear()` on registered mocks; neither resets this `vi.fn` to its original implementation. A direct no-PostgreSQL probe of the installed `@vitest/spy` returned `override` after both calls.
+
+The immediately following `"denies mixed native/projected view admission and retires the OIDC grant on failed admission"` test (line 491 onward) makes its first `signIn` before overriding the validator. That first login therefore creates/grants the prior test's `attemptedSubject`. Its later denial mock at lines 578-594 emits the original `SUBJECT = "jit-first-login-subject"` with `roles: []`. Production `signInAdmittedIdentity` resolves `existing` by exact connection, issuer and subject (`apps/api/src/identity/oidc-login.ts:590-603`) and retires grants on admission failure only when that exact identity exists (`:617-645`). The denial here targets an identity that the test did not initially create, so its expected `revocationReason: "admission_failed"`/`revokedAt` on the initial person's grant is not supported by the exercised path. Subsequent SCIM cases may also inherit mock state unless a later override happens to restore equivalent default claims. The violated invariant is per-test restoration of the baseline validator claims before each first login; this report does not prescribe implementation mechanics.
+
+## Cleared parts of the bounded delta
+
+- The new `expectedSubject` argument defaults to `SUBJECT` for earlier helper callers and is used for both `externalIdentity.subject` and `identityAccountId(ISSUER, expectedSubject)`. The tampered-customer positive login passes the same `attemptedSubject` used by its token mock and exact later identity query. This resolves the earlier source-level mismatch; the prior BLOCKED report remains unchanged as historical evidence.
+- The role seed selects the one `(organisation, null workspace, customer)` key, validates rank, exact capabilities, system/noneditable flags and scope, and throws on ambiguity/noncanonical state without repair. The schema's `role_scope_workspace_key_unique` index uses `COALESCE(workspace_id, '')`, so the two customer connections must reuse that role. They keep separate organisations, creators, emails, connections and subjects. The intended target session removal and role tamper bind the exact target identity; unrelated session persistence is claimed only as persistence, not usable authority after shared-role corruption.
+- `git diff d66831a1..7135900e` touches only this test file. `git diff c84df2..7135900e -- apps packages` and `git diff d66831a1..7135900e -- apps packages` are empty. Previous source-security and five-file test reviews retain their original coverage but do not clear this new fixture behavior.
+
+## Checks and limits
+
+I inspected the complete changed helper/test, every `validateEntraIdToken` mock mutation in this file, both test hooks and the Vitest integration config, the installed `@vitest/spy` implementation, the exact production identity lookup/admission-failure branch, the actual role unique index, the prior BLOCKED report and the author's repair note. `git diff --check d66831a1 7135900e` passed. A direct Node probe against installed `@vitest/spy` demonstrated that a `vi.fn` override remains after `restoreAllMocks()` and `clearAllMocks()`. I ran no PostgreSQL, Docker, browser, provider I/O, SIT, typecheck or full Vitest test. This is a deterministic source-level failure path, not an observed hosted test result. The previous published `d9ffe9eb` PostgreSQL run failed one of 2,948 tests for the duplicate-role fixture; it is not evidence on this head. No waiver, merge authorization or runtime acceptance is implied.
+
+
+### Record 6
+
+# OIDC validator fixture isolation repair
+
+Base: `7135900e3f4a95c7466857783e3ff2c9590cb1ac`. The Sol report `notification-global-role-subject-security-sol.md` found that a per-test custom `vi.fn` implementation survived `clearAllMocks()` and setup `restoreAllMocks()`, leaking the tampered test's target principal into the following admission-retirement test.
+
+Only `tests/api-integration/identity/oidc-jit-login.test.ts` changed; canonical global-role reuse and all production files remain untouched.
+
+## Isolation and principal invariants
+
+- `resetEntraTokenValidatorMock()` installs the file's canonical subject/email/app-role implementation from the file-level `beforeEach` after `vi.clearAllMocks()`. This resets the implementation for every test while allowing each test's later explicit `mockImplementation` overrides to control that test.
+- Added a focused fixture-isolation regression after the custom-subject test. It directly asserts the next test's baseline validator principal has the canonical subject/email and `TaskDesk.User` claim. It uses existing Vitest mocking only and no new dependency.
+- Audited all `validateEntraIdToken` mutation sites in this file: module mock default, per-test baseline reset, target custom-subject mock and intra-test call-history clear, plus two explicit admission-retention mocks (deny claims then restored claims). No `mockImplementationOnce` exists. The `mockClear()` in the target test still only clears call history immediately before its retry; the next test boundary explicitly restores implementation.
+- Admission-retention test now binds one `connectionId` and the canonical `SUBJECT`/account identity through initial success, denial, and restoration. It asserts `expectJitIdentity` before denial, which checks exact persisted subject and account ID; after denial it rereads that same connection identity/account and asserts the original `jit_default` grant was retired with `admission_failed`. This prevents the target subject leaking into the test from silently defeating the intended existing-principal revocation path.
+- The repeated customer connection fixtures continue sharing one validated global built-in role; distinct organization, creator, email, connection, and subject controls remain intact. The unrelated customer session is still asserted to persist only, without claiming current authority after the shared role is tampered.
+
+## Validation and limits
+
+- Scoped `pnpm exec biome check tests/api-integration/identity/oidc-jit-login.test.ts` — passed, 1 file.
+- `pnpm typecheck` — passed, 9 packages.
+- `git diff --check` — passed.
+- No PostgreSQL integration test, hosted runner, Docker, or browser was run. Runtime execution of the regression and hosted test counts remain pending the parent runner.
+
+Committed locally as `e9b169fc` (`test: reset OIDC fixture principal between tests`). Worktree is clean; no push.
+
+
+### Record 7
+
+# #785 OIDC fixture isolation repair — independent security delta review
+
+**Verdict: CLEAR for the bounded source-security delta at exact head `e9b169fcd19db369dcf4ae3e2356674ad3a8afd2`.** I found no remaining blocking or non-blocking finding in the reviewed OIDC fixture. The earlier fixed-subject and cross-test mock-leakage blockers are resolved in source. This is not a PostgreSQL test pass, exact-head CI result, merge authorization or runtime acceptance.
+
+**Reviewed head:** `e9b169fcd19db369dcf4ae3e2356674ad3a8afd2`  
+**Comparison base:** `7135900e3f4a95c7466857783e3ff2c9590cb1ac` for the current repair; `d9ffe9ebe7b3c5dff06f7365ba081f02f5a53996` for the published failing fixture; `c84df2f56030c375bba4ac9b7af8832852bce2c1` and `af2d812a4569b21ca631abd732e1b7be9ee675e1` for the retained production and five-test review scopes.  
+**Role and independence:** `/root/notification_global_role_security_sol`, an independent security-review context. I reported two earlier candidate blockers and reviewed this author's later delta; I did not author, implement, direct or remediate any of these commits. The prior blocked reports remain unchanged.  
+**Model provenance:** parent dispatch selected GPT-6 Sol. The context exposes no independent runtime/version attestation beyond the selector, so I record the selector rather than claiming a measured model identity.  
+**Worktree and publication:** `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, clean at this local head. At review time PR #785 still pointed to `d9ffe9ebe7b3c5dff06f7365ba081f02f5a53996` with a failed PostgreSQL check and review-template check; this local head had no hosted result.
+
+## Assessment
+
+- **Per-test validator isolation.** The module mock has baseline subject `SUBJECT`, email, `acct: 0` and `TaskDesk.User` claims. The file-level `beforeEach` now reinstalls that same baseline implementation after clearing call history, before any login. This closes the gap left by `tests/api-integration/setup.ts`'s `afterEach vi.restoreAllMocks()`: the validator is a module-level `vi.fn`, and installed Vitest 4.1.11 does not restore that implementation through spy restoration. The added adjacent regression directly checks the baseline subject, email and app role after the preceding custom-subject test. I audited all three in-test validator overrides: the tampered customer keeps its distinct subject through positive admission, call-history clear and same-subject retry; the admission-retention test uses the baseline principal for initial admission, then overrides only roles to deny and restores baseline-equivalent claims for its final login. There is no `mockImplementationOnce` or unaccounted validator mutation in this file. Every later test receives the baseline again through `beforeEach`.
+- **Non-vacuous principal and grant oracle.** `expectJitIdentity` uses one expected subject for both persisted external identity and account ID. The tampered customer test binds its target by exact connection plus distinct subject, confirms successful first admission and a real target session, deletes only that user's session, corrupts the shared role and retries the same connection/subject. It checks an identity-error redirect, validator invocation, no new target portal cookie/session, and persistence of an unrelated customer's session row. It does not claim the unrelated session retains usable authority under the corrupted global role.
+- **Admission-retention successor.** Before denial, this test now calls `expectJitIdentity` to establish the canonical `SUBJECT`, account ID, default grant, membership and session on one `connectionId`. Its denial mock keeps that same subject and removes the required app role. Production `signInAdmittedIdentity` resolves the existing identity by exact connection, issuer and subject, and retires that identity's OIDC grants on admission failure. The test rereads the same connection identity after denial, checks stable ID/user/issuer/subject and account ID, and asserts its original person's `jit_default` grant has `admission_failed` revocation. The later restoration mock uses the same principal and required role. This closes the previous cross-test false-principal path.
+- **Global customer role and conservation.** The role fixture reuses one exact `(organisation, null workspace, customer)` row under the real `role_scope_workspace_key_unique` index, validates rank/capabilities/system/noneditable fields and throws on ambiguity or noncanonical state without repair. Distinct customer organisations, creators, emails, connections and subjects remain. The current delta changes only `tests/api-integration/identity/oidc-jit-login.test.ts`; `apps/**` and `packages/**` are byte-unchanged from the earlier full source-security review at `c84df2`. The three other intervening imports remain byte-equal to accepted main `d603c068`. The prior strong ordinary fixture review and earlier five-test ordinary/Sol review scopes remain separate evidence; this verdict covers the later structural fixture delta only.
+
+## Checks and limits
+
+I read the complete 12-test OIDC file, its current diff, both hook layers, the Vitest integration config, the installed mock behavior, the production exact-subject admission branch, the schema unique index, the relevant RBAC and identity contracts, the two previous blocked reports and the author's repair handoff. I ran `git rev-parse HEAD`, `git status --porcelain` (clean), `git diff --name-status 7135900e..e9b169fc` (one test file), `git diff --exit-code c84df2..e9b169fc -- apps packages` (empty), accepted-main import equality checks, `git merge-base --is-ancestor c84df2 e9b169fc` (passed), and `git diff --check 7135900e e9b169fc` (passed). The author reports scoped Biome (one file) and `pnpm typecheck` (nine packages) passed; those are not reruns in this context. **Zero PostgreSQL tests were run on this head here**, despite 12 cases being defined in the file. I ran no Docker, browser, provider I/O or SIT. The old published `d9ffe9eb` PostgreSQL run passed 2,947 of 2,948 tests across 206 files and failed the duplicate-role setup; it cannot clear `e9b169fc`. The conductor still needs authentic publication and green required checks, including full hosted PostgreSQL on the exact published SHA, before any merge or acceptance claim. No gate is waived.
+
