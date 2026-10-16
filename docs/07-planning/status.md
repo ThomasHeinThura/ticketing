@@ -1,3 +1,13 @@
+## Recovered task-history slice reaches full security review — 2026-10-16 21:06 UTC
+
+**Blocked first:** #810 current required calibration failure, #807/#798 performance findings, Carrier contrast provenance and historical performance findings remain held. #809 full PostgreSQL is still pending; its current required G11/browser/image checks have passed. Accepted main remains `c022915a8768b96b460c798feafafd7d48214d5c`.
+
+**#773 current source** `d7f628fa89cedc25d610f93c5bd49ce6ae9c2df9` changes only one integration fixture after880f: two real activity POSTs remain, exact distinct returned IDs receive fixed persisted timestamps, and newest-first/content/eventData assertions remain. This removes the15ms sleep identified independently by ordinary A and full40path C. Strong independent ordinary A clears the exact one-file delta; three ordinary contexts retain their disclosed inherited/full/delta coverage. Root actual one-file PostgreSQL passes10/10/native0/7.756seconds; raw9945bytes SHA256c502cf8759e11986fc603e16e70e0dce92a8ac63f954f48cf617deafb4e338cb. Exact owned cleanup returns23containers109volumes7networks unchanged. Prior880f4files61/61 and all adverse earlier runs remain separately source-bound. Fresh full independent GPT-6.1 Sol security review of all40currentpaths is running. No publication, dependency acceptance or whole580 claim.
+
+**Carrier next bounded source repair** addresses the nested boolean guard in class expressions, which the current validator incorrectly traverses as a class-output arm. Only checker/test edits are authorized: retain painted and empty branches, reject unknown actual outputs, test the generic mechanism, then one fresh pure source inventory. No metadata edit, component/route allowlist, G3/build, threshold change or performance rerun. Remaining helper stored-ReactNode paths and Search/Alert/Form/Shortcut proof remain future work.
+
+Final signed combined artifact, exact-digest laptop SIT, nonempty-attachment consistent backup/usable isolated restore and independent final audit remain outstanding. Primary dirty source and all owner holds remain preserved.
+
 ## Current exact-head verification — 2026-10-16 21:00 UTC
 
 **Blocked first:** #810 current publication `daa6f6cc196b91b2d6f069f750b0785784d303e0` still fails required G11 before budgets: throttled calibration factor1.752 exceeds1.75. Its full PostgreSQL now passes222files3274tests/5tasks; raw7242065bytes SHA25699f7ea4778aa4513efb1d3d022e82daae000e04194e4c0cf255bbaf5bea3408e. No factor-bound rerun, final-pass body or merge. #807 assignment200.43141014024977ms, #798 state270.8ms and Carrier historical529.7ms render/33.4ms drag remain held.
