@@ -1,3 +1,7 @@
+## Attachment completion repository remains blocked — 2026-10-16 14:29 UTC
+
+Fresh full independent Sol review of #799 exact `42f10eaa5de6426dc03dc47ec4b88e24768f4cc3` is **BLOCKED** by one grouped repository-contract defect: `findSubmissionCompletionAttachment` returns full attachment content using supplied parent IDs without correlating persisted submission requester/workspace and accepted exact work-item linkage. Controller locking protects the exposed HTTP path; no HTTP exploit is claimed. The three ordinary clearances and focused92/92 pass retain their actual scope, and do not override this security blocker. The author is assigned one structural correction with direct repository positive/adverse regressions and one conditional focused PG run; no corrected source or new result is claimed here. Remote799 remains its old draft. Other queue facts and release/SIT/recovery boundaries in the preceding checkpoint are unchanged at this cutoff.
+
 ## Protected acceptance and scoped-review checkpoint — 2026-10-16 14:28 UTC
 
 **Blocked first:** Carrier #791 retains its required 529.7 ms render failure against `<500 ms` and historical 33.4/33.4/33.4 ms drag failure against `<20 ms`. #798 retains its required task-state normalized median 270.8 ms failure against `<200 ms`. Existing diagnostic captures remain terminal and provide no product hotspot or performance disposition. No unchanged rerun, threshold relaxation, TID-join relaxation, negative-interval normalization or retired #794 reactivation is authorized by this checkpoint.
