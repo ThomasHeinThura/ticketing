@@ -60,6 +60,7 @@ export { PROJECT_CREATOR_ORIGIN, PROJECT_LEAD_ROLE_KEY };
  * removed from the workspace or their account is erased (`revokeProjectCreatorGrantsForMember`)
  * and when the project is deleted (`revokeProjectCreatorGrantsForProject`). A workspace delete
  * removes them with every other membership row (`deleteWorkspaceRoleDependents`, #732).
+ * Lifecycle repository reads validate project ids against the supplied workspace id.
  *
  * LOCK ORDER matches `workspace-admin-reach.ts`: person row `FOR UPDATE` first, then grant
  * rows, audit chain last.

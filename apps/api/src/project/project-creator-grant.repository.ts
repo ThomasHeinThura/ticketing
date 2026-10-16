@@ -144,7 +144,18 @@ function creatorGrantPredicate(
 ) {
   const scopePredicate =
     filter.kind === "project"
-      ? eq(schema.membershipGrantTable.scopeId, filter.projectId)
+      ? inArray(
+          schema.membershipGrantTable.scopeId,
+          executor
+            .select({ id: schema.projectTable.id })
+            .from(schema.projectTable)
+            .where(
+              and(
+                eq(schema.projectTable.id, filter.projectId),
+                eq(schema.projectTable.workspaceId, filter.workspaceId),
+              ),
+            ),
+        )
       : inArray(
           schema.membershipGrantTable.scopeId,
           executor

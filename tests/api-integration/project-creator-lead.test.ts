@@ -660,6 +660,12 @@ describe("a project's creator holds a project-lead membership", () => {
     const doomed = await createProject(world, manager);
     const kept = await createProject(world, manager);
     const personId = await personIdOf(manager.user.id);
+    expect(
+      await db.transaction((tx) =>
+        revokeProjectCreatorGrantsForProject(tx, randomUUID(), doomed.id),
+      ),
+    ).toBe(0);
+    expect((await creatorGrants(personId, doomed.id))[0]?.revokedAt).toBeNull();
     const deleted = await call(
       world.app,
       world.owner.cookie,
