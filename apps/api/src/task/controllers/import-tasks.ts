@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
@@ -6,14 +7,18 @@ import {
   filterAssignableUsers,
 } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
-import { lockProjectAndAssertLiveForTaskNumber } from "../assert-task-project-live";
-import { findColumnBySlug, findProjectById, insertTask } from "../repository";
+import { lockProjectAndAssertLiveForTaskNumberForIdentity } from "../assert-task-project-live";
+import {
+  findColumnBySlugForIdentity,
+  findProjectById,
+  insertTask,
+} from "../repository";
 import {
   coercePriority,
   coerceStatus,
   getValidTaskStatuses,
 } from "../validate-task-fields";
-import { claimTaskNumber } from "./claim-task-numbers";
+import { claimTaskNumberForIdentity } from "./claim-task-numbers";
 
 export type ImportTask = {
   title: string;
@@ -26,17 +31,19 @@ export type ImportTask = {
 };
 
 async function importTasks(
+  identity: ResolvedIdentity,
   projectId: string,
   tasksToImport: ImportTask[],
   currentUserId?: string,
 ) {
   const project = await db.transaction(async (tx) => {
-    await lockProjectAndAssertLiveForTaskNumber(
+    await lockProjectAndAssertLiveForTaskNumberForIdentity(
       tx,
       projectId,
+      identity,
       "Project not found",
     );
-    const liveProject = await findProjectById(tx, projectId);
+    const liveProject = await findProjectById(identity, tx, projectId);
 
     if (!liveProject) {
       throw new HTTPException(404, { message: "Project not found" });
@@ -54,9 +61,10 @@ async function importTasks(
   ];
   if (assigneeIds.some((assigneeId) => assigneeId.includes("\u0000"))) {
     await db.transaction(async (tx) => {
-      await lockProjectAndAssertLiveForTaskNumber(
+      await lockProjectAndAssertLiveForTaskNumberForIdentity(
         tx,
         projectId,
+        identity,
         "Project not found",
       );
       for (const assigneeId of assigneeIds) {
@@ -98,12 +106,18 @@ async function importTasks(
       );
       const warnings = [statusWarning, priorityWarning].filter(Boolean);
 
-      const column = await findColumnBySlug(db, projectId, status);
+      const column = await findColumnBySlugForIdentity(
+        identity,
+        db,
+        projectId,
+        status,
+      );
 
       const createdTask = await db.transaction(async (tx) => {
-        await lockProjectAndAssertLiveForTaskNumber(
+        await lockProjectAndAssertLiveForTaskNumberForIdentity(
           tx,
           projectId,
+          identity,
           "Project not found",
         );
         if (assigneeId) {
@@ -113,9 +127,13 @@ async function importTasks(
             tx,
           );
         }
-        const taskNumber = await claimTaskNumber(projectId, tx);
+        const taskNumber = await claimTaskNumberForIdentity(
+          identity,
+          projectId,
+          tx,
+        );
 
-        const task = await insertTask(tx, {
+        const task = await insertTask(identity, tx, {
           projectId,
           userId: assigneeId,
           title: taskData.title,

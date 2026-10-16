@@ -1,10 +1,11 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import type { Executor } from "../../database/executor";
 import { publishEvent } from "../../events";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { assertProjectStillLive } from "../../work-item/assert-work-item-live";
-import { lockLegacyTaskRow } from "../assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
 import {
   findLiveUnarchivedProjectInWorkspace,
   findMaxTaskPositionInStatusAndColumn,
@@ -16,7 +17,7 @@ import {
   reassignTaskAssetsToProject,
   updateTaskRow,
 } from "../repository";
-import { claimTaskNumber } from "./claim-task-numbers";
+import { claimTaskNumberForIdentity } from "./claim-task-numbers";
 
 type DbOrTx = Executor;
 
@@ -28,12 +29,14 @@ function isSameProjectMove(
 }
 
 async function resolveDestinationStatus(
+  identity: ResolvedIdentity,
   dbOrTx: DbOrTx,
   destinationProjectId: string,
   currentStatus: string,
   requestedStatus?: string,
 ) {
   const destinationColumns = await listColumnsForMove(
+    identity,
     dbOrTx,
     destinationProjectId,
   );
@@ -64,12 +67,14 @@ async function resolveDestinationStatus(
 }
 
 async function getNextTaskPosition(
+  identity: ResolvedIdentity,
   dbOrTx: DbOrTx,
   projectId: string,
   status: string,
   columnId: string,
 ) {
   const maxPositionResult = await findMaxTaskPositionInStatusAndColumn(
+    identity,
     dbOrTx,
     projectId,
     status,
@@ -80,11 +85,13 @@ async function getNextTaskPosition(
 }
 
 async function moveTask({
+  identity,
   taskId,
   destinationProjectId,
   destinationStatus,
   currentUserId,
 }: {
+  identity: ResolvedIdentity;
   taskId: string;
   destinationProjectId: string;
   destinationStatus?: string;
@@ -95,7 +102,11 @@ async function moveTask({
   // reached a raw `eq(projectTable.id, destinationProjectId)`-shaped query below
   // unvalidated and 500'd, the same class #281 fixed for path/query ids.
   const moveResult = await db.transaction(async (tx) => {
-    const lockedTask = await lockLegacyTaskRow(tx, taskId);
+    const lockedTask = await lockTaskAndAssertProjectLiveForIdentity(
+      tx,
+      taskId,
+      identity,
+    );
     // Malformed destinations cannot be queried safely, but their validation still
     // follows an authoritative source liveness lock. Valid destinations retain the
     // existing source preflight and sorted-lock sequence below.
@@ -107,6 +118,7 @@ async function moveTask({
     // Reject frozen sources before touching a request-selected destination id.
     // These reads only establish reach; sorted row locks below recheck both rows.
     const sourcePreflight = await findProjectFreezeState(
+      identity,
       tx,
       lockedTask.projectId,
     );
@@ -125,6 +137,7 @@ async function moveTask({
     }
 
     const destinationPreflight = await findLiveUnarchivedProjectInWorkspace(
+      identity,
       tx,
       destinationProjectId,
       sourcePreflight.workspaceId,
@@ -142,10 +155,17 @@ async function moveTask({
       ...new Set([lockedTask.projectId, destinationProjectId]),
     ].sort()) {
       const isDestination = projectId === destinationProjectId;
-      const liveProject = await lockLiveProjectForMove(tx, projectId, {
-        mode: isDestination ? "update" : "share",
-        ...(isDestination ? { workspaceId: sourcePreflight.workspaceId } : {}),
-      });
+      const liveProject = await lockLiveProjectForMove(
+        identity,
+        tx,
+        projectId,
+        {
+          mode: isDestination ? "update" : "share",
+          ...(isDestination
+            ? { workspaceId: sourcePreflight.workspaceId }
+            : {}),
+        },
+      );
       lockedProjectLiveness.set(projectId, liveProject !== undefined);
     }
     if (!lockedProjectLiveness.get(lockedTask.projectId)) {
@@ -155,7 +175,11 @@ async function moveTask({
       throw new HTTPException(404, { message: "Project not found" });
     }
 
-    const sourceProject = await findProjectIdentity(tx, lockedTask.projectId);
+    const sourceProject = await findProjectIdentity(
+      identity,
+      tx,
+      lockedTask.projectId,
+    );
     if (!sourceProject) {
       throw new HTTPException(404, { message: "Project not found" });
     }
@@ -163,6 +187,7 @@ async function moveTask({
     // S2 (review of PR #307): scope the destination lookup to the source's
     // current workspace so foreign and missing project ids remain indistinct.
     const destinationProject = await findNotDeletedProjectInWorkspace(
+      identity,
       tx,
       destinationProjectId,
       sourceProject.workspaceId,
@@ -172,14 +197,16 @@ async function moveTask({
     }
 
     const resolvedColumn = await resolveDestinationStatus(
+      identity,
       tx,
       destinationProjectId,
       lockedTask.status,
       destinationStatus,
     );
     const [nextTaskNumber, nextPosition] = await Promise.all([
-      claimTaskNumber(destinationProjectId, tx),
+      claimTaskNumberForIdentity(identity, destinationProjectId, tx),
       getNextTaskPosition(
+        identity,
         tx,
         destinationProjectId,
         resolvedColumn.slug,
@@ -187,7 +214,7 @@ async function moveTask({
       ),
     ]);
 
-    const updatedTask = await updateTaskRow(tx, taskId, {
+    const updatedTask = await updateTaskRow(identity, tx, taskId, {
       projectId: destinationProjectId,
       status: resolvedColumn.slug,
       columnId: resolvedColumn.id,
@@ -201,7 +228,12 @@ async function moveTask({
       });
     }
 
-    await reassignTaskAssetsToProject(tx, taskId, destinationProjectId);
+    await reassignTaskAssetsToProject(
+      identity,
+      tx,
+      taskId,
+      destinationProjectId,
+    );
 
     return {
       movedTask: updatedTask,

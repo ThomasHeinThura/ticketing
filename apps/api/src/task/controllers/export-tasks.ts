@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import {
   findLiveProject,
@@ -5,8 +6,8 @@ import {
   listProjectTasksForExport,
 } from "../repository";
 
-async function exportTasks(projectId: string) {
-  const project = await findLiveProject(projectId);
+async function exportTasks(identity: ResolvedIdentity, projectId: string) {
+  const project = await findLiveProject(identity, projectId);
 
   if (!project) {
     throw new HTTPException(404, {
@@ -14,12 +15,12 @@ async function exportTasks(projectId: string) {
     });
   }
 
-  const tasks = await listProjectTasksForExport(projectId);
+  const tasks = await listProjectTasksForExport(identity, projectId);
 
   const taskIds = tasks.map((task) => task.id);
 
   const labelsData =
-    taskIds.length > 0 ? await listLabelsForTasks(taskIds) : [];
+    taskIds.length > 0 ? await listLabelsForTasks(identity, taskIds) : [];
 
   const taskLabelsMap = new Map<
     string,

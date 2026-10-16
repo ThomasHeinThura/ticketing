@@ -1,24 +1,36 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
-import { findColumnBySlug, updateTaskRow } from "../repository";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
+import { findColumnBySlugForIdentity, updateTaskRow } from "../repository";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 async function updateTaskStatus({
+  identity,
   id,
   status,
   currentUserId,
 }: {
+  identity: ResolvedIdentity;
   id: string;
   status: string;
   currentUserId: string;
 }) {
   const { existingTask, updatedTask } = await db.transaction(async (tx) => {
-    const existingTask = await lockTaskAndAssertProjectLive(tx, id);
+    const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
+      tx,
+      id,
+      identity,
+    );
     await assertValidTaskStatus(status, existingTask.projectId, tx);
-    const column = await findColumnBySlug(tx, existingTask.projectId, status);
-    const updatedTask = await updateTaskRow(tx, id, {
+    const column = await findColumnBySlugForIdentity(
+      identity,
+      tx,
+      existingTask.projectId,
+      status,
+    );
+    const updatedTask = await updateTaskRow(identity, tx, id, {
       status,
       columnId: column?.id ?? null,
     });

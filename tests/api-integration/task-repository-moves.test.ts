@@ -1,36 +1,74 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
-import {
-  deleteTaskLabelByName,
-  deleteTaskReturningId,
-  findLabelInWorkspaceScope,
-  findLiveUnarchivedProjectInWorkspace,
-  findMaxTaskPositionInColumnOrStatus,
-  findMaxTaskPositionInStatusAndColumn,
-  findNotDeletedProjectInWorkspace,
-  findProjectById,
-  findProjectFreezeState,
-  findProjectIdentity,
-  findTaskLabelByName,
-  findWorkspaceMembershipId,
-  insertTask,
-  insertTaskLabelOnConflictDoNothing,
-  listColumnsForMove,
-  listWorkspaceScopedTasks,
-  lockLiveProjectForMove,
-  reassignTaskAssetsToProject,
-  updateTaskRowReturningId,
-} from "../../apps/api/src/task/repository";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import * as taskRepository from "../../apps/api/src/task/repository";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
 
+let testIdentity: ResolvedIdentity;
+const scoped =
+  <Args extends unknown[], Result>(
+    fn: (identity: ResolvedIdentity, ...args: Args) => Promise<Result>,
+  ) =>
+  (...args: Args) =>
+    fn(testIdentity, ...args);
+const deleteTaskLabelByName = scoped(taskRepository.deleteTaskLabelByName);
+const deleteTaskReturningId = scoped(taskRepository.deleteTaskReturningId);
+const findLabelInWorkspaceScope = scoped(
+  taskRepository.findLabelInWorkspaceScope,
+);
+const findLiveUnarchivedProjectInWorkspace = scoped(
+  taskRepository.findLiveUnarchivedProjectInWorkspace,
+);
+const findMaxTaskPositionInColumnOrStatus = scoped(
+  taskRepository.findMaxTaskPositionInColumnOrStatus,
+);
+const findMaxTaskPositionInStatusAndColumn = scoped(
+  taskRepository.findMaxTaskPositionInStatusAndColumn,
+);
+const findNotDeletedProjectInWorkspace = scoped(
+  taskRepository.findNotDeletedProjectInWorkspace,
+);
+const findProjectById = scoped(taskRepository.findProjectById);
+const findProjectFreezeState = scoped(taskRepository.findProjectFreezeState);
+const findProjectIdentity = scoped(taskRepository.findProjectIdentity);
+const findTaskLabelByName = scoped(taskRepository.findTaskLabelByName);
+const insertTask = scoped(taskRepository.insertTask);
+const insertTaskLabelOnConflictDoNothing = scoped(
+  taskRepository.insertTaskLabelOnConflictDoNothing,
+);
+const listColumnsForMove = scoped(taskRepository.listColumnsForMove);
+const listWorkspaceScopedTasks = scoped(
+  taskRepository.listWorkspaceScopedTasks,
+);
+const lockLiveProjectForMove = scoped(taskRepository.lockLiveProjectForMove);
+const reassignTaskAssetsToProject = scoped(
+  taskRepository.reassignTaskAssetsToProject,
+);
+const updateTaskRowReturningId = scoped(
+  taskRepository.updateTaskRowReturningId,
+);
+const { findWorkspaceMembershipId } = taskRepository;
+
 async function seed() {
   const a = await createWorkspaceMember({ role: "admin" });
   const b = await createWorkspaceMember({ role: "admin" });
+  const identityA = await resolveIdentity({
+    userId: a.user.id,
+    credential: "session",
+  });
+  const identityB = await resolveIdentity({
+    userId: b.user.id,
+    credential: "session",
+  });
+  if (!identityA || !identityB)
+    throw new Error("expected resolved test identities");
+  testIdentity = identityA;
   const { project: p1, columns: c1 } = await createProjectFixture({
     workspaceId: a.workspace.id,
   });
@@ -58,17 +96,20 @@ async function seed() {
     number: 1,
     position: 7,
   });
-  const tb = await insertTask(db, {
-    projectId: pb.id,
-    userId: b.user.id,
-    title: "TB",
-    status: "to-do",
-    priority: "medium",
-    number: 1,
-    position: 1,
-  });
+  const [tb] = await db
+    .insert(schema.taskTable)
+    .values({
+      projectId: pb.id,
+      userId: b.user.id,
+      title: "TB",
+      status: "to-do",
+      priority: "medium",
+      number: 1,
+      position: 1,
+    })
+    .returning();
   if (!t1 || !t2 || !tb) throw new Error("seed");
-  return { a, b, p1, p2, pb, c1, t1, t2, tb };
+  return { a, b, identityA, identityB, p1, p2, pb, c1, t1, t2, tb };
 }
 
 describe("task repository: create, move and bulk statements (#580 b9b)", () => {
@@ -77,16 +118,18 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
   });
 
   it("workspace-scoped task lookup keeps the workspace, archived and deleted predicates", async () => {
-    const { a, b, p1, p2, t1, t2, tb } = await seed();
+    const { a, b, identityA, identityB, p1, p2, t1, t2, tb } = await seed();
     const ids = [t1.id, t2.id, tb.id];
     expect(
       (await listWorkspaceScopedTasks(ids, a.workspace.id))
         .map((r) => r.id)
         .sort(),
     ).toEqual([t1.id, t2.id].sort());
+    testIdentity = identityB;
     expect(
       (await listWorkspaceScopedTasks(ids, b.workspace.id)).map((r) => r.id),
     ).toEqual([tb.id]);
+    testIdentity = identityA;
 
     await db
       .update(schema.projectTable)
@@ -133,7 +176,7 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
   });
 
   it("task writes: update/delete return the id, task labels are per task and name", async () => {
-    const { a, b, t1, t2 } = await seed();
+    const { a, b, t1, t2, tb } = await seed();
     const updated = await db.transaction((tx) =>
       updateTaskRowReturningId(tx, t1.id, { priority: "high" }),
     );
@@ -145,6 +188,21 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
       version: t1.version + 1,
     });
     expect(byId.get(t2.id)?.priority).toBe("medium");
+
+    expect(
+      await updateTaskRowReturningId(db, tb.id, {
+        title: "must not cross project reach",
+      }),
+    ).toBeUndefined();
+    expect(await deleteTaskReturningId(db, tb.id)).toBeUndefined();
+    const [foreignAfterDeniedWrites] = await db
+      .select()
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.id, tb.id));
+    expect(foreignAfterDeniedWrites).toMatchObject({
+      title: "TB",
+      version: tb.version,
+    });
 
     const label = await insertTaskLabelOnConflictDoNothing(db, {
       name: "L",
@@ -243,7 +301,7 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
   });
 
   it("move preflights: freeze flags, workspace-scoped destination, lock modes and identities", async () => {
-    const { a, b, p1, p2, pb, c1 } = await seed();
+    const { a, b, identityB, p1, p2, pb, c1 } = await seed();
     expect((await findProjectById(db, p1.id))?.id).toBe(p1.id);
     expect(await findProjectById(db, "missing")).toBeUndefined();
     await db
@@ -286,6 +344,8 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
     expect(
       await findNotDeletedProjectInWorkspace(db, pb.id, a.workspace.id),
     ).toBeUndefined();
+    expect(await findProjectIdentity(db, pb.id)).toBeUndefined();
+    testIdentity = identityB;
     expect((await findProjectIdentity(db, pb.id))?.workspaceId).toBe(
       b.workspace.id,
     );

@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import type { Context, MiddlewareHandler, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
@@ -19,13 +20,14 @@ import {
   validateTaskAssetUploadInput,
 } from "../storage";
 import { callerReach } from "../utils/caller-reach";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
 import { markReach } from "../utils/reach-mark";
 import { requirePublicAppOrigin } from "../utils/request-origin";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
-import { lockTaskAndAssertProjectLive } from "./assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "./assert-task-project-live";
 import bulkUpdateTasks, {
   type BulkCallerReach,
 } from "./controllers/bulk-update-tasks";
@@ -278,6 +280,7 @@ const legacyTaskResponseHeaders = {
 } as const;
 
 async function runFullTaskUpdate(input: {
+  identity: ResolvedIdentity;
   id: string;
   assertedVersion: number | undefined;
   title: string;
@@ -294,6 +297,7 @@ async function runFullTaskUpdate(input: {
   try {
     return {
       task: await updateTask(
+        input.identity,
         input.id,
         input.assertedVersion,
         input.title,
@@ -725,12 +729,23 @@ const updateTaskDescriptionRoute = createRoute({
   },
 });
 
+async function requireTaskIdentity(c: Context): Promise<ResolvedIdentity> {
+  const userId = c.get("userId");
+  if (!userId) throw new HTTPException(401, { message: "Unauthorized" });
+  const identity = await resolveCallerIdentity(c, userId);
+  if (!identity) throw new HTTPException(404, { message: "Not found" });
+  return identity;
+}
+
 const task = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listTasksRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const filters = c.req.valid("query") || {};
-
-    const tasks = await getTasks(projectId, filters);
+    const tasks = await getTasks(
+      await requireTaskIdentity(c),
+      projectId,
+      filters,
+    );
 
     return c.json(tasks, 200);
   })
@@ -743,12 +758,14 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     }
 
     markShadowLegacyAuthorizationUnknown(c);
+    const identity = await requireTaskIdentity(c);
     let result: Awaited<ReturnType<typeof bulkUpdateTasks>>;
     try {
       result = await bulkUpdateTasks({
         taskIds,
         operation,
         value,
+        identity,
         userId,
         workspaceId: c.get("workspaceId"),
         reach: (c as unknown as Context).get(
@@ -771,6 +788,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       c.req.valid("json");
 
     const task = await createTask({
+      identity: await requireTaskIdentity(c),
       projectId,
       currentUserId: c.get("userId"),
       userId: userId,
@@ -787,7 +805,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(getTaskRoute, async (c) => {
     const { id } = c.req.valid("param");
 
-    const task = await getTask(id);
+    const task = await getTask(await requireTaskIdentity(c), id);
 
     return c.json(task, 200);
   })
@@ -797,6 +815,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const currentUserId = c.get("userId");
 
     const result = await moveTask({
+      identity: await requireTaskIdentity(c),
       taskId: id,
       destinationProjectId,
       destinationStatus,
@@ -823,6 +842,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const currentUserId = c.get("userId");
 
     const result = await runFullTaskUpdate({
+      identity: await requireTaskIdentity(c),
       id,
       assertedVersion: ifMatch ? Number(ifMatch.slice(1, -1)) : undefined,
       title,
@@ -842,7 +862,10 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(exportTasksRoute, async (c) => {
     const { projectId } = c.req.valid("param");
 
-    const exportData = await exportTasks(projectId);
+    const exportData = await exportTasks(
+      await requireTaskIdentity(c),
+      projectId,
+    );
 
     return c.json(exportData, 200);
   })
@@ -851,7 +874,12 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { tasks } = c.req.valid("json");
     const currentUserId = c.get("userId");
 
-    const result = await importTasks(projectId, tasks, currentUserId);
+    const result = await importTasks(
+      await requireTaskIdentity(c),
+      projectId,
+      tasks,
+      currentUserId,
+    );
 
     return c.json(result, 200);
   })
@@ -859,7 +887,11 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { id } = c.req.valid("param");
 
     const currentUserId = c.get("userId");
-    const task = await deleteTask(id, currentUserId);
+    const task = await deleteTask(
+      await requireTaskIdentity(c),
+      id,
+      currentUserId,
+    );
 
     return c.json(task, 200);
   })
@@ -868,7 +900,12 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { status } = c.req.valid("json");
     const currentUserId = c.get("userId");
 
-    const task = await updateTaskStatus({ id, status, currentUserId });
+    const task = await updateTaskStatus({
+      identity: await requireTaskIdentity(c),
+      id,
+      status,
+      currentUserId,
+    });
 
     return c.json(task, 200);
   })
@@ -877,7 +914,12 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { priority } = c.req.valid("json");
     const currentUserId = c.get("userId");
 
-    const task = await updateTaskPriority({ id, priority, currentUserId });
+    const task = await updateTaskPriority({
+      identity: await requireTaskIdentity(c),
+      id,
+      priority,
+      currentUserId,
+    });
 
     return c.json(task, 200);
   })
@@ -886,7 +928,12 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { userId } = c.req.valid("json");
     const currentUserId = c.get("userId");
 
-    const task = await updateTaskAssignee({ id, userId, currentUserId });
+    const task = await updateTaskAssignee({
+      identity: await requireTaskIdentity(c),
+      id,
+      userId,
+      currentUserId,
+    });
 
     return c.json(task, 200);
   })
@@ -896,6 +943,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const currentUserId = c.get("userId");
 
     const task = await updateTaskDueDate({
+      identity: await requireTaskIdentity(c),
       id,
       dueDate,
       currentUserId,
@@ -908,17 +956,27 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { title } = c.req.valid("json");
     const currentUserId = c.get("userId");
 
-    const task = await updateTaskTitle({ id, title, currentUserId });
+    const task = await updateTaskTitle({
+      identity: await requireTaskIdentity(c),
+      id,
+      title,
+      currentUserId,
+    });
 
     return c.json(task, 200);
   })
   .openapi(createTaskImageUploadRoute, async (c) => {
     const { id } = c.req.valid("param");
     const { filename, contentType, size, surface } = c.req.valid("json");
+    const identity = await requireTaskIdentity(c);
 
     try {
       const upload = await db.transaction(async (tx) => {
-        const task = await lockTaskAndAssertProjectLive(tx, id);
+        const task = await lockTaskAndAssertProjectLiveForIdentity(
+          tx,
+          id,
+          identity,
+        );
         try {
           validateTaskAssetUploadInput(contentType, size);
         } catch (error) {
@@ -929,7 +987,11 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
                 : "Invalid image upload request",
           });
         }
-        const context = await findProjectWorkspaceContext(tx, task.projectId);
+        const context = await findProjectWorkspaceContext(
+          identity,
+          tx,
+          task.projectId,
+        );
         if (!context)
           throw new HTTPException(404, { message: "Task not found" });
         return createTaskImageUploadUrl({
@@ -958,10 +1020,15 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { id } = c.req.valid("param");
     const { key, filename, contentType, size, surface } = c.req.valid("json");
     const userId = c.get("userId");
+    const identity = await requireTaskIdentity(c);
 
     const normalizedKey = key.trim();
     const asset = await db.transaction(async (tx) => {
-      const task = await lockTaskAndAssertProjectLive(tx, id);
+      const task = await lockTaskAndAssertProjectLiveForIdentity(
+        tx,
+        id,
+        identity,
+      );
       try {
         validateTaskAssetUploadInput(contentType, size);
       } catch (error) {
@@ -972,7 +1039,11 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
               : "Invalid image upload request",
         });
       }
-      const context = await findProjectWorkspaceContext(tx, task.projectId);
+      const context = await findProjectWorkspaceContext(
+        identity,
+        tx,
+        task.projectId,
+      );
       if (!context) throw new HTTPException(404, { message: "Task not found" });
       if (
         !assertTaskImageKeyMatchesContext(normalizedKey, {
@@ -987,7 +1058,12 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         });
       }
 
-      const existingAsset = await findAssetIdByObjectKey(tx, normalizedKey);
+      const existingAsset = await findAssetIdByObjectKey(
+        identity,
+        tx,
+        normalizedKey,
+        task.id,
+      );
       const values = {
         workspaceId: context.workspaceId,
         projectId: task.projectId,
@@ -1002,8 +1078,11 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         createdBy: userId || null,
       };
       const asset = existingAsset
-        ? await updateAssetById(tx, existingAsset.id, values)
-        : await insertAsset(tx, { ...values, objectKey: normalizedKey });
+        ? await updateAssetById(identity, tx, existingAsset.id, values)
+        : await insertAsset(identity, tx, {
+            ...values,
+            objectKey: normalizedKey,
+          });
       return asset;
     });
 
@@ -1030,6 +1109,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const currentUserId = c.get("userId");
 
     const task = await updateTaskDescription({
+      identity: await requireTaskIdentity(c),
       id,
       description,
       currentUserId,
@@ -1056,6 +1136,7 @@ export const taskV2 = apiRouter<
   } = c.req.valid("json");
 
   const result = await runFullTaskUpdate({
+    identity: await requireTaskIdentity(c),
     id,
     assertedVersion: Number(ifMatch.slice(1, -1)),
     title,

@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import {
@@ -28,8 +29,12 @@ type GetTasksOptions = {
   status?: string;
 };
 
-async function getTasks(projectId: string, options: GetTasksOptions = {}) {
-  const project = await findLiveProject(projectId);
+async function getTasks(
+  identity: ResolvedIdentity,
+  projectId: string,
+  options: GetTasksOptions = {},
+) {
+  const project = await findLiveProject(identity, projectId);
 
   if (!project) {
     throw new HTTPException(404, {
@@ -58,11 +63,12 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     options.limit && options.limit > 0 ? Math.min(options.limit, 100) : 50;
   const offset = (page - 1) * pageSize;
 
-  const taskCount = await countProjectTasks(projectId, filters);
+  const taskCount = await countProjectTasks(identity, projectId, filters);
 
   const total = Number(taskCount?.count ?? 0);
 
   const paginatedTasks = await listProjectTasks(
+    identity,
     projectId,
     filters,
     { sortBy: options.sortBy, sortOrder: options.sortOrder },
@@ -72,10 +78,12 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
   const taskIds = paginatedTasks.map((task) => task.id);
 
   const labelsData =
-    taskIds.length > 0 ? await listLabelsForTasks(taskIds) : [];
+    taskIds.length > 0 ? await listLabelsForTasks(identity, taskIds) : [];
 
   const externalLinksData =
-    taskIds.length > 0 ? await listExternalLinksForTasks(taskIds) : [];
+    taskIds.length > 0
+      ? await listExternalLinksForTasks(identity, taskIds)
+      : [];
 
   const taskLabelsMap = new Map<
     string,
@@ -125,7 +133,7 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     });
   }
 
-  const projectColumns = await listProjectColumns(projectId);
+  const projectColumns = await listProjectColumns(identity, projectId);
 
   const columns = projectColumns.map((column) => ({
     id: column.slug,

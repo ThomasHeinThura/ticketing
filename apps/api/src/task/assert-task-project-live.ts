@@ -1,9 +1,15 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import type { Executor } from "../database/executor";
+import type db from "../database";
+import { projectTable, taskTable } from "../database/schema";
 import { assertProjectStillLive } from "../work-item/assert-work-item-live";
-import { lockLiveProjectRow, lockTaskRow } from "./repository";
+import {
+  lockLiveProjectRowForIdentity,
+  lockTaskRowForIdentity,
+} from "./repository";
 
-type DbOrTx = Executor;
+type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
  * Legacy task writes lock the task first so a concurrent move cannot change which
@@ -22,11 +28,27 @@ export async function lockLegacyTaskRow(tx: DbOrTx, taskId: string) {
 }
 
 export async function lockLegacyTaskRowIfPresent(tx: DbOrTx, taskId: string) {
-  return await lockTaskRow(tx, taskId);
+  const [task] = await tx
+    .select()
+    .from(taskTable)
+    .where(eq(taskTable.id, taskId))
+    .for("update");
+  return task;
 }
 
 export async function lockTaskAndAssertProjectLive(tx: DbOrTx, taskId: string) {
   const task = await lockLegacyTaskRow(tx, taskId);
+  await assertProjectStillLive(tx, task.projectId, "Task not found");
+  return task;
+}
+
+export async function lockTaskAndAssertProjectLiveForIdentity(
+  tx: DbOrTx,
+  taskId: string,
+  identity: ResolvedIdentity,
+) {
+  const task = await lockTaskRowForIdentity(identity, tx, taskId);
+  if (!task) throw new HTTPException(404, { message: "Task not found" });
   await assertProjectStillLive(tx, task.projectId, "Task not found");
   return task;
 }
@@ -64,9 +86,30 @@ export async function lockProjectAndAssertLiveForTaskNumber(
   projectId: string,
   projectNotFoundMessage = "Task not found",
 ) {
-  const project = await lockLiveProjectRow(tx, projectId);
+  const [project] = await tx
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+      ),
+    )
+    .for("update");
 
   if (!project) {
     throw new HTTPException(404, { message: projectNotFoundMessage });
   }
+}
+
+export async function lockProjectAndAssertLiveForTaskNumberForIdentity(
+  tx: DbOrTx,
+  projectId: string,
+  identity: ResolvedIdentity,
+  projectNotFoundMessage = "Task not found",
+) {
+  const project = await lockLiveProjectRowForIdentity(identity, tx, projectId);
+  if (!project)
+    throw new HTTPException(404, { message: projectNotFoundMessage });
 }

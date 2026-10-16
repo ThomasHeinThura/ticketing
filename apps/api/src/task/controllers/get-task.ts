@@ -1,9 +1,10 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 import { findTaskWithAssignee } from "../repository";
 
-async function getTask(taskId: string) {
-  const found = await findTaskWithAssignee(taskId);
+async function getTask(identity: ResolvedIdentity, taskId: string) {
+  const found = await findTaskWithAssignee(identity, taskId);
 
   if (!found) {
     throw new HTTPException(404, {

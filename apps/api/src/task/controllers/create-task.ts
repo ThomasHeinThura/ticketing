@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
@@ -10,17 +11,18 @@ import {
   validateAndParseDate,
   validateDateRange,
 } from "../../utils/validate-dates";
-import { lockProjectAndAssertLiveForTaskNumber } from "../assert-task-project-live";
+import { lockProjectAndAssertLiveForTaskNumberForIdentity } from "../assert-task-project-live";
 import {
-  findColumnBySlug,
+  findColumnBySlugForIdentity,
   findMaxTaskPositionInColumnOrStatus,
   findUserName,
   insertTask,
 } from "../repository";
 import { assertValidTaskStatus } from "../validate-task-fields";
-import { claimTaskNumber } from "./claim-task-numbers";
+import { claimTaskNumberForIdentity } from "./claim-task-numbers";
 
 async function createTask({
+  identity,
   projectId,
   currentUserId,
   userId,
@@ -31,6 +33,7 @@ async function createTask({
   description,
   priority,
 }: {
+  identity: ResolvedIdentity;
   projectId: string;
   currentUserId: string;
   userId?: string;
@@ -47,7 +50,11 @@ async function createTask({
   const normalizedUserId = userId?.trim() || undefined;
   const { task: createdTask, assigneeName } = await db.transaction(
     async (tx) => {
-      await lockProjectAndAssertLiveForTaskNumber(tx, projectId);
+      await lockProjectAndAssertLiveForTaskNumberForIdentity(
+        tx,
+        projectId,
+        identity,
+      );
       // Check request fields after the project freeze lock so a frozen board stays read-only.
       const parsedStartDate =
         startDate !== undefined
@@ -72,11 +79,22 @@ async function createTask({
           tx,
         );
 
-        assignee = await findUserName(normalizedUserId, tx);
+        assignee = await findUserName(
+          identity,
+          normalizedUserId,
+          projectId,
+          tx,
+        );
       }
 
-      const column = await findColumnBySlug(tx, projectId, resolvedStatus);
+      const column = await findColumnBySlugForIdentity(
+        identity,
+        tx,
+        projectId,
+        resolvedStatus,
+      );
       const maxPositionResult = await findMaxTaskPositionInColumnOrStatus(
+        identity,
         tx,
         projectId,
         resolvedStatus,
@@ -84,9 +102,13 @@ async function createTask({
       );
       const nextPosition = (maxPositionResult?.maxPosition ?? 0) + 1;
 
-      const taskNumber = await claimTaskNumber(projectId, tx);
+      const taskNumber = await claimTaskNumberForIdentity(
+        identity,
+        projectId,
+        tx,
+      );
 
-      const task = await insertTask(tx, {
+      const task = await insertTask(identity, tx, {
         projectId,
         userId: normalizedUserId ?? null,
         title: title || "",

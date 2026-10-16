@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import type { Executor } from "../../database/executor";
@@ -7,11 +8,11 @@ import { lockWorkspaceLabelNames } from "../../label/label-name-lock";
 import { assertAssignableUserAndLockMembership } from "../../utils/assert-assignable-user";
 import type { callerReach } from "../../utils/caller-reach";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
 import {
   deleteTaskLabelByName,
   deleteTaskReturningId,
-  findColumnBySlug,
+  findColumnBySlugForIdentity,
   findLabelInWorkspaceScope,
   findProjectWorkspaceId,
   findTaskLabelByName,
@@ -64,17 +65,28 @@ type ItemResult =
 type DeferredEvent = () => Promise<void>;
 
 async function resolveBulkLabel(
+  identity: ResolvedIdentity,
   tx: DbOrTx,
   value: string,
   workspaceId: string,
 ) {
-  const label = await findLabelInWorkspaceScope(tx, value, workspaceId);
+  const label = await findLabelInWorkspaceScope(
+    identity,
+    tx,
+    value,
+    workspaceId,
+  );
   if (!label) throw new HTTPException(404, { message: "Label not found" });
 
   // Join the label-name family before task/project row locks so rename and cascade
   // operations cannot deadlock against this bulk writer.
   await lockWorkspaceLabelNames(tx, workspaceId, [label.name]);
-  const currentLabel = await findLabelInWorkspaceScope(tx, value, workspaceId);
+  const currentLabel = await findLabelInWorkspaceScope(
+    identity,
+    tx,
+    value,
+    workspaceId,
+  );
   if (!currentLabel) {
     throw new HTTPException(404, { message: "Label not found" });
   }
@@ -94,10 +106,12 @@ async function bulkUpdateTasks({
   taskIds,
   operation,
   value,
+  identity,
   userId,
   workspaceId,
   reach,
 }: {
+  identity: ResolvedIdentity;
   taskIds: string[];
   operation: BulkOperation;
   value?: string | null;
@@ -126,6 +140,7 @@ async function bulkUpdateTasks({
 
   const uniqueTaskIds = [...new Set(taskIds)];
   const workspaceScopedRows = await listWorkspaceScopedTasks(
+    identity,
     uniqueTaskIds,
     workspaceId,
   );
@@ -179,14 +194,18 @@ async function bulkUpdateTasks({
           !value.includes("\u0000")
         ) {
           try {
-            label = await resolveBulkLabel(tx, value, workspaceId);
+            label = await resolveBulkLabel(identity, tx, value, workspaceId);
           } catch (error) {
             if (!(error instanceof HTTPException)) throw error;
             labelError = error;
           }
         }
 
-        const task = await lockTaskAndAssertProjectLive(tx, taskId);
+        const task = await lockTaskAndAssertProjectLiveForIdentity(
+          tx,
+          taskId,
+          identity,
+        );
         const project = await findProjectWorkspaceId(tx, task.projectId);
         if (!project || project.workspaceId !== workspaceId) {
           throw new HTTPException(404, { message: "Task not found" });
@@ -239,11 +258,21 @@ async function bulkUpdateTasks({
           case "updateStatus": {
             const status = value as string;
             await assertValidTaskStatus(status, task.projectId, tx);
-            const column = await findColumnBySlug(tx, task.projectId, status);
-            const updated = await updateTaskRowReturningId(tx, taskId, {
+            const column = await findColumnBySlugForIdentity(
+              identity,
+              tx,
+              task.projectId,
               status,
-              columnId: column?.id ?? null,
-            });
+            );
+            const updated = await updateTaskRowReturningId(
+              identity,
+              tx,
+              taskId,
+              {
+                status,
+                columnId: column?.id ?? null,
+              },
+            );
             itemEvents.push(() =>
               publishEvent("task.status_changed", {
                 taskId,
@@ -258,9 +287,14 @@ async function bulkUpdateTasks({
 
           case "updatePriority": {
             const priority = value as string;
-            const updated = await updateTaskRowReturningId(tx, taskId, {
-              priority,
-            });
+            const updated = await updateTaskRowReturningId(
+              identity,
+              tx,
+              taskId,
+              {
+                priority,
+              },
+            );
             itemEvents.push(() =>
               publishEvent("task.priority_changed", {
                 taskId,
@@ -286,11 +320,17 @@ async function bulkUpdateTasks({
               );
             }
             const newAssigneeName = assigneeId
-              ? (await findUserName(assigneeId, tx))?.name
+              ? (await findUserName(identity, assigneeId, task.projectId, tx))
+                  ?.name
               : undefined;
-            const updated = await updateTaskRowReturningId(tx, taskId, {
-              userId: assigneeId,
-            });
+            const updated = await updateTaskRowReturningId(
+              identity,
+              tx,
+              taskId,
+              {
+                userId: assigneeId,
+              },
+            );
             const eventData = {
               taskId,
               projectId: task.projectId,
@@ -312,7 +352,7 @@ async function bulkUpdateTasks({
           }
 
           case "delete": {
-            const deleted = await deleteTaskReturningId(tx, taskId);
+            const deleted = await deleteTaskReturningId(identity, tx, taskId);
             if (deleted) {
               itemEvents.push(() =>
                 publishEvent("task.deleted", {
@@ -329,14 +369,23 @@ async function bulkUpdateTasks({
           case "addLabel": {
             if (!label)
               throw new HTTPException(404, { message: "Label not found" });
-            const existing = await findTaskLabelByName(tx, taskId, label.name);
-            if (existing) return 0;
-            const inserted = await insertTaskLabelOnConflictDoNothing(tx, {
-              name: label.name,
-              color: label.color,
-              workspaceId,
+            const existing = await findTaskLabelByName(
+              identity,
+              tx,
               taskId,
-            });
+              label.name,
+            );
+            if (existing) return 0;
+            const inserted = await insertTaskLabelOnConflictDoNothing(
+              identity,
+              tx,
+              {
+                name: label.name,
+                color: label.color,
+                workspaceId,
+                taskId,
+              },
+            );
             if (inserted) {
               itemEvents.push(() =>
                 publishEvent("task.label_assigned", {
@@ -353,7 +402,7 @@ async function bulkUpdateTasks({
           case "removeLabel": {
             if (!label)
               throw new HTTPException(404, { message: "Label not found" });
-            const deleted = await deleteTaskLabelByName(tx, {
+            const deleted = await deleteTaskLabelByName(identity, tx, {
               workspaceId,
               name: label.name,
               taskId,
@@ -374,9 +423,14 @@ async function bulkUpdateTasks({
           }
 
           case "updateDueDate": {
-            const updated = await updateTaskRowReturningId(tx, taskId, {
-              dueDate: parsedDate,
-            });
+            const updated = await updateTaskRowReturningId(
+              identity,
+              tx,
+              taskId,
+              {
+                dueDate: parsedDate,
+              },
+            );
             itemEvents.push(() =>
               publishEvent("task.due_date_changed", {
                 taskId,

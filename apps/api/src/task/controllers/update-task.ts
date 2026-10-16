@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
@@ -11,8 +12,8 @@ import {
   validateAndParseDate,
   validateDateRange,
 } from "../../utils/validate-dates";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
-import { findColumnBySlug, updateTaskRow } from "../repository";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
+import { findColumnBySlugForIdentity, updateTaskRow } from "../repository";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 export class TaskVersionConflictError extends Error {
@@ -28,6 +29,7 @@ export class TaskVersionConflictError extends Error {
 }
 
 async function updateTask(
+  identity: ResolvedIdentity,
   id: string,
   assertedVersion: number | undefined,
   title: string,
@@ -45,7 +47,11 @@ async function updateTask(
 
   const { existingTask: lockedTask, updatedTask } = await db.transaction(
     async (tx) => {
-      const lockedTask = await lockTaskAndAssertProjectLive(tx, id);
+      const lockedTask = await lockTaskAndAssertProjectLiveForIdentity(
+        tx,
+        id,
+        identity,
+      );
       if (
         assertedVersion !== undefined &&
         lockedTask.version !== assertedVersion
@@ -79,8 +85,13 @@ async function updateTask(
           tx,
         );
       }
-      const column = await findColumnBySlug(tx, projectId, status);
-      const updatedTask = await updateTaskRow(tx, id, {
+      const column = await findColumnBySlugForIdentity(
+        identity,
+        tx,
+        projectId,
+        status,
+      );
+      const updatedTask = await updateTaskRow(identity, tx, id, {
         title,
         status,
         columnId: column?.id ?? null,

@@ -1,17 +1,22 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
 import { deleteS3Keys, getTaskAssetKeys } from "../../storage/cleanup-assets";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
 import { deleteTaskById, listTaskRelations } from "../repository";
 
-async function deleteTask(taskId: string, currentUserId: string) {
+async function deleteTask(
+  identity: ResolvedIdentity,
+  taskId: string,
+  currentUserId: string,
+) {
   const { relations, assetKeys, deletedTask } = await db.transaction(
     async (tx) => {
-      await lockTaskAndAssertProjectLive(tx, taskId);
-      const relations = await listTaskRelations(tx, taskId);
+      await lockTaskAndAssertProjectLiveForIdentity(tx, taskId, identity);
+      const relations = await listTaskRelations(identity, tx, taskId);
       const assetKeys = await getTaskAssetKeys(taskId, tx);
-      const deletedTask = await deleteTaskById(tx, taskId);
+      const deletedTask = await deleteTaskById(identity, tx, taskId);
       return { relations, assetKeys, deletedTask };
     },
   );

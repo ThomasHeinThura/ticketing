@@ -1,9 +1,10 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
 import { assertAssignableUserAndLockMembership } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
 import {
   findProjectWorkspaceId,
   findUserName,
@@ -11,17 +12,23 @@ import {
 } from "../repository";
 
 async function updateTaskAssignee({
+  identity,
   id,
   userId,
   currentUserId,
 }: {
+  identity: ResolvedIdentity;
   id: string;
   userId: string | null;
   currentUserId: string;
 }) {
   const nextAssigneeId = userId?.trim() || null;
   const { existingTask, updatedTask } = await db.transaction(async (tx) => {
-    const existingTask = await lockTaskAndAssertProjectLive(tx, id);
+    const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
+      tx,
+      id,
+      identity,
+    );
     // Validate body identifiers after the frozen-task check, before they reach raw
     // database filters. `null` (unassign) is left alone.
     if (userId) {
@@ -39,7 +46,9 @@ async function updateTaskAssignee({
         tx,
       );
     }
-    const updatedTask = await updateTaskRow(tx, id, { userId: nextAssigneeId });
+    const updatedTask = await updateTaskRow(identity, tx, id, {
+      userId: nextAssigneeId,
+    });
     return { existingTask, updatedTask };
   });
   if (existingTask.userId === nextAssigneeId) return updatedTask;
@@ -51,7 +60,8 @@ async function updateTaskAssignee({
   }
 
   const newAssigneeName = nextAssigneeId
-    ? (await findUserName(nextAssigneeId))?.name
+    ? (await findUserName(identity, nextAssigneeId, existingTask.projectId))
+        ?.name
     : undefined;
 
   if (!nextAssigneeId) {

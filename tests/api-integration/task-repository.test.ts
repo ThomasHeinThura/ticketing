@@ -1,32 +1,48 @@
-import { eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
-import {
-  advanceProjectTaskNumber,
-  clearTaskReminders,
-  countProjectTasks,
-  deleteTaskById,
-  findColumnBySlug,
-  findLiveProject,
-  findProjectWorkspaceContext,
-  findTaskAssigneeId,
-  insertAsset,
-  listColumnSlugs,
-  listLabelsForTasks,
-  listProjectColumns,
-  listProjectTasks,
-  listProjectTasksForExport,
-  listTaskRelations,
-  lockLiveProjectRow,
-  lockTaskRow,
-  updateAssetById,
-  updateTaskRow,
-} from "../../apps/api/src/task/repository";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import * as taskRepository from "../../apps/api/src/task/repository";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
+
+let testIdentity: ResolvedIdentity;
+const scoped =
+  <Args extends unknown[], Result>(
+    fn: (identity: ResolvedIdentity, ...args: Args) => Promise<Result>,
+  ) =>
+  (...args: Args) =>
+    fn(testIdentity, ...args);
+const advanceProjectTaskNumber = scoped(
+  taskRepository.advanceProjectTaskNumberForIdentity,
+);
+const clearTaskReminders = scoped(taskRepository.clearTaskReminders);
+const countProjectTasks = scoped(taskRepository.countProjectTasks);
+const deleteTaskById = scoped(taskRepository.deleteTaskById);
+const findColumnBySlug = scoped(taskRepository.findColumnBySlugForIdentity);
+const findLiveProject = scoped(taskRepository.findLiveProject);
+const findProjectWorkspaceContext = scoped(
+  taskRepository.findProjectWorkspaceContext,
+);
+const findTaskAssigneeId = scoped(taskRepository.findTaskAssigneeId);
+const insertAsset = scoped(taskRepository.insertAsset);
+const listColumnSlugs = scoped(taskRepository.listColumnSlugsForIdentity);
+const listLabelsForTasks = scoped(taskRepository.listLabelsForTasks);
+const listProjectColumns = scoped(taskRepository.listProjectColumns);
+const listProjectTasks = scoped(taskRepository.listProjectTasks);
+const listProjectTasksForExport = scoped(
+  taskRepository.listProjectTasksForExport,
+);
+const listTaskRelations = scoped(taskRepository.listTaskRelations);
+const lockLiveProjectRow = scoped(taskRepository.lockLiveProjectRowForIdentity);
+const lockTaskRow = scoped(taskRepository.lockTaskRowForIdentity);
+const updateAssetById = scoped(taskRepository.updateAssetById);
+const updateTaskRow = scoped(taskRepository.updateTaskRow);
 
 async function seedTask(
   userId: string,
@@ -53,6 +69,12 @@ async function seedTask(
 
 async function seed() {
   const a = await createWorkspaceMember({ role: "admin" });
+  const identity = await resolveIdentity({
+    userId: a.user.id,
+    credential: "session",
+  });
+  if (!identity) throw new Error("expected resolved test identity");
+  testIdentity = identity;
   const { project: p1 } = await createProjectFixture({
     workspaceId: a.workspace.id,
   });
@@ -209,6 +231,53 @@ describe("legacy task repository (#580 b9a)", () => {
     expect(untouched?.version).toBe(t2.version);
     expect((await findTaskAssigneeId(t1.id))?.userId).toBe(a.user.id);
     expect(await findTaskAssigneeId("missing")).toBeUndefined();
+  });
+
+  it("uses current project reach for task writes after a persisted grant is revoked", async () => {
+    const actor = await createWorkspaceMember({ role: "member" });
+    const { project } = await createProjectFixture({
+      workspaceId: actor.workspace.id,
+    });
+    await grantWorkItemProjectAccess(actor.user.id, project.id);
+    const identity = await resolveIdentity({
+      userId: actor.user.id,
+      credential: "session",
+    });
+    if (!identity) throw new Error("expected resolved project actor identity");
+    testIdentity = identity;
+
+    const task = await seedTask(actor.user.id, project.id, 1);
+    const initiallyUpdated = await updateTaskRow(db, task.id, {
+      title: "Visible while grant exists",
+    });
+    expect(initiallyUpdated?.title).toBe("Visible while grant exists");
+
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, actor.user.id));
+    if (!person) throw new Error("expected seeded project actor person");
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, person.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, project.id),
+        ),
+      );
+
+    expect(
+      await updateTaskRow(db, task.id, { title: "Must remain unchanged" }),
+    ).toBeUndefined();
+    const [afterRevocation] = await db
+      .select()
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.id, task.id));
+    expect(afterRevocation).toMatchObject({
+      title: "Visible while grant exists",
+      version: task.version + 1,
+    });
   });
 
   it("relations, reminders and delete are per task", async () => {

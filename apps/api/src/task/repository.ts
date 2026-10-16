@@ -1,10 +1,13 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import {
   and,
   asc,
   desc,
   eq,
+  exists,
   gte,
   inArray,
+  isNotNull,
   isNull,
   lte,
   max,
@@ -13,6 +16,10 @@ import {
   sql,
 } from "drizzle-orm";
 import { type Executor, executorOrDefault } from "../database/executor";
+import {
+  currentProjectReachPredicate,
+  currentWorkspaceReachPredicate,
+} from "../database/repositories/identity-scope.repository";
 import {
   assetTable,
   columnTable,
@@ -28,6 +35,53 @@ import {
   workspaceUserTable,
 } from "../database/schema";
 
+/** Current persisted project reach, correlated to the row in the consuming statement. */
+function taskProjectReach(identity: ResolvedIdentity, executor: Executor) {
+  return exists(
+    executor
+      .select({ one: sql`1` })
+      .from(projectTable)
+      .where(
+        and(
+          eq(projectTable.id, taskTable.projectId),
+          isNull(projectTable.deletedAt),
+          currentProjectReachPredicate(
+            identity,
+            projectTable.id,
+            projectTable.workspaceId,
+            projectTable.organisationId,
+            executor,
+          ),
+        ),
+      ),
+  );
+}
+
+function projectReach(
+  identity: ResolvedIdentity,
+  projectId: string,
+  executor: Executor,
+) {
+  return exists(
+    executor
+      .select({ one: sql`1` })
+      .from(projectTable)
+      .where(
+        and(
+          eq(projectTable.id, projectId),
+          isNull(projectTable.deletedAt),
+          currentProjectReachPredicate(
+            identity,
+            projectTable.id,
+            projectTable.workspaceId,
+            projectTable.organisationId,
+            executor,
+          ),
+        ),
+      ),
+  );
+}
+
 /**
  * Legacy task repository (issue #580, batch 9a). Every statement of the small task controllers
  * lives here, moved verbatim. The controllers keep their transactions, lock order (task row
@@ -36,12 +90,15 @@ import {
 
 // ---- row locks -------------------------------------------------------------------------
 
-/** Exclusive row lock on one task (legacy writes lock the task first). */
-export async function lockTaskRow(executor: Executor, taskId: string) {
+export async function lockTaskRowForIdentity(
+  identity: ResolvedIdentity,
+  executor: Executor,
+  taskId: string,
+) {
   const [task] = await executor
     .select()
     .from(taskTable)
-    .where(eq(taskTable.id, taskId))
+    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
     .for("update");
   return task;
 }
@@ -68,6 +125,32 @@ export async function lockLiveProjectRow(
   return project;
 }
 
+export async function lockLiveProjectRowForIdentity(
+  identity: ResolvedIdentity,
+  executor: Executor,
+  projectId: string,
+) {
+  const [project] = await executor
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+        currentProjectReachPredicate(
+          identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executor,
+        ),
+      ),
+    )
+    .for("update");
+  return project;
+}
+
 /** Atomically advance `project.lastTaskNumber` by `count`; undefined when the project is gone. */
 export async function advanceProjectTaskNumber(
   executor: Executor,
@@ -84,6 +167,20 @@ export async function advanceProjectTaskNumber(
   return updated;
 }
 
+export async function advanceProjectTaskNumberForIdentity(
+  identity: ResolvedIdentity,
+  executor: Executor,
+  projectId: string,
+  count: number,
+) {
+  const [updated] = await executor
+    .update(projectTable)
+    .set({ lastTaskNumber: sql`${projectTable.lastTaskNumber} + ${count}` })
+    .where(projectReach(identity, projectId, executor))
+    .returning({ lastTaskNumber: projectTable.lastTaskNumber });
+  return updated;
+}
+
 // ---- reads -----------------------------------------------------------------------------
 
 export async function listColumnSlugs(executor: Executor, projectId: string) {
@@ -91,6 +188,23 @@ export async function listColumnSlugs(executor: Executor, projectId: string) {
     .select({ slug: columnTable.slug })
     .from(columnTable)
     .where(eq(columnTable.projectId, projectId))
+    .orderBy(asc(columnTable.position));
+}
+
+export async function listColumnSlugsForIdentity(
+  identity: ResolvedIdentity,
+  executor: Executor,
+  projectId: string,
+) {
+  return await executor
+    .select({ slug: columnTable.slug })
+    .from(columnTable)
+    .where(
+      and(
+        eq(columnTable.projectId, projectId),
+        projectReach(identity, projectId, executor),
+      ),
+    )
     .orderBy(asc(columnTable.position));
 }
 
@@ -107,21 +221,69 @@ export async function findColumnBySlug(
   });
 }
 
-export async function listProjectColumns(projectId: string) {
-  return await executorOrDefault()
+export async function findColumnBySlugForIdentity(
+  identity: ResolvedIdentity,
+  executor: Executor,
+  projectId: string,
+  slug: string,
+) {
+  const [column] = await executor
     .select()
     .from(columnTable)
-    .where(eq(columnTable.projectId, projectId))
+    .where(
+      and(
+        eq(columnTable.projectId, projectId),
+        eq(columnTable.slug, slug),
+        projectReach(identity, projectId, executor),
+      ),
+    )
+    .limit(1);
+  return column;
+}
+
+export async function listProjectColumns(
+  identity: ResolvedIdentity,
+  projectId: string,
+) {
+  const executor = executorOrDefault();
+  return await executor
+    .select()
+    .from(columnTable)
+    .where(
+      and(
+        eq(columnTable.projectId, projectId),
+        projectReach(identity, projectId, executor),
+      ),
+    )
     .orderBy(asc(columnTable.position));
 }
 
 /** A project that is not soft-deleted (#187), or undefined. */
-export async function findLiveProject(projectId: string) {
-  return await executorOrDefault().query.projectTable.findFirst({
-    // #187: a soft-deleted project is treated as gone everywhere in ordinary use,
-    // matching `get-project.ts`'s convention.
-    where: and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)),
-  });
+export async function findLiveProject(
+  identity: ResolvedIdentity,
+  projectId: string,
+) {
+  const executor = executorOrDefault();
+  const [project] = await executor
+    .select()
+    .from(projectTable)
+    .where(
+      // #187: a soft-deleted project is treated as gone everywhere in ordinary use,
+      // matching `get-project.ts`'s convention.
+      and(
+        eq(projectTable.id, projectId),
+        isNull(projectTable.deletedAt),
+        currentProjectReachPredicate(
+          identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executor,
+        ),
+      ),
+    )
+    .limit(1);
+  return project;
 }
 
 export async function findProjectWorkspaceId(
@@ -137,6 +299,7 @@ export async function findProjectWorkspaceId(
 
 /** The workspace that owns a project (joined through the workspace row), for asset contexts. */
 export async function findProjectWorkspaceContext(
+  identity: ResolvedIdentity,
   executor: Executor,
   projectId: string,
 ) {
@@ -144,12 +307,27 @@ export async function findProjectWorkspaceContext(
     .select({ workspaceId: workspaceTable.id })
     .from(projectTable)
     .innerJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
-    .where(eq(projectTable.id, projectId));
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        currentProjectReachPredicate(
+          identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executor,
+        ),
+      ),
+    );
   return context;
 }
 
-export async function findTaskWithAssignee(taskId: string) {
-  const task = await executorOrDefault()
+export async function findTaskWithAssignee(
+  identity: ResolvedIdentity,
+  taskId: string,
+) {
+  const executor = executorOrDefault();
+  const task = await executor
     .select({
       id: taskTable.id,
       title: taskTable.title,
@@ -169,25 +347,61 @@ export async function findTaskWithAssignee(taskId: string) {
     })
     .from(taskTable)
     .leftJoin(userTable, eq(taskTable.userId, userTable.id))
-    .where(eq(taskTable.id, taskId))
+    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
     .limit(1);
   return task[0];
 }
 
-export async function findTaskAssigneeId(taskId: string) {
-  const [existingTask] = await executorOrDefault()
+export async function findTaskAssigneeId(
+  identity: ResolvedIdentity,
+  taskId: string,
+) {
+  const executor = executorOrDefault();
+  const [existingTask] = await executor
     .select({ userId: taskTable.userId })
     .from(taskTable)
-    .where(eq(taskTable.id, taskId))
+    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
     .limit(1);
   return existingTask;
 }
 
-export async function findUserName(userId: string, executor?: Executor) {
-  const [user] = await executorOrDefault(executor)
+export async function findUserName(
+  identity: ResolvedIdentity,
+  userId: string,
+  projectId: string,
+  executor?: Executor,
+) {
+  const tx = executorOrDefault(executor);
+  const [user] = await tx
     .select({ name: userTable.name })
     .from(userTable)
-    .where(eq(userTable.id, userId))
+    .where(
+      and(
+        eq(userTable.id, userId),
+        exists(
+          tx
+            .select({ one: sql`1` })
+            .from(projectTable)
+            .innerJoin(
+              workspaceUserTable,
+              eq(workspaceUserTable.workspaceId, projectTable.workspaceId),
+            )
+            .where(
+              and(
+                eq(projectTable.id, projectId),
+                eq(workspaceUserTable.userId, userId),
+                currentProjectReachPredicate(
+                  identity,
+                  projectTable.id,
+                  projectTable.workspaceId,
+                  projectTable.organisationId,
+                  tx,
+                ),
+              ),
+            ),
+        ),
+      ),
+    )
     .limit(1);
   return user;
 }
@@ -238,7 +452,12 @@ function buildOrderBy(
   }
 }
 
-function taskListWhere(projectId: string, filters: TaskListFilters) {
+function taskListWhere(
+  identity: ResolvedIdentity,
+  projectId: string,
+  filters: TaskListFilters,
+  executor: Executor,
+) {
   const conditions = [eq(taskTable.projectId, projectId)];
 
   if (filters.status) {
@@ -261,23 +480,26 @@ function taskListWhere(projectId: string, filters: TaskListFilters) {
     conditions.push(gte(taskTable.dueDate, new Date(filters.dueAfter)));
   }
 
-  return and(...conditions);
+  return and(...conditions, projectReach(identity, projectId, executor));
 }
 
 /** Count of a project's tasks matching the filters; the project predicate is in the statement. */
 export async function countProjectTasks(
+  identity: ResolvedIdentity,
   projectId: string,
   filters: TaskListFilters,
 ) {
-  const [taskCount] = await executorOrDefault()
+  const executor = executorOrDefault();
+  const [taskCount] = await executor
     .select({ count: sql<number>`count(*)` })
     .from(taskTable)
-    .where(taskListWhere(projectId, filters));
+    .where(taskListWhere(identity, projectId, filters, executor));
   return taskCount;
 }
 
 /** A project's tasks with assignee columns, sorted, optionally paginated. */
 export async function listProjectTasks(
+  identity: ResolvedIdentity,
   projectId: string,
   filters: TaskListFilters,
   sort: { sortBy?: TaskListSort; sortOrder?: "asc" | "desc" },
@@ -308,15 +530,19 @@ export async function listProjectTasks(
     .from(taskTable)
     .leftJoin(userTable, eq(taskTable.userId, userTable.id))
     .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(taskListWhere(projectId, filters))
+    .where(taskListWhere(identity, projectId, filters, db))
     .orderBy(buildOrderBy(sort.sortBy ?? "position", sort.sortOrder ?? "asc"));
 
   return page ? await query.limit(page.limit).offset(page.offset) : await query;
 }
 
 /** A project's tasks in board order with the assignee columns the export needs. */
-export async function listProjectTasksForExport(projectId: string) {
-  return await executorOrDefault()
+export async function listProjectTasksForExport(
+  identity: ResolvedIdentity,
+  projectId: string,
+) {
+  const executor = executorOrDefault();
+  return await executor
     .select({
       version: taskTable.version,
       id: taskTable.id,
@@ -335,12 +561,21 @@ export async function listProjectTasksForExport(projectId: string) {
     })
     .from(taskTable)
     .leftJoin(userTable, eq(taskTable.userId, userTable.id))
-    .where(eq(taskTable.projectId, projectId))
+    .where(
+      and(
+        eq(taskTable.projectId, projectId),
+        taskProjectReach(identity, executor),
+      ),
+    )
     .orderBy(taskTable.position);
 }
 
-export async function listLabelsForTasks(taskIds: string[]) {
-  return await executorOrDefault()
+export async function listLabelsForTasks(
+  identity: ResolvedIdentity,
+  taskIds: string[],
+) {
+  const executor = executorOrDefault();
+  return await executor
     .select({
       id: labelTable.id,
       name: labelTable.name,
@@ -348,24 +583,56 @@ export async function listLabelsForTasks(taskIds: string[]) {
       taskId: labelTable.taskId,
     })
     .from(labelTable)
-    .where(inArray(labelTable.taskId, taskIds));
+    .innerJoin(taskTable, eq(taskTable.id, labelTable.taskId))
+    .where(
+      and(
+        inArray(labelTable.taskId, taskIds),
+        taskProjectReach(identity, executor),
+      ),
+    );
 }
 
-export async function listExternalLinksForTasks(taskIds: string[]) {
-  return await executorOrDefault()
+export async function listExternalLinksForTasks(
+  identity: ResolvedIdentity,
+  taskIds: string[],
+) {
+  const executor = executorOrDefault();
+  return await executor
     .select()
     .from(externalLinkTable)
-    .where(inArray(externalLinkTable.taskId, taskIds));
+    .where(
+      and(
+        inArray(externalLinkTable.taskId, taskIds),
+        exists(
+          executor
+            .select({ one: sql`1` })
+            .from(taskTable)
+            .where(
+              and(
+                eq(taskTable.id, externalLinkTable.taskId),
+                taskProjectReach(identity, executor),
+              ),
+            ),
+        ),
+      ),
+    );
 }
 
-export async function listTaskRelations(executor: Executor, taskId: string) {
+export async function listTaskRelations(
+  identity: ResolvedIdentity,
+  executor: Executor,
+  taskId: string,
+) {
   return await executor
     .select()
     .from(taskRelationTable)
     .where(
-      or(
-        eq(taskRelationTable.sourceTaskId, taskId),
-        eq(taskRelationTable.targetTaskId, taskId),
+      and(
+        or(
+          eq(taskRelationTable.sourceTaskId, taskId),
+          eq(taskRelationTable.targetTaskId, taskId),
+        ),
+        taskProjectReach(identity, executor),
       ),
     )
     .execute();
@@ -373,10 +640,14 @@ export async function listTaskRelations(executor: Executor, taskId: string) {
 
 // ---- writes ----------------------------------------------------------------------------
 
-export async function deleteTaskById(executor: Executor, taskId: string) {
+export async function deleteTaskById(
+  identity: ResolvedIdentity,
+  executor: Executor,
+  taskId: string,
+) {
   const [deletedTask] = await executor
     .delete(taskTable)
-    .where(eq(taskTable.id, taskId))
+    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
     .returning()
     .execute();
   return deletedTask;
@@ -384,6 +655,7 @@ export async function deleteTaskById(executor: Executor, taskId: string) {
 
 /** Update a task row by id and bump its version; the caller holds the row lock. */
 export async function updateTaskRow(
+  identity: ResolvedIdentity,
   executor: Executor,
   taskId: string,
   values: Partial<typeof taskTable.$inferInsert>,
@@ -391,39 +663,92 @@ export async function updateTaskRow(
   const [updatedTask] = await executor
     .update(taskTable)
     .set({ ...values, version: sql`${taskTable.version} + 1` })
-    .where(eq(taskTable.id, taskId))
+    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
     .returning();
   return updatedTask;
 }
 
-export async function clearTaskReminders(executor: Executor, taskId: string) {
-  await executor
-    .delete(taskReminderSentTable)
-    .where(eq(taskReminderSentTable.taskId, taskId));
+export async function clearTaskReminders(
+  identity: ResolvedIdentity,
+  executor: Executor,
+  taskId: string,
+) {
+  await executor.delete(taskReminderSentTable).where(
+    and(
+      eq(taskReminderSentTable.taskId, taskId),
+      exists(
+        executor
+          .select({ one: sql`1` })
+          .from(taskTable)
+          .where(
+            and(
+              eq(taskTable.id, taskReminderSentTable.taskId),
+              taskProjectReach(identity, executor),
+            ),
+          ),
+      ),
+    ),
+  );
 }
 
 export async function insertTaskActivity(
+  identity: ResolvedIdentity,
   executor: Executor,
   values: typeof taskActivityTable.$inferInsert,
 ) {
-  await executor.insert(taskActivityTable).values(values);
+  await executor.insert(taskActivityTable).select(
+    executor
+      .select({
+        taskId: sql`${values.taskId}`.as("taskId"),
+        type: sql`${values.type}`.as("type"),
+        userId: sql`${values.userId}`.as("userId"),
+        content: sql`${values.content}`.as("content"),
+        eventData: sql`${values.eventData}`.as("eventData"),
+      })
+      .from(taskTable)
+      .where(
+        and(
+          eq(taskTable.id, values.taskId),
+          taskProjectReach(identity, executor),
+        ),
+      ),
+  );
 }
 
 // ---- assets (task image uploads) -------------------------------------------------------
 
 export async function findAssetIdByObjectKey(
+  identity: ResolvedIdentity,
   executor: Executor,
   objectKey: string,
+  taskId: string,
 ) {
   const [existingAsset] = await executor
     .select({ id: assetTable.id })
     .from(assetTable)
-    .where(eq(assetTable.objectKey, objectKey))
+    .where(
+      and(
+        eq(assetTable.objectKey, objectKey),
+        eq(assetTable.taskId, taskId),
+        exists(
+          executor
+            .select({ one: sql`1` })
+            .from(taskTable)
+            .where(
+              and(
+                eq(taskTable.id, assetTable.taskId),
+                taskProjectReach(identity, executor),
+              ),
+            ),
+        ),
+      ),
+    )
     .limit(1);
   return existingAsset;
 }
 
 export async function updateAssetById(
+  identity: ResolvedIdentity,
   executor: Executor,
   id: string,
   values: Partial<typeof assetTable.$inferInsert>,
@@ -431,18 +756,49 @@ export async function updateAssetById(
   const [asset] = await executor
     .update(assetTable)
     .set(values)
-    .where(eq(assetTable.id, id))
+    .where(
+      and(
+        eq(assetTable.id, id),
+        exists(
+          executor
+            .select({ one: sql`1` })
+            .from(taskTable)
+            .where(
+              and(
+                eq(taskTable.id, assetTable.taskId),
+                taskProjectReach(identity, executor),
+              ),
+            ),
+        ),
+      ),
+    )
     .returning({ id: assetTable.id });
   return asset;
 }
 
 export async function insertAsset(
+  identity: ResolvedIdentity,
   executor: Executor,
   values: typeof assetTable.$inferInsert,
 ) {
+  const selectedValues = Object.fromEntries(
+    Object.entries(values)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [key, sql`${value}`.as(key)]),
+  );
   const [asset] = await executor
     .insert(assetTable)
-    .values(values)
+    .select(
+      executor
+        .select(selectedValues as never)
+        .from(taskTable)
+        .where(
+          and(
+            eq(taskTable.id, values.taskId ?? ""),
+            taskProjectReach(identity, executor),
+          ),
+        ),
+    )
     .returning({ id: assetTable.id });
   return asset;
 }
@@ -471,6 +827,7 @@ export async function findWorkspaceMembershipId(
  * with their project; the workspace predicate is in the statement.
  */
 export async function listWorkspaceScopedTasks(
+  identity: ResolvedIdentity,
   taskIds: string[],
   workspaceId: string,
 ) {
@@ -488,12 +845,20 @@ export async function listWorkspaceScopedTasks(
         eq(projectTable.workspaceId, workspaceId),
         isNull(projectTable.archivedAt),
         isNull(projectTable.deletedAt),
+        currentProjectReachPredicate(
+          identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executorOrDefault(),
+        ),
       ),
     );
 }
 
 /** A label by id that belongs to the workspace (or is legacy workspace-less). */
 export async function findLabelInWorkspaceScope(
+  identity: ResolvedIdentity,
   executor: Executor,
   labelId: string,
   workspaceId: string,
@@ -502,10 +867,46 @@ export async function findLabelInWorkspaceScope(
     eq(labelTable.id, labelId),
     or(eq(labelTable.workspaceId, workspaceId), isNull(labelTable.workspaceId)),
   );
-  return await executor.query.labelTable.findFirst({ where: scope });
+  const [label] = await executor
+    .select()
+    .from(labelTable)
+    .where(
+      and(
+        scope,
+        or(
+          and(
+            isNotNull(labelTable.taskId),
+            exists(
+              executor
+                .select({ one: sql`1` })
+                .from(taskTable)
+                .where(
+                  and(
+                    eq(taskTable.id, labelTable.taskId),
+                    taskProjectReach(identity, executor),
+                  ),
+                ),
+            ),
+          ),
+          and(
+            isNull(labelTable.taskId),
+            labelTable.workspaceId
+              ? currentWorkspaceReachPredicate(
+                  identity,
+                  labelTable.workspaceId,
+                  executor,
+                )
+              : sql`false`,
+          ),
+        ),
+      ),
+    )
+    .limit(1);
+  return label;
 }
 
 export async function updateTaskRowReturningId(
+  identity: ResolvedIdentity,
   executor: Executor,
   taskId: string,
   values: Partial<typeof taskTable.$inferInsert>,
@@ -513,39 +914,76 @@ export async function updateTaskRowReturningId(
   const [updated] = await executor
     .update(taskTable)
     .set({ ...values, version: sql`${taskTable.version} + 1` })
-    .where(eq(taskTable.id, taskId))
+    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
     .returning({ id: taskTable.id });
   return updated;
 }
 
 export async function deleteTaskReturningId(
+  identity: ResolvedIdentity,
   executor: Executor,
   taskId: string,
 ) {
   const [deleted] = await executor
     .delete(taskTable)
-    .where(eq(taskTable.id, taskId))
+    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
     .returning({ id: taskTable.id });
   return deleted;
 }
 
 export async function findTaskLabelByName(
+  identity: ResolvedIdentity,
   executor: Executor,
   taskId: string,
   name: string,
 ) {
-  return await executor.query.labelTable.findFirst({
-    where: and(eq(labelTable.name, name), eq(labelTable.taskId, taskId)),
-  });
+  const [label] = await executor
+    .select()
+    .from(labelTable)
+    .where(
+      and(
+        eq(labelTable.name, name),
+        eq(labelTable.taskId, taskId),
+        exists(
+          executor
+            .select({ one: sql`1` })
+            .from(taskTable)
+            .where(
+              and(
+                eq(taskTable.id, labelTable.taskId),
+                taskProjectReach(identity, executor),
+              ),
+            ),
+        ),
+      ),
+    )
+    .limit(1);
+  return label;
 }
 
 export async function insertTaskLabelOnConflictDoNothing(
+  identity: ResolvedIdentity,
   executor: Executor,
   values: { name: string; color: string; workspaceId: string; taskId: string },
 ) {
   const [inserted] = await executor
     .insert(labelTable)
-    .values(values)
+    .select(
+      executor
+        .select({
+          name: sql`${values.name}`.as("name"),
+          color: sql`${values.color}`.as("color"),
+          workspaceId: sql`${values.workspaceId}`.as("workspaceId"),
+          taskId: taskTable.id,
+        })
+        .from(taskTable)
+        .where(
+          and(
+            eq(taskTable.id, values.taskId),
+            taskProjectReach(identity, executor),
+          ),
+        ),
+    )
     .onConflictDoNothing({
       target: [labelTable.taskId, labelTable.name],
     })
@@ -554,6 +992,7 @@ export async function insertTaskLabelOnConflictDoNothing(
 }
 
 export async function deleteTaskLabelByName(
+  identity: ResolvedIdentity,
   executor: Executor,
   input: { workspaceId: string; name: string; taskId: string },
 ) {
@@ -564,6 +1003,17 @@ export async function deleteTaskLabelByName(
         eq(labelTable.workspaceId, input.workspaceId),
         eq(labelTable.name, input.name),
         eq(labelTable.taskId, input.taskId),
+        exists(
+          executor
+            .select({ one: sql`1` })
+            .from(taskTable)
+            .where(
+              and(
+                eq(taskTable.id, labelTable.taskId),
+                taskProjectReach(identity, executor),
+              ),
+            ),
+        ),
       ),
     )
     .returning();
@@ -572,6 +1022,7 @@ export async function deleteTaskLabelByName(
 
 /** Highest task position in a project's column (or status when the column is unknown). */
 export async function findMaxTaskPositionInColumnOrStatus(
+  identity: ResolvedIdentity,
   executor: Executor,
   projectId: string,
   status: string,
@@ -583,6 +1034,7 @@ export async function findMaxTaskPositionInColumnOrStatus(
     .where(
       and(
         eq(taskTable.projectId, projectId),
+        taskProjectReach(identity, executor),
         columnId
           ? eq(taskTable.columnId, columnId)
           : eq(taskTable.status, status),
@@ -593,6 +1045,7 @@ export async function findMaxTaskPositionInColumnOrStatus(
 
 /** Highest task position among a project's tasks with this status AND column (task move). */
 export async function findMaxTaskPositionInStatusAndColumn(
+  identity: ResolvedIdentity,
   executor: Executor,
   projectId: string,
   status: string,
@@ -604,6 +1057,7 @@ export async function findMaxTaskPositionInStatusAndColumn(
     .where(
       and(
         eq(taskTable.projectId, projectId),
+        taskProjectReach(identity, executor),
         eq(taskTable.status, status),
         eq(taskTable.columnId, columnId),
       ),
@@ -612,23 +1066,42 @@ export async function findMaxTaskPositionInStatusAndColumn(
 }
 
 export async function insertTask(
+  identity: ResolvedIdentity,
   executor: Executor,
   values: typeof taskTable.$inferInsert,
 ) {
-  const [task] = await executor.insert(taskTable).values(values).returning();
+  const selectedValues = Object.fromEntries(
+    Object.entries(values)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [key, sql`${value}`.as(key)]),
+  );
+  const [task] = await executor
+    .insert(taskTable)
+    .select(
+      executor
+        .select(selectedValues as never)
+        .from(projectTable)
+        .where(projectReach(identity, values.projectId, executor)),
+    )
+    .returning();
   return task;
 }
 
-export async function findProjectById(executor: Executor, projectId: string) {
+export async function findProjectById(
+  identity: ResolvedIdentity,
+  executor: Executor,
+  projectId: string,
+) {
   const [liveProject] = await executor
     .select()
     .from(projectTable)
-    .where(eq(projectTable.id, projectId))
+    .where(projectReach(identity, projectId, executor))
     .limit(1);
   return liveProject;
 }
 
 export async function listColumnsForMove(
+  identity: ResolvedIdentity,
   executor: Executor,
   projectId: string,
 ) {
@@ -639,12 +1112,18 @@ export async function listColumnsForMove(
       position: columnTable.position,
     })
     .from(columnTable)
-    .where(eq(columnTable.projectId, projectId))
+    .where(
+      and(
+        eq(columnTable.projectId, projectId),
+        projectReach(identity, projectId, executor),
+      ),
+    )
     .orderBy(asc(columnTable.position));
 }
 
 /** The source project with its freeze flags (reach preflight for a move). */
 export async function findProjectFreezeState(
+  identity: ResolvedIdentity,
   executor: Executor,
   projectId: string,
 ) {
@@ -656,13 +1135,25 @@ export async function findProjectFreezeState(
       deletedAt: projectTable.deletedAt,
     })
     .from(projectTable)
-    .where(eq(projectTable.id, projectId))
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        currentProjectReachPredicate(
+          identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executor,
+        ),
+      ),
+    )
     .limit(1);
   return sourcePreflight;
 }
 
 /** A live, unarchived project of the given workspace (destination preflight for a move). */
 export async function findLiveUnarchivedProjectInWorkspace(
+  identity: ResolvedIdentity,
   executor: Executor,
   projectId: string,
   workspaceId: string,
@@ -676,6 +1167,13 @@ export async function findLiveUnarchivedProjectInWorkspace(
         eq(projectTable.workspaceId, workspaceId),
         isNull(projectTable.deletedAt),
         isNull(projectTable.archivedAt),
+        currentProjectReachPredicate(
+          identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executor,
+        ),
       ),
     )
     .limit(1);
@@ -687,6 +1185,7 @@ export async function findLiveUnarchivedProjectInWorkspace(
  * number), `share` for the source. A destination lock also pins the source's workspace.
  */
 export async function lockLiveProjectForMove(
+  identity: ResolvedIdentity,
   executor: Executor,
   projectId: string,
   options: { mode: "update" | "share"; workspaceId?: string },
@@ -699,6 +1198,13 @@ export async function lockLiveProjectForMove(
         eq(projectTable.id, projectId),
         isNull(projectTable.deletedAt),
         isNull(projectTable.archivedAt),
+        currentProjectReachPredicate(
+          identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executor,
+        ),
         ...(options.workspaceId !== undefined
           ? [eq(projectTable.workspaceId, options.workspaceId)]
           : []),
@@ -709,6 +1215,7 @@ export async function lockLiveProjectForMove(
 }
 
 export async function findProjectIdentity(
+  identity: ResolvedIdentity,
   executor: Executor,
   projectId: string,
 ) {
@@ -719,13 +1226,25 @@ export async function findProjectIdentity(
       workspaceId: projectTable.workspaceId,
     })
     .from(projectTable)
-    .where(eq(projectTable.id, projectId))
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        currentProjectReachPredicate(
+          identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executor,
+        ),
+      ),
+    )
     .limit(1);
   return sourceProject;
 }
 
 /** A non-deleted project of the source's workspace: foreign and missing ids stay indistinct. */
 export async function findNotDeletedProjectInWorkspace(
+  identity: ResolvedIdentity,
   executor: Executor,
   projectId: string,
   workspaceId: string,
@@ -741,6 +1260,13 @@ export async function findNotDeletedProjectInWorkspace(
         eq(projectTable.id, projectId),
         eq(projectTable.workspaceId, workspaceId),
         isNull(projectTable.deletedAt),
+        currentProjectReachPredicate(
+          identity,
+          projectTable.id,
+          projectTable.workspaceId,
+          projectTable.organisationId,
+          executor,
+        ),
       ),
     )
     .limit(1);
@@ -749,6 +1275,7 @@ export async function findNotDeletedProjectInWorkspace(
 
 /** Move the task's assets with it. */
 export async function reassignTaskAssetsToProject(
+  identity: ResolvedIdentity,
   executor: Executor,
   taskId: string,
   projectId: string,
@@ -756,5 +1283,20 @@ export async function reassignTaskAssetsToProject(
   await executor
     .update(assetTable)
     .set({ projectId })
-    .where(eq(assetTable.taskId, taskId));
+    .where(
+      and(
+        eq(assetTable.taskId, taskId),
+        exists(
+          executor
+            .select({ one: sql`1` })
+            .from(taskTable)
+            .where(
+              and(
+                eq(taskTable.id, assetTable.taskId),
+                taskProjectReach(identity, executor),
+              ),
+            ),
+        ),
+      ),
+    );
 }

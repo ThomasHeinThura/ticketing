@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import updateTaskTitle from "../../apps/api/src/task/controllers/update-task-title";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -18,6 +19,11 @@ async function createTaskFixture() {
     workspaceId: member.workspace.id,
   });
   await grantWorkItemProjectAccess(member.user.id, project.id);
+  const identity = await resolveIdentity({
+    userId: member.user.id,
+    credential: "session",
+  });
+  if (!identity) throw new Error("expected resolved task fixture identity");
   const task = requireRow(
     await db
       .insert(schema.taskTable)
@@ -35,7 +41,7 @@ async function createTaskFixture() {
     "createTaskFixture: task",
   );
 
-  return { member, task };
+  return { member, task, identity };
 }
 
 describe("API integration: task title activity", () => {
@@ -89,9 +95,10 @@ describe("API integration: task title activity", () => {
   });
 
   it("does not create activity for an unchanged title", async () => {
-    const { member, task } = await createTaskFixture();
+    const { member, task, identity } = await createTaskFixture();
 
     const result = await updateTaskTitle({
+      identity,
       id: task.id,
       title: task.title,
       currentUserId: member.user.id,
@@ -106,10 +113,11 @@ describe("API integration: task title activity", () => {
   });
 
   it("rolls back the title when the activity insert fails", async () => {
-    const { task } = await createTaskFixture();
+    const { task, identity } = await createTaskFixture();
 
     await expect(
       updateTaskTitle({
+        identity,
         id: task.id,
         title: "Must not persist",
         currentUserId: "missing-user",

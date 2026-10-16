@@ -1,24 +1,31 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
 import { insertTaskActivity, updateTaskRow } from "../repository";
 
 async function updateTaskTitle({
+  identity,
   id,
   title,
   currentUserId,
 }: {
+  identity: ResolvedIdentity;
   id: string;
   title: string;
   currentUserId: string;
 }) {
   const { existingTask, updatedTask } = await db.transaction(async (tx) => {
-    const existingTask = await lockTaskAndAssertProjectLive(tx, id);
+    const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
+      tx,
+      id,
+      identity,
+    );
     if (existingTask.title === title) {
       return { existingTask, updatedTask: existingTask };
     }
-    const task = await updateTaskRow(tx, id, { title });
+    const task = await updateTaskRow(identity, tx, id, { title });
 
     if (!task) {
       throw new HTTPException(500, {
@@ -26,7 +33,7 @@ async function updateTaskTitle({
       });
     }
 
-    await insertTaskActivity(tx, {
+    await insertTaskActivity(identity, tx, {
       taskId: task.id,
       type: "title_changed",
       userId: currentUserId,

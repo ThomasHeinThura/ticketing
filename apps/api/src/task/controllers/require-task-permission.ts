@@ -1,5 +1,6 @@
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { resolveCallerIdentity } from "../../utils/has-project-reach";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { requireWorkspacePermission } from "../../utils/require-workspace-permission";
 import { findTaskAssigneeId } from "../repository";
@@ -84,10 +85,15 @@ export async function requireTaskAssigneePermission(c: Context, next: Next) {
   if (id) {
     rejectNulByte(id, "Task id");
   }
-  const { userId } = await readJsonBody(c);
-  const nextAssignee = typeof userId === "string" ? userId : null;
+  const { userId: requestedUserId } = await readJsonBody(c);
+  const nextAssignee =
+    typeof requestedUserId === "string" ? requestedUserId : null;
 
-  const existingTask = await findTaskAssigneeId(id ?? "");
+  const userId = c.get("userId");
+  const identity = userId ? await resolveCallerIdentity(c, userId) : null;
+  const existingTask = identity
+    ? await findTaskAssigneeId(identity, id ?? "")
+    : undefined;
 
   if (existingTask && existingTask.userId !== nextAssignee) {
     return requireWorkspacePermission({ work_item: ["assign"] })(c, next);
