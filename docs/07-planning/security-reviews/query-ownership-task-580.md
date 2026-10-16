@@ -1459,3 +1459,109 @@ All mandatory current GitHub checks must pass on the exact candidate through the
 ## Current machine binding
 
 **Reviewed head:** `0f8e6aaca3d30fb4a30173669c7e357922ea2e06`
+
+
+## Exact notification assertion repair — 2026-10-16
+
+**Reviewed head:** `e0f110ccaeec0bd0c439aebf67c4ad33871eae8f`
+
+The sole source delta from publication5511 is a test-only ordering correction: both actual and expected notification rows are sorted before exact equality. Full cardinality and own-read/foreign-unread values remain required. Fresh strong independent GPT-6 Luna and independent GPT-6.1 Sol confirmation CLEAR this bounded delta; prior full09e3 and composition0f8e review scopes remain unchanged. This is not a fresh full B9 review.
+
+The prior5511 hosted PostgreSQL result remains adverse:220/222files and3281/3283tests passed, four of five tasks; both real time-zone wrappers failed only because an unordered query returned the correct two rows in reverse order. Actual e0f focused PostgreSQL now passes3files177tests/native0/101.159seconds, including the comment suite and both real clock wrappers. Raw392974bytes SHA256f78071d47d4a92251a827b5e1ffcb037674a90975b2378b16b525f2a78f25c4a; exact owned cleanup returns23containers109volumes7networks with no additions or removals.
+
+The separate prior required G11 assignment217.2ms strict<200 finding is NOT disposed by this test repair. New exact-publication full hosted checks, image proof, final body and protected readiness remain required. No unchanged rerun, performance fix, waiver, main acceptance, whole580 or phase claim. The39 prior authentic reports remain byte-preserved; the following three reports are appended verbatim.
+
+
+## Evidence file
+
+`b9-809-notification-order-fixture-author-luna.md`
+
+# #809 notification fixture order repair
+
+**Requested model:** GPT-6 Luna. The served-model fingerprint is unavailable in this environment; no fingerprint claim is made.
+**Commit:** `e0f110ccaeec0bd0c439aebf67c4ad33871eae8f`
+**Parent:** `5511e680c4b2990adcdf37563bd2c7df67119462`
+**Worktree/branch:** `/Users/heinthura/.codex/worktrees/q580b9-current/Ticketing.v2`, `codex/query-ownership-580-b9-current`
+
+## Change
+
+Only `tests/api-integration/work-item-comment.test.ts` changed. The notification mutation-state query selects the own and foreign notification rows by ID without an `ORDER BY`. The assertion now sorts both actual and expected rows by ID before equality comparison. It continues to require exactly both rows, with the own row read and the foreign row unread; it does not weaken the check to subset matching. No production source changed.
+
+## Checks and limits
+
+- `pnpm exec biome check tests/api-integration/work-item-comment.test.ts` — exit 0; Biome reported five pre-existing `noUnusedVariables` warnings elsewhere in that file (lines 1521, 1594, 1787, 1916, 2390), none on the changed assertion.
+- `git diff --check` — exit 0.
+- No PostgreSQL tests, focused tests, full tests, build, browser, Docker, CI, push, PR, or repository notes/docs were run or changed.
+- The worktree is clean at the commit above and one commit ahead of its remote tracking ref. This test fixture repair is not acceptance of #809 or the stacked #773 candidate.
+
+
+## Evidence file
+
+`b9-809-e0f-order-ordinary-luna.md`
+
+# #809 notification order delta — ordinary review
+
+**Candidate:** `e0f110ccaeec0bd0c439aebf67c4ad33871eae8f`
+**Comparison base:** `5511e680c4b2990adcdf37563bd2c7df67119462`
+**Role:** Independent ordinary delta reviewer
+**Reviewer:** GPT-6 (current review context; independent of the author/fixer)
+**Scope:** The sole changed file, `tests/api-integration/work-item-comment.test.ts`, plus cited hosted failure and exact-head focused PostgreSQL runtime evidence.
+
+## Verdict
+
+**CLEAR — no blocking finding in this delta.** The order-insensitive assertion preserves full-cardinality and per-row state checks. This verdict applies only to the one-file test correction at the exact candidate SHA; it does not accept #809, dispose of the existing G11 assignment217.2 finding, or establish overall merge readiness.
+
+## Checks
+
+- Confirmed the candidate is exactly `e0f110ccaeec0bd0c439aebf67c4ad33871eae8f`, parent `5511e680c4b2990adcdf37563bd2c7df67119462`, with only the requested test file changed and a clean worktree.
+- Reviewed `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, and `CLAUDE.md` review/model guidance.
+- The code sorts both the selected actual rows and the two expected rows by ID, then retains strict deep equality. It therefore still requires exactly the own and foreign notification rows with `own.isRead === true` and `foreign.isRead === false`; it cannot pass if either row is absent, duplicated, or has the wrong state.
+- The subsequent checks remain intact: direct foreign mark-read returns `undefined` and leaves the row unread; clear-all retains the foreign row unread and deletes the own row. The earlier listing still includes own and excludes foreign.
+- The hosted failure receipt binds the failure to base `5511e680c4b2990adcdf37563bd2c7df67119462`. Targeted excerpts from `809-5511-pg-full.log` show both clock-wrapper imports failed at the same assertion, with both rows present and read booleans correct but reversed ordering; the query has no `ORDER BY`. No other failure is attributed to this assertion in the receipt.
+- Inspected exact-head evidence under `b9-runtime-e0f110cc`: three focused API integration files, 177 tests passed, exit 0, 101.159 seconds; raw log SHA-256 `f78071d47d4a92251a827b5e1ffcb037674a90975b2378b16b525f2a78f25c4a`. This is inspected evidence, not a rerun by this reviewer. Runtime receipt explicitly records `notAcceptance: true` and the unresolved G11 finding.
+- `git diff --check` on the candidate range is clean. No test, source, or repository-note edits were made; no test or build was run by this reviewer.
+
+## Residuals and limits
+
+This is a bounded fixture-order correction only. It makes no performance claim and does not resolve the required G11 assignment217.2 strict `<200` issue. Existing full review/security scope and current hosted gates remain separately required. This report is not merge approval.
+
+## Append-only provenance clarification
+
+**Requested platform selector:** `gpt-6-luna` (explicit spawn selector)
+**Review role/model tier:** GPT-6 Luna ordinary reviewer
+**Served-model fingerprint:** Unavailable; no verified fingerprint is claimed.
+
+This clarification supplements the reviewer identity field above. The selector records the requested platform model; it does not assert a served-model fingerprint.
+
+
+## Evidence file
+
+`b9-809-e0f-order-security-61-sol.md`
+
+# #809 notification order delta — independent security confirmation
+
+**Reviewed head:** e0f110ccaeec0bd0c439aebf67c4ad33871eae8f
+**Comparison base:** 5511e680c4b2990adcdf37563bd2c7df67119462
+**Requested model:** GPT-6.1 Sol (explicitly requested for this security role).
+**Served-model fingerprint:** Unavailable in this context; no independently verified served-model/version fingerprint is claimed.
+**Role/context:** Independent bounded security confirmation, `/root/b9_809_e0f_order_security_sol`. This context did not author, direct, or remediate the candidate and performed this confirmation after the ordinary review returned CLEAR.
+
+## Verdict
+
+**CLEAR — no blocking or non-blocking security finding in the reviewed delta.** Canonicalizing the two result arrays by notification ID removes an unsupported ordering assumption while retaining the authorization-state oracle. This is a lightweight confirmation of this test-only delta, not a new full B9 security review or acceptance of #809.
+
+## Checks performed
+
+- Read repository AGENTS.md, active mission, agent-workflow.md review/model rules, CLAUDE.md, and the CI/CD authoritative security-path list. The delta has no production, route, policy, configuration, dependency, or gate implementation change.
+- Verified the clean worktree HEAD and direct parent match the exact SHAs above. Full range name-status/stat inspection shows only `tests/api-integration/work-item-comment.test.ts` changed (7 additions, 2 deletions). Therefore the entire production tree is unchanged against the comparison base. Range `git diff --check` passed.
+- Inspected the entire changed assertion and surrounding notification isolation test. The database SELECT has no ORDER BY. The sole executable change defines the expected two rows, sorts a copy of the actual rows and the expected rows by ID, and retains full `toEqual` deep equality. It does not filter, deduplicate, project away `isRead`, substitute subset matching, or issue another database operation.
+- Exact cardinality remains two; each actual ID remains paired with its own boolean. An absent or extra row, duplicated ID, own row left unread, or foreign row marked read still fails. Sorting cannot mask a write to the foreign selected notification. Expected values remain the fixture IDs with own `isRead: true` and foreign `isRead: false`.
+- Adjacent authority checks are unchanged: current resource facts include own and exclude foreign; visible listing includes own and excludes foreign; direct foreign mark-read returns undefined and the subsequent read observes false; bulk clear retains the foreign notification unread and deletes the own notification. No hidden-write oracle was removed or weakened by this delta.
+- Fully read the author record and ordinary review including its append-only provenance clarification. Ordinary review SHA-256 verified as `1018e4ba0327f5fbfccffea46715e7d451eee455613be017117c2fc8b5ba1b2f`. Also read `809-5511-pg-failure-receipt.json`, whose base-bound failure describes the correct two rows/booleans in reverse order.
+- Inspected `b9-runtime-e0f110cc/focused-runtime-receipt.json`, native result, raw log summary, and cleanup receipt. This evidence reports exact-head focused PostgreSQL execution: 3 files, 177 passing tests, native exit 0, 101.159 seconds wall time. Independently hashed the 392974-byte raw log to `f78071d47d4a92251a827b5e1ffcb037674a90975b2378b16b525f2a78f25c4a`. Receipt records unchanged final inventories of 23 containers, 109 volumes, and 7 networks. These are inspected conductor-produced receipts, not tests or cleanup executed by this reviewer.
+
+## Limits and retained requirements
+
+No tests, builds, Docker/PostgreSQL operations, browser actions, CI, push, PR, or repository edits were performed by this reviewer. Only this private evidence file was created. Live hosted checks were not queried; this report does not establish merge readiness.
+
+Prior full `09e3` and B9 composition `0f8e` reviews retain only their actual recorded scope; this confirmation does not extend or replace them. The required existing G11 assignment217.2 strict `<200` performance finding persists and is not disposed by this fixture correction or its focused pass. No performance fix, whole-PR acceptance, stage closure, or gate waiver is asserted.
