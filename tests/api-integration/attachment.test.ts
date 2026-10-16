@@ -381,7 +381,11 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     });
     mockAnonymousSession();
     const readableKey = await makeApiKey(creator.id, { work_item: ["read"] });
-    setAmbientHeaders({ "x-api-key": readableKey });
+    const requestWithApiKey = (url: string, key: string) => {
+      const headers = new Headers({ "x-api-key": key });
+      expect(headers.get("x-api-key")).toBe(key);
+      return app.request(url, { headers });
+    };
     const [storedReadableKey] = await db
       .select()
       .from(schema.apikeyTable)
@@ -407,16 +411,20 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
         ({ filename }) => filename,
       ),
     ).toContain("api-key-readable.txt");
-    const positive = await app.request(`/api/work-items/${key}/attachments`);
+    const positive = await requestWithApiKey(
+      `/api/work-items/${key}/attachments`,
+      readableKey,
+    );
     expect(positive.status, await positive.clone().text()).toBe(200);
     expect(await positive.json()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ filename: "api-key-readable.txt" }),
       ]),
     );
-    setAmbientHeaders({ "x-api-key": await makeApiKey(creator.id, {}) });
-    const insufficientStoredScope = await app.request(
+    const insufficientScopeKey = await makeApiKey(creator.id, {});
+    const insufficientStoredScope = await requestWithApiKey(
       `/api/work-items/${key}/attachments`,
+      insufficientScopeKey,
     );
     expect(insufficientStoredScope.status).toBe(403);
     expect(await insufficientStoredScope.text()).not.toContain(
@@ -429,9 +437,9 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     const keyWithoutOwnerReach = await makeApiKey(nonOwner.user.id, {
       work_item: ["read"],
     });
-    setAmbientHeaders({ "x-api-key": keyWithoutOwnerReach });
-    const ownerCeiling = await app.request(
+    const ownerCeiling = await requestWithApiKey(
       `/api/work-items/${key}/attachments`,
+      keyWithoutOwnerReach,
     );
     expect(ownerCeiling.status).toBe(404);
     expect(await ownerCeiling.text()).not.toContain("api-key-readable.txt");

@@ -159,18 +159,24 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
         .returning(),
       "own submission attachment",
     );
-    await db.insert(schema.attachmentTable).values({
-      workspaceId: s.t.workspaceId,
-      organisationId: s.owner.orgId,
-      submissionId: s.accepted.id,
-      objectKey: `hidden/${randomUUID()}`,
-      filename: "hidden-submission.txt",
-      mimeType: "text/plain",
-      size: 1,
-      state: "ready",
-      customerVisible: false,
-      uploadedBy: s.owner.person.id,
-    });
+    const hidden = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: s.t.workspaceId,
+          organisationId: s.owner.orgId,
+          submissionId: s.accepted.id,
+          objectKey: `hidden/${randomUUID()}`,
+          filename: "hidden-submission.txt",
+          mimeType: "text/plain",
+          size: 1,
+          state: "ready",
+          customerVisible: false,
+          uploadedBy: s.owner.person.id,
+        })
+        .returning(),
+      "hidden submission attachment",
+    );
     const ownerIdentity = await resolveIdentity({
       userId: s.owner.user.id,
       credential: "session",
@@ -213,34 +219,83 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
         workItemId: s.t.workItem.id,
       },
     );
-    expect(staffVisible.map(({ id }) => id)).toContain(s.privateAttachment.id);
-    const [staffPerson] = await db
-      .select({ id: schema.personTable.id })
-      .from(schema.personTable)
-      .where(eq(schema.personTable.userId, s.t.requester.user.id));
-    if (staffPerson)
-      await db
-        .delete(schema.membershipTable)
-        .where(
-          and(
-            eq(schema.membershipTable.personId, staffPerson.id),
-            eq(schema.membershipTable.scope, "project"),
-            eq(schema.membershipTable.scopeId, s.t.workItem.projectId),
-          ),
-        );
-    const staffIdentity = await resolveIdentity({
-      userId: s.t.requester.user.id,
-      credential: "session",
+    expect(staffIdentityBeforeRevocation).toMatchObject({
+      side: "staff",
+      personId: expect.any(String),
     });
-    expect(
-      await listStaffSubmissionAttachments(db, staffIdentity, {
+    expect(staffVisible.map(({ id }) => id)).toContain(s.privateAttachment.id);
+    expect(staffVisible.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([
+        visibleOwn.id,
+        hidden.id,
+        s.privateAttachment.id,
+      ]),
+    );
+    const staffPerson = requireRow(
+      await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, s.t.requester.user.id)),
+      "staff person for reach revocation",
+    );
+    const removedProjectMemberships = await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, staffPerson.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, s.t.workItem.projectId),
+        ),
+      )
+      .returning({ id: schema.membershipTable.personId });
+    expect(removedProjectMemberships).not.toHaveLength(0);
+    const workspaceReachRows = await listStaffSubmissionAttachments(
+      db,
+      staffIdentityBeforeRevocation,
+      {
         submissionId: s.accepted.id,
+        workItemId: s.t.workItem.id,
+      },
+    );
+    expect(workspaceReachRows.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([visibleOwn.id, hidden.id]),
+    );
+    expect(workspaceReachRows).toHaveLength(2);
+    expect(workspaceReachRows.map(({ filename }) => filename)).toEqual(
+      expect.arrayContaining(["own-submission.txt", "hidden-submission.txt"]),
+    );
+    expect(workspaceReachRows.map(({ id }) => id)).not.toContain(
+      s.privateAttachment.id,
+    );
+    expect(
+      await listStaffSubmissionAttachments(db, staffIdentityBeforeRevocation, {
+        submissionId: s.duplicate.id,
         workItemId: s.t.workItem.id,
       }),
     ).toEqual([]);
+    const workspaceMembership = await db
+      .select({ userId: schema.workspaceUserTable.userId })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, s.t.workspaceId),
+          eq(schema.workspaceUserTable.userId, s.t.requester.user.id),
+        ),
+      );
+    expect(workspaceMembership).toHaveLength(1);
+    const removedWorkspaceMemberships = await db
+      .delete(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, s.t.workspaceId),
+          eq(schema.workspaceUserTable.userId, s.t.requester.user.id),
+        ),
+      )
+      .returning({ userId: schema.workspaceUserTable.userId });
+    expect(removedWorkspaceMemberships).toHaveLength(1);
     expect(
-      await listStaffSubmissionAttachments(db, staffIdentity, {
-        submissionId: s.duplicate.id,
+      await listStaffSubmissionAttachments(db, staffIdentityBeforeRevocation, {
+        submissionId: s.accepted.id,
         workItemId: s.t.workItem.id,
       }),
     ).toEqual([]);

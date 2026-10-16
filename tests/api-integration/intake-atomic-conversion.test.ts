@@ -3,7 +3,8 @@
 
 import { randomUUID } from "node:crypto";
 import type { FormSchema, FormValue } from "@taskdesk/domain";
-import { and, eq } from "drizzle-orm";
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -1074,6 +1075,56 @@ describe("intake atomic conversion", () => {
         .returning(),
       "requester",
     );
+    await db
+      .insert(schema.roleTable)
+      .values({
+        scope: BUILT_IN_ROLES.customer.scope,
+        workspaceId: null,
+        key: BUILT_IN_ROLES.customer.key,
+        name: "Customer",
+        rank: BUILT_IN_ROLES.customer.rank,
+        capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+        isSystem: true,
+        isEditable: false,
+      })
+      .onConflictDoNothing();
+    const canonicalCustomerRole = requireRow(
+      await db
+        .select({
+          id: schema.roleTable.id,
+          rank: schema.roleTable.rank,
+          capabilities: schema.roleTable.capabilities,
+          workspaceId: schema.roleTable.workspaceId,
+          isSystem: schema.roleTable.isSystem,
+        })
+        .from(schema.roleTable)
+        .where(
+          and(
+            eq(schema.roleTable.scope, "organisation"),
+            eq(schema.roleTable.key, BUILT_IN_ROLES.customer.key),
+            eq(schema.roleTable.isSystem, true),
+            isNull(schema.roleTable.workspaceId),
+          ),
+        )
+        .limit(1),
+      "canonical customer role",
+    );
+    if (
+      canonicalCustomerRole.rank !== BUILT_IN_ROLES.customer.rank ||
+      canonicalCustomerRole.workspaceId !== null ||
+      canonicalCustomerRole.isSystem !== true ||
+      JSON.stringify(canonicalCustomerRole.capabilities) !==
+        JSON.stringify(BUILT_IN_ROLES.customer.capabilities)
+    ) {
+      throw new Error("customer role is not the canonical built-in");
+    }
+    await db.insert(schema.membershipTable).values({
+      personId: requester.id,
+      scope: "organisation",
+      scopeId: organisation.id,
+      roleId: canonicalCustomerRole.id,
+      seesAll: false,
+    });
     const [staff] = await db
       .select()
       .from(schema.personTable)
@@ -1220,6 +1271,15 @@ describe("intake atomic conversion", () => {
     const requesterIdentity = await resolveIdentity({
       userId: customerUser.id,
       credential: "session",
+    });
+    if (!requesterIdentity) {
+      throw new Error(
+        "auto-accept requester must resolve as an admitted customer",
+      );
+    }
+    expect(requesterIdentity).toMatchObject({
+      side: "customer",
+      personId: requester.id,
     });
     const staffIdentity = await resolveIdentity({
       userId: staffUser.id,
