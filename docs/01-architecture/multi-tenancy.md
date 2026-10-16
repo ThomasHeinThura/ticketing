@@ -47,19 +47,21 @@ What does not change: omission stays detectable in the application — see
 
 ### Query scoping
 
-Every query that can return cross-organisation data passes through a repository function
-that takes the tenant explicitly (`workspaceId`, `projectId`, or the resolved identity) and
-puts it in the statement's predicate:
+Every query that can return cross-organisation data passes through a scoped repository
+function that takes the resolved identity and applies the caller's reach in the statement
+predicate. A workspace or project id may further narrow the query, but the repository must
+check it against that identity; the id alone is not authoritative scope.
 
 ```ts
-const items = await listWorkItemsInProject(workspaceId, projectId, filter);
+const items = await listWorkItemsInProject(identity, projectId, filter);
 ```
 
-This replaces the earlier `workItems.forIdentity(identity).inProject(projectId)` wrapper
-shape: repositories take explicit tenant parameters and no wrapper type is introduced
-(conductor decision recorded in PR #780, decision log 2026-10-15, "Conductor
-implementation decisions"; see also
-[coding-standards.md](../04-engineering/coding-standards.md)).
+The accepted `workItems.forIdentity(identity).inProject(projectId)` shape illustrates this
+resolved-identity scoping convention. It does not claim that a literal fluent API or a
+universal phantom type is implemented or proven for every repository. The required behavior
+is that the repository derives and applies the authorized scope from the resolved identity;
+any additional tenant id is checked against that scope. See
+[coding-standards.md](../04-engineering/coding-standards.md).
 
 The planned `check:queries` gate (issue #580) will forbid building statements such as
 `db.select().from(workItem)` outside repository modules once it is wired. This check enforces

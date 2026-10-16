@@ -2692,6 +2692,9 @@ export async function transitionPersonLifecycleInTransaction(
   }
   await projectMembershipKeys(tx, keys);
   return {
+    // The user whose sessions and keys this deactivation removed, so the caller can announce it
+    // on the realtime control channel once the transaction has committed (#632).
+    revokedUserId: !active && person.userId ? person.userId : null,
     sessionsRevoked,
     keysRevoked,
     membershipsEnded,
