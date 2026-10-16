@@ -156,12 +156,14 @@ async function seedCustomer(connectionId: string) {
   });
   await db.insert(schema.roleTable).values({
     id: CUSTOMER_ROLE_ID,
-    scope: "organisation",
+    scope: BUILT_IN_ROLES.customer.scope,
     workspaceId: null,
-    key: "customer",
+    key: BUILT_IN_ROLES.customer.key,
     name: "Customer",
-    rank: 0,
-    capabilities: [],
+    rank: BUILT_IN_ROLES.customer.rank,
+    capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+    isSystem: true,
+    isEditable: false,
   });
   const createdBy = await creator(internal.id);
   await db.insert(schema.identityConnectionTable).values({
@@ -310,6 +312,40 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("/");
     await expectJitIdentity("jit-customer-connection", "customer", target);
+    expect(
+      response.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("__Host-tdk_portal_session=")),
+    ).toBe(true);
+  });
+
+  it("refuses JIT customer admission when its configured customer role is tampered", async () => {
+    await seedCustomer("jit-tampered-customer-role-connection");
+    await db
+      .update(schema.roleTable)
+      .set({
+        rank: 0,
+        capabilities: [],
+        isSystem: false,
+        isEditable: true,
+      })
+      .where(eq(schema.roleTable.id, CUSTOMER_ROLE_ID));
+
+    const response = await signIn(
+      "jit-tampered-customer-role-connection",
+      "customer",
+    );
+    expect(response.headers.get("location")).toContain("identity_error");
+    expect(
+      response.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("__Host-tdk_portal_session=")),
+    ).toBe(false);
+    expect(
+      await db.query.sessionTable.findFirst({
+        where: eq(schema.sessionTable.portal, "customer"),
+      }),
+    ).toBeUndefined();
   });
 
   it("denies mixed native/projected view admission and retires the OIDC grant on failed admission", async () => {

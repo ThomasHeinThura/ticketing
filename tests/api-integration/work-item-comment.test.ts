@@ -750,7 +750,7 @@ describe("API integration: work-item comments (#27)", () => {
         credentialCanReadTask: false,
       });
       const ids = rows.map(({ notification }) => notification.id);
-      expect(ids).toContain(notifications.get(person.user.id)?.[0]);
+      expect(ids).not.toContain(notifications.get(person.user.id)?.[0]);
       expect(ids).toContain(notifications.get(person.user.id)?.[1]);
       expect(ids).not.toContain(notifications.get(person.user.id)?.[2]);
     }
@@ -765,31 +765,62 @@ describe("API integration: work-item comments (#27)", () => {
       expect(ids).not.toContain(notifications.get(person.user.id)?.[2]);
     }
 
-    const requesterItemId = notifications.get(requester.user.id)?.[0];
-    const nonparticipantItemId = notifications.get(nonparticipant.user.id)?.[0];
-    if (!requesterItemId || !nonparticipantItemId)
+    const requesterMentionId = notifications.get(requester.user.id)?.[1];
+    const nonparticipantMentionId = notifications.get(
+      nonparticipant.user.id,
+    )?.[1];
+    const requesterAssignmentId = notifications.get(requester.user.id)?.[0];
+    if (
+      !requesterMentionId ||
+      !nonparticipantMentionId ||
+      !requesterAssignmentId
+    )
       throw new Error("expected private-audience notification fixtures");
     const requesterRead = await markOwnReadableNotificationRead(
-      requesterItemId,
+      requesterMentionId,
       requester.user.id,
     );
     expect(requesterRead?.isRead).toBe(true);
     const [requesterAfterRead] = await db
       .select({ isRead: schema.notificationTable.isRead })
       .from(schema.notificationTable)
-      .where(eq(schema.notificationTable.id, requesterItemId));
+      .where(eq(schema.notificationTable.id, requesterMentionId));
     expect(requesterAfterRead?.isRead).toBe(true);
 
     const nonparticipantRead = await markOwnReadableNotificationRead(
-      nonparticipantItemId,
+      nonparticipantMentionId,
       nonparticipant.user.id,
     );
     expect(nonparticipantRead).toBeUndefined();
     const [nonparticipantAfterRead] = await db
       .select({ isRead: schema.notificationTable.isRead })
       .from(schema.notificationTable)
-      .where(eq(schema.notificationTable.id, nonparticipantItemId));
+      .where(eq(schema.notificationTable.id, nonparticipantMentionId));
     expect(nonparticipantAfterRead?.isRead).toBe(false);
+
+    expect(
+      await markOwnReadableNotificationRead(
+        requesterAssignmentId,
+        requester.user.id,
+      ),
+    ).toBeUndefined();
+    const [assignmentAfterDirect] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, requesterAssignmentId));
+    expect(assignmentAfterDirect?.isRead).toBe(false);
+    await markReadableNotificationsRead(requester.user.id);
+    const [assignmentAfterBulkRead] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, requesterAssignmentId));
+    expect(assignmentAfterBulkRead?.isRead).toBe(false);
+    await deleteReadableNotifications(requester.user.id);
+    const [assignmentAfterClear] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, requesterAssignmentId));
+    expect(assignmentAfterClear?.isRead).toBe(false);
   });
 
   it("#580 S3: uses the serving project organisation for customer inbox reach", async () => {
