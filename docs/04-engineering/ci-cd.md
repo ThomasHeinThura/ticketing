@@ -275,6 +275,27 @@ pull-request time. The script fails if either run reports a skipped test, becaus
 run would otherwise read as green. Without `TASKDESK_REAL_DOCKER=1` the test file reports
 every test as skipped, so it is inert in the fast unit run.
 
+The same required browser job also builds the explicit pull-request head commit (or the
+workflow SHA for merge-queue/manual runs) from a clean commit archive after the deploy-helper
+test, then starts that image with the canonical Postgres 18 and Valkey Compose services.
+The PR head can differ from Actions' synthetic merge checkout SHA; the proof records both.
+The smoke verifies the source journal's migration count was applied, both the one-shot
+migrator and running application use the built image ID, the application runs under its
+non-root UID, the image healthcheck is healthy, and each started service (migrate, taskdesk,
+Postgres, and Valkey) has no host port bindings or automatic host-port publishing. The public
+live and ready endpoints must return exactly HTTP 200 without following redirects. Cleanup
+must complete and the final proof artifact must be complete before the step reports success.
+It records the candidate and checkout SHAs, local image ID/platform, and sanitized proof in a
+short-lived workflow artifact. It performs no registry login, push, deployment, or SIT
+acceptance. Its isolated Compose project and randomly named, ownership-labeled network have
+no published ports; cleanup removes only resources bearing this run's identity. The hosted
+runner platform is tested here; the Release workflow remains responsible for its separately
+published multi-architecture artifact. For each service the proof also records Docker's
+configured network mode and attached network IDs, and requires the mode and sole attachment to
+match the run-owned, ownership-labeled network. Host, container-shared, foreign, missing, or
+additional network attachments fail the smoke, including for the stopped one-shot migrator.
+The network itself must inspect as a local bridge network with this run's ownership label.
+
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
 The **security review** is a required section of `.github/pull_request_template.md`
@@ -710,8 +731,9 @@ probably the same. By digest, they are identical by construction.
 
 Explicitly, because the boundary matters:
 
-- **Does not run migrations.** The application applies them at start, under an advisory
-  lock.
+- **Does not run migrations against shared or persistent infrastructure.** The required
+  candidate-image smoke applies migrations only to its disposable Postgres 18 service;
+  integration tests and final SIT acceptance remain separate.
 - **Does not seed data.**
 - **Does not provision infrastructure.**
 - **Does not hold production credentials.**

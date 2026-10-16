@@ -105,7 +105,7 @@ export async function transitionWorkItem(c: Context) {
   const body = c.req.valid('json');
   const identity = c.get('identity');
 
-  const item = await workItems.findByKey(identity, key);
+  const item = await workItems.forIdentity(identity).byKey(key);
   const workflow = await workflows.activeFor(item.typeId);
 
   // domain decides; the controller does not
@@ -117,11 +117,12 @@ export async function transitionWorkItem(c: Context) {
 ```
 
 **Repositories own queries.** Controllers, middleware and services never build a query. A
-repository call that can return cross-organisation data receives its tenant scope explicitly
-and applies that scope in the statement predicate; repository location alone does not guarantee
-scoping. The ownership rule and conventions are under [Query ownership](#query-ownership-issue-580)
-below. `check:queries` (issue #580) is planned but not currently wired, and will enforce query
-locations rather than tenant-predicate semantics.
+repository call that can return cross-organisation data receives the resolved identity and
+applies the caller's reach in the statement predicate. An additional workspace or project id
+must be checked against that identity; an id alone is not authoritative scope. Repository
+location alone does not guarantee scoping. The ownership rule and conventions are under
+[Query ownership](#query-ownership-issue-580) below. `check:queries` (issue #580) is planned
+but not currently wired, and will enforce query locations rather than tenant-predicate semantics.
 
 ### Query ownership (issue #580)
 
@@ -153,12 +154,13 @@ locations rather than tenant-predicate semantics.
   `executorOrDefault(executor)`. A function that never joins a transaction may use the shared
   connection directly. A repository never opens, commits or rolls back a transaction it was
   handed.
-- **Tenant scoping.** A repository query that can return cross-organisation data takes its
-  tenant scope explicitly (`workspaceId`, `projectId`, or resolved identity as applicable) and
-  includes that scope in the statement predicate. Supplying a parameter alone does not prove
-  that the predicate enforces the caller's reach. See [multi-tenancy](../01-architecture/multi-tenancy.md#query-scoping)
+- **Tenant scoping.** A repository query that can return cross-organisation data uses the
+  resolved identity and applies the caller's reach in the statement predicate. An additional
+  workspace or project id is checked against that identity and also appears in the predicate;
+  supplying an id alone does not prove the caller's reach. `forIdentity(identity)` remains the
+  accepted illustration/convention for scoped repositories, without claiming a literal fluent
+  API or universal `ScopedQuery` type guarantee is implemented. See [multi-tenancy](../01-architecture/multi-tenancy.md#query-scoping)
   and the [security model](../01-architecture/security-model.md#5-secrets-never-serialise-queries-are-never-unscoped).
-  No `forIdentity`/`ScopedQuery` wrapper guarantee is part of this contract.
 - **Results.** Repository functions await their statement and return rows, DTOs or scalars,
   never an un-awaited query builder, so a caller cannot keep composing the statement.
 - **Raw SQL and fragments.** Raw `execute`/`sql` statements follow the same rule. SQL fragment
