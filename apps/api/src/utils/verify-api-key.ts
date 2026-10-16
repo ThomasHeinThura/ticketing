@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
-import { and, eq, gt, isNull, or } from "drizzle-orm";
-import db, { schema } from "../database";
+import {
+  findActiveApiKeyByHash,
+  findApiKeyOwnerStatus,
+} from "./access-lookups.repository";
 
 async function hashApiKey(key: string): Promise<string> {
   const hash = createHash("sha256").update(key).digest();
@@ -38,18 +40,7 @@ function parsePermissions(raw: string | null): Record<string, string[]> | null {
 
 async function apiKeyOwnerIsActive(ownerId: string): Promise<boolean> {
   if (!ownerId) return false;
-  const [owner] = await db
-    .select({
-      banned: schema.userTable.banned,
-      personActive: schema.personTable.active,
-    })
-    .from(schema.userTable)
-    .leftJoin(
-      schema.personTable,
-      eq(schema.personTable.userId, schema.userTable.id),
-    )
-    .where(eq(schema.userTable.id, ownerId))
-    .limit(1);
+  const owner = await findApiKeyOwnerStatus(ownerId);
   return (
     owner !== undefined && owner.banned !== true && owner.personActive === true
   );
@@ -58,20 +49,7 @@ async function apiKeyOwnerIsActive(ownerId: string): Promise<boolean> {
 export async function verifyApiKey(key: string) {
   const hashedKey = await hashApiKey(key);
 
-  const [apiKey] = await db
-    .select()
-    .from(schema.apikeyTable)
-    .where(
-      and(
-        eq(schema.apikeyTable.key, hashedKey),
-        eq(schema.apikeyTable.enabled, true),
-        or(
-          isNull(schema.apikeyTable.expiresAt),
-          gt(schema.apikeyTable.expiresAt, new Date()),
-        ),
-      ),
-    )
-    .limit(1);
+  const apiKey = await findActiveApiKeyByHash(hashedKey);
 
   if (!apiKey) {
     return null;
