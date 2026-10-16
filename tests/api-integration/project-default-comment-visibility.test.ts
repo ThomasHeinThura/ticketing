@@ -18,6 +18,7 @@ import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -314,7 +315,7 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
     );
   });
 
-  it("refuses a genuine customer identity from the agent project-settings API", async () => {
+  it("rejects a customer portal session on the agent project-settings API before project lookup", async () => {
     const staff = await createWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({
       workspaceId: staff.workspace.id,
@@ -415,15 +416,25 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
     expect(customerRole.capabilities).not.toContain("project:update");
     expect(customerRole.capabilities).not.toContain("project:manage_settings");
 
-    mockAuthenticatedSession(customerUser);
+    mockAuthenticatedSession(customerUser, { portal: "customer" });
     const { app } = createApp();
 
-    const response = await putProject(
-      app,
-      project.id,
-      fullBody(project, { defaultCommentVisibility: "public" }),
+    const configuredAgentRequest = withConfiguredAgentAuthority(
+      `/api/project/${project.id}`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(
+          fullBody(project, { defaultCommentVisibility: "public" }),
+        ),
+      },
     );
-    expect(response.status).toBe(403);
+    const response = await app.request(
+      configuredAgentRequest.input,
+      configuredAgentRequest.init,
+    );
+    expect(response.status).toBe(401);
+    await expect(response.text()).resolves.toBe("Unauthorized");
     expect((await readProject(project.id)).defaultCommentVisibility).toBe(
       "internal",
     );
