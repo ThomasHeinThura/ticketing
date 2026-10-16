@@ -1,3 +1,13 @@
+## Current #809 PostgreSQL failure retained — 2026-10-16 21:14 UTC
+
+**Blocked first:** publication `bb298c181c213e695c5a8e857679536d355df8aa` fullPG117184850227 failed220/222files3281/3283tests/four of five tasks. Both real clock wrappers fail another unordered exact-row assertion at work-item-comment.test.ts1107: the two expected IDs and unread=false flags are correct but reversed. Raw7171938bytes SHA25675813d672ab6e770f0d9999da5e1ea77365bf047106d80030e78f0955389cce1. Its current G1122/browser63/imagec28c passes remain source-bound and do not override this failure. No final evidence-body publication or merge.
+
+The previous narrow ordering repair at1349 missed this second occurrence. The corrective batch now audits the whole existing fixture for unordered multi-row exact-array assertions and applies deterministic exact-row normalization while retaining cardinality, duplicates, fields and denial/no-write assertions. Explicit ordering contracts stay order-sensitive. Only the integration test file is authorized; no product query sort, timer, skip or scope relaxation. New source needs independent review, focused realPG and new exact-head hosted checks. All prior failures remain recorded.
+
+#773 d7f6 full40path independent security clearance remains source-only on unaccepted809bb298; it waits for the repaired dependency and accepted-main composition. Carrier has14unresolved source contexts; its bounded local-component/call-coverage repair is underway. #789's read-only caller map identifies the eight-file scope needed to recover request SQL authority and the existing transition caller, without a new product policy or generic producer bypass. No #789 implementation has begun.
+
+Accepted main remainsc022915a. #810 calibration, #807/#798/Carrier performance holds remain. Final signed artifact, exact-digest SIT, usable nonempty-attachment restore and final audit are outstanding.
+
 ## Recovered successor security clearance — 2026-10-16 21:09 UTC
 
 Fresh independent GPT-6.1 Sol FULL security review CLEAR covers all40 current paths at `d7f628fa89cedc25d610f93c5bd49ce6ae9c2df9` against unaccepted809 `bb298c181c213e695c5a8e857679536d355df8aa`. Exact report17740bytes SHA2565fbd168e8175532231ab5216095f2301796d5db4706ea1729f039320aa619121 was read in full by the conductor. It independently closes the deterministic-fixture finding, retains storage cross-system atomicity as a disclosed inherited limitation, and does not claim runtime, publication or dependency acceptance. Source remains clean/frozen pending809 acceptance and current-main composition.
