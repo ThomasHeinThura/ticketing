@@ -7,6 +7,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
 } from "./helpers/fixtures";
 
 describe("approval feature-flag repository resolution", () => {
@@ -32,6 +33,7 @@ describe("approval feature-flag repository resolution", () => {
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectRole(user.id, project.id, ["project:read"]);
     const identity = await resolveRequestIdentity({ userId: user.id });
     if (!identity)
       throw new Error("Fixture user did not resolve to an identity");

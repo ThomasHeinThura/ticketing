@@ -567,7 +567,7 @@ export type ApprovalTarget = {
   title: string;
   workspaceId: string;
   projectId: string;
-  organisationId: string;
+  organisationId: string | null;
   requesterId: string | null;
   isPrivate: boolean;
   reachFacts: ProjectReachFacts;
@@ -588,7 +588,7 @@ export async function loadApprovalTargetByKey(
       projectId: schema.workItemTable.projectId,
       requesterId: schema.workItemTable.requesterId,
       customerVisibility: schema.workItemTable.customerVisibility,
-      organisationId: schema.workspaceTable.organisationId,
+      organisationId: schema.projectTable.organisationId,
       participantIds: sql<
         string[]
       >`ARRAY(SELECT rp.person_id FROM request_participant rp WHERE rp.work_item_id = ${schema.workItemTable.id})`,
@@ -597,10 +597,6 @@ export async function loadApprovalTargetByKey(
     .innerJoin(
       schema.projectTable,
       eq(schema.projectTable.id, schema.workItemTable.projectId),
-    )
-    .innerJoin(
-      schema.workspaceTable,
-      eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
     )
     .where(
       and(
@@ -613,8 +609,14 @@ export async function loadApprovalTargetByKey(
   if (!row) throw new HTTPException(404, { message: "Work item not found" });
 
   const visibleToPersonIds =
-    row.customerVisibility === "private" && row.requesterId
-      ? [...new Set([row.requesterId, ...row.participantIds])]
+    row.customerVisibility === "private"
+      ? [
+          ...new Set(
+            [row.requesterId, ...row.participantIds].filter(
+              (personId): personId is string => personId !== null,
+            ),
+          ),
+        ]
       : null;
   const reachFacts: ProjectReachFacts = {
     projectId: row.projectId,
@@ -716,7 +718,7 @@ export async function loadApprovalTargetByApprovalId(
       title: schema.workItemTable.title,
       workspaceId: schema.approvalTable.workspaceId,
       projectId: schema.workItemTable.projectId,
-      organisationId: schema.workspaceTable.organisationId,
+      organisationId: schema.projectTable.organisationId,
       requesterId: schema.workItemTable.requesterId,
       customerVisibility: schema.workItemTable.customerVisibility,
       participantIds: sql<
@@ -737,10 +739,6 @@ export async function loadApprovalTargetByApprovalId(
       schema.projectTable,
       eq(schema.projectTable.id, schema.workItemTable.projectId),
     )
-    .innerJoin(
-      schema.workspaceTable,
-      eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
-    )
     .where(
       and(
         eq(schema.approvalTable.id, id),
@@ -758,8 +756,14 @@ export async function loadApprovalTargetByApprovalId(
     .limit(1);
   if (!row) return null;
   const visibleToPersonIds =
-    row.customerVisibility === "private" && row.requesterId
-      ? [...new Set([row.requesterId, ...row.participantIds])]
+    row.customerVisibility === "private"
+      ? [
+          ...new Set(
+            [row.requesterId, ...row.participantIds].filter(
+              (personId): personId is string => personId !== null,
+            ),
+          ),
+        ]
       : null;
   const reachFacts: ProjectReachFacts = {
     projectId: row.projectId,
@@ -1255,7 +1259,7 @@ export function hasApprovalCapability(
     workItemId: target.workItemId,
     workItemProjectId: target.projectId,
     workspaceId: target.workspaceId,
-    organisationId: target.organisationId,
+    organisationId: target.organisationId ?? undefined,
   });
 }
 
@@ -1265,7 +1269,7 @@ export function hasPortalApprovalDecideCapability(
   target: ApprovalTarget,
 ): boolean {
   return can(identity, "approval:decide", "organisation", {
-    organisationId: target.organisationId,
+    organisationId: target.organisationId ?? undefined,
   });
 }
 

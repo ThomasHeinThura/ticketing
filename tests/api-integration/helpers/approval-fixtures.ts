@@ -389,6 +389,10 @@ export async function ensureCustomerOrg(t: Tenant) {
     .update(schema.workspaceTable)
     .set({ organisationId: orgId })
     .where(eq(schema.workspaceTable.id, t.workspaceId));
+  await db
+    .update(schema.projectTable)
+    .set({ organisationId: orgId })
+    .where(eq(schema.projectTable.id, t.project.id));
   const role = await ensureCanonicalCustomerRole();
   return { orgId, roleId: role.id };
 }
