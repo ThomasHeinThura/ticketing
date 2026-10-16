@@ -9,11 +9,13 @@
  * from the rows, the counts and the ranking. Session and API-key callers decide the same way.
  */
 import { randomUUID } from "node:crypto";
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import getLabelsByWorkspaceId from "../../apps/api/src/label/controllers/get-labels-by-workspace-id";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import getProjects from "../../apps/api/src/project/controllers/get-projects";
 import globalSearch from "../../apps/api/src/search/controllers/global-search";
 import { callerReach } from "../../apps/api/src/utils/caller-reach";
@@ -631,8 +633,11 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         `/api/project?workspaceId=${a.world.workspaceId}`,
       );
       if (projects.status === 200) assertProjects(projects.body, "none");
+      mockAuthenticatedSession(a.world.customerNoRole.user, {
+        portal: "customer",
+      });
       const search = await read<SearchBody>(a.app, searchUrl(a));
-      if (search.status === 200) assertSearch(search.body, search.text, "none");
+      expect(search.status, search.text).toBe(401);
     });
 
     it("a customer whose organisation is bound to a project sees exactly that project's rows", async () => {
@@ -643,27 +648,52 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         key: orgId,
         name: "Bound org",
         isInternal: false,
+        active: true,
+        portalAccess: true,
       });
       const role = requireRow(
         await db
           .insert(schema.roleTable)
           .values({
-            scope: "organisation",
-            key: `customer-${randomUUID()}`,
+            scope: BUILT_IN_ROLES.customer.scope,
+            workspaceId: null,
+            key: BUILT_IN_ROLES.customer.key,
             name: "Customer",
-            rank: 0,
-            capabilities: ["work_item:read"],
+            rank: BUILT_IN_ROLES.customer.rank,
+            capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+            isSystem: true,
+            isEditable: false,
           })
           .returning(),
-        "org role",
+        "customer role",
       );
-      const customer = await addMember(a.world.workspaceId, "customer");
-      await db
-        .update(schema.personTable)
-        .set({ side: "customer", organisationId: orgId })
-        .where(eq(schema.personTable.id, customer.personId));
+      const userId = `customer-${randomUUID()}`;
+      const user = requireRow(
+        await db
+          .insert(schema.userTable)
+          .values({
+            id: userId,
+            email: `${userId}@example.test`,
+            name: "Customer reach reader",
+          })
+          .returning(),
+        "customer user",
+      );
+      const person = requireRow(
+        await db
+          .insert(schema.personTable)
+          .values({
+            userId,
+            organisationId: orgId,
+            side: "customer",
+            active: true,
+            isPlaceholder: false,
+          })
+          .returning(),
+        "customer person",
+      );
       await db.insert(schema.membershipTable).values({
-        personId: customer.personId,
+        personId: person.id,
         scope: "organisation",
         scopeId: orgId,
         roleId: role.id,
@@ -680,11 +710,22 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
       // the project bound to it, and its rows are what the list filters would keep.
       const reach = await callerReach(
         {
-          get: (key: string) =>
-            key === "apiKey" ? undefined : customer.user.id,
+          get: (key: string) => (key === "apiKey" ? undefined : user.id),
         } as never,
-        customer.user.id,
+        user.id,
       );
+      const customerIdentity = await resolveIdentity({
+        userId: user.id,
+        credential: "session",
+      });
+      expect(customerIdentity).toMatchObject({
+        side: "customer",
+        portal: "customer",
+        reach: { kind: "organisation", ids: [orgId] },
+      });
+      mockAuthenticatedSession(user, { portal: "customer" });
+      const customerSearch = await read<SearchBody>(a.app, searchUrl(a));
+      expect(customerSearch.status, customerSearch.text).toBe(401);
       expect(await reach.reachableProjectIds([a.world.workspaceId])).toEqual([
         a.world.project.id,
       ]);
@@ -692,11 +733,21 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         a.world.project.id,
       ]);
       assertLabels(labels, "visible");
+      // The legacy search controller requires legitimate workspace membership. Keep its
+      // hidden-row/count oracle under a staff member with its own project reach; customers
+      // are denied by GET /api/search's workspace:read policy above.
+      const staffId = a.world.projectAdmin.user.id;
+      const staffReach = await callerReach(
+        {
+          get: (key: string) => (key === "apiKey" ? undefined : staffId),
+        } as never,
+        staffId,
+      );
       const found = await globalSearch({
         query: MARKER,
-        userId: customer.user.id,
+        userId: staffId,
         workspaceId: a.world.workspaceId,
-        reachableProjectIds: (ids) => reach.reachableProjectIds(ids),
+        reachableProjectIds: (ids) => staffReach.reachableProjectIds(ids),
       });
       assertSearch(
         found as unknown as SearchBody,

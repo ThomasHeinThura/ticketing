@@ -616,7 +616,12 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     mockAuthenticatedSession(memberUser);
     const { app } = createApp();
     const response = await assignableRequest(app, project.id);
-    expect(response.status).toBe(403);
+    const missingProject = await assignableRequest(
+      app,
+      "project-does-not-exist",
+    );
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe(await missingProject.text());
   });
 
   it("the count question and the roster are answered from the SAME predicate as the write", async () => {

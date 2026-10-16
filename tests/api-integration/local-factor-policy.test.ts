@@ -1164,6 +1164,7 @@ describe("instance local-factor policy API", () => {
       .returning();
     if (!admin || !target) throw new Error("reset users were not created");
     await ensureStaffPersonForUser(admin.id);
+    await ensureStaffPersonForUser(target.id);
     mockAuthenticatedSession(admin);
     const sessionId = `session-${admin.id}`;
     await db.insert(schema.sessionTable).values({

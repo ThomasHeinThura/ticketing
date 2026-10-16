@@ -12,8 +12,8 @@
  * (a banned user, a suspended customer organisation).
  */
 import { randomUUID } from "node:crypto";
-import { defaultRolePayloads } from "@taskdesk/permissions";
-import { eq } from "drizzle-orm";
+import { BUILT_IN_ROLES, defaultRolePayloads } from "@taskdesk/permissions";
+import { and, eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
@@ -45,12 +45,51 @@ async function insertCustomerPerson(userId: string) {
   const org = organisation[0];
   if (!org) throw new Error("failed to insert customer organisation");
 
-  await db.insert(schema.personTable).values({
-    userId,
-    organisationId: org.id,
-    side: "customer",
-    createdAt: new Date(),
-    updatedAt: new Date(),
+  const [person] = await db
+    .insert(schema.personTable)
+    .values({
+      userId,
+      organisationId: org.id,
+      side: "customer",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+  if (!person) throw new Error("failed to insert customer person");
+
+  let [role] = await db
+    .select({ id: schema.roleTable.id })
+    .from(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.key, BUILT_IN_ROLES.customer.key),
+        eq(schema.roleTable.scope, BUILT_IN_ROLES.customer.scope),
+        isNull(schema.roleTable.workspaceId),
+        eq(schema.roleTable.isSystem, true),
+      ),
+    )
+    .limit(1);
+  if (!role) {
+    [role] = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: BUILT_IN_ROLES.customer.scope,
+        workspaceId: null,
+        key: BUILT_IN_ROLES.customer.key,
+        name: "Customer",
+        rank: BUILT_IN_ROLES.customer.rank,
+        capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+        isSystem: true,
+        isEditable: false,
+      })
+      .returning({ id: schema.roleTable.id });
+  }
+  if (!role) throw new Error("failed to insert customer role");
+  await db.insert(schema.membershipTable).values({
+    personId: person.id,
+    scope: "organisation",
+    scopeId: org.id,
+    roleId: role.id,
   });
 
   return org.id;
