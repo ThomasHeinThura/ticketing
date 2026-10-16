@@ -1097,7 +1097,9 @@ export function TaskCard({ dragging, selected }) { return <div className="bg-bac
         tokenNames,
       );
       assert.equal(observed.unresolved.size, 0);
-      const contexts = [...observed.uses.occurrences.values()].flat();
+      const contexts = [
+        ...(observed.uses.occurrences ?? new Map()).values(),
+      ].flat();
       assert.deepEqual(
         new Set(contexts.map((entry) => entry.backgroundClass)),
         new Set(["bg-muted/40", "dark:bg-card/90", "bg-accent/60"]),
@@ -1135,6 +1137,90 @@ export function TaskCard({ dragging, selected }) { return <div className="bg-bac
       await Promise.all(
         [leaf, branch, root].map((file) => rm(file, { force: true })),
       );
+    }
+  });
+
+  it("preserves ordered nested alpha layers across a same-file component boundary", async () => {
+    const fixture = `apps/web/src/components/.contrast-nested-alpha-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        fixture,
+        'function InnerPanel({ highlighted }) { return <section className={highlighted ? "bg-accent/35" : ""}><div className="bg-muted/60"><span className="text-muted-foreground">Count</span></div></section>; } export function OuterPanel(){ return <main className="bg-background"><div className="bg-muted/20"><InnerPanel highlighted /></div></main>; }',
+      );
+      const observed = observeInheritedForegroundSurfaces(
+        [fixture],
+        tokenNames,
+      );
+      const contexts = [
+        ...(observed.uses.occurrences ?? new Map()).values(),
+      ].flat();
+      const countContexts = contexts.filter((entry) =>
+        entry.id.includes(
+          "::InnerPanel::section[0]/div[0]/span[0]::text-muted-foreground",
+        ),
+      );
+      assert.equal(observed.unresolved.size, 0);
+      assert.ok(
+        countContexts.some(
+          (entry) =>
+            entry.backgroundClass === "bg-muted/60" &&
+            JSON.stringify(entry.backdropLayers) ===
+              JSON.stringify(["bg-accent/35", "bg-muted/20", "bg-background"]),
+        ),
+        "the conditional outer alpha must remain behind the nearer muted surface",
+      );
+      assert.ok(
+        countContexts.some(
+          (entry) =>
+            entry.backgroundClass === "bg-muted/60" &&
+            JSON.stringify(entry.backdropLayers) ===
+              JSON.stringify(["bg-muted/20", "bg-background"]),
+        ),
+        "the base state must retain its own complete backdrop chain",
+      );
+      assert.equal(
+        countContexts.some(
+          (entry) =>
+            entry.backgroundClass === "bg-accent/35" &&
+            JSON.stringify(entry.backdropLayers) ===
+              JSON.stringify(["bg-muted/20", "bg-background"]),
+        ),
+        false,
+        "an outer alpha cannot be claimed as the nearest foreground surface",
+      );
+
+      const livePaths = await collectContrastSourcePaths();
+      const live = observeInheritedForegroundSurfaces(livePaths, tokenNames);
+      const liveId =
+        "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0";
+      const liveContexts = [...(live.uses.occurrences ?? new Map()).values()]
+        .flat()
+        .filter((entry) => entry.id === liveId);
+      assert.ok(
+        liveContexts.some(
+          (entry) =>
+            entry.backgroundClass === "bg-muted/60" &&
+            JSON.stringify(entry.backdropLayers) ===
+              JSON.stringify(["bg-accent/35", "bg-muted/20", "bg-background"]),
+        ),
+        "ListColumnSection count must prove the actual conditional alpha stack",
+      );
+      assert.equal(
+        liveContexts.some((entry) => entry.backgroundClass === "bg-accent/35"),
+        false,
+        "ListColumnSection outer accent must not become a false nearest surface",
+      );
+    } finally {
+      await rm(fixture, { force: true });
     }
   });
 

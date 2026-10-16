@@ -1780,7 +1780,6 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
             let importedSurfaceComponent;
             let importedSurfaceTarget;
             const importedTranslucentLayers = [];
-            let translucentAncestors = [];
             let activeSurfaceBranches = [
               { translucent: [], themes: ["light", "dark"] },
             ];
@@ -1865,9 +1864,6 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
               if (activeSurfaceBranches.length === 0) break;
             }
             if (unsupportedAncestorSurface) inheritedBackgrounds = [];
-            translucentAncestors = activeSurfaceBranches.flatMap(
-              (branch) => branch.translucent,
-            );
             if (inheritedBackgrounds.length === 0) {
               for (const ancestor of [...jsxAncestors].reverse()) {
                 const tag = ts.isJsxElement(ancestor)
@@ -1927,14 +1923,27 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
                   sourceNode: node,
                   sourceAncestors: jsxAncestors,
                   sourceOwner: owningComponent ?? "<module>",
-                  pendingAlphaSurfaces: translucentAncestors.map((entry) => ({
-                    className: entry.className,
-                    themes: ["light", "dark"],
-                    chain: [
-                      `${sourcePaths[index]}:${owningComponent ?? "<module>"}`,
-                      `jsx:${elementPath.join("/")}>${entry.className}`,
-                    ],
-                  })),
+                  pendingAlphaSurfaces: activeSurfaceBranches.flatMap(
+                    (branch) => {
+                      const [nearest, ...backdrop] = branch.translucent;
+                      if (!nearest) return [];
+                      return [
+                        {
+                          className: nearest.className,
+                          themes: branch.themes,
+                          backdropLayers: backdrop.map(
+                            (entry) => entry.className,
+                          ),
+                          chain: [
+                            `${sourcePaths[index]}:${owningComponent ?? "<module>"}`,
+                            `jsx:${elementPath.join("/")}>${branch.translucent
+                              .map((entry) => entry.className)
+                              .join(">")}`,
+                          ],
+                        },
+                      ];
+                    },
+                  ),
                   localFunctionName: enclosingFunctionName(node),
                 });
                 continue;
@@ -3348,7 +3357,7 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
           (surface.themes ?? ["light", "dark"]).map((theme) => ({
             className: surface.className,
             themes: [theme],
-            backdropLayers: [],
+            backdropLayers: surface.backdropLayers ?? [],
             chain: surface.chain,
           })),
       );
