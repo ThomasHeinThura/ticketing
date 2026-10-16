@@ -3,8 +3,8 @@
 
 import { randomUUID } from "node:crypto";
 import type { FormSchema, FormValue } from "@taskdesk/domain";
-import { BUILT_IN_ROLES } from "@taskdesk/permissions";
-import { and, eq, isNull } from "drizzle-orm";
+import { can, reaches } from "@taskdesk/permissions";
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,10 +22,12 @@ import {
 } from "../../apps/api/src/intake/repository";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import * as storage from "../../apps/api/src/storage";
+import { grantCustomerOrganisationMembership } from "./helpers/approval-fixtures";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -1075,56 +1077,7 @@ describe("intake atomic conversion", () => {
         .returning(),
       "requester",
     );
-    await db
-      .insert(schema.roleTable)
-      .values({
-        scope: BUILT_IN_ROLES.customer.scope,
-        workspaceId: null,
-        key: BUILT_IN_ROLES.customer.key,
-        name: "Customer",
-        rank: BUILT_IN_ROLES.customer.rank,
-        capabilities: [...BUILT_IN_ROLES.customer.capabilities],
-        isSystem: true,
-        isEditable: false,
-      })
-      .onConflictDoNothing();
-    const canonicalCustomerRole = requireRow(
-      await db
-        .select({
-          id: schema.roleTable.id,
-          rank: schema.roleTable.rank,
-          capabilities: schema.roleTable.capabilities,
-          workspaceId: schema.roleTable.workspaceId,
-          isSystem: schema.roleTable.isSystem,
-        })
-        .from(schema.roleTable)
-        .where(
-          and(
-            eq(schema.roleTable.scope, "organisation"),
-            eq(schema.roleTable.key, BUILT_IN_ROLES.customer.key),
-            eq(schema.roleTable.isSystem, true),
-            isNull(schema.roleTable.workspaceId),
-          ),
-        )
-        .limit(1),
-      "canonical customer role",
-    );
-    if (
-      canonicalCustomerRole.rank !== BUILT_IN_ROLES.customer.rank ||
-      canonicalCustomerRole.workspaceId !== null ||
-      canonicalCustomerRole.isSystem !== true ||
-      JSON.stringify(canonicalCustomerRole.capabilities) !==
-        JSON.stringify(BUILT_IN_ROLES.customer.capabilities)
-    ) {
-      throw new Error("customer role is not the canonical built-in");
-    }
-    await db.insert(schema.membershipTable).values({
-      personId: requester.id,
-      scope: "organisation",
-      scopeId: organisation.id,
-      roleId: canonicalCustomerRole.id,
-      seesAll: false,
-    });
+    await grantCustomerOrganisationMembership(organisation.id, requester.id);
     const [staff] = await db
       .select()
       .from(schema.personTable)
@@ -1133,6 +1086,10 @@ describe("intake atomic conversion", () => {
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectRole(staffUser.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     await db
       .update(schema.projectTable)
       .set({ organisationId: organisation.id })
@@ -1285,6 +1242,30 @@ describe("intake atomic conversion", () => {
       userId: staffUser.id,
       credential: "session",
     });
+    if (!staffIdentity) {
+      throw new Error("auto-accept staff reader identity was not resolved");
+    }
+    expect(
+      reaches(staffIdentity, {
+        projectId: project.id,
+        workspaceId: workspace.id,
+        organisationId: organisation.id,
+        ancestorProjectIds: [],
+        ownerTeamId: null,
+      }),
+    ).toBe(true);
+    expect(
+      can(staffIdentity, "work_item:read", "work_item", {
+        workspaceId: workspace.id,
+        workItemProjectId: project.id,
+      }),
+    ).toBe(true);
+    expect(
+      can(requesterIdentity, "work_item:read", "work_item", {
+        workspaceId: workspace.id,
+        workItemProjectId: project.id,
+      }),
+    ).toBe(false);
     const staffUpload = requireRow(
       await db
         .insert(schema.attachmentTable)
