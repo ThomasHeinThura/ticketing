@@ -1305,7 +1305,9 @@ describe("intake atomic conversion", () => {
     const deleteObject = vi
       .spyOn(storage, "deleteStorageObject")
       .mockResolvedValue();
-    vi.spyOn(storage, "finalizeStorageObject").mockResolvedValue();
+    const finalizeObject = vi
+      .spyOn(storage, "finalizeStorageObject")
+      .mockResolvedValue();
     vi.spyOn(storage, "getObjectSizeAndHeader").mockRejectedValue(
       new Error("injected verification failure"),
     );
@@ -1319,14 +1321,21 @@ describe("intake atomic conversion", () => {
         identity: requesterIdentity,
       }),
     ).rejects.toMatchObject({ status: 400 });
-    expect(deleteObject.mock.calls).toEqual([
-      [storage.toFinalAttachmentObjectKey(pendingRequesterUpload.objectKey)],
-    ]);
+    expect(finalizeObject).toHaveBeenCalledTimes(1);
+    expect(finalizeObject.mock.calls[0]?.[0]).toBe(
+      pendingRequesterUpload.objectKey,
+    );
+    const finalizedTarget = finalizeObject.mock.calls[0]?.[1];
+    expect(finalizedTarget).toEqual(expect.any(String));
+    if (!finalizedTarget)
+      throw new Error("final attachment key was not captured");
+    expect(deleteObject.mock.calls).toEqual([[finalizedTarget]]);
     const [afterRollback] = await db
       .select({ state: schema.attachmentTable.state })
       .from(schema.attachmentTable)
       .where(eq(schema.attachmentTable.id, pendingRequesterUpload.id));
     expect(afterRollback?.state).toBe("pending");
+    const deleteCallsAfterRollback = deleteObject.mock.calls.length;
     await expect(
       completeSubmissionAttachment({
         attachmentId: staffUpload.id,
@@ -1337,6 +1346,8 @@ describe("intake atomic conversion", () => {
         identity: requesterIdentity,
       }),
     ).rejects.toMatchObject({ status: 404 });
+    expect(deleteObject).toHaveBeenCalledTimes(deleteCallsAfterRollback);
+    expect(deleteObject.mock.calls).toEqual([[finalizedTarget]]);
 
     const ref = `SUB-${result.number}`;
     const events = await db
