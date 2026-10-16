@@ -145,17 +145,21 @@ async function seedAgent(connectionId: string) {
   };
 }
 
-async function seedCustomer(connectionId: string) {
+async function seedCustomer(connectionId: string, suffix?: string) {
+  const organisationId = suffix
+    ? `${CUSTOMER_ORG_ID}-${suffix}`
+    : CUSTOMER_ORG_ID;
+  const roleId = suffix ? `${CUSTOMER_ROLE_ID}-${suffix}` : CUSTOMER_ROLE_ID;
   const internal = await ensureInternalOrganisation();
   await db.insert(schema.organisationTable).values({
-    id: CUSTOMER_ORG_ID,
-    key: "jit-login-customer",
+    id: organisationId,
+    key: `jit-login-customer${suffix ? `-${suffix}` : ""}`,
     name: "JIT Customer",
     isInternal: false,
     portalAccess: true,
   });
   await db.insert(schema.roleTable).values({
-    id: CUSTOMER_ROLE_ID,
+    id: roleId,
     scope: BUILT_IN_ROLES.customer.scope,
     workspaceId: null,
     key: BUILT_IN_ROLES.customer.key,
@@ -170,7 +174,7 @@ async function seedCustomer(connectionId: string) {
     id: connectionId,
     providerType: "entra",
     portalScope: "customer",
-    organisationId: CUSTOMER_ORG_ID,
+    organisationId,
     defaultWorkspaceId: null,
     displayName: "JIT customer",
     issuer: ISSUER,
@@ -183,7 +187,7 @@ async function seedCustomer(connectionId: string) {
     domainBindings: [],
     jitPolicy: {
       enabled: true,
-      default_role_id: CUSTOMER_ROLE_ID,
+      default_role_id: roleId,
       required_entra_app_role: "TaskDesk.User",
     },
     maxRoleRank: null,
@@ -193,8 +197,8 @@ async function seedCustomer(connectionId: string) {
   });
   return {
     scope: "organisation" as const,
-    scopeId: CUSTOMER_ORG_ID,
-    roleId: CUSTOMER_ROLE_ID,
+    scopeId: organisationId,
+    roleId,
   };
 }
 
@@ -320,7 +324,53 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
   });
 
   it("refuses JIT customer admission when its configured customer role is tampered", async () => {
-    await seedCustomer("jit-tampered-customer-role-connection");
+    const attemptConnectionId = "jit-tampered-customer-role-connection";
+    const attemptedSubject = SUBJECT;
+    const unrelatedTarget = await seedCustomer(
+      "jit-unrelated-customer-session-connection",
+    );
+    const unrelatedResponse = await signIn(
+      "jit-unrelated-customer-session-connection",
+      "customer",
+    );
+    expect(unrelatedResponse.status).toBe(302);
+    await expectJitIdentity(
+      "jit-unrelated-customer-session-connection",
+      "customer",
+      unrelatedTarget,
+    );
+    const unrelatedIdentity = await db.query.externalIdentityTable.findFirst({
+      where: eq(
+        schema.externalIdentityTable.identityConnectionId,
+        "jit-unrelated-customer-session-connection",
+      ),
+    });
+    expect(unrelatedIdentity?.userId).toBeTruthy();
+
+    const target = await seedCustomer(attemptConnectionId, "tampered");
+    const initialResponse = await signIn(attemptConnectionId, "customer");
+    expect(initialResponse.status).toBe(302);
+    await expectJitIdentity(attemptConnectionId, "customer", target);
+    const attemptedIdentity = await db.query.externalIdentityTable.findFirst({
+      where: and(
+        eq(
+          schema.externalIdentityTable.identityConnectionId,
+          attemptConnectionId,
+        ),
+        eq(schema.externalIdentityTable.subject, SUBJECT),
+      ),
+    });
+    expect(attemptedIdentity?.userId).toBeTruthy();
+    expect(attemptedIdentity?.userId).not.toBe(unrelatedIdentity?.userId);
+    await db
+      .delete(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, attemptedIdentity?.userId ?? ""));
+    expect(
+      await db.query.sessionTable.findFirst({
+        where: eq(schema.sessionTable.userId, attemptedIdentity?.userId ?? ""),
+      }),
+    ).toBeUndefined();
+
     await db
       .update(schema.roleTable)
       .set({
@@ -329,13 +379,26 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
         isSystem: false,
         isEditable: true,
       })
-      .where(eq(schema.roleTable.id, CUSTOMER_ROLE_ID));
+      .where(eq(schema.roleTable.id, target.roleId));
+    vi.mocked(validateEntraIdToken).mockClear();
 
-    const response = await signIn(
-      "jit-tampered-customer-role-connection",
-      "customer",
-    );
+    const response = await signIn(attemptConnectionId, "customer");
     expect(response.headers.get("location")).toContain("identity_error");
+    expect(validateEntraIdToken).toHaveBeenCalled();
+    expect(
+      await db.query.externalIdentityTable.findFirst({
+        where: and(
+          eq(
+            schema.externalIdentityTable.identityConnectionId,
+            attemptConnectionId,
+          ),
+          eq(schema.externalIdentityTable.subject, attemptedSubject),
+        ),
+      }),
+    ).toMatchObject({
+      userId: attemptedIdentity?.userId,
+      subject: attemptedSubject,
+    });
     expect(
       response.headers
         .getSetCookie()
@@ -343,9 +406,23 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
     ).toBe(false);
     expect(
       await db.query.sessionTable.findFirst({
-        where: eq(schema.sessionTable.portal, "customer"),
+        where: and(
+          eq(schema.sessionTable.portal, "customer"),
+          eq(schema.sessionTable.userId, attemptedIdentity?.userId ?? ""),
+        ),
       }),
     ).toBeUndefined();
+    expect(
+      await db.query.sessionTable.findFirst({
+        where: and(
+          eq(schema.sessionTable.portal, "customer"),
+          eq(schema.sessionTable.userId, unrelatedIdentity?.userId ?? ""),
+        ),
+      }),
+    ).toMatchObject({
+      userId: unrelatedIdentity?.userId,
+      portal: "customer",
+    });
   });
 
   it("denies mixed native/projected view admission and retires the OIDC grant on failed admission", async () => {
