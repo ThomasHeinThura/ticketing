@@ -15,7 +15,7 @@ import {
 import type { BetterAuthPlugin, GenericEndpointContext } from "better-auth";
 import { APIError, createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
-import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
@@ -29,6 +29,7 @@ import {
   captureWorkspaceDeletionAccessForWorkspaces,
   invalidateWorkspaceDeletionAccessLosses,
 } from "../pending-action/workspace-access-invalidation";
+import { dbNowUtc } from "../utils/db-time";
 import { ensureInternalOrganisation } from "../utils/seed-internal-organisation";
 import { invalidateNativeAuthorization } from "../ws";
 import { decryptIdentityClientSecret } from "./client-secret";
@@ -207,7 +208,7 @@ export async function bindOidcSessionProvenance(input: {
           eq(schema.sessionTable.id, input.sessionId),
           eq(schema.sessionTable.userId, input.userId),
           eq(schema.sessionTable.portal, input.portal),
-          gt(schema.sessionTable.expiresAt, sql`now()`),
+          gt(schema.sessionTable.expiresAt, dbNowUtc()),
           isNull(schema.sessionTable.identityConnectionId),
         ),
       )
@@ -278,7 +279,7 @@ export async function bindTwoFactorOidcSession(
           eq(schema.sessionTable.id, input.sessionId),
           eq(schema.sessionTable.userId, input.userId),
           eq(schema.sessionTable.portal, input.portal),
-          gt(schema.sessionTable.expiresAt, sql`now()`),
+          gt(schema.sessionTable.expiresAt, dbNowUtc()),
           isNull(schema.sessionTable.identityConnectionId),
         ),
       )
