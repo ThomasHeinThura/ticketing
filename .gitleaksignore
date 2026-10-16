@@ -27,3 +27,7 @@ dc63e859546223ac9c11abc3c1d36a5c79ef445e:tests/api-integration/audit-log.test.ts
 # Exact immutable findings only; authentic reports unchanged. Technical record: 2026-10-12.
 9e89f35410266df75827627a30ff84610e2d775f:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:243
 9e89f35410266df75827627a30ff84610e2d775f:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:248
+
+# Public reviewer-report filename in immutable #780 review publication; not a credential.
+# Exact finding only; authentic reports unchanged. Technical record: 2026-10-16.
+33f2ec22b161bc214d76b2e0e3dd264cf950bd5d:docs/07-planning/security-reviews/780-owner-conductor-decisions.md:generic-api-key:260

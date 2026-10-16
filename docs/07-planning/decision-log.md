@@ -2307,6 +2307,10 @@ something).
 
 **Decided by:** Thomas, 2026-09-28.
 
+## 2026-10-16 — Technical disposition: public #780 reviewer filename
+
+The generic-api-key scan of immutable publication `33f2ec22b161bc214d76b2e0e3dd264cf950bd5d` matches the public filename `780-records-main-ordinary-luna.md` in its review-note heading (line260), not a credential. Preserve the authentic report and commit. Add only that exact commit/file/rule/line fingerprint to `.gitleaksignore`, following the existing immutable-review-filename precedent; no path/rule exemption or secret-scan waiver. This technical false-positive disposition requires independent ordinary and Sol review and current CI before acceptance; it creates no owner decision or product authority.
+
 ## Format
 
 ```markdown
