@@ -418,77 +418,102 @@ export function partitionApprovedBreaks(findings, approved) {
   return { matched, unmatched, unusedEntries };
 }
 
-/**
- * Extract tag names from `git ls-remote --tags origin` output, dropping the `^{}` peeled
- * refs a tag object's dereferenced commit produces (those duplicate the tag name and are
- * not a second, different tag).
- *
- * @param {string} output stdout from `git ls-remote --tags origin`
- * @returns {string[]}
- */
-export function parseLsRemoteTags(output) {
-  const tags = [];
-  for (const line of output.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed === "") continue;
-    const match = trimmed.match(/refs\/tags\/(.+)$/);
-    if (!match) continue;
-    const ref = match[1];
-    if (ref.endsWith("^{}")) continue;
-    tags.push(ref);
+/** Resolve the repository API path from the checked-out repository's actual origin URL. */
+export function githubRepositoryFromOrigin(remoteUrl) {
+  let match =
+    /^git@github\.com:([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?$/.exec(
+      remoteUrl,
+    );
+  if (!match) {
+    match =
+      /^https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?\/?$/.exec(
+        remoteUrl,
+      );
   }
-  return tags;
+  if (!match || match[1] === "." || match[2] === ".") {
+    throw new Error(
+      "origin must identify a repository on github.com; refusing an ambiguous release lookup",
+    );
+  }
+  return `${match[1]}/${match[2]}`;
 }
 
-/**
- * True once at least one tag is a STABLE release `major.minor.patch` (no pre-release or
- * build suffix, an optional leading `v`) with major >= 2 — "the first stable 2.0.0 (or
- * later) release" from release-plan.md and api-design.md's Versioning section. A
- * pre-release tag like `v2.0.0-alpha.1` or `v2.0.0-rc.2` does not count: release-plan.md's
- * whole pre-release ladder runs under a `2.x` version before the stage that api-design.md
- * means by "2.0.0 ships".
- *
- * @param {string[]} tagNames
- */
-export function hasStableV2Tag(tagNames) {
-  return tagNames.some((name) => {
-    const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(name);
-    if (!match) return false;
-    return Number.parseInt(match[1], 10) >= 2;
+/** Parse complete `gh api --paginate --jq` TSV output; malformed records fail closed. */
+export function hasStableV2Release(output) {
+  const lines = output.split("\n").filter((line) => line !== "");
+  for (const line of lines) {
+    const fields = line.split("\t");
+    if (
+      fields.length !== 3 ||
+      !fields[0] ||
+      fields[0] === "null" ||
+      !["true", "false"].includes(fields[1]) ||
+      !["true", "false"].includes(fields[2])
+    ) {
+      throw new Error(
+        "GitHub release metadata was malformed; refusing to classify stable v2 releases",
+      );
+    }
+  }
+  return lines.some((line) => {
+    const [tag, draft, prerelease] = line.split("\t");
+    const versionMatch = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(tag);
+    return (
+      draft === "false" &&
+      prerelease === "false" &&
+      versionMatch !== null &&
+      Number.parseInt(versionMatch[1], 10) >= 2
+    );
   });
 }
 
 /**
- * Whether a stable v2.0.0+ release tag exists on `origin`, looked up live rather than from
- * any local file — `package.json`'s version tracks inherited kaneo history, not
- * this milestone, and after #331 a release is a git tag the manual Release workflow
- * creates, not a version-bump commit.
- *
- * Fails closed: a lookup that cannot run (no network, no `origin` remote, a non-zero exit)
- * throws rather than being treated as "no stable v2.0.0 tag exists yet", because "the
- * lookup failed" and "we checked and it's pre-2.0" are not the same fact.
+ * Classify stable releases using all live, paginated GitHub release metadata. Git tags
+ * alone cannot distinguish a stable-shaped prerelease (for example v2.0.1 with
+ * prerelease=true). Both git and gh failures, non-GitHub origins, and malformed metadata
+ * fail closed. The caller supplies the runner so tests exercise the actual command path.
  *
  * @param {(command: string, args: string[]) => { status: number|null, stdout: string, stderr: string }} runner
  */
 export async function stableV2ReleaseExists(runner) {
-  let result;
+  let remote;
   try {
-    result = runner("git", ["ls-remote", "--tags", "origin"]);
+    remote = runner("git", ["remote", "get-url", "origin"]);
   } catch (error) {
     throw new Error(
-      `could not run "git ls-remote --tags origin" to check for a stable v2.0.0+ release ` +
-        `tag: ${error.message}`,
+      `could not read the origin URL for stable-release classification: ${error.message}`,
+    );
+  }
+  if (
+    remote.status !== 0 ||
+    typeof remote.stdout !== "string" ||
+    remote.stdout.trim() === ""
+  ) {
+    throw new Error(
+      `could not read the origin URL for stable-release classification (exit ${remote.status ?? "unknown"}); refusing to guess. ${remote.stderr ?? ""}`,
+    );
+  }
+  const repository = githubRepositoryFromOrigin(remote.stdout.trim());
+  let result;
+  try {
+    result = runner("gh", [
+      "api",
+      "--paginate",
+      "--jq",
+      'if type != "array" then error("expected a release array") else .[] | if ((.tag_name|type) == "string" and (.draft|type) == "boolean" and (.prerelease|type) == "boolean") then [.tag_name, (.draft|tostring), (.prerelease|tostring)] | @tsv else error("invalid release metadata") end end',
+      `repos/${repository}/releases`,
+    ]);
+  } catch (error) {
+    throw new Error(
+      `could not run the paginated GitHub release lookup: ${error.message}`,
     );
   }
   if (result.status !== 0) {
     throw new Error(
-      `"git ls-remote --tags origin" failed (exit ${result.status ?? "unknown"}); refusing ` +
-        "to guess whether a stable v2.0.0+ release tag exists. Check network access and " +
-        "the 'origin' remote, then retry.\n" +
-        `${result.stderr ?? ""}`,
+      `paginated GitHub release lookup failed (exit ${result.status ?? "unknown"}); refusing to guess. ${result.stderr ?? ""}`,
     );
   }
-  return hasStableV2Tag(parseLsRemoteTags(result.stdout));
+  return hasStableV2Release(result.stdout);
 }
 
 /**
@@ -962,7 +987,11 @@ async function main() {
   if (approvedBreaks.length > 0) {
     let stableV2Released;
     try {
-      stableV2Released = await stableV2ReleaseExists(run);
+      stableV2Released = await stableV2ReleaseExists((command, args) =>
+        // Pagination can exceed spawnSync's 1 MiB default. Preserve the full response up to
+        // this bounded ceiling; overflow raises an error and fails the classifier closed.
+        run(command, args, { maxBuffer: 16 * 1024 * 1024 }),
+      );
     } catch (error) {
       process.stderr.write(`${error.message}\n`);
       process.exitCode = 1;

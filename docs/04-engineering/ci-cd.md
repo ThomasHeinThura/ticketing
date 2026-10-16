@@ -186,12 +186,12 @@ mechanism for an intentional pre-2.0 breaking change (decision log, 2026-09-25);
 PR that makes the break, needs its own security review there, and from the first
 stable `v2.0.0` (or later) release on the file must be empty — a non-empty file fails
 the gate. Thomas clarified on 2026-10-16 that GitHub releases explicitly marked prerelease
-remain pre-stable even when their tags have stable version syntax. Stable-shaped tags
-alone no longer establish this boundary. Use live GitHub release metadata and fail closed
-if the stable-release classification cannot be established; `package.json` is not the
-release authority. The prior `git ls-remote` tag-syntax-only implementation needs correction
-under the normal independent review and CI gates. This clarification waives no gate and
-does not approve any finding without its exact reviewed fingerprint.
+remain pre-stable even when their tags have stable version syntax. The gate reads all
+paginated GitHub release metadata for the repository identified by the checkout's `origin`;
+only a published, non-draft, non-prerelease `v2.0.0`-or-later release closes this
+allowlist. Lookup failures and malformed metadata fail closed, and `package.json` is not
+the release authority. This clarification waives no gate and does not approve any finding
+without its exact reviewed fingerprint.
 
 `scripts/ci/redocly-approved-findings.json` is the same reviewed-exception shape, for a
 Redocly LINT finding rather than an oasdiff breaking change — a specific, deliberate design
