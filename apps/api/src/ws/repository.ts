@@ -12,16 +12,12 @@ export async function findLiveWorkItemSocketScope(
     .select({
       projectId: schema.workItemTable.projectId,
       workspaceId: schema.workItemTable.workspaceId,
-      organisationId: schema.workspaceTable.organisationId,
+      organisationId: schema.projectTable.organisationId,
     })
     .from(schema.workItemTable)
     .innerJoin(
       schema.projectTable,
       eq(schema.workItemTable.projectId, schema.projectTable.id),
-    )
-    .innerJoin(
-      schema.workspaceTable,
-      eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
     )
     .where(
       and(

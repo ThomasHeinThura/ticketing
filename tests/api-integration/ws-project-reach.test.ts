@@ -11,10 +11,11 @@ import type { ClientRequest, IncomingMessage } from "node:http";
 import { createRequire } from "node:module";
 import type { AddressInfo } from "node:net";
 import { BUILT_IN_ROLES, reaches } from "@taskdesk/permissions";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp, createNodeServer } from "../../apps/api/src/index";
+import { createWorkItem } from "../../apps/api/src/work-item/controllers/create-work-item";
 import {
   broadcastToProject,
   initializeWebSocketAdapter,
@@ -639,6 +640,55 @@ describe("project socket reach (#745)", () => {
     const context = { get: () => undefined } as never;
     const credential = { userId: user.id, portal: "agent" as const };
 
+    const type = requireRow(
+      await db
+        .insert(schema.workItemTypeTable)
+        .values({
+          workspaceId: workspace.id,
+          key: `customer-socket-${randomUUID()}`,
+          name: "Customer socket test item",
+          category: "service",
+        })
+        .returning(),
+      "customer socket work item type",
+    );
+    const template = requireRow(
+      await db
+        .insert(schema.stateTemplateTable)
+        .values({
+          workspaceId: workspace.id,
+          key: `customer-socket-state-${randomUUID()}`,
+          name: "Open",
+          group: "backlog",
+        })
+        .returning(),
+      "customer socket state template",
+    );
+    await db.insert(schema.stateTable).values([
+      { projectId: own.id, stateTemplateId: template.id, isDefault: true },
+      { projectId: other.id, stateTemplateId: template.id, isDefault: true },
+    ]);
+    const ownItem = await createWorkItem({
+      projectId: own.id,
+      workspaceId: workspace.id,
+      typeId: type.id,
+      title: "Customer-visible socket item",
+      actorId: user.id,
+      actorType: "person",
+    });
+    const otherItem = await createWorkItem({
+      projectId: other.id,
+      workspaceId: workspace.id,
+      typeId: type.id,
+      title: "Foreign socket item",
+      actorId: user.id,
+      actorType: "person",
+    });
+    await db
+      .update(schema.workItemTable)
+      .set({ customerVisibility: "organisation" })
+      .where(eq(schema.workItemTable.id, ownItem.id));
+
     // The organisation both sockets read is the project row's, which differs from the
     // workspace's (the operating organisation).
     const row = await findSocketProject(credential, own.id);
@@ -648,6 +698,18 @@ describe("project socket reach (#745)", () => {
       .where(eq(schema.workspaceTable.id, workspace.id));
     expect(row?.organisationId).toBe(org.id);
     expect(ws?.organisationId).not.toBe(org.id);
+
+    const [workspaceMembership] = await db
+      .select({ userId: schema.workspaceUserTable.userId })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.userId, user.id),
+          eq(schema.workspaceUserTable.workspaceId, workspace.id),
+        ),
+      )
+      .limit(1);
+    expect(workspaceMembership?.userId).toBe(user.id);
 
     // Reach (rbac.md step 6) follows that organisation...
     const identity = await resolveSocketIdentity(credential);
@@ -681,6 +743,14 @@ describe("project socket reach (#745)", () => {
         authorizeNativeTopic(credential, `project:${projectId}`),
       ).resolves.toBeNull();
     }
+
+    const customerCredential = { ...credential, portal: "customer" as const };
+    await expect(
+      authorizeNativeTopic(customerCredential, `work_item:${ownItem.key}`),
+    ).resolves.toMatchObject({ projectId: own.id, workspaceId: workspace.id });
+    await expect(
+      authorizeNativeTopic(customerCredential, `work_item:${otherItem.key}`),
+    ).resolves.toBeNull();
   });
 
   it("holds at most five legacy project sockets per person, across credentials (#748)", async () => {
