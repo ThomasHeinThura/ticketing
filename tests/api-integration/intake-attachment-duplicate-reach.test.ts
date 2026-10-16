@@ -6,6 +6,8 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  findSubmissionAttachmentContent,
+  findSubmissionCompletionAttachment,
   listPortalSubmissionAttachments,
   listStaffSubmissionAttachments,
 } from "../../apps/api/src/attachment/repository";
@@ -107,7 +109,16 @@ async function seed() {
   );
   const accepted = await submit(owner, "accepted", t.workItem.id);
   const duplicate = await submit(other, "duplicate", t.workItem.id);
-  return { t, owner, other, accepted, duplicate, privateAttachment };
+  return {
+    t,
+    owner,
+    other,
+    requestType,
+    version,
+    accepted,
+    duplicate,
+    privateAttachment,
+  };
 }
 
 const names = async (response: Response) =>
@@ -303,6 +314,153 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
       await listPortalSubmissionAttachments(db, null, {
         submissionId: s.accepted.id,
         workItemId: s.t.workItem.id,
+      }),
+    ).toEqual([]);
+  });
+
+  it("completion and content lookups require the persisted own submission or its accepted link", async () => {
+    const s = await seed();
+    const own = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: s.t.workspaceId,
+          organisationId: s.owner.orgId,
+          submissionId: s.accepted.id,
+          objectKey: `own/${randomUUID()}`,
+          filename: "completion-own.txt",
+          mimeType: "text/plain",
+          size: 1,
+          state: "ready",
+          customerVisible: true,
+          uploadedBy: s.owner.person.id,
+        })
+        .returning(),
+      "completion attachment",
+    );
+    const identity = await resolveIdentity({
+      userId: s.owner.user.id,
+      credential: "session",
+    });
+    expect(identity).toMatchObject({
+      side: "customer",
+      personId: s.owner.person.id,
+    });
+    const sameRequesterNonaccepted = requireRow(
+      await db
+        .insert(schema.submissionTable)
+        .values({
+          organisationId: s.owner.orgId,
+          requesterId: s.owner.person.id,
+          requestTypeId: s.requestType.id,
+          requestTypeVersionId: s.version.id,
+          formData: {},
+          state: "duplicate",
+          workItemId: s.t.workItem.id,
+          submittedAt: new Date(),
+        })
+        .returning(),
+      "same requester nonaccepted submission",
+    );
+    const completionInput = {
+      id: own.id,
+      workspaceId: s.t.workspaceId,
+      submissionId: s.accepted.id,
+      acceptedParentId: s.t.workItem.id,
+      requesterId: s.owner.person.id,
+    };
+    expect(
+      await findSubmissionCompletionAttachment(db, identity, completionInput),
+    ).toHaveLength(1);
+    expect(
+      await findSubmissionAttachmentContent(db, identity, {
+        id: own.id,
+        workspaceId: s.t.workspaceId,
+        submissionId: s.accepted.id,
+        linkedWorkItemId: null,
+        portal: true,
+      }),
+    ).toHaveLength(1);
+    expect(
+      await findSubmissionCompletionAttachment(db, identity, {
+        ...completionInput,
+        id: s.privateAttachment.id,
+      }),
+    ).toEqual([]);
+    const transferredInput = {
+      id: s.privateAttachment.id,
+      workspaceId: s.t.workspaceId,
+      submissionId: s.accepted.id,
+      linkedWorkItemId: s.t.workItem.id,
+      portal: true,
+    };
+    expect(
+      await findSubmissionAttachmentContent(db, identity, transferredInput),
+    ).toHaveLength(1);
+    expect(
+      await findSubmissionAttachmentContent(db, identity, {
+        ...transferredInput,
+        submissionId: s.duplicate.id,
+      }),
+    ).toEqual([]);
+    expect(
+      await findSubmissionAttachmentContent(db, identity, {
+        ...transferredInput,
+        submissionId: sameRequesterNonaccepted.id,
+      }),
+    ).toEqual([]);
+    expect(
+      await findSubmissionAttachmentContent(db, identity, {
+        ...transferredInput,
+        linkedWorkItemId: null,
+      }),
+    ).toEqual([]);
+    expect(
+      await findSubmissionAttachmentContent(db, identity, {
+        ...transferredInput,
+        linkedWorkItemId: `forged-${randomUUID()}`,
+      }),
+    ).toEqual([]);
+    expect(
+      await findSubmissionAttachmentContent(db, null, transferredInput),
+    ).toEqual([]);
+    expect(
+      await findSubmissionCompletionAttachment(db, null, completionInput),
+    ).toEqual([]);
+    for (const submissionId of [`missing-${randomUUID()}`, s.duplicate.id]) {
+      expect(
+        await findSubmissionCompletionAttachment(db, identity, {
+          ...completionInput,
+          id: s.privateAttachment.id,
+          submissionId,
+        }),
+      ).toEqual([]);
+    }
+    expect(
+      await findSubmissionCompletionAttachment(db, identity, {
+        ...completionInput,
+        id: s.privateAttachment.id,
+        submissionId: sameRequesterNonaccepted.id,
+      }),
+    ).toEqual([]);
+    expect(
+      await findSubmissionCompletionAttachment(db, identity, {
+        ...completionInput,
+        id: s.privateAttachment.id,
+        submissionId: s.accepted.id,
+        acceptedParentId: `forged-${randomUUID()}`,
+      }),
+    ).toEqual([]);
+    expect(
+      await findSubmissionCompletionAttachment(db, identity, {
+        ...completionInput,
+        workspaceId: `foreign-${randomUUID()}`,
+      }),
+    ).toEqual([]);
+    expect(
+      await findSubmissionCompletionAttachment(db, identity, {
+        ...completionInput,
+        requesterId: s.other.person.id,
       }),
     ).toEqual([]);
   });

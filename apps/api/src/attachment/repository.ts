@@ -534,12 +534,37 @@ export async function findSubmissionCompletionAttachment(
     identity.personId !== input.requesterId
   )
     return [];
-  const parent = input.acceptedParentId
-    ? or(
-        eq(attachmentTable.submissionId, input.submissionId),
-        eq(attachmentTable.workItemId, input.acceptedParentId),
-      )
-    : eq(attachmentTable.submissionId, input.submissionId);
+  const submissionRelation = (transferredParentId: string | null) =>
+    exists(
+      executor
+        .select({ id: submissionTable.id })
+        .from(submissionTable)
+        .innerJoin(
+          requestTypeTable,
+          eq(requestTypeTable.id, submissionTable.requestTypeId),
+        )
+        .where(
+          and(
+            eq(submissionTable.id, input.submissionId),
+            eq(submissionTable.requesterId, identity.personId),
+            eq(submissionTable.requesterId, input.requesterId),
+            eq(requestTypeTable.workspaceId, input.workspaceId),
+            transferredParentId
+              ? and(
+                  eq(submissionTable.state, "accepted"),
+                  eq(submissionTable.workItemId, transferredParentId),
+                  eq(attachmentTable.workItemId, submissionTable.workItemId),
+                )
+              : eq(attachmentTable.submissionId, submissionTable.id),
+          ),
+        ),
+    );
+  const parent = or(
+    submissionRelation(null),
+    input.acceptedParentId
+      ? submissionRelation(input.acceptedParentId)
+      : sql`false`,
+  );
   return await executor
     .select()
     .from(attachmentTable)
