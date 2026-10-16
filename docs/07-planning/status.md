@@ -1,5 +1,12 @@
 ## Current exact-head review and runtime queue — 2026-10-16 18:19 UTC
 
+## Selected M9 documentation already accepted — 2026-10-16 19:08 UTC
+
+Current accepted33995c2af23da197f2fd9d5690717f7aeb4e9f67 contains the selected #718 M9 text. Protected#757 merged1455ed80d87806c7c5e22c34e5f0f07c72782289 on2026-10-15 at11:20:33Z, accepting RT-0/RT-6, the corresponding request-type data-model wording/version snapshot row and optional historical identity81–82 disposition. Protected#782 mergeddfbb3e46e0a1a40cfd5106b00c0bd26138fb950e on2026-10-16 at04:50:54Z, accepting the independently dispositioned webhooks review register and self-row session-only paragraph. Both protected merges are ancestors of current main; exact selected self-row/RT-0/RT-6 paragraphs are byte-conserved. These completed docs are not recreated or counted as new progress. Prior dated statements that call all of M9 unfinished are superseded by this source/ancestry check.
+
+#718 remains open: its item3 belongs to still-open #580 structural query-gate completion; items5/6 remain held, item7 follows each actual unit's acceptance, and item8 has its prior evidence-backed closures. This checkpoint does not close held behavior or invent a new decision. Private source proof:718-selected-m9-accepted-source-disposition.json. The direct takeover instructions retain canonical laptop endpoints https://ticketing.localhost and https://portal.localhost, HTTPS443/loopback-only; final SIT follows that instruction without an unrelated hostname rename. No deployment or formal phase completion occurs here.
+
+
 ## Current recovery and hosted verification — 2026-10-16 19:04 UTC
 
 **Blocked first:** #791 current1d70fada35f9226177d98d9a530ee96305af49c9 fails static contrast source-binding and required G11 unstable calibration (batch spread1.319>0.55 before budget measurements). Automatic failure-path diagnostics also lack sampled app frames; no budget pass, unchanged rerun or calibration relaxation. Historical529.7ms render/33.4ms drag and #798270.8ms state holds remain open. #807198 retains assignment200.43141014024977ms failure; its actual PostgreSQL216files3240tests/five tasks passed. AT-7 and owner holds remain unwaived.
