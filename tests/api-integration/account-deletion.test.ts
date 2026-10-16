@@ -119,6 +119,61 @@ describe("API integration: account deletion", () => {
     expect(subjectPerson).toHaveLength(0);
   });
 
+  it("refuses erasure when duplicate subject owner rows hide the last real owner", async () => {
+    const originalOwner = await createWorkspaceMember({
+      role: "owner",
+      workspaceName: "Duplicate Subject Owner Rows",
+    });
+    await db
+      .delete(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.userId, originalOwner.user.id));
+    const subject = await addMember(originalOwner.workspace.id, "owner");
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: originalOwner.workspace.id,
+      userId: subject.id,
+      role: "owner",
+      joinedAt: new Date(),
+    });
+    const other = await addMember(originalOwner.workspace.id, "member");
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: originalOwner.workspace.id,
+      userId: other.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+
+    await expect(deleteAccountData(subject.id)).rejects.toThrow(
+      /only owner of "Duplicate Subject Owner Rows"/,
+    );
+
+    const workspace = await db
+      .select({ id: schema.workspaceTable.id })
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, originalOwner.workspace.id));
+    const subjectRows = await db
+      .select({ id: schema.workspaceUserTable.id })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, originalOwner.workspace.id),
+          eq(schema.workspaceUserTable.userId, subject.id),
+        ),
+      );
+    const otherRows = await db
+      .select({ id: schema.workspaceUserTable.id })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, originalOwner.workspace.id),
+          eq(schema.workspaceUserTable.userId, other.id),
+        ),
+      );
+
+    expect(workspace).toHaveLength(1);
+    expect(subjectRows).toHaveLength(2);
+    expect(otherRows).toHaveLength(2);
+  });
+
   it("refuses when the only OTHER 'owner' is a role merely NAMED \"owner,x\" -- ownerCount must be exact", async () => {
     // THE COVERAGE GAP THIS CLOSES, and it was found in the fix's own review.
     //

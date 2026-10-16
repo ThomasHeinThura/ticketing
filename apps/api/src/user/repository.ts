@@ -71,9 +71,10 @@ export async function upsertAvatar(
 
 /**
  * Minimal account-erasure safety facts for the authenticated deletion subject.
- * Every persisted membership row contributes to the counts, including rows whose
- * member cannot be resolved as a canonical active identity. No other member's
- * identity or individual role row leaves this statement.
+ * Every distinct persisted holder contributes to the counts, even if their
+ * canonical identity is unavailable or inactive. Duplicate rows for one holder
+ * do not inflate person counts. No other member's identity or individual role
+ * row leaves this statement.
  */
 export async function listAccountErasureMembershipSummaries(
   executor: Executor,
@@ -84,16 +85,16 @@ export async function listAccountErasureMembershipSummaries(
     .select({
       workspaceId: workspaceUserTable.workspaceId,
       workspaceName: workspaceTable.name,
-      isOwner: sql<boolean>`case when ${role} is null then true else exists (
+      isOwner: sql<boolean>`bool_or(case when ${role} is null then true else exists (
         select 1 from unnest(string_to_array(${role}, ',')) as role_parts(value)
         where lower(btrim(value, U&' \\0009\\000A\\000D\\000C\\000B\\00A0\\1680\\2000\\2001\\2002\\2003\\2004\\2005\\2006\\2007\\2008\\2009\\200A\\2028\\2029\\202F\\205F\\3000\\FEFF')) = 'owner'
-      ) end`,
+      ) end)`,
       memberCount: sql<number>`(
-        select count(*)::int from ${workspaceUserTable} as member_rows
+        select count(distinct member_rows.user_id)::int from ${workspaceUserTable} as member_rows
         where member_rows.workspace_id = ${workspaceUserTable.workspaceId}
       )`,
       ownerCount: sql<number>`(
-        select count(*)::int from ${workspaceUserTable} as member_rows
+        select count(distinct member_rows.user_id)::int from ${workspaceUserTable} as member_rows
         where member_rows.workspace_id = ${workspaceUserTable.workspaceId}
           and lower(btrim(member_rows.role, U&' \\0009\\000A\\000D\\000C\\000B\\00A0\\1680\\2000\\2001\\2002\\2003\\2004\\2005\\2006\\2007\\2008\\2009\\200A\\2028\\2029\\202F\\205F\\3000\\FEFF')) = 'owner'
       )`,
@@ -103,7 +104,8 @@ export async function listAccountErasureMembershipSummaries(
       workspaceTable,
       eq(workspaceUserTable.workspaceId, workspaceTable.id),
     )
-    .where(eq(workspaceUserTable.userId, subjectUserId));
+    .where(eq(workspaceUserTable.userId, subjectUserId))
+    .groupBy(workspaceUserTable.workspaceId, workspaceTable.name);
 }
 
 /** Row-lock the user so concurrent deletions/membership changes serialize on it. */

@@ -120,7 +120,7 @@ describe("user repository (#580)", () => {
     ).toEqual([b.workspace.id]);
   });
 
-  it("returns only own workspace summaries and counts every persisted member row", async () => {
+  it("returns only own workspace summaries and counts distinct persisted holders", async () => {
     const a = await createWorkspaceMember({
       role: "owner",
       workspaceName: "Summary subject A",
@@ -183,6 +183,43 @@ describe("user repository (#580)", () => {
       role: "owner",
       joinedAt: new Date(),
     });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: other.workspace.id,
+      userId: subjectId,
+      role: "owner",
+      joinedAt: new Date(),
+    });
+    const secondOwnerId = `unlinked-owner-${other.user.id}`;
+    await db.insert(schema.userTable).values({
+      id: secondOwnerId,
+      email: `${secondOwnerId}@example.com`,
+      emailVerified: true,
+      name: "Second unlinked owner",
+    });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: other.workspace.id,
+      userId: secondOwnerId,
+      role: "owner",
+      joinedAt: new Date(),
+    });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: other.workspace.id,
+      userId: secondOwnerId,
+      role: "owner",
+      joinedAt: new Date(),
+    });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: other.workspace.id,
+      userId: other.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: other.workspace.id,
+      userId: other.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
 
     const summaries = await listAccountErasureMembershipSummaries(
       db,
@@ -193,8 +230,8 @@ describe("user repository (#580)", () => {
         workspaceId: other.workspace.id,
         workspaceName: "Unlinked subject workspace",
         isOwner: true,
-        memberCount: 2,
-        ownerCount: 1,
+        memberCount: 3,
+        ownerCount: 2,
       },
     ]);
   });
