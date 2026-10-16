@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import db from "../database";
@@ -166,15 +167,17 @@ export async function upsertOwnSettingRow(
   }
   const select = executor
     .select({
-      personId: sql`${personId}`
-        .mapWith(userPreferenceTable.personId)
-        .as("personId"),
-      scope: sql`${target.scope}`
-        .mapWith(userPreferenceTable.scope)
-        .as("scope"),
+      id: sql`${sql.param(createId(), userPreferenceTable.id)}`.as("id"),
+      personId: sql`${sql.param(personId, userPreferenceTable.personId)}`.as(
+        "personId",
+      ),
+      scope: sql`${sql.param(target.scope, userPreferenceTable.scope)}`.as(
+        "scope",
+      ),
       scopeId: projectTable.id,
-      key: sql`${target.rowKey}`.mapWith(userPreferenceTable.key).as("key"),
+      key: sql`${sql.param(target.rowKey, userPreferenceTable.key)}`.as("key"),
       value: sql`${sql.param(value, userPreferenceTable.value)}`.as("value"),
+      createdAt: sql`now()`.as("createdAt"),
       updatedAt: sql`${sql.param(updatedAt, userPreferenceTable.updatedAt)}`.as(
         "updatedAt",
       ),

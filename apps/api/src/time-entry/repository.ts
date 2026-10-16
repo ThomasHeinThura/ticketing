@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, exists, isNull, type SQLWrapper, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
@@ -112,7 +113,9 @@ export async function insertTimeEntry(
 ) {
   const statement = executor
     .select({
-      id: sql`${sql.param(values.id, timeEntryTable.id)}`.as("id"),
+      id: sql`${sql.param(values.id === undefined ? createId() : values.id, timeEntryTable.id)}`.as(
+        "id",
+      ),
       taskId: taskTable.id,
       userId: sql`${sql.param(values.userId, timeEntryTable.userId)}`.as(
         "userId",
@@ -129,9 +132,12 @@ export async function insertTimeEntry(
         sql`${sql.param(values.endTime ?? null, timeEntryTable.endTime)}`.as(
           "endTime",
         ),
-      duration: sql`${sql.param(values.duration, timeEntryTable.duration)}`.as(
-        "duration",
-      ),
+      duration:
+        sql`${sql.param(values.duration === undefined ? 0 : values.duration, timeEntryTable.duration)}`.as(
+          "duration",
+        ),
+      createdAt: sql`now()`.as("createdAt"),
+      updatedAt: sql`now()`.as("updatedAt"),
     })
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))

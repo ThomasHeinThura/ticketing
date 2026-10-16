@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import {
   and,
@@ -119,8 +120,11 @@ export async function insertTaskActivity(
 ) {
   const select = executor
     .select({
+      id: sql`${sql.param(createId(), taskActivityTable.id)}`.as("id"),
       taskId: taskTable.id,
       type: sql`${sql.param(values.type, taskActivityTable.type)}`.as("type"),
+      createdAt: sql`now()`.as("createdAt"),
+      updatedAt: sql`now()`.as("updatedAt"),
       userId: sql`${sql.param(values.userId, taskActivityTable.userId)}`.as(
         "userId",
       ),
@@ -131,6 +135,21 @@ export async function insertTaskActivity(
         sql`${sql.param(values.eventData ?? null, taskActivityTable.eventData)}`.as(
           "eventData",
         ),
+      externalUserName:
+        sql`${sql.param(null, taskActivityTable.externalUserName)}`.as(
+          "externalUserName",
+        ),
+      externalUserAvatar:
+        sql`${sql.param(null, taskActivityTable.externalUserAvatar)}`.as(
+          "externalUserAvatar",
+        ),
+      externalSource:
+        sql`${sql.param(null, taskActivityTable.externalSource)}`.as(
+          "externalSource",
+        ),
+      externalUrl: sql`${sql.param(null, taskActivityTable.externalUrl)}`.as(
+        "externalUrl",
+      ),
     })
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
@@ -167,24 +186,34 @@ export async function insertCommentActivity(
 ) {
   const select = executor
     .select({
+      id: sql`${sql.param(createId(), taskActivityTable.id)}`.as("id"),
       taskId: taskTable.id,
-      type: sql`'comment'`.mapWith(taskActivityTable.type).as("type"),
+      type: sql`${sql.param("comment", taskActivityTable.type)}`.as("type"),
+      createdAt: sql`now()`.as("createdAt"),
+      updatedAt: sql`now()`.as("updatedAt"),
       userId: sql`${sql.param(values.userId, taskActivityTable.userId)}`.as(
         "userId",
       ),
       content: sql`${sql.param(values.content, taskActivityTable.content)}`.as(
         "content",
       ),
+      eventData: sql`${sql.param(null, taskActivityTable.eventData)}`.as(
+        "eventData",
+      ),
       externalUserName:
         sql`${sql.param(values.external?.userName ?? null, taskActivityTable.externalUserName)}`.as(
           "externalUserName",
+        ),
+      externalUserAvatar:
+        sql`${sql.param(null, taskActivityTable.externalUserAvatar)}`.as(
+          "externalUserAvatar",
         ),
       externalSource:
         sql`${sql.param(values.external?.source ?? null, taskActivityTable.externalSource)}`.as(
           "externalSource",
         ),
-      eventData: sql`${sql.param(null, taskActivityTable.eventData)}`.as(
-        "eventData",
+      externalUrl: sql`${sql.param(null, taskActivityTable.externalUrl)}`.as(
+        "externalUrl",
       ),
     })
     .from(taskTable)

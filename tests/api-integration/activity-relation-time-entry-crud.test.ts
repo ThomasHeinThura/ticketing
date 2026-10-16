@@ -13,6 +13,11 @@ import {
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import {
+  deleteTaskRelationById,
+  findRelationEndpoints,
+  listRelationsOfTask,
+} from "../../apps/api/src/task-relation/repository";
 import { deleteOwnSettingRow } from "../../apps/api/src/user-preference/repository";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -260,6 +265,82 @@ describe("API integration: task relations through the repository", () => {
     await response.text();
     expect(await db.select().from(schema.taskRelationTable)).toHaveLength(0);
   });
+
+  it("repository reads and deletes require current reach to both relation endpoints", async () => {
+    const { member, project, seed } = await world();
+    const ownSource = await seed(1, "Own source");
+    const ownTarget = await seed(2, "Own target");
+    const foreignProject = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const foreignTarget = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: foreignProject.project.id,
+          title: "Unreachable target",
+          status: "to-do",
+          columnId: foreignProject.columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "foreign task",
+    );
+    const ownRelation = requireRow(
+      await db
+        .insert(schema.taskRelationTable)
+        .values({
+          sourceTaskId: ownSource.id,
+          targetTaskId: ownTarget.id,
+          relationType: "blocks",
+        })
+        .returning(),
+      "own relation",
+    );
+    const foreignRelation = requireRow(
+      await db
+        .insert(schema.taskRelationTable)
+        .values({
+          sourceTaskId: ownSource.id,
+          targetTaskId: foreignTarget.id,
+          relationType: "related",
+        })
+        .returning(),
+      "foreign relation",
+    );
+    const identity = await resolveIdentity({
+      userId: member.user.id,
+      credential: "session",
+    });
+    if (!identity) throw new Error("member session identity should resolve");
+
+    expect(await findRelationEndpoints(identity, ownRelation.id)).toMatchObject(
+      {
+        sourceTaskId: ownSource.id,
+        targetTaskId: ownTarget.id,
+      },
+    );
+    expect(
+      await findRelationEndpoints(identity, foreignRelation.id),
+    ).toBeUndefined();
+    expect(
+      await deleteTaskRelationById(db, identity, foreignRelation.id),
+    ).toBeUndefined();
+    expect(
+      (await listRelationsOfTask(identity, ownSource.id)).map(
+        (relation) => relation.id,
+      ),
+    ).toEqual([ownRelation.id]);
+    expect(
+      await db
+        .select({ id: schema.taskRelationTable.id })
+        .from(schema.taskRelationTable)
+        .where(eq(schema.taskRelationTable.id, foreignRelation.id)),
+    ).toHaveLength(1);
+    expect(project.id).not.toBe(foreignProject.project.id);
+  });
 });
 
 describe("API integration: time entries through the repository", () => {
@@ -362,6 +443,45 @@ describe("API integration: time entry list ordering", () => {
       "second",
       "third",
     ]);
+  });
+});
+
+describe("API integration: project preference insert-select shape", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  it("stores a project layout through the scoped preference write", async () => {
+    const { member, project } = await world();
+    mockAuthenticatedSession(member.user);
+
+    const response = await call("PATCH", "/api/user-preference/settings", {
+      [`layout.${project.id}`]: "list",
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      settings: { [`layout.${project.id}`]: "list" },
+    });
+
+    const person = requireRow(
+      await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, member.user.id)),
+      "person",
+    );
+    const [row] = await db
+      .select()
+      .from(schema.userPreferenceTable)
+      .where(eq(schema.userPreferenceTable.personId, person.id));
+    expect(row).toMatchObject({
+      scope: "project",
+      scopeId: project.id,
+      key: "layout",
+      value: "list",
+    });
+    expect(row?.id).toBeTruthy();
+    expect(row?.createdAt).toBeInstanceOf(Date);
   });
 });
 

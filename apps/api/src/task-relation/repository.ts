@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import {
   and,
@@ -85,21 +86,20 @@ function relationEndpointReach(
   direction: "source" | "target",
   executor: Executor,
 ) {
+  const relation = alias(taskRelationTable, `relation_${direction}_row`);
   const task = alias(taskTable, `relation_${direction}_task`);
   const project = alias(projectTable, `relation_${direction}_project`);
   const relationTaskId =
-    direction === "source"
-      ? taskRelationTable.sourceTaskId
-      : taskRelationTable.targetTaskId;
+    direction === "source" ? relation.sourceTaskId : relation.targetTaskId;
   return exists(
     executor
       .select({ one: sql`1` })
-      .from(taskRelationTable)
+      .from(relation)
       .innerJoin(task, eq(task.id, relationTaskId))
       .innerJoin(project, eq(task.projectId, project.id))
       .where(
         and(
-          eq(taskRelationTable.id, relationId),
+          eq(relation.id, relationId),
           eq(task.id, endpoint),
           currentProjectReachPredicate(
             identity,
@@ -354,12 +354,14 @@ export async function insertTaskRelation(
   const targetProject = alias(projectTable, "relation_insert_target_project");
   const select = executor
     .select({
+      id: sql`${sql.param(createId(), taskRelationTable.id)}`.as("id"),
       sourceTaskId: sourceTask.id,
       targetTaskId: targetTask.id,
       relationType:
         sql`${sql.param(values.relationType, taskRelationTable.relationType)}`.as(
           "relationType",
         ),
+      createdAt: sql`now()`.as("createdAt"),
     })
     .from(sourceTask)
     .innerJoin(sourceProject, eq(sourceTask.projectId, sourceProject.id))
@@ -448,6 +450,20 @@ export async function listRelationsOfTask(
           eq(taskRelationTable.targetTaskId, taskId),
         ),
         currentTaskReach(identity, taskId, executor),
+        relationEndpointReach(
+          identity,
+          taskRelationTable.sourceTaskId,
+          taskRelationTable.id,
+          "source",
+          executor,
+        ),
+        relationEndpointReach(
+          identity,
+          taskRelationTable.targetTaskId,
+          taskRelationTable.id,
+          "target",
+          executor,
+        ),
       ),
     );
 }
