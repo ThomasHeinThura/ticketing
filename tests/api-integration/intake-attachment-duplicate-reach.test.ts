@@ -371,6 +371,10 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
       side: "customer",
       personId: s.owner.person.id,
     });
+    expect(otherIdentity).toMatchObject({
+      side: "customer",
+      personId: s.other.person.id,
+    });
     const sameRequesterNonaccepted = requireRow(
       await db
         .insert(schema.submissionTable)
