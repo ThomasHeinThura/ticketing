@@ -51,11 +51,13 @@ fs.writeFileSync(file, `${JSON.stringify({
   migrateImageId: null,
   taskdeskImageId: null,
   hostPortBindings: null,
+  publishAllPorts: null,
   migrationJournalEntries: null,
   appliedMigrations: null,
   healthcheck: "pending",
   liveStatus: null,
   readyStatus: null,
+  finalVerdict: "pending",
   cleanup: { status: "pending" },
 }, null, 2)}\n`, { mode: 0o600 });
 NODE
@@ -69,7 +71,7 @@ cleanup() {
   local status=$?
   trap - EXIT
   set +e
-  local down_status=0 network_status=0 image_status=0 temp_status=0 proof_status=0
+  local down_status=0 network_status=0 image_status=0 temp_status=0 proof_status=1
   if [[ $project_started -eq 1 ]]; then
     compose down --volumes --remove-orphans >/dev/null 2>&1 || down_status=$?
   fi
@@ -105,7 +107,7 @@ cleanup() {
   else
     cleanup_status=failed
   fi
-  if [[ -f "$proof_file" ]]; then
+  if [[ -f "$proof_file" && -r "$proof_file" ]]; then
     node - "$proof_file" "$cleanup_status" "$status" "$down_status" \
       "$network_status" "$image_status" "$temp_status" <<'NODE'
 const fs = require("node:fs");
@@ -119,9 +121,26 @@ proof.cleanup = {
   temporaryContextRemoved: tempRemoval === "0",
   commandExitCode: Number(exitCode),
 };
+const bindingsEmpty = proof.hostPortBindings === null ||
+  (typeof proof.hostPortBindings === "object" && Object.keys(proof.hostPortBindings).length === 0);
+const complete = proof.candidateSha && /^[0-9a-f]{40}$/.test(proof.candidateSha) &&
+  proof.checkoutSha && /^[0-9a-f]{40}$/.test(proof.checkoutSha) &&
+  proof.build === "passed" && proof.imageId && proof.platform &&
+  proof.configuredUser && proof.configuredUser !== "0" && proof.configuredUser !== "root" &&
+  proof.runtimeUid > 0 && proof.migrateImageId === proof.imageId &&
+  proof.taskdeskImageId === proof.imageId && bindingsEmpty && proof.publishAllPorts === false &&
+  Number.isInteger(proof.migrationJournalEntries) && proof.migrationJournalEntries > 0 &&
+  proof.appliedMigrations === proof.migrationJournalEntries && proof.healthcheck === "healthy" &&
+  proof.liveStatus === 200 && proof.readyStatus === 200 &&
+  cleanup === "complete" && Number(composeDown) === 0 && Number(networkRemoval) === 0 &&
+  Number(imageRemoval) === 0 && tempRemoval === "0" && Number(exitCode) === 0;
+proof.finalVerdict = complete ? "passed" : "failed";
 fs.writeFileSync(file, `${JSON.stringify(proof, null, 2)}\n`, { mode: 0o600 });
+if (!complete) process.exit(2);
 NODE
     proof_status=$?
+  else
+    printf 'shipping image smoke: proof artifact is missing or unreadable after cleanup\n' >&2
   fi
   if [[ $status -eq 0 && ( $down_status -ne 0 || $network_status -ne 0 || $image_status -ne 0 || $temp_status -ne 0 || $proof_status -ne 0 ) ]]; then
     printf 'shipping image smoke: owned-resource cleanup or proof recording failed\n' >&2
@@ -255,13 +274,14 @@ live_status="$(probe live)" || fail "live endpoint did not return exactly HTTP 2
 ready_status="$(probe ready)" || fail "ready endpoint did not return exactly HTTP 200"
 
 node - "$proof_file" "$runtime_uid" "$migrate_image_id" "$taskdesk_image_id" \
-  "$port_bindings" "$applied_migrations" "$live_status" "$ready_status" "$health_status" <<'NODE'
+  "$port_bindings" "$publish_all" "$applied_migrations" "$live_status" "$ready_status" "$health_status" <<'NODE'
 const fs = require("node:fs");
-const [file, uid, migrateImage, taskdeskImage, bindings, applied, live, ready, health] = process.argv.slice(2);
+const [file, uid, migrateImage, taskdeskImage, bindings, publishAll, applied, live, ready, health] = process.argv.slice(2);
 const proof = JSON.parse(fs.readFileSync(file, "utf8"));
 Object.assign(proof, {
   runtimeUid: Number(uid), migrateImageId: migrateImage, taskdeskImageId: taskdeskImage,
   hostPortBindings: bindings === "null" ? null : JSON.parse(bindings),
+  publishAllPorts: publishAll === "true",
   appliedMigrations: Number(applied), liveStatus: Number(live), readyStatus: Number(ready), healthcheck: health,
 });
 fs.writeFileSync(file, `${JSON.stringify(proof, null, 2)}\n`, { mode: 0o600 });

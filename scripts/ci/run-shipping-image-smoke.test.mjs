@@ -93,6 +93,13 @@ if (args[0] === "compose") {
   if (action === "down") {
     state.projectDown = true;
     save();
+    const proof = process.env.FAKE_PROOF_FILE;
+    if (process.env.FAKE_PROOF_MISSING === "1") fs.rmSync(proof, { force: true });
+    if (process.env.FAKE_PROOF_UNWRITABLE === "1") {
+      fs.rmSync(proof, { force: true });
+      fs.mkdirSync(proof);
+    }
+    if (process.env.FAKE_PROOF_INCOMPLETE === "1") fs.writeFileSync(proof, "{}" + String.fromCharCode(10));
     stop(0);
   }
   if (action === "ps") {
@@ -187,6 +194,7 @@ async function makeFixture(t, overrides = {}) {
     GITHUB_RUN_ID: "12345",
     GITHUB_RUN_ATTEMPT: "2",
     FAKE_DOCKER_STATE: join(root, "docker-state.json"),
+    FAKE_PROOF_FILE: join(runnerTemp, "taskdesk-image-proof-12345-2.json"),
     PATH: `${bin}:${process.env.PATH}`,
     ...overrides,
   };
@@ -261,6 +269,7 @@ test("archives the explicit PR head, binds running services to built image, and 
   assert.equal(proof.readyStatus, 200);
   assert.deepEqual(proof.hostPortBindings, null);
   assert.equal(proof.cleanup.status, "complete");
+  assert.equal(proof.finalVerdict, "passed");
   assert.equal(state.networkRemoved, true);
   assert.equal(state.imageRemoved, true);
   assert.equal(state.projectDown, true);
@@ -327,3 +336,32 @@ test("cleanup failure fails the smoke and is recorded", async (t) => {
   assert.equal(proof.cleanup.status, "failed");
   assert.equal(proof.cleanup.networkRemoval, 1);
 });
+
+for (const [name, override] of [
+  ["missing", { FAKE_PROOF_MISSING: "1" }],
+  ["unwritable", { FAKE_PROOF_UNWRITABLE: "1" }],
+  ["incomplete", { FAKE_PROOF_INCOMPLETE: "1" }],
+]) {
+  test(`proof ${name} after cleanup fails an otherwise passing smoke`, async (t) => {
+    const fixture = await makeFixture(t, override);
+    const result = await runSmoke(fixture);
+    assert.notEqual(result.code, 0, `proof ${name} unexpectedly passed`);
+    if (name === "missing") {
+      const { readdir } = await import("node:fs/promises");
+      assert.equal(
+        (await readdir(fixture.runnerTemp)).some((item) =>
+          item.startsWith("taskdesk-image-proof-"),
+        ),
+        false,
+      );
+    } else if (name === "unwritable") {
+      const { stat } = await import("node:fs/promises");
+      assert.equal(
+        (await stat(fixture.env.FAKE_PROOF_FILE)).isDirectory(),
+        true,
+      );
+    } else {
+      assert.equal((await readProof(fixture)).finalVerdict, "failed");
+    }
+  });
+}
