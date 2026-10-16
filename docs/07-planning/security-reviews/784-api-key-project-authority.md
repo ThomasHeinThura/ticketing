@@ -989,3 +989,471 @@ The `8d52a7f7` merge imports only `apps/web/src/components/task/task-description
 
 The Sol advisory also noted a possible project-versus-workspace organisation reach-fact discrepancy if a future contract made a customer reachable on this agent route. This candidate changes no such source path; the valid customer session is rejected at the host boundary. I do not claim a new customer-agent route permission or a runtime proof of the repaired test.
 
+
+
+## Paired API-key source on accepted identity-clock main
+
+**Reviewed head:** `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed`
+
+The #783 propagation and #784 live-owner/project-role clamp remain inseparable. Two fresh ordinary contexts and a fresh full independent security context cleared this exact source. This normal accepted-main composition preserves the 15 paired product/test blobs; prior runtime results remain source-bound historical evidence. Current PostgreSQL, image, hosted checks and deployed workflow acceptance remain separate. Raw producer/reviewer metadata mistakes are preserved with their explicit corrections and literal receipts below; the JSON receipt is embedded verbatim rather than published as a separate file. Earlier authentic records remain unchanged.
+
+
+### Composition author
+
+`apikey-accepted795-main-composition-luna.md`
+
+SHA-256 `8bb2a73dca70008de6c40e5e0f996c35009697b286e0294de85cf3a5aef08d60`
+
+# API-key pair + accepted #795 main composition
+
+## Result and boundary
+
+Local composition is prepared only; this is not a review, approval, release, or runtime acceptance. No push, PR update, source fix, CI dispatch, full suite, build, PostgreSQL run, Docker, or browser action occurred. No #785 source was imported.
+
+- Worktree: `/Users/heinthura/.codex/worktrees/api750/Ticketing.v2`
+- Branch: `codex/api-key-project-role-clamp-724`
+- Before merge: clean at `eb53b96934797476031c53c5ddebf9811f4406e5`; remote branch stayed at `8b424730db935240046df903b0d20d7a0fbd3f61`.
+- Current accepted `main` was independently confirmed from `origin/main` and GitHub API as `81781ab244cc1e6c9fac667f309de17a1e494caa`.
+- Normal `git merge --no-edit 81781ab244cc1e6c9fac667f309de17a1e494caa` completed without conflicts or manual resolution.
+- Exact prepared merge: `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed`
+- Parents, in order: prior held paired candidate `eb53b96934797476031c53c5ddebf9811f4406e5`; accepted main `81781ab244cc1e6c9fac667f309de17a1e494caa`.
+- Post-merge worktree is clean. No reset, rebase, cherry-pick, amend, force operation, or policy/product fix was made.
+
+## Exact accepted-main import provenance
+
+The merge first-parent delta contains exactly these ten paths. Each resulting blob was compared with the same path at accepted parent `81781ab`; all ten are byte-identical to that parent:
+
+| Accepted-main blob | Path |
+| --- | --- |
+| `6f702fe7f4db55e96a4078fa7b37e9c5993eac2c` | `.gitleaksignore` |
+| `00a26f96fe3414f8f6a5cd70f89a1e23779009f7` | `apps/api/src/auth/repository.ts` |
+| `5083b417e7d62f98121b90af109e220e7bf93200` | `apps/api/src/identity/oidc-login.ts` |
+| `dcd9f1775313b7ba3818427872e0f7dc5bc74c18` | `apps/api/src/instance/users/repository.ts` |
+| `45118fc39b01b60c5cb2b9a65e43f4ffbeee7159` | `apps/api/src/pending-action/service.ts` |
+| `8efa98ccd7954fcdd4fe3228c3c7ba608b17eb14` | `apps/api/src/work-item/controllers/create-comment.ts` |
+| `cffc9eeb7a014ce8185f098f165e61e2cf018763` | `docs/07-planning/decision-log.md` |
+| `b46d4b0391c6cf6eec5acba4740e59fbe64d97c6` | `docs/07-planning/security-reviews/identity-timezones-631.md` |
+| `91a17f9f8316870078c7bbfc423817ff14b680b0` | `tests/api-integration/identity-clock-ahead-of-utc.test.ts` |
+| `545dfc0962877051be32e47166ea7c7caad11768` | `tests/api-integration/identity-clock-behind-utc.test.ts` |
+
+These ten are the complete `3d1894ba...` to `81781ab...` accepted-main delta, corresponding to accepted #795. They cover timezone-safe UTC comparisons for session/step-up/deactivation and comment creation, plus two timezone probes and records. The application diffs are confined to their listed files. None of the ten paths overlaps the 15 API-key pair paths below. This is provenance/conservation evidence, not a separate review of #795.
+
+## Paired API-key source conservation
+
+Count verified as **15** unique product/test paths (the prior prospective note's prose said 14 in error; its list had 15). Every path below has the exact same Git blob at held source `8b424730...` and this merge `5b6a8159...`:
+
+```
+apps/api/src/attachment/require-attachment-reach.ts
+apps/api/src/project/index.ts
+apps/api/src/utils/assert-work-item-project-reach.ts
+apps/api/src/utils/caller-reach.ts
+apps/api/src/utils/has-project-reach.ts
+apps/api/src/utils/workspace-access-middleware.ts
+apps/api/src/work-item/require-work-item-reach.ts
+tests/api-integration/api-key-project-capabilities.test.ts
+tests/api-integration/api-key-project-role-clamp-strict.test.ts
+tests/api-integration/api-key-project-role-clamp.test.ts
+tests/api-integration/project-default-comment-visibility.test.ts
+tests/api-integration/project-engagement-manage-settings.test.ts
+tests/api-integration/strict-runtime-enforcement.test.ts
+tests/api-integration/task-update-concurrency.test.ts
+tests/api/utils/require-api-key-permission-scope.test.ts
+```
+
+The authentic own review record `docs/07-planning/security-reviews/784-api-key-project-authority.md` is also byte-identical to `8b424730...` (blob `650d1f3e29fcdf74e51dfa30a37ef12ac5d4dc6a`). Ancestry checks confirm the paired #783 head `e0d5e9c25a80ba65ed5392f5ce06e152347b5c7f` and the attachment clamp `00ce4b517f83587f0f46fa165b6d477dae187996` are ancestors of the prepared merge. Thus #783 capability propagation and #784 owner/project-role ceiling (including the attachment clamp) remain conserved as one pair; #783 has no standalone deployment/acceptance.
+
+## Contract, source and evidence limits
+
+The accepted #782 text remains present: `AK-3` clamps a personal key to its owner's current authority on every request; `AK-7` evaluates service keys against their stored, creation-bounded subset; `AK-9` states all personal keys are read-only by default. The same spec calls #783/#784 a proposed inseparable pair, says #783 is not separately accepted, and leaves implementation/runtime acceptance pending.
+
+PR #785 at `e533a9875e47399247b740b53f6fd192fa43ec9d` remained open when checked and is not an ancestor of this merge. Its customer-admission changes to shared `resolveIdentity` were not imported. Root owns any later exact-main composition after #785 resolves; no customer/API-key policy is chosen here.
+
+The original prospective note and its separate correction remain unchanged. Their SHA-256 values were rechecked:
+
+- `apikey-prospective-795-785-composition-plan-luna.md`: `6b855daa2566998618dc4d52b5d6a417d313ad50ba991db57de0222930655d3d`
+- `apikey-prospective-795-785-composition-plan-erratum-luna.md`: `e9fcc8da9eebf384f42e17065814917b6ce2c409565d125d2e5d75bb29fa2f4f`
+
+The correct historical hosted PostgreSQL result for `8b424730db935240046df903b0d20d7a0fbd3f61` is PASS: 206/206 files, 2,999/2,999 tests, five successful tasks; run `38827851800`, job `116739404070`, raw log `784-pg-8b424730.log`. This is historical evidence only, not a check of the present candidate. Earlier adverse runs remain attributed to their exact sources: `3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74` had 11 failures; `176753750bdc5245f2068885f76d0947c8689ee5` had one failure (206 files, 2,998 passed / 1 failed; 2,999 tests, 2,998 passed / 1 failed). The producer erratum records this attribution and the unsupported `8b2062999f5` string correction.
+
+## Checks actually performed
+
+- Checked pre-merge tree/branch/remote/main, GitHub main, and open #785 state/head; confirmed accepted main `81781ab...` was not already an ancestor.
+- Compared the ten incoming accepted-main blobs to parent `81781ab...` and the 15 API-pair plus own-review blobs to source `8b424730...`.
+- Confirmed #783 and `00ce4b51...` ancestry, clean final worktree, and #785 source non-ancestry.
+- `pnpm --filter @taskdesk/api typecheck` passed on exact candidate `5b6a8159...` (API production, permission, test and related configured TypeScript projects).
+- `git diff --check HEAD^1 HEAD` reports only the accepted imported review record `identity-timezones-631.md` blank line at EOF; imported bytes were preserved exactly.
+
+No full tests, CI, PostgreSQL runtime, image, container, browser, or release check was run. Two fresh independent ordinary reviews, a fresh full Sol review, exact-head required CI and image/runtime acceptance are still required before source freeze/push or any acceptance. Root owns publication and merge; this producer is not an independent reviewer.
+
+
+### Author correction
+
+`apikey-accepted795-main-composition-erratum-luna.md`
+
+SHA-256 `360f8120222def4818dd31e1474ac37b97c56e7692a1fdb6481b211d5fdbce1f`
+
+# Erratum — API-key accepted #795 main composition report
+
+This producer-owned erratum corrects a material count-class error in the historical-results paragraph of the composition report:
+
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed/apikey-accepted795-main-composition-luna.md`
+
+The original composition report remains unchanged at SHA-256 `8bb2a73dca70008de6c40e5e0f996c35009697b286e0294de85cf3a5aef08d60`.
+
+## Corrected statement
+
+The original report's statement that source `176753750bdc5245f2068885f76d0947c8689ee5` had “206 files, 2,998 passed / 1 failed” mixed test counts into the file count. Correct attribution is **205 test files passed, 1 failed, 206 total; 2,998 tests passed, 1 failed, 2,999 total**. The single failed assertion was the customer-denial response assertion recorded in the retained historical review note.
+
+The structured receipt at
+
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/apikey-accepted795-main-composition-historical-results-receipt.md`
+
+records exact source SHAs, raw-log SHA-256 digests, separate file/test totals, safe anchored summary lines, arithmetic checks, and only the run/job metadata actually verified. The other two records remain: `8b424730...` passed 206 files / 2,999 tests (run `38827851800`, job `116739404070`); `3594cb34...` failed 4 of 206 files and 11 of 2,999 tests. No unsupported `8b2062999f5` source identifier is used.
+
+Everything else in the original composition report, including the 15 paired product blob comparisons and prepared HEAD `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed`, is unchanged. This correction is not an independent review or acceptance. No repository, source, CI, runtime, push, or PR action was performed.
+
+
+### Source-bound historical results receipt
+
+`apikey-accepted795-main-composition-historical-results-receipt.md`
+
+SHA-256 `1a3e07f816b1cef1297eace3efb82baa342055e9181386a25f6e10616adf282c`
+
+# Private historical PostgreSQL results receipt — #784 sources
+
+This receipt transcribes only the anchored Vitest and task summary lines from the retained hosted logs. ANSI color/presentation escape bytes are omitted; timestamps and visible wording/counts are copied exactly. It separates test-file totals from individual test totals. The full source SHAs below were checked as commit objects in the API worktree.
+
+| Source commit (full SHA) | Log | Log SHA-256 | Test files: passed / failed / total | Tests: passed / failed / total | Tasks | Run / job |
+|---|---|---|---|---|---|---|
+| `8b424730db935240046df903b0d20d7a0fbd3f61` | `784-pg-8b424730.log` | `98abcad736a6ce866c19bbaf271e78beb35074fe0e291b1c8cbfc99a884f979d` | 206 / 0 / 206 | 2,999 / 0 / 2,999 | 5 successful / 5 total | Run `38827851800`, job `116739404070` (known from retained source/run record) |
+| `3594cb34c2f50ab3434fbc7ddd28ba9a0a3a6c74` | `784-pg-3594cb34.log` | `ec6f5ba3c454f1602873054b27f5046aaa46b50696b38e0d7647ad2e129b1af4` | 202 / 4 / 206 | 2,988 / 11 / 2,999 | 4 successful / 5 total; API integration failed | Run/job not crosswalked in the inspected anchored summary; do not infer from filename |
+| `176753750bdc5245f2068885f76d0947c8689ee5` | `784-pg-17675375.log` | `03755c00beb12573d3f0a01b5a05442efcfa432815203eba1e69370eca0d382a` | 205 / 1 / 206 | 2,998 / 1 / 2,999 | 4 successful / 5 total; API integration failed | Run/job not crosswalked in the inspected anchored summary; do not infer from filename |
+
+## Anchored safe summary lines
+
+From `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/784-pg-8b424730.log`:
+
+```
+line 30999: 2026-10-16T00:35:15.9388410Z Test Files 206 passed (206)
+line 31000: 2026-10-16T00:35:15.9388633Z Tests 2999 passed (2999)
+line 31006: 2026-10-16T00:35:15.9389612Z Tasks: 5 successful, 5 total
+```
+
+From `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/784-pg-3594cb34.log`:
+
+```
+line 31893: 2026-10-15T22:48:50.2892422Z Test Files 4 failed | 202 passed (206)
+line 31894: 2026-10-15T22:48:50.2892946Z Tests 11 failed | 2988 passed (2999)
+line 32023: 2026-10-15T22:48:50.2925855Z Tasks: 4 successful, 5 total
+line 32026: 2026-10-15T22:48:50.2926286Z Failed: @taskdesk/api#test:integration
+```
+
+From `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/784-pg-17675375.log`:
+
+```
+line 31709: 2026-10-15T23:39:50.2813174Z Test Files 1 failed | 205 passed (206)
+line 31710: 2026-10-15T23:39:50.2813612Z Tests 1 failed | 2998 passed (2999)
+line 31728: 2026-10-15T23:39:50.2820777Z Tasks: 4 successful, 5 total
+line 31731: 2026-10-15T23:39:50.2821177Z Failed: @taskdesk/api#test:integration
+```
+
+## Consistency assertions
+
+- `8b424730...`: 206 + 0 = 206 files; 2,999 + 0 = 2,999 tests.
+- `3594cb34...`: 202 + 4 = 206 files; 2,988 + 11 = 2,999 tests.
+- `176753750...`: 205 + 1 = 206 files; 2,998 + 1 = 2,999 tests.
+- Full source commit objects exist. Raw log digests were recalculated from the retained files and are recorded above.
+
+The passing `8b424730` result is historical evidence for that exact source only; it is not a PostgreSQL result for prepared composition `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed`.
+
+
+### Independent ordinary review A
+
+`apikey-accepted795-main-ordinary-a-luna.md`
+
+SHA-256 `5c5f7a1f92f1cdd1286d2251192938cbc2c63bc1442f896c7b69afb177b65425`
+
+# API-key pair + accepted #795 composition — independent ordinary review A
+
+**Reviewed head:** `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed`  
+**Comparison base:** accepted main `81781ab244cc1e6c9fac667f309de17a1e494caa`  
+**Role:** fresh independent ordinary review A of the composed #783/#784 API-key candidate. I did not author, direct, or remediate this candidate. The task dispatch assigned the Luna ordinary tier; this runtime did not expose an exact model-selector/version string, so this note does not claim one.  
+**Worktree:** `/Users/heinthura/.codex/worktrees/api750/Ticketing.v2`, clean at review start and end.
+
+## Scope checked
+
+I read the repository workflow and operating guide, active integration-freeze mission, accepted #782 API-key spec, the #724 owner decision, current status entry, and the retained #783/#784 source/review notes. I inspected the exact candidate diff from accepted main and the relevant API-key identity, capability-scope, reach, legacy permission, project-settings, bulk, relation, attachment, work-item and customer-identity paths.
+
+The accepted contract distinguishes personal and service keys: AK-3 and the 2026-10-15 #724 decision require a personal key to be bounded by its stored scope and its owner's current project authority; AK-7 says a service key uses its creation-bounded stored subset and is not clamped to a current person. The current code path under review is the existing Better Auth personal-key path. The P4 service-key extension is not implemented here, and this review does not claim AK-7 implementation.
+
+## Findings
+
+No blocking or new non-blocking source finding.
+
+- #783 propagates the authenticated key's stored Better Auth permissions through `apiKeyCapabilitySubset` into `resolveIdentity`. Only exact registered resource/action pairs become canonical capabilities. Missing, null, malformed or unknown data fails closed. The evaluator intersects those capabilities with the resolved owner's live role authority; it also rejects key identities without capability data.
+- #784 keeps the owner's live project authority distinct from the key-clamped authority. The shared refusal helper enforces the owner ceiling even where a route defers the stored key scope to a legacy downstream permission gate. Non-deferred routes evaluate the key's effective subset directly. The project-role override and existing reach calculation come from the canonical evaluator, rather than a second role implementation.
+- The shared checks cover work-item, attachment, workspace-access and project reach. `callerReach().can` applies the owner's current project authority per row for bulk/relation paths; the existing key-aware gate remains responsible for stored key scope. The reviewed tests contain session/key parity cases, outsider 404 controls, full-scope key refusals for read-only project roles, capable-key successes, narrower key-scope cases, and no-write assertions for denied bulk, relation and own-row operations.
+- The target-project settings handler evaluates `project:manage_settings` against the resolved project facts and distinguishes insufficient key scope from owner authority refusal. The project fact is populated by the reach middleware before the handler.
+- Customer identities presenting an API key remain refused by the shared identity resolver. Customer and internal project reach still use the project's persisted organisation facts; no customer-side grant or route was added by this candidate.
+- `deferCapability: true` still delegates the whole capability decision to existing label, time-entry and approval handler/workspace checks. This is an existing boundary, not a newly introduced omission in the reviewed diff; it does not claim those routes gained project-role-specific checks.
+- The #795 first-parent import consists of ten accepted-main paths, disjoint from the 15 API-key product/test paths. The accepted clock/auth changes show no source overlap with the reviewed API-key reach implementation. This is a static composition observation, not a merged-runtime result.
+
+The API-key feature's adjacent distinctions remain intact: personal read-only-by-default is AK-9; the service-key stored-subset rule is AK-7; planned readonly-by-default service behavior is not inferred from this existing personal-key implementation. The candidate does not include open #785 source.
+
+## Source conservation
+
+I independently verified `HEAD` and its parents: first parent `eb53b96934797476031c53c5ddebf9811f4406e5`, second parent accepted main `81781ab244cc1e6c9fac667f309de17a1e494caa`. A Git blob comparison against `8b424730db935240046df903b0d20d7a0fbd3f61` returned identical bytes for all 15 paired API-key product/test paths listed in the producer composition report. The #785 head `e533a9875e47399247b740b53f6fd192fa43ec9d` is not an ancestor. The producer's preserved #784 review note is also in the merge; its provenance does not replace this review.
+
+## Checks actually run
+
+- `pnpm --filter @taskdesk/api typecheck` — passed (production, permissions, tests, RLS prototype and approvals TypeScript projects).
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts tests/api/utils/require-api-key-permission-scope.test.ts` — 1 file, 10 tests passed.
+- `pnpm --filter @taskdesk/permissions test` — 14 files, 267 tests passed.
+- Read-only Git checks: exact head/parents; 15-path blob identity comparison against the paired source; #785 non-ancestry; candidate diff against accepted main; clean worktree.
+- Inspected the integration tests for their positive, negative and no-write assertions, but did not run them.
+
+**Not run:** database-backed API integration tests, PostgreSQL/Testcontainers, full suite, CI, image/build/boot, Docker, browser or runtime checks. Historical PostgreSQL results in the producer's corrected receipt are exact-source historical evidence and are not evidence for this merged head.
+
+## Verdict
+
+**CLEAR** for the ordinary source/composition review at exact head `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed`. No blocker found. This verdict does not substitute for the required security review, exact-head required checks, or image/runtime acceptance, and does not claim whole-key lifecycle or service-key feature completion.
+
+
+### Independent ordinary review B
+
+`apikey-accepted795-main-ordinary-b-luna.md`
+
+SHA-256 `4362a0a8aef9691693d403d3a998051e4aab496fa15000e7e1d206fa3187986a`
+
+# API-key #783/#784 pair on accepted #795 main composition — ordinary review B
+
+**Reviewed head:** `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed`
+**Comparison base:** `81781ab244cc1e6c9fac667f309de17a1e494caa` (accepted main parent)
+**Role / independence:** Fresh independent ordinary reviewer B. This context did not author, direct, or remediate the candidate. The producer composition report and prior reviews were used as leads only; claims below were checked against the exact source.
+**Model:** GPT-6 Luna (ordinary review tier).
+
+## Scope and checks
+
+Reviewed the 15 API-key pair product/test paths in the first-parent delta, including the #783 key capability projection and the #784 owner-project-role clamp, plus the paired review record and accepted-main merge provenance. Read the API-key contract (`AK-3`, `AK-7`, `AK-9`), the current RBAC and identity evaluators, the route middleware and caller-reach call sites, and the current #783/#784 regression tests. Confirmed that the current diff conserves all 15 paired paths from `8b424730db935240046df903b0d20d7a0fbd3f61`; the ten imported accepted-main paths match parent `81781ab...` byte-for-byte; and #783 plus attachment clamp `00ce4b517f83587f0f46fa165b6d477dae187996` are ancestors. The #785 source is not an ancestor and its shared identity changes are absent.
+
+Executed `pnpm --filter @taskdesk/api exec vitest run tests/api/utils/require-api-key-permission-scope.test.ts` on the reviewed head: **1 file, 10 tests passed**. This covers the shared legacy key-scope parser/predicate, not the PostgreSQL integration behavior. No source was changed. No full suite, PostgreSQL, CI, image, container, browser, or current runtime verification was performed.
+
+## Review
+
+The pair preserves the key's stored scope as a canonical capability subset on project/reach evaluation (#783), while the #784 layer separately computes the owner's live project authority and uses it when a route defers the key scope to its existing legacy gate. `projectCapabilityRefused` keeps the two defer modes distinct: `deferCapability` leaves the whole check with the handler; `deferApiKeyCapability` still enforces the owner ceiling. The helper is applied consistently at the work-item, attachment, assertion, and workspace-access reach gates. For multi-row decisions, `callerReach().can` checks the owner's project authority; the route's existing key-aware check still supplies the stored-scope intersection. The project-settings field check evaluates the target project's current facts and the key-clamped identity before the update.
+
+The current regression sources distinguish the key from both the owner session and the stored scope: valid and null/malformed scopes, `project:update` implying read, owner/project-role mismatch, broader project grants, outsider 404, disabled key 401, legitimate scoped-key success, strict-policy modes, bulk no-write denial, task relations, and attachment/comment paths. The attachment cases also distinguish the owner's project authority from the legacy statement checked by the route. Existing checks cover the #783 + #784 inseparable pairing; #783 alone does not establish the owner/project-role ceiling. The report's historical PostgreSQL pass is attributed only to source `8b424730...`; it is not evidence for this composition.
+
+No new blocking correctness or contract finding was identified in the reviewed scope. Service-key behavior and the `deferCapability` handler-owned route families are not newly verified by these regression files; the candidate does not change those handlers, and the existing boundary remains explicit. The disabled-key case begins with a disabled row rather than demonstrating immediate revocation after a previously successful request. These are residual verification limits, not findings against the changed paths.
+
+## Findings
+
+**Blocking:** none.
+
+**Non-blocking:** none requiring a candidate change. Current PostgreSQL, full CI, image/runtime, and browser evidence remain pending and must be supplied by their owning gates; this review does not attest them.
+
+**Verdict:** **CLEAR** for ordinary review B at this exact head and scope. This is not security review, CI, runtime acceptance, merge authorization, or stage acceptance.
+
+
+### Reviewer B first correction
+
+`apikey-accepted795-main-ordinary-b-erratum-luna.md`
+
+SHA-256 `04c602026338c7ab9ff1e6b00447985abcdef56bb0315b7ca6b928cd01a69cdc`
+
+# Erratum — API-key #783/#784 ordinary review B comparison label
+
+The original report is preserved unchanged at the current private evidence path:
+
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/apikey-accepted795-main-ordinary-b-luna.md`
+
+Its verified SHA-256 is `4362a0a8aef9691693d403d3a998051e4aab496fa15000e7e1d206fa3187986a`. The report was relocated from the untracked repository path to this private path; the bytes were verified unchanged. This erratum is a separate producer correction and does not modify repository source or the original report.
+
+## Corrected comparison statement
+
+The original report says: “Reviewed the 15 API-key pair product/test paths in the first-parent delta.” That comparison label is incorrect.
+
+At reviewed head `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed`, the first-parent delta (`eb53b96934797476031c53c5ddebf9811f4406e5` → reviewed head) imports **10 accepted-#795 paths** from accepted main `81781ab244cc1e6c9fac667f309de17a1e494caa`. Those ten imported paths are byte-identical to the accepted-main parent.
+
+The **15 API-key pair product/test paths** are the unique changed paths when comparing the reviewed tree against accepted main `81781ab...`; they are byte-identical to paired source `8b424730db935240046df903b0d20d7a0fbd3f61`. The first-parent delta also has the paired review record, which is not counted among those 15 product/test paths. Thus the 15-path conservation claim is retained, but it must not be described as the first-parent delta.
+
+## Review disposition
+
+I rechecked the exact commit parents and both diffs. The comparison-label correction does not change the review scope, source observations, executed test result (1 focused file / 10 tests passed), findings, or verdict. **CLEAR** remains the ordinary review B verdict for the exact reviewed head and stated scope. This remains a source review only; no current PostgreSQL, CI, image/runtime, browser, or release evidence is asserted.
+
+No new model-runtime attestation is made. The original report's model attribution is preserved unchanged.
+
+
+### Reviewer B literal Git receipt
+
+`apikey-accepted795-main-ordinary-b-git-diff-receipt.json`
+
+SHA-256 `ce8b84fe68488e0ded8d8125293d17f6b68d160404a51dd7984aeea9b6030de4`
+
+```json
+{
+  "receipt_type": "literal_git_diff_name_only_comparison_receipt",
+  "repository": "/Users/heinthura/.codex/worktrees/api750/Ticketing.v2",
+  "current_head": "5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed",
+  "current_worktree_clean": true,
+  "comparisons": [
+    {
+      "base_sha": "eb53b96934797476031c53c5ddebf9811f4406e5",
+      "head_sha": "5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed",
+      "comparison": "first-parent delta",
+      "count": 10,
+      "exact_paths": [
+        ".gitleaksignore",
+        "apps/api/src/auth/repository.ts",
+        "apps/api/src/identity/oidc-login.ts",
+        "apps/api/src/instance/users/repository.ts",
+        "apps/api/src/pending-action/service.ts",
+        "apps/api/src/work-item/controllers/create-comment.ts",
+        "docs/07-planning/decision-log.md",
+        "docs/07-planning/security-reviews/identity-timezones-631.md",
+        "tests/api-integration/identity-clock-ahead-of-utc.test.ts",
+        "tests/api-integration/identity-clock-behind-utc.test.ts"
+      ],
+      "identity_timezone_review_note_present": true,
+      "paired_784_api_key_review_note_present": false
+    },
+    {
+      "base_sha": "81781ab244cc1e6c9fac667f309de17a1e494caa",
+      "head_sha": "5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed",
+      "comparison": "net tree versus accepted main",
+      "count": 16,
+      "exact_paths": [
+        "apps/api/src/attachment/require-attachment-reach.ts",
+        "apps/api/src/project/index.ts",
+        "apps/api/src/utils/assert-work-item-project-reach.ts",
+        "apps/api/src/utils/caller-reach.ts",
+        "apps/api/src/utils/has-project-reach.ts",
+        "apps/api/src/utils/workspace-access-middleware.ts",
+        "apps/api/src/work-item/require-work-item-reach.ts",
+        "docs/07-planning/security-reviews/784-api-key-project-authority.md",
+        "tests/api-integration/api-key-project-capabilities.test.ts",
+        "tests/api-integration/api-key-project-role-clamp-strict.test.ts",
+        "tests/api-integration/api-key-project-role-clamp.test.ts",
+        "tests/api-integration/project-default-comment-visibility.test.ts",
+        "tests/api-integration/project-engagement-manage-settings.test.ts",
+        "tests/api-integration/strict-runtime-enforcement.test.ts",
+        "tests/api-integration/task-update-concurrency.test.ts",
+        "tests/api/utils/require-api-key-permission-scope.test.ts"
+      ],
+      "paired_784_api_key_review_note_present": true,
+      "api_key_pair_product_test_paths": [
+        "apps/api/src/attachment/require-attachment-reach.ts",
+        "apps/api/src/project/index.ts",
+        "apps/api/src/utils/assert-work-item-project-reach.ts",
+        "apps/api/src/utils/caller-reach.ts",
+        "apps/api/src/utils/has-project-reach.ts",
+        "apps/api/src/utils/workspace-access-middleware.ts",
+        "apps/api/src/work-item/require-work-item-reach.ts",
+        "tests/api-integration/api-key-project-capabilities.test.ts",
+        "tests/api-integration/api-key-project-role-clamp-strict.test.ts",
+        "tests/api-integration/api-key-project-role-clamp.test.ts",
+        "tests/api-integration/project-default-comment-visibility.test.ts",
+        "tests/api-integration/project-engagement-manage-settings.test.ts",
+        "tests/api-integration/strict-runtime-enforcement.test.ts",
+        "tests/api-integration/task-update-concurrency.test.ts",
+        "tests/api/utils/require-api-key-permission-scope.test.ts"
+      ],
+      "api_key_pair_product_test_path_count": 15,
+      "pair_source_sha": "8b424730db935240046df903b0d20d7a0fbd3f61",
+      "pair_blob_equality_by_path": {
+        "apps/api/src/attachment/require-attachment-reach.ts": true,
+        "apps/api/src/project/index.ts": true,
+        "apps/api/src/utils/assert-work-item-project-reach.ts": true,
+        "apps/api/src/utils/caller-reach.ts": true,
+        "apps/api/src/utils/has-project-reach.ts": true,
+        "apps/api/src/utils/workspace-access-middleware.ts": true,
+        "apps/api/src/work-item/require-work-item-reach.ts": true,
+        "tests/api-integration/api-key-project-capabilities.test.ts": true,
+        "tests/api-integration/api-key-project-role-clamp-strict.test.ts": true,
+        "tests/api-integration/api-key-project-role-clamp.test.ts": true,
+        "tests/api-integration/project-default-comment-visibility.test.ts": true,
+        "tests/api-integration/project-engagement-manage-settings.test.ts": true,
+        "tests/api-integration/strict-runtime-enforcement.test.ts": true,
+        "tests/api-integration/task-update-concurrency.test.ts": true,
+        "tests/api/utils/require-api-key-permission-scope.test.ts": true
+      },
+      "all_pair_blobs_equal_to_pair_source": true
+    }
+  ],
+  "assertions": {
+    "first_parent_count_is_10": true,
+    "first_parent_contains_identity_timezone_note": true,
+    "first_parent_excludes_own_784_pair_note": true,
+    "net_accepted_main_count_is_16": true,
+    "net_accepted_main_contains_own_784_pair_note": true,
+    "net_pair_product_test_path_count_is_15": true,
+    "all_15_pair_product_test_blobs_equal_8b424730": true,
+    "current_head_matches_reviewed_head": true,
+    "current_worktree_clean": true
+  }
+}
+```
+
+
+### Reviewer B structural comparison addendum
+
+`apikey-accepted795-main-ordinary-b-addendum-luna.md`
+
+SHA-256 `42827af0ac1b57da75549929e080627e73df144789b850bbab3dfb26dd1b42fe`
+
+# Addendum — API-key #783/#784 ordinary review B comparison record
+
+This addendum corrects only the false first-parent-note sentence in the preserved erratum. The original ordinary-review report and the prior erratum remain unchanged.
+
+The literal Git comparison receipt is [`apikey-accepted795-main-ordinary-b-git-diff-receipt.json`](./apikey-accepted795-main-ordinary-b-git-diff-receipt.json), SHA-256 `ce8b84fe68488e0ded8d8125293d17f6b68d160404a51dd7984aeea9b6030de4`. It records both explicit base/head pairs, exact `git diff --name-only` path arrays, path counts, note membership, all 15 paired product/test blob comparisons against `8b424730db935240046df903b0d20d7a0fbd3f61`, and the clean reviewed head.
+
+**Corrected statement:** The first-parent delta `eb53b96934797476031c53c5ddebf9811f4406e5` → `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed` contains 10 paths, including `identity-timezones-631.md`; it excludes the paired `784-api-key-project-authority.md` review note. The net comparison `81781ab244cc1e6c9fac667f309de17a1e494caa` → `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed` contains 16 paths: 15 paired API-key product/test paths plus the paired 784 review note. The 15 product/test blobs equal the paired source blobs at `8b424730db935240046df903b0d20d7a0fbd3f61`.
+
+This corrects comparison metadata only. Review scope, findings and the **CLEAR** verdict at reviewed head `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed` are unchanged; no new ordinary review pass was performed. No source, tests, CI, runtime, or repository files were changed.
+
+Preserved-record SHA-256 checks at addendum creation: original report `4362a0a8aef9691693d403d3a998051e4aab496fa15000e7e1d206fa3187986a`; prior erratum `04c602026338c7ab9ff1e6b00447985abcdef56bb0315b7ca6b928cd01a69cdc`.
+
+
+### Independent full security review
+
+`apikey-accepted795-main-security-sol.md`
+
+SHA-256 `2f8703d60d002c18dcf165e46a7c6f3aa61b344333e6f6353f368e0812f5679e`
+
+# Independent full security review — API-key #783/#784 pair on accepted #795 main
+
+**Reviewed head:** `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed`  
+**Comparison base:** accepted main `81781ab244cc1e6c9fac667f309de17a1e494caa`  
+**Role and independence:** fresh independent full security reviewer. I did not author, direct, or remediate the candidate, its paired source, its accepted-main composition, or its tests. I read the two current ordinary CLEAR reports after they were complete and checked their material claims against the actual Git and source. The parent dispatch requested the GPT-6 Sol tier with a fresh context; this runtime did not expose a finer verifiable model/version selector to me. The dispatch is provenance, not an introspected version claim.  
+**Worktree:** `/Users/heinthura/.codex/worktrees/api750/Ticketing.v2`; clean at review start and end.
+
+## Scope and source conservation
+
+I read `AGENTS.md`, the active integration-freeze mission, `agent-workflow.md`, `CLAUDE.md`, the RBAC and API-key contracts (`AK-3`, `AK-7`, `AK-9`), the #724 owner decision, the relevant earlier adverse and clearing #783/#784 review records, and the current ordinary A/B reports plus B's comparison addendum. I inspected the actual net diff, the shared evaluator/identity/key-verification path, route policy and downstream legacy gates, project settings, work-item and attachment reach, bulk and relation checks, test assertions, and the accepted-main import seam. The prior reports were leads, not substitutes for this inspection.
+
+Git gives `HEAD` parents `eb53b96934797476031c53c5ddebf9811f4406e5` and accepted main `81781ab244cc1e6c9fac667f309de17a1e494caa`. Net against accepted main is 16 paths: 15 paired API-key product/test paths and the retained #784 review note. I compared each of the 15 blobs directly with paired source `8b424730db935240046df903b0d20d7a0fbd3f61`: all match. The first-parent import contains 10 accepted-main paths and all ten blobs match the accepted-main parent. Those include the #795 UTC clock/auth and comment timestamp fixes; none rewrites the API-key reach or identity source. #785 head `e533a9875e47399247b740b53f6fd192fa43ec9d` is not an ancestor and its unaccepted import is not reviewed here. The earlier B erratum has a comparison-label mistake, corrected by its preserved addendum and Git receipt; I used the actual Git comparisons above.
+
+## Security assessment
+
+The authenticated personal key's Better Auth stored permissions enter `resolveCallerIdentity` through `apiKeyCapabilitySubset`. Only registered exact resource/action strings are projected; missing, null, structurally malformed, and mixed-valid/malformed maps produce an empty canonical subset. `resolveIdentity` refuses disabled keys and owner mismatch, resolves current owner roles, and supplies a defined key subset. `can()` intersects that subset with current owner authority and applies project-role override. `verifyApiKey` checks enabled/unexpired key and active, unbanned owner on each verification. This source design makes a changed owner role, disabled key, or inactive owner effective at the next request; this review did not run a database revocation transition.
+
+For a single project or work-item row, the changed reach gates check persisted project reach first (unreachable or missing remains 404). `projectCapabilityRefused` distinguishes direct canonical evaluation from `deferApiKeyCapability`: the latter may defer the key's stored-scope half to an existing key-aware legacy gate, but still requires the owner's current authority in the target project. I checked the work-item, attachment, assertion and workspace-access call sites. For multi-row work, `callerReach().can` checks that same owner project authority per row; the bulk and task-relation entry paths retain their separate stored-key-scope checks. The bulk and relation regression sources include parity and no-write assertions, including read-only project roles and legitimate capable-key controls. A narrower key remains narrowed by its downstream gate; an outsider still fails reach before capability.
+
+The accepted-main interaction that previously blocked the project-settings composition is corrected in this paired source. `PUT /api/project/{id}` resolves the target project and attaches matching reach facts before the handler. A body containing `kind`, `supportLevel`, `serviceCalendarId`, or `defaultCommentVisibility` is checked for `project:manage_settings` through `evaluateProjectRead` on those target facts before any read/write. A narrower project role overrides a broad workspace role for sessions and keys; a key additionally needs the stored settings scope. Missing identity or facts fails closed. The legacy `project:update` baseline remains required. The current regression sources use a manager with an explicit narrower project role, compare session/key denials, assert unchanged persisted settings, and retain capable settings and key-scope controls. The earlier workspace-only blocker is therefore closed in source at this exact head.
+
+Customer-side identities still cannot present API keys through the agent/customer host boundary; no customer authority is created here. This pair implements the existing personal-key path, not the planned P4 service-key lifecycle (`AK-7`) or the complete key-creation/read-only-default feature (`AK-9`). I did not infer a service-key live-owner clamp. `deferCapability: true` still leaves the whole capability decision to existing handler-owned label, time-entry and approval families; it is an unchanged boundary, so this review does not claim those handlers gained a project-role-specific check. The separate #785 actor-facing row-content SQL contract issue is not reproduced by this pair: the changed production paths add no actor-visible row-content SQL return or cross-tenant repository query; the project handler consumes facts already resolved from its target row.
+
+## Findings and verdict
+
+**Blocking findings:** none found in this exact paired source and accepted-main composition.  
+**Non-blocking findings:** the `PUT /api/project/{id}` comment still names the replaced `assertCallerHasCapability` helper, although the executable gate uses `evaluateProjectRead`. `git diff --check` against accepted main reports trailing spaces and a final blank line in the retained historical #784 review note; it reports no product/test path problem. These documentation defects do not change authority.  
+**Verdict:** **CLEAR** for the full independent source security review at exact head `5b6a815945c9c6fa9ca2c3c1b2e2ce0bda57b8ed`. The #783 capability propagation and #784 live-owner/project-role clamp are one inseparable reviewed pair; this verdict grants no standalone #783 acceptance.
+
+## Checks actually run and limits
+
+- Read-only Git: exact head/parents, 16-path net diff, all 15 paired blob identities, all ten accepted-main import blob identities, #785 non-ancestry, and clean worktree.
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts tests/api/utils/require-api-key-permission-scope.test.ts`: 1 file, 10 tests passed.
+- `pnpm --filter @taskdesk/permissions exec vitest run src/evaluator.test.ts`: 1 file, 60 tests passed.
+- `git diff --check 81781ab244cc1e6c9fac667f309de17a1e494caa..HEAD`: nonzero only for preserved review-note whitespace described above; I do not report it as passing.
+- I inspected the PostgreSQL integration regressions but did not run them. No current-head PostgreSQL, full suite, required hosted CI, image build/boot/health, Docker, browser, release, SIT, commit, push, PR mutation or merge was performed by this reviewer. The corrected historical PostgreSQL receipt records passes and earlier failures on older heads; none is a runtime result for `5b6a815...`. Those gates remain separate and pending, with no waiver implied.
+
