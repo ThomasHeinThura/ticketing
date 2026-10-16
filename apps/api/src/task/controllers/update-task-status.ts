@@ -1,38 +1,39 @@
-import { and, eq, sql } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
+import { findColumnBySlugForIdentity, updateTaskRow } from "../repository";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 async function updateTaskStatus({
+  identity,
   id,
   status,
   currentUserId,
 }: {
+  identity: ResolvedIdentity;
   id: string;
   status: string;
   currentUserId: string;
 }) {
   const { existingTask, updatedTask } = await db.transaction(async (tx) => {
-    const existingTask = await lockTaskAndAssertProjectLive(tx, id);
-    await assertValidTaskStatus(status, existingTask.projectId, tx);
-    const column = await tx.query.columnTable.findFirst({
-      where: and(
-        eq(columnTable.projectId, existingTask.projectId),
-        eq(columnTable.slug, status),
-      ),
+    const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
+      tx,
+      id,
+      identity,
+    );
+    await assertValidTaskStatus(identity, status, existingTask.projectId, tx);
+    const column = await findColumnBySlugForIdentity(
+      tx,
+      identity,
+      existingTask.projectId,
+      status,
+    );
+    const updatedTask = await updateTaskRow(tx, identity, id, {
+      status,
+      columnId: column?.id ?? null,
     });
-    const [updatedTask] = await tx
-      .update(taskTable)
-      .set({
-        status,
-        columnId: column?.id ?? null,
-        version: sql`${taskTable.version} + 1`,
-      })
-      .where(eq(taskTable.id, id))
-      .returning();
     return { existingTask, updatedTask };
   });
 

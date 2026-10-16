@@ -41,6 +41,18 @@ type RecordedEvent = { type: string; data: unknown };
 let recordedEvents: RecordedEvent[] = [];
 let eventSubscribersInitialized = false;
 
+function expectRowsById<T extends { id: string }>(
+  actual: readonly T[],
+  expected: readonly T[],
+) {
+  const compareRows = (left: T, right: T) =>
+    left.id.localeCompare(right.id) ||
+    JSON.stringify(left).localeCompare(JSON.stringify(right));
+  expect([...actual].sort(compareRows)).toEqual(
+    [...expected].sort(compareRows),
+  );
+}
+
 function initEventSubscribers() {
   if (eventSubscribersInitialized) return;
   eventSubscribersInitialized = true;
@@ -1018,8 +1030,16 @@ describe("API integration: work-item comments (#27)", () => {
           customerInternal.id,
         ]),
       );
-    expect(bulkAfterRevocation).toHaveLength(5);
-    expect(bulkAfterRevocation.every(({ isRead }) => !isRead)).toBe(true);
+    expectRowsById(
+      bulkAfterRevocation,
+      [
+        customerComment,
+        customerTransition,
+        customerMention,
+        customerAssigned,
+        customerInternal,
+      ].map(({ id }) => ({ id, isRead: false })),
+    );
     await deleteReadableNotifications(customer.user.id);
     const retainedAfterClear = await db
       .select({ id: schema.notificationTable.id })
@@ -1033,14 +1053,15 @@ describe("API integration: work-item comments (#27)", () => {
           customerInternal.id,
         ]),
       );
-    expect(retainedAfterClear.map(({ id }) => id).sort()).toEqual(
+    expectRowsById(
+      retainedAfterClear,
       [
         customerComment.id,
         customerTransition.id,
         customerMention.id,
         customerAssigned.id,
         customerInternal.id,
-      ].sort(),
+      ].map((id) => ({ id })),
     );
     const [restoredMembership] = await db
       .insert(schema.membershipTable)
@@ -1104,7 +1125,7 @@ describe("API integration: work-item comments (#27)", () => {
           customerUnassigned.id,
         ]),
       );
-    expect(forbiddenRows).toEqual([
+    expectRowsById(forbiddenRows, [
       { id: customerAssigned.id, isRead: false },
       { id: customerUnassigned.id, isRead: false },
     ]);
@@ -1155,19 +1176,17 @@ describe("API integration: work-item comments (#27)", () => {
           unknownCustomerEvent.id,
         ]),
       );
-    expect(afterBulkRead).toEqual(
-      expect.arrayContaining([
-        { id: customerComment.id, isRead: true },
-        { id: customerMention.id, isRead: true },
-        { id: customerBulkComment.id, isRead: true },
-        { id: customerBulkTransition.id, isRead: true },
-        { id: customerInternal.id, isRead: false },
-        { id: missingResource.id, isRead: false },
-        { id: customerAssigned.id, isRead: false },
-        { id: customerUnassigned.id, isRead: false },
-        { id: unknownCustomerEvent.id, isRead: false },
-      ]),
-    );
+    expectRowsById(afterBulkRead, [
+      { id: customerComment.id, isRead: true },
+      { id: customerMention.id, isRead: true },
+      { id: customerBulkComment.id, isRead: true },
+      { id: customerBulkTransition.id, isRead: true },
+      { id: customerInternal.id, isRead: false },
+      { id: missingResource.id, isRead: false },
+      { id: customerAssigned.id, isRead: false },
+      { id: customerUnassigned.id, isRead: false },
+      { id: unknownCustomerEvent.id, isRead: false },
+    ]);
 
     const clearItem = await plantFor(
       customer,
@@ -1201,11 +1220,10 @@ describe("API integration: work-item comments (#27)", () => {
           clearTransition.id,
         ]),
       );
-    expect(afterClear.sort((a, b) => a.id.localeCompare(b.id))).toEqual(
-      [{ id: clearItem.id }, { id: clearInternal.id }].sort((a, b) =>
-        a.id.localeCompare(b.id),
-      ),
-    );
+    expectRowsById(afterClear, [
+      { id: clearItem.id },
+      { id: clearInternal.id },
+    ]);
 
     await db
       .update(schema.organisationTable)
@@ -1346,10 +1364,11 @@ describe("API integration: work-item comments (#27)", () => {
       .where(
         inArray(schema.notificationTable.id, [ownNotice.id, foreignNotice.id]),
       );
-    expect(mutationState).toEqual([
+    const expectedMutationState = [
       { id: ownNotice.id, isRead: true },
       { id: foreignNotice.id, isRead: false },
-    ]);
+    ];
+    expectRowsById(mutationState, expectedMutationState);
     await deleteReadableNotifications(actor.creator.user.id);
     const retainedForeign = await db
       .select({
