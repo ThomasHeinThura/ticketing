@@ -1258,3 +1258,663 @@ I did **not** run the new PostgreSQL-backed inbox authorization and interleaving
 **Residual acceptance prerequisites:** #764 and the authentic #780 D1–D4 decision provenance must reach accepted main in the correct composition order; the candidate must be published and receive every required exact-head hosted check, real PostgreSQL regressions, and image boot/health evidence before any merge claim. Other notification resource types, digest/adapters and outbound/provider/identity activation remain behind their documented pre-wiring gates. This review grants no waiver, producer activation, #580 completion, stage closure or release/SIT claim.
 
 
+
+## Customer privacy, canonical admission and public-transition correction
+
+**Reviewed head:** `c84df2f56030c375bba4ac9b7af8832852bce2c1`
+
+Historical e561 PostgreSQL remains FAILED206files/2947tests,3failed. The repaired source fixes native customer organisation-scope authority, legal agent-host denial and exact post-clear hidden IDs; requires genuine current canonical customer membership in the shared resolver and portal admission; rejects forbidden customer event families; admits documented public transitions. Current actual customer external work-item/comment delivery remains fail-closed at the work-item-scope authority check, before destination resolution. The mocked eligibility test is not provider/delivery evidence. No new route, capability, schema, producer or outbound activation is authorized.
+
+Three fresh independent ordinary contexts inspected shared-auth source5fd and found its sole remaining transition over-denial. All three independently cleared that bounded correction and accepted-main composition at exactc84; shared membership/auth files remained byte-unchanged from their full inspections. Fresh independent full security context `/root/notification_structural_security_current` was explicitly spawned `model:gpt-6-sol`, `fork_turns:none`, after those clearances; it did not author/direct/remediate or advise the repair and gives full source CLEAR. Its actual focused units3files114tests passed. AuthorAPI120files866tests/typecheck/Biome passed; permissions106/107 with one git-baseline timeout is NOT a full pass. Raw reports retain model runtime introspection limits and every adverse finding.
+
+Current main import contains only800's real-editor unit and own note, byte-equal acceptedmaind93; all other paths equal6a76 source. Query-checker zero applies only to two new pure modules, not all changed sources or whole580; existing all-tree and auth-repository findings remain pending actual composition/conversion. The final auth seam inventory is advisory only, preserves its author's appended factual clarification, and is no merge/acceptance approval. Real PostgreSQL membership revocation/restore and persisted mutation oracles remain UNRUN on this source. Current hosted CI/image/764/780 and all feature holds remain. Publication changes only this own note.
+
+---
+
+### Authentic record: notification-hosted-failure-adjudication-sol.md
+
+# #785 hosted PostgreSQL notification failure adjudication (read only)
+
+**Disposition:** Published candidate `e561411f8852d9e9ff3cd949e83c6618da05f7ed` is **red**. The hosted integration job reports 206 files (204 passed, 2 failed), 2,947 tests (2,944 passed, 3 failed), and five tasks (four passed, one failed). These are three assertions in two files, with three distinct causes below. The previous Sol source review cleared `d193f6836ad596ce68cd26c241020d7e03dc27ae`; it expressly did not run PostgreSQL. Its source-clear verdict is not an exact-publication runtime pass. The publication is one commit after that source (`git show --format='%H %P' --no-patch HEAD`).
+
+**Provenance and checks:** I inspected the local clean checkout at the publication SHA; current `AGENTS.md`, active mission, agent workflow, `CLAUDE.md`, notification/comment/customer-portal specs, RBAC/API design, ADR 0004, canonical evaluator, notification inbox repositories/routes, authentication host guard, and exact test fixtures. I read the private raw hosted log only for the three Vitest assertion summaries and final counts. I did not print SQL, query parameters, fixture records or secrets, execute tests, use PostgreSQL/Docker/browser, edit product source, or push. This is an advisory on the failed published head, not a review or approval of any future repair.
+
+## 1. Hidden alerts after clear: stale test expectation, not evidence of a bulk bug
+
+`tests/api-integration/notification-task-reach.test.ts:302-328` plants 105 hidden `audit_write_failed` rows and one reachable legacy task row. The list correctly sees only the task row (:314-315). It then calls `markAllNotificationsAsRead` **and `clearNotifications`** (:316-317), but expects 106 stored rows and the visible task id still present (:325, :327). The hosted failure is exactly 105 rows at :325. `clearNotifications` calls `deleteReadableNotifications` (`apps/api/src/notification/controllers/clear-notifications.ts:3-5`); `bulkMutation` deletes only allowed rows across pages (`apps/api/src/notification/inbox.repository.ts:276-310`). Its candidate query excludes instance/audit alerts before paging when `canReadInstanceAlerts` is false (:186-200, :244-252). The specified clear behaviour removes reachable rows, while inaccessible rows remain hidden; D10 additionally preserves their unread state (`docs/07-planning/decision-log.md:489-495`; `notifications.md:343-349`). Thus 105 surviving hidden rows is consistent with the contract; the test's own subsequent task-id assertion would also fail once :325 is corrected. **Classification: invalid post-clear assertions in the test**, conditional on the observed 105 being the 105 planted hidden rows. The current failed assertion alone does not prove each surviving id, so the repair should assert the exact hidden-id set and absent visible id, plus all hidden rows unread. Keep the separate admin block's >100-row read/clear assertions (:330-356); no broadening bulk writes or weakening the hidden-alert boundary.
+
+## 2. Customer private-audience test: source authorization mismatch
+
+`tests/api-integration/work-item-comment.test.ts:524-641` creates a serving customer organisation, assigns the project to it (:559-562), sets a private work item with a requester and explicit participant (:564-575), and plants native work-item/public-comment/internal-comment notifications for each customer (:603-632). The repository list for the requester returns `[]` at :639 in hosted PostgreSQL. The resource loader uses **`project.organisationId`**, not workspace organisation, for both work items and comments (`apps/api/src/notification/repository.ts:78-123, :180-213`) and computes private visibility as requester plus participants (:36-44). The native predicate enforces matching notification person, live resource, customer-public comment, and `reaches(...)`, then additionally calls `can(identity, 'work_item:read', 'work_item', ...)` for everyone (`apps/api/src/notification/native-inbox-reach.ts:26-62`). That last call necessarily rejects the customer: `resolveIdentity` gives customer only an **organisation-scope** role (`apps/api/src/permissions/resolve-identity.ts:385-430`), while `GRANT_SCOPES_FOR.work_item` accepts only instance/workspace/project grants (`packages/permissions/src/evaluator.ts:128-144`). Adding `organisationId` to the target cannot fix this deliberate scope exclusion. The organisation customer reach itself is explicitly supported by `reaches` (:353-377). **Classification: source failure in the customer branch, exposed by a valid fixture**. It affects customer native inbox read and, because the same predicate gates them, direct and bulk mutations. No evidence here that staff native checks fail.
+
+Bounded repair: branch explicitly on a *resolved customer portal identity*, retain self/person binding, supported kind, live-parent, serving-project organisation, private requester/participant audience and public-comment checks, and apply the documented customer `own_request`/current-reach rule rather than a staff `work_item` capability policy. Retain the canonical `can(work_item:read)` check for staff. Add/keep PostgreSQL assertions for requester, participant, same-organisation nonparticipant, foreign organisation, internal comment, and read/clear side effects. Do not widen `GRANT_SCOPES_FOR.work_item` globally or grant customers staff/project authority (`rbac.md`; `customer-portal.md:121-129, :218-245`; `notifications.md:343-357`).
+
+## 3. Customer 401 at `/api/notification`: invalid route/host fixture; portal inbox contract unresolved
+
+`tests/api-integration/work-item-comment.test.ts:655-748` plants an organisation-visible item in a serving project, then mocks a **customer portal** session but requests `/api/notification` with no host header (:746-748). In tests, an absent host resolves to the **agent** origin (`apps/api/src/auth.ts:1221-1243`). Host-selected authentication therefore asks the agent Better Auth instance for that mocked customer session; the session portal does not match the selected host (`apps/api/src/utils/authenticate-api-request.ts:15-29`), producing the hosted 401 before the inbox handler runs. The agent inbox route is mounted at `/api/notification` (`apps/api/src/index.ts:1510`; `apps/api/src/notification/index.ts:113-133`). A portal host does not simply solve this: the portal host guard admits only registered portal-policy routes (`apps/api/src/index.ts:725-737`), and ADR 0004 requires a separately reviewed narrow `/api/portal/*` router (`docs/01-architecture/adr/0004-two-portals-two-origins.md:29-57`). The customer-portal route table names portal notification **preferences**, not a portal inbox (`docs/03-features/customer-portal.md:228-245, :299-301`). `notifications.md:390-395, :412-432` calls inbox access authenticated self and lists `/api/notification`, but does not resolve this conflict into an explicit customer portal inbox route. **Classification: invalid HTTP test fixture plus an underspecified customer HTTP surface; 401 is consistent with the host/session boundary, not proof that serving-project organisation lookup failed.**
+
+Bounded repair: test the serving-project organisation reach through the inbox repository with distinct customer organisation and workspace organisation, as B1 does, after fixing item 2. Keep the agent-host customer-session rejection as a separate negative assertion. Do not allow `/api/notification` through the portal guard, spoof an agent session for a customer, or add a portal inbox route solely to make this test pass. If the intended product behavior includes customer HTTP inbox and read mutations, the owner must settle its explicit `/api/portal/*` route, policy, response and mutation contract in the spec, then implement and review that separate surface. The present corpus supports customer current-reach eligibility for notifications, but not this test's cross-origin invocation.
+
+**Gate implication:** This hosted integration result stays failed at `e561411f8852d9e9ff3cd949e83c6618da05f7ed`. A repaired publication needs focused real PostgreSQL reproduction and the required exact-head hosted checks and independent reviews. This note neither approves a future authored repair nor changes instance-admin, staff, private audience, bulk pagination, or no-write-on-inaccessible-row requirements.
+
+
+---
+
+### Authentic record: notification-hosted-fixture-inventory-luna.md
+
+# Notification hosted fixture inventory — GPT-6 Luna
+
+**Inspection only.** Checkout: `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, HEAD `e561411f8852d9e9ff3cd949e83c6618da05f7ed`. The same assertions are present in reviewed source `d193` (checked with `git show`; no candidate edits observed). Read the actual PostgreSQL test log only for failure summaries and assertion frames; no SQL, parameters, or fixture payloads are reproduced here. Log reports 2 failing files, 3 failed of 2,947 tests (2,944 passed).
+
+## Failure matrix
+
+| Failure | Observed result | Contract and source evidence | Fixture/expectation evidence | Assessment and bounded repair |
+|---|---|---|---|---|
+| `notification-task-reach.test.ts:325`, “filters hidden alerts before paging…” | After bulk mark-read and clear, hidden owner has 105 rows; assertion expects 106. Log confirms actual array size 105. | `apps/api/src/notification/inbox.repository.ts:276-303` paginates candidates, resolves current identity/reach and deletes only allowed rows for clear mode. `notifications.md:346-349` says current reach applies to inbox mutations; `:379-380` says instance alerts disappear from access when admin authority is absent and cannot be changed by caller-chosen id. | At `tests/api-integration/notification-task-reach.test.ts:302-328`, fixture has 105 `audit_write_failed` instance alerts (hidden to this non-admin), plus one old reachable task notification. The test calls `markAllNotificationsAsRead` and `clearNotifications`, then expects 106 retained rows and explicitly expects the reachable task row still present. Later the same test expects an authorized admin clear to leave zero rows (`:330-356`). | The reached task notification is eligible for clear and should be deleted; the 105 unauthorized instance alerts should remain unread. The tested implementation matches the reach contract. Correct the post-clear expectations to 105 retained, zero read, all alert IDs retained and the visible task ID absent. Preserve the admin >100-row bulk-read/clear assertions. This changes only inconsistent test expectations, not the authorization or bulk code. |
+| `work-item-comment.test.ts:639`, B1 “customer comment visibility and private-item audience” | `listVisibleNotificationRows` returns no visible rows; the requester’s work-item notice is absent. Log frames only assert line 639; no payload data used. | `customer-portal.md:218-226` says a usable portal identity is a customer-side person with built-in `customer` role on an organisation-scoped membership, in an organisation with `portal_access=true`. `data-model.md:131-135` describes person and membership semantics. `notifications.md:343-349` requires recipient identity/current reach. The inbox resolves identity via `resolveIdentity` at `inbox.repository.ts:142-168`, then checks customer visibility and reach at `native-inbox-reach.ts:21-62`. | `addCustomerIdentity` in `work-item-comment.test.ts:91-115` creates only user and customer-side person; it does not admit the person via organisation membership. The B1 test creates organisations at `:526-549` without setting `portalAccess`, calls that helper for requester, participant, nonparticipant and foreign customer (`:550-553`), then expects requester and participant reach (`:633-642`). | The fixture is not a canonically admitted portal identity and does not establish portal access. Use the canonical admitted-customer fixture pattern (or add an appropriately scoped helper) that sets `organisation.portal_access=true` and creates the built-in organisation-scope customer membership for each person. Keep assertions distinguishing requester/participant from same-org nonparticipant/foreign and public/internal comment; do not weaken expected reach. |
+| `work-item-comment.test.ts:748`, S3 “serving project organisation…” | Portal list returns 401 where test expects 200. Log reports only status and assertion frame. | Same portal admission requirements above; `resolveIdentity` also returns no customer identity for inactive/deleted/portal-disabled orgs (documented in its source comments at `apps/api/src/permissions/resolve-identity.ts:166-185`). This route’s runtime customer admission/auth path is separate from native reach. | `makeCustomerOrganisation` at `work-item-comment.test.ts:657-670` sets key/name/isInternal only; does not enable portal access or create customer membership. `addCustomerIdentity` at `:91-115` creates a person without membership. S3 then updates the project’s serving organisation (`:681-683`), plants rows and makes a customer portal request (`:746-748`). | The test intends to exercise customer reach through the project’s serving organisation, but its session identity is inadmissible under the approved portal contract. Make both serving and foreign organisations portal-enabled and admit each customer using the canonical organisation-scoped customer membership fixture. Retain its central assertion that project organisation, not workspace organisation, determines resource reach, plus internal-comment and foreign-org exclusions. Do not change production auth to accept an unadmitted person. |
+
+## Scope notes
+
+- The tests and implementation are unchanged from reviewed source `d193`; these failures are reproducible observations on exact candidate `e561411f8852d9e9ff3cd949e83c6618da05f7ed`, not a delta from that review.
+- The first case points to a stale assertion pair: the test itself invokes clear-all, while expecting the reachable row to survive. The 105 hidden admin alerts are precisely the rows expected to remain.
+- The two customer cases share a fixture-contract gap. The customer fixture helper currently creates a bare customer person, not an admitted portal principal. The intended visibility assertions remain valid once the fixture models the approved admission shape.
+- No production-code repair is supported by this inventory. In particular, do not loosen instance-admin reach or customer admission to make the tests pass.
+- No edits, test runs, database operations, Docker operations, browser operations, commits, or pushes were performed for this inventory.
+
+
+---
+
+### Authentic record: notification-hosted-fixture-reconciliation-luna.md
+
+# Notification hosted failure reconciliation and bounded repair plan — GPT-6 Luna
+
+**Read-only reconciliation.** Exact checkout: `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, HEAD `e561411f8852d9e9ff3cd949e83c6618da05f7ed`. This supplements the earlier `notification-hosted-fixture-inventory-luna.md`; that report remains unchanged. I reviewed the independent `notification-hosted-failure-adjudication-sol.md` and verified the claims below against source and approved feature/RBAC documents. No tests, database, Docker, or browser were used; no repository source was edited.
+
+## Corrected failure matrix
+
+| Failure | Correct disposition | Evidence and bounded repair |
+|---|---|---|
+| `notification-task-reach.test.ts:325` | Stale post-clear assertions; bulk reach code behaves consistently with the specified clear operation. | The test plants 105 inaccessible instance alerts plus one reachable old task notice, then marks all readable rows and clears readable rows. `clear-notifications.ts:3-5` calls `deleteReadableNotifications`; `inbox.repository.ts:276-310` deletes only rows admitted by current reach and admin checks. Expect the exact 105 hidden alert IDs to remain unread and the visible task ID to be absent. Keep the separate admin >100 read/clear assertions intact. Do not change production bulk logic. |
+| `work-item-comment.test.ts:639` B1 | **Production source authorization mismatch**, not the fixture defect claimed in the prior report. | Resource loading uses `project.organisation_id` (`notification/repository.ts:78-123, 180-213`); private audience is requester plus participants (`:36-44`). `canReadNativeInboxCandidate` binds the candidate person to the resolved identity, checks supported kind/resource and public comment, calls current `reaches`, then always calls `can(identity, 'work_item:read', 'work_item', ...)` (`native-inbox-reach.ts:21-62`). For the canonical customer grant, the evaluator deliberately excludes organisation grants from work-item scope (`packages/permissions/src/evaluator.ts:131-144`); `resolveIdentity.ts:408-430` synthesizes the built-in `BUILT_IN_ROLES.customer` grant at the customer's organisation. Thus a correctly resolved customer fails this last staff-shaped capability check. The customer role includes `work_item:read` (`roles.ts:196-204`), and organisation-scope `can(work_item:read, 'organisation', { organisationId })` is supported by the evaluator's organisation grant-scope table and is already used for customer approval delivery eligibility (`current-eligibility.ts:216-220`). |
+| `work-item-comment.test.ts:748` S3 | Invalid cross-origin HTTP invocation plus an unresolved customer inbox route; 401 is consistent with host/session policy. | With no host header, request origin selection defaults to agent (`auth.ts:1221-1243`); the mocked customer session is rejected by host/portal matching (`authenticate-api-request.ts:15-29`). `/api/notification` is the agent inbox (`index.ts:113-133`); portal-origin requests admit only registered portal-policy routes (`apps/api/src/index.ts:725-737`). The customer portal route contract lists preferences, not an inbox (`customer-portal.md:228-245, 299-301`), while notifications do not define a separate portal inbox route. Replace S3's customer HTTP success expectation with a repository-level serving-project-organisation reach assertion, and retain an explicit negative assertion that the customer session cannot use the agent-host inbox. Do not add a portal route, relax the host guard, or spoof an agent session. Any intended customer HTTP inbox requires an owner-approved route/policy/response/mutation contract first. |
+
+## Customer predicate shape for the bounded source repair
+
+`own_request` is a portal **policy predicate**, not a capability; there is no `own_request:read` capability to invent. Preserve the current self-binding, supported event/resource mapping, live resource/workspace/project checks, customer-public comment requirement, current customer reach against the **serving project's organisation**, and private requester/participant set. For a customer, require the built-in customer `work_item:read` authority at organisation scope with the resolved resource organisation, using canonical `can(identity, 'work_item:read', 'organisation', { organisationId })`, and enforce the repository's equivalent of `own_request`: private rows only for requester/participants; organisation-visible rows only for a customer whose resolved organisation matches the serving project. For staff, keep canonical `can(identity, 'work_item:read', 'work_item', { ... })` unchanged. Do not widen `GRANT_SCOPES_FOR`, use project/workspace staff grants for customers, or let resource organisation alone substitute for customer capability.
+
+The semantic precedent is `current-eligibility.ts:203-227`: current resource reach is checked separately, then customer approval read authority is evaluated against its organisation while other recipients use work-item scope. Apply only the authority-scope distinction needed for customer native inbox reads; preserve all existing eligibility gates.
+
+## Fixture contract correction
+
+The earlier report's assertion that all customer fixtures are invalid was too broad. `organisationTable.portalAccess` is `DEFAULT true NOT NULL` (`apps/api/src/database/schema.ts:1681-1685`), so the B1/S3 organisation insert that omits the value is portal-enabled by schema default; omission alone does not explain either failure. Current `resolveIdentity` constructs the exact immutable `BUILT_IN_ROLES.customer` organisation grant from an active customer-side person and organisation facts (`resolve-identity.ts:385-430`); it does not read a `membership` row for that role. The feature spec does describe organisation-scoped membership as the customer admission record (`customer-portal.md:218-226`, `data-model.md:131-135`), so future fixtures should use the canonical admitted-customer helper where one is available. But the absence of such a row is not the observed B1 authorization failure under the current resolver, and should not be “fixed” by changing auth behavior inside this bounded repair. The real customer API 401 is the agent-host mismatch described above.
+
+## Planned files and verification cases
+
+- `apps/api/src/notification/native-inbox-reach.ts`: structural split of staff work-item authority from customer organisation authority while retaining self, resource validity, current reach, project organisation, private requester/participant and public-comment checks.
+- `tests/api-integration/work-item-comment.test.ts`: keep B1 expectations for requester and participant; deny same-organisation nonparticipant and foreign customer; deny internal comments; assert read/clear mutations affect reachable rows only. Rewrite S3 to assert serving-project organisation behavior through `listVisibleNotificationRows`; separately assert a customer session at the agent-host `/api/notification` is rejected. No portal inbox is added.
+- `tests/api-integration/notification-task-reach.test.ts`: update only the post-clear expectation to exact hidden ID set, all unread, and reachable visible row absent. Preserve the admin pagination and bulk mutation block.
+- Preserve meaningful API-key coverage: exercise a staff key's current capability subset on native inbox reach (a subset with `work_item:read` admits the reachable row; a subset without it does not), and verify a customer API-key credential remains refused by the actual `resolveIdentity` path (`resolve-identity.ts:366-393`). Keep key subset clamping; do not derive key authority from the owner's broader identity.
+
+This report is a plan, not approval or evidence of a repaired head. The previous published PostgreSQL result remains red at `e561411f8852d9e9ff3cd949e83c6618da05f7ed`. No repairs or tests have been performed.
+
+
+---
+
+### Authentic record: notification-hosted-failure-repair-luna.md
+
+# Notification hosted-failure bounded repair — GPT-6 Luna
+
+## Result
+
+Implemented and committed the bounded repair on the original frozen worktree. Commit `2a38ea309a861157f4768d3b04b00c85a42e9159` (`fix(notification): honor customer organisation read authority`), parent `e561411f8852d9e9ff3cd949e83c6618da05f7ed`, branch `codex/query-ownership-580-b4`. Worktree is clean. Commit is local only; no push or PR was made. The initial adverse reports were preserved unchanged.
+
+## Changes
+
+- `apps/api/src/notification/native-inbox-reach.ts`: after the existing person/resource checks and current reach evaluation, customer identities now require canonical `work_item:read` at the serving project's organisation scope. The customer-private audience and public-comment gates remain in place. Staff still require canonical `work_item:read` at work-item scope. No evaluator, role, host, route or policy changes.
+- `tests/api/notification/native-inbox-reach.test.ts`: added pure predicate coverage for built-in customer organisation authority, serving-organisation mismatch and missing organisation, requester/participant/private audience, nonparticipant denial, internal-comment denial, null identity, missing resource, unsupported event, person mismatch, staff access, and staff key-subset allow/deny.
+- `tests/api-integration/work-item-comment.test.ts`: customer fixtures now use an active customer person, active portal-enabled organisation, the exact `BUILT_IN_ROLES.customer` organisation role and an organisation-scoped membership. B1 retains requester/participant, same-org nonparticipant, foreign-org and public/internal comment checks; direct positive and private-audience-denied mutations are immediately reread. S3 checks serving-project organisation through the repository and retains an agent-host customer-session `401`; it makes no customer HTTP inbox-success assertion or new route claim. Repository-level direct/bulk read and clear side effects are reread immediately. Missing resources and inactive customer organisations remain denied. Staff API-key checks now prove both an exact `work_item:read` subset allows rows and an empty subset denies them.
+- `tests/api-integration/notification-task-reach.test.ts`: after clear-all, asserts the exact 105 hidden alert IDs remain unread and the reachable visible notification is absent. The authorized admin >100-row read and clear assertions are unchanged.
+
+The existing actual-loader customer API-key refusal case remains in `tests/api-integration/resolve-identity.test.ts:567-584`; the pure identity resolver refusal also ran in the focused unit command. The customer role remains built in and organisation-scoped; no capability was invented.
+
+## Verification
+
+- Focused Vitest: `tests/api/notification/native-inbox-reach.test.ts` and `tests/api/permissions/resolve-identity.test.ts` — **2 files, 58 tests passed**. These are unit tests; the PostgreSQL integration files were not run.
+- `pnpm --filter @taskdesk/api typecheck` — **passed** across API, permissions, tests, RLS prototype and approvals E2E TypeScript projects.
+- Biome on the four changed TypeScript files — **no errors**; reports five existing unused-variable warnings elsewhere in `work-item-comment.test.ts`.
+- Exact typed query-ownership checker source `7b5c54279095f0384e71964adc5bf31f979d8829` on the only changed API source file — **1 file, zero findings**. Its source blob was verified against that exact checker commit; this does not claim the repository `check:queries` command is wired.
+- `git diff --check` — passed before commit; commit hook completed with only the five Biome warnings above.
+
+## Not verified
+
+PostgreSQL integration, browser, Docker/image, full test suite and hosted CI were not run, as directed. In particular, the three original hosted failures have not yet been proven fixed under PostgreSQL. This is not an independent review or approval; the source repair is security-coupled and requires two fresh ordinary reviews plus a separate fresh Sol security review before any merge eligibility.
+
+## Preserved evidence
+
+The original read-only inventory `notification-hosted-fixture-inventory-luna.md`, independent adjudication `notification-hosted-failure-adjudication-sol.md`, and reconciliation plan `notification-hosted-fixture-reconciliation-luna.md` remain unchanged. The 2026-10-15 hosted log was not reread during implementation.
+
+
+---
+
+### Authentic record: notification-hosted-repair-ordinary-a-luna.md
+
+# Notification hosted repair — independent ordinary review A
+
+**Verdict: BLOCKED**
+
+**Model:** GPT-6 (platform did not expose a Luna/Sol variant or version in this reviewer context)
+**Role:** Fresh independent ordinary reviewer A; this context did not author, direct, or remediate the candidate.
+**Reviewed head:** `2a38ea309a861157f4768d3b04b00c85a42e9159`
+**Comparison base:** `e561411f8852d9e9ff3cd949e83c6618da05f7ed`
+**Scope:** Complete four-file product/test delta for the hosted notification reach repair; composed native inbox authorization, customer organization reach, comment visibility/private audience, staff authority/API-key clamping, and read/mutate behavior. Read AGENTS.md, agent-workflow.md, CLAUDE.md, active mission, notifications spec, RBAC, and relevant event catalogue. Reviewed prior hosted evidence as advisory and rechecked the candidate against source/spec. No source, PR, prior note, push, or merge was changed.
+
+## Checks actually performed
+
+- Inspected the entire four-file diff against the exact base and traced native reach evaluation through inbox list/read/bulk/clear paths, current resource resolution, identity resolution, and send-time eligibility.
+- Read the authoritative notifications contract (`NO-18` through `NO-21`, permissions and resource mapping) and event catalogue recipient rule for `work_item.assigned`.
+- Ran `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts tests/api/notification/native-inbox-reach.test.ts`: **1 file, 4 tests passed**.
+- Ran `pnpm --filter @taskdesk/api exec tsc --noEmit -p tsconfig.tests.json`: **passed**.
+- Did not run PostgreSQL integration, Docker, or browser checks, per assignment limits. The cited hosted PostgreSQL result is prior-run evidence, not reproduced here.
+
+## Blocking finding
+
+**Customer inbox authorization allows a staff-assignment event despite the customer notification contract.** In `apps/api/src/notification/native-inbox-reach.ts:45-63`, the customer branch checks customer-visible resource, current serving-organisation reach, and organisation-scoped `work_item:read`, but it does not restrict the event kind to events eligible for customer notification. The new integration fixture then inserts a customer `work_item.assigned` row and explicitly expects it in the customer inbox at `tests/api-integration/work-item-comment.test.ts:838-842,873-880`. The notification spec says `NO-19`: “Never about internal comments, internal activity or staff assignment changes”; the event catalogue defines `work_item.assigned` as an assignee-change event. This makes the customer authorization helper accept precisely a forbidden notification class if such a row exists (including a stale or incorrectly materialized row), and the test locks that behavior in. Require a customer-safe event-kind check at the read boundary (and align the fixture to an allowed customer event), or document a spec-authorized reason that assignment notices are safe for customers. Until resolved, the candidate does not establish the required customer privacy boundary.
+
+## Other reviewed behavior
+
+The new organization-level capability check is appropriately combined with `reaches` and uses the serving project's organization; it fails closed for a missing organization and preserves private requester/participant reach. Customer comment visibility and missing-resource checks are exercised. Staff retains work-item-scoped authority and API-key capability subset clamping. The route assertion verifies the customer session is rejected on the agent-host API. The focused unit suite passes.
+
+## Limits / residuals
+
+No PostgreSQL, browser, Docker, full API integration or hosted acceptance run was performed in this review context. The hosted run and fixture reconciliation reports were treated as evidence leads only, not as this review's tests or verdict.
+
+
+---
+
+### Authentic record: notification-hosted-repair-ordinary-b-luna.md
+
+# Notification hosted repair — independent ordinary review B
+
+- **Verdict:** BLOCKED
+- **Reviewed head:** `2a38ea309a861157f4768d3b04b00c85a42e9159`
+- **Comparison base:** `e561411f8852d9e9ff3cd949e83c6618da05f7ed`
+- **Independence/provenance:** Fresh reviewer context assigned as ordinary reviewer B; did not author, direct, or remediate this candidate. Model identity exposed to this context: GPT-6; no more specific version string was exposed. Read-only review of the clean frozen worktree `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`.
+- **Scope:** All four changed files; customer inbox authority, customer reach/private audience/comment visibility, key clamp, direct and bulk mutation test oracles, hosted-failure test repair.
+
+## Blocking finding
+
+**Customer notification read authority is granted from `person.side`, without the canonical organisation membership required by the product spec.** The changed `canReadNativeInboxCandidate` now passes customer identities through `can(identity, "work_item:read", "organisation", { organisationId: resource.organisationId })` ([native-inbox-reach.ts](/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2/apps/api/src/notification/native-inbox-reach.ts:57)). In the actual loader, `resolveIdentityFromFacts` returns `null` for an inactive person or inactive/deleted/portal-disabled organisation, but otherwise synthesizes the built-in customer `RoleGrant` directly from `person.side` and `person.organisationId`; it does not require or inspect an organisation-scope membership ([resolve-identity.ts](/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2/apps/api/src/permissions/resolve-identity.ts:408)). Thus an active customer-side person whose customer-role membership has been removed still satisfies the new capability check and can read, mark, bulk-mark and clear reachable notifications.
+
+That conflicts with the current product contract: customer portal access is granted by a customer-side person **holding the built-in customer role on an organisation-scoped membership**, created by invitation/JIT/SCIM ([customer-portal.md](/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2/docs/03-features/customer-portal.md:219)); the data model calls this membership how a customer-side person holds the role ([data-model.md](/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2/docs/01-architecture/data-model.md:134)). The new fixture creates that role and membership in `addCustomerIdentity`, but the actual customer branch of the resolver explicitly ignores scoped memberships and builds its own grant. Therefore the fixture does not prove that canonical membership is required. Add a negative integration oracle that deletes/revokes the customer membership while leaving the person and organisation active and portal-enabled, then proves inbox list/read/bulk-read/clear deny it; the production authority path must make that oracle pass. The same correction may require aligning the shared customer identity resolver with the authoritative spec, rather than relying on fixture rows the resolver ignores.
+
+## Checks and evidence
+
+- Read repository `AGENTS.md`, active mission, `docs/04-engineering/agent-workflow.md`, provider adapter, relevant notifications/customer-portal/RBAC/data-model specs, decision-log search hits, the exact candidate diff, and the supplied adjudication/reconciliation/repair evidence. The supplied evidence was treated as context and rechecked against the frozen source.
+- `git rev-parse HEAD` matched the assigned SHA; worktree was clean. `git diff --check <base> <head>` passed.
+- `pnpm --filter @taskdesk/api typecheck` passed (API, permission, test, RLS-prototype and approvals E2E TypeScript projects).
+- Biome on the four changed files reported no errors and five existing unused-variable warnings in `work-item-comment.test.ts`.
+- Focused Vitest could not run: `pnpm exec vitest run tests/api/notification/native-inbox-reach.test.ts tests/api/permissions/resolve-identity.test.ts` returned `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL: Command "vitest" not found`. I did not install dependencies or alter the worktree.
+- Per assignment, PostgreSQL integration, hosted CI, Docker, and browser checks were not run. The recorded 206-file/2,947-test hosted run and its three failures remain runtime evidence; this review does not claim the PG failures fixed or acceptance passed.
+
+## Other reviewed behavior
+
+The changed predicate preserves customer-private requester/participant filtering through `reaches(...visibleToPersonIds)`, rejects internal comments via `customerVisible`, fails closed for missing resources/event/person mismatch, and leaves staff work-item capability evaluation and `can()` key-subset clamping intact. Pure tests cover staff key allow/deny. The updated hidden-alert bulk oracle now compares the exact 105 retained alert IDs and checks the reachable row is absent; that is materially stronger than the prior row-count-only assertion. Customer direct/bulk mutation assertions reread persisted state, though their positive/negative authority fixtures currently inherit the membership defect above. The S3 `401` is correctly only an agent-host refusal; the repository-level assertions do not pretend it proves customer-host HTTP success.
+
+## Runtime limits
+
+No PostgreSQL integration, Docker/container boot, browser, or hosted CI validation was performed in this review. The ordinary code review is blocked by the membership-authority finding; this report is not security review or runtime acceptance.
+
+
+---
+
+### Authentic record: notification-customer-privacy-adjudication-sol.md
+
+# #785 notification customer privacy adjudication — read only
+
+**Frozen candidate:** `2a38ea309a861157f4768d3b04b00c85a42e9159` (base `e561411f8852d9e9ff3cd949e83c6618da05f7ed`). **Judgment: both ordinary findings are valid blockers for this candidate.** Neither is disposed by the earlier hosted-failure advisory, by a green focused unit test, or by calling the resolver's known gap accepted. This is a critical contract adjudication and a repair plan, not an independent review or approval of an authored successor.
+
+**Provenance and limits.** Fresh read-only context; no authorship or remediation of the candidate. Read the frozen worktree's AGENTS.md, active mission, agent workflow, CLAUDE.md, current notifications, customer portal, RBAC, data-model and event contracts, recent decision log, both ordinary reports and the prior Sol hosted-failure advisory. Rechecked source, fixture, loader, portal admission, recipient and inbox paths at the exact SHA. `git rev-parse HEAD` matched; worktree was clean; `git diff --check` against the stated base had no output. No PostgreSQL, Docker, browser, push, source edit, or test execution was performed here. The ordinary reviewers' test results are their own evidence, not tests reproduced in this context.
+
+## A. Customer staff-assignment notice — blocker on this candidate
+
+`docs/03-features/notifications.md` NO-18–NO-20 prohibits customer notices for staff assignment changes, internal comments and internal activity; its default-recipient table names the **new assignee** for `work_item.assigned`. `docs/01-architecture/events.md` identifies that key as an assignee change. The general resource mapping at notifications.md § Permissions includes `work_item.assigned` for **staff** reach; it is not a customer event grant. `apps/api/src/notification/resource-contract.ts` likewise checks that a resource/event pair is mapped, not that a customer may receive it.
+
+At `apps/api/src/notification/native-inbox-reach.ts:45-61`, the new customer branch checks live resource visibility, audience/reach and organisation capability but lacks event audience eligibility. Thus a planted or stale `work_item.assigned` row becomes readable and mutable. `tests/api-integration/work-item-comment.test.ts:838-880,936-959` explicitly asserts that forbidden row is listed, read and cleared. This is a concrete NO-19 violation, regardless of whether the normal event producer currently selects only staff. A read boundary must defend persisted rows independently of producer correctness. `work_item.unassigned` has the same staff-assignment class. An event kind can be supported globally and still forbidden to customers.
+
+**Bounded repair:** add an event-audience eligibility rule at the shared native notification decision seam, before list/pagination and every direct or bulk mutation decision. It must allow a customer only when the existing event's recipient rule actually permits a customer **and** the concrete event is customer-visible; unknown kinds fail closed. Preserve the existing serving-project organisation, private requester/participant, live-parent and public-comment checks. `work_item.assigned` and `work_item.unassigned` must fail for customers; an internal comment must fail even with an otherwise eligible event key. A public comment or mention is a valid positive fixture only when the event's actual customer-recipient rule and resource audience are met. Do not reinterpret `customerVisible` on a work item as permission to reveal every event about it. Prefer a single reusable event-audience predicate shared by native inbox and producer/send-time eligibility, derived from existing recipient rules; `current-eligibility.ts` does not presently provide that predicate and its resource mapping alone cannot be reused as one. No new enum, capability or route is needed merely to fix the read seam.
+
+Test through `tests/api/notification/native-inbox-reach.test.ts` and `tests/api-integration/work-item-comment.test.ts`: a current customer with a valid organisation membership can list/read/bulk-read/clear a permitted public event, while planted assigned, unassigned and internal-comment rows never appear, are not directly marked read, remain unread after bulk read, and remain stored after clear. Keep staff assignment access positive. Check counts/pagination after filtering and current reach after project or visibility changes. The positive oracle at lines 838/873 and clear oracle at 936 must be replaced, not preserved.
+
+## B. Customer membership bypass — blocker on this candidate and a shared pre-existing gap
+
+The authoritative portal contract (`docs/03-features/customer-portal.md:218-225`, `docs/01-architecture/data-model.md:134`) requires an active customer-side person **holding the built-in customer role in a persisted organisation-scoped membership** on their organisation. `apps/api/src/auth/repository.ts:385-423` checks such a row for portal admission through `hasCustomerPortalIdentity` (`auth.ts:260-263,958`). This confirms that the requirement is implemented at sign-in, not merely aspirational. It does not ensure an already-issued session or repository call retains that grant after revocation.
+
+`apps/api/src/permissions/resolve-identity.ts:393-430` instead grants the built-in customer role and organisation reach solely from active `person.side` and organisation facts. The loader **does** fetch joined `membership`/`role` facts (`:742-827`), but the customer branch returns before examining them. Its historic KNOWN GAP 5 is a description of missing implementation, not a waiver or a later Thomas decision superseding the portal contract. The new `native-inbox-reach.ts:57-61` `can(..., 'work_item:read', 'organisation', ...)` consequently succeeds for a customer after membership removal. The fixture's inserted role/membership is a false assurance because removing it changes no resolver result. `inbox.repository.ts` calls the resolver for list (`:383-438`), direct mark (`:333-381`), bulk mark and clear (`:276-321`), so all these newly positive **native work-item/comment** paths inherit the bypass. The customer-agent-host 401 assertion only proves host/session rejection at that HTTP edge; it does not exercise repository authorization or establish a customer HTTP inbox route.
+
+**Minimum dependency repair:** fix the shared `resolveIdentityFromFacts` customer branch and its already bounded loader inputs so customer identity/authority/reach exist only when exactly the own-organisation, scope-consistent, genuine built-in customer role membership is present. Continue ignoring workspace memberships and instance-admin bits for customers. Validate the persisted role's organisation scope, null workspace owner, system provenance and expected role key against existing role/membership facts; use the compiled-in built-in capabilities once the persisted grant is proved, or another explicitly spec-consistent role validation. Fail closed for missing, wrong-organisation, wrong-role, malformed or ambiguous membership. Reuse the existing joined scoped-role facts; a broad redesign of staff reach, grant ledger, portal policy, or new migration is not required for this defect. Align the portal admission predicate with that same authoritative test as feasible, so sign-in and subsequent reads cannot disagree. Remove/update KNOWN GAP 5 and unit tests that currently assert side alone grants the role. The resolver is shared, so inspect its customer callers and run its existing regression suites as part of the repair.
+
+A notification-only membership query could mask this specific inbox symptom but leave `resolveIdentity` minting customer authority after revocation at other callers (including approval eligibility and mention recipient resolution). It is not a sound final repair for the shared contract. The candidate's new customer native read path is the reason this previously known gap now blocks this candidate; prior acceptance of unrelated work did not approve this behavior.
+
+Add a meaningful PostgreSQL oracle: create an active, portal-enabled organisation and customer with a real customer role/membership, positive public eligible notification and forbidden planted rows; remove/revoke the effective membership **without** deactivating person or organisation, then verify `resolveIdentity` is null, `listVisibleNotificationRows` omits the native row, `markOwnReadableNotificationRead` returns no row and leaves `isRead=false`, `markReadableNotificationsRead` leaves it unread, and `deleteReadableNotifications` leaves it stored. Where a public portal action exists, also verify an existing session is refused on its next request. Restore the membership and prove positive reach returns. The direct/bulk mutation checks must reread persisted rows. Add pure resolver tests for no membership, wrong organisation, non-system or wrong role, ambiguity, valid member, and customer workspace-role isolation. Guard any other inbox resource types separately according to their own contract; a null native identity must never be treated as generic self authority.
+
+## Boundary and gate implications
+
+The supported repair remains an integration-freeze acceptance/security fix under the active mission. It does not authorize `/api/notification` on the portal host, a new `/api/portal/*` inbox route, or outbound activation. The existing agent-host 401 is a correct negative host-boundary oracle. Customer HTTP inbox behavior beyond the already specified portal preferences remains an owner/spec decision if product work later needs it; neither finding needs that decision to be fixed at the repository and identity seams.
+
+A successor that changes `resolve-identity.ts` is security-scope and shared authorization behavior; classify its review tier from the actual delta. Run focused resolver and inbox tests, real PostgreSQL privacy/revocation integration, the required API/permission checks, and exact-head hosted CI and independent reviews. Preserve this blocked verdict on `2a38ea3`; no advisory or reviewer here can preapprove the successor.
+
+
+---
+
+### Authentic record: customer-membership-fixture-audit-luna.md
+
+# Customer membership fixture dependency audit — read-only
+
+**Purpose.** Inventory identity-resolution unit/integration fixtures that encode customer admission as `person.side = customer` or use a malformed organisation role, for the change requiring canonical own-organisation membership. This is a bounded advisory inventory, not an implementation review or approval.
+
+**Contract checked.** `docs/03-features/customer-portal.md` § Permissions (around lines 218–225) says portal access requires an active customer-side person holding the built-in `customer` role on an organisation-scoped membership. `docs/01-architecture/data-model.md` §2 describes that membership as how a customer holds the role. Existing canonical built-in values come from `packages/permissions/src/roles.ts` (`scope: organisation`, rank 10, compiled capabilities). The in-progress `apps/api/src/permissions/customer-membership.ts` predicate additionally checks one own-organisation row, existing scope, `seesAll=false`, role key/scope, null workspace owner, system provenance and valid rank/capability shape.
+
+## Fixtures needing alignment
+
+| File and lines | Existing positive use | Why affected / minimal fixture action |
+| --- | --- | --- |
+| `tests/api/permissions/resolve-identity.test.ts:695–717` | Pure customer session expects customer authority and own-organisation reach with only `CUSTOMER_PERSON`. | Missing `scopedRoleMemberships`. Supply the canonical `CUSTOMER_MEMBERSHIP` fact. The in-progress table at 719–731 deliberately tests fail-closed missing, wrong organisation, non-system, wrong role, malformed capabilities and ambiguity; retain those negatives. |
+| `tests/api/permissions/resolve-identity.test.ts:734–772` | Customer workspace-membership isolation and instance-admin isolation positives. | Both also currently omit the customer membership fact; add it while retaining the hostile workspace/admin facts. Otherwise they only assert a null result, not customer isolation. |
+| `tests/api-integration/helpers/approval-fixtures.ts:378–424, 427–456` | Shared `addCustomer` fixture used by positive customer approval/inbox/portal tests. | It constructs `scope=organisation`, `key=customer`, rank 0, custom/default capabilities and no `isSystem`; canonical role rank is 10 and system provenance is required. Use/reuse the canonical built-in role and persist an own-org membership. Tests using it include `approval-closure-and-clock.test.ts:296–344, 346–360` and `approval-strict-enforcement.test.ts:101–127`. Preserve the intentional capability-removal assertion at 353–359 as a test of a transformed identity, not a fixture grant. |
+| `tests/api-integration/project-reach-reads.test.ts:647–690` | “customer whose organisation is bound to a project” uses `callerReach` and expects the project's id. | The fixture creates a random `customer-${uuid}` role, rank 0, non-system, capabilities `work_item:read`, then attaches it to an org membership. That cannot prove built-in customer admission. Use the canonical customer role/member helper and keep the project's organisation binding/reach assertion. |
+| `tests/api-integration/portal-identity-boundary.test.ts:67–75` (and admitted case at 80+) | Portal-auth boundary test seeds the admitted role. | Role has key customer but rank 0, empty caps and no `isSystem`; this is malformed under the shared canonical predicate. Seed canonical role metadata for the admitted positive. Keep `customer(..., false)` as the no-membership negative. |
+
+## Canonical insertion helper and current in-progress work
+
+`tests/api-integration/work-item-comment.test.ts:97–188` has a useful local `addCustomerIdentity` insertion pattern: it ensures a role row, verifies its built-in capabilities, creates a customer person and own-organisation membership. It is the closest existing positive helper to reuse or move into a shared API-integration fixture module. Harden its lookup to validate `isSystem`, built-in rank and scope/workspace ownership as well as key/capabilities; its current lookup does not select provenance/rank and can reuse a conflicting same-key role.
+
+At audit time, the author had already changed the loader fixture in `tests/api-integration/resolve-identity.test.ts:34–93` to insert an org membership and query a system customer role, and had added a pure negative-case matrix to `tests/api/permissions/resolve-identity.test.ts:719–731`. Those are visible uncommitted author changes; do not edit them. The loader helper's reuse query should also check expected rank and canonical capabilities (currently it filters key/scope/null-workspace/system and selects only id).
+
+## Keep these cases negative or outside this dependency
+
+- `tests/api/permissions/resolve-identity.test.ts:719–731`: membership rejection controls should remain negative.
+- `tests/api-integration/portal-identity-boundary.test.ts`: stranger with a customer person but no membership must remain refused.
+- `tests/api-integration/strict-runtime-enforcement.test.ts:123–145, 784+`: bare customer person is only a requester/participant for a visibility fixture; this test does not use it as a resolved identity or positive customer session.
+- Schema/placeholder rows in `tests/api-integration/p1-identity-schema-seed.test.ts` are not positive resolver assertions. Do not mechanically add memberships to all `side: customer` rows.
+- Unit fixtures such as `tests/api/notification/native-inbox-reach.test.ts` construct `ResolvedIdentity` directly to test that seam; they bypass `resolveIdentity` intentionally. Keep them distinct from resolver admission tests.
+- Work-item comment integration's local `addCustomerIdentity` is already the canonical positive shape (subject to the lookup hardening above).
+
+## Shared call sites explaining fixture impact
+
+Customer `resolveIdentity` calls are shared by `apps/api/src/approval/repository.ts:181`, `apps/api/src/work-item/mention-access.ts:74`, `apps/api/src/notification/inbox.repository.ts:148`, `apps/api/src/notification/current-eligibility.ts:165`, and `apps/api/src/notification/recipient-resolvers.ts:47, 162, 227`. A membership gate therefore changes admission at approval and mention/notification recipient paths as well as native inbox reads. This inventory is limited to fixtures that directly exercise those resolved customer identities or customer portal admission.
+
+**Method limits.** Read-only file and source inspection in the assigned worktree; no tests, database, Docker, browser, source edits, commits or pushes were run. The author was actively editing shared worktree files during the audit, so cited “current in-progress” observations are time-bound; the remaining fixture findings refer to the checked-out source at their cited paths unless identified above as author edits.
+
+
+---
+
+### Authentic record: notification-customer-privacy-structural-repair-luna.md
+
+# Customer notification and identity structural repair — GPT-6 Luna
+
+## Result
+
+Implemented on the frozen q580-b4 source at base `2a38ea309a861157f4768d3b04b00c85a42e9159`. This is a local candidate only; no review or approval is claimed. Original hosted log and adverse inventory/adjudication/reconciliation reports were not changed or reread. No PostgreSQL, Docker, or browser work was performed.
+
+## Contract and repair
+
+The customer event audience uses the existing recipient and privacy contracts in `docs/03-features/notifications.md` (recipient table, NO-18/NO-19, resource mapping) and `docs/01-architecture/events.md` (EV-5; public/internal comment semantics). Public comments and comment mentions are admitted only when the current comment is customer-visible and existing person/resource/project checks pass. A direct description mention is admitted only for the visible work item and its mentioned person. This retains the existing exact-recipient checks.
+
+The five already-supported approval event keys (`approval.requested`, `.decided`, `.expiring`, `.expired`, `.withdrawn`) remain eligible at the shared audience gate. Existing current eligibility still binds the event to the current addressed approver or requester and rechecks approval visibility and reach. The existing approval notification behavior was not removed.
+
+The shared customer gate denies assignment/unassignment, state transitions, escalation, due/overdue reminders, SLA events, internal comments, and unknown customer event families. These are outside customer recipient rules and NO-19 excludes staff assignment/internal activity. Staff audience and staff assignment notifications retain their prior path. This candidate does not claim complete NO-18 enforcement or a customer inbox HTTP success surface.
+
+Customer admission now requires the exact existing built-in customer role on one own-organisation membership, with canonical scope, role provenance and built-in role facts. Identity construction uses compiled-in customer capabilities; persisted grants, workspace memberships, instance grants, or API keys do not create customer authority. Portal admission uses the same pure predicate and fails closed on missing, inactive, malformed, foreign, or ambiguous organisation membership. No role/capability, schema, migration, route, global evaluator, or host behavior was added.
+
+## Changed files
+
+- `apps/api/src/notification/customer-event-audience.ts` (new): shared customer event audience predicate.
+- `apps/api/src/notification/native-inbox-reach.ts`, `current-eligibility.ts`: apply the shared predicate before inbox reach or delivery preference handling.
+- `apps/api/src/permissions/customer-membership.ts` (new), `resolve-identity.ts`: canonical membership fact predicate and fail-closed customer identity resolution.
+- `apps/api/src/auth.ts`, `apps/api/src/auth/repository.ts`: portal admission checks canonical person, organisation, membership, and role facts. The repository accessor materializes its result.
+- `tests/api/notification/native-inbox-reach.test.ts`, `tests/api/notification-current-eligibility.test.ts`, `tests/api/permissions/resolve-identity.test.ts`: audience, existing staff-key subset, and identity predicate coverage.
+- `tests/api-integration/helpers/approval-fixtures.ts`, `portal-identity-boundary.test.ts`, `project-reach-reads.test.ts`, `resolve-identity.test.ts`, `work-item-comment.test.ts`: canonical customer fixtures and membership-revocation/restore oracle. S3 retains the agent-host customer-session 401 and repository-level serving-organisation check; it adds no customer inbox HTTP-success claim. The oracle verifies identity/list denial, no-write and unread state, stored rows after clear, then restore. It was written but not run because PostgreSQL was explicitly out of scope.
+
+## Verification
+
+- API unit suite: **120 files, 865 tests passed**.
+- `pnpm --filter @taskdesk/api typecheck`: passed across API, permissions, tests, RLS prototype, and approvals E2E TypeScript projects.
+- Biome on all 15 changed TypeScript files: **no errors**. It reports five unused-variable warnings in `work-item-comment.test.ts`; four are unrelated existing test destructures, and one is the existing customer-mention case destructure.
+- `git diff --check`: passed.
+- Reviewed query-ownership checker source `7b5c54279095f0384e71964adc5bf31f979d8829` on the two new pure predicate modules: **2 files, zero findings**. Its all-source scan yields 4,629 existing baseline findings; the seven changed production source files likewise contain inline queries outside its repository-only policy. The changed auth repository file produces two other exported-query findings at file scope. These are checker scope limitations/findings, not represented as a clean full checker run.
+- `pnpm test:permissions`: **15/16 files and 106/107 tests passed**; the sole failure was the unrelated `git-baseline.test.ts` no-merge-base case timing out. Relevant notification/reach permission tests passed.
+
+## Limits
+
+No API integration/PostgreSQL tests, Docker/image checks, browser verification, hosted tests, or production evidence were run. The membership revocation/restore and forbidden-event side-effect cases are authored integration oracles, not runtime evidence. The original three hosted failures have not been demonstrated fixed against PostgreSQL. This security-coupled candidate requires three fresh ordinary reviews and a separate fresh full GPT-6 Sol security review at its exact committed head; this report is not either review.
+
+## Commit
+
+Committed locally as `5fd2aeace13f64bccd7cb8b7ef0a29551db4c7b9` (`fix(notifications): enforce customer audience and identity`) on `codex/query-ownership-580-b4`. The worktree is clean. No push or PR action was performed.
+
+
+---
+
+### Authentic record: notification-structural-ordinary-a-luna.md
+
+# #785 customer notification structural repair — ordinary review A
+
+**Verdict: BLOCKED** at exact candidate `5fd2aeace13f64bccd7cb8b7ef0a29551db4c7b9` (comparison base `e561411f8852d9e9ff3cd949e83c6618da05f7ed`). One blocking contract mismatch remains: the new shared customer event predicate rejects every `work_item.transitioned` notification, including a public state change on the customer's own request. The documented internal-activity rule does not justify that blanket denial.
+
+## Independence and scope
+
+Fresh ordinary reviewer context; I did not author, direct, or remediate this candidate. I verified the clean worktree and exact HEAD. I read the current repository instructions and workflow, the notifications, events, RBAC, data-model, customer-portal, comments/activity, work-items and workflow contracts; the previous adverse adjudication and author handoff; and the changed event-audience, current-eligibility, native-inbox reach, membership resolver, auth, and tests. I reviewed the production list, direct-read, bulk-read and clear seams. I did not modify repository source, publish, commit, push, run PostgreSQL, Docker, or browser checks.
+
+## Blocking finding: public transitions on a customer's own request are denied
+
+`apps/api/src/notification/customer-event-audience.ts` admits customer work-item events only when they are `work_item.mentioned`; all other work-item event kinds return false. The comment in that predicate treats all work-item events other than direct mentions as non-customer-facing. `native-inbox-reach.ts` applies this before returning a native inbox row, and `current-eligibility.ts` applies it before send-time eligibility. The tests explicitly assert that `work_item.transitioned` is denied.
+
+That suppression conflicts with the written contract. `notifications.md`'s default recipients table names watchers, assignee and requester for `work_item.transitioned`; `NO-18` limits customer notifications to their own requests, which includes the request's requester as a declared recipient. `NO-19` excludes internal comments, internal activity and staff assignment changes. But `comments-and-activity.md` `CA-7` specifically classifies a state-change `transitioned` activity as **public**. The customer portal exposes request status and specifies customer-facing state terminology (`CP-5`), and `events.md` `EV-5` requires a customer-safe projection rather than declaring status events categorically internal. Therefore a transition on a customer-visible own request cannot be rejected merely as internal activity. The candidate over-denies that class on both inbox access and current delivery eligibility.
+
+The production event recipient resolver currently lacks a transition-specific customer fan-out, and no transition-specific customer notification title/body projection was found in the changed source. That means positive runtime evidence for this path is absent; it does not make the blanket denial consistent with the declared default-recipient and public-activity contracts. The missing projection details remain a contract/implementation gap to resolve before calling this candidate clear.
+
+## Other reviewed areas
+
+The two prior blockers are materially addressed in source: the shared event gate denies assigned/unassigned and internal-comment events for customers while preserving staff behavior and supported approvals; the shared identity resolver now requires one canonical own-organisation built-in customer membership and portal admission uses the same predicate. The native predicate is applied by the list path before visible pagination, direct mark-read, and bulk read/clear; revocation tests check no-write/store retention and restoration. The tests are meaningful source-level oracles for those decisions, but the PostgreSQL revocation and side-effect oracle was not executed here.
+
+I found no additional blocker in the current-membership predicate by source inspection. Staff capability checks, API-key read-subset clamping, customer private requester/participant filtering, public-comment filtering, and unknown-event fail-closed behavior remain represented in the reviewed code/tests.
+
+## Verification and limits
+
+- `pnpm --filter @taskdesk/api exec vitest run tests/api/notification/native-inbox-reach.test.ts tests/api/notification-current-eligibility.test.ts tests/api/permissions/resolve-identity.test.ts` — **3 files, 113 tests passed** at the exact candidate SHA. These unit tests pass while asserting the blocking transition denial.
+- `git diff --check e561411f8852d9e9ff3cd949e83c6618da05f7ed...HEAD` — passed.
+- No PostgreSQL integration, full permission suite, hosted checks, Docker/image, browser, or runtime verification was performed. The prior hosted PostgreSQL red result remains red; no historical PG evidence clears this candidate.
+
+This ordinary review does not approve the candidate, clear its prior hosted failure, or substitute for the other required ordinary reviews or fresh Sol security review.
+
+
+---
+
+### Authentic record: notification-structural-ordinary-b-luna.md
+
+# #785 customer notification structural repair — ordinary review B
+
+**Verdict: BLOCKED** at exact candidate `5fd2aeace13f64bccd7cb8b7ef0a29551db4c7b9` (comparison base `e561411f8852d9e9ff3cd949e83c6618da05f7ed`). The candidate's customer event predicate suppresses public state-transition notices, contrary to the documented event, notification-recipient and activity contracts.
+
+## Independence and scope
+
+Fresh ordinary reviewer context; I did not author, direct, or remediate this candidate. I verified `HEAD` equals the assigned SHA and the worktree is clean. I read the repository operating instructions, active status/decision context, notification, portal, RBAC, data-model and event contracts, the prior adjudication and repair report, and inspected all 16 changed files, with particular attention to customer membership resolution/admission and current/list/direct/bulk/clear notification reach. I independently compared the changed predicate with the authored integration oracle. No source or PR was changed and no commit or push was made.
+
+## Blocking finding: public state transitions are categorically denied
+
+`apps/api/src/notification/customer-event-audience.ts:27-29` admits only `work_item.mentioned` for customer work-item resources. Its comment classifies all other work-item events as assignment or internal activity. Consequently `work_item.transitioned` is rejected by both `native-inbox-reach.ts` and `current-eligibility.ts` before current recipient reach/preferences can make it eligible; the unit suite also asserts this denial.
+
+That blanket rule conflicts with the checked-in contracts. `docs/03-features/notifications.md:45` lists the requester alongside watchers and assignee as a default recipient for `work_item.transitioned`; NO-18 limits customers to their own requests, which includes an eligible requester's own request. NO-19 excludes internal comments, internal activity and assignment changes, but `docs/03-features/comments-and-activity.md:76` explicitly classifies a state-change `transitioned` activity as public. The event catalogue includes `work_item.transitioned` in its notification column and EV-5 requires a customer-safe projection rather than excluding transitions (`docs/01-architecture/events.md:66,257-260`). Thus this candidate suppresses a public state change for the documented customer recipient class. The check must retain event-specific privacy and recipient restrictions while allowing a customer-safe transition on the customer's own request; current resource visibility alone is insufficient to establish that own-request relation.
+
+I do not infer that a complete customer transition delivery path exists: current recipient resolution/projection does not establish positive transition fan-out, and the assigned task explicitly limits runtime evidence. The defect is the new shared predicate's categorical denial against the extant product contract, not a claim of end-to-end delivery acceptance.
+
+## Other reviewed areas
+
+By source inspection, the shared canonical membership predicate is used by both `resolveIdentityFromFacts` and `hasCustomerPortalIdentity`. It checks one own-organisation membership, scope existence, no `seesAll`, the genuine system customer role's key/scope/workspace/rank/capability values, and refuses missing, malformed, foreign or ambiguous organisation rows. The customer branch continues to ignore workspace memberships, instance-admin status and persisted customer capabilities; key credentials fail closed. The loader supplies joined role/scope facts. I found no additional blocker in that predicate.
+
+The customer event gate blocks assigned/unassigned and internal comments while preserving the five supported approval event keys. Private requester/participant reach and public-comment visibility remain checked separately; staff checks and API-key capability clamping remain intact. The new PostgreSQL revocation/restore, list/direct/bulk/clear, and stored-row assertions are authored integration oracles only; they were not executed here. No actual PostgreSQL evidence is claimed.
+
+## Verification and limits
+
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/permissions/resolve-identity.test.ts ../../tests/api/notification/native-inbox-reach.test.ts ../../tests/api/notification-current-eligibility.test.ts` — **3 files, 113 tests passed** at the exact candidate SHA. Passing tests include the transition-denial assertion that this review finds inconsistent with the spec.
+- `pnpm --filter @taskdesk/api typecheck` — passed (API, permissions, tests, RLS prototype and approvals E2E TypeScript projects).
+- `git diff --check e561411f8852d9e9ff3cd949e83c6618da05f7ed...HEAD` — passed.
+- No PostgreSQL integration, full permission suite, Docker/image, browser, hosted check, or runtime verification was run. Author-reported full API units, Biome and permission-suite timeout are not represented as reproduced evidence here. Prior hosted PostgreSQL failures remain unresolved by this review.
+
+This review does not clear the candidate, the prior hosted failure, the separate required GPT-6 Sol review, or the remaining ordinary review tier.
+
+
+---
+
+### Authentic record: notification-structural-ordinary-c-luna.md
+
+# Ordinary review C — customer notification eligibility structural repair
+
+**Model:** GPT-6 Luna (fresh ordinary reviewer context)
+**Role:** Third independent ordinary panel review for broad shared auth/permission/notification coupling
+**Reviewed head:** `5fd2aeace13f64bccd7cb8b7ef0a29551db4c7b9`
+**Comparison base:** `e561411f8852d9e9ff3cd949e83c6618da05f7ed`
+**Source:** `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, branch `codex/query-ownership-580-b4`; clean worktree at review start and end
+**Independence:** Fresh reviewer context; did not author, direct, or remediate this candidate. No candidate edits made.
+
+## Verdict
+
+**BLOCKED.** One blocking spec mismatch independently confirmed. I found no additional blocker in the changed identity, membership, current-resource resolution, or recipient-coupling paths after inspection.
+
+## Blocking finding
+
+`apps/api/src/notification/customer-event-audience.ts` denies every customer `work_item.transitioned` event. `tests/api/notification/native-inbox-reach.test.ts` now explicitly expects that denial. The notification contract lists watchers, assignee, and requester as default recipients for `work_item.transitioned`; `NO-18` limits customer notifications to their own requests, and `NO-19` excludes internal activity and staff assignment changes. A lifecycle transition is a canonical public event (`events.md`, emitted through the lifecycle engine), not an internal comment/activity or assignment event. The new rule therefore suppresses an explicitly declared customer-recipient event for the customer's own request. The gate is used both by send-time current eligibility and inbox reach, so the suppression is not limited to one delivery surface.
+
+Relevant sources inspected: `docs/03-features/notifications.md` event table and `NO-18`–`NO-21`; `docs/01-architecture/events.md` work-item event catalogue; `apps/api/src/notification/customer-event-audience.ts`; `apps/api/src/notification/current-eligibility.ts`; `apps/api/src/notification/native-inbox-reach.ts`; and the new negative test in `tests/api/notification/native-inbox-reach.test.ts`.
+
+## Other coupled paths checked
+
+- Canonical customer admission in `resolve-identity.ts` is derived from exactly one own-organisation membership backed by the compiled built-in customer role; persisted capabilities are not used as grants. The added check rejects stale/mismatched/duplicate organisation membership evidence and does not derive customer permissions from workspace/instance grants.
+- The portal auth query now collects all membership scopes and role facts before applying the same canonical membership check. The query still filters inactive/placeholder people and suspended, disabled, or deleted organisations. The resolver and portal-admission path use the same helper.
+- Current notification eligibility resolves the resource and scope again, applies customer event eligibility, current reach, capability authority, and (for approvals) the addressed requester/approver relation. The approval recipient resolver currently writes staff inbox rows only, consistent with its portal-approval contract; customer approval admission was not broadened by this patch.
+- The customer event guard also rejects customer assignment/unassignment and internal comments, and admits only direct mentions, public comments, and the enumerated approval events. I did not identify another new authority or cross-tenant leak in those paths.
+- `resolveMentionEventRecipient` was inspected as the insertion-time path; no finding is reported from it because this candidate does not modify it and the existing path's mention/comment constraints need a separate evidence-backed reproduction to establish a customer-visible violation.
+
+## Checks and limits
+
+- Verified exact HEAD and base SHAs; confirmed `git status --porcelain=v1` empty.
+- Read repository `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, notification/event/customer-portal/RBAC contracts, changed production diff, and relevant tests.
+- Attempted `pnpm exec vitest run tests/api/notification/native-inbox-reach.test.ts tests/api/permissions/resolve-identity.test.ts`; it could not start because `vitest` is not installed in this checkout (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL`, command not found). No PostgreSQL-backed integration tests, full suite, Docker, or browser verification were run.
+- This is a code/spec review only. It does not claim runtime or full-suite validation. Existing integration evidence cited by the author was not independently rerun or reused as a pass for this SHA.
+
+
+---
+
+### Authentic record: notification-public-transition-repair-luna.md
+
+# Public customer transition notification reach repair — GPT-6 Luna
+
+## Result
+
+Applied the bounded delta on frozen base `5fd2aeace13f64bccd7cb8b7ef0a29551db4c7b9`. The existing customer membership/identity repair is byte-unchanged. No PostgreSQL, Docker, browser, HTTP route, event producer, or outbound channel work was performed.
+
+## Contract and delta
+
+The existing contracts establish the supported case: `docs/03-features/notifications.md` lists `work_item.transitioned` recipients as watchers, assignee, requester and NO-18 restricts a customer to their own requests; `docs/03-features/comments-and-activity.md` CA-7 marks state-transition activity public; `docs/03-features/customer-portal.md` CP-5 requires customer-facing terminology; `docs/01-architecture/events.md` EV-5 requires a safe projection. Therefore the shared audience predicate now admits a customer-visible `work_item.transitioned` event. Existing customer identity, customerVisible, serving-organisation/project/current reach, and private requester/participant checks remain in place. Assignment and unassignment, internal comments, unrelated internal activity, unknown events, and non-customer-visible resources remain denied. Staff behavior is unchanged.
+
+Current notification eligibility reaches preference and current-reach checks for a supported transition but still returns `destination_unresolved` when only a staff URL is available. That pre-existing customer projection gap remains fail-closed. This change does not claim a delivery or transition-producer implementation.
+
+## Changed files
+
+- `apps/api/src/notification/customer-event-audience.ts`: include the documented public transition event in the customer audience.
+- `tests/api/notification/native-inbox-reach.test.ts`: positive requester transition and negative non-customer-visible transition checks, through existing current reach and org capability.
+- `tests/api/notification-current-eligibility.test.ts`: customer-visible transition reaches current checks and fails closed at the absent customer projection/destination seam.
+- `tests/api-integration/work-item-comment.test.ts`: PostgreSQL-authored inbox list, direct read, bulk read, and clear cases for public transitions; immediate persisted rereads; keeps assignment/unassignment and internal-comment denials. The planted transition example uses customer-safe request wording and checks the listed projection. Existing agent-host customer-session 401 remains. This integration oracle was not executed.
+
+## Verification and limits
+
+- Full API unit suite: **120 files, 866 tests passed**.
+- Focused native inbox/current eligibility unit tests: **2 files, 54 tests passed**.
+- `pnpm --filter @taskdesk/api typecheck`: passed.
+- Biome on all four changed TypeScript files: no errors; five existing unused-variable warnings remain in the surrounding integration test.
+- `git diff --check`: passed.
+- Reviewed query ownership checker source `7b5c54279095f0384e71964adc5bf31f979d8829` on the one changed pure production module: **1 file, zero findings**.
+- PostgreSQL integration, Docker/image, browser, and hosted checks were not run. The authored PostgreSQL cases are not runtime proof. No customer inbox HTTP success route or transition producer/projection delivery is claimed. This is not an independent review; the bounded candidate requires the assigned fresh review panel and a separate fresh full GPT-6 Sol review at its exact commit.
+
+## Commit
+
+`6a76cf72923b3466d7b2a4cdbae18af6fe8d08be` (`fix(notifications): allow public customer transitions`) on `codex/query-ownership-580-b4`. Local commit only; no push or PR. The worktree is clean.
+
+
+---
+
+### Authentic record: notification-public-transition-ordinary-a-luna.md
+
+# #785 public customer transition repair — ordinary A delta attestation
+
+**Verdict: CLEAR for the bounded transition repair at exact composed head `c84df2f56030c375bba4ac9b7af8832852bce2c1`, relative to prior source `6a76cf72923b3466d7b2a4cdbae18af6fe8d08be`.** The prior ordinary A blocker at `5fd2aeace13f64bccd7cb8b7ef0a29551db4c7b9` is resolved: `work_item.transitioned` is admitted for customer-visible work items and remains subject to current customer reach, serving-project organisation authority and the existing private requester/participant audience. This attestation is limited to that delta and composition; it does not replace the remaining ordinary reviews or required Sol review.
+
+## Provenance and scope
+
+This is the same ordinary reviewer A context returning for an exact-head delta attestation; I did not author, direct, or remediate the candidate source. I verified `HEAD` and its parents, inspected the transition source/test delta from `5fd2aeac`, the author’s repair report, current notification/customer/activity contracts and the composed tree. I separately verified the accepted-main imports against `d93c0967ecc7b1a1d721ff25202737cd72430a0d` and the remaining product tree against `6a76cf72`. The earlier adverse report remains unchanged; this delta attestation does not rewrite that history.
+
+## Delta assessment
+
+`customer-event-audience.ts` now admits `work_item.transitioned` alongside direct work-item mentions after the shared `customerVisible` guard. It retains denial of assignment/unassignment, staff/internal activity, internal comments and unknown events. The production native-inbox path continues to bind the notification to its recipient, use current customer identity, current serving-project reach, organisation-scoped `work_item:read`, and the resource's requester/participant visibility set. The current delivery eligibility path applies the same customer event gate and reach checks. It reaches the existing preference check but fails closed with `destination_unresolved` because the customer projection has no established destination; no customer delivery is claimed.
+
+The tests add a positive customer transition read on a customer-visible request, a negative read when customer visibility is false, and a current-eligibility case proving that a transition reaches current reach/preference checks but cannot cross the unresolved customer destination seam. PostgreSQL-authored integration assertions cover list content, direct read, bulk read, clear, and post-revocation no-write retention. The integration tests use planted, customer-worded inbox rows; they verify the read/mutation audience boundary, not an event producer or actual delivery implementation.
+
+Composition check: HEAD is a two-parent commit with `6a76cf72` as first parent and accepted main `d93c0967` as second parent. The only imported files are `apps/web/src/components/task/task-description.test.tsx` and `docs/07-planning/security-reviews/776-task-description-editor-teardown.md`; both are byte-equal to accepted main. All remaining product paths are byte-equal to the prior `6a76cf72` source. The candidate does not alter the customer membership/auth repair or introduce a portal inbox route, event producer, customer delivery destination, or outbound channel behavior.
+
+## Verification and limits
+
+- Focused exact-head unit run: `pnpm --filter @taskdesk/api exec vitest run tests/api/notification/native-inbox-reach.test.ts tests/api/notification-current-eligibility.test.ts` — **2 files, 54 tests passed**.
+- `git diff --exit-code d93c0967ecc7b1a1d721ff25202737cd72430a0d HEAD -- <two imported paths>` — passed; imported paths are byte-equal to accepted main.
+- `git diff --exit-code 6a76cf72923b3466d7b2a4cdbae18af6fe8d08be HEAD -- apps/api/src apps/permissions tests/api tests/api-integration` — passed; there is no additional API/permission/test delta from the authored source.
+- No PostgreSQL integration, hosted CI, full API suite, image/Docker, browser, or runtime check was run. Authored PostgreSQL cases remain unexecuted. The hosted PG failure on the earlier publication is not cleared by this delta attestation.
+
+The 5fd ordinary A report remains adverse for its source. This report clears only its public-transition over-denial on the composed `c84df2f` source; it is not a full candidate approval, runtime acceptance, merge authorization, or a substitute for fresh independent security review.
+
+
+---
+
+### Authentic record: notification-public-transition-ordinary-b-luna.md
+
+# #785 public customer transition repair — ordinary review B follow-up
+
+**Verdict: CLEAR for the prior transition blocker** at exact candidate `c84df2f56030c375bba4ac9b7af8832852bce2c1`, compared with prior reviewed candidate `5fd2aeace13f64bccd7cb8b7ef0a29551db4c7b9` and transition repair commit `6a76cf72923b3466d7b2a4cdbae18af6fe8d08be`.
+
+## Independence and scope
+
+This is a follow-up from the ordinary B context that reviewed `5fd2aeace13f64bccd7cb8b7ef0a29551db4c7b9`; I did not author, direct, or remediate either candidate. I verified exact `HEAD`, clean status, the exact source/test diff, the authored repair handoff, and the supplied main-import conservation record. I assessed the sole blocker in my prior report against the existing notification, customer-portal, comments/activity and event contracts. No repository changes, PR actions, commits, pushes, PostgreSQL, Docker, browser or runtime work were performed.
+
+## Prior blocker resolved
+
+The prior report found `isCustomerEligibleNotificationEvent` rejected every `work_item.transitioned`, despite the documented requester-recipient rule, public state-transition activity and EV-5 customer-safe projection requirement. At this head, the shared predicate admits `work_item.transitioned` for a customer-visible `work_item` resource. The native inbox unit oracle confirms a current customer with serving-organisation capability and current reach can read the transition, and denies it when `customerVisible` is false. Current delivery eligibility reaches the preference/current-reach checks and then fails closed with `destination_unresolved` because this path has no customer destination. The customer transition title/body used by the authored integration oracle is customer-facing.
+
+The same predicate continues to deny `work_item.assigned`, `work_item.unassigned`, other listed internal/staff activity, internal comments, and unsupported events. Existing current serving-organisation, project, recipient, private requester/participant, and membership checks remain in force. This resolves the categorical-denial blocker without establishing a new transition producer, customer inbox HTTP route, outbound activation, or delivery acceptance.
+
+## Source conservation and verification
+
+- Exact `HEAD`: `c84df2f56030c375bba4ac9b7af8832852bce2c1`; worktree clean.
+- Compared with `5fd2aeace13f64bccd7cb8b7ef0a29551db4c7b9`, the only API production change is the shared customer event predicate. The authored integration delta adds public-transition list/read/bulk/clear assertions and preserves assignment/unassignment/internal-comment negatives. Auth, customer membership, identity resolution, and other production paths are unchanged.
+- Compared with repair commit `6a76cf72923b3466d7b2a4cdbae18af6fe8d08be`, no `apps/api` path changed. The supplied `notification-editor-main-conservation.json` records the two accepted-main imports as byte-equal to main and all other paths byte-equal to the repair source.
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/notification/native-inbox-reach.test.ts ../../tests/api/notification-current-eligibility.test.ts` — **2 files, 54 tests passed** at exact head.
+- `git diff --check` on the transition production and test delta — passed.
+- No PostgreSQL integration was run. In particular, membership revocation/restore and the new persisted list/direct/bulk/clear integration cases remain authored oracles, not database evidence. No hosted, Docker/image, browser or runtime verification is claimed. API typecheck and the full API unit suite were not rerun because the author reports them on `6a76cf7`, and no API production files changed between that commit and this head.
+
+This follow-up clears the prior transition blocker only. It does not replace the other independent ordinary review, full GPT-6 Sol security review, hosted PostgreSQL acceptance, or any other required exact-head gate. The earlier adverse report remains unchanged.
+
+
+---
+
+### Authentic record: notification-public-transition-ordinary-c-luna.md
+
+# Ordinary review C — public customer transition notification repair
+
+**Model:** GPT-6 Luna (fresh ordinary reviewer context)
+**Role:** Third independent ordinary panel review of the exact repair/composition head
+**Reviewed head:** `c84df2f56030c375bba4ac9b7af8832852bce2c1`
+**Previously blocked head:** `5fd2aeace13f64bccd7cb8b7ef0a29551db4c7b9`
+**Repair source:** `6a76cf72923b3466d7b2a4cdbae18af6fe8d08be`
+**Accepted main imported:** `d93c0967ecc7b1a1d721ff25202737cd72430a0d`
+**Independence:** Fresh ordinary-review context. Did not author, direct, or remediate these changes. No source edits made. Prior adverse note `notification-structural-ordinary-c-luna.md` is preserved.
+
+## Verdict
+
+**CLEAR for the prior blocking finding.** The exact repair admits customer-visible `work_item.transitioned` on a work-item resource while preserving the existing customer visibility and read gates. This closes my prior spec mismatch: customer transitions for their own requests are now allowed under the documented default recipient rule and CA-7's public activity contract. Assignment/unassignment, internal comments and unrelated work-item activity remain denied.
+
+## Exact delta and composition
+
+- Confirmed HEAD is `c84df2f56030c375bba4ac9b7af8832852bce2c1`, clean worktree, and `5fd2aeace13f64bccd7cb8b7ef0a29551db4c7b9` is an ancestor.
+- The repair commit changes the audience predicate and adds focused unit/integration cases. The composition commit adds exactly two paths from accepted main: `apps/web/src/components/task/task-description.test.tsx` and `docs/07-planning/security-reviews/776-task-description-editor-teardown.md`. Both are byte-equal to `d93c0967ecc7b1a1d721ff25202737cd72430a0d`.
+- Confirmed notification repair files at the current head are byte-equal to repair source `6a76cf72923b3466d7b2a4cdbae18af6fe8d08be`; all changed auth and customer-membership source remains byte-unchanged from the previously reviewed `5fd2...` candidate.
+- Independently inspected the conservation JSON in the evidence directory and confirmed its claimed changed-path sets against Git.
+
+## Checks actually run
+
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/notification/native-inbox-reach.test.ts ../../tests/api/notification-current-eligibility.test.ts` — **2 files, 54 tests passed**.
+- `pnpm --filter @taskdesk/permissions exec vitest run --config vitest.config.ts src/scope.test.ts -t 'N13'` — **1 passed, 26 skipped**. This confirms the permission-scope behavior cited under residual limits.
+- Verified clean worktree and ancestry. `git diff --check` reports one trailing blank line in the imported, byte-equal main security review note; this is not introduced by the notification repair and was not edited.
+
+## Residual limit
+
+The new current-eligibility test mocks `can()` to true. The production `evaluateCurrentNotificationReachAndPreference` still checks customer work-item reads using `can(identity, "work_item:read", "work_item", ...)`; the canonical customer grant is organisation-scoped, and the permission evaluator refuses an organisation grant for project/work-item policy scope (confirmed by the focused N13 test and the existing native-inbox-reach implementation's organisation-scope handling). Therefore the test's `destination_unresolved` result is only the result after a mocked authority pass; with the real customer evaluator, the external-delivery path is suppressed earlier as `read_authority_lost`. This predates the bounded repair and is outside the reported outbound-delivery claim. No customer inbox HTTP route, event producer, PostgreSQL integration runtime, provider delivery, Docker, or browser behavior is claimed or was executed.
+
+The candidate therefore clears the reviewed inbox audience blocker, while customer external notification delivery remains unproven and currently fails closed at the existing authority-scope check.
+
+
+---
+
+### Authentic record: notification-structural-security-current-sol.md
+
+# #785 notification customer privacy structural repair — independent security review
+
+**Verdict: CLEAR for source security at exact head `c84df2f56030c375bba4ac9b7af8832852bce2c1`.** I found no blocking new authority or customer-data disclosure in the composed candidate. This is a full security review of the implementation after ordinary A/B/C clearance, not PostgreSQL execution, outbound-delivery acceptance, an exact-head CI result, or merge authorization.
+
+**Provenance and independence.** Sol-tier reviewer context `/root/notification_structural_security_current`, dispatched fresh by `/root` with no inherited author turns and no authorship, direction, remediation or ordinary-review role. The parent assignment specified a full Sol review; this context has no independent runtime model-version introspection, so the parent must record its actual spawn model in the publication provenance. Reviewed clean worktree `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2` at the SHA above. Comparison source is `e561411f8852d9e9ff3cd949e83c6618da05f7ed`, with accepted main `d93c0967ecc7b1a1d721ff25202737cd72430a0d` composed before the final repair. Read the current AGENTS.md, active mission, agent workflow, CLAUDE.md, notification/customer-portal/RBAC/data-model/events/comments contracts, recent notification decision, repair and adverse review records, source, tests and composition evidence. This review did not edit repository source or publish, commit, push or merge.
+
+## Source assessment
+
+- `customer-event-audience.ts` is a shared, closed customer event rule for both native inbox and current delivery eligibility. It requires current customer visibility. Public comments/mentions and direct work-item mentions remain eligible; all five already supported approval keys remain eligible for their separately checked addressee/requester relationship; public `work_item.transitioned` is allowed under the documented requester recipient and CA-7 public-state activity rule. Assignment/unassignment, internal comments and unrelated/unknown work-item events are rejected for customers. Staff event classes are unchanged.
+- Native inbox pages, direct read, bulk read and clear select the authenticated user's rows; native work-item/comment rows additionally require the row's `personId` to equal a currently resolved identity, supported resource/event pairing, a live current resource, the serving project's organisation, private requester/participant audience when the request is private, current reach and read authority. The comment repository uses the comment's *current* visibility and excludes deleted/bodyless comments. The customer branch checks `work_item:read` at organisation scope, which is where its genuine built-in role is granted. A foreign-organisation item, lost membership, internal comment, forbidden stale event, or deleted resource therefore cannot become a native inbox response or direct/bulk mutation through the changed path. Mutations recheck within repeatable-read transactions and bind the same recipient/resource row before writing. This is source-level reasoning; the PostgreSQL oracle below has not run.
+- `resolveIdentityFromFacts` now issues customer reach and compiled built-in capabilities only after one own-organisation membership with a genuine built-in customer role, matching scope, rank, capability list and system provenance. The loader supplies current membership/role/scope facts; workspace memberships, instance-admin bits and API keys do not create customer-side authority. Portal admission uses the same canonical predicate and checks active, non-placeholder person and active, portal-enabled, nondeleted organisation. Missing, foreign, duplicate, malformed or revoked organisation membership fails closed. Staff membership handling and key-capability clamping were not changed by this repair.
+- Approval delivery still checks the current addressed approver or requester and approval state, visibility, reach and approver validity. The native inbox change does not add an approval resource reader. Customer external delivery for `work_item`/`comment` remains fail closed in production: `current-eligibility.ts` still asks `can(work_item:read, work_item)` for those resources, while the customer's canonical grant is organisation-scoped, yielding `read_authority_lost` with the real evaluator. The new eligibility unit mock passes that check and reaches `destination_unresolved`; that mock is not evidence of actual provider delivery. The historical outbound path is held, and this candidate neither activates a customer destination nor adds a portal HTTP inbox or an event producer.
+- The final composition imports only `apps/web/src/components/task/task-description.test.tsx` and its #776 security note byte-for-byte from accepted main `d93c0967`; all other paths are byte-equal to `6a76cf72`. These imports do not alter notification authority. `git diff --check 6a76cf72..HEAD` flags the pre-existing trailing blank line in the accepted-main #776 note; it is not a new notification-source defect.
+
+## Checks and limits
+
+I ran focused Vitest at the reviewed head: **3 files, 114 tests passed** (`native-inbox-reach`, `notification-current-eligibility`, `resolve-identity`). The author reported API unit **120 files / 866 tests**, API typecheck and changed-file Biome pass on the repair source; those are author evidence, not reruns in this context. The permission suite's unrelated `git-baseline.test.ts` timeout left **15/16 files and 106/107 tests** passing in author evidence, not a full pass. The query-ownership checker was scoped to the new pure modules with zero findings; its all-tree baseline and changed-auth-repository findings remain and are not a whole-tree green result.
+
+The PostgreSQL integration cases are authored but **not executed** here or on this head: positive public comment/mention/transition, foreign and private audience, direct and bulk read, clear, immediate persisted rereads after membership revocation/restoration, and retention of forbidden stale-event rows. The older hosted PostgreSQL run at `e561411f` failed three tests, so it cannot clear this candidate. I ran no PostgreSQL, Docker/image/health, browser, provider I/O, SIT or hosted exact-head checks. This verdict clears source-security review only; the conductor still needs the required exact-head runtime and CI gates before any merge or acceptance claim. It grants no waiver and does not claim #580, a stage, outbound notification delivery or portal inbox complete.
+
+
+---
+
+### Authentic record: notification-reach-auth-seam-inventory-luna.md
+
+# #580 notification/reach/auth seam integration inventory
+
+**Classification:** read-only integration readiness packet; advisory, not an independent review or approval.
+**Inspected:** 2026-10-16, worktree `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`.
+**Base:** `d93c0967ecc7b1a1d721ff25202737cd72430a0d` (accepted-main descendant visible locally).
+**Notification/auth candidate:** `c84df2f56030c375bba4ac9b7af8832852bce2c1` (`codex/query-ownership-580-b4`; parent `6a76cf72923b3466d7b2a4cdbae18af6fe8d08be`).
+**Reach/query candidate:** `67b934a94e93c8a1348c3a01ea57a7a190d9aad9` (`codex/query-ownership-580-b6`; parent `e49e88c97b96ba16293aab9f35e684e1446bfd18`).
+The task payload's abbreviated/malformed SHA strings were resolved against local refs to these exact full commits. Do not treat either branch tip as accepted main.
+
+## Contract anchors
+
+Read `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, the current #580 contract `docs/07-planning/security-reviews/query-ownership-notifications-580.md`, and the reach contract `docs/07-planning/security-reviews/query-ownership-reach-580.md`. The #580 D1–D4 provenance is the conductor implementation decision recorded on the still-unaccepted #780/#791 line per existing review records; this checkout's accepted-main decision log does not itself establish that provenance. Its presence in a candidate or carrier is not acceptance. Source query extraction must preserve existing authority decisions at the helper/service boundary; repository functions own query execution and return the queried facts/rows. Customer admission remains the canonical customer membership predicate plus compiled-in customer grant, and portal admission uses the same canonical predicate. Do not treat a repository extraction as authority to change these semantics.
+
+## Diff and composition facts
+
+`git diff --name-only base..785` reports 65 changed paths; `base..790` reports 33. `git merge-tree base 785 790` was run read-only. It reported no “changed in both” conflict markers. This establishes only mechanical three-way mergeability; it does not establish semantic integration or acceptance.
+
+Common changed paths are `apps/api/src/database/executor.ts`, `docs/01-architecture/{monorepo-layout,multi-tenancy,security-model,tech-stack}.md`, `docs/04-engineering/{ci-cd,coding-standards}.md`, `docs/07-planning/security-reviews/764-query-ownership.md`, `tests/api-integration/database-executor.test.ts`, and `tests/api/database-executor.test.ts`. These are shared prerequisite/contract artifacts and must be byte/meaning checked in the eventual composition; do not land duplicate copies or overwrite D1–D4 documentation. The executor and its tests appear as additions on both branches from the common base and should converge to one identical copy.
+
+No product source path changed by both diffs. In particular, 785's `apps/api/src/auth.ts`, `apps/api/src/auth/repository.ts`, `apps/api/src/permissions/resolve-identity.ts`, and `apps/api/src/permissions/customer-membership.ts` do not overlap 790's moved auth/reach helper sources. No auth source conflict was reported by merge-tree. This is a favorable composition seam, not a whole-#580 green finding.
+
+## Concrete seam map
+
+- **785 `apps/api/src/auth/repository.ts:getCustomerPortalIdentityRow(userId)`** changes the projection to include person/org state, membership scope/`seesAll`, role identity/scope/system/rank/capabilities; removes the organisation-scope and built-in-customer-role join filters and `.limit(1)`, returning all candidate joined membership rows. This is necessary input to canonical admission validation. Keep this full row set and do not reintroduce a permissive first-row choice.
+- **785 `apps/api/src/auth.ts:hasCustomerPortalIdentity(userId)`** checks the first row's customer/person/org active/non-placeholder/portal/deletion facts, checks all returned rows bind to the same person and organisation, then calls `hasCanonicalCustomerMembership` over mapped membership/role facts. Preserve the all-row consistency check and predicate call.
+- **785 `apps/api/src/permissions/resolve-identity.ts:resolveIdentityFromFacts`** now denies customer-side identity unless `hasCanonicalCustomerMembership(person.organisationId, facts.scopedRoleMemberships ?? [])`; customer capabilities still come from compiled-in `BUILT_IN_ROLES.customer`. The resolver query projection/mapping adds `roleIsSystem`, needed by the predicate. Preserve separation between membership admission and grant construction.
+- **790 `apps/api/src/utils/access-lookups.repository.ts`** becomes the query owner for principal/session/API-key/workspace role and assorted reach facts. It exports `findUserRole`, `findActiveApiKeyByHash`, `findApiKeyOwnerStatus`, `listWorkspaceMembershipRows`, `findMembershipRole`, role/permission lookup helpers, among others. **790 `apps/api/src/utils/customer-principal.repository.ts`** owns the legacy `findWorkspaceMemberRole` and `findPersonSide` queries used by `isCustomerPrincipal`; these remain distinct from 785's stronger portal/customer admission predicate. Do not conflate the legacy “is customer principal” helper with portal authorization.
+- **790 `apps/api/src/utils/workspace-member-roles.ts`** delegates row reads to `access-lookups.repository.ts` while retaining duplicate/ambiguity and genuine-built-in-role interpretation. **790 `apps/api/src/workspace/workspace-admin-reach.repository.ts`** owns workspace admin reach lookup/mutation queries. These helpers are a potential indirect dependency for query caller correctness, not a competing customer admission implementation.
+- **Executor seam:** 785 notification repositories and 790 auth/reach repositories may need transaction executors. Preserve executor propagation exactly; database executor identity and transaction-scoped behavior must not be replaced by default `db` use in moved calls.
+
+## Conservation requirements and regressions for protected composition
+
+1. Carry both full diffs from the same accepted base or the explicitly reviewed successor; do not substitute either cumulative branch head wholesale.
+2. Retain 785's complete customer membership facts, all-row same-person/same-organisation check, active/portal/non-placeholder gates, canonical predicate, and compiled-in grant. Retain 790's original query projections, predicates, limits, result shape, query ordering where meaningful, and `Executor` usage. Keep policy/decision documents canonical and deduplicated.
+3. Add/retain integration regressions proving: a canonical organisation customer membership admits; missing/wrong-scope/wrong-role/non-system or ambiguous/multiple conflicting memberships deny; a mixed customer+staff/workspace grant cannot elevate customer identity; a role with forged persisted capabilities cannot change the compiled-in grant; cross-organisation/person rows deny; inactive/placeholder person and inactive/deleted/non-portal organisation deny. Exercise both portal preflight (`hasCustomerPortalIdentity`) and resolver mapping so they cannot diverge.
+4. Retain 790 repository tests for exact query result mapping and caller behavior, including API-key active/expiry/owner-state checks, workspace membership/role ambiguity and assignability/reach denials. Run executor-using paths inside a transaction test where the contract calls for the supplied executor.
+5. Inspect all exported repository functions/callers together. The existing notes say the 785 source checker found 3 initial findings and 0 final on its 36-file set, and records residual auth-repository export-builder findings; those are bounded checker observations, not blanket clearance of the combined path. Resolve/record the two auth-repository export-builder residuals at the eventual integration SHA. Re-run the required scoped query checker against the final combined file set and check exact source coverage before claiming that seam done.
+6. If API-key attachment clamps intersect notification identity construction, preserve the 790 key/capability subset through 785's `resolveIdentity` call and verify no repository extraction drops it. Treat this as an external dependency to inspect; these two diffs do not show a shared product-source path there.
+
+## Holds / limits
+
+This packet did not edit files/refs/index, run tests, start PostgreSQL/Docker/browser, inspect hosted CI, or evaluate the entire program. Worktree remained at `c84df2f56030c375bba4ac9b7af8832852bce2c1` with the pre-existing branch status `ahead 7`, no working-tree changes. No protected composition, PR, commit, push, merge, independent-review verdict, gate waiver, activation, or #580 completion is authorized or implied. Exact-head checks, ordinary/Sol review requirements, accepted D1–D4 provenance/order, PostgreSQL/runtime evidence, and other recorded residuals remain separate gates.
+
+## Clarification appended 2026-10-16
+
+The task-provided full candidate IDs `c84df2f56030c375bba4ac9b7af8832852bce2c1` and `67b934a94e93c8a1348c3a01ea57a7a190d9aad9` are valid. My initial exploratory `git show` command mistyped those IDs; the earlier sentence attributing malformed IDs to the task payload is incorrect and should be disregarded. The verified candidate IDs above are unchanged.
+
+The earlier phrase “No product source path changed by both diffs” was too broad. The narrower verified finding is: no **auth-function** source path is shared between the candidates, while `apps/api/src/database/executor.ts` is shared production source. `git rev-parse <candidate>:apps/api/src/database/executor.ts` returned blob `46ba36ee97ce4bbc71d787c27a999c4dc8021039` for each candidate, confirming byte-identical content. The path is absent at the stated common base, so the composition must retain one copy of this shared addition. This is a factual overlap clarification only; it is not clearance of executor semantics or integration.
+
