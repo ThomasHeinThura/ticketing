@@ -48,6 +48,36 @@ const originalEncryptionKey = process.env.TASKDESK_ENCRYPTION_KEY;
 const originalPreviousEncryptionKey =
   process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS;
 
+function canonicalCustomerRoleValues() {
+  return {
+    scope: BUILT_IN_ROLES.customer.scope,
+    workspaceId: null,
+    key: BUILT_IN_ROLES.customer.key,
+    rank: BUILT_IN_ROLES.customer.rank,
+    capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+    isSystem: true,
+    isEditable: false,
+  };
+}
+
+async function expectCanonicalCustomerRole() {
+  const [role] = await db
+    .select({
+      scope: schema.roleTable.scope,
+      workspaceId: schema.roleTable.workspaceId,
+      key: schema.roleTable.key,
+      rank: schema.roleTable.rank,
+      capabilities: schema.roleTable.capabilities,
+      isSystem: schema.roleTable.isSystem,
+      isEditable: schema.roleTable.isEditable,
+    })
+    .from(schema.roleTable)
+    .where(eq(schema.roleTable.id, CUSTOMER_ROLE_ID));
+  expect(role).toEqual({
+    ...canonicalCustomerRoleValues(),
+  });
+}
+
 async function setupAdmin(userId = ADMIN_ID, role = "admin") {
   const [admin] = await db
     .insert(schema.userTable)
@@ -169,14 +199,8 @@ async function setupCustomerConnection() {
   });
   await db.insert(schema.roleTable).values({
     id: CUSTOMER_ROLE_ID,
-    scope: "organisation",
-    workspaceId: null,
-    key: "customer",
     name: "Customer",
-    rank: BUILT_IN_ROLES.customer.rank,
-    capabilities: [...BUILT_IN_ROLES.customer.capabilities],
-    isSystem: true,
-    isEditable: false,
+    ...canonicalCustomerRoleValues(),
   });
   await db.insert(schema.identityConnectionTable).values({
     id: CONNECTION_ID,
@@ -448,8 +472,9 @@ describe("IP-34 OIDC group mapping administration", () => {
 
     await db
       .update(schema.roleTable)
-      .set({ capabilities: [] })
+      .set(canonicalCustomerRoleValues())
       .where(eq(schema.roleTable.id, CUSTOMER_ROLE_ID));
+    await expectCanonicalCustomerRole();
     const editRequest = {
       configVersion: 2,
       externalGroupNameSnapshot: "Customer group",
