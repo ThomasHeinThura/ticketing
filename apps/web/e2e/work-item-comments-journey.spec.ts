@@ -45,21 +45,86 @@ async function createAdminWorkspace(
   email: string,
   password: string,
 ) {
-  await page.goto(new URL("/auth/sign-up", origin).toString());
-  await page.getByLabel("Full name").fill("Disposable Comments Admin");
-  await page.getByLabel("Email").fill(email);
-  await page.locator('input[autocomplete="new-password"]').fill(password);
-  const signUpPromise = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname === "/api/auth/sign-up/email" &&
-      response.request().method() === "POST",
-  );
-  await page.getByRole("button", { name: "Create account" }).click();
-  expect((await signUpPromise).status()).toBe(200);
-  await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
-  await page.getByLabel("Workspace name").fill("Disposable Comments Workspace");
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/workspace\//);
+  await test.step("Setup diagnostic: sign-up page navigation", async () => {
+    console.info("Setup diagnostic begin: sign-up page navigation");
+    await page.goto(new URL("/auth/sign-up", origin).toString());
+    console.info("Setup diagnostic completed: sign-up page navigation");
+  });
+  await test.step("Setup diagnostic: full-name field entry", async () => {
+    console.info("Setup diagnostic begin: full-name field entry");
+    await page.getByLabel("Full name").fill("Disposable Comments Admin");
+    console.info("Setup diagnostic completed: full-name field entry");
+  });
+  await test.step("Setup diagnostic: sign-up email field entry", async () => {
+    console.info("Setup diagnostic begin: sign-up email field entry");
+    await page.getByLabel("Email").fill(email);
+    console.info("Setup diagnostic completed: sign-up email field entry");
+  });
+  await test.step("Setup diagnostic: sign-up password field entry", async () => {
+    console.info("Setup diagnostic begin: sign-up password field entry");
+    await page.locator('input[autocomplete="new-password"]').fill(password);
+    console.info("Setup diagnostic completed: sign-up password field entry");
+  });
+  const signUpListener =
+    await test.step("Setup diagnostic: sign-up response listener registration", async () => {
+      console.info(
+        "Setup diagnostic begin: sign-up response listener registration",
+      );
+      const pendingResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === "/api/auth/sign-up/email" &&
+          response.request().method() === "POST",
+      );
+      console.info(
+        "Setup diagnostic completed: sign-up response listener registration",
+      );
+      return { pendingResponse };
+    });
+  await test.step("Setup diagnostic: create-account button click", async () => {
+    console.info("Setup diagnostic begin: create-account button click");
+    await page.getByRole("button", { name: "Create account" }).click();
+    console.info("Setup diagnostic completed: create-account button click");
+  });
+  const signUpResponse =
+    await test.step("Setup diagnostic: sign-up response wait", async () => {
+      console.info("Setup diagnostic begin: sign-up response wait");
+      const response = await signUpListener.pendingResponse;
+      console.info("Setup diagnostic completed: sign-up response wait");
+      return response;
+    });
+  await test.step("Setup diagnostic: sign-up response status assertion", async () => {
+    console.info("Setup diagnostic begin: sign-up response status assertion");
+    expect(signUpResponse.status()).toBe(200);
+    console.info(
+      "Setup diagnostic completed: sign-up response status assertion",
+    );
+  });
+  await test.step("Setup diagnostic: onboarding navigation assertion", async () => {
+    console.info("Setup diagnostic begin: onboarding navigation assertion");
+    await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
+    console.info("Setup diagnostic completed: onboarding navigation assertion");
+  });
+  await test.step("Setup diagnostic: workspace-name field entry", async () => {
+    console.info("Setup diagnostic begin: workspace-name field entry");
+    await page
+      .getByLabel("Workspace name")
+      .fill("Disposable Comments Workspace");
+    console.info("Setup diagnostic completed: workspace-name field entry");
+  });
+  await test.step("Setup diagnostic: create-workspace button click", async () => {
+    console.info("Setup diagnostic begin: create-workspace button click");
+    await page.getByRole("button", { name: "Create workspace" }).click();
+    console.info("Setup diagnostic completed: create-workspace button click");
+  });
+  await test.step("Setup diagnostic: workspace-dashboard navigation assertion", async () => {
+    console.info(
+      "Setup diagnostic begin: workspace-dashboard navigation assertion",
+    );
+    await expect(page).toHaveURL(/\/dashboard\/workspace\//);
+    console.info(
+      "Setup diagnostic completed: workspace-dashboard navigation assertion",
+    );
+  });
 }
 
 async function signInThroughUi(
@@ -68,17 +133,53 @@ async function signInThroughUi(
   email: string,
   password: string,
 ) {
-  await page.goto("about:blank");
-  const signOut = await page.request.post(
-    new URL("/api/auth/sign-out", origin).toString(),
-    { headers: { Origin: origin }, data: {} },
-  );
-  expect(signOut.status()).toBe(200);
-  await page.goto(new URL("/auth/sign-in", origin).toString());
-  await page.getByLabel("Email").fill(email);
-  await page.locator('input[autocomplete="current-password"]').fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard(?:\/|\?|$)/);
+  await test.step("Setup diagnostic: blank-page navigation", async () => {
+    console.info("Setup diagnostic begin: blank-page navigation");
+    await page.goto("about:blank");
+    console.info("Setup diagnostic completed: blank-page navigation");
+  });
+  const signOut =
+    await test.step("Setup diagnostic: sign-out request", async () => {
+      console.info("Setup diagnostic begin: sign-out request");
+      const response = await page.request.post(
+        new URL("/api/auth/sign-out", origin).toString(),
+        { headers: { Origin: origin }, data: {} },
+      );
+      console.info("Setup diagnostic completed: sign-out request");
+      return response;
+    });
+  await test.step("Setup diagnostic: sign-out response status assertion", async () => {
+    console.info("Setup diagnostic begin: sign-out response status assertion");
+    expect(signOut.status()).toBe(200);
+    console.info(
+      "Setup diagnostic completed: sign-out response status assertion",
+    );
+  });
+  await test.step("Setup diagnostic: sign-in page navigation", async () => {
+    console.info("Setup diagnostic begin: sign-in page navigation");
+    await page.goto(new URL("/auth/sign-in", origin).toString());
+    console.info("Setup diagnostic completed: sign-in page navigation");
+  });
+  await test.step("Setup diagnostic: sign-in email field entry", async () => {
+    console.info("Setup diagnostic begin: sign-in email field entry");
+    await page.getByLabel("Email").fill(email);
+    console.info("Setup diagnostic completed: sign-in email field entry");
+  });
+  await test.step("Setup diagnostic: sign-in password field entry", async () => {
+    console.info("Setup diagnostic begin: sign-in password field entry");
+    await page.locator('input[autocomplete="current-password"]').fill(password);
+    console.info("Setup diagnostic completed: sign-in password field entry");
+  });
+  await test.step("Setup diagnostic: sign-in button click", async () => {
+    console.info("Setup diagnostic begin: sign-in button click");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    console.info("Setup diagnostic completed: sign-in button click");
+  });
+  await test.step("Setup diagnostic: dashboard navigation assertion", async () => {
+    console.info("Setup diagnostic begin: dashboard navigation assertion");
+    await expect(page).toHaveURL(/\/dashboard(?:\/|\?|$)/);
+    console.info("Setup diagnostic completed: dashboard navigation assertion");
+  });
 }
 
 async function csrfHeaders(page: Page, origin: string) {
