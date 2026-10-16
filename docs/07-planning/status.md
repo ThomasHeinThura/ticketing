@@ -1,4 +1,4 @@
-## Current exact-head verification — 2026-10-16 21:02 UTC
+## Current exact-head verification — 2026-10-16 21:00 UTC
 
 **Blocked first:** #810 current publication `daa6f6cc196b91b2d6f069f750b0785784d303e0` still fails required G11 before budgets: throttled calibration factor1.752 exceeds1.75. Its full PostgreSQL now passes222files3274tests/5tasks; raw7242065bytes SHA25699f7ea4778aa4513efb1d3d022e82daae000e04194e4c0cf255bbaf5bea3408e. No factor-bound rerun, final-pass body or merge. #807 assignment200.43141014024977ms, #798 state270.8ms and Carrier historical529.7ms render/33.4ms drag remain held.
 
