@@ -1,8 +1,13 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import type db from "../database";
 import { projectTable, taskTable } from "../database/schema";
 import { assertProjectStillLive } from "../work-item/assert-work-item-live";
+import {
+  lockLiveProjectRowForIdentity,
+  lockTaskRowForIdentity,
+} from "./repository";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -33,6 +38,17 @@ export async function lockLegacyTaskRowIfPresent(tx: DbOrTx, taskId: string) {
 
 export async function lockTaskAndAssertProjectLive(tx: DbOrTx, taskId: string) {
   const task = await lockLegacyTaskRow(tx, taskId);
+  await assertProjectStillLive(tx, task.projectId, "Task not found");
+  return task;
+}
+
+export async function lockTaskAndAssertProjectLiveForIdentity(
+  tx: DbOrTx,
+  taskId: string,
+  identity: ResolvedIdentity,
+) {
+  const task = await lockTaskRowForIdentity(tx, identity, taskId);
+  if (!task) throw new HTTPException(404, { message: "Task not found" });
   await assertProjectStillLive(tx, task.projectId, "Task not found");
   return task;
 }
@@ -85,4 +101,15 @@ export async function lockProjectAndAssertLiveForTaskNumber(
   if (!project) {
     throw new HTTPException(404, { message: projectNotFoundMessage });
   }
+}
+
+export async function lockProjectAndAssertLiveForTaskNumberForIdentity(
+  tx: DbOrTx,
+  projectId: string,
+  identity: ResolvedIdentity,
+  projectNotFoundMessage = "Task not found",
+) {
+  const project = await lockLiveProjectRowForIdentity(tx, identity, projectId);
+  if (!project)
+    throw new HTTPException(404, { message: projectNotFoundMessage });
 }

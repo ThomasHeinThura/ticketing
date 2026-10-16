@@ -1,14 +1,44 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resolveIdentityFromFacts } from "../../../apps/api/src/permissions/resolve-identity";
 
 const { state } = vi.hoisted(() => ({
-  state: { queried: false, nextCalled: false },
+  state: {
+    queried: false,
+    nextCalled: false,
+    resolveCallerIdentity: vi.fn(),
+  },
+}));
+
+const identity = resolveIdentityFromFacts({
+  userId: "user-1",
+  person: {
+    personId: "person-1",
+    organisationId: "internal-organisation-id",
+    side: "staff",
+    active: true,
+    organisationActive: true,
+    organisationPortalAccess: true,
+    organisationDeleted: false,
+  },
+  banned: false,
+  isInstanceAdmin: false,
+  workspaceMemberships: [],
+  teamMemberships: [],
+  credential: "session",
+});
+if (!identity) throw new Error("expected resolved unit-test identity");
+
+vi.mock("../../../apps/api/src/utils/has-project-reach", () => ({
+  resolveCallerIdentity: state.resolveCallerIdentity,
 }));
 
 vi.mock("../../../apps/api/src/database", () => {
   const chain = {
     select: () => chain,
     from: () => chain,
+    innerJoin: () => chain,
+    leftJoin: () => chain,
     where: () => chain,
     limit: async () => {
       state.queried = true;
@@ -45,6 +75,7 @@ describe("requireTaskAssigneePermission", () => {
   beforeEach(() => {
     state.queried = false;
     state.nextCalled = false;
+    state.resolveCallerIdentity.mockReset().mockResolvedValue(identity);
   });
 
   it("#281 sweep: a NUL byte in the id path param is an immediate 400, never reaching the DB query or the handler", async () => {
@@ -60,6 +91,7 @@ describe("requireTaskAssigneePermission", () => {
     expect(res.status).toBe(400);
     expect(state.queried).toBe(false);
     expect(state.nextCalled).toBe(false);
+    expect(state.resolveCallerIdentity).not.toHaveBeenCalled();
   });
 
   it("a well-formed id with no assignee change reaches the handler", async () => {
@@ -72,5 +104,10 @@ describe("requireTaskAssigneePermission", () => {
     expect(res.status).toBe(200);
     expect(state.queried).toBe(true);
     expect(state.nextCalled).toBe(true);
+    expect(state.resolveCallerIdentity).toHaveBeenCalledOnce();
+    expect(state.resolveCallerIdentity).toHaveBeenCalledWith(
+      expect.any(Object),
+      "user-1",
+    );
   });
 });
