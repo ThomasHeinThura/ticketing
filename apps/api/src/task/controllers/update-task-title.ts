@@ -33,13 +33,18 @@ async function updateTaskTitle({
       });
     }
 
-    await insertTaskActivity(tx, identity, {
+    const activity = await insertTaskActivity(tx, identity, {
       taskId: task.id,
       type: "title_changed",
       userId: currentUserId,
       content: null,
       eventData: { oldTitle: existingTask.title, newTitle: title },
     });
+    if (!activity) {
+      throw new HTTPException(500, {
+        message: "Failed to create task title activity",
+      });
+    }
 
     return { existingTask, updatedTask: task };
   });

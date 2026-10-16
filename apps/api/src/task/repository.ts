@@ -182,28 +182,7 @@ export async function lockTaskRowForIdentity(
   return task;
 }
 
-/**
- * Exclusive row lock on a live (not deleted, not archived) project, taken before
- * `claimTaskNumber` so concurrent creators serialize instead of upgrading `FOR SHARE` locks.
- */
-export async function lockLiveProjectRow(
-  executor: Executor,
-  projectId: string,
-) {
-  const [project] = await executor
-    .select({ id: projectTable.id })
-    .from(projectTable)
-    .where(
-      and(
-        eq(projectTable.id, projectId),
-        isNull(projectTable.deletedAt),
-        isNull(projectTable.archivedAt),
-      ),
-    )
-    .for("update");
-  return project;
-}
-
+/** Identity-scoped exclusive lock on a live project, taken before `claimTaskNumber`. */
 export async function lockLiveProjectRowForIdentity(
   executor: Executor,
   identity: ResolvedIdentity,
@@ -796,7 +775,11 @@ export async function insertTaskActivity(
         taskProjectReach(identity, executor),
       ),
     );
-  await executor.insert(taskActivityTable).select(selectedActivity);
+  const [activity] = await executor
+    .insert(taskActivityTable)
+    .select(selectedActivity)
+    .returning({ id: taskActivityTable.id });
+  return activity;
 }
 
 // ---- assets (task image uploads) -------------------------------------------------------

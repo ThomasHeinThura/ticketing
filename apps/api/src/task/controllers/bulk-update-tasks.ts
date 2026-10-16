@@ -277,6 +277,9 @@ async function bulkUpdateTasks({
                 columnId: column?.id ?? null,
               },
             );
+            if (!updated) {
+              throw new HTTPException(404, { message: "Task not found" });
+            }
             itemEvents.push(() =>
               publishEvent("task.status_changed", {
                 taskId,
@@ -286,7 +289,7 @@ async function bulkUpdateTasks({
                 type: "status_changed",
               }),
             );
-            return updated ? 1 : 0;
+            return 1;
           }
 
           case "updatePriority": {
@@ -299,6 +302,9 @@ async function bulkUpdateTasks({
                 priority,
               },
             );
+            if (!updated) {
+              throw new HTTPException(404, { message: "Task not found" });
+            }
             itemEvents.push(() =>
               publishEvent("task.priority_changed", {
                 taskId,
@@ -308,7 +314,7 @@ async function bulkUpdateTasks({
                 type: "priority_changed",
               }),
             );
-            return updated ? 1 : 0;
+            return 1;
           }
 
           case "updateAssignee": {
@@ -335,6 +341,9 @@ async function bulkUpdateTasks({
                 userId: assigneeId,
               },
             );
+            if (!updated) {
+              throw new HTTPException(404, { message: "Task not found" });
+            }
             const eventData = {
               taskId,
               projectId: task.projectId,
@@ -352,7 +361,7 @@ async function bulkUpdateTasks({
             } else {
               itemEvents.push(() => publishEvent("task.unassigned", eventData));
             }
-            return updated ? 1 : 0;
+            return 1;
           }
 
           case "delete": {
@@ -435,6 +444,9 @@ async function bulkUpdateTasks({
                 dueDate: parsedDate,
               },
             );
+            if (!updated) {
+              throw new HTTPException(404, { message: "Task not found" });
+            }
             itemEvents.push(() =>
               publishEvent("task.due_date_changed", {
                 taskId,
@@ -446,7 +458,7 @@ async function bulkUpdateTasks({
                 type: "due_date_changed",
               }),
             );
-            return updated ? 1 : 0;
+            return 1;
           }
           default:
             throw new HTTPException(400, {

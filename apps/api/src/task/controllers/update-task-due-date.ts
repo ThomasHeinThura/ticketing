@@ -31,15 +31,14 @@ async function updateTaskDueDate({
       const updatedTask = await updateTaskRow(tx, identity, id, {
         dueDate: dueDate || null,
       });
+      if (!updatedTask) {
+        throw new HTTPException(500, {
+          message: "Failed to update task due date",
+        });
+      }
       return { existingTask, updatedTask, dueDate };
     },
   );
-
-  if (!updatedTask) {
-    throw new HTTPException(500, {
-      message: "Failed to update task due date",
-    });
-  }
 
   await publishEvent("task.due_date_changed", {
     taskId: updatedTask.id,
