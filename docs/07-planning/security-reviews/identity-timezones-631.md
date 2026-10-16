@@ -399,3 +399,150 @@ No PostgreSQL, Docker/image build or boot, browser, full test suite, hosted CI, 
 **Reviewed head:** `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`
 
 This field records the exact source already identified and cleared by the unchanged current ordinary and Sol reports above. The prior unbackticked header was not machine-readable. This clarification supplies no new verdict, does not relabel a source, and changes no report bytes or product code. Publicationfb7 is only the +112/-0 append of those authentic reports after92; this later clarification also changes only this same regular review-note file. The body model name is GPT-6 Sol without trailing punctuation. Main has since advanced, so strict current-main composition and new publication-SHA checks remain required.
+
+
+## Accepted #764 main import - 2026-10-16
+
+**Reviewed head:** `eae1f9b9edad8eb8854a0b4879b62902a911d8f0`
+
+The following author handoff and independent ordinary/security reports are preserved unchanged. Author handoffs are not independent approvals. Earlier reports retain their actual scopes.
+
+### Author handoff
+
+`795-accepted-764-main-composition-luna.md`
+
+SHA-256 `7a75284966ca91efa0c651b1d5d5c986661757fd6609fd0924d3e8ba2cd4e1bd`
+
+# PR795 accepted #764 main composition handoff
+
+**Result:** DONE — local normal merge committed; not pushed, no PR/body mutation, and no runtime activity.
+
+**Branch:** `codex/identity-db-timezones-631`
+**Candidate:** `eae1f9b9edad8eb8854a0b4879b62902a911d8f0`
+**Parents:** local publication `922fff5ee4ec0d5da45b2cbad0b6b70d9b31a6c9`; accepted main `3d1894ba2b28fd4d9ba40baecd96fc61a92a8c8e` (protected #764 publication `7249244d7aa525aef5a6d029f3d1b4dd13851164`).
+**Actual reviewed source:** `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`; no claim that the current merge itself was independently reviewed.
+
+## Composition and preservation
+
+Started from the clean designated worktree exactly at `922fff5ee4ec0d5da45b2cbad0b6b70d9b31a6c9`. Confirmed remote `main` at `3d1894ba...`, then performed a normal local merge. Git reported no conflicts. There was no manual semantic resolution and no source, fixture, gate or contract edit.
+
+All seven clock-fix product/test files are byte-identical to their pre-merge blobs in `922fff5`:
+
+- `apps/api/src/auth/repository.ts` — `00a26f96fe3414f8f6a5cd70f89a1e23779009f7`
+- `apps/api/src/identity/oidc-login.ts` — `5083b417e7d62f98121b90af109e220e7bf93200`
+- `apps/api/src/instance/users/repository.ts` — `dcd9f1775313b7ba3818427872e0f7dc5bc74c18`
+- `apps/api/src/pending-action/service.ts` — `45118fc39b01b60c5cb2b9a65e43f4ffbeee7159`
+- `apps/api/src/work-item/controllers/create-comment.ts` — `8efa98ccd7954fcdd4fe3228c3c7ba608b17eb14`
+- `tests/api-integration/identity-clock-ahead-of-utc.test.ts` — `91a17f9f8316870078c7bbfc423817ff14b680b0`
+- `tests/api-integration/identity-clock-behind-utc.test.ts` — `545dfc0962877051be32e47166ea7c7caad11768`
+
+The review note `docs/07-planning/security-reviews/identity-timezones-631.md` is also byte-identical to `922fff5` (`59fb9c78bf8763c7a983e3300501f3f2621e6fd4`). This preserves the authentic report bytes and the separate six-line machine-binding clarification. The private `795-machine-binding-clarification-proof.json` still binds publication `922fff5`, reviewed source `92f899dc`, and the `+6/-0` note-only suffix. The `decision-log.md` and `.gitleaksignore` blobs are unchanged from `922fff5` (`cffc9eeb7a014ce8185f098f165e61e2cf018763` and `6f702fe7f4db55e96a4078fa7b37e9c5993eac2c` respectively); the #631 records/fingerprints remain intact.
+
+All 13 paths changed by accepted main since `09dd5acf` match commit `3d1894ba` byte-for-byte in the candidate:
+
+- `apps/api/src/database/executor.ts`
+- `docs/01-architecture/monorepo-layout.md`
+- `docs/01-architecture/multi-tenancy.md`
+- `docs/01-architecture/security-model.md`
+- `docs/01-architecture/tech-stack.md`
+- `docs/03-features/webhooks-and-api-keys.md`
+- `docs/04-engineering/ci-cd.md`
+- `docs/04-engineering/coding-standards.md`
+- `docs/07-planning/reviews/2026-09-05/features-governance-design.md`
+- `docs/07-planning/security-reviews/764-query-ownership.md`
+- `docs/07-planning/security-reviews/782-webhooks-review-disposition.md`
+- `tests/api-integration/database-executor.test.ts`
+- `tests/api/database-executor.test.ts`
+
+The imported coding and architecture documents retain the resolved-identity scope: cross-organisation repository reads derive reach from the resolved identity, check any additional tenant ID against that identity, and apply reach in the predicate. `forIdentity(identity)` remains an illustration, not a claim that a universal fluent API/type exists. No old branch document replaced this accepted contract.
+
+Relative to accepted main `3d1894ba`, the remaining PR diff is the original ten-path #631 delta: the five API files, two timezone integration wrappers, `.gitleaksignore`, `decision-log.md`, and the authentic #631 review note. No change to the seven product/test blobs is introduced by this composition.
+
+## Checks actually run
+
+- `pnpm --filter @taskdesk/api typecheck` — PASS.
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/database-executor.test.ts` — PASS, 1 file / 4 tests.
+- Exact blob comparisons for the seven source/test files, full #631 note, decision log and `.gitleaksignore` against `922fff5` — PASS.
+- Exact blob comparisons for all 13 accepted-main changed paths against `3d1894ba` — PASS.
+- `git merge-base --is-ancestor 3d1894ba HEAD` — PASS.
+- `git diff --check 3d1894ba HEAD` — PASS.
+- Commit hook: “Checked 3 files … No fixes applied.”
+- Worktree clean after the merge commit.
+
+No PostgreSQL/integration suite, Docker/image build or boot, browser, full test suite, hosted check, push, or PR edit was performed. This composition does not inherit the older `fb7ebbf` PostgreSQL/image results as current-head evidence. It is not yet re-reviewed: obtain fresh independent ordinary and Sol import review, then bind the exact published head and acquire its required hosted/current-image evidence through the normal flow.
+
+
+### Independent ordinary review
+
+`795-accepted-764-main-ordinary-luna.md`
+
+SHA-256 `18eacb70cfad1ae034145642f088cf9c94a76fa52f379a01d623a17e37070cef`
+
+# PR795 accepted-main #764 import — independent ordinary review
+
+**Verdict: CLEAR for the accepted-main import at exact candidate `eae1f9b9edad8eb8854a0b4879b62902a911d8f0`.** No blocking or non-blocking findings in this bounded composition scope.
+
+**Reviewed head:** `eae1f9b9edad8eb8854a0b4879b62902a911d8f0`
+
+## Reviewer and scope
+
+- **Model:** GPT-6 Luna, ordinary-review assignment. No platform-reported version string is available to attest.
+- **Independence:** I did not author or remediate the candidate or its imports. This context previously reviewed the source and the earlier accepted-main composition at `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`; I am transparent about that prior review. The current import was checked anew against its Git parents and source records.
+- **Parents:** local candidate `922fff5ee4ec0d5da45b2cbad0b6b70d9b31a6c9` and accepted main `3d1894ba2b28fd4d9ba40baecd96fc61a92a8c8e` (including protected #764 publication `7249244d7aa525aef5a6d029f3d1b4dd13851164`).
+- **Scope:** accepted-main imports; preservation of #631 source/test blobs and review note; the note’s machine-binding clarification and its source attribution; the imported resolved-identity contract; whether this composition invents authority or gate semantics.
+- **Guidance and evidence read:** repository `AGENTS.md`, active mission, workflow, `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/795-accepted-764-main-composition-luna.md`, and `795-machine-binding-clarification-proof.json`.
+
+## Checks and findings
+
+`HEAD` is the expected two-parent merge. Both parents are ancestors. The worktree is clean. `git diff --check 3d1894ba2b28fd4d9ba40baecd96fc61a92a8c8e..HEAD` passed.
+
+The first-parent-to-candidate diff is exactly 13 imported paths. I independently compared their Git blob IDs to accepted main `3d1894ba`; all 13 match, including `apps/api/src/database/executor.ts`, the query-ownership architecture/standards and review records, and the two executor tests. No local rewrite or hand-authored change is mixed into these imports.
+
+The five #631 API files and two timezone test files are byte-identical to the first parent `922fff5`. The first parent’s full `identity-timezones-631.md` blob is also unchanged in the candidate. The note contains the six-line machine-binding clarification already present at `922fff5`; it was not modified by this merge.
+
+I checked the clarification’s claim against its private proof. The proof binds publication `922fff5`, source `92f899dc`, and a `+6/-0` append. The recorded original prefix is preserved, and the SHA-256 of the exact appended suffix is `920a420c13c85f52a1ffde367acd4ebe96f4b3242156a8b06ce6d0bd95c29d9b`, matching the proof. The three embedded report source hashes match the corresponding private report files: composition handoff `3fff3791…`, current ordinary report `7b0b55da…`, and security report `968cf339…`. The note labels the machine-binding clarification as a statement about the already-cleared source at `92f899dc`; it does not claim that the new merge head was previously reviewed. The authentic appended reports and clarification remain source-bound; none was rewritten in this candidate.
+
+I inspected the imported identity contract in `multi-tenancy.md`, `coding-standards.md`, and `monorepo-layout.md`. Cross-organisation repository queries derive reach from the resolved identity, check any additional workspace/project ID against that reach, and apply it in the statement predicate. `forIdentity(identity)` is expressly an illustration/convention, not a claim that a universal fluent API or type wrapper exists. The import does not create a new identity-provider grant or widen `instance:admin`/`sees_all` authority. The executor import defines a connection/transaction handle helper and its tests; it adds no authorization or CI-gate behavior. These imported files are byte-identical to accepted main, and the preserved #631 patch remains limited to its reviewed UTC wall-clock corrections.
+
+**Checks actually run:** exact two-parent/ancestor checks; `git diff --check`; Git blob comparisons for all 13 imports and eight preserved PR-owned paths; SHA-256 verification of the clarification suffix and embedded report source artifacts; targeted source inspection of the identity contract and executor helper. No tests, PostgreSQL, Docker/image, browser, full suite, hosted CI, or remote PR state were checked. The historical `fb7ebbf` test and image results are not claimed as evidence for this current head.
+
+## Residuals
+
+This is a local import review only. It does not establish current-head hosted checks, image build/boot/health, merge readiness, release, or issue/stage completion. Those remain separate acceptance gates.
+
+**Conclusion:** CLEAR for the accepted-main import at exact head `eae1f9b9edad8eb8854a0b4879b62902a911d8f0`; no composition finding remains.
+
+
+### Independent security review
+
+`795-accepted-764-main-security-sol.md`
+
+SHA-256 `1bbe33169228c2020166333072e32c1de9132f043cfd5c06a21686b9c764084e`
+
+# PR795 accepted #764 main import — independent security confirmation
+
+**Verdict: CLEAR for the bounded accepted-main import at exact local candidate `eae1f9b9edad8eb8854a0b4879b62902a911d8f0`.** No blocking or non-blocking finding in this composition scope.
+
+**Reviewed head:** `eae1f9b9edad8eb8854a0b4879b62902a911d8f0`
+
+## Identity and scope
+
+- **Model dispatch:** `gpt-6-sol`, fresh independent security-review context spawned with `fork_turns=none`. This records the selector, not an independently measured serving-model version.
+- **Independence:** I did not author, direct, adjudicate, or remediate this candidate or the accepted-main import. I previously performed the independent lightweight security review of the earlier `92f899dc` composition. This new import was checked against its own exact parents; prior clearance is retained only for unchanged source.
+- **Parents:** local `922fff5ee4ec0d5da45b2cbad0b6b70d9b31a6c9` and pinned accepted main `3d1894ba2b28fd4d9ba40baecd96fc61a92a8c8e`. The earlier reviewed product source is `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`.
+- **Scope:** source and review-note conservation, exact accepted-main imports, resolved-identity query contract, scanner and decision-record preservation, and whether this composition changes security authority or gate pass/fail semantics. This is a lightweight import confirmation; it does not repeat the earlier full Sol source or CI-repair reviews.
+
+## Checks and assessment
+
+The candidate is a two-parent merge with both exact parents as ancestors; the worktree is clean. `git diff --check 3d1894ba..eae1f9b9` passed. The first-parent diff consists of exactly 13 accepted-main paths. Independent Git blob comparison found all 13 byte-identical to `3d1894ba`, including `apps/api/src/database/executor.ts`, its two tests, the query-ownership architecture/standards, `ci-cd.md`, and the #764/#782 review records. This merge contains no hand-edited imported file.
+
+The five #631 API files and two timezone integration tests are byte-identical to local parent `922fff5`; so are the entire `identity-timezones-631.md` review note, `.gitleaksignore`, and `decision-log.md`. The scanner and decision records therefore retain the exact #631 and #780 dispositions previously cleared at `92f899dc`; no new fingerprint, scanner path/rule exemption, waiver, or gate control is introduced by this merge. The current diff relative to accepted main is the same ten-path #631 delta, with its authentic note and the existing six-line binding clarification.
+
+I checked the clarification against Git, rather than treating it as a new verdict. `92f899dc..fb7ebbf` added 112 note lines only; `fb7ebbf..922fff5` added six note lines only. The complete earlier note is an unchanged prefix, and the six-line suffix SHA-256 is `920a420c13c85f52a1ffde367acd4ebe96f4b3242156a8b06ce6d0bd95c29d9b`, matching the private proof. The clarification backticks `92f899dc` as the actually reviewed source and expressly states it supplies no new verdict. It does not relabel any report as reviewing this new merge head.
+
+I inspected the accepted-main identity contract and executor helper. The contract requires cross-organisation repository reads to take resolved identity, check any additional workspace/project ID against that identity, and apply reach in the query predicate. It explicitly treats `forIdentity(identity)` as an illustration rather than a universal implemented wrapper. The new executor helper selects a supplied transaction handle or the shared database handle; it does not grant reach or authority. The imported text states `check:queries` is planned and not wired. The import does not create an identity-provider grant of `instance:admin` or `sees_all`, nor a new CI gate pass/fail case. These 13 imports are accepted-main blobs, while the clock patch remains exactly the previously reviewed UTC-wall-clock change.
+
+## Limits
+
+I ran Git ancestry, diff, exact-blob, clarification-prefix/hash, and targeted source checks only. I did not run tests, PostgreSQL, Docker/image build or boot, browser verification, hosted CI, or remote PR-head checks. Older `fb7ebbf` runtime or image evidence is not current-head acceptance. This report does not claim merge readiness, release, or issue/stage completion; those require their separate exact-head gates.
+
