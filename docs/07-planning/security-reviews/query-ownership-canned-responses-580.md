@@ -1457,3 +1457,114 @@ The first focused test attempt had one expectation mismatch after the jq project
 
 
 **Reviewed head:** `2826ac1e8b5f7e21a7d132dcc06fc35c36ea22a8`
+
+
+## Accepted #806 composition confirmation
+
+The prior38 authentic reports and original note prefix remain unchanged. These two independent bounded confirmations review the normal accepted-main composition; their stated limits remain intact.
+
+## Evidence file
+
+`canned807-a49-accepted806-ordinary-luna.md`
+
+# PR #807 — accepted #806 composition review
+
+- **Requested reviewer tier/model:** GPT-6 Luna, fresh independent ordinary-review context.
+- **Model provenance limit:** The served model fingerprint was not exposed to this context. This report does not claim a platform-verified GPT-6 Luna identity.
+- **Reviewed candidate:** `a49a63cf901fd7b01e81b08d7f0e188b97356ba0`
+- **Comparison base:** `f5d8f51c1d502b58af2e7b6b9cf01a6e01f7680e`
+- **Parents:** `fb4b49af59a05e631328316b6e418e75d3df2864` (previous publication), `33995c2af23da197f2fd9d5690717f7aeb4e9f67` (accepted #806 main)
+- **Verdict:** CLEAR for the bounded accepted-main composition and the inspected integration seams. No composition blocker found. This does not replace any review tier whose model identity must be platform-verified.
+
+## Independence and scope
+
+This is a fresh context that did not author, direct, or remediate the candidate. I read the repository workflow and review requirements, the CA-19/CA-20 contract, the accepted-main SHA, the composition proof, and the actual source and relevant seams. I retained the three independent ordinary reports and GPT-6.1 Sol report for prior reviewed source `2826ac1e8b5f7e21a7d132dcc06fc35c36ea22a8` as evidence only for their stated source and scope:
+
+- `canned807-2826-ordinary-a-delta-luna.md`
+- `canned807-2826-full-ordinary-b-luna.md`
+- `canned807-2826-full-ordinary-c-luna.md`
+- `canned807-2826-full-security-61-sol.md`
+
+The underlying full ordinary A review is `canned807-897-full-ordinary-a-luna.md`, with its fixed-host delta disposition above. These reports do not independently approve new `a49a63c` changes. The Sol report explicitly reviewed `2826ac1` and is not a security review of this composed SHA.
+
+## Composition verification
+
+Read `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/807-accepted806-composition-proof.json` and independently compared Git tree entries for the exact candidate, both parents, the base, and accepted main. Results:
+
+- The checked-out `HEAD` is the requested 40-character SHA; both parents match the proof. The worktree and index were clean at inspection.
+- The candidate tree is `7bd477134cdfa9f909fd686a0d740baf6c3c4e5d`, matching the proof.
+- All 32 proof-listed source blobs match the candidate and the previous publication. Their Git modes also match; no mode changes were found.
+- Every candidate entry outside those 32 paths exactly matches accepted main. There are no missing accepted-main entries.
+- The previous-publication and accepted-main path changes are disjoint (0 overlapping paths). No conflict-resolution delta was present.
+- `refs/remotes/origin/main` and a read-only GitHub API query both resolved to `33995c2af23da197f2fd9d5690717f7aeb4e9f67` during this review.
+
+## Product and integration seams inspected
+
+The actual composed canned-response route, reach middleware, and repository were read alongside the CA-19/CA-20 spec. GET requires `workItemKey`; middleware resolves a live item and current project reach before evaluating `work_item:read`; the list SQL repeats item/project liveness, workspace consistency, and current project reach. CRUD mutations remain constrained to the row-derived workspace and current workspace reach. The composition does not change any of these 32 source entries from the prior publication.
+
+For #806 integration, I inspected its actual changed service-calendar and SLA repository await behavior, project-reach read tests, and the existing API listener/metrics and E2E fixture seams alongside the composed sources. #806’s 20 paths changed from the common base do not overlap the publication’s 32 proof-listed source paths. The observed repository changes return awaited query results without changing the canned-response query helpers; the listener defaults and explicit fixture binding checks remain compatible with the composed calls. No seam conflict or new authority path was found by this bounded inspection.
+
+The exact two OpenAPI approved-break entries and the CI contract-check source remain in the unchanged publication scope. The retained 2826 reviews discuss the fixed `--hostname github.com`, hostile `GH_HOST` regression, exact fingerprints `37225a236da8` / `c23172869ba9`, and fail-closed classifier. This review did not rerun the checker or revalidate those source-level claims beyond confirming the publication blobs are unchanged.
+
+## GitHub state and verification limits
+
+A read-only `gh pr view 807` at review time reported PR #807 still open on base `main`, with head `fb4b49af59a05e631328316b6e418e75d3df2864`; it did not report candidate `a49a63c`. Its rollup included a failed `pull request template + security review` check and an in-progress PostgreSQL integration check, alongside cancelled/retried checks. These are not checks on `a49a63c`, and this report does not infer its readiness.
+
+Read-only Git/tree/source inspection and GitHub metadata queries only. No tests, PostgreSQL probe, build, browser, Docker, Git write, push, or PR mutation was performed. Prior hosted/author evidence for `fb4b49a` remains attributed to that SHA; in particular, the historical PostgreSQL-pending state is not asserted as current on `a49a63c`.
+
+
+## Evidence file
+
+`canned807-a49-accepted806-security-61-sol.md`
+
+# PR #807 — bounded accepted #806 composition security confirmation
+
+**Requested model:** GPT-6.1 Sol (`gpt-6.1-sol`).
+**Model provenance limit:** The assignment explicitly requested `gpt-6.1-sol`; this context exposes no served model fingerprint. This report does not claim a separately platform-verified served model identity.
+**Role/context:** Fresh independent bounded security reviewer, `/root/canned807_a49_accepted806_security_sol`.
+**Reviewed head:** a49a63cf901fd7b01e81b08d7f0e188b97356ba0
+**Comparison base:** f5d8f51c1d502b58af2e7b6b9cf01a6e01f7680e
+**Parents:** fb4b49af59a05e631328316b6e418e75d3df2864 (prior publication), 33995c2af23da197f2fd9d5690717f7aeb4e9f67 (protected accepted main, #806).
+**Tree:** 7bd477134cdfa9f909fd686a0d740baf6c3c4e5d
+**Worktree:** /Users/heinthura/.codex/worktrees/canned-response-ca19-reach/Ticketing.v2
+
+## Verdict and independence
+
+**CLEAR — bounded current exact-head composition security confirmation.** No blocking or non-blocking finding identified in this scope. The accepted-main composition preserves the previously reviewed canned-response and contract-gate source and introduces no new authority path or gate weakening at the inspected integration seams. This is current confirmation of `a49a63c`, not a claim that the old full review reviewed this new head, and not a new full review of all accepted #806 implementation.
+
+I did not author, direct, remediate, or perform ordinary review of the candidate. I received a bounded read-only review assignment and independently inspected actual Git objects and source. No subagent was used. Read the supplied repository instructions, workflow, provider adapter, active mission, status/decision records, CA-19/CA-20, and relevant API-versioning/CI contracts. Read the fresh bounded ordinary composition CLEAR report `canned807-a49-accepted806-ordinary-luna.md` before this security confirmation.
+
+## Composition and retained full coverage
+
+Read `807-accepted806-composition-proof.json` and independently recomputed the composition using recursive `git ls-tree -rz` entries, including modes and object IDs, for candidate, both parents, comparison base, and previously fully reviewed source `2826ac1e8b5f7e21a7d132dcc06fc35c36ea22a8`.
+
+- Actual HEAD, both parents, and tree match the exact objects above; worktree and index were clean.
+- The proof's 32 own paths equal the actual candidate-versus-accepted-main changed-path set. Every proof blob matches its candidate object ID. Every own entry has exactly the same mode/type/blob as the prior publication.
+- Every other entry, including absence/presence, exactly equals accepted main. All 20 accepted-main changed paths are disjoint from the publication's changed paths relative to the comparison base. Combined conflict diff is empty; no resolution delta was found.
+- The complete `2826ac1` to `fb4b49a` net difference is the added designated review note; the 31 previously reviewed source entries are conserved. This composition is assessed as a composition, not incorrectly classified as a review-record-only merge delta.
+- A read-only explicit-host GitHub query independently resolved main to `33995c2af23da197f2fd9d5690717f7aeb4e9f67` during review.
+
+Retain the authentic full security report `canned807-2826-full-security-61-sol.md` for its exact `2826ac1` source/scope. I read it in full and verified its complete 9,514 bytes occur unchanged in the designated committed note, itself unchanged between publication and candidate. Its SHA-256 is `3ba45ac84119a56f5c8f5323ffe5068340866d064a5882f59b6b93128d8e9bf3`. The three prior ordinary publication reports also occur byte-for-byte in that note. This verifies publication conservation; dispatch authenticity is retained from the conductor's supplied provenance rather than inferred from a hash alone. The prior full verdict is not relabelled as a review of `a49a63c`.
+
+## Actual security seams inspected
+
+Read the actual canned-response route/schema/policy, reach middleware, repository, CRUD controllers, web fetcher and composer selection/send flow. The list requires the exact `workItemKey`, resolves a live item and project with matching workspace, requires current SQL project reach, then evaluates registered `work_item:read` on row-derived work-item/project/workspace facts. The list SQL repeats key correlation, item/project liveness, both workspace equalities and current reach. CRUD remains row/workspace constrained with workspace-settings capability middleware and identity-filtered statements. No workspace-only list fallback or request-driven reassignment of a stored response's workspace was introduced.
+
+Read actual shared `has-project-reach`, credential-scope projection, identity resolution and evaluator branches, and current SQL reach helpers. The caller identity carries the real credential; disabled/mismatched-owner keys fail identity resolution; malformed or absent stored scopes become empty capability sets. The canned list does not defer key capability evaluation. `can()` intersects owner project authority with the stored key subset, so reach alone grants no capability and a broad key cannot exceed its owner's project role. These shared helpers are unchanged by the composition.
+
+The composer query/cache key uses the exact item key. Selecting a response changes the editable draft and only an allowed default visibility; the create-comment mutation remains in the explicit submit function. This preserves CA-20 by source inspection only.
+
+Inspected accepted #806's label repository use of the same current project/workspace reach helpers, its isolated path set, and the SLA/calendar awaited-result changes and their awaiting callers. None modifies the canned-response source, shared identity/reach contracts, API bootstrap, or contract checker. The selected SLA/calendar predicates remain workspace constrained; the import introduces no competing helper signature or builder-dependent call at the inspected seams. Accepted label family semantics and its prior reviews are not reopened as a new full review here.
+
+Read current API hostname propagation, observability runtime, metrics bind-address confirmation, supervisor loopback lease, and disposable PostgreSQL binding assertion/fixture start. Explicit fixture host binds are checked; omitted production listener defaults and metrics authentication remain conserved. No #806 collision or listener/fixture authority change was found.
+
+Read the owner-approved release-classification decision entry, owning API/CI contract text, exact break register, classifier/runner/current gate application, workflow token step, and hostile-GH_HOST regression source. The unchanged classifier pins `gh api --hostname github.com` and an origin-derived bounded github.com repository endpoint, validates paginated array/record metadata, distinguishes draft/prerelease from stable releases, and fails closed on failed/throwing/malformed lookup and bounded-output overflow. Only the two exact #807 GET /canned-responses findings are registered: new-required-request-parameter `37225a236da8`, request-parameter-removed `c23172869ba9`. Exact matching, NEW-relative-to-main filtering and unmatched-new-entry failure remain; workflow token exposure stays in the contents-read contract step. No wildcard, release mutation, new release path or gate waiver was introduced.
+
+## Execution and acceptance limits
+
+Executed only read-only Git/source inspections, an independent Python Git-entry comparison/publication-byte comparison, read-only GitHub metadata queries, and exclusive creation of this private report. No test suite, checker, PostgreSQL, Docker, image build/boot, browser, checkout, Git write, push, PR mutation, release, deployment, or additional reviewer was run. An initial guessed spec filename/proof filename failed; the actual comments-and-activity spec and `807-accepted806-composition-proof.json` were subsequently read. No result is inferred from those failed lookups.
+
+Read-only PR metadata reported remote #807 still at `fb4b49af59a05e631328316b6e418e75d3df2864`, with PostgreSQL integration in progress and a failed PR-template/security-review check at that remote head. These are historical-to-this-candidate observations, not checks or runtime evidence on local `a49a63c`. Required exact-head CI and applicable runtime/image/browser evidence remain conductor-owned gates. BROWSER VERIFICATION: BLOCKED by this bounded no-runtime review assignment. No current `a49a63c` runtime pass, merge readiness, stage completion, signed release, SIT/recovery, or final acceptance is claimed.
+
+
+**Reviewed head:** `a49a63cf901fd7b01e81b08d7f0e188b97356ba0`
