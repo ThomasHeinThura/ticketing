@@ -275,6 +275,19 @@ pull-request time. The script fails if either run reports a skipped test, becaus
 run would otherwise read as green. Without `TASKDESK_REAL_DOCKER=1` the test file reports
 every test as skipped, so it is inert in the fast unit run.
 
+The same required browser job also builds the checked-out event candidate's Dockerfile
+locally after the deploy-helper test, then starts it with the canonical Postgres 18 and
+Valkey Compose services.
+The smoke verifies the source journal's migration count was applied, the application runs
+under its non-root UID, the image healthcheck is healthy, and the public live and ready
+probes pass. It records the candidate and checkout SHAs, local image ID/platform, and
+sanitized proof in a short-lived workflow artifact. It performs no registry login, push,
+deployment, or SIT acceptance. Its isolated Compose project and uniquely named network have
+no published ports; cleanup removes only its own containers, volumes, network, local image
+tag, temporary environment file and source context. The hosted runner platform is tested
+here; the Release workflow remains responsible for its separately published
+multi-architecture artifact.
+
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
 The **security review** is a required section of `.github/pull_request_template.md`
@@ -710,8 +723,9 @@ probably the same. By digest, they are identical by construction.
 
 Explicitly, because the boundary matters:
 
-- **Does not run migrations.** The application applies them at start, under an advisory
-  lock.
+- **Does not run migrations against shared or persistent infrastructure.** The required
+  candidate-image smoke applies migrations only to its disposable Postgres 18 service;
+  integration tests and final SIT acceptance remain separate.
 - **Does not seed data.**
 - **Does not provision infrastructure.**
 - **Does not hold production credentials.**
