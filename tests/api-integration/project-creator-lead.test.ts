@@ -23,6 +23,7 @@ import {
   PROJECT_CREATOR_ORIGIN,
   PROJECT_LEAD_ROLE_KEY,
   revokeProjectCreatorGrantsForMember,
+  revokeProjectCreatorGrantsForProject,
 } from "../../apps/api/src/project/project-creator-grant";
 import deleteAccountData from "../../apps/api/src/user/controllers/delete-account-data";
 import { csrfRequest } from "./helpers/csrf";
@@ -659,6 +660,12 @@ describe("a project's creator holds a project-lead membership", () => {
     const doomed = await createProject(world, manager);
     const kept = await createProject(world, manager);
     const personId = await personIdOf(manager.user.id);
+    expect(
+      await db.transaction((tx) =>
+        revokeProjectCreatorGrantsForProject(tx, randomUUID(), doomed.id),
+      ),
+    ).toBe(0);
+    expect((await creatorGrants(personId, doomed.id))[0]?.revokedAt).toBeNull();
     const deleted = await call(
       world.app,
       world.owner.cookie,
@@ -680,6 +687,40 @@ describe("a project's creator holds a project-lead membership", () => {
           "project_deleted",
       ),
     ).toHaveLength(1);
+  });
+
+  it("creator-grant revocation uses the caller transaction and rolls back audit and projection", async () => {
+    const world = await newWorld();
+    const manager = await addManager(world);
+    const project = await createProject(world, manager);
+    const personId = await personIdOf(manager.user.id);
+    const rollback = new Error("rollback creator-grant revoke");
+
+    await expect(
+      db.transaction(async (tx) => {
+        expect(
+          await revokeProjectCreatorGrantsForProject(
+            tx,
+            world.workspaceId,
+            project.id,
+          ),
+        ).toBe(1);
+        expect(
+          (await creatorGrants(personId, project.id))[0]?.revokedAt,
+        ).toBeNull();
+        throw rollback;
+      }),
+    ).rejects.toBe(rollback);
+
+    expect(
+      (await creatorGrants(personId, project.id))[0]?.revokedAt,
+    ).toBeNull();
+    expect(await projectMemberships(personId, project.id)).toHaveLength(1);
+    expect(
+      (await auditRows(project.id)).filter(
+        (row) => (row.after as { granted?: boolean } | null)?.granted === false,
+      ),
+    ).toEqual([]);
   });
 
   it("deleting the workspace removes creator grants and memberships (#732 helper) without touching other workspaces", async () => {
