@@ -4153,3 +4153,119 @@ No unit or integration tests were executed in this review. No PostgreSQL, Docker
 ## Limits and adverse evidence
 
 The public author report records an initial default-listener authentication failure before reset, then an owned disposable PostgreSQL reproduction of 8 failures/61 passes across 69 tests, followed by 71 passes in five files including the two new cases. These are attributed author receipts, not my reruns. The original hosted eight-failure record remains adverse evidence until applicable current-head hosted verification clears it; a focused local pass cannot override required CI. Required exact-head checks and applicable image/runtime/browser gates remain with the conductor. Existing full-review residuals remain. No merge authority, gate waiver, SIT acceptance, whole-580 or stage-completion claim is made.
+
+## Current accepted-main composition confirmation
+
+**Reviewed head:** `f911ae1a500c99dde543c5623a326692109bf280`
+
+The following authentic preparation and independent ordinary/security reports retain their own source, depth, commands and limits. Prior full product and fixture reviews remain scoped to their unchanged inputs. Root publishes these reports and is not a reviewer. Current hosted runtime remains pending. Original note bytes are preserved.
+
+### Retained report notification785-accepted790-main-preparation-luna.md
+
+SHA-256 `1dd2cb96c362657af2e7b6b8686aec5f447c072a06c06ff645057691b057679c`
+
+# #785 accepted-main composition preparation — GPT-6 Luna
+
+**Prepared merge:** `f911ae1a500c99dde543c5623a326692109bf280`
+**First parent / fixture-repaired #785 source:** `61cf624c0f0ace873ec6e85ee6c0dc4009dc8bb3`
+**Second parent / accepted main (#790):** `3d43b717b353c6cc0f5c098a0ce51b2e2a2d41b5`
+**Original red CI candidate:** `81b5bef0fb4893e37a1544e836b7d4f72d13fd2a`
+**Comparison base:** `1a34e5792ee9c42b15004b032e3c5410e5def44e`
+
+## Composition evidence
+
+The starting worktree was clean at `61cf624…`, the exact source requested. I ran the ordinary merge command `git merge --no-ff --no-edit 3d43b717b353c6cc0f5c098a0ce51b2e2a2d41b5`; it completed without conflicts. The resulting commit has exactly the requested parents `[61cf624…, 3d43b717…]`. Its worktree is clean.
+
+A private path/blob manifest records each path's mode and object id without copying file contents. It confirms:
+
+- The original #785 candidate contains 69 base-to-candidate change records. The later fixture/evidence source adds six change records relative to `81b5…` (one redacted review note plus five test files). The merged tree retains every source path's exact mode and blob. Because rename detection differs across these revisions, the manifest separately records the full 75-path no-rename union and exact object comparisons.
+- The 23 paths changed on accepted main from the comparison base are all preserved exactly. Those accepted-main changes do not overlap the #785 changed path set. Every other accepted-main path outside that set also matches accepted main byte-for-byte and mode-for-mode; there are zero mismatches.
+- The accepted-main parent has the expected tree `3c2f9fd9324d240cafe8ea5e649ba57ada2c74b6` recorded by the conductor.
+- The redacted public review copy at `docs/07-planning/security-reviews/query-ownership-notifications-580.md` has the same blob and mode at the source and merged heads. The report bytes, including their original prefix, are conserved. I did not open or print the private credential-bearing author report; no such raw report was added or published.
+
+The exact per-path conservation manifest is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/notification785-accepted790-main-conservation.json`, mode 0600, SHA-256 `…` (the digest is recorded after this report is written). It contains paths, modes and Git blob ids only, not source or report text.
+
+## Current integration seam and limits
+
+The accepted #790 side extracts authorization lookup/repository seams, including `apps/api/src/utils/access-lookups.repository.ts` and `apps/api/src/workspace/workspace-admin-reach.repository.ts`; existing utility and workspace-admin callers import those repositories. The #785 candidate separately owns `apps/api/src/database/repositories/identity-scope.repository.ts`, which is consumed by workflow, audit and notification reach repositories. Git's exact changed-path comparison found no #785/#790 path overlap, and the merge preserves both sides' blobs. This is a composition/path-conservation finding, not a semantic code review.
+
+No test, typecheck, build, CI, PostgreSQL, Docker, browser or runtime command was run on the composed head. The earlier 71/71 focused result belongs to pre-merge `cb1c37a…` and is not transferred to this head. Remote PR head `81b5…` remains the known red hosted candidate; this preparation does not update it, publish status, claim readiness, or imply current checks. No push, PR update, or merge into main was performed.
+
+
+## Evidence digest addendum
+
+The conservation manifest SHA-256 is `cd4032540513910ad68669bc2fee6674a7f0cf56a54dad0eb924ec2c8f28db60`.
+
+### Retained report notification785-accepted790-ordinary-luna.md
+
+SHA-256 `52d369a2b312aaa8232fa5da3941d211f6950584d2089882a8b3e818d0764698`
+
+# #785 accepted-main composition review — GPT-6 Luna
+
+**Verdict: CLEAR** for this bounded ordinary review of the #785 composition with accepted #790/main. This is not CI, full integration, image, browser, security-review, or phase-finalizer clearance.
+
+**Exact candidate:** `f911ae1a500c99dde543c5623a326692109bf280`  
+**Parents:** first `61cf624c0f0ace873ec6e85ee6c0dc4009dc8bb3` (#785 fixture/evidence source); second `3d43b717b353c6cc0f5c098a0ce51b2e2a2d41b5` (accepted #790/main)  
+**Tree:** `ddadf95c87aa1d655a486fa842b19694836159ca`  
+**Independence:** Fresh review context; did not author, direct, or remediate the candidate. The author’s private credential-bearing report was not opened. The redacted public copy and preparation note were read as labelled inputs and independently checked against the current tree.
+
+## Checks performed
+
+- Read `AGENTS.md`, the required workflow and operating guide, current status context, query-ownership decision entry, and the accepted architecture rules for repository ownership, tenancy scope, and reach.
+- Verified `HEAD`, both parents, and tree directly. `git diff --check 61cf624c0f0ace873ec6e85ee6c0dc4009dc8bb3...HEAD` passed. The actual no-rename source delta from the first parent contains 23 changed paths; this review does not repeat the original 69-record count as a current path count.
+- Compared the candidate tree to both parents. The candidate is a normal merge with no merge-resolution edits relative to either parent. Accepted #790’s source and the #785 source coexist in the tree; no shared changed path was identified in the composition preparation manifest.
+- Inspected the extracted `access-lookups.repository.ts` and `workspace-admin-reach.repository.ts`, their authorization/orchestration callers, and the new repository integration tests. The accepted reach helper still uses the passed transaction executor for its statements. The orchestration retains the legacy role decision, system-only reach-carrier checks, `system_backfill` provenance, `sees_all` projection, creator-grant revocation, and audit in the caller’s transaction. The utility extractions preserve the inspected predicates and keep allow/deny decisions and shadow-evidence calls in their helpers.
+- Ran `pnpm --filter @taskdesk/api typecheck`: passed (all configured TypeScript projects).
+- Did not run PostgreSQL integration tests, browser tests, Docker, build, CI, or external actions. The earlier fixture-repair result (5 files, 71 tests) is pre-composition evidence and is not attributed to this SHA. No review claim is made about currently hosted checks.
+
+## Findings
+
+No blocking or non-blocking defect found in the accepted-main composition seam examined. The merge preserves the #785 notification/workflow/identity repository changes alongside the accepted #790 utility and workspace-admin reach repository changes. The review is bounded to this composition and does not independently re-review unchanged feature behavior across the complete 73-path current-main diff.
+
+### Retained report notification785-accepted790-security-61-sol.md
+
+SHA-256 `ca9f31d15f0c96c19326814a1639ba1052929b8f1337efb83c5a11e2a7317275`
+
+# #785 accepted #790 composition — independent security confirmation
+
+**Model:** GPT-6.1 Sol (dispatch role; no separately verifiable serving-version attestation is exposed to this context).
+**Context:** /root/notification785_accepted790_security_sol.
+**Role and independence:** Fresh independent security reviewer; did not author, direct, advise on, remediate, or ordinarily review the candidate.
+**Reviewed head:** f911ae1a500c99dde543c5623a326692109bf280
+**Tree:** ddadf95c87aa1d655a486fa842b19694836159ca
+**Comparison bases:** first parent 61cf624c0f0ace873ec6e85ee6c0dc4009dc8bb3 (reviewed fixture/publication source), second parent 3d43b717b353c6cc0f5c098a0ce51b2e2a2d41b5 (accepted #790/main). Shared integration base: 1a34e5792ee9c42b15004b032e3c5410e5def44e.
+**Verdict:** CLEAR for this bounded exact-head composition security confirmation. No blocking or non-blocking defect found in the inspected composition seam. This is source-security clearance, not merge readiness or runtime acceptance.
+
+## Depth and retained coverage
+
+Read AGENTS, workflow review/evidence-reuse rules, active mission, CLAUDE, coding standards, the relevant canonical reach and WF-9 contracts, preparation/conservation evidence, fresh ordinary CLEAR, the authentic prior full security report at 472ca631db2faf0b34945da221675720e3e2e503, and fixture security delta report at cb1c37a358b18eaf3cdb91739effa377d8794eda. Inspected the committed public-safe fixture/reviewer report excerpts; the credential-bearing private author original was never opened.
+
+This pass examines the merge and actual #790 authorization-helper interactions with #785 identity scope, workflow, audit, and inbox. It retains the unchanged full source and fixture security assessments at their labelled sources rather than pretending to rerun their full scope. The fresh ordinary report was CLEAR before this security dispatch; its actual API typecheck is attributed evidence, not my rerun.
+
+## Independent conservation checks
+
+Verified exact HEAD, tree, ordered parents and clean worktree. Independently constructed the expected complete tree by applying the first-parent source's changed paths (including deletions) to accepted main, then compared every mode/blob/path with the candidate. Exact equality passed: 75 source no-rename paths, 23 accepted-main paths, zero changed-path overlap. Current net delta versus accepted main is 73 default Git paths / 75 no-rename paths. The merge contains no extra resolution edits or unaccepted imported path. All #785 source/test inputs and all other accepted-main inputs are conserved.
+
+The original full-security note remains a byte-identical 446043-byte prefix of the current designated note. Raw history from cb1c37 to 61cf624 shows only the own-note 100644 modification. Prior fixture security confirmation records that fixture source's five test changes and retained product source. The composition does not change those fixtures or the separately reviewed public redaction. I do not relabel earlier tests as current-head runtime evidence.
+
+## Security assessment
+
+The accepted access lookup extraction preserves actual current-role and enabled/unexpired-key facts; key verification still checks the current owner's ban/person-active state and projects its stored permissions. Workspace role resolution continues to reject absent, duplicate and malformed legacy membership rows. The resolver's pure genuine-built-in predicate is unchanged by the extraction; it does not mint authority from an arbitrary custom role name.
+
+The workspace-admin reach repository accepts the caller's Executor for the transactional reads, row locks and writes. Orchestration still requires staff, an unambiguous owner/genuine built-in admin, and a system carrier role. Carrier capabilities remain empty; direct_origin is system_backfill; explicit admin-origin grants are preserved. Projection, project-creator-grant revocation and reach audit remain on the same caller transaction with person-before-audit lock ordering. These are consistent with the canonical scoped workspace sees_all predicate consumed by #785; no IdP or customer privilege path is added by composition.
+
+The #785 canonical SQL helper independently revalidates current staff instance-admin identity, scoped role shape/workspace anchor, and exactly-one legacy membership evidence. Workflow reads retain current workspace/project reach and WF-9 complete-project refusal. Audit reads retain unconditional workspace binding and correlated project reach, with current administrator validation for instance reads. Inbox identity is resolved on its transaction with key capability clamping; native policy retains person binding, supported resource/event classes, current reach and customer visibility. The accepted helper moves do not bypass these SQL predicates or substitute a requested workspace ID for identity scope. No active producer or outbound worker is introduced by this merge.
+
+## Actual verification and limits
+
+- Read-only Git status/show/diff/log/ls-tree and Python subprocess mode/blob/path comparisons; complete expected-tree conservation passed. git diff --check HEAD^1 HEAD passed.
+- pnpm exec vitest run --config vitest.config.ts ../../tests/api/notification/native-inbox-reach.test.ts ../../tests/api/permissions/resolve-identity.test.ts from apps/api: **2 files / 65 tests passed**, exit 0. Pure unit evidence only.
+- gh pr view 785 --json headRefOid,state: OPEN at 81b5bef0fb4893e37a1544e836b7d4f72d13fd2a. Its hosted state does not establish checks on this local merge.
+- Two initial conservation scripts asserted incorrect inventory assumptions (union retained removed paths; then subdirectory-relative ls-tree output). Corrected to full-tree paths and explicit deletions; final complete-tree comparison passed. These diagnostic script failures are not product failures.
+
+No PostgreSQL, Docker, browser, build, CI execution, push, publication or source edits were performed. Only this private mode-0600 report was written. Original hosted adverse evidence (8 failed tests in 5 files; 3195/212 reported suite context) remains with its original source. The author's 71 passing fixture tests are pre-composition evidence, not current-runtime acceptance. Required exact-head checks and applicable image/boot/health/browser/runtime proofs remain with the conductor.
+
+## Residuals
+
+Retained N1: held native work_item producer key-addressed rows can pass fact resolution but fail final ID-only owner SQL, a fail-closed availability gap. This confirmation does not authorize that producer or claim the key form works. No whole-feature, whole-580, SIT, stage completion, gate waiver or merge authorization is asserted.
+
