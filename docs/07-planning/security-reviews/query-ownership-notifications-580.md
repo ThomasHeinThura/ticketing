@@ -2569,3 +2569,117 @@ I ran `git diff --check` on the exact base/head (pass), inspected the exact five
 
 The newly changed PostgreSQL integration cases remain unexecuted in the supplied evidence. A real current-head hosted PostgreSQL run, image/runtime proof, and all required exact-head GitHub checks are still necessary before merge. No runtime success is asserted here.
 
+
+
+## Canonical fixture restoration and accepted image-tooling import — 2026-10-16
+
+**Reviewed head:** `4381fdb21b3a532bdb569c7f80f158e787031c54`
+
+Actual prior9053 full PostgreSQL run38847096830/job116799987492 FAILED206 files/2,950 tests:205 files/2,949 tests passed; all12 OIDC-JIT cases passed, including the repaired tampered-role login denial. The sole new failure was mapping-admin legal proof issuance after restoring Customer capabilities to an empty list. The compiled canonical Customer role has rank10 and seven nonempty capabilities, so preflight correctly rejected that still-invalid baseline422. No denial expectation or production guard is relaxed. The test now shares one compiled canonical Customer fixture helper between initial seed and restoration and asserts persisted canonical fields before minting the legal proof. All corruption/read/write denial, no-side-effect and proof-issued/unconsumed assertions remain.
+
+Production apps/packages remain byte-identical to full-reviewed ded9; that two-ordinary-plus-fresh-full-Sol auth clearance retains its scope. Current ordinary B and current independent Sol clear the narrower fixture repair and accepted-main composition at4381. Root diagnosis and author handoff are non-approving records. Four raw records are appended unchanged below; they are not four approvals. B's dated16 original was copied byteexact with location/SHA256 receipt. Source changes outside the fixture are the accepted main09dd5acf image tooling imports: five paths exact main plus ci-cd documentation composing accepted image text with the exact two pre-existing #580 planned-not-wired hunks. The initial all-blob-equality assertion rejected that composed document; explicit retained-hunk equality then verified it. No source history was rewritten.
+
+This current source includes the accepted real shipping-image helper; new exact-publication full CI must produce its own application image, migrations, non-root, network/health/cleanup artifact and actual PostgreSQL result. Earlier main802 image proof is not transferred to this product. #764 remains a prerequisite, #780 is accepted; provider/owner holds are unchanged. No runtime acceptance, feature/phase closure, signed release or laptop SIT is claimed. Root directed repair/composition and is not independent. Original selectors: ordinary gpt-6-luna, Sol gpt-6-sol, fresh fork_turns=none; serving-version introspection remains unavailable.
+
+### Record 1
+
+# Mapping-administration canonical baseline restoration — conductor diagnosis
+
+This is root/conductor diagnosis and repair direction, not independent review or approval.
+
+Published head: `9053bce29757315258b631e485df7e27c75b962b`; production source `ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e`.
+
+Actual full PostgreSQL run38847096830/job116799987492 completed FAILURE04:04:21UTC:206 files/2,950 tests,205 files/2,949 tests passed. The repeat-login tampered-role regression passed. The sole failure is `oidc-group-mapping-admin.test.ts` capability-corruption test: `issueProof` at226 expected200 and got422, called at457.
+
+The test intentionally corrupts Customer capabilities to instance:admin after minting a legal enable proof; it correctly observes read503, write422 and proof left issued/unconsumed. At451 it then attempts to restore the role with capabilities:[] before minting an edit proof. The compiled canonical Customer definition has rank10 and seven nonempty capabilities (packages/permissions/src/roles.ts:196,263). The new reviewed shared role predicate therefore correctly rejects that still-noncanonical empty-capability baseline, making step-up preflight422. The test never reaches its later malformed-object corruption case.
+
+Repair criterion: restore the actual canonical compiled Customer fixture before each legal proof issuance, using one fixture definition/helper shared by initial seed and valid restoration; verify its persisted canonical shape non-vacuously. Audit all restore sites in this file and affected fixture builders, preserving intentional invalid-role and agent cases. Retain all read/write rejection, proof-issued/unconsumed, no-write and valid-positive assertions. Do not change expected challenge200 to422 or relax production validation. Production source must remain byte-identical to reviewed ded9. Then current ordinary test delta and independent Sol confirmation, authentic evidence publication and real current-head PostgreSQL are still required.
+
+
+### Record 2
+
+# #785 canonical Customer fixture restoration
+
+**Role:** bounded test-fixture repair; no independent review or runtime approval.  
+**Source:** `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, commit `4381fdb21b3a532bdb569c7f80f158e787031c54`.  
+**Base:** merged worktree head `9a4fcea94e16ed579fed00ec279bc6a550e1afac`.  
+**Hosted evidence prompting this repair:** full PostgreSQL job `116799987492`, published head `9053`, 206 files / 2,950 tests with 2,949 passing and one failure at `oidc-group-mapping-admin.test.ts:457` (`issueProof` expected 200, got 422). The tampered-role repeat-login test passed on that run. Existing raw evidence and root adjudication were left untouched.
+
+## Change
+
+The integration test had correctly corrupted the persisted built-in Customer role, confirmed read/write denial and unconsumed proof, then “restored” only `capabilities: []`. The built-in role has rank 10 and a nonempty canonical capability list, so the role was still invalid before the intended legal edit proof was minted.
+
+In the single affected file, `canonicalCustomerRoleValues()` now supplies scope, null workspace, key, rank, exact compiled capabilities, system status, and noneditable status. The initial seed and the one valid restoration both use this same definition. Immediately after restoration and before `issueProof`, `expectCanonicalCustomerRole()` rereads and checks every canonical role field. Intentional invalid-role mutations and the assertions for read denial, write denial, issued-but-unconsumed proof, no create side effects, unchanged mapping, grant, config version, and provisioning-event rows remain unchanged.
+
+## Validation
+
+On `4381fdb21b3a532bdb569c7f80f158e787031c54`:
+
+- `pnpm exec biome check --write tests/api-integration/identity/oidc-group-mapping-admin.test.ts` — passed, no changes needed.
+- `pnpm --filter @taskdesk/api typecheck` — all five configured TypeScript projects passed.
+- `git diff --check` — passed before commit.
+- Worktree clean after commit.
+
+No unit or integration tests were run for this fixture-only change; in particular no PostgreSQL, Docker, or browser runtime was invoked. The hosted PostgreSQL rerun is still needed to prove the test result. No production code changed, no push was made, and no review note was edited.
+
+
+### Record 3
+
+# #785 canonical Customer role restoration — ordinary delta confirmation
+
+**Role:** Fresh independent ordinary review of the narrow current delta; did not author, direct, or remediate it.  
+**Model provenance:** GPT-6 Luna tier was assigned. Runtime model attestation is unavailable here; the report does not claim verified runtime model identity.  
+**Candidate:** `4381fdb21b3a532bdb569c7f80f158e787031c54`  
+**Comparison base:** `9053bce2` (the candidate's first parent before the accepted-main merge and fixture repair).  
+**Previously reviewed production fix:** `ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e`  
+**Scope:** Full current delta, production-tree equality to the reviewed fix, and the Customer role setup/restoration invariant in the changed fixture.
+
+## Verdict
+
+**CLEAR for the current delta; no findings.** The production tree under `apps/api` and `packages` is byte-identical to the previously reviewed production fix. Relative to that fix, the only code/test change is `tests/api-integration/identity/oidc-group-mapping-admin.test.ts`.
+
+The fixture now gets role scope, key, rank, and capabilities from `BUILT_IN_ROLES.customer`, and supplies the required canonical system/noneditable flags and global workspace. Both initial seed and restoration use the same helper. Before issuing a valid step-up proof after the negative malformed-role cases, it reads back and asserts the complete persisted canonical shape. This addresses the hosted failure caused by restoring `capabilities: []` and then attempting a legal proof: that row is now correctly rejected by the production validator. Existing corruption cases and their expected refusal/step-up non-consumption assertions remain.
+
+The current tree also contains the merge of accepted main commit `09dd5acf9b66579f6f1bb89622fac9ddbd7de1b6`, including its shipping-image CI work. I inspected the full comparison diff: those workflow/script/spec changes are imported from that accepted-main merge; the scoped new code delta over the prior reviewed production fix remains the one integration fixture. No production or permission package semantics changed in this candidate.
+
+## Checks and evidence
+
+- `git diff --quiet ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e 4381fdb21b3a532bdb569c7f80f158e787031c54 -- apps/api packages` — passed; no production-tree delta.
+- `pnpm exec biome check tests/api-integration/identity/oidc-group-mapping-admin.test.ts` — passed; one file checked.
+- `git diff --check 9053bce2 4381fdb21b3a532bdb569c7f80f158e787031c54 -- tests/api-integration/identity/oidc-group-mapping-admin.test.ts` — passed.
+- Reviewed the complete current diff against `9053bce2`, the fixture diff, and the assertions around canonical restoration and step-up proof issuance.
+
+The conductor's supplied run summary reports PostgreSQL job `116799987492` on publication `9053`: 2,949 of 2,950 tests passed; all 12 OIDC JIT tests passed, and the sole failure was the mapping-admin restoration/proof case this fixture change addresses. I did not inspect the raw hosted log directly. The PostgreSQL suite has not yet been rerun on `4381fdb21b3a532bdb569c7f80f158e787031c54`; this report does not claim current-candidate integration success. No local PostgreSQL, Docker, or browser run was performed.
+
+This confirms only the narrow fixture delta. The prior ordinary and full Sol reviews of the unchanged production fix remain separate evidence; the current hosted image proof and PostgreSQL rerun are still pending.
+
+
+### Record 4
+
+# #785 canonical Customer fixture restoration — current-head security delta confirmation
+
+**Role:** Fresh independent GPT-6 Sol security reviewer, `fork_turns=none`. I did not author, direct, remediate, or adjudicate this delta. The conductor, adjudicator, fixer, and ordinary reviewer are separate contexts and are not counted as this review. No platform model-version attestation was available.  
+**Reviewed head:** 4381fdb21b3a532bdb569c7f80f158e787031c54  
+**Comparison:** production-auth review head ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e; published prior hosted-run head 9053bce29757315258b631e485df7e27c75b962b; accepted-main import 09dd5acf9b66579f6f1bb89622fac9ddbd7de1b6.  
+**Verdict:** CLEAR for the exact-head security delta. No blocking or non-blocking findings in this candidate-specific delta. The original full Sol review of unchanged production authentication source remains separate and unchanged. This does not clear current-head runtime or GitHub gates.
+
+## Scope and findings
+
+I read the prior full security report, prior two ordinary reports, the hosted-failure diagnosis, the fixer handoff, the current ordinary delta CLEAR, the owning IP-2/IP-3/IP-22/IP-27 and Customer portal contracts, and the complete current bounded diff. I independently inspected the prior hosted PostgreSQL log's failure summary and OIDC JIT result lines, the changed mapping-admin test around both legal proof steps and all intentional corruption cases, the compiled Customer definition, and the accepted-main CI/documentation import.
+
+`git diff --quiet ded9... 4381... -- apps/api packages` passed: the production API and permission/package trees are byte-identical to the full-reviewed ded9 source. Thus selected Entra connection/immutable subject binding, admission, role locking, own-source grant retirement/projection, denial before session creation, and Customer request authority remain exactly within the original full review's source coverage. Relative to 9053, the only changed source or test file is `tests/api-integration/identity/oidc-group-mapping-admin.test.ts`.
+
+The new `canonicalCustomerRoleValues()` uses the compiled Customer scope, key, rank and exact capability list, plus global/null workspace, system and noneditable fields. Both initial seed and restoration use it. Before the second legal `issueProof`, the test reads back and checks those persisted fields. The test still corrupts capabilities to `instance:admin` and checks mapping read 503, update 422 and an issued/unconsumed proof; it then restores the valid role, issues the legal edit proof, corrupts capabilities again, and retains the later negative and no-side-effect assertions. The repair does not change the expected 200 proof, suppress denial, or modify production validation. It directly addresses the prior test's restoration to `capabilities: []`, which remained invalid under the canonical role predicate.
+
+The prior hosted log `785-pg-9053bce2.log` reports 206 files/2,950 tests, 205 files/2,949 passing, all 12 OIDC JIT tests passing (including tampered Customer repeat denial), and one mapping-admin failure: `issueProof` expected 200 but received 422 at the old line 457. Those results belong to 9053, not 4381.
+
+The accepted-main merge brought the shipping-image workflow, script, script tests, and associated documentation. The five identified files compare byte-identically to accepted main 09dd on the current head. `ci-cd.md` is a composed file retaining the existing #580 planned-not-wired text while importing the accepted image-proof documentation. No candidate-specific CI authority or image-proof pass/fail semantics were newly changed by the fixture repair; the imported helper already had its own accepted-main review. The prior query-ownership review record also remains part of this branch history.
+
+## Checks actually run and limits
+
+I checked exact HEAD and a clean worktree; inspected the current diff and relevant test/contract source; verified production-tree equality and accepted-main equality for the five imported files; ran `git diff --check` limited to the candidate's source/test delta (pass); and inspected the prior hosted log's targeted result lines. I did not run unit, PostgreSQL, Docker, browser, or hosted CI tests. The fixer reports five-project API typecheck and Biome pass; the ordinary reviewer reports Biome one-file pass. Those are their checks, not mine.
+
+A whole-range `git diff --check 9053...4381...` reports trailing whitespace in the already accepted imported `hosted-image-proof-20261016.md` review record; the candidate-specific fixture diff passes. This is not a finding against the fixture repair or a claim that the entire imported range is whitespace-clean.
+
+The corrected mapping-admin test and full PostgreSQL suite have not yet run on 4381 in evidence reviewed here. The current-head hosted PostgreSQL rerun, actual shipping-image proof, and required exact-head GitHub checks must pass before merge. No new runtime acceptance is asserted.
+
