@@ -69,8 +69,19 @@ async function rejectInvitation(
   const updated = await rejectOwnPendingInvitation(identity, invitationId);
 
   if (!updated) {
-    // Lost the race to a concurrent accept/cancel/reject between the read
-    // above and this write.
+    // The guarded update may lose to a state transition or to an email change
+    // after the recipient read. Re-read only the current recipient/state facts
+    // so the response retains the route's missing/mismatch/non-pending contract.
+    const current = await findInvitationRecipientAndStatus(
+      identity,
+      invitationId,
+    );
+    if (!current) {
+      throw new InvitationNotFoundError();
+    }
+    if (!current.recipientMatches) {
+      throw new NotInvitationRecipientError();
+    }
     throw new InvitationNotPendingError();
   }
 

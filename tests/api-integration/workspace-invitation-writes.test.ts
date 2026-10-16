@@ -12,9 +12,10 @@
  * plugin's own S1 characterization suite.
  */
 import { and, eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import * as invitationRepository from "../../apps/api/src/invitation/repository";
 import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../apps/api/src/utils/workspace-invitation-limits";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
@@ -755,6 +756,70 @@ describe("S6a reject (POST /api/invitation/{id}/reject)", () => {
       invitation.id,
     );
     expect(rejected.status).toBe(403);
+  });
+
+  it("returns recipient mismatch when the stored email changes after the real read", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Reject Recipient Email Race",
+    );
+    const invitee = await signUpUser(app, {
+      email: "before-change@example.com",
+    });
+    const invited = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: invitee.user.email, role: "member" },
+    );
+    expect(invited.status).toBe(200);
+    const invitation = (await invited.json()) as { id: string };
+
+    const realFindRecipientAndStatus =
+      invitationRepository.findInvitationRecipientAndStatus;
+    const findRecipientAndStatus = vi.spyOn(
+      invitationRepository,
+      "findInvitationRecipientAndStatus",
+    );
+    let changedEmail = false;
+    findRecipientAndStatus.mockImplementation(async (...args) => {
+      const result = await realFindRecipientAndStatus(...args);
+      if (!changedEmail && result?.recipientMatches && result.pending) {
+        await db
+          .update(schema.userTable)
+          .set({ email: "after-change@example.com" })
+          .where(eq(schema.userTable.id, invitee.user.id));
+        changedEmail = true;
+      }
+      return result;
+    });
+
+    let rejected: Response;
+    try {
+      rejected = await rejectInvitationNative(
+        app,
+        invitee.cookie,
+        invitation.id,
+      );
+    } finally {
+      findRecipientAndStatus.mockRestore();
+    }
+
+    expect(changedEmail).toBe(true);
+    expect(rejected.status).toBe(403);
+    await expect(rejected.json()).resolves.toMatchObject({
+      message: "You are not the recipient of this invitation",
+    });
+    expect((await invitationRow(invitation.id))?.status).toBe("pending");
+    expect(await membershipRowCount(workspaceId, invitee.user.id)).toBe(0);
+    const [currentUser] = await db
+      .select({ email: schema.userTable.email })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, invitee.user.id));
+    expect(currentUser?.email).toBe("after-change@example.com");
   });
 });
 
