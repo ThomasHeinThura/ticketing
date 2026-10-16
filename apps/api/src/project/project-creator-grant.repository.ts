@@ -55,9 +55,7 @@ export async function insertProjectLeadRole(
 export async function findCreatorPersonForUpdate(
   executor: Executor,
   userId: string,
-): Promise<
-  { id: string; side: string; organisationId: string | null } | undefined
-> {
+): Promise<{ id: string; side: string; organisationId: string } | undefined> {
   const [person] = await executor
     .select({
       id: schema.personTable.id,
