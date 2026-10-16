@@ -69,8 +69,28 @@ const CUSTOMER_ORG_ID = "jit-login-customer-org";
 const CUSTOMER_ROLE_ID = "jit-login-customer-role";
 const PORTAL_HOST = "portal.localhost:5174";
 
+function resetEntraTokenValidatorMock() {
+  vi.mocked(validateEntraIdToken).mockImplementation(
+    (_token, _jwks, expectation) => ({
+      ok: true,
+      claims: {
+        iss: expectation.issuer,
+        tid: expectation.tenantId,
+        oid: SUBJECT,
+        email: "jit-first-login@example.test",
+        email_verified: true,
+        name: "JIT First Login",
+        acct: 0,
+        roles: ["TaskDesk.User"],
+      },
+    }),
+  );
+}
+
 beforeEach(async () => {
   vi.clearAllMocks();
+  // The setup's restoreAllMocks does not reset this module-level vi.fn implementation.
+  resetEntraTokenValidatorMock();
   await resetTestDatabase();
   await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
   process.env.TASKDESK_ENCRYPTION_KEY = ENCRYPTION_KEY;
@@ -489,17 +509,34 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
     });
   });
 
+  it("resets the OIDC validator's default principal between tests", () => {
+    expect(
+      validateEntraIdToken("opaque-test-id-token", null, {
+        issuer: ISSUER,
+        tenantId: TENANT_ID,
+        clientId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        nonce: "fixture-nonce",
+      }),
+    ).toMatchObject({
+      ok: true,
+      claims: {
+        oid: SUBJECT,
+        email: "jit-first-login@example.test",
+        roles: ["TaskDesk.User"],
+      },
+    });
+  });
+
   it("denies mixed native/projected view admission and retires the OIDC grant on failed admission", async () => {
-    await seedAgent("jit-admission-retention-connection");
+    const connectionId = "jit-admission-retention-connection";
+    const target = await seedAgent(connectionId);
     await db
       .update(schema.roleTable)
       .set({ capabilities: [...BUILT_IN_ROLES.manager.capabilities] })
       .where(eq(schema.roleTable.id, AGENT_ROLE_ID));
-    const admitted = await signIn(
-      "jit-admission-retention-connection",
-      "agent",
-    );
+    const admitted = await signIn(connectionId, "agent");
     expect(admitted.status).toBe(302);
+    await expectJitIdentity(connectionId, "agent", target);
     const sessionCookie = admitted.headers
       .getSetCookie()
       .find((value) => value.startsWith("__Host-tdk_agent_session="))
@@ -510,10 +547,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
       .select()
       .from(schema.externalIdentityTable)
       .where(
-        eq(
-          schema.externalIdentityTable.identityConnectionId,
-          "jit-admission-retention-connection",
-        ),
+        eq(schema.externalIdentityTable.identityConnectionId, connectionId),
       );
     expect(identity?.userId).toBeTruthy();
     expect(identity?.personId).toBeTruthy();
@@ -590,7 +624,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
         },
       }),
     );
-    const refused = await signIn("jit-admission-retention-connection", "agent");
+    const refused = await signIn(connectionId, "agent");
     expect(refused.headers.get("location")).toContain("identity_error");
 
     const [admissionFailure] = await db
@@ -598,10 +632,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
       .from(schema.provisioningEventTable)
       .where(
         and(
-          eq(
-            schema.provisioningEventTable.identityConnectionId,
-            "jit-admission-retention-connection",
-          ),
+          eq(schema.provisioningEventTable.identityConnectionId, connectionId),
           eq(schema.provisioningEventTable.kind, "auth.failed"),
         ),
       );
@@ -621,6 +652,25 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
       revocationReason: "admission_failed",
       revokedAt: expect.any(Date),
     });
+    const [identityAfterFailure] = await db
+      .select()
+      .from(schema.externalIdentityTable)
+      .where(
+        eq(schema.externalIdentityTable.identityConnectionId, connectionId),
+      );
+    expect(identityAfterFailure).toMatchObject({
+      id: identity?.id,
+      userId: identity?.userId,
+      issuer: ISSUER,
+      subject: SUBJECT,
+    });
+    const [accountAfterFailure] = await db
+      .select()
+      .from(schema.accountTable)
+      .where(eq(schema.accountTable.userId, identity?.userId ?? ""));
+    expect(accountAfterFailure?.accountId).toBe(
+      identityAccountId(ISSUER, SUBJECT),
+    );
     expect(
       await db.query.workspaceUserTable.findFirst({
         where: and(
@@ -661,10 +711,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
         },
       }),
     );
-    const restored = await signIn(
-      "jit-admission-retention-connection",
-      "agent",
-    );
+    const restored = await signIn(connectionId, "agent");
     expect(restored.status).toBe(302);
     expect(await db.query.pendingActionTable.findFirst()).toBeUndefined();
   });
