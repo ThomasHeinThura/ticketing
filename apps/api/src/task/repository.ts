@@ -12,6 +12,8 @@ import {
   isNull,
   lte,
   max,
+  ne,
+  not,
   or,
   type SQL,
   type SQLWrapper,
@@ -708,25 +710,16 @@ export async function updateTaskRow(
   executor: Executor,
   identity: ResolvedIdentity,
   taskId: string,
-  values: Partial<typeof taskTable.$inferInsert>,
+  values: Omit<Partial<typeof taskTable.$inferInsert>, "projectId">,
 ) {
   const [updatedTask] = await executor
     .update(taskTable)
-    .set({ ...values, version: sql`${taskTable.version} + 1` })
-    .where(
-      and(
-        eq(taskTable.id, taskId),
-        taskProjectReach(identity, executor),
-        values.projectId !== undefined
-          ? taskProjectMoveReach(
-              identity,
-              taskTable.projectId,
-              values.projectId,
-              executor,
-            )
-          : undefined,
-      ),
-    )
+    .set({
+      ...values,
+      projectId: taskTable.projectId,
+      version: sql`${taskTable.version} + 1`,
+    })
+    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
     .returning();
   return updatedTask;
 }
@@ -1419,39 +1412,70 @@ export async function findNotDeletedProjectInWorkspace(
   return destinationProject;
 }
 
-/** Move the task's assets with it. */
-export async function reassignTaskAssetsToProject(
+/** Move a task and all of its source-project assets under one statement snapshot. */
+export async function moveTaskAndAssetsForIdentity(
   executor: Executor,
   identity: ResolvedIdentity,
   taskId: string,
   sourceProjectId: string,
   destinationProjectId: string,
+  values: Pick<
+    Partial<typeof taskTable.$inferInsert>,
+    "status" | "columnId" | "number" | "position"
+  >,
 ) {
-  await executor
-    .update(assetTable)
-    .set({ projectId: destinationProjectId })
-    .where(
-      and(
-        eq(assetTable.taskId, taskId),
-        eq(assetTable.projectId, sourceProjectId),
-        taskProjectMoveReach(
-          identity,
-          assetTable.projectId,
-          destinationProjectId,
-          executor,
-        ),
-        exists(
-          executor
-            .select({ one: sql`1` })
-            .from(taskTable)
-            .where(
-              and(
-                eq(taskTable.id, assetTable.taskId),
-                eq(taskTable.projectId, destinationProjectId),
-                taskProjectReach(identity, executor),
-              ),
+  const movedTask = executor.$with("moved_task").as(
+    executor
+      .update(taskTable)
+      .set({
+        ...values,
+        projectId: destinationProjectId,
+        version: sql`${taskTable.version} + 1`,
+      })
+      .where(
+        and(
+          eq(taskTable.id, taskId),
+          eq(taskTable.projectId, sourceProjectId),
+          taskProjectReach(identity, executor),
+          taskProjectMoveReach(
+            identity,
+            taskTable.projectId,
+            destinationProjectId,
+            executor,
+          ),
+          not(
+            exists(
+              executor
+                .select({ one: sql`1` })
+                .from(assetTable)
+                .where(
+                  and(
+                    eq(assetTable.taskId, taskId),
+                    ne(assetTable.projectId, sourceProjectId),
+                  ),
+                ),
             ),
+          ),
         ),
-      ),
-    );
+      )
+      .returning(),
+  );
+  const movedAssets = executor.$with("moved_assets").as(
+    executor
+      .update(assetTable)
+      .set({ projectId: destinationProjectId })
+      .from(movedTask)
+      .where(
+        and(
+          eq(assetTable.taskId, movedTask.id),
+          eq(assetTable.projectId, sourceProjectId),
+        ),
+      )
+      .returning({ id: assetTable.id }),
+  );
+  const [task] = await executor
+    .with(movedTask, movedAssets)
+    .select()
+    .from(movedTask);
+  return task;
 }

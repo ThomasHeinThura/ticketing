@@ -14,8 +14,7 @@ import {
   findProjectIdentity,
   listColumnsForMove,
   lockLiveProjectForMove,
-  reassignTaskAssetsToProject,
-  updateTaskRow,
+  moveTaskAndAssetsForIdentity,
 } from "../repository";
 import { claimTaskNumberForIdentity } from "./claim-task-numbers";
 
@@ -214,27 +213,25 @@ async function moveTask({
       ),
     ]);
 
-    const updatedTask = await updateTaskRow(tx, identity, taskId, {
-      projectId: destinationProjectId,
-      status: resolvedColumn.slug,
-      columnId: resolvedColumn.id,
-      number: nextTaskNumber,
-      position: nextPosition,
-    });
+    const updatedTask = await moveTaskAndAssetsForIdentity(
+      tx,
+      identity,
+      taskId,
+      lockedTask.projectId,
+      destinationProjectId,
+      {
+        status: resolvedColumn.slug,
+        columnId: resolvedColumn.id,
+        number: nextTaskNumber,
+        position: nextPosition,
+      },
+    );
 
     if (!updatedTask) {
       throw new HTTPException(500, {
         message: "Failed to move task",
       });
     }
-
-    await reassignTaskAssetsToProject(
-      tx,
-      identity,
-      taskId,
-      lockedTask.projectId,
-      destinationProjectId,
-    );
 
     return {
       movedTask: updatedTask,

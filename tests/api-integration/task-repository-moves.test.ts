@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import type { Executor } from "../../apps/api/src/database/executor";
@@ -69,14 +71,30 @@ const listWorkspaceScopedTasks = scoped(
 const lockLiveProjectForMove = scopedExecutor(
   taskRepository.lockLiveProjectForMove,
 );
-const reassignTaskAssetsToProject = scopedExecutor(
-  taskRepository.reassignTaskAssetsToProject,
+const moveTaskAndAssetsForIdentity = scopedExecutor(
+  taskRepository.moveTaskAndAssetsForIdentity,
 );
 const updateTaskRowReturningId = scopedExecutor(
   taskRepository.updateTaskRowReturningId,
 );
-const updateTaskRow = scopedExecutor(taskRepository.updateTaskRow);
 const { findWorkspaceMembershipId } = taskRepository;
+
+async function waitForBlockedPid(client: Client, blockerPid: number) {
+  const deadline = Date.now() + 8_000;
+  while (Date.now() < deadline) {
+    const { rows } = await client.query<{ pid: number }>(
+      `SELECT pid FROM pg_stat_activity
+       WHERE datname = current_database() AND pid <> pg_backend_pid()
+         AND wait_event_type = 'Lock' AND $1 = ANY(pg_blocking_pids(pid))
+       LIMIT 1`,
+      [blockerPid],
+    );
+    const pid = rows[0]?.pid;
+    if (pid !== undefined) return pid;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`No PostgreSQL session blocked by pid ${blockerPid}`);
+}
 
 async function seed() {
   const a = await createWorkspaceMember({ role: "admin" });
@@ -530,12 +548,21 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
       createdBy: a.user.id,
     });
     await db.transaction(async (tx) => {
-      const movedTask = await updateTaskRow(tx, t1.id, {
-        projectId: p2.id,
-        number: 2,
-      });
+      const [destinationColumn] = await listColumnsForMove(tx, p2.id);
+      if (!destinationColumn) throw new Error("destination column");
+      const movedTask = await moveTaskAndAssetsForIdentity(
+        tx,
+        t1.id,
+        p1.id,
+        p2.id,
+        {
+          status: destinationColumn.slug,
+          columnId: destinationColumn.id,
+          number: 2,
+          position: 2,
+        },
+      );
       expect(movedTask?.projectId).toBe(p2.id);
-      await reassignTaskAssetsToProject(tx, t1.id, p1.id, p2.id);
     });
     const assets = await db.select().from(schema.assetTable);
     const [movedTask] = await db
@@ -595,15 +622,41 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
       .returning();
     if (!asset) throw new Error("expected asset fixture");
 
-    // Asset reassignment cannot get ahead of the task row's destination.
-    await db.transaction((tx) =>
-      reassignTaskAssetsToProject(tx, task.id, source.id, destination.id),
+    const [destinationColumn] = await listColumnsForMove(db, destination.id);
+    if (!destinationColumn) throw new Error("destination column");
+    // A linked asset outside the task's source project blocks the entire move.
+    await db
+      .update(schema.assetTable)
+      .set({ projectId: destination.id })
+      .where(eq(schema.assetTable.id, asset.id));
+    const mismatchedMove = await moveTaskAndAssetsForIdentity(
+      db,
+      task.id,
+      source.id,
+      destination.id,
+      {
+        status: destinationColumn.slug,
+        columnId: destinationColumn.id,
+        number: 2,
+        position: 2,
+      },
     );
+    expect(mismatchedMove).toBeUndefined();
     const [assetAfterMismatchedDestination] = await db
       .select()
       .from(schema.assetTable)
       .where(eq(schema.assetTable.id, asset.id));
-    expect(assetAfterMismatchedDestination?.projectId).toBe(source.id);
+    const [taskAfterMismatchedDestination] = await db
+      .select()
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.id, task.id));
+    expect(taskAfterMismatchedDestination?.projectId).toBe(source.id);
+    expect(taskAfterMismatchedDestination?.number).toBe(1);
+    expect(assetAfterMismatchedDestination?.projectId).toBe(destination.id);
+    await db
+      .update(schema.assetTable)
+      .set({ projectId: source.id })
+      .where(eq(schema.assetTable.id, asset.id));
 
     // Revoke destination reach after identity resolution to exercise statement-time scope.
     const destinationReachBeforeRevocation =
@@ -631,14 +684,19 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
         actor.workspace.id,
       ),
     ).toBeUndefined();
-    const moved = await updateTaskRow(db, task.id, {
-      projectId: destination.id,
-      number: 2,
-    });
-    expect(moved).toBeUndefined();
-    await db.transaction((tx) =>
-      reassignTaskAssetsToProject(tx, task.id, source.id, destination.id),
+    const moved = await moveTaskAndAssetsForIdentity(
+      db,
+      task.id,
+      source.id,
+      destination.id,
+      {
+        status: destinationColumn.slug,
+        columnId: destinationColumn.id,
+        number: 2,
+        position: 2,
+      },
     );
+    expect(moved).toBeUndefined();
 
     const [taskAfterDeniedMove] = await db
       .select()
@@ -651,6 +709,147 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
     expect(taskAfterDeniedMove?.projectId).toBe(source.id);
     expect(taskAfterDeniedMove?.number).toBe(1);
     expect(assetAfterDeniedMove?.projectId).toBe(source.id);
+  });
+
+  it("moves the task and assets under one authorization snapshot during revocation", async () => {
+    const { a, p1, p2, t1 } = await seed();
+    const [taskAsset] = await db
+      .insert(schema.assetTable)
+      .values({
+        workspaceId: a.workspace.id,
+        projectId: p1.id,
+        taskId: t1.id,
+        objectKey: "atomic-move-task.png",
+        filename: "atomic-move-task.png",
+        mimeType: "image/png",
+        size: 3,
+      })
+      .returning();
+    const [unrelatedAsset] = await db
+      .insert(schema.assetTable)
+      .values({
+        workspaceId: a.workspace.id,
+        projectId: p1.id,
+        taskId: null,
+        objectKey: "atomic-move-unrelated.png",
+        filename: "atomic-move-unrelated.png",
+        mimeType: "image/png",
+        size: 5,
+      })
+      .returning();
+    if (!taskAsset || !unrelatedAsset) throw new Error("asset fixtures");
+    const [destinationColumn] = await listColumnsForMove(db, p2.id);
+    if (!destinationColumn) throw new Error("destination column");
+    expect(
+      (await findNotDeletedProjectInWorkspace(db, p1.id, a.workspace.id))?.id,
+    ).toBe(p1.id);
+    expect(
+      (await findNotDeletedProjectInWorkspace(db, p2.id, a.workspace.id))?.id,
+    ).toBe(p2.id);
+
+    const suffix = randomUUID().replaceAll("-", "");
+    const triggerName = `task_asset_move_barrier_${suffix}`;
+    const functionName = `${triggerName}_fn`;
+    const barrierKey = `task-asset-move-${suffix}`;
+    const blocker = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const observer = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await Promise.all([blocker.connect(), observer.connect()]);
+    let barrierHeld = false;
+    let movePromise: Promise<unknown> | undefined;
+    try {
+      await blocker.query("SELECT pg_advisory_lock($1, hashtext($2))", [
+        4_010,
+        barrierKey,
+      ]);
+      barrierHeld = true;
+      const { rows } = await blocker.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const blockerPid = rows[0]?.pid;
+      if (blockerPid === undefined) throw new Error("barrier pid");
+      await blocker.query(`
+        CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF OLD.id = '${t1.id.replaceAll("'", "''")}' THEN
+            PERFORM pg_advisory_xact_lock(4_010, hashtext('${barrierKey}'));
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `);
+      await blocker.query(`CREATE TRIGGER ${triggerName}
+        BEFORE UPDATE ON task FOR EACH ROW EXECUTE FUNCTION ${functionName}()`);
+
+      movePromise = db.transaction((tx) =>
+        moveTaskAndAssetsForIdentity(tx, t1.id, p1.id, p2.id, {
+          status: destinationColumn.slug,
+          columnId: destinationColumn.id,
+          number: 2,
+          position: 2,
+        }),
+      );
+      await waitForBlockedPid(observer, blockerPid);
+
+      const revoked = await db
+        .delete(schema.membershipTable)
+        .where(
+          and(
+            eq(schema.membershipTable.personId, testIdentity.personId),
+            eq(schema.membershipTable.scope, "project"),
+            eq(schema.membershipTable.scopeId, p2.id),
+          ),
+        )
+        .returning({ id: schema.membershipTable.id });
+      expect(revoked).toHaveLength(1);
+      expect(
+        await findNotDeletedProjectInWorkspace(db, p2.id, a.workspace.id),
+      ).toBeUndefined();
+      expect(
+        (await findNotDeletedProjectInWorkspace(db, p1.id, a.workspace.id))?.id,
+      ).toBe(p1.id);
+
+      await blocker.query("SELECT pg_advisory_unlock($1, hashtext($2))", [
+        4_010,
+        barrierKey,
+      ]);
+      barrierHeld = false;
+      const movedTask = await movePromise;
+      expect(movedTask).toMatchObject({ id: t1.id, projectId: p2.id });
+
+      const [taskAfterMove] = await db
+        .select()
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.id, t1.id));
+      const assetsAfterMove = await db
+        .select()
+        .from(schema.assetTable)
+        .where(
+          inArray(schema.assetTable.id, [taskAsset.id, unrelatedAsset.id]),
+        );
+      expect(taskAfterMove?.projectId).toBe(p2.id);
+      expect(
+        assetsAfterMove.find((asset) => asset.id === taskAsset.id)?.projectId,
+      ).toBe(p2.id);
+      expect(
+        assetsAfterMove.find((asset) => asset.id === unrelatedAsset.id)
+          ?.projectId,
+      ).toBe(p1.id);
+    } finally {
+      if (barrierHeld) {
+        await blocker.query("SELECT pg_advisory_unlock($1, hashtext($2))", [
+          4_010,
+          barrierKey,
+        ]);
+      }
+      await Promise.allSettled([movePromise]);
+      await blocker.query(`DROP TRIGGER IF EXISTS ${triggerName} ON task`);
+      await blocker.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
+      await Promise.all([blocker.end(), observer.end()]);
+    }
   });
 });
 

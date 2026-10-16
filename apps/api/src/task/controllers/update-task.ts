@@ -97,7 +97,6 @@ async function updateTask(
         columnId: column?.id ?? null,
         startDate: parsedStartDate || null,
         dueDate: parsedDueDate || null,
-        projectId,
         description,
         priority,
         position,
