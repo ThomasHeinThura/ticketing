@@ -320,6 +320,9 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
 
   it("completion and content lookups require the persisted own submission or its accepted link", async () => {
     const s = await seed();
+    // The seed's "private" adjective describes its owning work item's reach;
+    // this attachment itself is customer-visible and is the accepted-transfer control.
+    const acceptedTransferredAttachment = s.privateAttachment;
     const own = requireRow(
       await db
         .insert(schema.attachmentTable)
@@ -338,8 +341,30 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
         .returning(),
       "completion attachment",
     );
+    const hiddenOwn = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: s.t.workspaceId,
+          organisationId: s.owner.orgId,
+          submissionId: s.accepted.id,
+          objectKey: `hidden/${randomUUID()}`,
+          filename: "completion-hidden.txt",
+          mimeType: "text/plain",
+          size: 1,
+          state: "ready",
+          customerVisible: false,
+          uploadedBy: s.owner.person.id,
+        })
+        .returning(),
+      "hidden completion attachment",
+    );
     const identity = await resolveIdentity({
       userId: s.owner.user.id,
+      credential: "session",
+    });
+    const otherIdentity = await resolveIdentity({
+      userId: s.other.user.id,
       credential: "session",
     });
     expect(identity).toMatchObject({
@@ -384,11 +409,17 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
     expect(
       await findSubmissionCompletionAttachment(db, identity, {
         ...completionInput,
-        id: s.privateAttachment.id,
+        id: acceptedTransferredAttachment.id,
+      }),
+    ).toMatchObject([{ id: acceptedTransferredAttachment.id }]);
+    expect(
+      await findSubmissionCompletionAttachment(db, identity, {
+        ...completionInput,
+        id: hiddenOwn.id,
       }),
     ).toEqual([]);
     const transferredInput = {
-      id: s.privateAttachment.id,
+      id: acceptedTransferredAttachment.id,
       workspaceId: s.t.workspaceId,
       submissionId: s.accepted.id,
       linkedWorkItemId: s.t.workItem.id,
@@ -396,7 +427,35 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
     };
     expect(
       await findSubmissionAttachmentContent(db, identity, transferredInput),
-    ).toHaveLength(1);
+    ).toMatchObject([{ id: acceptedTransferredAttachment.id }]);
+    expect(
+      await findSubmissionAttachmentContent(db, identity, {
+        id: hiddenOwn.id,
+        workspaceId: s.t.workspaceId,
+        submissionId: s.accepted.id,
+        linkedWorkItemId: null,
+        portal: true,
+      }),
+    ).toEqual([]);
+    expect(
+      await findSubmissionAttachmentContent(db, identity, {
+        ...transferredInput,
+        submissionId: `missing-${randomUUID()}`,
+      }),
+    ).toEqual([]);
+    expect(
+      await findSubmissionAttachmentContent(db, identity, {
+        ...transferredInput,
+        workspaceId: `foreign-${randomUUID()}`,
+      }),
+    ).toEqual([]);
+    expect(
+      await findSubmissionAttachmentContent(
+        db,
+        otherIdentity,
+        transferredInput,
+      ),
+    ).toEqual([]);
     expect(
       await findSubmissionAttachmentContent(db, identity, {
         ...transferredInput,
@@ -431,7 +490,7 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
       expect(
         await findSubmissionCompletionAttachment(db, identity, {
           ...completionInput,
-          id: s.privateAttachment.id,
+          id: acceptedTransferredAttachment.id,
           submissionId,
         }),
       ).toEqual([]);
@@ -439,14 +498,14 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
     expect(
       await findSubmissionCompletionAttachment(db, identity, {
         ...completionInput,
-        id: s.privateAttachment.id,
+        id: acceptedTransferredAttachment.id,
         submissionId: sameRequesterNonaccepted.id,
       }),
     ).toEqual([]);
     expect(
       await findSubmissionCompletionAttachment(db, identity, {
         ...completionInput,
-        id: s.privateAttachment.id,
+        id: acceptedTransferredAttachment.id,
         submissionId: s.accepted.id,
         acceptedParentId: `forged-${randomUUID()}`,
       }),
