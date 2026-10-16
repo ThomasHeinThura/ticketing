@@ -612,3 +612,141 @@ The integration regressions exercise actual native project-topic and legacy proj
 ## Current machine binding
 
 **Reviewed head:** `c7c3c0aee1b63072e21ca89459d0b6f142c1554f`
+
+
+## Current unit fixture boundary repair
+
+Prior publicationaa7 hosted API unit failure120of121files867of872tests/fivetestfailures remains adverse. The exact3302 repair changes only the existing five-case decision-input unit fixture to its named repository-facts boundary and valid resolved identity; no production or real SQL/integration path changes. Focused1file5of5pass/native0, strong independent ordinary and bounded independent Sol confirmation CLEAR. Earlier full c7c3 review retains37pathscope and source-bound43testPG proof; all those source blobs remain unchanged. This is not a new full38pathreview or current fullCI/image result.
+
+
+## Evidence file
+
+`query765-810-unit-fixture-repair-author-luna.md`
+
+# Query 765 unit fixture repair — author handoff
+
+## Candidate and scope
+
+- Worktree branch: `codex/query765-current-main-luna`.
+- Exact starting candidate: `aa7dd1967099bc96f381a580a161bdb366462057` (clean and published at assignment start).
+- Test-only commit: `3302262419fcb94922f9ab84e209354995f2540c`, parent `aa7dd1967099bc96f381a580a161bdb366462057`.
+- Only changed path: `tests/api/ws/project-read-authorization.test.ts`.
+- No production source, project notes, docs, or shared contracts changed.
+
+## Fixture repair and test intent
+
+The preceding full unit job had five failures in this one five-test file. Its database mock modeled only `select/from/where/limit`, while the real project-reach repository now builds canonical reach SQL with joins. The file also fed `{ identity: true }` into authorization code expecting a `ResolvedIdentity`, and stubbed the retired `reachableWorkspacePredicate`.
+
+I replaced the database-chain mock and retired predicate stub with a mock of the named `findReachableLiveProject` repository boundary. This unit suite is for `authorizeProjectSocketRead`'s decision inputs and credential handling, not SQL construction; the same-head PostgreSQL regressions exercise the real current-workspace/project-reach query and membership-removal behavior. The boundary returns project facts, preserving the downstream authorization decisions without mocking or weakening the production predicate.
+
+The fixture now supplies a canonical staff `ResolvedIdentity` with workspace membership, reach, authority, portal and credential fields. All five existing oracles remain:
+
+1. project-read evaluation receives project ID, workspace ID and the project's own customer organisation (the fixture remains `org-customer`, not the staff/workspace organisation);
+2. a null project customer organisation remains null;
+3. missing reach/capability/null decisions are refused;
+4. session, impersonation and API-key resolution arguments remain checked, including key owner, enabled state and stored `project:read` plus `work_item:read` scope projection;
+5. a missing project and a missing identity stop before capability evaluation; the repository boundary is not called without an identity.
+
+## Checks
+
+- Focused command, run once: `pnpm --filter @taskdesk/api exec vitest run ../../tests/api/ws/project-read-authorization.test.ts` — exit 0; 1 file passed, all 5 tests passed.
+- Full raw output: `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/query765-810-unit-fixture-repair-luna-run.log` (mode 0600; SHA-256 `202eeab74994af368da8a77d84a2e3639533fc1cea5aca0846b565021ea7bd14`). Vitest printed its esbuild/oxc config notice; the focused command passed.
+- `pnpm exec biome check tests/api/ws/project-read-authorization.test.ts` — passed after organizing imports.
+- `pnpm --filter @taskdesk/api typecheck` — passed.
+- `git diff --check` — passed before commit.
+
+## Preserved prior failure and limits
+
+- The prior hosted unit job was run at `aa7dd1967099bc96f381a580a161bdb366462057`; its original raw log remains `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/810-aa7-unit-failure.log`, SHA-256 `7c1038346706796e137daa58e1d4848e1e969d51670dac4d90cb963894b17247`. It recorded 5/5 failures in `project-read-authorization.test.ts` from the incomplete Drizzle mock (`executor.select(...).from(...).innerJoin is not a function`), with the hosted API unit tally 120/121 files and 867/872 tests and overall unit job 9/12 tasks. This historical failure is preserved, not overwritten.
+- The one focused file run above is the only test run for this repair. No PostgreSQL, full test suite, build, browser, Docker, CI or runtime command was run.
+- The hosted PostgreSQL run remains pending and untouched. No rerun, push, PR, or main mutation was performed.
+- The branch is one local commit ahead of its published candidate and otherwise clean.
+
+
+## Evidence file
+
+`query765-3302-unit-fixture-ordinary-luna.md`
+
+# Query #765 unit fixture repair delta review — GPT-6 Luna
+
+## Provenance and verdict
+
+- Role: strong independent ordinary reviewer of the bounded test-only repair.
+- Model/tier: GPT-6 Luna, as assigned for this review.
+- Exact candidate: `3302262419fcb94922f9ab84e209354995f2540c`.
+- Comparison base: `aa7dd1967099bc96f381a580a161bdb366462057`.
+- Independence: this reviewer did not author or remediate the unit fixture change. I reviewed the exact diff and the retained test/repair evidence.
+- Scope: exactly one changed path, `tests/api/ws/project-read-authorization.test.ts`.
+- Verdict: **CLEAR for the test-only fixture repair; no blocking or non-blocking findings.** This does not constitute a new full-source review or a fresh test result.
+
+## Review assessment
+
+The previous test file mocked the database chain (`select` → `from` → `where` → `limit`) and the retired `reachableWorkspacePredicate`, while the real `authorizeProjectSocketRead` now delegates its project lookup to `findReachableLiveProject`. The real current SQL predicate requires joins/expressions the old mock cannot represent, so the recorded `innerJoin is not a function` failures are fixture failures. Replacing those implementation-detail mocks with a mock of the named repository boundary is an appropriate unit-test boundary for this file: it tests how `authorizeProjectSocketRead` consumes project facts and applies authorization decisions, while SQL composition remains covered at the repository/integration layer.
+
+The modified test still supplies project/workspace/customer-organisation facts, including a null customer organisation, and asserts those exact facts reach `evaluateProjectRead` with the correct resource, action, and project id. Missing project rows, null identity, and missing reach/capability decisions remain refusal cases. It also verifies the repository is invoked with the resolved identity and project id and is not invoked without an identity, so the boundary move does not remove the identity-threading assertion.
+
+Session, impersonation, and API-key identity-resolution inputs remain explicitly checked. The key case still verifies owner, enabled state, and the projected stored `project:read` plus `work_item:read` capabilities. Production API-key capability checks are unchanged by this test-only commit. The fixture now uses a typed staff `ResolvedIdentity`; it preserves a workspace membership fact without pretending an arbitrary `{ identity: true }` object is a real resolved caller.
+
+This one-file suite does not assert the SQL implementation itself. That responsibility remains with the real PostgreSQL/socket integration coverage, which is unchanged by this commit and was reviewed at the earlier exact candidate. The bounded change therefore fixes the unit test's mocked seam without weakening SQL-scope, credential-projection, missing-identity, missing-row, or decision-refusal coverage.
+
+## Checks and limits
+
+- Read-only exact-head, one-path diff, and source/test-contract inspection.
+- The author handoff records the focused one-file Vitest run as 1 file / 5 tests passed, plus typecheck and Biome results. I did not execute or independently reproduce those commands and do not claim their outcomes as my test evidence.
+- No tests, compiler, checker, database probe, runtime, browser, Docker/image build, CI, Git ref/worktree mutation, or source edit was performed by this reviewer.
+- The prior `c7c3c0a…` Sol full-source report and PostgreSQL run cover their own exact source SHA and are not extended by this test-only review. This report makes no new full-candidate path-count or source-review claim.
+
+
+## Evidence file
+
+`query765-3302-unit-fixture-security-61-sol.md`
+
+# Query #765 bounded unit-fixture and publication security confirmation
+
+**Reviewed head:** 3302262419fcb94922f9ab84e209354995f2540c
+**Immediate repair base:** aa7dd1967099bc96f381a580a161bdb366462057
+**Prior full-reviewed source:** c7c3c0aee1b63072e21ca89459d0b6f142c1554f
+**Accepted comparison base of that full review:** c022915a8768b96b460c798feafafd7d48214d5c
+**Verdict:** CLEAR — no blocking or non-blocking security findings in the bounded test-fixture repair and intervening own-note publication/correction.
+
+## Provenance, independence, and scope
+
+- Role: independent Sol-tier security confirmation of the bounded delta. This context produced the earlier full c7c3 security review and did not author, direct, or remediate this repair or the publication/correction.
+- Assigned/requested model: GPT-6.1 Sol, per dispatch. The context identifies itself as a GPT-6-based Codex agent; independently inspectable served version, transport model identifier, and system fingerprint remain unavailable. Requested routing is not asserted as verified serving metadata.
+- Context: `/root/query765_c7c3_full_security_sol`; conductor: `/root`.
+- Worktree: `/Users/heinthura/.codex/worktrees/query765-current-luna`. HEAD matches the requested candidate and the worktree is clean.
+- Read the exact one-file test diff, complete changed test, production authorization/repository seam, author handoff, independent ordinary delta report, canonical publication proof, current note framing, and per-commit raw/numstat history since the prior full review. Inspected retained failure/pass logs and performed read-only source-blob/report-byte comparisons.
+- This is not a fresh full 38-path or whole-candidate review. The earlier full report retains its actual 37-path coverage and exact SHA. This report directly covers the intervening two own-note commits and the one-file unit fixture change.
+
+## Assessment
+
+The sole repair-source change from aa7 to 3302 is `tests/api/ws/project-read-authorization.test.ts` (35 added / 16 removed lines). The old mock supplied only `select/from/where/limit` and stubbed the no-longer-used workspace predicate, while current production delegates project facts to `findReachableLiveProject`. The retained hosted failure log shows that the real canonical SQL builder reached `innerJoin`, which this obsolete mock could not represent. Replacing that mock with the named repository fact boundary is appropriate for this decision-input unit suite. It does not change a production predicate or remove a SQL assertion: the old chain/predicate stubs did not validate real SQL scope.
+
+All five cases remain, with their existing substantive assertions: the project's own customer organisation and exact project/workspace decision inputs; null customer organisation; refusal for missing reach, missing capability, and null decision; session/impersonation/API-key resolution arguments including key owner, enabled state, and stored project/work-item capability projection; and missing-row/missing-identity refusal before capability evaluation. The typed staff `ResolvedIdentity` replaces the invalid placeholder. New assertions require the lookup to receive that identity and project ID and prohibit a lookup when identity resolution fails. The mocked identity resolver means this suite verifies credential projection and decision composition, not end-to-end RBAC/key-ceiling enforcement; that was already its scope, and production enforcement plus real PostgreSQL/socket coverage is unchanged.
+
+I compared every one of the 37 paths in the earlier full base-to-c7c3 scope by Git blob at c7c3 and 3302: **all 37 are unchanged**. Production source, real SQL reach predicates, integration revocation tests, policies, schema, and shared contracts were not changed by any intervening commit. The earlier full source assessment and real SQL/revocation evidence retain their original sources; this test repair does not manufacture new full-suite or runtime evidence.
+
+## Per-commit publication and authenticity
+
+The complete intervening chain has three commits:
+
+- `32fc09a2eaf4c4055afa509019ae21cb79659b16`: adds only this candidate's own regular-mode-100644 note, 726 additions / 0 deletions.
+- `aa7dd1967099bc96f381a580a161bdb366462057`: modifies only that note, 0 additions / 112 deletions. I read the deletion: it removes the accidentally included `query765-current-initial-pr-body-template.md` draft block, not an authentic report, finding, verdict, or evidence record.
+- `3302262419fcb94922f9ab84e209354995f2540c`: modifies only the unit test described above, regular mode 100644.
+
+The final own note is 614 additions / 0 deletions relative to c7c3. Independently comparing the canonical proof's 19 source report files against the note found that every source file matches its recorded digest and occurs **once, byte-exact**, in the final note. This includes adverse ordinary reports, the withdrawal and corrections, superseded approval plus follow-up blocker, failed PostgreSQL outcomes, current repair clearance, and my full report. The note's separate count clarification does not rewrite its original source report. No evidence was suppressed or verdict relabelled by the draft removal.
+
+The whole intervening chain is **not** being called an automatic deletion-free review-record-only exemption: aa7 has a deletion and 3302 changes a test. This bounded confirmation explicitly examines the packaging correction and test change instead of relying only on their final net tree. I found no changed authority, gate semantics, waiver, review independence claim, or authentic report content.
+
+## Evidence inspected and limits
+
+The preserved `810-aa7-unit-failure.log` is 305,120 bytes, SHA-256 `7c1038346706796e137daa58e1d4848e1e969d51670dac4d90cb963894b17247`. It records five failures in this unit file from the incomplete database mock. That hosted result remains failed at aa7; it is not relabelled as a pass.
+
+The retained focused repair log is 410 bytes, SHA-256 `202eeab74994af368da8a77d84a2e3639533fc1cea5aca0846b565021ea7bd14`; its summary records one file / five tests passed. I independently read the log and recomputed both log digests. This is inspection of author-produced evidence, not execution by this reviewer. Author-reported typecheck/Biome results retain their stated provenance. The prior full review's inspected c7c3 two-file/43-test PostgreSQL result remains bound to c7c3 and is not presented as a fresh 3302 run.
+
+No tests, compiler, project checker, PostgreSQL/database probe, runtime, build, browser, Docker, CI action, Git ref mutation, source edit, repair design, rerun, or cancellation was performed. Only this private report was created, exclusively with mode 0600. The pending hosted PostgreSQL job was left untouched. Current mandatory checks, publication of the new review records, image/runtime acceptance, and eventual protected merge remain the conductor's responsibility. This confirmation is not merge authorization.
+
+
+## Current machine binding
+
+**Reviewed head:** `3302262419fcb94922f9ab84e209354995f2540c`
