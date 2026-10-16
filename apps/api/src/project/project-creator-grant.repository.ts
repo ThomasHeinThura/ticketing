@@ -56,8 +56,7 @@ export async function findCreatorPersonForUpdate(
   executor: Executor,
   userId: string,
 ): Promise<
-  | { id: string; side: string; organisationId: string | null }
-  | undefined
+  { id: string; side: string; organisationId: string | null } | undefined
 > {
   const [person] = await executor
     .select({

@@ -15,8 +15,8 @@ import {
   lockCreatorGrants,
   PROJECT_CREATOR_ORIGIN,
   PROJECT_LEAD_ROLE_KEY,
-  revokeCreatorGrants as revokeCreatorGrantRows,
   type ProjectCreatorGrantFilter,
+  revokeCreatorGrants as revokeCreatorGrantRows,
 } from "./project-creator-grant.repository";
 
 type Tx = Transaction;
@@ -153,10 +153,9 @@ async function revokeCreatorGrants(
   // Person rows first, in one deterministic order (the repo-wide lock order), then the grants.
   const candidatePersonIds = await listCreatorGrantPersonIds(tx, filter);
   if (candidatePersonIds.length === 0) return 0;
-  const people = await lockCreatorGrantPeople(
-    tx,
-    [...new Set(candidatePersonIds)],
-  );
+  const people = await lockCreatorGrantPeople(tx, [
+    ...new Set(candidatePersonIds),
+  ]);
   const organisationOf = new Map(
     people.map((person) => [person.id, person.organisationId]),
   );
