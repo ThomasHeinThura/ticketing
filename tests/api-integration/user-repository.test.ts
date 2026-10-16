@@ -121,9 +121,18 @@ describe("user repository (#580)", () => {
   });
 
   it("returns only own workspace summaries and counts every persisted member row", async () => {
-    const a = await createWorkspaceMember({ role: "owner" });
-    const b = await createWorkspaceMember({ role: "owner" });
-    const c = await createWorkspaceMember({ role: "owner" });
+    const a = await createWorkspaceMember({
+      role: "owner",
+      workspaceName: "Summary subject A",
+    });
+    const b = await createWorkspaceMember({
+      role: "owner",
+      workspaceName: "Summary subject B",
+    });
+    const c = await createWorkspaceMember({
+      role: "owner",
+      workspaceName: "Summary foreign C",
+    });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: b.workspace.id,
       userId: a.user.id,
@@ -154,6 +163,40 @@ describe("user repository (#580)", () => {
     expect(
       summaries.some((row) => row.workspaceName === c.workspace.name),
     ).toBe(false);
+  });
+
+  it("summarizes a subject membership with no canonical person row", async () => {
+    const other = await createWorkspaceMember({
+      role: "member",
+      workspaceName: "Unlinked subject workspace",
+    });
+    const subjectId = `unlinked-${other.user.id}`;
+    await db.insert(schema.userTable).values({
+      id: subjectId,
+      email: `${subjectId}@example.com`,
+      emailVerified: true,
+      name: "Unlinked deletion subject",
+    });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: other.workspace.id,
+      userId: subjectId,
+      role: "owner",
+      joinedAt: new Date(),
+    });
+
+    const summaries = await listAccountErasureMembershipSummaries(
+      db,
+      subjectId,
+    );
+    expect(summaries).toEqual([
+      {
+        workspaceId: other.workspace.id,
+        workspaceName: "Unlinked subject workspace",
+        isOwner: true,
+        memberCount: 2,
+        ownerCount: 1,
+      },
+    ]);
   });
 
   it("preserves inclusive subject roles and exact owner counts without identity joins", async () => {

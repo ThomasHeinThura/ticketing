@@ -81,6 +81,44 @@ describe("API integration: account deletion", () => {
     expect(memberships.map((row) => row.userId)).toContain(owner.user.id);
   });
 
+  it("keeps the named owner refusal for a subject with no canonical person", async () => {
+    const originalOwner = await createWorkspaceMember({
+      role: "owner",
+      workspaceName: "Unlinked Owner Workspace",
+    });
+    await db
+      .delete(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.userId, originalOwner.user.id));
+    const subject = await addMember(originalOwner.workspace.id, "owner");
+    await addMember(originalOwner.workspace.id, "member");
+
+    await expect(deleteAccountData(subject.id)).rejects.toThrow(
+      /only owner of "Unlinked Owner Workspace"/,
+    );
+
+    const workspaces = await db
+      .select({ id: schema.workspaceTable.id })
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, originalOwner.workspace.id));
+    const subjectMembership = await db
+      .select({ userId: schema.workspaceUserTable.userId })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, originalOwner.workspace.id),
+          eq(schema.workspaceUserTable.userId, subject.id),
+        ),
+      );
+    const subjectPerson = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, subject.id));
+
+    expect(workspaces).toHaveLength(1);
+    expect(subjectMembership).toEqual([{ userId: subject.id }]);
+    expect(subjectPerson).toHaveLength(0);
+  });
+
   it("refuses when the only OTHER 'owner' is a role merely NAMED \"owner,x\" -- ownerCount must be exact", async () => {
     // THE COVERAGE GAP THIS CLOSES, and it was found in the fix's own review.
     //
