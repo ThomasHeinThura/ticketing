@@ -185,6 +185,200 @@ describe("G3 contrast inventory and math", () => {
     }
   });
 
+  it("keeps opaque caller states when a memoized body also has a selected overlay", async () => {
+    const fixture = `apps/web/src/components/.contrast-memo-state-caller-${process.pid}.tsx`;
+    const unsupported = `apps/web/src/components/.contrast-memo-state-unsupported-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    const source = `import { memo } from "react";
+const CardBody = memo(function CardBody(){ return <><span className="text-muted-foreground">Body</span><div className="bg-muted"><span className="text-muted-foreground">?</span></div></>; });
+export function TaskCard({ dragging, selected }) { return <div className="bg-background data-[task-dragging=true]:bg-card hover:bg-background data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50" data-task-dragging={dragging ? "true" : undefined} data-task-selected={selected ? "true" : undefined}><CardBody /></div>; }`;
+    try {
+      await writeFile(fixture, source);
+      const result = observeInheritedForegroundSurfaces([fixture], tokenNames);
+      const expectedKeys = [
+        "--color-muted-foreground|--color-background|bg-background|light",
+        "--color-muted-foreground|--color-background|bg-background|dark",
+        "--color-muted-foreground|--color-card|data-[task-dragging=true]:bg-card|light",
+        "--color-muted-foreground|--color-card|data-[task-dragging=true]:bg-card|dark",
+        "--color-muted-foreground|--color-background|hover:bg-background|light",
+        "--color-muted-foreground|--color-background|hover:bg-background|dark",
+        "--color-muted-foreground|--color-accent|data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50|light|backdrop:bg-background",
+        "--color-muted-foreground|--color-accent|data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50|dark|backdrop:bg-background",
+        "--color-muted-foreground|--color-muted|bg-muted|light|backdrop:bg-background",
+        "--color-muted-foreground|--color-muted|bg-muted|dark|backdrop:bg-background",
+        "--color-muted-foreground|--color-muted|bg-muted|light|backdrop:data-[task-dragging=true]:bg-card",
+        "--color-muted-foreground|--color-muted|bg-muted|dark|backdrop:data-[task-dragging=true]:bg-card",
+        "--color-muted-foreground|--color-muted|bg-muted|light|backdrop:hover:bg-background",
+        "--color-muted-foreground|--color-muted|bg-muted|dark|backdrop:hover:bg-background",
+        "--color-muted-foreground|--color-muted|bg-muted|light|backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50>bg-background",
+        "--color-muted-foreground|--color-muted|bg-muted|dark|backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50>bg-background",
+      ];
+      const observed = new Set(result.pairs);
+      observed.inheritedUses = result.uses;
+      observed.callerUses = result.callerUses;
+      observed.directOccurrenceUses = result.directOccurrenceUses;
+      observed.importedUses = result.importedUses;
+      observed.routeUses = result.routeUses;
+      observed.occurrences = result.uses.occurrences;
+      const manifest = expectedKeys.map((key) => {
+        const [fg, bg, backgroundClass, themeName] = key.split("|");
+        const occurrences = result.uses.occurrences.get(key) ?? [];
+        const first = occurrences[0];
+        const backdropLayers = first?.backdropLayers ?? [];
+        const backdropClass = backdropLayers.at(-1) ?? backgroundClass;
+        const backdropToken = backdropClass.match(
+          /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+        )?.[1];
+        return {
+          fg,
+          bg,
+          category: "body",
+          minRatio: 4.5,
+          themes: [themeName],
+          usage: fixture,
+          backdrop: `--color-${backdropToken}`,
+          backdropLayers,
+          foregroundClass: first?.foregroundClass,
+          backgroundClass: { [themeName]: backgroundClass },
+          surfaceContext: first?.surfaceContext,
+          occurrenceIds: [...new Set(occurrences.map(({ id }) => id))],
+          occurrences: occurrences.map(
+            ({
+              id,
+              usage,
+              surfaceContext,
+              category,
+              chain,
+              backdropLayers,
+            }) => ({
+              id,
+              usage,
+              surfaceContext,
+              category,
+              chain,
+              backdropLayers,
+            }),
+          ),
+        };
+      });
+
+      assert.equal(result.unresolved.size, 0);
+      assert.deepEqual(
+        [...result.pairs]
+          .filter((key) => key.includes("muted-foreground"))
+          .sort(),
+        [...expectedKeys].sort(),
+      );
+      for (const key of expectedKeys) {
+        assert.equal(result.uses.occurrences.get(key)?.length, 1, key);
+        assert.ok(
+          result.uses.occurrences.get(key)?.[0].id.includes("CardBody"),
+          key,
+        );
+      }
+      assert.deepEqual(
+        validatePairManifest(manifest, () => source, observed),
+        [],
+      );
+
+      const wrongBackground = manifest.map((pair) => ({
+        ...pair,
+        backgroundClass: { ...pair.backgroundClass },
+      }));
+      wrongBackground[2].backgroundClass.light =
+        "data-[task-dragging=true]:bg-accent";
+      assert.ok(
+        validatePairManifest(wrongBackground, () => source, observed).length >
+          0,
+        "a declared surface with the wrong background must fail validation",
+      );
+
+      await writeFile(
+        unsupported,
+        `import { memo } from "react"; const CardBody = memo(function CardBody(){ return <span className="text-muted-foreground">Body</span>; }); export function TaskCard(){ return <div className="data-[mystery=true]:bg-card"><CardBody /></div>; }`,
+      );
+      const unsupportedResult = observeInheritedForegroundSurfaces(
+        [unsupported],
+        tokenNames,
+      );
+      assert.equal(unsupportedResult.unresolved.size, 1);
+      assert.equal(
+        [...unsupportedResult.pairs].some((key) =>
+          key.includes("--color-card"),
+        ),
+        false,
+      );
+
+      const livePaths = await collectContrastSourcePaths();
+      const liveTaskCard = observeInheritedForegroundSurfaces(
+        livePaths,
+        tokenNames,
+      );
+      const taskCardUsage =
+        "apps/web/src/components/kanban-board/task-card.tsx";
+      const liveAvatarKeys = [
+        "--color-muted-foreground|--color-muted|bg-muted|light|backdrop:bg-background",
+        "--color-muted-foreground|--color-muted|bg-muted|light|backdrop:data-[task-dragging=true]:bg-card",
+        "--color-muted-foreground|--color-muted|bg-muted|light|backdrop:hover:bg-background",
+        "--color-muted-foreground|--color-muted|bg-muted|light|backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50>bg-background",
+      ];
+      for (const key of liveAvatarKeys) {
+        const contexts = liveTaskCard.uses.occurrences
+          .get(key)
+          ?.filter(
+            (item) =>
+              item.usage === taskCardUsage &&
+              item.id.includes(
+                "::TaskCardBody::div[0]/div[0]/span[0]::text-muted-foreground",
+              ),
+          );
+        assert.equal(contexts?.length, 1, key);
+      }
+      const popupHoverKeys = [...liveTaskCard.pairs]
+        .filter(
+          (key) =>
+            key.startsWith(
+              "--color-muted-foreground|--color-muted|hover:bg-muted/50|",
+            ) &&
+            liveTaskCard.uses.occurrences
+              .get(key)
+              ?.some((item) => item.usage === taskCardUsage),
+        )
+        .sort();
+      assert.deepEqual(popupHoverKeys, [
+        "--color-muted-foreground|--color-muted|hover:bg-muted/50|dark|backdrop:bg-popover",
+        "--color-muted-foreground|--color-muted|hover:bg-muted/50|light|backdrop:bg-popover",
+      ]);
+      for (const key of popupHoverKeys) {
+        const taskCardContexts = liveTaskCard.uses.occurrences
+          .get(key)
+          .filter((item) => item.usage === taskCardUsage);
+        assert.ok(taskCardContexts.length > 0, key);
+        assert.ok(
+          taskCardContexts.every(
+            (item) =>
+              item.backdropLayers.length === 1 &&
+              item.backdropLayers[0] === "bg-popover" &&
+              item.chain.some((entry) => entry.includes("HoverCardContent[0]")),
+          ),
+          "portal content must use its popup surface, not the enclosing card states",
+        );
+      }
+    } finally {
+      await Promise.all(
+        [fixture, unsupported].map((file) => rm(file, { force: true })),
+      );
+    }
+  });
+
   it("binds reachable data-state ancestor backgrounds without losing the opaque fallback", async () => {
     const fixture = `apps/web/src/components/.contrast-data-state-${process.pid}.test.tsx`;
     await writeFile(

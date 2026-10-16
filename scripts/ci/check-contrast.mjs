@@ -2601,6 +2601,7 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
           const baseOpaque = opaque.filter(
             (background) => !stateful(background),
           );
+          const statefulOpaque = opaque.filter(stateful);
           const statefulTranslucent = translucent.filter(stateful);
           // State surfaces such as hover:bg-accent/50 are painted over the
           // element's ordinary opaque surface. Preserve both contexts, and
@@ -2650,6 +2651,51 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
             };
             for (const stateBackground of statefulTranslucent)
               addStateSurface(stateBackground);
+            for (const stateBackground of statefulOpaque) {
+              const themes = base.themes.filter((theme) =>
+                stateBackground.themes.includes(theme),
+              );
+              if (themes.length === 0) continue;
+              if (pendingOptions.length > 0) {
+                resolvedOptions.push(
+                  ...pendingOptions.flatMap((foregroundSurface) => {
+                    const matchingThemes = foregroundSurface.themes.filter(
+                      (theme) => themes.includes(theme),
+                    );
+                    return matchingThemes.length === 0
+                      ? []
+                      : [
+                          {
+                            ...foregroundSurface,
+                            backdropClass: stateBackground.className,
+                            backdropLayers: [
+                              ...(foregroundSurface.backdropLayers ?? []),
+                              stateBackground.className,
+                            ],
+                            themes: matchingThemes,
+                            chain: [
+                              ...foregroundSurface.chain,
+                              ...chain,
+                              `state-backdrop:${stateBackground.className}`,
+                              `opaque-backdrop:${stateBackground.className}`,
+                            ],
+                          },
+                        ];
+                  }),
+                );
+              } else {
+                resolvedOptions.push({
+                  className: stateBackground.className,
+                  backdropClass: stateBackground.className,
+                  backdropLayers: [],
+                  themes,
+                  chain: [
+                    ...chain,
+                    `state-backdrop:${stateBackground.className}`,
+                  ],
+                });
+              }
+            }
             if (pendingOptions.length === 0) {
               resolvedOptions.push({
                 className: base.className,
@@ -3297,7 +3343,23 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       const target = { file: occurrence.usage, symbol: occurrence.component };
       const calls = componentCallSites(target);
       if (calls.length === 0) continue;
-      const surfaceOptions = calls.map((call) => callerSurface(call));
+      const pendingOptions = (occurrence.pendingAlphaSurfaces ?? []).flatMap(
+        (surface) =>
+          (surface.themes ?? ["light", "dark"]).map((theme) => ({
+            className: surface.className,
+            themes: [theme],
+            backdropLayers: [],
+            chain: surface.chain,
+          })),
+      );
+      const surfaceOptions = calls.map((call) =>
+        callerSurface(
+          call,
+          new Set(),
+          0,
+          call.callerPath === occurrence.usage ? pendingOptions : [],
+        ),
+      );
       if (surfaceOptions.some((surface) => !surface)) continue;
       const foreground = parseForegroundUtility(
         parseClassToken(occurrence.foregroundClass),
