@@ -696,15 +696,17 @@ export async function insertTaskActivity(
 ) {
   const selectedActivity = executor
     .select({
-      id: sql`${values.id ?? createId()}`.as("id"),
+      id: sql`${values.id === undefined ? createId() : values.id}`.as("id"),
       taskId: taskTable.id,
       type: sql`${values.type}`.as("type"),
-      createdAt: values.createdAt
-        ? sql`${values.createdAt}`.as("createdAt")
-        : sql`now()`.as("createdAt"),
-      updatedAt: values.updatedAt
-        ? sql`${values.updatedAt}`.as("updatedAt")
-        : sql`now()`.as("updatedAt"),
+      createdAt:
+        values.createdAt !== undefined
+          ? sql`${values.createdAt}`.as("createdAt")
+          : sql`now()`.as("createdAt"),
+      updatedAt:
+        values.updatedAt !== undefined
+          ? sql`${values.updatedAt}`.as("updatedAt")
+          : sql`now()`.as("updatedAt"),
       userId: sql`${values.userId ?? null}`.as("userId"),
       content: sql`${values.content ?? null}`.as("content"),
       eventData: sql`${values.eventData ?? null}`.as("eventData"),
@@ -797,7 +799,7 @@ export async function insertAsset(
 ) {
   const selectedAsset = executor
     .select({
-      id: sql`${values.id ?? createId()}`.as("id"),
+      id: sql`${values.id === undefined ? createId() : values.id}`.as("id"),
       workspaceId: workspaceTable.id,
       projectId: projectTable.id,
       taskId: taskTable.id,
@@ -806,12 +808,18 @@ export async function insertAsset(
       filename: sql`${values.filename}`.as("filename"),
       mimeType: sql`${values.mimeType}`.as("mimeType"),
       size: sql`${values.size}`.as("size"),
-      kind: sql`${values.kind ?? "image"}`.as("kind"),
-      surface: sql`${values.surface ?? "description"}`.as("surface"),
+      kind: sql`${values.kind === undefined ? "image" : values.kind}`.as(
+        "kind",
+      ),
+      surface:
+        sql`${values.surface === undefined ? "description" : values.surface}`.as(
+          "surface",
+        ),
       createdBy: sql`${values.createdBy ?? null}`.as("createdBy"),
-      createdAt: values.createdAt
-        ? sql`${values.createdAt}`.as("createdAt")
-        : sql`now()`.as("createdAt"),
+      createdAt:
+        values.createdAt !== undefined
+          ? sql`${values.createdAt}`.as("createdAt")
+          : sql`now()`.as("createdAt"),
     })
     .from(taskTable)
     .innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))
@@ -1102,25 +1110,38 @@ export async function insertTask(
 ) {
   const selectedTask = executor
     .select({
-      id: sql`${values.id ?? createId()}`.as("id"),
+      id: sql`${values.id === undefined ? createId() : values.id}`.as("id"),
       projectId: projectTable.id,
-      position: sql`${values.position ?? 0}`.as("position"),
-      number: sql`${values.number ?? 1}`.as("number"),
+      position: sql`${values.position === undefined ? 0 : values.position}`.as(
+        "position",
+      ),
+      number: sql`${values.number === undefined ? 1 : values.number}`.as(
+        "number",
+      ),
       userId: sql`${values.userId ?? null}`.as("userId"),
       title: sql`${values.title}`.as("title"),
       description: sql`${values.description ?? null}`.as("description"),
-      status: sql`${values.status ?? "to-do"}`.as("status"),
+      status: sql`${values.status === undefined ? "to-do" : values.status}`.as(
+        "status",
+      ),
       columnId: sql`${values.columnId ?? null}`.as("columnId"),
-      priority: sql`${values.priority ?? "low"}`.as("priority"),
+      priority:
+        sql`${values.priority === undefined ? "low" : values.priority}`.as(
+          "priority",
+        ),
       startDate: sql`${values.startDate ?? null}`.as("startDate"),
       dueDate: sql`${values.dueDate ?? null}`.as("dueDate"),
-      version: sql`${values.version ?? 1}`.as("version"),
-      createdAt: values.createdAt
-        ? sql`${values.createdAt}`.as("createdAt")
-        : sql`now()`.as("createdAt"),
-      updatedAt: values.updatedAt
-        ? sql`${values.updatedAt}`.as("updatedAt")
-        : sql`now()`.as("updatedAt"),
+      version: sql`${values.version === undefined ? 1 : values.version}`.as(
+        "version",
+      ),
+      createdAt:
+        values.createdAt !== undefined
+          ? sql`${values.createdAt}`.as("createdAt")
+          : sql`now()`.as("createdAt"),
+      updatedAt:
+        values.updatedAt !== undefined
+          ? sql`${values.updatedAt}`.as("updatedAt")
+          : sql`now()`.as("updatedAt"),
     })
     .from(projectTable)
     .where(

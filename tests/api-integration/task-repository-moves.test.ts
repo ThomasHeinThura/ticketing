@@ -137,6 +137,44 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
     await resetTestDatabase();
   });
 
+  it("task INSERT SELECT preserves omitted defaults, explicit nulls, and supplied values", async () => {
+    const { a, p2 } = await seed();
+    const { project } = await createProjectFixture({
+      workspaceId: a.workspace.id,
+    });
+    const otherProjectBefore = await db
+      .select({ id: schema.taskTable.id, number: schema.taskTable.number })
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.projectId, p2.id));
+
+    const omitted = await insertTask(db, {
+      projectId: project.id,
+      title: "Defaults",
+    });
+    const explicitNulls = await insertTask(db, {
+      projectId: project.id,
+      title: "Explicit nulls",
+      position: null,
+      number: null,
+    });
+    const supplied = await insertTask(db, {
+      projectId: project.id,
+      title: "Supplied values",
+      position: 23,
+      number: 77,
+    });
+
+    expect(omitted).toMatchObject({ position: 0, number: 1 });
+    expect(explicitNulls).toMatchObject({ position: null, number: null });
+    expect(supplied).toMatchObject({ position: 23, number: 77 });
+    expect(
+      await db
+        .select({ id: schema.taskTable.id, number: schema.taskTable.number })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.projectId, p2.id)),
+    ).toEqual(otherProjectBefore);
+  });
+
   it("workspace-scoped task lookup keeps the workspace, archived and deleted predicates", async () => {
     const { a, b, identityA, identityB, p1, p2, t1, t2, tb } = await seed();
     const insertedTasks = await db
