@@ -19,7 +19,7 @@ import {
   currentInstanceAdminPredicate,
   currentProjectReachPredicate,
   currentWorkspaceReachPredicate,
-} from "../database/identity-scope-predicates";
+} from "../database/repositories/identity-scope.repository";
 import {
   auditLogTable,
   projectTable,

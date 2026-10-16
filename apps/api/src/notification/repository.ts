@@ -1,7 +1,7 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { schema } from "../database";
-import { currentProjectReachPredicate } from "../database/identity-scope-predicates";
+import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
 import type { DbTransaction } from "../events/outbox";
 import { isSupportedNotificationResourceEvent } from "./resource-contract";
 

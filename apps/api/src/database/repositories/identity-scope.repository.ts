@@ -8,8 +8,8 @@ import {
   type SQLWrapper,
   sql,
 } from "drizzle-orm";
-import type { Executor } from "./executor";
-import db from "./index";
+import db from "..";
+import type { Executor } from "../executor";
 import {
   membershipTable,
   personTable,
@@ -17,7 +17,7 @@ import {
   userTable,
   workspaceRoleTable,
   workspaceUserTable,
-} from "./schema";
+} from "../schema";
 
 /** Role facts admitted by resolveIdentity's scoped-role membership loader. */
 export function canonicalScopedRoleMembership(

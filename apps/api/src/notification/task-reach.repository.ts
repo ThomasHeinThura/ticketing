@@ -8,7 +8,7 @@ import type { SQLWrapper } from "drizzle-orm";
 import { and, eq, exists, isNull, or, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 import type { Executor } from "../database/executor";
-import { canonicalScopedRoleMembership } from "../database/identity-scope-predicates";
+import { canonicalScopedRoleMembership } from "../database/repositories/identity-scope.repository";
 import { notificationTable, projectTable, taskTable } from "../database/schema";
 
 function validCapabilities(capabilities: SQLWrapper) {

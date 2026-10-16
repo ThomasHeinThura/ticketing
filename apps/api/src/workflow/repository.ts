@@ -17,7 +17,7 @@ import { type Executor, executorOrDefault } from "../database/executor";
 import {
   currentProjectReachPredicate,
   currentWorkspaceReachPredicate,
-} from "../database/identity-scope-predicates";
+} from "../database/repositories/identity-scope.repository";
 import {
   projectTable,
   roleTable,
