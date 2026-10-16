@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { type Executor, executorOrDefault } from "../database/executor";
 import {
   userAvatarTable,
@@ -10,9 +10,10 @@ import {
 } from "../database/schema";
 
 /**
- * User repository (issue #580): avatar rows and the statements account deletion runs inside
- * its transaction. Statements are moved verbatim; the controllers keep the lock order
- * (membership/role locks, then the user row), the retry/plan logic and credential invalidation.
+ * User repository (issue #580): avatar rows, a minimal account-erasure safety summary, and
+ * the statements account deletion runs inside its transaction. The controller keeps the
+ * lock order (membership/role locks, then the user row), retry/plan logic and credential
+ * invalidation.
  */
 
 export async function deleteAvatarByUserId(
@@ -68,38 +69,41 @@ export async function upsertAvatar(
   return saved;
 }
 
-/** Every workspace the user belongs to, with their role there. */
-export async function listUserMemberships(executor: Executor, userId: string) {
-  return await executor
-    .select({
-      workspaceId: workspaceUserTable.workspaceId,
-      role: workspaceUserTable.role,
-    })
-    .from(workspaceUserTable)
-    .where(eq(workspaceUserTable.userId, userId));
-}
-
-/** All members of workspaces the deletion subject currently belongs to. */
-export async function listMembersOfWorkspaces(
+/**
+ * Minimal account-erasure safety facts for the authenticated deletion subject.
+ * Every persisted membership row contributes to the counts, including rows whose
+ * member cannot be resolved as a canonical active identity. No other member's
+ * identity or individual role row leaves this statement.
+ */
+export async function listAccountErasureMembershipSummaries(
   executor: Executor,
   subjectUserId: string,
 ) {
-  const subjectWorkspaces = executor
-    .select({ workspaceId: workspaceUserTable.workspaceId })
-    .from(workspaceUserTable)
-    .where(eq(workspaceUserTable.userId, subjectUserId));
+  const role = workspaceUserTable.role;
   return await executor
     .select({
       workspaceId: workspaceUserTable.workspaceId,
       workspaceName: workspaceTable.name,
-      role: workspaceUserTable.role,
+      isOwner: sql<boolean>`case when ${role} is null then true else exists (
+        select 1 from unnest(string_to_array(${role}, ',')) as role_parts(value)
+        where lower(btrim(value, U&' \\0009\\000A\\000D\\000C\\000B\\00A0\\1680\\2000\\2001\\2002\\2003\\2004\\2005\\2006\\2007\\2008\\2009\\200A\\2028\\2029\\202F\\205F\\3000\\FEFF')) = 'owner'
+      ) end`,
+      memberCount: sql<number>`(
+        select count(*)::int from ${workspaceUserTable} as member_rows
+        where member_rows.workspace_id = ${workspaceUserTable.workspaceId}
+      )`,
+      ownerCount: sql<number>`(
+        select count(*)::int from ${workspaceUserTable} as member_rows
+        where member_rows.workspace_id = ${workspaceUserTable.workspaceId}
+          and lower(btrim(member_rows.role, U&' \\0009\\000A\\000D\\000C\\000B\\00A0\\1680\\2000\\2001\\2002\\2003\\2004\\2005\\2006\\2007\\2008\\2009\\200A\\2028\\2029\\202F\\205F\\3000\\FEFF')) = 'owner'
+      )`,
     })
     .from(workspaceUserTable)
     .innerJoin(
       workspaceTable,
       eq(workspaceUserTable.workspaceId, workspaceTable.id),
     )
-    .where(inArray(workspaceUserTable.workspaceId, subjectWorkspaces));
+    .where(eq(workspaceUserTable.userId, subjectUserId));
 }
 
 /** Row-lock the user so concurrent deletions/membership changes serialize on it. */

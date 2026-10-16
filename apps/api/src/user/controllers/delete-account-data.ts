@@ -15,8 +15,6 @@ import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
 
 import {
   formatBlockedWorkspacesMessage,
-  hasOwnerRole,
-  holdsOwnerExactly,
   planAccountDeletion,
   type WorkspaceMembershipSummary,
 } from "../account-deletion";
@@ -24,8 +22,7 @@ import {
   deleteUserMemberships,
   deleteWorkflowsInWorkspaces,
   deleteWorkspacesByIds,
-  listMembersOfWorkspaces,
-  listUserMemberships,
+  listAccountErasureMembershipSummaries,
   lockUserRow,
 } from "../repository";
 
@@ -33,33 +30,7 @@ async function collectMemberships(
   database: Executor,
   userId: string,
 ): Promise<WorkspaceMembershipSummary[]> {
-  const memberships = await listUserMemberships(database, userId);
-
-  if (memberships.length === 0) {
-    return [];
-  }
-
-  const members = await listMembersOfWorkspaces(database, userId);
-
-  return memberships.map((membership) => {
-    const workspaceMembers = members.filter(
-      (member) => member.workspaceId === membership.workspaceId,
-    );
-
-    return {
-      workspaceId: membership.workspaceId,
-      workspaceName: workspaceMembers[0]?.workspaceName ?? "workspace",
-      isOwner: hasOwnerRole(membership.role),
-      memberCount: workspaceMembers.length,
-      // EXACT, not `hasOwnerRole`. Over-counting owners makes
-      // `ownerCount <= 1` false, which skips `planAccountDeletion`'s block and
-      // lets a sole owner orphan the workspace. `isOwner` above keeps the
-      // inclusive reading, deliberately -- see `holdsOwnerExactly`'s comment.
-      ownerCount: workspaceMembers.filter((member) =>
-        holdsOwnerExactly(member.role),
-      ).length,
-    };
-  });
+  return await listAccountErasureMembershipSummaries(database, userId);
 }
 
 export async function deleteAccountData(userId: string) {

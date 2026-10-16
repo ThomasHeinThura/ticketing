@@ -72,8 +72,13 @@ describe("API integration: account deletion", () => {
       .select()
       .from(schema.workspaceTable)
       .where(eq(schema.workspaceTable.id, owner.workspace.id));
+    const memberships = await db
+      .select({ userId: schema.workspaceUserTable.userId })
+      .from(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.workspaceId, owner.workspace.id));
 
     expect(workspaces).toHaveLength(1);
+    expect(memberships.map((row) => row.userId)).toContain(owner.user.id);
   });
 
   it("refuses when the only OTHER 'owner' is a role merely NAMED \"owner,x\" -- ownerCount must be exact", async () => {

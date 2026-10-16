@@ -7,13 +7,13 @@ import {
   deleteWorkflowsInWorkspaces,
   deleteWorkspacesByIds,
   findAvatarById,
-  listMembersOfWorkspaces,
-  listUserMemberships,
+  listAccountErasureMembershipSummaries,
   lockUserRow,
   upsertAvatar,
 } from "../../apps/api/src/user/repository";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
+import { plantLegacyMembershipRole } from "./helpers/organization-http";
 
 describe("user repository (#580)", () => {
   beforeEach(async () => {
@@ -69,17 +69,37 @@ describe("user repository (#580)", () => {
       joinedAt: new Date(),
     });
 
-    const memberships = await listUserMemberships(db, a.user.id);
-    expect(memberships.map((row) => row.workspaceId).sort()).toEqual(
+    const summaries = await listAccountErasureMembershipSummaries(
+      db,
+      a.user.id,
+    );
+    expect(summaries.map((row) => row.workspaceId).sort()).toEqual(
       [a.workspace.id, b.workspace.id].sort(),
     );
-
-    const members = await listMembersOfWorkspaces(db, a.user.id);
-    expect(new Set(members.map((row) => row.workspaceId))).toEqual(
-      new Set([a.workspace.id, b.workspace.id]),
-    );
-    expect(members).toHaveLength(3);
-    expect(members[0]?.workspaceName).toBeTruthy();
+    expect(summaries).toHaveLength(2);
+    expect(
+      summaries.every(
+        (row) =>
+          Object.keys(row).sort().join(",") ===
+          "isOwner,memberCount,ownerCount,workspaceId,workspaceName",
+      ),
+    ).toBe(true);
+    expect(
+      summaries.find((row) => row.workspaceId === a.workspace.id),
+    ).toMatchObject({
+      workspaceName: a.workspace.name,
+      isOwner: true,
+      memberCount: 1,
+      ownerCount: 1,
+    });
+    expect(
+      summaries.find((row) => row.workspaceId === b.workspace.id),
+    ).toMatchObject({
+      workspaceName: b.workspace.name,
+      isOwner: false,
+      memberCount: 2,
+      ownerCount: 1,
+    });
 
     await db.transaction(async (tx) => {
       const locked = await lockUserRow(tx, a.user.id);
@@ -89,17 +109,18 @@ describe("user repository (#580)", () => {
 
     // only the named workspace's membership of this user is gone
     expect(
-      (await listUserMemberships(db, a.user.id)).map((r) => r.workspaceId),
+      (await listAccountErasureMembershipSummaries(db, a.user.id)).map(
+        (r) => r.workspaceId,
+      ),
     ).toEqual([a.workspace.id]);
     expect(
-      (await listUserMemberships(db, b.user.id)).map((r) => r.workspaceId),
+      (await listAccountErasureMembershipSummaries(db, b.user.id)).map(
+        (r) => r.workspaceId,
+      ),
     ).toEqual([b.workspace.id]);
   });
 
-  it("listMembersOfWorkspaces returns the members of every named workspace in one call", async () => {
-    // A user who belongs to two workspaces, each with another member: account deletion
-    // planning counts members and owners per workspace from this one result, so a listing
-    // truncated to the first workspace would let a sole owner orphan the second.
+  it("returns only own workspace summaries and counts every persisted member row", async () => {
     const a = await createWorkspaceMember({ role: "owner" });
     const b = await createWorkspaceMember({ role: "owner" });
     const c = await createWorkspaceMember({ role: "owner" });
@@ -110,18 +131,78 @@ describe("user repository (#580)", () => {
       joinedAt: new Date(),
     });
 
-    const members = await listMembersOfWorkspaces(db, a.user.id);
-    const perWorkspace = new Map<string, number>();
-    for (const row of members) {
-      perWorkspace.set(
-        row.workspaceId,
-        (perWorkspace.get(row.workspaceId) ?? 0) + 1,
-      );
-    }
-    expect(perWorkspace.get(a.workspace.id)).toBe(1);
-    expect(perWorkspace.get(b.workspace.id)).toBe(2);
-    expect(perWorkspace.has(c.workspace.id)).toBe(false);
-    expect(perWorkspace.size).toBe(2);
+    const summaries = await listAccountErasureMembershipSummaries(
+      db,
+      a.user.id,
+    );
+    expect(summaries).toHaveLength(2);
+    expect(summaries.map((row) => row.workspaceId).sort()).toEqual(
+      [a.workspace.id, b.workspace.id].sort(),
+    );
+    expect(
+      summaries.find((row) => row.workspaceId === a.workspace.id),
+    ).toMatchObject({
+      memberCount: 1,
+      ownerCount: 1,
+    });
+    expect(
+      summaries.find((row) => row.workspaceId === b.workspace.id),
+    ).toMatchObject({
+      memberCount: 2,
+      ownerCount: 1,
+    });
+    expect(
+      summaries.some((row) => row.workspaceName === c.workspace.name),
+    ).toBe(false);
+  });
+
+  it("preserves inclusive subject roles and exact owner counts without identity joins", async () => {
+    const subject = await createWorkspaceMember({ role: "owner" });
+    const otherId = `legacy-${subject.user.id}`;
+    await db.insert(schema.userTable).values({
+      id: otherId,
+      email: `${otherId}@example.com`,
+      emailVerified: true,
+      name: "Unresolved member",
+      banned: true,
+    });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: subject.workspace.id,
+      userId: otherId,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    await plantLegacyMembershipRole(
+      subject.workspace.id,
+      subject.user.id,
+      "member, OWNER",
+    );
+    await plantLegacyMembershipRole(subject.workspace.id, otherId, "owner,x");
+
+    const summaries = await listAccountErasureMembershipSummaries(
+      db,
+      subject.user.id,
+    );
+    expect(summaries).toEqual([
+      {
+        workspaceId: subject.workspace.id,
+        workspaceName: subject.workspace.name,
+        isOwner: true,
+        memberCount: 2,
+        ownerCount: 0,
+      },
+    ]);
+  });
+
+  it("returns an empty summary for a subject with no persisted memberships", async () => {
+    const subject = await createWorkspaceMember({ role: "member" });
+    await db
+      .delete(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.userId, subject.user.id));
+
+    await expect(
+      listAccountErasureMembershipSummaries(db, subject.user.id),
+    ).resolves.toEqual([]);
   });
 
   it("account-deletion writes require both planned IDs and the subject's current membership", async () => {
