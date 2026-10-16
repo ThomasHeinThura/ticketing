@@ -37,8 +37,11 @@ async function deleteComment(
     projectId: result.projectId,
     userId,
   });
-  deleteOrphanedAssets(existing.content, null, {
-    taskId: existing.taskId,
+  db.transaction(async (tx) => {
+    await lockTaskAndAssertProjectLive(tx, identity, existing.taskId);
+    await deleteOrphanedAssets(tx, identity, existing.content, null, {
+      taskId: existing.taskId,
+    });
   }).catch(() => {});
   return result.deletedComment;
 }
