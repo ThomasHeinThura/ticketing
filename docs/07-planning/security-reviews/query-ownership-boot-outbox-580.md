@@ -753,3 +753,234 @@ The only production callers are the two `await` expressions in `seedDefaultWorks
 - No PostgreSQL, Docker image, boot, browser, whole-candidate acceptance, hosted CI, or exact-head merge-readiness result was produced by this review. Historical reports for the parent remain historical; this verdict covers only the new delta and does not rewrite them.
 
 **Reviewed head:** `9f58e3279adbbb0f9c0444eb48ee1f197eab030d`
+
+
+---
+
+## Current accepted-main composition — 2026-10-16
+
+**Reviewed head:** `a74de826333d8cd24487f38386bbe12992253b3f`
+
+Conductor publication of four authentic preparation/review reports and one literal source-conservation receipt, unchanged below. Explicit fresh dispatch: ordinary `boot_outbox_a74_import_ordinary_luna`, model `gpt-6-luna`, fork_turns `none`; security `boot_outbox_a74_security_confirmation_sol`, model `gpt-6.1-sol`, fork_turns `none`. The preparer/conductor is not an independent reviewer. The current bounded ordinary import and lightweight Sol confirmation CLEAR a74; the original three-context ordinary/full Sol panel and helper correction reviews retain their exact original source scopes. No full-source review is relabelled as current.
+
+This normal composition imports accepted #784 and #796 main through two merge commits; all21 unique boot/outbox source/test/note blobs were verified identical to original dcfbacf before this own-note append. The actual SCIM/outbox transaction join was checked. Earlier note text describing764/780 as unaccepted or Docker unavailable is historical:764 and780 are accepted, Docker responded for current accepted shipping checks. This source still needs its own hosted CI, actual PostgreSQL counts and shipping image build/boot/migration/health proof. No stage/#580/release/SIT/restore/multiprocess acceptance follows. check:queries remains unwired; the seed-helper signature convention residual remains unchanged.
+
+---
+
+Retained evidence file — 600-boot-outbox-accepted784-main-preparation-luna.md
+
+# #580 boot/outbox preparation after accepted #784
+
+**Result:** Prepared for conductor review. This is implementation/composition preparation, not an independent review, merge approval, current full-review verdict, or permission to publish.
+
+**Worktree / source:** `/Users/heinthura/.codex/worktrees/q580-b10/Ticketing.v2`, branch `codex/query-ownership-580-b10`. Before composition the checkout was clean at `dcfbacf75b571aa313e81bf999f54f4f78c9a74f`, whose parent was the retained repaired source `9f58e3279adbbb0f9c0444eb48ee1f197eab030d`. Accepted source fetched by exact SHA was `1f2ea00404e41e108fad437c2b87caa3bbf56298`, merge #784 with parents `81781ab244cc1e6c9fac667f309de17a1e494caa` and `016978fc362d5c2e3e88a4d909013c53f2bc1885`. Normal `git merge --no-ff` produced `fcf77056c565b0929d204397f9689ded21aa4fd3`, parents exactly `dcfbacf75b571aa313e81bf999f54f4f78c9a74f` then `1f2ea00404e41e108fad437c2b87caa3bbf56298`. Both parents and retained source `9f58e327…` are ancestors of the result. Worktree is clean after the merge; no push or PR action was performed.
+
+**Composition and conservation:** `git merge-tree --write-tree` preview returned tree `87a0c2be3695bdb9028e850c3f7600f2fde21509` with no conflict entries; the normal merge also reported no conflicts. Shared changed paths relative to the two sides' prior accepted base included `apps/api/src/database/executor.ts`, `docs/01-architecture/{monorepo-layout,multi-tenancy,security-model,tech-stack}.md`, `docs/04-engineering/{ci-cd,coding-standards}.md`, `docs/07-planning/security-reviews/764-query-ownership.md`, and the API/integration executor tests. The accepted query-ownership prose survived: tenant-facing repository reads require resolved identity/reach predicates; `forIdentity(identity)` is an illustration rather than a claimed universal type guarantee. The #580 executor/repository ownership work and its review history remain in the second-parent lineage.
+
+The exact net tree delta against accepted #784 is 21 paths (2,553 insertions / 1,115 deletions): six named migration/backfill repository modules, `apps/api/src/events/outbox.repository.ts`, `apps/api/src/events/outbox.ts`, five startup/backfill/seed orchestration utilities plus `seed-defaults.repository.ts`, the retained `query-ownership-boot-outbox-580.md` note, and the existing startup/executor/seed tests. No 785/796/803-only source was imported. Byte comparisons returned equal for the accepted-main versions of `apps/api/src/project/index.ts`, `apps/api/src/project/policy.ts`, `.github/workflows/release.yml`, `compose.yml`, and `scripts/deploy.sh`. `git diff --check HEAD^1 HEAD` reports whitespace in imported accepted-main historical review records; these are in the #784 import, not edits made in this composition. No accepted record was rewritten to hide those diagnostics.
+
+**Security/behavior trace:** `runMigrationStep()` uses `getMigrationDatabase()` for hand-written fixups, Drizzle migration, and application-role setup, then closes that pool. It runs as a separate migrate OS process. `runApiBootTasks()` first rejects a migration URL in its own environment and asserts the serving DB role is non-privileged before DML seeds/backfills. Seed and per-workspace/project helper calls retain the passed executor/transaction where their source contract does so; the workspace backfill's transactional checks/inserts and project advisory transaction lock remain in the existing orchestration. No broad “bootstrap exemption” to caller-bound SQL is inferred: these are explicit global maintenance tasks and their scope remains reviewable under the accepted query contract. The startup seed scan reads user/person IDs for staff-person backfill and the legacy project backfill selects project/workspace IDs; neither path returns actor-facing project/comment content.
+
+The outbox service still validates the registered event kind and permitted instance scope, then writes the complete envelope through `insertOutboxEvent(tx, event)` on the caller's transaction. This preserves the durable domain-event purpose: one parent envelope commits or rolls back with the originating mutation; provider calls remain downstream. `actor.name` and other envelope values are supplied by callers; this repository performs no actor/content lookup. I found no new actor-facing content read whose scope is widened by this extraction. Caller-side event construction and downstream recipient reach checks remain in their existing contract and were not re-proved here.
+
+**Commands and evidence at `fcf77056c565b0929d204397f9689ded21aa4fd3`:**
+
+- `pnpm --filter @taskdesk/api typecheck` — exit 0.
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/events/outbox.test.ts` — 1 file, 4 tests passed, exit 0 (450 ms).
+- Ancestor checks for pre-composition source, repaired source, and accepted #784 — all exit 0.
+- Protected-blob equality comparisons above — all equal (exit 0).
+- No PostgreSQL, Docker/image, browser, full suite, hosted CI, or fresh independent review was run. Historical/hosted results remain attributed to their exact recorded heads and are not transferred by this composition.
+
+**Next:** conductor waits for actual #796 acceptance, then chooses the final freeze/review/publication window. This preparation does not replace that wait or the required current-head gates and reviews.
+
+---
+
+Retained evidence file — 060-boot-outbox-accepted796-freeze-preparation-luna.md
+
+# #798 boot/outbox composition after accepted #796
+
+**Result:** Clean final composition prepared for current import review. I am the retained source author/preparation context, not an independent reviewer. This note does not claim approval, current-head review clearance, or authorization to publish.
+
+**Exact source and parents:** Worktree `/Users/heinthura/.codex/worktrees/q580-b10/Ticketing.v2`, branch `codex/query-ownership-580-b10`. Starting tree was clean at `fcf77056c565b0929d204397f9689ded21aa4fd3`, whose parents are the retained boot/outbox source `dcfbacf75b571aa313e81bf999f54f4f78c9a74f` and accepted #784 `1f2ea00404e41e108fad437c2b87caa3bbf56298`. Fetched only exact accepted #796 `1a34e5792ee9c42b15004b032e3c5410e5def44e`; its parents are `1f2ea00404e41e108fad437c2b87caa3bbf56298` and `d32787453d47c1b99a219a214c3be55db14bdc06`. A normal no-ff merge produced exact head `a74de826333d8cd24487f38386bbe12992253b3f` with parents `fcf77056c565b0929d204397f9689ded21aa4fd3` then `1a34e5792ee9c42b15004b032e3c5410e5def44e`. Both source and accepted #796 are ancestors. Final worktree is clean. No push or PR/review-note publication was performed.
+
+**Accepted tree and preserved blobs:** Accepted #796 tree is `f31cf2945b9b6afeff31c755c0ed9fbeddb953af`; it is the exact second parent tree. Root's existing private receipt `798-root-fcf-conservation.json` lists all 21 unique boot/outbox paths at pre-#796 head `fcf77056…` and their original source blobs from `dcfbacf…`. I independently compared every listed path at the new head to both recorded blob IDs: 21 paths, 0 mismatches. Thus all 21 unique boot/outbox source/test/review-note blobs remain byte-identical after #796 composition. The merge preview had no conflict entries and no same-path changes between the two sides relative to #784. Net diff against accepted #796 remains those 21 paths (2,553 insertions / 1,115 deletions).
+
+**Actual SCIM/outbox join:** `setScimIdentityActiveInTransaction(tx, ...)` resolves the external identity using `tx`, applies `transitionPersonLifecycleInTransaction(tx, ...)`, updates the external identity, inserts the provisioning event, and on deactivation calls `enqueueOutboxEvent(tx, ...)`. The event is the existing registered instance-scoped `identity.deprovisioned` key, with a system actor and bounded revocation counts/person ID; it contains no profile fields. The service validates kind and instance scope before `insertOutboxEvent(tx, event)` writes the full envelope on the same transaction handle. The caller commits/rolls back that transaction before socket invalidation is announced. The surrounding SCIM active-state writers hold the pending-action lifecycle gate and verify the connection's current lifecycle policy within their transaction; successful event persistence therefore remains atomic with lifecycle mutation. The existing nested audit savepoint/failure notification behavior is unchanged. No SCIM read-scope or caller-content widening was introduced by the outbox extraction.
+
+**Accepted SQL/executor contract:** The current accepted `coding-standards.md` requires caller transactions to pass their handle through repository functions, requires `Executor` first for always-transactional functions and optional-last plus `executorOrDefault` for dual-mode functions, and requires resolved identity plus reach predicates for cross-organisation actor-facing reads. The outbox repository is transaction-bound and accepts `Executor`; it only inserts the already-constructed domain envelope and performs no actor/content lookup. The bounded global startup maintenance scans previously identified (user/person IDs and project/workspace IDs) remain separate startup maintenance work; they do not return actor-facing content and this composition does not claim a blanket bootstrap exemption from caller-bound SQL. Existing seed-helper signature convention divergence remains disclosed in the retained review note.
+
+**Composition overlaps:** `git merge-base --all` returned only `1f2ea004…`; shared changed-path intersection was empty. No #785/#803-only source was imported. The #796 side adds the accepted legacy workspace revocation SCIM paths, its tests, and review record; those additions are present through the exact accepted parent. An imported accepted security-review note has whitespace diagnostics under `git diff --check`; no retained product/source or test file was changed to suppress them.
+
+**Commands at `a74de826333d8cd24487f38386bbe12992253b3f`:**
+
+- `pnpm --filter @taskdesk/api typecheck` — exit 0.
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/events/outbox.test.ts` — 1 file / 4 tests passed, exit 0 (405 ms).
+- `git merge-base --is-ancestor` for both exact parents — exit 0.
+- Exact blob comparison against root's 21-path source conservation receipt — 21/21 equal.
+- `git diff --check` scoped to the imported #796 note reports its authentic report-format trailing spaces and final blank line; product/source and test paths in the bounded scope are clean.
+- No PostgreSQL, Docker/image, browser, full suite, hosted CI, or fresh review was run. #796's accepted checks/runtime evidence is owned by its exact accepted source and is not represented as newly rerun here.
+
+**Handoff:** conductor assigns the required current import ordinary review and Sol review against this exact head. This source-author preparation does not fill either review role.
+
+---
+
+Retained evidence file — boot-outbox-a74-import-ordinary-luna.md
+
+# #798 boot/outbox current-main import — ordinary review
+
+- **Role:** Fresh independent ordinary import reviewer; assigned GPT-6 Luna. This context did not author, direct, or remediate the source or composition. Runtime model introspection is unavailable here; the label records the dispatch.
+- **Exact candidate:** `a74de826333d8cd24487f38386bbe12992253b3f`, branch `codex/query-ownership-580-b10`.
+- **Parents:** retained source composition `fcf77056c565b0929d204397f9689ded21aa4fd3`, followed by accepted #796 `1a34e5792ee9c42b15004b032e3c5410e5def44e`.
+- **Verdict:** **CLEAR for bounded current-main import confirmation.** No blocking or non-blocking finding in this scope. This does not complete #580 or certify runtime acceptance.
+
+## Findings
+
+The checkout is clean at the dispatched SHA. Both exact parents are ancestors. The net delta against the accepted #796 parent is exactly the 21 boot/outbox paths (2,553 insertions / 1,115 deletions). I compared each listed path in `798-root-fcf-conservation.json` with both its recorded `original` and `current` blob: **21/21 equal**. The import therefore preserves the authentic source, tests and review note byte-for-byte. The merge history adds only the expected `fcf77056` and `a74de826` composition commits above the source merge; I found no #785/#803 source commit or source path in this imported delta. The merge preparation receipt independently records no path overlap with #796, no #785/#803-only source, and exact accepted parentage.
+
+The outbox repository accepts the caller's `Executor` and inserts only the already-built event envelope. `enqueueOutboxEvent` validates the registered kind and its instance-scope allowance before delegating. In `setScimIdentityActiveInTransaction`, the caller transaction handle is used for identity lookup, person lifecycle transition, identity update, provisioning event, and `enqueueOutboxEvent(tx, ...)`; the outer wrapper commits that transaction before announcing socket invalidation. The deprovision event carries a person ID and bounded revocation counts, with no profile/content lookup introduced by the outbox write. This confirms the SCIM/outbox atomicity seam in the imported source; it does not re-prove every existing SCIM authorization or recipient-reach rule.
+
+The startup SQL split remains explicit. `runMigrationStep()` obtains the migration connection, runs startup fixups/Drizzle migrations/application-role setup and closes that pool in the one-shot migration process. `runApiBootTasks()` rejects a migration URL in the serving process, checks the application role before DML, then runs seeds/backfill. Compose and chart configuration likewise give the owner URL only to the migrate service/job and the `taskdesk_app` URL to serving processes. The global startup reads inspected in the retained preparation note return user/person IDs and project/workspace IDs for maintenance; this is not a blanket bootstrap SQL exemption from the accepted repository/transaction contract. The extracted SQL lives in explicitly named repository modules; transaction-bound outbox insertion stays on the supplied handle.
+
+## Verification performed
+
+- `git rev-parse HEAD`, `git show --no-patch --format='%H%n%P%n%s' HEAD`, `git status --short --branch` — exact assigned head and clean worktree.
+- `git diff --stat` and `git diff --name-status` against accepted #796 parent — 21 paths and expected net change.
+- Python comparison of all entries in private `798-root-fcf-conservation.json` against `HEAD:<path>` — 21 paths, 0 mismatches.
+- `git merge-base --is-ancestor` for retained source `dcfbacf75b571aa313e81bf999f54f4f78c9a74f` and accepted #796 — both passed.
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/events/outbox.test.ts` — **1 file / 4 tests passed** on the exact candidate.
+- Read the accepted query ownership contract in `docs/04-engineering/coding-standards.md`, migration-role split in `docs/04-engineering/migrations.md`, relevant startup/outbox/SCIM source, the retained #580 review record, both private preparation reports and the conservation receipt.
+
+## Risk classification and limits
+
+The **import operation itself** has low semantic risk: there are no overlapping changed paths, no source blob changed during composition, and the accepted parent is the exact second parent. The **retained source scope** still touches security-relevant SCIM lifecycle and persistence paths. Its earlier three ordinary clearances and full GPT-6 Sol security review remain authentic historical evidence for their exact reviewed source; they are not reissued here. For this composition, a **lightweight fresh GPT-6 Sol confirmation** is the appropriate remaining security tier: confirm the exact-head import did not alter authority, transaction binding, role separation, or gate semantics. A full new source-level Sol pass would exceed this bounded import delta unless that confirmation finds a substantive discrepancy.
+
+Historical targeted PostgreSQL, integration, typecheck, lint and review results remain attributed to their recorded SHAs in `docs/07-planning/security-reviews/query-ownership-boot-outbox-580.md` and the takeover notes. This review newly ran only the focused outbox unit test. No PostgreSQL, Docker, image boot/health, browser, full suite, hosted CI, or runtime acceptance was run. This report is not approval to push, merge, claim #580 complete, or transfer historical evidence to unrecorded heads.
+
+---
+
+Retained evidence file — boot-outbox-a74-security-confirmation-61-sol.md
+
+# #798 current-main import security confirmation
+
+**Model:** GPT-6.1 Sol (platform/dispatch label; this serving context exposes no independent runtime model introspection). No GPT-6.0 identity is claimed.
+**Role/context:** Fresh independent lightweight security confirmation, `/root/boot_outbox_a74_security_confirmation_sol`. I did not author, direct, advise on, or remediate this candidate. Parent dispatched the bounded exact-head review after the ordinary import CLEAR.
+**Reviewed head:** `a74de826333d8cd24487f38386bbe12992253b3f`
+**Comparison parents:** retained composition `fcf77056c565b0929d204397f9689ded21aa4fd3`; accepted main #796 `1a34e5792ee9c42b15004b032e3c5410e5def44e`.
+**Verdict:** CLEAR for this lightweight import security confirmation. No blocking or non-blocking finding in the bounded composition scope. No substantive join requiring escalation was found. This is not merge approval, runtime acceptance, a fresh full-source review, or completion of #580.
+
+## Actual coverage and findings
+
+I independently checked the exact parents, clean checkout, ancestry of repaired source `9f58e3279adbbb0f9c0444eb48ee1f197eab030d`, original publication `dcfbacf75b571aa313e81bf999f54f4f78c9a74f`, and accepted #796. All ancestry checks returned zero. Python compared every receipt path with actual `HEAD:<path>` Git blobs: 21 paths, zero mismatches against both recorded original/current blobs. The entire changed-path set relative to the accepted parent equals precisely those 21 paths. This includes the authentic 755-line retained review note, unchanged. Thus accepted API-key authority-clock and other authority paths remain byte-identical to accepted main outside this explicitly bounded import. No CI/control-policy path is part of that delta. Exact parent composition preserves accepted #632 lifecycle source; these are structural conservation checks, not rerun acceptance proofs.
+
+I traced the real current SCIM seam: `setScimIdentityActiveInTransaction(tx, ...)` looks up the identity through `tx`, applies person lifecycle transition on `tx`, writes identity/provisioning rows and calls `enqueueOutboxEvent(tx, ...)`. The service validates the registered event kind and allowed instance scope, then `insertOutboxEvent(tx, event)` awaits its insert on that supplied executor. It opens no replacement transaction and performs no actor/content lookup. The deprovision envelope contains the existing system actor, person ID and bounded revocation counts. The accepted lifecycle gate/policy verification remains in the surrounding transaction. Both the direct wrapper and SCIM active-state/profile writers await their outer transaction before `announceScimDeactivation`; accepted #632 socket invalidation is therefore preserved after commit rather than emitted inside the transaction. I found no new authority widening or atomicity change at this join.
+
+I read the accepted SQL ownership/Executor contract and migration-role split, current Executor definition, outbox files, lifecycle callers, startup entry points, and relevant retained review coverage. `runMigrationStep()` supplies the owner connection to startup fixups/Drizzle migration/role setup, then closes its pool in the one-shot process. `runApiBootTasks()` rejects a migration URL and asserts a nonprivileged serving role before seeds/backfills. Compose/chart separation remains outside the imported delta and matches that split. Global maintenance scans are explicit maintenance queries; no blanket bootstrap exception to transaction ownership or tenant scoping was created. The previously disclosed structural seed-helper signature divergence stays historical, unchanged; this import does not claim to implement all #580 ownership work.
+
+I read both private preparation reports (`600-boot-outbox-accepted784-main-preparation-luna.md`, `060-boot-outbox-accepted796-freeze-preparation-luna.md`), the receipt `798-root-fcf-conservation.json`, and current ordinary report `boot-outbox-a74-import-ordinary-luna.md`. Earlier three ordinary/full Sol and later helper delta clearances remain attributed to their actual exact sources in `docs/07-planning/security-reviews/query-ownership-boot-outbox-580.md`. This report does not silently reissue their full scope for the composition.
+
+## Commands and limits
+
+- Read AGENTS.md, active mission, agent workflow and provider adapter; inspected query ownership and migration-role contracts.
+- `git status --short`, `git show -s --format='%H %P' HEAD`, parent diff stats, and actual source reads/searches.
+- Python subprocess Git blob comparisons and complete accepted-parent changed-path-set equality: 21/21 conserved, no extra paths.
+- `git merge-base --is-ancestor` for original publication, repaired source and accepted #796: all exit 0.
+- Read current SCIM lifecycle/protocol, outbox insertion, Executor, startup migration/serving functions and deployment role references. Initial guessed API-key file searches missed; corrected to `apps/api/src/utils/verify-api-key.ts`. No source was changed.
+
+No tests were newly run by this reviewer. The ordinary reviewer reports 1 file/4 outbox unit tests on this exact candidate; the author reports typecheck at this exact candidate. Those are separate actors' evidence, not my executions. No PostgreSQL, Docker/build/image/boot/health, browser, heavy suite, hosted CI or runtime acceptance was run. No source, branch, PR or review publication mutation was performed. Only this private mode-0600 evidence file was written. Required exact-head CI/runtime gates and conductor publication/merge decisions remain separate.
+
+---
+
+Retained evidence file — 798-root-fcf-conservation.json
+
+{
+  "time": "2026-10-16T08:52:06.920751+00:00",
+  "head": "fcf77056c565b0929d204397f9689ded21aa4fd3",
+  "original": "dcfbacf75b571aa313e81bf999f54f4f78c9a74f",
+  "base": "1f2ea00404e41e108fad437c2b87caa3bbf56298",
+  "blobs": {
+    "apps/api/src/database/repositories/backfill-workspace-project-defaults.repository.ts": {
+      "current": "c9b2d25dd4ea2073eb5a7e67ef27e00524e2b7d8",
+      "original": "c9b2d25dd4ea2073eb5a7e67ef27e00524e2b7d8"
+    },
+    "apps/api/src/database/repositories/migrate-apikey-reference-id.repository.ts": {
+      "current": "c2fac1fb0b1e2ff5fdc19c5b30f9b33871ec3821",
+      "original": "c2fac1fb0b1e2ff5fdc19c5b30f9b33871ec3821"
+    },
+    "apps/api/src/database/repositories/migrate-notification-preferences-schema.repository.ts": {
+      "current": "4547f946b5fa203ec5acf281a3b1dc75585a3d8f",
+      "original": "4547f946b5fa203ec5acf281a3b1dc75585a3d8f"
+    },
+    "apps/api/src/database/repositories/migrate-session-column.repository.ts": {
+      "current": "e683e7543bc20aeda23742af8be9035d40755b42",
+      "original": "e683e7543bc20aeda23742af8be9035d40755b42"
+    },
+    "apps/api/src/database/repositories/migrate-workspace-user-email.repository.ts": {
+      "current": "cf9617b2423d1a2a192a43fffa42afe28c6230ca",
+      "original": "cf9617b2423d1a2a192a43fffa42afe28c6230ca"
+    },
+    "apps/api/src/events/outbox.repository.ts": {
+      "current": "ee0dba26c688b2c862345c71bbcd13d8a99694f1",
+      "original": "ee0dba26c688b2c862345c71bbcd13d8a99694f1"
+    },
+    "apps/api/src/events/outbox.ts": {
+      "current": "8e5067259016fd90878fd33f7f73539d95b27773",
+      "original": "8e5067259016fd90878fd33f7f73539d95b27773"
+    },
+    "apps/api/src/utils/backfill-workspace-project-defaults.ts": {
+      "current": "eb38afd047376c7790876228ac959521fc583edc",
+      "original": "eb38afd047376c7790876228ac959521fc583edc"
+    },
+    "apps/api/src/utils/migrate-apikey-reference-id.ts": {
+      "current": "e8cb3a714c801fe520b35e198943d85465cf8bae",
+      "original": "e8cb3a714c801fe520b35e198943d85465cf8bae"
+    },
+    "apps/api/src/utils/migrate-notification-preferences-schema.ts": {
+      "current": "840274cf7af05052da5817094ca1cfcaddcee957",
+      "original": "840274cf7af05052da5817094ca1cfcaddcee957"
+    },
+    "apps/api/src/utils/migrate-session-column.ts": {
+      "current": "00f1fc80fbbe362e7a53bb67c080deb35d613d47",
+      "original": "00f1fc80fbbe362e7a53bb67c080deb35d613d47"
+    },
+    "apps/api/src/utils/migrate-workspace-user-email.ts": {
+      "current": "2b8a264c748986938b28d45078b9bca733480131",
+      "original": "2b8a264c748986938b28d45078b9bca733480131"
+    },
+    "apps/api/src/utils/repository.ts": {
+      "current": "cea54bc98762def0715baa1c1bb5c871dc9085f8",
+      "original": "cea54bc98762def0715baa1c1bb5c871dc9085f8"
+    },
+    "apps/api/src/utils/seed-default-workspace-roles.ts": {
+      "current": "24979f566ce260ce9e6a93cb91b4bf862b5c17ce",
+      "original": "24979f566ce260ce9e6a93cb91b4bf862b5c17ce"
+    },
+    "apps/api/src/utils/seed-defaults.repository.ts": {
+      "current": "a7e1ef38bd18527dc4db074de63e736987dc2473",
+      "original": "a7e1ef38bd18527dc4db074de63e736987dc2473"
+    },
+    "apps/api/src/utils/seed-internal-organisation.ts": {
+      "current": "1349e7e7052768a792275dc05476cbad32477eda",
+      "original": "1349e7e7052768a792275dc05476cbad32477eda"
+    },
+    "apps/api/src/utils/seed-project-states.ts": {
+      "current": "87a8acb462cea27c13505308703ac81173b8ef06",
+      "original": "87a8acb462cea27c13505308703ac81173b8ef06"
+    },
+    "apps/api/src/utils/seed-workspace-defaults.ts": {
+      "current": "9321f212dd1e78b4cb23e2ba483ef2d18f6a1359",
+      "original": "9321f212dd1e78b4cb23e2ba483ef2d18f6a1359"
+    },
+    "docs/07-planning/security-reviews/query-ownership-boot-outbox-580.md": {
+      "current": "d4e4bf214df789bce07937035a104cc88c1a929c",
+      "original": "d4e4bf214df789bce07937035a104cc88c1a929c"
+    },
+    "tests/api-integration/database-startup-fixups.test.ts": {
+      "current": "272befcf7201065ff58be2755764e37ea29c3b16",
+      "original": "272befcf7201065ff58be2755764e37ea29c3b16"
+    },
+    "tests/api-integration/seed-defaults-repository.test.ts": {
+      "current": "3c20e5099fce5764f7d8cb314b57a38cc27eeee7",
+      "original": "3c20e5099fce5764f7d8cb314b57a38cc27eeee7"
+    }
+  }
+}
