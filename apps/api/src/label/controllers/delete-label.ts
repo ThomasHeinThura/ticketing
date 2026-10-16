@@ -125,9 +125,8 @@ async function deleteLabel(
     };
   });
 
-  for (const { label, taskId, projectId } of result.affectedLabels) {
+  for (const { taskId, projectId } of result.affectedLabels) {
     await publishEvent("task.label_deleted", {
-      label,
       task: { id: taskId, projectId },
       projectId,
       taskId,

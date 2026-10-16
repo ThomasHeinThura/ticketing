@@ -395,6 +395,17 @@ describe("label repository (#580)", () => {
       "foreign",
     );
 
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, identityA.personId),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, taskA2.projectId),
+        ),
+      );
+    expect(await findLabelById(identityA, copyA2.id)).toBeUndefined();
+
     const listed = await listTaskLabelCopiesWithTask(db, a.workspace.id, "Fam");
     expect(listed.map((entry) => entry.labelId).sort()).toEqual(
       [copyA.id, copyA2.id].sort(),
@@ -416,15 +427,17 @@ describe("label repository (#580)", () => {
     });
 
     await updateLabelsByIds(db, [copyA.id], { name: "Renamed", color: "#abc" });
-    const deleted = await deleteLabelsByIds(db, [copyA2.id]);
-    expect(deleted.map((row) => row.id)).toEqual([copyA2.id]);
+    const deleted = await deleteLabelsByIds(db, [copyA.id, copyA2.id]);
+    expect(deleted.map((row) => row.taskId).sort()).toEqual(
+      [taskA.id, taskA2.id].sort(),
+    );
+    expect(
+      deleted.every((row) => Object.keys(row).sort().join() === "taskId"),
+    ).toBe(true);
 
     const rows = await db.select().from(schema.labelTable);
     const byId = new Map(rows.map((row) => [row.id, row]));
-    expect(byId.get(copyA.id)).toMatchObject({
-      name: "Renamed",
-      color: "#abc",
-    });
+    expect(byId.has(copyA.id)).toBe(false);
     expect(byId.get(otherName.id)?.name).toBe("Other");
     expect(byId.get(foreign.id)?.name).toBe("Fam");
     expect(byId.has(copyA2.id)).toBe(false);

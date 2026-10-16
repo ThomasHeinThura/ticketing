@@ -26,7 +26,6 @@ import {
 
 /**
  * Label repository (issue #580). Every label statement lives here; the controllers keep the
- * transaction boundaries, lock order, publishEvent calls and error mapping. Statements are
  * transaction boundaries, lock order, publishEvent calls and error mapping. Every actor-facing
  * content read and returned write carries current workspace/project reach in SQL.
  */
@@ -475,7 +474,7 @@ export async function deleteLabelsByIds(executor: Executor, ids: string[]) {
   return await executor
     .delete(labelTable)
     .where(inArray(labelTable.id, ids))
-    .returning();
+    .returning({ taskId: labelTable.taskId });
 }
 
 export async function updateLabelById(
