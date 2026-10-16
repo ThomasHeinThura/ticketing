@@ -1,13 +1,27 @@
-import { createId } from "@paralleldrive/cuid2";
-import { BUILT_IN_ROLES } from "@taskdesk/permissions";
-import { and, eq, inArray, isNull } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
-import type db from "../database";
-import { schema } from "../database";
+import type { Transaction } from "../database/executor";
 import { projectMembershipKeys } from "../identity/membership-projection";
 import { workspaceMemberRoles } from "../utils/workspace-member-roles";
+import {
+  creatorHasWorkspaceSeesAll,
+  findCreatorPerson,
+  findCreatorPersonForUpdate,
+  findProjectLeadRole,
+  hasActiveDirectProjectGrant,
+  insertProjectCreatorGrant,
+  insertProjectLeadRole,
+  listCreatorGrantPersonIds,
+  lockCreatorGrantPeople,
+  lockCreatorGrants,
+  PROJECT_CREATOR_ORIGIN,
+  PROJECT_LEAD_ROLE_KEY,
+  revokeCreatorGrants as revokeCreatorGrantRows,
+  type ProjectCreatorGrantFilter,
+} from "./project-creator-grant.repository";
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type Tx = Transaction;
+
+export { PROJECT_CREATOR_ORIGIN, PROJECT_LEAD_ROLE_KEY };
 
 /**
  * A project's creator holds a project-lead membership (decision log 2026-10-14, "A project's
@@ -50,65 +64,23 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
  * LOCK ORDER matches `workspace-admin-reach.ts`: person row `FOR UPDATE` first, then grant
  * rows, audit chain last.
  */
-export const PROJECT_LEAD_ROLE_KEY = "project-lead";
-export const PROJECT_CREATOR_ORIGIN = "project_creator";
 
 /** The role id to grant, or `null` when the workspace holds an untrusted same-keyed row. */
 export async function ensureProjectLeadRole(
   tx: Tx,
   workspaceId: string,
 ): Promise<string | null> {
-  const select = () =>
-    tx
-      .select({
-        id: schema.roleTable.id,
-        isSystem: schema.roleTable.isSystem,
-      })
-      .from(schema.roleTable)
-      .where(
-        and(
-          eq(schema.roleTable.scope, "project"),
-          eq(schema.roleTable.workspaceId, workspaceId),
-          eq(schema.roleTable.key, PROJECT_LEAD_ROLE_KEY),
-        ),
-      )
-      .limit(1);
-  let [row] = await select();
+  let row = await findProjectLeadRole(tx, workspaceId);
   if (!row) {
-    const lead = BUILT_IN_ROLES.lead;
-    await tx
-      .insert(schema.roleTable)
-      .values({
-        id: createId(),
-        scope: "project",
-        workspaceId,
-        key: PROJECT_LEAD_ROLE_KEY,
-        name: "Project lead",
-        description:
-          "Project-scope lead granted to the creator of a project (rbac.md built-in lead capabilities).",
-        rank: lead.rank,
-        capabilities: [...lead.capabilities],
-        isSystem: true,
-        isEditable: true,
-      })
-      .onConflictDoNothing();
-    [row] = await select();
+    await insertProjectLeadRole(tx, workspaceId);
+    row = await findProjectLeadRole(tx, workspaceId);
   }
   return row?.isSystem === true ? row.id : null;
 }
 
 /** The creator's staff person (locked `FOR UPDATE`), or `null` when none is provisioned. */
 export async function lockCreatorPerson(tx: Tx, userId: string) {
-  const [person] = await tx
-    .select({
-      id: schema.personTable.id,
-      side: schema.personTable.side,
-      organisationId: schema.personTable.organisationId,
-    })
-    .from(schema.personTable)
-    .where(eq(schema.personTable.userId, userId))
-    .for("update")
-    .limit(1);
+  const person = await findCreatorPersonForUpdate(tx, userId);
   return person?.side === "staff" ? person : null;
 }
 
@@ -127,19 +99,9 @@ export async function grantProjectCreatorLead(
 ): Promise<"granted" | "skipped_sees_all" | "skipped_no_role" | "existing"> {
   const { workspaceId, projectId, person } = input;
 
-  const [seesAll] = await tx
-    .select({ id: schema.membershipTable.id })
-    .from(schema.membershipTable)
-    .where(
-      and(
-        eq(schema.membershipTable.personId, person.id),
-        eq(schema.membershipTable.scope, "workspace"),
-        eq(schema.membershipTable.scopeId, workspaceId),
-        eq(schema.membershipTable.seesAll, true),
-      ),
-    )
-    .limit(1);
-  if (seesAll) return "skipped_sees_all";
+  if (await creatorHasWorkspaceSeesAll(tx, person.id, workspaceId)) {
+    return "skipped_sees_all";
+  }
 
   const roleId = await ensureProjectLeadRole(tx, workspaceId);
   if (roleId === null) {
@@ -150,30 +112,14 @@ export async function grantProjectCreatorLead(
     return "skipped_no_role";
   }
 
-  const [existing] = await tx
-    .select({ id: schema.membershipGrantTable.id })
-    .from(schema.membershipGrantTable)
-    .where(
-      and(
-        eq(schema.membershipGrantTable.personId, person.id),
-        eq(schema.membershipGrantTable.scope, "project"),
-        eq(schema.membershipGrantTable.scopeId, projectId),
-        eq(schema.membershipGrantTable.sourceKind, "direct"),
-        isNull(schema.membershipGrantTable.revokedAt),
-      ),
-    )
-    .limit(1);
-  if (existing) return "existing";
+  if (await hasActiveDirectProjectGrant(tx, person.id, projectId)) {
+    return "existing";
+  }
 
-  await tx.insert(schema.membershipGrantTable).values({
-    id: createId(),
+  await insertProjectCreatorGrant(tx, {
     personId: person.id,
-    scope: "project",
-    scopeId: projectId,
+    projectId,
     roleId,
-    sourceKind: "direct",
-    directOrigin: PROJECT_CREATOR_ORIGIN,
-    seesAll: false,
   });
   await projectMembershipKeys(tx, [
     { personId: person.id, scope: "project", scopeId: projectId },
@@ -201,79 +147,28 @@ export async function grantProjectCreatorLead(
 
 async function revokeCreatorGrants(
   tx: Tx,
-  filter:
-    | { kind: "member"; workspaceId: string; personId: string }
-    | { kind: "project"; workspaceId: string; projectId: string },
+  filter: ProjectCreatorGrantFilter,
   reason: string,
 ): Promise<number> {
-  const projectIdsOfWorkspace = tx
-    .select({ id: schema.projectTable.id })
-    .from(schema.projectTable)
-    .where(eq(schema.projectTable.workspaceId, filter.workspaceId));
-  const scopePredicate =
-    filter.kind === "project"
-      ? eq(schema.membershipGrantTable.scopeId, filter.projectId)
-      : inArray(schema.membershipGrantTable.scopeId, projectIdsOfWorkspace);
-  const personPredicate =
-    filter.kind === "member"
-      ? eq(schema.membershipGrantTable.personId, filter.personId)
-      : undefined;
-  const where = and(
-    eq(schema.membershipGrantTable.scope, "project"),
-    scopePredicate,
-    eq(schema.membershipGrantTable.sourceKind, "direct"),
-    eq(schema.membershipGrantTable.directOrigin, PROJECT_CREATOR_ORIGIN),
-    isNull(schema.membershipGrantTable.revokedAt),
-    personPredicate,
-  );
-
   // Person rows first, in one deterministic order (the repo-wide lock order), then the grants.
-  const candidates = await tx
-    .select({ personId: schema.membershipGrantTable.personId })
-    .from(schema.membershipGrantTable)
-    .where(where);
-  if (candidates.length === 0) return 0;
-  const personIds = [...new Set(candidates.map((row) => row.personId))];
-  const people = await tx
-    .select({
-      id: schema.personTable.id,
-      organisationId: schema.personTable.organisationId,
-    })
-    .from(schema.personTable)
-    .where(inArray(schema.personTable.id, personIds))
-    .orderBy(schema.personTable.id)
-    .for("update");
+  const candidatePersonIds = await listCreatorGrantPersonIds(tx, filter);
+  if (candidatePersonIds.length === 0) return 0;
+  const people = await lockCreatorGrantPeople(
+    tx,
+    [...new Set(candidatePersonIds)],
+  );
   const organisationOf = new Map(
     people.map((person) => [person.id, person.organisationId]),
   );
 
-  const grants = await tx
-    .select({
-      id: schema.membershipGrantTable.id,
-      personId: schema.membershipGrantTable.personId,
-      scopeId: schema.membershipGrantTable.scopeId,
-    })
-    .from(schema.membershipGrantTable)
-    .where(where)
-    .orderBy(schema.membershipGrantTable.id)
-    .for("update");
+  const grants = await lockCreatorGrants(tx, filter);
   if (grants.length === 0) return 0;
 
-  const now = new Date();
-  await tx
-    .update(schema.membershipGrantTable)
-    .set({
-      revokedAt: now,
-      revocationReason: "direct_removed",
-      membershipId: null,
-      updatedAt: now,
-    })
-    .where(
-      inArray(
-        schema.membershipGrantTable.id,
-        grants.map((grant) => grant.id),
-      ),
-    );
+  await revokeCreatorGrantRows(
+    tx,
+    grants.map((grant) => grant.id),
+    new Date(),
+  );
   await projectMembershipKeys(
     tx,
     grants.map((grant) => ({
@@ -319,11 +214,7 @@ export async function revokeProjectCreatorGrantsForMember(
   if ((await workspaceMemberRoles(tx, workspaceId, userId)).length > 0) {
     return 0;
   }
-  const [person] = await tx
-    .select({ id: schema.personTable.id })
-    .from(schema.personTable)
-    .where(eq(schema.personTable.userId, userId))
-    .limit(1);
+  const person = await findCreatorPerson(tx, userId);
   if (!person) return 0;
   return revokeCreatorGrants(
     tx,
