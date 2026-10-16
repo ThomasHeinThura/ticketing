@@ -1374,3 +1374,88 @@ Required GitHub status checks must be green on the exact current candidate after
 ## Current machine binding
 
 **Reviewed head:** `791f9703b93b38049476eb27bf91d9f270fb2987`
+
+
+## Accepted #808 composition confirmation
+
+Normal merge preserves all 30 task-owned entries and imports 21 disjoint accepted-main paths; all other entries equal accepted main. Prior full source and formatter/fixture reviews retain their actual scope. Old70ab hosted PG219files3264tests/five tasks, E2E63/G1122 and image proof remain source-bound; new current checks remain mandatory.
+
+
+## Evidence file
+
+`b9-809-0f8e-accepted808-ordinary-luna.md`
+
+# Bounded accepted-main composition review — PR 809 candidate 0f8e6aac
+
+- **Reviewer/model:** GPT-6 Luna, independent Ordinary A context. Prior bounded review of `791f9703` is retained; this pass addresses the new accepted-main composition only.
+- **Exact candidate:** `0f8e6aaca3d30fb4a30173669c7e357922ea2e06`
+- **Parents:** task candidate `70ab0330dfe2123dbcf49d3d9dfe95a7768c3595`; accepted main `c022915a8768b96b460c798feafafd7d48214d5c`. The protected comparison base/merge-base is `33995c2af23da197f2fd9d5690717f7aeb4e9f67`. Worktree is clean.
+- **Scope:** bounded composition/conservation inspection, not a fresh full-source review. Verified the supplied composition proof against Git: all 30 batch-9-owned paths are unchanged from parent 1 (mode/blob conservation); the only diff from parent 2 is exactly those same 30 paths. The 21 accepted-main paths are disjoint and equal accepted main. Inspected relevant imports/call boundaries and new shared integration tests for task reach/current identity, user deletion, invitations and saved views. No tests, typecheck, lint, build, PG, browser, Docker, refs or source were changed.
+- **Verdict:** **CLEAR for this bounded composition scope; no composition blocker found.** Retains the prior `791f9703` review and 09e3 source-scope full Sol CLEAR as their own evidence; does not claim a fresh full 30-path source/security review or current merge CI readiness.
+
+## Findings
+
+The accepted-main merge is clean and conservative. Independent Git comparison confirms the batch-9 task source and its reviewed test paths retain identical content/modes to `70ab`; the accepted-main side contributes only its 21 disjoint paths. Comparing the merge to parent 2 yields exactly the 30 task-branch-owned paths listed by the supplied JSON proof and no additional modified or conflicted entries. The merge base is the specified protected base. The new `task/index.ts` formatting and permission-fixture changes are included unchanged from the reviewed candidate. I found no task query, transaction, event, authorization or race-handling regression from composition.
+
+The accepted-main invitation/user/view source adds no imports from task controllers or task repository, and does not modify `resolve-identity`, `has-project-reach`, the permissions package, task schema, or task routing. The invitation controllers resolve a session identity at their existing caller boundary and repository functions apply invitation-recipient predicates; their membership transition can naturally affect later workspace/task reach according to the existing membership model, but does not alter task query code or widen its current identity predicates. User account-erasure code continues through the user repository/controller and existing workspace-role/membership sequencing; its workspace deletion/cascade behavior is separate from task code and unchanged by the merge. Saved-view changes use view/team/workspace/project repository paths, with no task imports. The newly merged invitation, account-deletion, user/view repository and invitation-write tests are likewise distinct from task test paths. I found no shared-path collision or new cross-feature import cycle in the reviewed integration seams.
+
+The prior review of `791f9703` remains limited to its actual delta: formatter-only line wrapping and the canonical permission-test identity fixture repair. The prior full task query source review and fresh Sol result are retained for the task candidate; this composition check does not re-perform them.
+
+## Limits
+
+No blocker found in accepted-main composition. The earlier `70ab` full PG/E2E/G11/image results and any current CI result are not inferred to validate the merged SHA. This report makes no runtime, hosted-check, build, browser, deployability, full candidate security-review, PR approval or merge-readiness claim.
+
+
+## Evidence file
+
+`b9-809-0f8e-accepted808-security-61-sol.md`
+
+# PR 809 — bounded accepted-main composition security confirmation
+
+**Model:** GPT-6.1 Sol
+**Model provenance:** This context's original explicit dispatch was confirmed by the conductor as `model: gpt-6.1-sol`, `fork_turns: none`, `reasoning_effort: high`. This is requested routing, not an independently observed served fingerprint. No served model/version fingerprint is exposed to this context or the conductor; none is invented.
+**Role/context:** Independent security reviewer `/root/b9_809_791f_fixture_security_sol`, resumed for the new bounded composition scope after its earlier 791f review. I did not author, direct or remediate either candidate or the accepted-main changes. No inherited author turns or child agents were used.
+**Reviewed head:** 0f8e6aaca3d30fb4a30173669c7e357922ea2e06
+**Comparison base:** 70ab0330dfe2123dbcf49d3d9dfe95a7768c3595 (first parent, prior task candidate).
+**Accepted-main parent:** c022915a8768b96b460c798feafafd7d48214d5c (second parent, accepted PR 808).
+**Common protected base:** 33995c2af23da197f2fd9d5690717f7aeb4e9f67.
+**Checkout:** `/Users/heinthura/.codex/worktrees/q580b9-current/Ticketing.v2`.
+**Verdict:** **CLEAR for this bounded composition security scope.** No blocking or additional non-blocking composition security finding identified. This is not a new full-source security review, runtime acceptance or merge approval.
+
+## Scope and composition proof
+
+Reloaded actual AGENTS.md, active mission, workflow review/evidence-reuse requirements and CLAUDE.md. Inspected the current security-model/decision-log delta and confirmed the branch's policy/control-plane entries equal accepted main. Read `b9-809-0f8e-accepted808-ordinary-luna.md` completely: its bounded Ordinary A verdict is CLEAR. Read the supplied `809-accepted808-composition-proof.json`, then independently compared Git tree entries, including file modes and object IDs, rather than accepting its booleans.
+
+Exact HEAD has the two assigned parents and tree `1b02fd5a7c0b45c49128418ebbddc5edc53ca066`; the checkout was clean. Independent read-only tree extraction confirms:
+
+- All 30 task-branch-owned paths are identical in mode and blob to first parent 70ab.
+- The 21 accepted-main paths are disjoint from those 30 and equal accepted main.
+- Every other entry equals accepted main; the difference from each parent is exactly the other side's path set.
+- The two parents' merge base is the assigned protected base.
+
+The 791f-to-70ab history contains one commit adding 125 lines and deleting zero lines only in this candidate's existing mode-100644 task review note. All 37 named source reports are present byte-for-byte in that ledger, including my earlier bounded report. This confirms publication preservation, not dispatch independence by itself; the conductor retains responsibility for verifying review origins. The current merge is not characterized as a review-record-only delta: its accepted-main code and security-model additions were explicitly inspected as composition inputs.
+
+## Security interaction findings
+
+The reviewed task production source, formatter repair, permission-test fixture, task integration tests and administrative reset helper remain unchanged. No merge resolution edits alter identity propagation, persisted task-project reach predicates, required write-result handling, move atomicity/lock ordering, event emission or reset retry boundaries. The prior full independent 09e3 review remains evidence for its actual 28-path source scope; my 791f bounded confirmation remains evidence for its actual format/fixture delta. This pass does not re-perform either review or expand them into blanket approval of accepted-main code.
+
+Inspected the accepted-main invitation/user/view repository and controller seams relevant to task authority and effects. They do not import the task repository/controllers or change the shared identity resolver, request credential adapter, current identity-scope predicates, permissions package, database schema, event infrastructure, pending-action infrastructure, build configuration, dependencies or deployment files.
+
+Invitation acceptance retains the workspace membership/role lock, recipient checks and conditional pending-state write before member insertion/admin-reach synchronization. Its SQL recipient predicate compares against the current persisted user's email. Membership transitions can affect subsequent task reach through the existing model; the composition introduces no alternative task-authority grant or cached-reach exception. The task predicates themselves remain identical.
+
+Account deletion uses the accepted authenticated-subject erasure summary, then sorted membership/role locks, a user-row lock, membership recheck and refusal before credential invalidation or deletion. Its workflow/workspace/member operations use the caller's transaction. The security-model addition is explicitly confined to that lifecycle safety summary, including persisted memberships when canonical identity is unusable; it grants no general query exception or task-content permission. The merge neither extends that entitlement nor changes task deletion/cascade schemas. Existing project-grant revocation/admin-reach synchronization seams remain separate and unchanged.
+
+Saved-view changes use the existing workspace-deletion lifecycle, retain edit/share/capability checks, and pass the transaction into a team-and-workspace-constrained membership query. They do not add task imports or modify task event/result semantics. The newly accepted integration tests use the shared reset helper without changing its contract, suite configuration or schema. I found no shared-path collision, new cross-feature import coupling or composition-specific authority/effect regression in these inspected seams.
+
+## Evidence limits and remaining gates
+
+Performed only read-only Git/source/evidence inspection, including Python extraction/comparison of Git tree entries and report bytes. No tests, compiler, CI checker, formatter, package installation, PostgreSQL, Docker, build, browser, runtime, GitHub mutation, advice/remediation authoring, source edit, Git/ref write, push or merge occurred. The only write is this new private report created with O_EXCL and mode 0600.
+
+Prior full PG, E2E, G11 and healthy-image results reported for 70ab remain bound to that source; I did not rerun or independently audit those runtime receipts in this pass. They are not presented as results for 0f8e. Historical failures, inherited shared-helper residuals and prior unproven reader attribution remain unchanged. This report makes no full-suite, current hosted-check, image/health, browser/SIT, stage-completion or merge-readiness claim.
+
+All mandatory current GitHub checks must pass on the exact candidate through the normal protected flow after current review evidence is recorded. No old check is reused or waived by this composition confirmation.
+
+
+## Current machine binding
+
+**Reviewed head:** `0f8e6aaca3d30fb4a30173669c7e357922ea2e06`
