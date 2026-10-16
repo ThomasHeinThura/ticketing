@@ -14,10 +14,11 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * table -- managing the snippet library is a workspace-settings action, not a per-comment
  * one. `GET` requires only `work_item:read` -- rbac.md's own text: "reading the list to
  * insert one only requires `work_item:read` on the work item being commented on". This
- * route has no work-item path segment (it lists the whole workspace's library, not one
- * work item's), so the reach check here is workspace membership + `work_item:read`, the
- * closest honest equivalent -- narrower per-work-item reach would need a work-item id this
- * route's own shape does not carry.
+ * The route carries the requested item key as `workItemKey`. Its middleware resolves that
+ * live item for the caller, sets its exact work-item/project/workspace facts, requires
+ * current project reach, then evaluates `work_item:read` against the item. The repository
+ * also correlates each returned response to that item's workspace and requires current
+ * project reach in the same query; workspace membership alone cannot list the library.
  */
 export const cannedResponsePolicies = {
   "GET /api/canned-responses": {

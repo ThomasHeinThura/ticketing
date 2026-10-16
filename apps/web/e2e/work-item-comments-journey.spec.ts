@@ -2,7 +2,13 @@ import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import {
+  expect,
+  type Locator,
+  type Page,
+  type Request,
+  test,
+} from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
@@ -606,5 +612,190 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       ).toContainText("Public only");
       await expect(commentRow).toBeVisible();
     });
+  });
+});
+
+test("CA-19/20 inserts an item-scoped canned response as an editable comment draft", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  await withMfaCsrfApp(async ({ origin, email, password, fixtureDir }) => {
+    await createAdminWorkspace(page, origin, email, password);
+    await signInThroughUi(page, origin, email, password);
+    const item = await setupWorkItem(page, origin);
+
+    const responseName = "CA-19 composer response";
+    const originalText = `Thanks for reporting this. ${item.key} is under review.`;
+    const editedText = `${originalText} We will follow up shortly.`;
+    const created = await page.request.post(
+      new URL("/api/canned-responses", origin).toString(),
+      {
+        headers: await csrfHeaders(page, origin),
+        data: {
+          workspaceId: item.workspaceId,
+          name: responseName,
+          body: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: originalText }],
+              },
+            ],
+          },
+          visibilityDefault: "internal",
+        },
+      },
+    );
+    const createdText = await created.text();
+    expect(created.status(), createdText).toBe(200);
+    const cannedResponse = JSON.parse(createdText) as { id: string };
+    expect(cannedResponse.id).toBeTruthy();
+
+    const itemUrl = new URL(
+      `/agent/work-items/${encodeURIComponent(item.key)}`,
+      origin,
+    ).toString();
+    const cannedListRequest = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.origin === origin &&
+        url.pathname === "/api/canned-responses" &&
+        response.request().method() === "GET"
+      );
+    });
+    await page.goto(itemUrl);
+    const listResponse = await cannedListRequest;
+    expect(new URL(listResponse.url()).searchParams.get("workItemKey")).toBe(
+      item.key,
+    );
+    expect(listResponse.status()).toBe(200);
+    const listedResponses = (await listResponse.json()) as Array<{
+      id: string;
+      name: string;
+      body: unknown;
+      visibilityDefault: string;
+    }>;
+    expect(listedResponses).toContainEqual(
+      expect.objectContaining({
+        id: cannedResponse.id,
+        name: responseName,
+        body: expect.objectContaining({ type: "doc" }),
+        visibilityDefault: "internal",
+      }),
+    );
+
+    const activity = page.getByTestId("work-item-activity");
+    await expect(activity).toBeVisible();
+    const composer = commentEditor(activity);
+    const commentPath = `/api/work-items/${encodeURIComponent(item.key)}/comments`;
+    const commentPosts: Request[] = [];
+    const recordCommentPost = (request: Request) => {
+      if (
+        new URL(request.url()).pathname === commentPath &&
+        request.method() === "POST"
+      ) {
+        commentPosts.push(request);
+      }
+    };
+    page.on("request", recordCommentPost);
+    try {
+      const responseSelect = page.getByRole("combobox", {
+        name: "Canned response",
+      });
+      await expect(responseSelect).toBeVisible();
+      await responseSelect.click();
+      await page
+        .getByRole("option", { name: responseName, exact: true })
+        .click();
+      await expect(composer).toContainText(originalText);
+      await expect(page.locator("#comment-visibility")).toContainText(
+        "Internal",
+      );
+
+      await composer.fill(editedText);
+      await expect(composer).toContainText(editedText);
+      await page.waitForTimeout(250);
+      expect(commentPosts).toHaveLength(0);
+
+      const beforeSend = await page.request.get(
+        new URL(
+          `/api/work-items/${encodeURIComponent(item.key)}/activity`,
+          origin,
+        ).toString(),
+        { headers: { Origin: origin } },
+      );
+      expect(beforeSend.status()).toBe(200);
+      const beforeSendActivity = (await beforeSend.json()) as {
+        data: Array<{ kind?: string; body?: unknown }>;
+      };
+      expect(
+        beforeSendActivity.data.some(
+          (row) =>
+            row.kind === "comment" &&
+            JSON.stringify(row.body).includes(originalText),
+        ),
+      ).toBe(false);
+
+      const screenshotPath = resolve(
+        fixtureDir,
+        "canned-response-composer.png",
+      );
+      await activity.screenshot({ path: screenshotPath });
+
+      const postedResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === commentPath &&
+          response.request().method() === "POST",
+      );
+      await activity.getByRole("button", { name: "Send comment" }).click();
+      const commentResponse = await postedResponse;
+      expect(commentResponse.status()).toBe(200);
+      const postedComment = (await commentResponse.json()) as {
+        id: string;
+        body: unknown;
+        visibility: string;
+      };
+      expect(postedComment.id).toBeTruthy();
+      expect(postedComment.visibility).toBe("internal");
+      expect(JSON.stringify(postedComment.body)).toContain(editedText);
+      expect(commentPosts).toHaveLength(1);
+
+      const persistedResponse = await page.request.get(
+        new URL(
+          `/api/work-items/${encodeURIComponent(item.key)}/activity`,
+          origin,
+        ).toString(),
+        { headers: { Origin: origin } },
+      );
+      expect(persistedResponse.status()).toBe(200);
+      const persistedActivity = (await persistedResponse.json()) as {
+        data: Array<{
+          id: string;
+          kind?: string;
+          body?: unknown;
+          visibility: string;
+        }>;
+      };
+      expect(persistedActivity.data).toContainEqual(
+        expect.objectContaining({
+          id: postedComment.id,
+          kind: "comment",
+          body: postedComment.body,
+          visibility: "internal",
+        }),
+      );
+      expect(
+        persistedActivity.data.filter(
+          (row) =>
+            row.kind === "comment" &&
+            JSON.stringify(row.body).includes(originalText),
+        ),
+      ).toHaveLength(1);
+    } finally {
+      page.off("request", recordCommentPost);
+    }
   });
 });

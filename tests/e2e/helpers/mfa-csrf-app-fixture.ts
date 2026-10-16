@@ -7,22 +7,76 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { PostgreSqlContainer } from "../../../apps/api/node_modules/@testcontainers/postgresql";
 
 type PostgreSqlContainerInstance = {
   getConnectionUri(): string;
+  getHost(): string;
+  getId(): string;
+  getMappedPort(port: number): number;
   stop(): Promise<unknown>;
 };
 
-type PostgreSqlContainerBuilder = {
-  withDatabase(name: string): PostgreSqlContainerBuilder;
-  withUsername(name: string): PostgreSqlContainerBuilder;
-  withPassword(password: string): PostgreSqlContainerBuilder;
-  start(): Promise<PostgreSqlContainerInstance>;
+type DockerPortBinding = {
+  HostIp: string;
+  HostPort: string;
 };
 
-type PostgreSqlContainerConstructor = new (
-  image: string,
-) => PostgreSqlContainerBuilder;
+type DockerContainerInspection = {
+  HostConfig?: {
+    PortBindings?: Record<string, DockerPortBinding[] | undefined>;
+  };
+  NetworkSettings?: {
+    Ports?: Record<string, DockerPortBinding[] | null | undefined>;
+  };
+};
+
+type DockerInspectClient = {
+  getContainer(id: string): {
+    inspect(): Promise<DockerContainerInspection>;
+  };
+};
+
+type DockerInspectConstructor = new () => DockerInspectClient;
+
+class LoopbackPostgreSqlContainer extends PostgreSqlContainer {
+  protected override async beforeContainerCreated() {
+    this.hostConfig.PortBindings = {
+      ...this.hostConfig.PortBindings,
+      "5432/tcp": [{ HostIp: "127.0.0.1", HostPort: "0" }],
+    };
+  }
+}
+
+async function assertPostgreSqlLoopbackBinding(
+  container: PostgreSqlContainerInstance,
+) {
+  const testcontainersRequire = createRequire(
+    apiPackageRequire.resolve("testcontainers"),
+  );
+  const Docker = testcontainersRequire("dockerode") as DockerInspectConstructor;
+  const inspection = await new Docker()
+    .getContainer(container.getId())
+    .inspect();
+  const requestedBindings =
+    inspection.HostConfig?.PortBindings?.["5432/tcp"] ?? [];
+  const activeBindings = inspection.NetworkSettings?.Ports?.["5432/tcp"] ?? [];
+  const active = activeBindings[0];
+  if (
+    requestedBindings.length !== 1 ||
+    requestedBindings[0]?.HostIp !== "127.0.0.1" ||
+    activeBindings.length !== 1 ||
+    active?.HostIp !== "127.0.0.1" ||
+    !/^\d+$/u.test(active.HostPort) ||
+    active.HostPort === "0" ||
+    Number(active.HostPort) !== container.getMappedPort(5432) ||
+    !new Set(["127.0.0.1", "localhost"]).has(container.getHost())
+  ) {
+    throw new Error(
+      "Disposable PostgreSQL must have exactly one dynamically assigned loopback-only host binding",
+    );
+  }
+}
 
 export type MfaCsrfAppFixture = {
   origin: string;
@@ -489,11 +543,6 @@ async function runMfaCsrfApp<T>(
   },
   supervisor: SupervisedProcessManager,
 ): Promise<T> {
-  const { PostgreSqlContainer } = apiPackageRequire(
-    "@testcontainers/postgresql",
-  ) as {
-    PostgreSqlContainer: PostgreSqlContainerConstructor;
-  };
   let container: PostgreSqlContainerInstance | undefined;
   let apiProcess: SupervisedChild | undefined;
   try {
@@ -505,11 +554,12 @@ async function runMfaCsrfApp<T>(
     const storageRoot = resolve(evidenceDir, "attachments");
     await mkdir(storageRoot, { recursive: true });
     const databaseName = `mfa_csrf_${randomUUID().replaceAll("-", "")}`;
-    container = await new PostgreSqlContainer("postgres:18-alpine")
+    const postgres = new LoopbackPostgreSqlContainer("postgres:18-alpine")
       .withDatabase(databaseName)
       .withUsername("postgres")
-      .withPassword(randomPassword())
-      .start();
+      .withPassword(randomPassword());
+    container = await postgres.start();
+    await assertPostgreSqlLoopbackBinding(container);
 
     const migrationUrl = container.getConnectionUri();
     const appUrl = new URL(migrationUrl);
