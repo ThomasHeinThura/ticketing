@@ -47,7 +47,6 @@ import {
   getOidcConnectionSnapshot,
   getOidcIdentityForSignIn,
   getOidcPersonForSignIn,
-  getOidcRoleForReconciliation,
   getOidcUserFactorState,
   IdentityGrantClosureChangedError,
   listActiveOidcGrantsForSignIn,
@@ -995,10 +994,7 @@ async function signInAdmittedIdentity(input: {
       );
       const wantedJit = currentJit.value.enabled && Boolean(roleScopeId);
       const [jitRole] = wantedJit
-        ? await getOidcRoleForReconciliation(
-            tx,
-            currentJit.value.default_role_id ?? "",
-          )
+        ? await lockOidcDefaultRole(tx, currentJit.value.default_role_id ?? "")
         : [];
       const validJit = Boolean(
         jitRole &&
@@ -1199,7 +1195,10 @@ async function signInAdmittedIdentity(input: {
         }
       }
       return {
-        denied: false as const,
+        denied:
+          currentConnection.portalScope === "customer" &&
+          currentJit.value.enabled &&
+          !validJit,
         userId,
         changed: projectionKeys.length > 0,
         workspaceIds: [

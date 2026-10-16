@@ -464,11 +464,31 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
         isEditable: true,
       })
       .where(eq(schema.roleTable.id, target.roleId));
+    expect(
+      await db.query.roleTable.findFirst({
+        where: eq(schema.roleTable.id, target.roleId),
+      }),
+    ).toMatchObject({
+      rank: 0,
+      capabilities: [],
+      isSystem: false,
+      isEditable: true,
+    });
     vi.mocked(validateEntraIdToken).mockClear();
 
     const response = await signIn(attemptConnectionId, "customer");
     expect(response.headers.get("location")).toContain("identity_error");
     expect(validateEntraIdToken).toHaveBeenCalled();
+    expect(
+      await db.query.roleTable.findFirst({
+        where: eq(schema.roleTable.id, target.roleId),
+      }),
+    ).toMatchObject({
+      rank: 0,
+      capabilities: [],
+      isSystem: false,
+      isEditable: true,
+    });
     expect(
       await db.query.externalIdentityTable.findFirst({
         where: and(
@@ -506,6 +526,41 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
     ).toMatchObject({
       userId: unrelatedIdentity?.userId,
       portal: "customer",
+    });
+    const [targetPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, attemptedIdentity?.userId ?? ""));
+    const [unrelatedPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, unrelatedIdentity?.userId ?? ""));
+    const [retiredTargetGrant] = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(schema.membershipGrantTable.personId, targetPerson?.id ?? ""),
+          eq(schema.membershipGrantTable.sourceKind, "jit_default"),
+        ),
+      );
+    expect(retiredTargetGrant).toMatchObject({
+      roleId: target.roleId,
+      revokedAt: expect.any(Date),
+      revocationReason: "mapping_changed",
+    });
+    const [unrelatedGrant] = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(schema.membershipGrantTable.personId, unrelatedPerson?.id ?? ""),
+          eq(schema.membershipGrantTable.sourceKind, "jit_default"),
+        ),
+      );
+    expect(unrelatedGrant).toMatchObject({
+      roleId: unrelatedTarget.roleId,
+      revokedAt: null,
     });
   });
 

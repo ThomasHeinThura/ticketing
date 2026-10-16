@@ -1,5 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import {
+  BUILT_IN_ROLES,
   isCapability,
   type RoleScope,
   roleCompositionProblems,
@@ -897,6 +898,8 @@ export async function validateIdpMappingRole(
       key: schema.roleTable.key,
       rank: schema.roleTable.rank,
       capabilities: schema.roleTable.capabilities,
+      isSystem: schema.roleTable.isSystem,
+      isEditable: schema.roleTable.isEditable,
     })
     .from(schema.roleTable)
     .where(eq(schema.roleTable.id, input.roleId))
@@ -904,7 +907,20 @@ export async function validateIdpMappingRole(
   if (!role || role.scope !== input.scope || role.rank < 0) return false;
   if (!hasSafeOidcRoleCapabilities(role.scope, role.capabilities)) return false;
   if (input.portalScope === "customer")
-    return role.workspaceId === null && role.key === "customer";
+    return (
+      role.workspaceId === null &&
+      role.key === BUILT_IN_ROLES.customer.key &&
+      role.isSystem &&
+      !role.isEditable &&
+      role.rank === BUILT_IN_ROLES.customer.rank &&
+      Array.isArray(role.capabilities) &&
+      role.capabilities.length ===
+        BUILT_IN_ROLES.customer.capabilities.length &&
+      role.capabilities.every(
+        (capability, index) =>
+          capability === BUILT_IN_ROLES.customer.capabilities[index],
+      )
+    );
   if (
     input.maxRoleRank === null ||
     role.rank > input.maxRoleRank ||

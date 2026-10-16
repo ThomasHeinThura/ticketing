@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -172,8 +173,10 @@ async function setupCustomerConnection() {
     workspaceId: null,
     key: "customer",
     name: "Customer",
-    rank: 0,
-    capabilities: [],
+    rank: BUILT_IN_ROLES.customer.rank,
+    capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+    isSystem: true,
+    isEditable: false,
   });
   await db.insert(schema.identityConnectionTable).values({
     id: CONNECTION_ID,
