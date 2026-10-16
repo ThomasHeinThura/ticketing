@@ -9,6 +9,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
 } from "./helpers/fixtures";
 
 let testIdentity: ResolvedIdentity;
@@ -73,6 +74,7 @@ const reassignTaskAssetsToProject = scopedExecutor(
 const updateTaskRowReturningId = scopedExecutor(
   taskRepository.updateTaskRowReturningId,
 );
+const updateTaskRow = scopedExecutor(taskRepository.updateTaskRow);
 const { findWorkspaceMembershipId } = taskRepository;
 
 async function seed() {
@@ -523,7 +525,9 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
       surface: "task_description",
       createdBy: a.user.id,
     });
-    await db.transaction((tx) => reassignTaskAssetsToProject(tx, t1.id, p2.id));
+    await db.transaction((tx) =>
+      reassignTaskAssetsToProject(tx, t1.id, p1.id, p2.id),
+    );
     const assets = await db.select().from(schema.assetTable);
     expect(assets.find((asset) => asset.taskId === t1.id)?.projectId).toBe(
       p2.id,
@@ -531,6 +535,92 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
     expect(
       assets.find((asset) => asset.taskId === otherTask.id)?.projectId,
     ).toBe(p1.id);
+  });
+
+  it("rejects unreachable or mismatched task and asset move destinations", async () => {
+    const actor = await createWorkspaceMember({ role: "admin" });
+    const { project: source } = await createProjectFixture({
+      workspaceId: actor.workspace.id,
+    });
+    const { project: destination } = await createProjectFixture({
+      workspaceId: actor.workspace.id,
+    });
+    await grantProjectRole(actor.user.id, source.id, ["work_item:update"]);
+    await grantProjectRole(actor.user.id, destination.id, ["work_item:update"]);
+    const identity = await resolveIdentity({
+      userId: actor.user.id,
+      credential: "session",
+    });
+    if (!identity) throw new Error("expected resolved move identity");
+    testIdentity = identity;
+
+    const [task] = await db
+      .insert(schema.taskTable)
+      .values({
+        projectId: source.id,
+        userId: actor.user.id,
+        title: "Move boundary",
+        status: "to-do",
+        priority: "medium",
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task) throw new Error("expected task fixture");
+    const [asset] = await db
+      .insert(schema.assetTable)
+      .values({
+        workspaceId: actor.workspace.id,
+        projectId: source.id,
+        taskId: task.id,
+        objectKey: "move-boundary.png",
+        filename: "move-boundary.png",
+        mimeType: "image/png",
+        size: 4,
+      })
+      .returning();
+    if (!asset) throw new Error("expected asset fixture");
+
+    // Asset reassignment cannot get ahead of the task row's destination.
+    await db.transaction((tx) =>
+      reassignTaskAssetsToProject(tx, task.id, source.id, destination.id),
+    );
+    const [assetAfterMismatchedDestination] = await db
+      .select()
+      .from(schema.assetTable)
+      .where(eq(schema.assetTable.id, asset.id));
+    expect(assetAfterMismatchedDestination?.projectId).toBe(source.id);
+
+    // Revoke destination reach after identity resolution to exercise statement-time scope.
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, identity.personId),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, destination.id),
+        ),
+      );
+    const moved = await updateTaskRow(db, task.id, {
+      projectId: destination.id,
+      number: 2,
+    });
+    expect(moved).toBeUndefined();
+    await db.transaction((tx) =>
+      reassignTaskAssetsToProject(tx, task.id, source.id, destination.id),
+    );
+
+    const [taskAfterDeniedMove] = await db
+      .select()
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.id, task.id));
+    const [assetAfterDeniedMove] = await db
+      .select()
+      .from(schema.assetTable)
+      .where(eq(schema.assetTable.id, asset.id));
+    expect(taskAfterDeniedMove?.projectId).toBe(source.id);
+    expect(taskAfterDeniedMove?.number).toBe(1);
+    expect(assetAfterDeniedMove?.projectId).toBe(source.id);
   });
 });
 

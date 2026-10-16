@@ -232,6 +232,7 @@ async function moveTask({
       tx,
       identity,
       taskId,
+      lockedTask.projectId,
       destinationProjectId,
     );
 

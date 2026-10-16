@@ -17,6 +17,7 @@ import {
   type SQLWrapper,
   sql,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { type Executor, executorOrDefault } from "../database/executor";
 import {
   currentProjectReachPredicate,
@@ -80,6 +81,57 @@ function taskProjectReachFor(
 /** Current persisted task-project reach, correlated to an outer task row. */
 function taskProjectReach(identity: ResolvedIdentity, executor: Executor) {
   return taskProjectReachFor(identity, taskTable.projectId, executor);
+}
+
+/**
+ * A task move must be authorized at the write statement for both its current source
+ * project and its requested destination, which must remain in the same live workspace.
+ */
+function taskProjectMoveReach(
+  identity: ResolvedIdentity,
+  sourceProjectId: SQLWrapper,
+  destinationProjectId: string,
+  executor: Executor,
+) {
+  const sourceProject = alias(projectTable, "task_move_source_project");
+  const destinationProject = alias(
+    projectTable,
+    "task_move_destination_project",
+  );
+
+  return exists(
+    executor
+      .select({ one: sql`1` })
+      .from(sourceProject)
+      .innerJoin(
+        destinationProject,
+        eq(destinationProject.workspaceId, sourceProject.workspaceId),
+      )
+      .where(
+        and(
+          eq(sourceProject.id, sourceProjectId),
+          eq(destinationProject.id, destinationProjectId),
+          isNull(sourceProject.deletedAt),
+          isNull(sourceProject.archivedAt),
+          isNull(destinationProject.deletedAt),
+          isNull(destinationProject.archivedAt),
+          currentProjectReachPredicate(
+            identity,
+            sourceProject.id,
+            sourceProject.workspaceId,
+            sourceProject.organisationId,
+            executor,
+          ),
+          currentProjectReachPredicate(
+            identity,
+            destinationProject.id,
+            destinationProject.workspaceId,
+            destinationProject.organisationId,
+            executor,
+          ),
+        ),
+      ),
+  );
 }
 
 function projectReach(
@@ -661,7 +713,20 @@ export async function updateTaskRow(
   const [updatedTask] = await executor
     .update(taskTable)
     .set({ ...values, version: sql`${taskTable.version} + 1` })
-    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
+    .where(
+      and(
+        eq(taskTable.id, taskId),
+        taskProjectReach(identity, executor),
+        values.projectId !== undefined
+          ? taskProjectMoveReach(
+              identity,
+              taskTable.projectId,
+              values.projectId,
+              executor,
+            )
+          : undefined,
+      ),
+    )
     .returning();
   return updatedTask;
 }
@@ -943,11 +1008,15 @@ export async function updateTaskRowReturningId(
   executor: Executor,
   identity: ResolvedIdentity,
   taskId: string,
-  values: Partial<typeof taskTable.$inferInsert>,
+  values: Omit<Partial<typeof taskTable.$inferInsert>, "projectId">,
 ) {
   const [updated] = await executor
     .update(taskTable)
-    .set({ ...values, version: sql`${taskTable.version} + 1` })
+    .set({
+      ...values,
+      projectId: taskTable.projectId,
+      version: sql`${taskTable.version} + 1`,
+    })
     .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
     .returning({ id: taskTable.id });
   return updated;
@@ -1355,14 +1424,22 @@ export async function reassignTaskAssetsToProject(
   executor: Executor,
   identity: ResolvedIdentity,
   taskId: string,
-  projectId: string,
+  sourceProjectId: string,
+  destinationProjectId: string,
 ) {
   await executor
     .update(assetTable)
-    .set({ projectId })
+    .set({ projectId: destinationProjectId })
     .where(
       and(
         eq(assetTable.taskId, taskId),
+        eq(assetTable.projectId, sourceProjectId),
+        taskProjectMoveReach(
+          identity,
+          assetTable.projectId,
+          destinationProjectId,
+          executor,
+        ),
         exists(
           executor
             .select({ one: sql`1` })
@@ -1370,6 +1447,7 @@ export async function reassignTaskAssetsToProject(
             .where(
               and(
                 eq(taskTable.id, assetTable.taskId),
+                eq(taskTable.projectId, destinationProjectId),
                 taskProjectReach(identity, executor),
               ),
             ),
