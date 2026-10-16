@@ -1,5 +1,22 @@
 ## Current exact-head review and runtime queue — 2026-10-16 18:19 UTC
 
+## Current recovery and hosted verification — 2026-10-16 19:04 UTC
+
+**Blocked first:** #791 current1d70fada35f9226177d98d9a530ee96305af49c9 fails static contrast source-binding and required G11 unstable calibration (batch spread1.319>0.55 before budget measurements). Automatic failure-path diagnostics also lack sampled app frames; no budget pass, unchanged rerun or calibration relaxation. Historical529.7ms render/33.4ms drag and #798270.8ms state holds remain open. #807198 retains assignment200.43141014024977ms failure; its actual PostgreSQL216files3240tests/five tasks passed. AT-7 and owner holds remain unwaived.
+
+**Accepted main:** unchanged33995c2af23da197f2fd9d5690717f7aeb4e9f67. No additional protected acceptance at this checkpoint.
+
+**#808 principal/invitation/erasure:** publicationeface84d9399acc0abbfae7d36f661a6f9d798bb binds currentfullSol-reviewedc148 and23authenticreports. Current hosted browser63 and performance22 passed; assignment161.9ms used its permitted retry after208.7ms. Unit12tasks/API121files872tests/web186files1023tests passed. Imagee6424f20346b1db81bb94624a7b2035ec5a672cecb2f45e4ed8321b29eaaeee3 applied125migrations/UID10001/healthy/live-ready200/nohostports/ownedbridgeisolation/cleanup. Artifact12069026360 and exact synthetic37caa82b tree conservation verified. FullPG117138903070 remains pending; template correctly remains pending, no finalbody or merge.
+
+**#809 task queries:** repairedpublication70ab0330dfe2123dbcf49d3d9dfe95a7768c3595 binds reviewed791f9703b93b38049476eb27bf91d9f270fb2987 after only+125/-0 own-note append, preserving33original plus4new authenticreports. Prior09e3 full28-path Sol and actualPG10files165/165 remain source-bound. Current delta is three formatter argument wraps plus a unitfixture canonicalidentity/resolverboundary correction; focused1file2/2, strongordinary and fresh independent boundedSol CLEAR. Old8b99 staticformat and APIunit871/872 failures remain adverse; its pendingPG naturally cancelled after genuine repaired-source push, with no passing count claimed. New current mandatory CI/image/fullPG remain required; no manualcancel/rerun/Readytoggle or inherited-check acceptance.
+
+**Carrier repair:** prior full545 reviews remain bound to545, currentf9c8 bounded ordinary/Sol confirmations retain fullsourceconservation (165own/20mainpaths, disjoint) and assess the GitGuardian literal as a synthetic negative-test fixture; alert remains unchanged/nonrequired. Memo extraction preserves DOM appearance but the static observer loses state surfaces across the component boundary. Metadata-only repair was proven insufficient (110source-binding diagnostics), no rows were changed. A bounded correction of the existing observer, real positive/negative regressions and necessary occurrence metadata is underway; all418pair rows/keys/themes/thresholds must remain covered. No current sourcefix/test or new review clearance claimed yet.
+
+**Existing#765:** corrected source-only recovery authoring is underway in one isolated current-main worktree. Originalsource and primarydirty checkout remain preserved. Leaffull-content reads and DML must take actualresolvedidentity/currentSQLreach in the statement; earlier caller checks or stale reachable-ID lists are insufficient. No PG/runtime/tests/push/PR or acceptance claimed. #773/approvals/whole580checker activation and selected-unit accounting remain outstanding.
+
+No combined signed prerelease, exact-digest SIT, consistent nonempty attachment backup/usable isolated app restore, final integrated independent audit, #589 or phase completion. Remote UAT/production untouched. Root continues the authorized queue with at most two active children and one bounded local heavy window.
+
+
 ## Current review and performance holds — 2026-10-16 18:49 UTC
 
 **Blocked first:** #807 publication198a5abde93a899199af2d37eca86c5467317d17 now has a required G11 assignment failure200.43141014024977ms after its permitted retry against strict<200ms (21/22). The extra sampled-app-frame diagnostic also failed; this does not invalidate the budget failure. No unchanged rerun, final-pass body or merge. Carrier's historical529.7ms render/33.4ms drag and #798's270.8ms state findings remain undisposed; AT-7 and owner holds remain unwaived.
