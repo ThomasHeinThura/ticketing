@@ -1,3 +1,33 @@
+### 2026-10-15 · Owner decisions on acceptance risks: API-key authority, erasure, Intake claims and RT-6
+
+**Decisions (Thomas, 2026-10-15, answered in the conductor session and recorded on each issue):**
+- **#724 — API keys are clamped by the owner's project role.** A key's effective authority is its stored scope ∩ the owner's current authority in that project (workspace role and project role). A key never exceeds what the owner's session can do there.
+- **#734 — account erasure counts IdP-provisioned members.** SCIM/OIDC memberships count in the sole-member check. If anyone else has access to the workspace, erasure stops with a clear `409`, and the workspace must be transferred or removed first. Nobody else loses access silently.
+- **#743 — a failed accept releases the claim.** Thomas's owner-approved invariant is that a failed accept (for example a missing or unreachable destination) leaves no claim. He permits either validating the destination before committing the claim, or rolling the claim back in the same transaction when accept fails. This entry does not choose between those implementation mechanisms. No new route, policy or timeout.
+- **#761 — IQ-7 governs the work-item type at accept.** The triager may override the type; the request-type pre-fill is a suggestion. The published snapshot still pins the form schema, SLA override and default assignee. An ineligible snapshotted default assignee leaves the work item unassigned, and the reason is recorded so a lead can assign it. RT-6 is amended to match.
+- **#718 item 1 — not deferred.** The open 2026-09-05 review findings for `webhooks-and-api-keys.md` are mapped to evidence and dispositioned by an independent reviewer before the self-row paragraph merges.
+
+**Supersedes:**
+- **2026-10-14 accept entry.** In "Submission accept answers an unreachable destination exactly like a missing one", every statement that a failed accept is answered *after the claim has committed* and leaves the submission claimed. That covers the claim-ordering clause, the "A failed accept leaves the submission claimed by the caller" consequence, the IQ-16a rationale tied to it, and the reversal text that assumed it. Now the owner-approved invariant is that failed acceptance leaves no claim; the implementation may validate the destination before committing the claim or roll the claim back in the same transaction when acceptance fails. The "unreachable looks missing" answer itself is unchanged.
+- **2026-10-13 recovered RT-6 wording.** "fails atomically if they are unavailable", for the type and default assignee. Now: IQ-7 type choice; an ineligible assignee leaves the item unassigned with a recorded reason.
+
+**Reversal:** each decision reverses by a new owner entry; the code changes are confined to the PRs for each issue.
+
+### 2026-10-15 · Conductor implementation decisions: query ownership contract and identity admin UI
+
+**Decisions (conductor, under existing contracts; reversible), plus one owner decision marked as such:**
+- **#580 query ownership** (under `monorepo-layout.md`: `repository.ts` is the only place feature queries appear):
+  - D1: opening a `db.transaction` is orchestration and may stay outside repositories; every statement inside goes through repository functions that receive the handle (`Executor`).
+  - D2: raw `execute`/`sql` statements are in scope; SQL fragment helpers live in repositories.
+  - D3: allowed locations are repositories by name (`repository.ts`, `*.repository.ts`, `repository/**`) plus an explicit list of persistence-infrastructure files under `apps/api/src/database/`. There is no wildcard, per-site allowlist or baseline.
+  - D4: `apps/api/scripts/**` dev and seed tooling is outside the gate.
+  - The accepted tenant-scoping convention remains: cross-organisation reads use scoped repositories taking the resolved identity, as documented in `multi-tenancy.md` and illustrated by `forIdentity(identity)` in `monorepo-layout.md`. These query-location and executor choices do not replace that convention or claim the checker proves a universal type-level `forIdentity`/`ScopedQuery` wrapper for every query.
+  - The enforced `check:queries` gate is enabled only by the final batch.
+  - The full D1–D4 text and explicit persistence-path list in `coding-standards.md` are proposed in open PR #764; they are not yet part of accepted main. This entry records the conductor's implementation choices, not acceptance of that proposed contract or completion of #580.
+- **#713 God Mode Authentication/SCIM UI — owner decision (Thomas, 2026-10-15), not a conductor one.** The screen ships the accepted API's step-up-protected staff-connection and SCIM enable/disable actions. The standing hold on "unapproved identity/notification activation" still applies: nothing is activated on the laptop SIT, UAT or production without Thomas's approval, and SIT tests only fixture or closed states. Registration, invitations and typed-domain SSO stay held.
+
+**Supersedes:** nothing. **Reversal:** a later conductor or owner entry. The accepted `monorepo-layout.md` query-ownership rule remains the canonical baseline; the additional coding-standards wording and path list await review and acceptance of #764.
+
 ### 2026-10-14 · Submission accept answers an unreachable destination exactly like a missing one
 
 **Decision (conductor, 2026-10-14; reversible):** `POST /api/submissions/{ref}/accept` answers a destination project outside the triager's reach with the same 422 as a missing destination, after the claim has committed. It does not answer 404 before the claim.
@@ -12,6 +42,24 @@
 **Supersedes:** nothing.
 
 **Reversal:** make the reach check in `acceptSubmission` throw 404 before the claim and update the reach tests in `tests/api-integration/project-reach-writes.test.ts`. The cost is that a missing destination and an unreachable one then differ in status and side effect.
+
+### 2026-10-15 · Continue the remaining #589 integration after alpha.4; laptop SIT hostnames and loopback
+
+**Decision (Thomas, 2026-10-15):** the conductor leaves Hold and continues the remaining approved integration associated with historical PR #589. This is a continuation, not a restart.
+- **Baseline kept:** v2.0.0-alpha.4 (source `d159704be626136e728df7ddef0381dc37cf7756`), its reviews, deployment evidence, backups, restore results and independent audit are a completed checkpoint. P0's scoped closure and #626's deferrals are unchanged.
+- **Selected units:** #580 (M1, repository query ownership and the enforced `check:queries` gate), #713 (M2), #714 (M3), #715 (M4), #716 (M6) and #718 (M9), rebuilt on current `main` with #589 as reference source only. #717 (M7) is complete through #738 (merge `6015f016`) and is not reimplemented. #589's branch and the conservation ledger are kept.
+- **#589 closure:** only after every selected unit is merged and verified, proven equivalent on `main`, or explicitly deferred by Thomas. Moving work into an issue is not closure.
+- **Then:** one combined `main` SHA, one signed prerelease through the existing GHCR/GitHub path (the next permitted unused version, not alpha.4), consistent backup and isolated restore, deployment of the exact signed digest to laptop SIT, real-browser workflows, a fresh independent Opus audit, report, Hold.
+- **Laptop SIT hostnames:** `https://ticketing.localhost` (agent) and `https://portal.localhost` on Traefik HTTPS 443 are the canonical laptop SIT endpoints for this continuation. This supersedes the planned `ticket.localhost` agent name for this scope only. A health-only response from `ticket.localhost` is not acceptance of the agent application. No hostname migration and no session, certificate or origin change for naming.
+- **Loopback (#752):** the laptop SIT is restricted to loopback with the minimum reviewed local-overlay change. The application port 5173 is not published unless an existing supported diagnostic needs it, and then only on loopback. Database, cache, storage-administration and management ports are never published to the LAN.
+
+**Holds kept:** request-type deletion, export resource limits (F3), manual SLA pause (D1), team-lead saved-view editing and automatic ownership transfer, held workflow effects (`set_field`), MCP, registration/invitations/typed-domain SSO, outbound notification activation, and unapproved identity/notification activation.
+
+**Not authorized:** remote UAT or production changes, Docker Hub publication, pruning Docker volumes, deleting backups, resetting databases, rewriting Git history, disabling security controls, a final 2.0.0 or P4 claim, new runner infrastructure or a reproducible-build framework (#753 gets only bounded reliability repairs).
+
+**Supersedes:** for this scope only, the `ticket.localhost` laptop agent name in the 2026-10-09 mission sequence and the "Hold" state recorded at the alpha.4 handover. Everything else in the 2026-10-09 mission stands.
+
+**Reversal:** Thomas returns the conductor to Hold; merged successors stay on `main` and #589 stays open with its residual rows.
 
 ### 2026-10-14 · A project's creator holds a project-lead membership
 
@@ -2258,6 +2306,10 @@ delete it (rejected — destructive, and the release may already be referenced/p
 something).
 
 **Decided by:** Thomas, 2026-09-28.
+
+## 2026-10-16 — Technical disposition: public #780 reviewer filename
+
+The generic-api-key scan of immutable publication `33f2ec22b161bc214d76b2e0e3dd264cf950bd5d` matches the public filename `780-records-main-ordinary-luna.md` in its review-note heading (line260), not a credential. Preserve the authentic report and commit. Add only that exact commit/file/rule/line fingerprint to `.gitleaksignore`, following the existing immutable-review-filename precedent; no path/rule exemption or secret-scan waiver. This technical false-positive disposition requires independent ordinary and Sol review and current CI before acceptance; it creates no owner decision or product authority.
 
 ## Format
 
