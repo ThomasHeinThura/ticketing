@@ -270,6 +270,64 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
     expect(restored).toEqual({ isRead: false });
   });
 
+  it("does not reveal or mutate a workspace notice through a foreign misanchored workspace role", async () => {
+    const { user, workspace } = await fixture();
+    const foreign = await createWorkspaceMember({ role: "admin" });
+    const malformedRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: workspace.id,
+          key: `foreign-workspace-notice-${randomUUID()}`,
+          name: "Misanchored workspace notice role",
+          rank: 1,
+          capabilities: ["workspace:read"],
+        })
+        .returning(),
+      "misanchored workspace notice role",
+    );
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, user.id))
+      .limit(1);
+    if (!person) throw new Error("Expected workspace notice actor");
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "workspace",
+      scopeId: foreign.workspace.id,
+      roleId: malformedRole.id,
+      seesAll: true,
+    });
+    const [row] = await db
+      .insert(schema.notificationTable)
+      .values({
+        userId: user.id,
+        title: "Foreign workspace notice secret",
+        content: "Must remain unread and retained",
+        type: "workspace_created",
+        resourceType: "workspace",
+        resourceId: foreign.workspace.id,
+      })
+      .returning();
+    if (!row) throw new Error("Expected historical workspace notice");
+
+    expect(
+      (await getNotifications(user.id, true)).map(({ id }) => id),
+    ).not.toContain(row.id);
+    await expect(markNotificationAsRead(row.id, user.id)).rejects.toMatchObject(
+      { status: 404 },
+    );
+    await markAllNotificationsAsRead(user.id);
+    await clearNotifications(user.id);
+    const [retained] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, row.id));
+    expect(retained).toEqual({ isRead: false });
+  });
+
   it("allows only correctly person-bound private security notices and hides old null bindings", async () => {
     const { user } = await fixture();
     const [person] = await db

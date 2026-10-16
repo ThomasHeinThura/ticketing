@@ -6,7 +6,6 @@ import {
   eq,
   exists,
   gte,
-  inArray,
   isNull,
   like,
   lt,
@@ -14,14 +13,17 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import db from "../database";
-import type { Executor } from "../database/executor";
+import { alias } from "drizzle-orm/pg-core";
+import { type Executor, executorOrDefault } from "../database/executor";
+import {
+  currentInstanceAdminPredicate,
+  currentProjectReachPredicate,
+  currentWorkspaceReachPredicate,
+} from "../database/identity-scope-predicates";
 import {
   auditLogTable,
-  membershipTable,
   projectTable,
   workspaceTable,
-  workspaceUserTable,
 } from "../database/schema";
 import { AUDIT_CHAIN_LOCK_KEY } from "./lock";
 
@@ -101,78 +103,25 @@ function combineFilters(filters: (SQL | undefined)[]): SQL | undefined {
 export async function listInstanceAuditRows(
   identity: ResolvedIdentity,
   query: AuditQuery,
+  executor?: Executor,
 ) {
+  const tx = executorOrDefault(executor);
   // AU-11 is explicitly instance-wide for instance administrators. The route separately
-  // enforces `instance:read_audit` (including a key's stored scope); do not require an
-  // `instance:admin` key capability here, since that would narrow the documented route
-  // contract beyond its existing read-audit capability gate.
-  const hasInstanceReach =
-    identity.side === "staff" && identity.reach.kind === "all";
-  const rows = await db
+  // enforces `instance:read_audit` (including a key's stored scope); this SQL predicate
+  // revalidates the current persisted administrator relation without requiring the key's
+  // narrowed capability subset to contain `instance:admin`.
+  const rows = await tx
     .select()
     .from(auditLogTable)
     .where(
       combineFilters([
-        hasInstanceReach ? undefined : sql`false`,
+        currentInstanceAdminPredicate(identity, tx),
         ...auditListFilters(query),
       ]),
     )
     .orderBy(desc(auditLogTable.seq))
     .limit(query.limit);
   return materializeAuditRows(rows);
-}
-
-/**
- * Which projects' audit rows a caller may see within a workspace: `"all"` (the
- * per-workspace `sees_all` grant) or the explicit reachable project ids, where an empty
- * list means non-project rows only (fail closed).
- */
-function workspaceIdentityReach(
-  identity: ResolvedIdentity,
-  workspaceId: string,
-) {
-  if (identity.side !== "staff") return sql`false`;
-  if (identity.reach.kind === "all") return eq(workspaceTable.id, workspaceId);
-  if (identity.reach.kind === "organisation") {
-    return and(
-      eq(workspaceTable.id, workspaceId),
-      inArray(workspaceTable.organisationId, [...identity.reach.ids]),
-    );
-  }
-  if (
-    identity.reach.kind === "membership_with_workspaces" &&
-    identity.reach.workspaceIds.includes(workspaceId)
-  ) {
-    return eq(workspaceTable.id, workspaceId);
-  }
-  return and(
-    eq(workspaceTable.id, workspaceId),
-    or(
-      exists(
-        db
-          .select({ one: sql`1` })
-          .from(workspaceUserTable)
-          .where(
-            and(
-              eq(workspaceUserTable.workspaceId, workspaceTable.id),
-              eq(workspaceUserTable.userId, identity.userId),
-            ),
-          ),
-      ),
-      exists(
-        db
-          .select({ one: sql`1` })
-          .from(membershipTable)
-          .where(
-            and(
-              eq(membershipTable.personId, identity.personId),
-              eq(membershipTable.scope, "workspace"),
-              eq(membershipTable.scopeId, workspaceTable.id),
-            ),
-          ),
-      ),
-    ),
-  );
 }
 
 /**
@@ -184,54 +133,48 @@ export async function listWorkspaceAuditRows(
   identity: ResolvedIdentity,
   workspaceId: string,
   query: AuditQuery,
+  executor?: Executor,
 ) {
-  const projectMembership = exists(
-    db
+  const tx = executorOrDefault(executor);
+  const auditProject = alias(projectTable, "audit_scope_project");
+  const anyReachableProject = exists(
+    tx
       .select({ one: sql`1` })
-      .from(membershipTable)
-      .innerJoin(
-        projectTable,
-        and(
-          eq(projectTable.id, membershipTable.scopeId),
-          eq(projectTable.workspaceId, workspaceId),
-        ),
-      )
+      .from(auditProject)
       .where(
         and(
-          eq(membershipTable.personId, identity.personId),
-          eq(membershipTable.scope, "project"),
-          eq(membershipTable.scopeId, auditLogTable.projectId),
-        ),
-      ),
-  );
-  const workspaceSeesAll = exists(
-    db
-      .select({ one: sql`1` })
-      .from(membershipTable)
-      .where(
-        and(
-          eq(membershipTable.personId, identity.personId),
-          eq(membershipTable.scope, "workspace"),
-          eq(membershipTable.scopeId, workspaceId),
-          eq(membershipTable.seesAll, true),
+          eq(auditProject.id, auditLogTable.projectId),
+          eq(auditProject.workspaceId, workspaceId),
+          currentProjectReachPredicate(
+            identity,
+            auditProject.id,
+            auditProject.workspaceId,
+            auditProject.organisationId,
+            tx,
+          ),
         ),
       ),
   );
   const rowReach =
     identity.side === "staff"
-      ? or(isNull(auditLogTable.projectId), workspaceSeesAll, projectMembership)
+      ? or(isNull(auditLogTable.projectId), anyReachableProject)
       : sql`false`;
-  const rows = await db
+  const rows = await tx
     .select()
     .from(auditLogTable)
     .where(
       combineFilters([
         eq(auditLogTable.workspaceId, workspaceId),
         exists(
-          db
+          tx
             .select({ one: sql`1` })
             .from(workspaceTable)
-            .where(workspaceIdentityReach(identity, workspaceId)),
+            .where(
+              and(
+                eq(workspaceTable.id, workspaceId),
+                currentWorkspaceReachPredicate(identity, workspaceTable.id, tx),
+              ),
+            ),
         ),
         rowReach,
         ...auditListFilters(query),

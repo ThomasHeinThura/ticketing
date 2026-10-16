@@ -17,6 +17,7 @@ import {
   markOwnReadableNotificationRead,
   markReadableNotificationsRead,
 } from "../../apps/api/src/notification/inbox.repository";
+import { findCurrentNotificationResources } from "../../apps/api/src/notification/repository";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -1215,6 +1216,154 @@ describe("API integration: work-item comments (#27)", () => {
       credentialCanReadTask: false,
     });
     expect(inactiveCustomerRows).toHaveLength(0);
+  });
+
+  it("scopes native fact reads, content and inbox mutations to canonical project reach", async () => {
+    const actor = await setupWorkItem("member");
+    const foreign = await setupWorkItem("admin");
+    const identity = await resolveIdentity({
+      userId: actor.creator.user.id,
+      credential: "session",
+    });
+    expect(identity).not.toBeNull();
+    if (!identity) throw new Error("expected canonical inbox identity");
+
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, actor.creator.user.id))
+      .limit(1);
+    if (!person) throw new Error("expected actor person");
+    const malformedProjectRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "project",
+          workspaceId: actor.creator.workspace.id,
+          key: `notification-foreign-project-${randomUUID()}`,
+          name: "Foreign project role",
+          rank: 1,
+          capabilities: ["work_item:read"],
+        })
+        .returning(),
+      "foreign project role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "project",
+      scopeId: foreign.project.id,
+      roleId: malformedProjectRole.id,
+    });
+
+    const malformedWorkspaceRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: actor.creator.workspace.id,
+          key: `notification-foreign-workspace-${randomUUID()}`,
+          name: "Foreign workspace sees_all role",
+          rank: 1,
+          capabilities: ["work_item:read"],
+        })
+        .returning(),
+      "foreign workspace sees_all role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "workspace",
+      scopeId: foreign.creator.workspace.id,
+      roleId: malformedWorkspaceRole.id,
+      seesAll: true,
+    });
+
+    const ownNotice = await plantNativeNotification({
+      userId: actor.creator.user.id,
+      personId: person.id,
+      resourceType: "work_item",
+      resourceId: actor.workItem.id,
+      kind: "work_item.assigned",
+      title: "Own item notice",
+    });
+    const foreignNotice = await plantNativeNotification({
+      userId: actor.creator.user.id,
+      personId: person.id,
+      resourceType: "work_item",
+      resourceId: foreign.workItem.id,
+      kind: "work_item.assigned",
+      title: "Foreign item secret",
+      content: "Foreign item body must not be loaded",
+    });
+
+    const currentFacts = await db.transaction((tx) =>
+      findCurrentNotificationResources(tx, identity, [
+        {
+          resourceType: "work_item",
+          resourceId: actor.workItem.id,
+          eventKind: "work_item.assigned",
+        },
+        {
+          resourceType: "work_item",
+          resourceId: foreign.workItem.id,
+          eventKind: "work_item.assigned",
+        },
+      ]),
+    );
+    expect(currentFacts.has(`work_item\u0000${actor.workItem.id}`)).toBe(true);
+    expect(currentFacts.has(`work_item\u0000${foreign.workItem.id}`)).toBe(
+      false,
+    );
+
+    const listed = await listVisibleNotificationRows({
+      userId: actor.creator.user.id,
+      credentialCanReadTask: false,
+    });
+    expect(listed.map(({ notification }) => notification.id)).toContain(
+      ownNotice.id,
+    );
+    expect(listed.map(({ notification }) => notification.id)).not.toContain(
+      foreignNotice.id,
+    );
+    expect(
+      await markOwnReadableNotificationRead(
+        foreignNotice.id,
+        actor.creator.user.id,
+      ),
+    ).toBeUndefined();
+    const [foreignAfterDirect] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, foreignNotice.id));
+    expect(foreignAfterDirect?.isRead).toBe(false);
+
+    await markReadableNotificationsRead(actor.creator.user.id);
+    const mutationState = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [ownNotice.id, foreignNotice.id]),
+      );
+    expect(mutationState).toEqual([
+      { id: ownNotice.id, isRead: true },
+      { id: foreignNotice.id, isRead: false },
+    ]);
+    await deleteReadableNotifications(actor.creator.user.id);
+    const retainedForeign = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, foreignNotice.id));
+    expect(retainedForeign).toEqual([{ id: foreignNotice.id, isRead: false }]);
+    const deletedOwn = await db
+      .select({ id: schema.notificationTable.id })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, ownNotice.id));
+    expect(deletedOwn).toEqual([]);
   });
 
   it("CA-12: adds an accessible mention as watcher without unmuting and fans out to that person", async () => {

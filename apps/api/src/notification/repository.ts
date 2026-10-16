@@ -1,5 +1,7 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { schema } from "../database";
+import { currentProjectReachPredicate } from "../database/identity-scope-predicates";
 import type { DbTransaction } from "../events/outbox";
 import { isSupportedNotificationResourceEvent } from "./resource-contract";
 
@@ -51,6 +53,7 @@ function resourceKey(resourceType: string, resourceId: string) {
  * and one participant query per candidate page, not one lookup per notification. */
 export async function findCurrentNotificationResources(
   tx: DbTransaction,
+  identity: ResolvedIdentity,
   requests: readonly NativeNotificationResourceRequest[],
 ): Promise<Map<string, CurrentNotificationResource>> {
   const valid = requests.filter(
@@ -105,6 +108,13 @@ export async function findCurrentNotificationResources(
             isNull(schema.workItemTable.archivedAt),
             isNull(schema.projectTable.deletedAt),
             isNull(schema.workspaceTable.deletedAt),
+            currentProjectReachPredicate(
+              identity,
+              schema.projectTable.id,
+              schema.projectTable.workspaceId,
+              schema.projectTable.organisationId,
+              tx,
+            ),
           ),
         )
     : [];
@@ -143,6 +153,13 @@ export async function findCurrentNotificationResources(
             isNull(schema.workItemTable.archivedAt),
             isNull(schema.projectTable.deletedAt),
             isNull(schema.workspaceTable.deletedAt),
+            currentProjectReachPredicate(
+              identity,
+              schema.projectTable.id,
+              schema.projectTable.workspaceId,
+              schema.projectTable.organisationId,
+              tx,
+            ),
           ),
         )
     : [];

@@ -12,11 +12,13 @@ import {
   type SQLWrapper,
   sql,
 } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
 import db from "../database";
 import { type Executor, executorOrDefault } from "../database/executor";
 import {
-  membershipTable,
+  currentProjectReachPredicate,
+  currentWorkspaceReachPredicate,
+} from "../database/identity-scope-predicates";
+import {
   projectTable,
   roleTable,
   stateTable,
@@ -26,7 +28,6 @@ import {
   workflowVersionTable,
   workItemTable,
   workspaceTable,
-  workspaceUserTable,
 } from "../database/schema";
 
 /**
@@ -47,29 +48,12 @@ export type NewWorkflowTransition = Omit<
 function workflowWorkspaceReach(
   identity: ResolvedIdentity,
   workspaceId: string | SQLWrapper,
+  executor: Executor = db,
 ) {
-  const workspaceFilter = eq(workspaceTable.id, workspaceId);
   if (identity.side !== "staff") return sql`false`;
-  if (identity.reach.kind === "all") return workspaceFilter;
-  if (identity.reach.kind === "organisation") {
-    return and(
-      workspaceFilter,
-      inArray(workspaceTable.organisationId, [...identity.reach.ids]),
-    );
-  }
   return and(
-    workspaceFilter,
-    exists(
-      db
-        .select({ one: sql`1` })
-        .from(workspaceUserTable)
-        .where(
-          and(
-            eq(workspaceUserTable.workspaceId, workspaceTable.id),
-            eq(workspaceUserTable.userId, identity.userId),
-          ),
-        ),
-    ),
+    eq(workspaceTable.id, workspaceId),
+    currentWorkspaceReachPredicate(identity, workspaceTable.id, executor),
   );
 }
 
@@ -79,52 +63,17 @@ function projectReach(
   executor: Executor = db,
 ) {
   const projectFilter = eq(projectTable.id, projectId);
-  const scopedProject = alias(projectTable, "workflow_reach_project");
   if (identity.side !== "staff") return sql`false`;
-  if (identity.reach.kind === "all") return projectFilter;
-  if (identity.reach.kind === "organisation") {
-    return and(
-      projectFilter,
-      exists(
-        db
-          .select({ one: sql`1` })
-          .from(workspaceTable)
-          .where(
-            and(
-              eq(workspaceTable.id, projectTable.workspaceId),
-              inArray(workspaceTable.organisationId, [...identity.reach.ids]),
-            ),
-          ),
-      ),
-    );
-  }
-  const projectMembership = exists(
-    executor
-      .select({ one: sql`1` })
-      .from(membershipTable)
-      .innerJoin(roleTable, eq(roleTable.id, membershipTable.roleId))
-      .innerJoin(scopedProject, eq(scopedProject.id, membershipTable.scopeId))
-      .where(
-        and(
-          eq(membershipTable.personId, identity.personId),
-          eq(membershipTable.scope, "project"),
-          eq(membershipTable.scopeId, projectTable.id),
-          eq(roleTable.scope, "project"),
-          eq(roleTable.workspaceId, scopedProject.workspaceId),
-          sql`CASE WHEN jsonb_typeof(${roleTable.capabilities}) = 'array' THEN NOT EXISTS (
-            SELECT 1 FROM jsonb_array_elements(${roleTable.capabilities}) AS role_capability(value)
-            WHERE jsonb_typeof(role_capability.value) <> 'string'
-          ) ELSE false END`,
-          sql`length(${roleTable.key}) > 0`,
-        ),
-      ),
+  return and(
+    projectFilter,
+    currentProjectReachPredicate(
+      identity,
+      projectTable.id,
+      projectTable.workspaceId,
+      sql`NULL`,
+      executor,
+    ),
   );
-  const workspaceReach =
-    identity.reach.kind === "membership_with_workspaces" &&
-    identity.reach.workspaceIds.length > 0
-      ? inArray(projectTable.workspaceId, [...identity.reach.workspaceIds])
-      : undefined;
-  return and(projectFilter, or(projectMembership, workspaceReach));
 }
 
 function queryWorkflowTree(identity: ResolvedIdentity, id: string) {
@@ -239,7 +188,11 @@ export async function findWorkflowWorkspaceId(
     .where(
       and(
         eq(workflowTable.id, workflowId),
-        workflowWorkspaceReach(identity, workflowTable.workspaceId),
+        workflowWorkspaceReach(
+          identity,
+          workflowTable.workspaceId,
+          executor ?? db,
+        ),
       ),
     )
     .limit(1);
@@ -264,7 +217,11 @@ export async function findWorkflowVersion(
       and(
         eq(workflowVersionTable.workflowId, workflowId),
         eq(workflowVersionTable.number, number),
-        workflowWorkspaceReach(identity, workflowTable.workspaceId),
+        workflowWorkspaceReach(
+          identity,
+          workflowTable.workspaceId,
+          executor ?? db,
+        ),
       ),
     )
     .limit(1);
@@ -289,7 +246,11 @@ export async function findWorkflowVersionId(
       and(
         eq(workflowVersionTable.workflowId, workflowId),
         eq(workflowVersionTable.number, number),
-        workflowWorkspaceReach(identity, workflowTable.workspaceId),
+        workflowWorkspaceReach(
+          identity,
+          workflowTable.workspaceId,
+          executor ?? db,
+        ),
       ),
     )
     .limit(1);
@@ -340,7 +301,11 @@ export async function listVersionTransitions(
     .where(
       and(
         eq(workflowTransitionTable.versionId, versionId),
-        workflowWorkspaceReach(identity, workflowTable.workspaceId),
+        workflowWorkspaceReach(
+          identity,
+          workflowTable.workspaceId,
+          executor ?? db,
+        ),
       ),
     );
   return rows.map((row) => materializeWorkflowTransition(row.transition));
@@ -361,7 +326,7 @@ export async function listStateTemplates(
     .where(
       and(
         eq(stateTemplateTable.workspaceId, workspaceId),
-        workflowWorkspaceReach(identity, workspaceId),
+        workflowWorkspaceReach(identity, workspaceId, executor ?? db),
       ),
     );
 }
@@ -372,7 +337,8 @@ export async function listReferenceableRoleIds(
   workspaceId: string,
   executor?: Executor,
 ) {
-  return executorOrDefault(executor)
+  const query = executorOrDefault(executor);
+  return query
     .select({ id: roleTable.id })
     .from(roleTable)
     .where(
@@ -382,10 +348,10 @@ export async function listReferenceableRoleIds(
           isNull(roleTable.workspaceId),
         ),
         exists(
-          db
+          query
             .select({ one: sql`1` })
             .from(workspaceTable)
-            .where(workflowWorkspaceReach(identity, workspaceId)),
+            .where(workflowWorkspaceReach(identity, workspaceId, query)),
         ),
       ),
     );
@@ -442,7 +408,7 @@ export async function listWorkflowAdoptingProjectIds(
     .where(
       and(
         eq(workflowTable.id, workflowId),
-        workflowWorkspaceReach(identity, workspaceTable.id),
+        workflowWorkspaceReach(identity, workspaceTable.id, executor ?? db),
         projectReach(identity, projectTable.id, executor),
       ),
     );
@@ -465,7 +431,7 @@ export async function hasCompleteWorkflowProjectReach(
     .where(
       and(
         eq(workflowTable.id, workflowId),
-        workflowWorkspaceReach(identity, workflowTable.workspaceId),
+        workflowWorkspaceReach(identity, workflowTable.workspaceId, query),
       ),
     )
     .limit(1);
@@ -482,7 +448,7 @@ export async function hasCompleteWorkflowProjectReach(
     .where(
       and(
         eq(workflowTable.id, workflowId),
-        workflowWorkspaceReach(identity, workspaceTable.id),
+        workflowWorkspaceReach(identity, workspaceTable.id, query),
         not(projectReach(identity, projectTable.id, executor) ?? sql`false`),
       ),
     )

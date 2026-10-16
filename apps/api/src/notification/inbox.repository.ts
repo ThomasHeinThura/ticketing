@@ -14,6 +14,11 @@ import {
 } from "drizzle-orm";
 import db from "../database";
 import {
+  currentInstanceAdminPredicate,
+  currentProjectReachPredicate,
+  currentWorkspaceReachPredicate,
+} from "../database/identity-scope-predicates";
+import {
   commentTable,
   notificationTable,
   personTable,
@@ -138,13 +143,18 @@ function registeredNotificationResource() {
 
 function taskNotificationReadable(
   userId: string,
+  executor: InboxExecutor,
   credentialCanReadTask?: boolean,
 ) {
   return or(
     ne(notificationTable.resourceType, "task"),
     credentialCanReadTask === undefined
-      ? reachableTaskNotificationPredicate(userId)
-      : reachableTaskNotificationPredicate(userId, credentialCanReadTask),
+      ? reachableTaskNotificationPredicate(userId, true, executor)
+      : reachableTaskNotificationPredicate(
+          userId,
+          credentialCanReadTask,
+          executor,
+        ),
   );
 }
 
@@ -164,6 +174,7 @@ function bindSameRow(row: NotificationCandidate) {
   return and(
     eq(notificationTable.id, row.id),
     eq(notificationTable.userId, row.userId),
+    eq(notificationTable.type, row.type),
     row.personId === null
       ? isNull(notificationTable.personId)
       : eq(notificationTable.personId, row.personId),
@@ -235,8 +246,10 @@ async function readableNativeRows(
   rows: readonly PolicyCandidate[],
   identity: ResolvedIdentity | null,
 ) {
+  if (!identity) return [];
   const resources = await findCurrentNotificationResources(
     tx,
+    identity,
     nativeRequests(rows),
   );
   const workspaceRows = rows.filter(
@@ -259,7 +272,13 @@ async function readableNativeRows(
           organisationId: workspaceTable.organisationId,
         })
         .from(workspaceTable)
-        .where(inArray(workspaceTable.id, workspaceIds))
+        .where(
+          and(
+            inArray(workspaceTable.id, workspaceIds),
+            isNull(workspaceTable.deletedAt),
+            currentWorkspaceReachPredicate(identity, workspaceTable.id, tx),
+          ),
+        )
     : [];
   const workspaceFacts = new Map(currentWorkspaces.map((row) => [row.id, row]));
   return rows.filter((row) => {
@@ -369,8 +388,8 @@ async function selectCandidatePage(
   const selfScoped = and(
     eq(notificationTable.userId, userId),
     registeredNotificationResource(),
-    approvalNotificationReadable(userId),
-    taskNotificationReadable(userId, credentialCanReadTask),
+    approvalNotificationReadable(userId, tx),
+    taskNotificationReadable(userId, tx, credentialCanReadTask),
   );
   const visibleToUser = excludeInstanceAdminRows
     ? and(
@@ -415,32 +434,52 @@ async function selectCandidatePage(
     .limit(CANDIDATE_PAGE_SIZE);
 }
 
-function currentOwnerPredicate(row: NotificationCandidate) {
+function currentOwnerPredicate(
+  row: NotificationCandidate,
+  identity: ResolvedIdentity,
+  executor: InboxExecutor,
+  credentialCanReadTask = true,
+) {
   if (row.resourceType === "task") {
     return exists(
-      db
+      executor
         .select({ one: sql`1` })
         .from(taskTable)
         .innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))
+        .innerJoin(
+          workspaceTable,
+          eq(workspaceTable.id, projectTable.workspaceId),
+        )
         .where(
           and(
             eq(taskTable.id, notificationTable.resourceId),
             isNull(projectTable.deletedAt),
+            isNull(workspaceTable.deletedAt),
+            reachableTaskNotificationPredicate(
+              identity.userId,
+              credentialCanReadTask,
+              executor,
+            ),
           ),
         ),
     );
   }
   if (row.resourceType === "approval")
-    return approvalNotificationReadable(row.userId);
+    return approvalNotificationReadable(row.userId, executor);
   if (row.resourceType === "workspace") {
     return exists(
-      db
+      executor
         .select({ one: sql`1` })
         .from(workspaceTable)
         .where(
           and(
             eq(workspaceTable.id, notificationTable.resourceId),
             isNull(workspaceTable.deletedAt),
+            currentWorkspaceReachPredicate(
+              identity,
+              workspaceTable.id,
+              executor,
+            ),
             eq(notificationTable.type, "workspace_created"),
           ),
         ),
@@ -448,56 +487,87 @@ function currentOwnerPredicate(row: NotificationCandidate) {
   }
   if (row.resourceType === "person") {
     return exists(
-      db
+      executor
         .select({ one: sql`1` })
         .from(personTable)
         .where(
           and(
             eq(personTable.id, notificationTable.resourceId),
             eq(personTable.id, notificationTable.personId),
+            eq(personTable.userId, identity.userId),
+            eq(notificationTable.userId, identity.userId),
           ),
         ),
     );
   }
   if (row.resourceType === "work_item") {
     return exists(
-      db
+      executor
         .select({ one: sql`1` })
         .from(workItemTable)
         .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+        .innerJoin(
+          workspaceTable,
+          eq(workspaceTable.id, projectTable.workspaceId),
+        )
         .where(
           and(
             eq(workItemTable.id, notificationTable.resourceId),
             isNull(workItemTable.deletedAt),
             isNull(workItemTable.archivedAt),
             isNull(projectTable.deletedAt),
+            isNull(workspaceTable.deletedAt),
+            currentProjectReachPredicate(
+              identity,
+              projectTable.id,
+              projectTable.workspaceId,
+              projectTable.organisationId,
+              executor,
+            ),
           ),
         ),
     );
   }
   if (row.resourceType === "comment") {
     return exists(
-      db
+      executor
         .select({ one: sql`1` })
         .from(commentTable)
         .innerJoin(workItemTable, eq(workItemTable.id, commentTable.workItemId))
         .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+        .innerJoin(
+          workspaceTable,
+          eq(workspaceTable.id, projectTable.workspaceId),
+        )
         .where(
           and(
             eq(commentTable.id, notificationTable.resourceId),
             isNull(workItemTable.deletedAt),
             isNull(workItemTable.archivedAt),
             isNull(projectTable.deletedAt),
+            isNull(workspaceTable.deletedAt),
+            currentProjectReachPredicate(
+              identity,
+              projectTable.id,
+              projectTable.workspaceId,
+              projectTable.organisationId,
+              executor,
+            ),
           ),
         ),
     );
   }
-  return sql`${notificationTable.resourceId} = 'singleton'`;
+  return and(
+    eq(notificationTable.resourceId, "singleton"),
+    currentInstanceAdminPredicate(identity, executor),
+  );
 }
 
 async function fetchAllowedRows(
   tx: InboxExecutor,
   rows: readonly NotificationCandidate[],
+  identity: ResolvedIdentity,
+  credentialCanReadTask = true,
 ) {
   if (rows.length === 0) return [];
   return tx
@@ -518,7 +588,12 @@ async function fetchAllowedRows(
     .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
     .where(
       or(
-        ...rows.map((row) => and(bindSameRow(row), currentOwnerPredicate(row))),
+        ...rows.map((row) =>
+          and(
+            bindSameRow(row),
+            currentOwnerPredicate(row, identity, tx, credentialCanReadTask),
+          ),
+        ),
       ),
     )
     .orderBy(desc(notificationTable.createdAt), desc(notificationTable.id));
@@ -527,6 +602,7 @@ async function fetchAllowedRows(
 async function bulkMutation(userId: string, mode: "read" | "delete") {
   await inboxTransaction(async (tx) => {
     const identity = await resolveInboxIdentity(tx, userId);
+    if (!identity) return;
     const excludeInstanceAlerts = !canReadInstanceAlerts(identity);
     let cursor: Cursor | undefined;
     while (true) {
@@ -543,7 +619,7 @@ async function bulkMutation(userId: string, mode: "read" | "delete") {
       if (allowed.length > 0) {
         const rowGuard = or(
           ...allowed.map((row) =>
-            and(bindSameRow(row), currentOwnerPredicate(row)),
+            and(bindSameRow(row), currentOwnerPredicate(row, identity, tx)),
           ),
         );
         if (mode === "read") {
@@ -616,16 +692,17 @@ export async function markOwnReadableNotificationRead(
           eq(notificationTable.id, id),
           eq(notificationTable.userId, userId),
           registeredNotificationResource(),
-          approvalNotificationReadable(userId),
-          taskNotificationReadable(userId),
+          approvalNotificationReadable(userId, tx),
+          taskNotificationReadable(userId, tx),
         ),
       )
       .limit(1);
     if (!row) return undefined;
     const identity = await resolveInboxIdentity(tx, userId);
+    if (!identity) return undefined;
     const allowed = await readableNativeRows(tx, [row.notification], identity);
     if (allowed.length === 0) return undefined;
-    const [content] = await fetchAllowedRows(tx, allowed);
+    const [content] = await fetchAllowedRows(tx, allowed, identity);
     if (!content) return undefined;
     const notification = content.notification;
     const [updated] = await tx
@@ -634,10 +711,10 @@ export async function markOwnReadableNotificationRead(
       .where(
         and(
           bindSameRow(notification),
-          currentOwnerPredicate(notification),
+          currentOwnerPredicate(notification, identity, tx),
           registeredNotificationResource(),
-          approvalNotificationReadable(userId),
-          taskNotificationReadable(userId),
+          approvalNotificationReadable(userId, tx),
+          taskNotificationReadable(userId, tx),
         ),
       )
       .returning();
@@ -661,6 +738,7 @@ export async function listVisibleNotificationRows(params: {
   const { userId, credentialCanReadTask, credential = {} } = params;
   return inboxTransaction(async (tx) => {
     const identity = await resolveInboxIdentity(tx, userId, credential);
+    if (!identity) return [];
     const includeInstanceAlerts = canReadInstanceAlerts(identity);
     const results: Array<{
       notification: MaterializedNotificationRow;
@@ -678,7 +756,12 @@ export async function listVisibleNotificationRows(params: {
       );
       const candidates = page.map(({ notification }) => notification);
       const allowed = await readableNativeRows(tx, candidates, identity);
-      const contentRows = await fetchAllowedRows(tx, allowed);
+      const contentRows = await fetchAllowedRows(
+        tx,
+        allowed,
+        identity,
+        credentialCanReadTask,
+      );
       for (const item of contentRows) {
         results.push({
           ...item,

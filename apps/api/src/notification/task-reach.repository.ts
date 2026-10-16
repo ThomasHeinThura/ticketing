@@ -7,6 +7,8 @@ import {
 import type { SQLWrapper } from "drizzle-orm";
 import { and, eq, exists, isNull, or, sql } from "drizzle-orm";
 import db, { schema } from "../database";
+import type { Executor } from "../database/executor";
+import { canonicalScopedRoleMembership } from "../database/identity-scope-predicates";
 import { notificationTable, projectTable, taskTable } from "../database/schema";
 
 function validCapabilities(capabilities: SQLWrapper) {
@@ -55,9 +57,9 @@ function storedTaskRead(
 }
 
 /** Current TaskDesk project reach for a legacy task recipient. */
-export function projectReachPredicate(userId: string) {
+export function projectReachPredicate(userId: string, executor: Executor = db) {
   const projectMembership = exists(
-    db
+    executor
       .select({ id: schema.membershipTable.id })
       .from(schema.membershipTable)
       .innerJoin(
@@ -82,6 +84,15 @@ export function projectReachPredicate(userId: string) {
           eq(schema.membershipTable.scopeId, projectTable.id),
           eq(schema.roleTable.scope, "project"),
           eq(schema.roleTable.workspaceId, projectTable.workspaceId),
+          canonicalScopedRoleMembership(
+            schema.membershipTable.scope,
+            schema.roleTable.scope,
+            schema.roleTable.workspaceId,
+            schema.roleTable.key,
+            schema.roleTable.rank,
+            schema.roleTable.capabilities,
+            projectTable.workspaceId,
+          ),
           eq(schema.membershipTable.scope, schema.roleTable.scope),
           sql`${schema.roleTable.key} <> ''`,
           validCapabilities(schema.roleTable.capabilities),
@@ -89,7 +100,7 @@ export function projectReachPredicate(userId: string) {
       ),
   );
   const projectRoleCanRead = exists(
-    db
+    executor
       .select({ id: schema.membershipTable.id })
       .from(schema.membershipTable)
       .innerJoin(
@@ -115,6 +126,15 @@ export function projectReachPredicate(userId: string) {
           eq(schema.roleTable.scope, "project"),
           eq(schema.roleTable.workspaceId, projectTable.workspaceId),
           eq(schema.membershipTable.scope, schema.roleTable.scope),
+          canonicalScopedRoleMembership(
+            schema.membershipTable.scope,
+            schema.roleTable.scope,
+            schema.roleTable.workspaceId,
+            schema.roleTable.key,
+            schema.roleTable.rank,
+            schema.roleTable.capabilities,
+            projectTable.workspaceId,
+          ),
           sql`${schema.roleTable.key} <> ''`,
           storedTaskRead(
             schema.roleTable.capabilities,
@@ -124,7 +144,7 @@ export function projectReachPredicate(userId: string) {
       ),
   );
   const workspaceRoleCanRead = exists(
-    db
+    executor
       .select({ id: schema.membershipTable.id })
       .from(schema.membershipTable)
       .innerJoin(
@@ -150,6 +170,15 @@ export function projectReachPredicate(userId: string) {
           eq(schema.roleTable.scope, "workspace"),
           eq(schema.roleTable.workspaceId, projectTable.workspaceId),
           eq(schema.membershipTable.scope, schema.roleTable.scope),
+          canonicalScopedRoleMembership(
+            schema.membershipTable.scope,
+            schema.roleTable.scope,
+            schema.roleTable.workspaceId,
+            schema.roleTable.key,
+            schema.roleTable.rank,
+            schema.roleTable.capabilities,
+            projectTable.workspaceId,
+          ),
           sql`${schema.roleTable.key} <> ''`,
           storedTaskRead(
             schema.roleTable.capabilities,
@@ -169,7 +198,7 @@ export function projectReachPredicate(userId: string) {
     )
     .map(([key]) => key);
   const legacyWorkspaceRoleCanRead = exists(
-    db
+    executor
       .select({ id: schema.workspaceUserTable.id })
       .from(schema.workspaceUserTable)
       .where(
@@ -201,7 +230,7 @@ export function projectReachPredicate(userId: string) {
     ),
   );
   const allWorkspaceMembership = exists(
-    db
+    executor
       .select({ id: schema.membershipTable.id })
       .from(schema.membershipTable)
       .innerJoin(
@@ -229,12 +258,21 @@ export function projectReachPredicate(userId: string) {
           eq(schema.roleTable.workspaceId, projectTable.workspaceId),
           sql`${schema.roleTable.key} <> ''`,
           sql`jsonb_typeof(${schema.roleTable.capabilities}) = 'array'`,
+          canonicalScopedRoleMembership(
+            schema.membershipTable.scope,
+            schema.roleTable.scope,
+            schema.roleTable.workspaceId,
+            schema.roleTable.key,
+            schema.roleTable.rank,
+            schema.roleTable.capabilities,
+            projectTable.workspaceId,
+          ),
           validCapabilities(schema.roleTable.capabilities),
         ),
       ),
   );
   const instanceAdmin = exists(
-    db
+    executor
       .select({ id: schema.userTable.id })
       .from(schema.userTable)
       .innerJoin(
@@ -263,9 +301,9 @@ export function projectReachPredicate(userId: string) {
 }
 
 /** Current TaskDesk project reach for a legacy task resource, correlated to its recipient. */
-function taskReachPredicate(userId: string) {
+function taskReachPredicate(userId: string, executor: Executor) {
   return exists(
-    db
+    executor
       .select({ id: taskTable.id })
       .from(taskTable)
       .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
@@ -273,7 +311,7 @@ function taskReachPredicate(userId: string) {
         and(
           eq(taskTable.id, notificationTable.resourceId),
           isNull(projectTable.deletedAt),
-          projectReachPredicate(userId),
+          projectReachPredicate(userId, executor),
         ),
       ),
   );
@@ -282,8 +320,11 @@ function taskReachPredicate(userId: string) {
 export function reachableTaskNotificationPredicate(
   userId: string,
   credentialCanReadTask = true,
+  executor: Executor = db,
 ) {
-  return credentialCanReadTask ? taskReachPredicate(userId) : sql`false`;
+  return credentialCanReadTask
+    ? taskReachPredicate(userId, executor)
+    : sql`false`;
 }
 
 export async function userCanReachTask(
@@ -298,7 +339,7 @@ export async function userCanReachTask(
       and(
         eq(taskTable.id, taskId),
         isNull(projectTable.deletedAt),
-        projectReachPredicate(userId),
+        projectReachPredicate(userId, db),
       ),
     )
     .limit(1);
