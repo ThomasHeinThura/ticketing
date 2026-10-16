@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import {
   and,
@@ -193,8 +194,11 @@ export async function insertTaskLabelOnConflictDoNothing(
     .select(
       executor
         .select({
+          id: sql`${createId()}`.as("id"),
           name: sql`${values.name}`.as("name"),
           color: sql`${values.color}`.as("color"),
+          createdAt: sql`now()`.as("created_at"),
+          updatedAt: sql`now()`.as("updated_at"),
           taskId: sql`${values.taskId}`.as("task_id"),
           workspaceId: sql`${values.workspaceId}`.as("workspace_id"),
         })
@@ -247,8 +251,11 @@ export async function insertWorkspaceLabelOnConflictDoNothing(
     .select(
       executor
         .select({
+          id: sql`${createId()}`.as("id"),
           name: sql`${values.name}`.as("name"),
           color: sql`${values.color}`.as("color"),
+          createdAt: sql`now()`.as("created_at"),
+          updatedAt: sql`now()`.as("updated_at"),
           taskId: sql`null`.as("task_id"),
           workspaceId: sql`${values.workspaceId}`.as("workspace_id"),
         })
