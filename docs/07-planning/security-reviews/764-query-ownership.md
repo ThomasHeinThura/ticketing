@@ -844,3 +844,106 @@ I read the accepted AGENTS/workflow/active mission/model adapter, accepted #780/
 **Blocking findings:** none. **Non-blocking residual:** the query-location gate is unwired, and even its eventual location check cannot establish the tenant predicate or the repository result-shape/handle conventions. Future #580 batches must implement and test their own enforcement without treating this batch-0 clearance as proof of whole-program query safety. The historical review note contains prior adverse and superseded reasoning; retaining it is evidence preservation, not current authority.
 
 No PostgreSQL integration test, Docker build/boot/health, browser, full suite, live PR metadata query, hosted status check, or runtime security exercise was performed for this review. The integration test's prior run is historical evidence bound to its source. The conductor still must verify publication/provenance, exact remote head, required current hosted checks, and applicable image/runtime gates before any protected merge. This security verdict is not merge authorization by itself.
+
+## Accepted782 main import
+
+**Reviewed head:** abe66d8ef8d52d6eb4d51fc72320ce612359916c
+
+Accepted main dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e is normally merged. Three incoming paths match accepted main; all ten unique764paths remain byte-identical to prior296485fb publication. The two ordinary and full independent Sol conformance reviews remain at ca30. A strong independent ordinary import review and separate lightweight independent Sol confirmation clear this later accepted import. Author handoff is not independent review; raw report versions are not approval counts. Current publication-SHA checks and image proof remain pending; older296 evidence is not transferred.
+
+### Source report — 764-accepted-782-main-composition-luna.md
+
+Source SHA-256: `46d703ccbbf199cc92d2bbd0dd50e9ca376b1c66790bfd8256a56cac401d3b72`.
+
+# PR764 accepted #782-main import (author handoff)
+
+Prepared 2026-10-16 by the bounded authoring lane. This is a local history/conservation handoff only. It is not a review, CI result, runtime proof, PR update, or merge approval.
+
+## Exact state
+
+- Retained worktree: `/Users/heinthura/.codex/worktrees/q580-b0/Ticketing.v2`
+- Branch: `codex/query-ownership-580-b0`
+- Before merge: clean at `296485fb1e1f583bad04474530dbefac4c98f3f3`, tracking remote at that same SHA.
+- Accepted main before merge: `dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e` (`origin/main`), the protected #782 merge commit. Its tree is identical to #782 source `b407e3f82028952139b16ff9cd5cf97892fd4a7a` (`git diff --exit-code b407... dfbb...` passed).
+- Local normal merge commit: `abe66d8ef8d52d6eb4d51fc72320ce612359916c`; parents are exactly `296485fb1e1f583bad04474530dbefac4c98f3f3` and `dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e`.
+- Worktree is clean. No push, PR edit, or main merge was performed.
+
+## Conservation proof
+
+The accepted-main delta from the prior #764 source contains exactly these three paths, all byte-identical to their blobs on accepted `dfbb3e46...`:
+
+1. `docs/03-features/webhooks-and-api-keys.md` — blob `016614f23321ad38e618030eeaf3a6c9668c6923`
+2. `docs/07-planning/reviews/2026-09-05/features-governance-design.md` — blob `92d02b53d82ca2fe58017ff869ed8f07f382012b`
+3. `docs/07-planning/security-reviews/782-webhooks-review-disposition.md` — blob `2aa4c7897477efeff57ea0772e3f27f7d6a6d5cc`
+
+All ten unique PR764 paths have the same blobs on `296485fb...` and the merge result `abe66d8...`; each comparison returned `UNCHANGED`: executor; unit and integration tests; `monorepo-layout.md`, `multi-tenancy.md`, `security-model.md`, `tech-stack.md`, `ci-cd.md`, `coding-standards.md`; and the authentic `764-query-ownership.md` review note. The resolved-identity correction and finite D1–D4/14-file contract remain byte-for-byte frozen. No behavior or contract edit was made.
+
+`git status --porcelain=v1` is empty. `git diff --name-status 296485fb... abe66d8...` lists only the three accepted-main paths above.
+
+## Checks and limits
+
+- No product source or test changed, so no unit/integration/build suite was rerun.
+- `git diff --check 296485fb... abe66d8...` reports preserved trailing Markdown hard-break spaces and a final blank line in the newly imported authentic #782 review note. Its blob matches accepted main exactly; it was not normalized or edited. No other files are named by that command's findings.
+- The previously running hosted Postgres check was tied to the old remote head `296485fb...`; it is not evidence for local merge head `abe66d8...`. No result is claimed for the local merge. No Postgres, Docker, browser, or full suite was run here.
+- The original ordinary A/B and full Sol clearances remain bound to `ca30c08d11807bee1346eb62693e2097e55b7f78`. This import needs the planned independent ordinary and lightweight Sol review of the exact merge delta/head; this author handoff fills neither role.
+
+No PR #795 worktree or other lane was touched. Source is frozen at `abe66d8ef8d52d6eb4d51fc72320ce612359916c` for the independent import-delta review.
+
+### Source report — 764-accepted-782-main-ordinary-luna.md
+
+Source SHA-256: `602c8f2b790c9e87c2555ae53cff60346ff7a1fc2cd8fda291b7a7a6985dc2c0`.
+
+# PR #764 accepted-main import — ordinary delta review
+
+**Verdict: CLEAR for the bounded accepted-main import; no blocking findings.**
+
+**Reviewed head:** `abe66d8ef8d52d6eb4d51fc72320ce612359916c`  
+**Previously reviewed publication:** `296485fb1e1f583bad04474530dbefac4c98f3f3`  
+**Accepted main:** `dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e`  
+**Merge parents:** exactly the prior publication and accepted main, in that order.  
+**Model / role / independence:** GPT-6 Luna was explicitly selected for this bounded independent import-delta review. This is the same reviewer context that performed ordinary B on the parent candidate; that prior review does not cover this new import. I did not author, direct, or remediate the import. No serving-version attestation is claimed.  
+**Worktree:** `/Users/heinthura/.codex/worktrees/q580-b0/Ticketing.v2`, clean at the reviewed head. No files or Git history were modified.
+
+## Scope and evidence
+
+The candidate is a normal two-parent merge commit. The direct `296485...` to `abe66d8...` difference is exactly these three accepted-main paths:
+
+1. `docs/03-features/webhooks-and-api-keys.md`
+2. `docs/07-planning/reviews/2026-09-05/features-governance-design.md`
+3. `docs/07-planning/security-reviews/782-webhooks-review-disposition.md`
+
+For each path, the blob at the reviewed head equals the blob at accepted main `dfbb3e46...`. The diff content confirms the incoming webhook/API-key spec additions, design-review disposition, and authentic #782 review note are the accepted-main content.
+
+I independently compared all ten unique #764 paths at prior publication `296485...` and current head `abe66d8...`. Every path is byte-identical by Git blob ID: `executor.ts`; the unit and integration executor tests; `monorepo-layout.md`, `multi-tenancy.md`, `security-model.md`, `tech-stack.md`, `ci-cd.md`, `coding-standards.md`; and `764-query-ownership.md`. Thus the corrected resolved-identity contract, bounded D1–D4/14-file infrastructure list, executor/tests, and original review record remain unchanged. No candidate-specific implementation, test, tenant authority, gate behavior, or other runtime semantics were introduced by the merge beyond the accepted-main import.
+
+Read-only commands used: `git show`, `git diff`, `git rev-parse` blob comparisons for all 13 paths, ancestry/parent verification, `git diff --name-only`, `git diff --check`, and `git status --porcelain=v1`. No product or test delta existed, so no tests were run. No Postgres, Docker, browser, full suite, or hosted/PR action was run.
+
+`git diff --check 296485...abe66d8` reports trailing Markdown whitespace on lines 141–143, 168–169, and 211–213, plus a final blank line in the imported #782 authentic review note. The same file is byte-identical to accepted main; these are preserved report bytes, not a new import edit. I do **not** claim the whole-range diff is whitespace-clean and did not normalize the raw note.
+
+## Limits
+
+This review establishes only history conservation and absence of candidate-specific behavior or gate changes in the accepted-main import. Any historical Postgres result at `296485...` remains bound to that old SHA and is not current-head evidence for `abe66d8...`. This report is not a security review, runtime acceptance, hosted-check result, or merge authorization.
+
+### Source report — 764-accepted-782-main-security-sol.md
+
+Source SHA-256: `3441e0d2c5fbc5492e8d02acfa8a081d3f12e17d9cdc2eb9945b49aed06d9ce5`.
+
+# PR #764 accepted-#782-main import — independent security delta confirmation
+
+**Verdict: CLEAR for the lightweight import delta at exact local head `abe66d8ef8d52d6eb4d51fc72320ce612359916c`, compared with prior #764 publication `296485fb1e1f583bad04474530dbefac4c98f3f3` and accepted main `dfbb3e46e0a1a40cfd5106b00c0bd26138fb950e`. No blocking finding.** The earlier full security review at `ca30c08d11807bee1346eb62693e2097e55b7f78` covers the unchanged #764 source/contract; this confirmation covers only the later import of already accepted #782 material. It is not current-head runtime or hosted-check clearance.
+
+**Role/provenance:** Fresh independent security-review context, explicitly dispatched as `gpt-6-sol` with `fork_turns=none`. I did not author, direct, adjudicate, or remediate the #764 source, the #782 content, or this merge. I previously conducted the full independent #764 security review but did not perform the current ordinary import review. No platform serving-version introspection is available; this records the explicit selector, not an invented runtime attestation. The conductor's author/adviser reports were treated as leads and reverified against Git. I made no source edit, commit, push, PR action, or merge.
+
+## Scope and direct evidence
+
+`git show -s --format='%H%n%P%n%s'` shows `abe66d8...` is a normal merge with parents `296485fb...` and `dfbb3e46...`, in that order. The worktree was clean at `abe66d8...`. `git diff --name-status 296485fb... abe66d8...` names only three accepted-main paths: `docs/03-features/webhooks-and-api-keys.md`, `docs/07-planning/reviews/2026-09-05/features-governance-design.md`, and `docs/07-planning/security-reviews/782-webhooks-review-disposition.md`. I compared their Git blob IDs at the candidate and accepted main; all three are exact matches (respectively `016614f23321ad38e618030eeaf3a6c9668c6923`, `92d02b53d82ca2fe58017ff869ed8f07f382012b`, `2aa4c7897477efeff57ea0772e3f27f7d6a6d5cc`). Accepted main is an ancestor of the candidate.
+
+I independently compared all ten unique #764 paths at prior publication and the merge result by blob ID. Every one is byte-identical: executor, unit and integration tests, `monorepo-layout.md`, `multi-tenancy.md`, `security-model.md`, `tech-stack.md`, `ci-cd.md`, `coding-standards.md`, and the authentic `764-query-ownership.md` review note. Thus the prior reviewed resolved-identity tenant-scoping rule, checked narrower ID/predicate requirement, D1–D4 finite query-location contract, fourteen-file infrastructure list, planned/unwired checker status, transaction handle, tests, and historical review record are unchanged. There is no candidate-specific authority change, gate activation, bypass, query caller change, or API runtime change in this import.
+
+I inspected the incoming diff, not just the filenames. It adds accepted #782 webhook/API-key spec facts, a self-row write boundary, named future security tests, scope/exclusions and open-issue references; the design-review register maps historical findings; and the third path preserves the accepted #782 security-review record. These are normative spec and review documents already present on accepted main, with no change to #764's query-ownership documents or its product source. They do not assert that the #580 checker runs, that API-key/webhook runtime is implemented, or that the #764 executor provides any new authority. I found no cross-contract conflict requiring a fresh full security review of the unchanged #764 portion.
+
+## Checks, findings, and limits
+
+Read-only Git checks: exact SHA/parents/status, both parent diffs, ancestry, all thirteen path blob comparisons, direct diff inspection, and scoped/full `git diff --check`. The diff check excluding the imported authentic #782 review note exited 0. The full `296485...abe66d8` check exited 2 solely for preserved Markdown hard-break spaces and a final blank line in that imported note, which is byte-identical to accepted main; I did not normalize or call the full diff whitespace-clean. The `dfbb...abe66d8` check similarly reports preserved historical formatting in the #764 note. **Blocking findings: none. Non-blocking finding:** inherited raw review-note whitespace is retained as authentic publication, with no semantic effect on this import.
+
+No unit, PostgreSQL, Docker, browser, full suite, hosted CI, or live PR action was run for this pure accepted-main import. Historical image proof (125 UID-10001 health/cleanup) and the old hosted PostgreSQL run at `296485fb...` are not current-head acceptance evidence for `abe66d8...`. Required exact-head hosted checks, current remote/publication identity, and any applicable image/runtime evidence remain the conductor's responsibility before a protected merge. This report is a security delta confirmation, not merge authorization.
