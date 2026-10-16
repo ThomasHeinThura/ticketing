@@ -36,13 +36,18 @@ compose() {
 }
 
 proof_init() {
-  node - "$proof_file" "$candidate_sha" "$checkout_sha" "$image_ref" <<'NODE'
+  node - "$proof_file" "$candidate_sha" "$checkout_sha" "$image_ref" "$network" <<'NODE'
 const fs = require("node:fs");
-const [file, candidate, checkout, image] = process.argv.slice(2);
+const [file, candidate, checkout, image, network] = process.argv.slice(2);
 fs.writeFileSync(file, `${JSON.stringify({
   candidateSha: candidate,
   checkoutSha: checkout,
   imageRef: image,
+  networkName: network,
+  networkId: null,
+  networkDriver: null,
+  networkScope: null,
+  networkOwnershipLabelVerified: false,
   build: "pending",
   imageId: null,
   platform: null,
@@ -53,6 +58,7 @@ fs.writeFileSync(file, `${JSON.stringify({
   serviceImageIds: {},
   hostPortBindingsByService: {},
   publishAllPortsByService: {},
+  serviceNetworkEvidence: {},
   migrationJournalEntries: null,
   appliedMigrations: null,
   healthcheck: "pending",
@@ -123,6 +129,13 @@ proof.cleanup = {
   commandExitCode: Number(exitCode),
 };
 const services = ["migrate", "taskdesk", "postgres", "valkey"];
+const isolatedServiceNetwork = services.every((service) => {
+  const evidence = proof.serviceNetworkEvidence?.[service];
+  const attachments = evidence?.attachments;
+  const names = Object.keys(attachments ?? {});
+  return evidence?.networkMode === proof.networkName && names.length === 1 &&
+    names[0] === proof.networkName && attachments[proof.networkName] === proof.networkId;
+});
 const noServicePorts = services.every((service) => {
   const bindings = proof.hostPortBindingsByService?.[service];
   const publishAll = proof.publishAllPortsByService?.[service];
@@ -134,6 +147,8 @@ const configuredUserIsNonRoot = configuredUserAccount.length > 0 &&
   configuredUserAccount !== "root" && !/^0+$/.test(configuredUserAccount);
 const complete = proof.candidateSha && /^[0-9a-f]{40}$/.test(proof.candidateSha) &&
   proof.checkoutSha && /^[0-9a-f]{40}$/.test(proof.checkoutSha) &&
+  proof.networkName && proof.networkId && proof.networkDriver === "bridge" && proof.networkScope === "local" &&
+  proof.networkOwnershipLabelVerified && isolatedServiceNetwork &&
   proof.build === "passed" && proof.imageId && proof.platform &&
   configuredUserIsNonRoot && proof.runtimeUid > 0 && proof.migrateImageId === proof.imageId &&
   proof.taskdeskImageId === proof.imageId && noServicePorts &&
@@ -171,8 +186,25 @@ git archive --format=tar "$candidate_sha" | tar -xf - -C "$context"
 if docker network inspect "$network" >/dev/null 2>&1; then fail "unique network name already exists"; fi
 if docker image inspect "$image_ref" >/dev/null 2>&1; then fail "unique local image tag already exists"; fi
 
-docker network create --label "$network_label=$nonce" "$network" >/dev/null
+docker network create --driver bridge --label "$network_label=$nonce" "$network" >/dev/null
 network_created=1
+network_owner="$(docker network inspect --format "{{ index .Labels \"$network_label\" }}" "$network")"
+[[ "$network_owner" == "$nonce" ]] || fail "created network ownership label did not match this run"
+network_id="$(docker network inspect --format '{{.Id}}' "$network")"
+[[ -n "$network_id" ]] || fail "owned isolated network has no network ID"
+network_driver="$(docker network inspect --format '{{.Driver}}' "$network")"
+network_scope="$(docker network inspect --format '{{.Scope}}' "$network")"
+[[ "$network_driver" == bridge && "$network_scope" == local ]] || fail "owned network is not a local bridge network"
+node - "$proof_file" "$network_id" "$network_driver" "$network_scope" <<'NODE'
+const fs = require("node:fs");
+const [file, id, driver, scope] = process.argv.slice(2);
+const proof = JSON.parse(fs.readFileSync(file, "utf8"));
+proof.networkId = id;
+proof.networkDriver = driver;
+proof.networkScope = scope;
+proof.networkOwnershipLabelVerified = true;
+fs.writeFileSync(file, `${JSON.stringify(proof, null, 2)}\n`, { mode: 0o600 });
+NODE
 
 postgres_password="$(openssl rand -hex 24)"
 app_password="$(openssl rand -hex 24)"
@@ -238,32 +270,49 @@ timeout 300s docker compose --project-name "$project" --project-directory "$cont
 services=(migrate taskdesk postgres valkey)
 service_ids=()
 service_image_ids=()
-service_port_bindings=()
-service_publish_all=()
 for index in 0 1 2 3; do
   service="${services[$index]}"
   service_ids[$index]="$(compose ps -a -q "$service")"
   [[ -n "${service_ids[$index]}" ]] || fail "Compose did not retain the $service container"
   service_image_ids[$index]="$(docker inspect --format '{{.Image}}' "${service_ids[$index]}")"
-  service_port_bindings[$index]="$(docker inspect --format '{{json .HostConfig.PortBindings}}' "${service_ids[$index]}")"
-  service_publish_all[$index]="$(docker inspect --format '{{.HostConfig.PublishAllPorts}}' "${service_ids[$index]}")"
+  bindings="$(docker inspect --format '{{json .HostConfig.PortBindings}}' "${service_ids[$index]}")"
+  publish_all="$(docker inspect --format '{{.HostConfig.PublishAllPorts}}' "${service_ids[$index]}")"
+  network_mode="$(docker inspect --format '{{.HostConfig.NetworkMode}}' "${service_ids[$index]}")"
+  network_attachments="$(docker inspect --format '{{json .NetworkSettings.Networks}}' "${service_ids[$index]}")"
+  node - "$proof_file" "$service" "${service_image_ids[$index]}" "$bindings" "$publish_all" \
+    "$network_mode" "$network_attachments" "$network" "$network_id" <<'NODE'
+const fs = require("node:fs");
+const [file, service, image, rawBindings, publishAll, mode, rawNetworks, ownedName, ownedId] = process.argv.slice(2);
+const proof = JSON.parse(fs.readFileSync(file, "utf8"));
+const networks = JSON.parse(rawNetworks);
+const attachments = Object.fromEntries(Object.entries(networks ?? {}).map(([name, settings]) => [name, settings?.NetworkID ?? null]));
+const bindings = rawBindings === "null" ? null : JSON.parse(rawBindings);
+const noPorts = bindings === null ||
+  (typeof bindings === "object" && !Array.isArray(bindings) && Object.keys(bindings).length === 0);
+proof.serviceImageIds[service] = image;
+proof.hostPortBindingsByService[service] = bindings;
+proof.publishAllPortsByService[service] = publishAll === "true";
+proof.serviceNetworkEvidence[service] = { networkMode: mode, attachments };
+fs.writeFileSync(file, `${JSON.stringify(proof, null, 2)}\n`, { mode: 0o600 });
+const names = Object.keys(attachments);
+const isolated = mode === ownedName && names.length === 1 && names[0] === ownedName && attachments[ownedName] === ownedId;
+if (!isolated) {
+  process.stderr.write(`shipping image smoke: ${service} is not attached only to the owned isolated network\n`);
+  process.exit(1);
+}
+if (publishAll !== "false" || !noPorts) {
+  process.stderr.write(`shipping image smoke: ${service} has host port exposure\n`);
+  process.exit(1);
+}
+NODE
 done
 migrate_id="${service_ids[0]}"
 taskdesk_id="${service_ids[1]}"
 migrate_exit="$(docker inspect --format '{{.State.ExitCode}}' "$migrate_id")"
 [[ "$migrate_exit" == 0 ]] || fail "migration service did not exit successfully"
-for index in 0 1 2 3; do
-  service="${services[$index]}"
-  [[ "${service_publish_all[$index]}" == false ]] || fail "$service container has automatic host-port publishing enabled"
-done
 migrate_image_id="${service_image_ids[0]}"
 taskdesk_image_id="${service_image_ids[1]}"
 [[ "$migrate_image_id" == "$image_id" && "$taskdesk_image_id" == "$image_id" ]] || fail "running services do not use the locally built candidate image"
-for index in 0 1 2 3; do
-  service="${services[$index]}"
-  bindings="${service_port_bindings[$index]}"
-  [[ "$bindings" == null || "$bindings" == '{}' ]] || fail "$service container has host port bindings"
-done
 
 applied_migrations="$(compose exec -T postgres sh -ec 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atqc "select count(*) from \"drizzle\".\"__drizzle_migrations\""')"
 [[ "$applied_migrations" == "$journal_entries" ]] || fail "qualified migration-ledger count differs from the candidate source journal"
@@ -299,28 +348,20 @@ live_status="$(probe live)" || fail "live endpoint did not return exactly HTTP 2
 ready_status="$(probe ready)" || fail "ready endpoint did not return exactly HTTP 200"
 
 node - "$proof_file" "$runtime_uid" "$applied_migrations" "$live_status" "$ready_status" "$health_status" \
-  "${service_image_ids[0]}" "${service_port_bindings[0]}" "${service_publish_all[0]}" \
-  "${service_image_ids[1]}" "${service_port_bindings[1]}" "${service_publish_all[1]}" \
-  "${service_image_ids[2]}" "${service_port_bindings[2]}" "${service_publish_all[2]}" \
-  "${service_image_ids[3]}" "${service_port_bindings[3]}" "${service_publish_all[3]}" <<'NODE'
+  "${service_image_ids[0]}" "${service_image_ids[1]}" \
+  "${service_image_ids[2]}" "${service_image_ids[3]}" <<'NODE'
 const fs = require("node:fs");
 const args = process.argv.slice(2);
 const [file, uid, applied, live, ready, health, ...serviceValues] = args;
 const proof = JSON.parse(fs.readFileSync(file, "utf8"));
 const services = ["migrate", "taskdesk", "postgres", "valkey"];
-const serviceImageIds = {};
-const hostPortBindingsByService = {};
-const publishAllPortsByService = {};
 for (let index = 0; index < services.length; index += 1) {
-  const service = services[index];
-  const [imageId, bindings, publishAll] = serviceValues.slice(index * 3, index * 3 + 3);
-  serviceImageIds[service] = imageId;
-  hostPortBindingsByService[service] = bindings === "null" ? null : JSON.parse(bindings);
-  publishAllPortsByService[service] = publishAll === "true";
+  if (proof.serviceImageIds[services[index]] !== serviceValues[index]) {
+    throw new Error(`recorded image ID changed for ${services[index]}`);
+  }
 }
 Object.assign(proof, {
-  runtimeUid: Number(uid), migrateImageId: serviceImageIds.migrate, taskdeskImageId: serviceImageIds.taskdesk,
-  serviceImageIds, hostPortBindingsByService, publishAllPortsByService,
+  runtimeUid: Number(uid), migrateImageId: proof.serviceImageIds.migrate, taskdeskImageId: proof.serviceImageIds.taskdesk,
   appliedMigrations: Number(applied), liveStatus: Number(live), readyStatus: Number(ready), healthcheck: health,
 });
 fs.writeFileSync(file, `${JSON.stringify(proof, null, 2)}\n`, { mode: 0o600 });

@@ -47,13 +47,17 @@ if (args[0] === "network") {
   const name = args.at(-1);
   if (args[1] === "inspect") {
     if (state.network || process.env.FAKE_FOREIGN_NETWORK === "1") {
-      if (format) out(state.networkLabel || "foreign");
+      if (format.includes(".Id")) out(state.networkId || "foreign-network-id");
+      else if (format.includes(".Driver")) out("bridge");
+      else if (format.includes(".Scope")) out("local");
+      else if (format) out(state.networkLabel || "foreign");
       stop(0);
     }
     stop(1);
   }
   if (args[1] === "create") {
     state.network = name;
+    state.networkId = "a".repeat(64);
     state.networkLabel = args.find((arg) => arg.startsWith("org.taskdesk.ci-run="))?.split("=").at(-1);
     save();
     stop(0);
@@ -133,8 +137,19 @@ if (args[0] === "inspect") {
       (service === "taskdesk" ? process.env.FAKE_PORT_BINDINGS : undefined) || "null");
   } else if (format.includes(".HostConfig.PublishAllPorts")) {
     out(process.env["FAKE_" + service.toUpperCase() + "_PUBLISH_ALL"] || "false");
-  }
-  else if (format.includes(".State.Health.Status")) out(process.env.FAKE_HEALTH || "healthy");
+  } else if (format.includes(".HostConfig.NetworkMode")) {
+    out(process.env["FAKE_" + service.toUpperCase() + "_NETWORK_MODE"] || state.network);
+  } else if (format.includes(".NetworkSettings.Networks")) {
+    const serviceKey = service.toUpperCase();
+    const mode = process.env["FAKE_" + serviceKey + "_NETWORK_MODE"] || state.network;
+    const networks = mode === state.network
+      ? { [state.network]: { NetworkID: state.networkId } }
+      : {};
+    if (process.env["FAKE_" + serviceKey + "_FOREIGN_ATTACHMENT"] === "1") {
+      networks.foreign = { NetworkID: "b".repeat(64) };
+    }
+    out(JSON.stringify(networks));
+  } else if (format.includes(".State.Health.Status")) out(process.env.FAKE_HEALTH || "healthy");
   stop(0);
 }
 stop(99);`;
@@ -290,6 +305,16 @@ test("archives the explicit PR head, binds running services to built image, and 
   });
   assert.equal(proof.serviceImageIds.postgres, "sha256:postgres");
   assert.equal(proof.serviceImageIds.valkey, "sha256:valkey");
+  assert.equal(proof.networkId, "a".repeat(64));
+  assert.equal(proof.networkDriver, "bridge");
+  assert.equal(proof.networkScope, "local");
+  assert.equal(proof.networkOwnershipLabelVerified, true);
+  for (const service of ["migrate", "taskdesk", "postgres", "valkey"]) {
+    assert.deepEqual(proof.serviceNetworkEvidence[service], {
+      networkMode: proof.networkName,
+      attachments: { [proof.networkName]: proof.networkId },
+    });
+  }
   assert.equal(proof.cleanup.status, "complete");
   assert.equal(proof.finalVerdict, "passed");
   assert.equal(state.networkRemoved, true);
@@ -359,6 +384,62 @@ test("fails closed on automatic host-port publishing in the Postgres service", a
   const result = await runSmoke(fixture);
   assert.notEqual(result.code, 0);
   assert.equal((await readProof(fixture)).finalVerdict, "failed");
+});
+
+for (const service of ["migrate", "taskdesk", "postgres", "valkey"]) {
+  const variable = service.toUpperCase();
+  test(`rejects host network mode for ${service} and records network evidence`, async (t) => {
+    const fixture = await makeFixture(t, {
+      [`FAKE_${variable}_NETWORK_MODE`]: "host",
+    });
+    const result = await runSmoke(fixture);
+    assert.notEqual(result.code, 0);
+    const proof = await readProof(fixture);
+    assert.equal(proof.finalVerdict, "failed");
+    assert.equal(proof.serviceNetworkEvidence[service].networkMode, "host");
+  });
+
+  test(`rejects an unexpected foreign network attachment for ${service}`, async (t) => {
+    const fixture = await makeFixture(t, {
+      [`FAKE_${variable}_FOREIGN_ATTACHMENT`]: "1",
+    });
+    const result = await runSmoke(fixture);
+    assert.notEqual(result.code, 0);
+    const proof = await readProof(fixture);
+    assert.equal(proof.finalVerdict, "failed");
+    assert.equal(
+      proof.serviceNetworkEvidence[service].attachments.foreign,
+      "b".repeat(64),
+    );
+  });
+}
+
+test("rejects container-shared network mode", async (t) => {
+  const fixture = await makeFixture(t, {
+    FAKE_TASKDESK_NETWORK_MODE: "container:other-container",
+  });
+  const result = await runSmoke(fixture);
+  assert.notEqual(result.code, 0);
+  const proof = await readProof(fixture);
+  assert.equal(proof.finalVerdict, "failed");
+  assert.equal(
+    proof.serviceNetworkEvidence.taskdesk.networkMode,
+    "container:other-container",
+  );
+});
+
+test("rejects a foreign Docker network mode", async (t) => {
+  const fixture = await makeFixture(t, {
+    FAKE_TASKDESK_NETWORK_MODE: "foreign-network",
+  });
+  const result = await runSmoke(fixture);
+  assert.notEqual(result.code, 0);
+  const proof = await readProof(fixture);
+  assert.equal(proof.finalVerdict, "failed");
+  assert.equal(
+    proof.serviceNetworkEvidence.taskdesk.networkMode,
+    "foreign-network",
+  );
 });
 
 for (const resource of ["network", "image"]) {

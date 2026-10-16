@@ -290,7 +290,11 @@ short-lived workflow artifact. It performs no registry login, push, deployment, 
 acceptance. Its isolated Compose project and randomly named, ownership-labeled network have
 no published ports; cleanup removes only resources bearing this run's identity. The hosted
 runner platform is tested here; the Release workflow remains responsible for its separately
-published multi-architecture artifact.
+published multi-architecture artifact. For each service the proof also records Docker's
+configured network mode and attached network IDs, and requires the mode and sole attachment to
+match the run-owned, ownership-labeled network. Host, container-shared, foreign, missing, or
+additional network attachments fail the smoke, including for the stopped one-shot migrator.
+The network itself must inspect as a local bridge network with this run's ownership label.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
