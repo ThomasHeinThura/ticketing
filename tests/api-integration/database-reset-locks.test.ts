@@ -40,6 +40,18 @@ async function nextSubmissionNumber() {
   return Number(value);
 }
 
+function findPostgresSqlState(error: unknown) {
+  let current = error;
+  const visited = new Set<object>();
+  while (typeof current === "object" && current !== null) {
+    if (visited.has(current)) return undefined;
+    visited.add(current);
+    if ("code" in current) return current.code;
+    current = "cause" in current ? current.cause : undefined;
+  }
+  return undefined;
+}
+
 describe("integration database reset lock acquisition", () => {
   it("rolls back partial locks on a real NOWAIT conflict, then performs a full reset", async () => {
     await resetTestDatabase();
@@ -67,10 +79,7 @@ describe("integration database reset lock acquisition", () => {
     try {
       reset = resetTestDatabase({
         onLockUnavailable: async ({ attempt, error }) => {
-          const code =
-            typeof error === "object" && error !== null && "code" in error
-              ? error.code
-              : undefined;
+          const code = findPostgresSqlState(error);
           if (attempt === 1) {
             failedLock.resolve({ attempt, code });
             await continueReset.promise;
@@ -158,10 +167,7 @@ describe("integration database reset lock acquisition", () => {
         resetTestDatabase({
           onLockUnavailable: ({ error }) => {
             lockUnavailableCalls += 1;
-            const code =
-              typeof error === "object" && error !== null && "code" in error
-                ? error.code
-                : undefined;
+            const code = findPostgresSqlState(error);
             expect(code).toBe("55P03");
           },
         }),

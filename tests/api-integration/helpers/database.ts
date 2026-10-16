@@ -100,6 +100,18 @@ async function listPublicTableNames(): Promise<string[]> {
   return result.rows.map((row) => row.table_name);
 }
 
+function hasPostgresSqlState(error: unknown, expectedState: string) {
+  let current = error;
+  const visited = new Set<object>();
+  while (typeof current === "object" && current !== null) {
+    if (visited.has(current)) return false;
+    visited.add(current);
+    if ("code" in current && current.code === expectedState) return true;
+    current = "cause" in current ? current.cause : undefined;
+  }
+  return false;
+}
+
 export async function resetTestDatabase(options?: {
   onLockUnavailable?: (details: {
     attempt: number;
@@ -138,12 +150,7 @@ export async function resetTestDatabase(options?: {
             ),
           );
         } catch (error) {
-          if (
-            typeof error === "object" &&
-            error !== null &&
-            "code" in error &&
-            error.code === "55P03"
-          ) {
+          if (hasPostgresSqlState(error, "55P03")) {
             throw new ResetLockUnavailableError(error);
           }
           throw error;
