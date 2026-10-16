@@ -7,7 +7,10 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
-import { projectReadDecision } from "../utils/has-project-reach";
+import {
+  projectCapabilityRefused,
+  projectReadDecision,
+} from "../utils/has-project-reach";
 import { isCustomerPrincipal } from "../utils/is-customer-principal";
 import {
   WORK_ITEM_REACH_MARK,
@@ -67,9 +70,10 @@ export type WorkItemReachOptions =
       /**
        * For WRITE routes whose next gate is the key-aware `requireWorkspaceCapability` /
        * handler capability check: an API-key credential still needs project reach here
-       * (404), but its capability is decided by that downstream gate, because the key's
-       * identity carries no canonical capability subset yet (`resolveIdentity`) and would
-       * otherwise be refused on every write. Session callers are unaffected.
+       * (404), but its key SCOPE is decided by that downstream gate (which still speaks the
+       * stored legacy statements). The key identity now carries its stored capability subset
+       * (#750), so the owner's own project authority is still enforced here (#724). Session
+       * callers are unaffected.
        */
       readonly deferApiKeyCapability?: boolean;
       /**
@@ -251,9 +255,11 @@ export function requireWorkItemReach(
         throw new HTTPException(404, { message: "Work item not found" });
       }
       if (
-        !decision.capable &&
-        options.deferCapability !== true &&
-        !(options.deferApiKeyCapability === true && apiKey)
+        projectCapabilityRefused(decision, {
+          deferCapability: options.deferCapability,
+          deferApiKeyCapability: options.deferApiKeyCapability,
+          isApiKey: Boolean(apiKey),
+        })
       ) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(403, { message: "Insufficient permissions" });

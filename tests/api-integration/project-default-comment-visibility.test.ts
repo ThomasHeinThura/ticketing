@@ -13,10 +13,12 @@
  * - an API key must carry the `project:manage_settings` scope as well.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -71,6 +73,7 @@ async function readProject(projectId: string) {
 async function actorWithLegacyMap(
   role: string,
   legacy: Record<string, string[]>,
+  projectCapabilities?: readonly string[] | null,
 ) {
   const actor = await createWorkspaceMember({ role });
   const now = new Date();
@@ -96,7 +99,13 @@ async function actorWithLegacyMap(
   const { project } = await createProjectFixture({
     workspaceId: actor.workspace.id,
   });
-  await grantProjectManageAccess(actor.user.id, project.id);
+  // `undefined` preserves the helper's broad default; an array installs a precise project
+  // override; `null` deliberately leaves no project membership (for the real customer case).
+  if (projectCapabilities === undefined) {
+    await grantProjectManageAccess(actor.user.id, project.id);
+  } else if (projectCapabilities !== null) {
+    await grantProjectRole(actor.user.id, project.id, projectCapabilities);
+  }
   return { actor, project };
 }
 
@@ -132,6 +141,7 @@ async function createApiKeyFor(
 }
 
 const LEGACY_UPDATE = { project: ["read", "update"] };
+const NARROW_PROJECT_UPDATE = ["project:read", "project:update"] as const;
 
 describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)", () => {
   beforeEach(async () => {
@@ -253,7 +263,11 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
   it.each(["member", "lead"])(
     "refuses %s (legacy project:update, no strict project:manage_settings) with 403 and writes nothing",
     async (role) => {
-      const { actor, project } = await actorWithLegacyMap(role, LEGACY_UPDATE);
+      const { actor, project } = await actorWithLegacyMap(
+        role,
+        LEGACY_UPDATE,
+        NARROW_PROJECT_UPDATE,
+      );
       mockAuthenticatedSession(actor.user);
       const { app } = createApp();
 
@@ -301,20 +315,126 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
     );
   });
 
-  it("refuses a customer-side role that stored a legacy project:update claim", async () => {
-    const { actor, project } = await actorWithLegacyMap(
-      "customer",
-      LEGACY_UPDATE,
+  it("rejects a customer portal session on the agent project-settings API before project lookup", async () => {
+    const staff = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: staff.workspace.id,
+    });
+    const organisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `comment-visibility-customer-${randomUUID()}`,
+        name: "Comment visibility customer",
+        isInternal: false,
+        active: true,
+        portalAccess: true,
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!organisation) throw new Error("customer organisation missing");
+    const customerRole = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: BUILT_IN_ROLES.customer.scope,
+        key: BUILT_IN_ROLES.customer.key,
+        name: "Customer",
+        rank: BUILT_IN_ROLES.customer.rank,
+        capabilities: BUILT_IN_ROLES.customer.capabilities,
+        workspaceId: null,
+        isSystem: true,
+        isEditable: BUILT_IN_ROLES.customer.isEditable,
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!customerRole) throw new Error("customer role missing");
+    const [customerUser] = await db
+      .insert(schema.userTable)
+      .values({
+        name: "Comment visibility customer",
+        email: `comment-visibility-customer-${randomUUID()}@example.com`,
+        emailVerified: true,
+      })
+      .returning();
+    if (!customerUser) throw new Error("customer user missing");
+    const [person] = await db
+      .insert(schema.personTable)
+      .values({
+        userId: customerUser.id,
+        organisationId: organisation.id,
+        side: "customer",
+        displayName: "Comment visibility customer",
+      })
+      .returning();
+    if (!person) throw new Error("customer person missing");
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "organisation",
+      scopeId: organisation.id,
+      roleId: customerRole.id,
+      seesAll: false,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: organisation.id })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const workspaceUsers = await db
+      .select({ userId: schema.workspaceUserTable.userId })
+      .from(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.userId, customerUser.id));
+    expect(workspaceUsers).toEqual([]);
+    const memberships = await db
+      .select({
+        scope: schema.membershipTable.scope,
+        scopeId: schema.membershipTable.scopeId,
+      })
+      .from(schema.membershipTable)
+      .where(eq(schema.membershipTable.personId, person.id));
+    expect(memberships).toEqual([
+      { scope: "organisation", scopeId: organisation.id },
+    ]);
+    const workspaceCustomerRoles = await db
+      .select({ id: schema.roleTable.id })
+      .from(schema.roleTable)
+      .where(
+        and(
+          eq(schema.roleTable.scope, "workspace"),
+          eq(schema.roleTable.workspaceId, staff.workspace.id),
+          eq(schema.roleTable.key, customerRole.key),
+        ),
+      );
+    expect(workspaceCustomerRoles).toEqual([]);
+    expect(customerRole.key).toBe(BUILT_IN_ROLES.customer.key);
+    expect(customerRole.scope).toBe("organisation");
+    expect(customerRole.workspaceId).toBeNull();
+    expect(customerRole.rank).toBe(BUILT_IN_ROLES.customer.rank);
+    expect(customerRole.capabilities).toEqual(
+      BUILT_IN_ROLES.customer.capabilities,
     );
-    mockAuthenticatedSession(actor.user);
+    expect(customerRole.isSystem).toBe(true);
+    expect(customerRole.isEditable).toBe(false);
+    expect(customerRole.capabilities).not.toContain("project:update");
+    expect(customerRole.capabilities).not.toContain("project:manage_settings");
+
+    mockAuthenticatedSession(customerUser, { portal: "customer" });
     const { app } = createApp();
 
-    const response = await putProject(
-      app,
-      project.id,
-      fullBody(project, { defaultCommentVisibility: "public" }),
+    const configuredAgentRequest = withConfiguredAgentAuthority(
+      `/api/project/${project.id}`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(
+          fullBody(project, { defaultCommentVisibility: "public" }),
+        ),
+      },
     );
-    expect(response.status).toBe(403);
+    const response = await app.request(
+      configuredAgentRequest.input,
+      configuredAgentRequest.init,
+    );
+    expect(response.status).toBe(401);
+    await expect(response.text()).resolves.toBe("Unauthorized");
     expect((await readProject(project.id)).defaultCommentVisibility).toBe(
       "internal",
     );
@@ -381,6 +501,7 @@ describe("API integration: PUT /api/project/{id} defaultCommentVisibility (CA-2)
       const { actor, project } = await actorWithLegacyMap(
         "member",
         LEGACY_UPDATE,
+        NARROW_PROJECT_UPDATE,
       );
       mockAuthenticatedSession(actor.user);
       const { app } = createApp();
