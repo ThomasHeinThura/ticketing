@@ -100,7 +100,12 @@ async function listPublicTableNames(): Promise<string[]> {
   return result.rows.map((row) => row.table_name);
 }
 
-export async function resetTestDatabase() {
+export async function resetTestDatabase(options?: {
+  onLockUnavailable?: (details: {
+    attempt: number;
+    error: unknown;
+  }) => void | Promise<void>;
+}) {
   await ensureTestDatabaseExists();
   let tableNames = await listPublicTableNames();
 
@@ -117,20 +122,66 @@ export async function resetTestDatabase() {
 
   const formattedTableNames = tableNames.map(quoteIdentifier).join(", ");
 
-  // `audit_log`'s own append-only triggers (issue #37, `apps/api/src/audit/`) correctly
-  // refuse an ordinary TRUNCATE -- including THIS administrative, whole-database test
-  // reset, which truncates every table in one statement. `SET LOCAL
-  // session_replication_role = replica` disables user-defined triggers for the
-  // duration of this one transaction only (reverted automatically at COMMIT/ROLLBACK,
-  // never touched outside a test harness) -- it does NOT disable TRUNCATE's own CASCADE
-  // behaviour, which is driven by foreign-key metadata, not by firing row/statement
-  // triggers, so every other table's cascade-truncate is unaffected.
-  await db.transaction(async (tx) => {
-    await tx.execute(sql`SET LOCAL session_replication_role = replica`);
-    await tx.execute(
-      sql.raw(`TRUNCATE TABLE ${formattedTableNames} RESTART IDENTITY CASCADE`),
-    );
-  });
+  // Take the same all-table locks TRUNCATE needs, but NOWAIT. Otherwise a test reset can
+  // hold locks on early tables while waiting for a reader of a later table, as that reader
+  // waits on an earlier lock: a lock-order cycle even though tests are serialized. A failed
+  // lock statement aborts this transaction, releasing every partial lock before retry.
+  const lockRetryDelaysMs = [10, 25, 50, 100] as const;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL session_replication_role = replica`);
+        try {
+          await tx.execute(
+            sql.raw(
+              `LOCK TABLE ${formattedTableNames} IN ACCESS EXCLUSIVE MODE NOWAIT`,
+            ),
+          );
+        } catch (error) {
+          if (
+            typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            error.code === "55P03"
+          ) {
+            throw new ResetLockUnavailableError(error);
+          }
+          throw error;
+        }
+        // `audit_log`'s own append-only triggers correctly refuse an ordinary TRUNCATE.
+        // Disable user-defined triggers only for this transaction; TRUNCATE CASCADE remains
+        // driven by FK metadata.
+        await tx.execute(
+          sql.raw(
+            `TRUNCATE TABLE ${formattedTableNames} RESTART IDENTITY CASCADE`,
+          ),
+        );
+      });
+      break;
+    } catch (error) {
+      if (!(error instanceof ResetLockUnavailableError)) throw error;
+      await options?.onLockUnavailable?.({
+        attempt: attempt + 1,
+        error: error.original,
+      });
+      if (attempt >= lockRetryDelaysMs.length) {
+        throw new Error(
+          `Could not acquire all test-reset table locks after ${attempt + 1} attempts`,
+          { cause: error.original },
+        );
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, lockRetryDelaysMs[attempt]),
+      );
+    }
+  }
 
   await ensureTestDatabaseMigrated();
+}
+
+class ResetLockUnavailableError extends Error {
+  constructor(readonly original: unknown) {
+    super("Could not acquire a test-reset table lock immediately");
+    this.name = "ResetLockUnavailableError";
+  }
 }
