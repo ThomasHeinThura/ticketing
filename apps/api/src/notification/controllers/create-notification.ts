@@ -1,9 +1,11 @@
 import { createId } from "@paralleldrive/cuid2";
-import db from "../../database";
-import { notificationTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deliverNotification } from "../../notification-preferences/delivery";
-import { userCanReachTask } from "../task-reach";
+import {
+  findNotificationPreferenceRow,
+  insertNotificationRow,
+} from "../inbox.repository";
+import { userCanReachTask } from "../task-reach.repository";
 
 async function createNotification({
   userId,
@@ -41,30 +43,23 @@ async function createNotification({
             : null;
 
   if (preferenceKey) {
-    const preference = await db.query.userNotificationPreferenceTable.findFirst(
-      {
-        where: (table, { eq }) => eq(table.userId, userId),
-      },
-    );
+    const preference = await findNotificationPreferenceRow(userId);
 
     if (preference?.[preferenceKey] === false) {
       return null;
     }
   }
 
-  const [notification] = await db
-    .insert(notificationTable)
-    .values({
-      id: createId(),
-      userId,
-      title: title ?? null,
-      content: content ?? null,
-      type: type || "info",
-      eventData: eventData ?? null,
-      resourceId: resourceId || null,
-      resourceType: resourceType || null,
-    })
-    .returning();
+  const notification = await insertNotificationRow({
+    id: createId(),
+    userId,
+    title: title ?? null,
+    content: content ?? null,
+    type: type || "info",
+    eventData: eventData ?? null,
+    resourceId: resourceId || null,
+    resourceType: resourceType || null,
+  });
 
   if (notification) {
     await publishEvent("notification.created", {

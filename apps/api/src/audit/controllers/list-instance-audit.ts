@@ -1,16 +1,10 @@
-import { desc } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { auditLogTable } from "../../database/schema";
+import { resolveRequestIdentity } from "../../permissions/resolve-request-identity";
 import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { isInstanceAdmin } from "../../utils/is-instance-admin";
-import {
-  type AuditQuery,
-  auditListFilters,
-  combineFilters,
-  writeAuditRead,
-} from "./audit-read-common";
+import { type AuditQuery, listInstanceAuditRows } from "../repository";
+import { writeAuditRead } from "./audit-read-common";
 
 /**
  * `GET /api/instance/audit` — AU-11: instance administrators see everything.
@@ -31,12 +25,21 @@ export async function listInstanceAudit(c: Context, query: AuditQuery) {
     throw new HTTPException(403, { message: "Forbidden" });
   }
 
-  const rows = await db
-    .select()
-    .from(auditLogTable)
-    .where(combineFilters(auditListFilters(query)))
-    .orderBy(desc(auditLogTable.seq))
-    .limit(query.limit);
+  const userId = c.get("userId") as string | undefined;
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  const identity = userId
+    ? await resolveRequestIdentity({
+        userId,
+        apiKey: c.get("apiKey"),
+        impersonatedBy: session?.impersonatedBy,
+      })
+    : null;
+  if (!identity) {
+    setShadowLegacyAuthorization(c, "denied");
+    throw new HTTPException(403, { message: "Forbidden" });
+  }
+
+  const rows = await listInstanceAuditRows(identity, query);
 
   await writeAuditRead(c, { workspaceId: null });
   setShadowLegacyAuthorization(c, "allowed");

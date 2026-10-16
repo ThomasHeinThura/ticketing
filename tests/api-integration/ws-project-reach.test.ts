@@ -10,7 +10,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { ClientRequest, IncomingMessage } from "node:http";
 import { createRequire } from "node:module";
 import type { AddressInfo } from "node:net";
-import { reaches } from "@taskdesk/permissions";
+import { BUILT_IN_ROLES, reaches } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -587,15 +587,45 @@ describe("project socket reach (#745)", () => {
         key: `customer-org-${randomUUID()}`,
         name: "Customer Org",
         isInternal: false,
+        active: true,
+        portalAccess: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
       .returning();
     if (!org) throw new Error("organisation insert failed");
+    const role = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: BUILT_IN_ROLES.customer.scope,
+          workspaceId: null,
+          key: BUILT_IN_ROLES.customer.key,
+          name: "Customer",
+          rank: BUILT_IN_ROLES.customer.rank,
+          capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+          isSystem: true,
+          isEditable: false,
+        })
+        .returning(),
+      "customer role",
+    );
     await db
       .update(schema.personTable)
       .set({ side: "customer", organisationId: org.id })
       .where(eq(schema.personTable.userId, user.id));
+    const [customerPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, user.id));
+    if (!customerPerson) throw new Error("customer person missing");
+    await db.insert(schema.membershipTable).values({
+      personId: customerPerson.id,
+      scope: "organisation",
+      scopeId: org.id,
+      roleId: role.id,
+      seesAll: false,
+    });
     const { project: own } = await createProjectFixture({
       workspaceId: workspace.id,
     });
