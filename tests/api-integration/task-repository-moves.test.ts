@@ -10,6 +10,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectRole,
+  grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 
 let testIdentity: ResolvedIdentity;
@@ -80,6 +81,18 @@ const { findWorkspaceMembershipId } = taskRepository;
 async function seed() {
   const a = await createWorkspaceMember({ role: "admin" });
   const b = await createWorkspaceMember({ role: "admin" });
+  const { project: p1, columns: c1 } = await createProjectFixture({
+    workspaceId: a.workspace.id,
+  });
+  const { project: p2 } = await createProjectFixture({
+    workspaceId: a.workspace.id,
+  });
+  const { project: pb } = await createProjectFixture({
+    workspaceId: b.workspace.id,
+  });
+  await grantWorkItemProjectAccess(a.user.id, p1.id);
+  await grantWorkItemProjectAccess(a.user.id, p2.id);
+  await grantWorkItemProjectAccess(b.user.id, pb.id);
   const identityA = await resolveIdentity({
     userId: a.user.id,
     credential: "session",
@@ -91,15 +104,6 @@ async function seed() {
   if (!identityA || !identityB)
     throw new Error("expected resolved test identities");
   testIdentity = identityA;
-  const { project: p1, columns: c1 } = await createProjectFixture({
-    workspaceId: a.workspace.id,
-  });
-  const { project: p2 } = await createProjectFixture({
-    workspaceId: a.workspace.id,
-  });
-  const { project: pb } = await createProjectFixture({
-    workspaceId: b.workspace.id,
-  });
   const t1 = await insertTask(db, {
     projectId: p1.id,
     userId: a.user.id,
@@ -525,10 +529,20 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
       surface: "task_description",
       createdBy: a.user.id,
     });
-    await db.transaction((tx) =>
-      reassignTaskAssetsToProject(tx, t1.id, p1.id, p2.id),
-    );
+    await db.transaction(async (tx) => {
+      const movedTask = await updateTaskRow(tx, t1.id, {
+        projectId: p2.id,
+        number: 2,
+      });
+      expect(movedTask?.projectId).toBe(p2.id);
+      await reassignTaskAssetsToProject(tx, t1.id, p1.id, p2.id);
+    });
     const assets = await db.select().from(schema.assetTable);
+    const [movedTask] = await db
+      .select()
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.id, t1.id));
+    expect(movedTask?.projectId).toBe(p2.id);
     expect(assets.find((asset) => asset.taskId === t1.id)?.projectId).toBe(
       p2.id,
     );
@@ -592,7 +606,14 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
     expect(assetAfterMismatchedDestination?.projectId).toBe(source.id);
 
     // Revoke destination reach after identity resolution to exercise statement-time scope.
-    await db
+    const destinationReachBeforeRevocation =
+      await findNotDeletedProjectInWorkspace(
+        db,
+        destination.id,
+        actor.workspace.id,
+      );
+    expect(destinationReachBeforeRevocation?.id).toBe(destination.id);
+    const revokedDestinationGrants = await db
       .delete(schema.membershipTable)
       .where(
         and(
@@ -600,7 +621,16 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
           eq(schema.membershipTable.scope, "project"),
           eq(schema.membershipTable.scopeId, destination.id),
         ),
-      );
+      )
+      .returning({ id: schema.membershipTable.id });
+    expect(revokedDestinationGrants).toHaveLength(1);
+    expect(
+      await findNotDeletedProjectInWorkspace(
+        db,
+        destination.id,
+        actor.workspace.id,
+      ),
+    ).toBeUndefined();
     const moved = await updateTaskRow(db, task.id, {
       projectId: destination.id,
       number: 2,

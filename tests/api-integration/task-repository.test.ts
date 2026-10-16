@@ -87,18 +87,20 @@ async function seedTask(
 
 async function seed() {
   const a = await createWorkspaceMember({ role: "admin" });
-  const identity = await resolveIdentity({
-    userId: a.user.id,
-    credential: "session",
-  });
-  if (!identity) throw new Error("expected resolved test identity");
-  testIdentity = identity;
   const { project: p1 } = await createProjectFixture({
     workspaceId: a.workspace.id,
   });
   const { project: p2 } = await createProjectFixture({
     workspaceId: a.workspace.id,
   });
+  await grantWorkItemProjectAccess(a.user.id, p1.id);
+  await grantWorkItemProjectAccess(a.user.id, p2.id);
+  const identity = await resolveIdentity({
+    userId: a.user.id,
+    credential: "session",
+  });
+  if (!identity) throw new Error("expected resolved test identity");
+  testIdentity = identity;
   return { a, p1, p2 };
 }
 
