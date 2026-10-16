@@ -1,3 +1,5 @@
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -35,7 +37,7 @@ async function customer(id: string, admitted: boolean) {
       roleId: CUSTOMER_ROLE_ID,
       seesAll: false,
     });
-  return user;
+  return { ...user, personId: person.id };
 }
 
 function portalSession(user: { id: string; email: string }) {
@@ -66,12 +68,14 @@ beforeEach(async () => {
   });
   await db.insert(schema.roleTable).values({
     id: CUSTOMER_ROLE_ID,
-    scope: "organisation",
+    scope: BUILT_IN_ROLES.customer.scope,
     workspaceId: null,
-    key: "customer",
+    key: BUILT_IN_ROLES.customer.key,
     name: "Customer",
-    rank: 0,
-    capabilities: [],
+    rank: BUILT_IN_ROLES.customer.rank,
+    capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+    isSystem: true,
+    isEditable: false,
   });
 });
 
@@ -131,6 +135,16 @@ describe("customer portal session requires an admitted customer identity", () =>
       { headers: { host: PORTAL_HOST } },
     );
     expect(allowed.status).toBe(200);
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    await db
+      .delete(schema.membershipTable)
+      .where(eq(schema.membershipTable.personId, admitted.personId));
+    const revoked = await app.request(
+      `http://${PORTAL_HOST}/api/auth/get-session`,
+      { headers: { host: PORTAL_HOST } },
+    );
+    expect(revoked.status).toBe(401);
     expect(handler).toHaveBeenCalledTimes(1);
   });
 });

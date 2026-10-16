@@ -2,6 +2,7 @@ import { can, type ProjectReachFacts, reaches } from "@taskdesk/permissions";
 import type { ClaimedNotificationDelivery } from "../database/repositories/notification-delivery.repository";
 import type { DbTransaction } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
+import { isCustomerEligibleNotificationEvent } from "./customer-event-audience";
 import type { NotificationProjection } from "./outbox-drain";
 import { resolveNotificationPreference } from "./preferences";
 import {
@@ -187,8 +188,15 @@ export async function evaluateCurrentNotificationReachAndPreference(
     (binding.projectId !== null && resource.projectId !== binding.projectId)
   )
     return { kind: "suppress", reason: "resource_scope_changed" };
-  if (identity.side === "customer" && !resource.customerVisible)
-    return { kind: "suppress", reason: "resource_not_customer_visible" };
+  if (
+    identity.side === "customer" &&
+    !isCustomerEligibleNotificationEvent(
+      delivery.resourceType,
+      delivery.eventKind,
+      resource.customerVisible,
+    )
+  )
+    return { kind: "suppress", reason: "customer_event_not_eligible" };
 
   if (delivery.resourceType === "workspace") {
     if (

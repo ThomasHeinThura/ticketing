@@ -471,7 +471,29 @@ describe("current notification reach and preference", () => {
       }),
     ).resolves.toEqual({
       kind: "suppress",
-      reason: "resource_not_customer_visible",
+      reason: "customer_event_not_eligible",
+    });
+    expect(mocks.resolveNotificationPreference).not.toHaveBeenCalled();
+  });
+
+  it("suppresses customer assignment notices before preferences and delivery", async () => {
+    mocks.findNotificationPerson.mockResolvedValue({
+      userId: "user-1",
+      side: "customer",
+      active: true,
+      quietHoursStart: null,
+      quietHoursEnd: null,
+      quietHoursTimezone: null,
+    });
+    mocks.resolveIdentity.mockResolvedValue({
+      personId: "person-1",
+      side: "customer",
+    });
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, delivery),
+    ).resolves.toEqual({
+      kind: "suppress",
+      reason: "customer_event_not_eligible",
     });
     expect(mocks.resolveNotificationPreference).not.toHaveBeenCalled();
   });
@@ -513,7 +535,10 @@ describe("current notification reach and preference", () => {
     });
     await expect(
       evaluateCurrentNotificationReachAndPreference(tx, delivery),
-    ).resolves.toEqual({ kind: "destination_unresolved" });
+    ).resolves.toEqual({
+      kind: "suppress",
+      reason: "customer_event_not_eligible",
+    });
   });
 
   it("holds provider eligibility when quiet-hours fields are configured", async () => {
@@ -540,8 +565,21 @@ describe("current notification reach and preference", () => {
       visibleToPersonIds: ["person-1"],
       staffUrl: null,
     });
+    const descriptionMention = {
+      ...delivery,
+      eventKind: "work_item.mentioned",
+      payload: {
+        id: delivery.eventId,
+        kind: "work_item.mentioned",
+        scope: {
+          workspaceId: delivery.workspaceId,
+          organisationId: delivery.organisationId,
+        },
+        payload: { workItemId: "item-1" },
+      },
+    };
     await expect(
-      evaluateCurrentNotificationReachAndPreference(tx, delivery),
+      evaluateCurrentNotificationReachAndPreference(tx, descriptionMention),
     ).resolves.toEqual({ kind: "destination_unresolved" });
   });
 });

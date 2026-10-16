@@ -9,6 +9,7 @@
  * from the rows, the counts and the ranking. Session and API-key callers decide the same way.
  */
 import { randomUUID } from "node:crypto";
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -648,22 +649,45 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         await db
           .insert(schema.roleTable)
           .values({
-            scope: "organisation",
-            key: `customer-${randomUUID()}`,
+            scope: BUILT_IN_ROLES.customer.scope,
+            workspaceId: null,
+            key: BUILT_IN_ROLES.customer.key,
             name: "Customer",
-            rank: 0,
-            capabilities: ["work_item:read"],
+            rank: BUILT_IN_ROLES.customer.rank,
+            capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+            isSystem: true,
+            isEditable: false,
           })
           .returning(),
-        "org role",
+        "customer role",
       );
-      const customer = await addMember(a.world.workspaceId, "customer");
-      await db
-        .update(schema.personTable)
-        .set({ side: "customer", organisationId: orgId })
-        .where(eq(schema.personTable.id, customer.personId));
+      const userId = `customer-${randomUUID()}`;
+      const user = requireRow(
+        await db
+          .insert(schema.userTable)
+          .values({
+            id: userId,
+            email: `${userId}@example.test`,
+            name: "Customer reach reader",
+          })
+          .returning(),
+        "customer user",
+      );
+      const person = requireRow(
+        await db
+          .insert(schema.personTable)
+          .values({
+            userId,
+            organisationId: orgId,
+            side: "customer",
+            active: true,
+            isPlaceholder: false,
+          })
+          .returning(),
+        "customer person",
+      );
       await db.insert(schema.membershipTable).values({
-        personId: customer.personId,
+        personId: person.id,
         scope: "organisation",
         scopeId: orgId,
         roleId: role.id,
@@ -680,10 +704,9 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
       // the project bound to it, and its rows are what the list filters would keep.
       const reach = await callerReach(
         {
-          get: (key: string) =>
-            key === "apiKey" ? undefined : customer.user.id,
+          get: (key: string) => (key === "apiKey" ? undefined : user.id),
         } as never,
-        customer.user.id,
+        user.id,
       );
       expect(await reach.reachableProjectIds([a.world.workspaceId])).toEqual([
         a.world.project.id,
@@ -694,7 +717,7 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
       assertLabels(labels, "visible");
       const found = await globalSearch({
         query: MARKER,
-        userId: customer.user.id,
+        userId: user.id,
         workspaceId: a.world.workspaceId,
         reachableProjectIds: (ids) => reach.reachableProjectIds(ids),
       });

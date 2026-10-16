@@ -17,6 +17,7 @@ import {
   markOwnReadableNotificationRead,
   markReadableNotificationsRead,
 } from "../../apps/api/src/notification/inbox.repository";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -99,6 +100,9 @@ async function addCustomerIdentity(organisationId: string) {
     .select({
       id: schema.roleTable.id,
       capabilities: schema.roleTable.capabilities,
+      rank: schema.roleTable.rank,
+      isSystem: schema.roleTable.isSystem,
+      workspaceId: schema.roleTable.workspaceId,
     })
     .from(schema.roleTable)
     .where(
@@ -126,6 +130,9 @@ async function addCustomerIdentity(organisationId: string) {
       .returning({
         id: schema.roleTable.id,
         capabilities: schema.roleTable.capabilities,
+        rank: schema.roleTable.rank,
+        isSystem: schema.roleTable.isSystem,
+        workspaceId: schema.roleTable.workspaceId,
       });
   }
   if (!customerRole) {
@@ -133,6 +140,9 @@ async function addCustomerIdentity(organisationId: string) {
       .select({
         id: schema.roleTable.id,
         capabilities: schema.roleTable.capabilities,
+        rank: schema.roleTable.rank,
+        isSystem: schema.roleTable.isSystem,
+        workspaceId: schema.roleTable.workspaceId,
       })
       .from(schema.roleTable)
       .where(
@@ -146,6 +156,9 @@ async function addCustomerIdentity(organisationId: string) {
   }
   if (
     !customerRole ||
+    customerRole.rank !== BUILT_IN_ROLES.customer.rank ||
+    customerRole.isSystem !== true ||
+    customerRole.workspaceId !== null ||
     JSON.stringify(customerRole.capabilities) !==
       JSON.stringify(BUILT_IN_ROLES.customer.capabilities)
   ) {
@@ -178,14 +191,18 @@ async function addCustomerIdentity(organisationId: string) {
     .returning()
     .then(([row]) => row);
   if (!person) throw new Error("addCustomerIdentity: no person row");
-  await db.insert(schema.membershipTable).values({
-    personId: person.id,
-    scope: "organisation",
-    scopeId: organisationId,
-    roleId: customerRole.id,
-    seesAll: false,
-  });
-  return { user, person };
+  const [membership] = await db
+    .insert(schema.membershipTable)
+    .values({
+      personId: person.id,
+      scope: "organisation",
+      scopeId: organisationId,
+      roleId: customerRole.id,
+      seesAll: false,
+    })
+    .returning();
+  if (!membership) throw new Error("addCustomerIdentity: no membership row");
+  return { user, person, membership };
 }
 
 async function addWorkspaceMember(workspaceId: string, role: string) {
@@ -835,13 +852,25 @@ describe("API integration: work-item comments (#27)", () => {
         resourceId,
         kind,
       });
-    const customerItem = await plantFor(
+    const customerAssigned = await plantFor(
       customer,
       "work_item",
       workItem.id,
       "work_item.assigned",
     );
+    const customerUnassigned = await plantFor(
+      customer,
+      "work_item",
+      workItem.id,
+      "work_item.unassigned",
+    );
     const customerComment = await plantFor(
+      customer,
+      "comment",
+      publicComment.id,
+      "work_item.commented",
+    );
+    const customerMention = await plantFor(
       customer,
       "comment",
       publicComment.id,
@@ -851,7 +880,7 @@ describe("API integration: work-item comments (#27)", () => {
       customer,
       "comment",
       internalComment.id,
-      "work_item.mentioned",
+      "work_item.commented",
     );
     const missingResource = await plantFor(
       customer,
@@ -865,6 +894,12 @@ describe("API integration: work-item comments (#27)", () => {
       workItem.id,
       "work_item.assigned",
     );
+    const unknownCustomerEvent = await plantFor(
+      customer,
+      "work_item",
+      workItem.id,
+      "work_item.private_activity",
+    );
 
     mockAuthenticatedSession(customer.user, { portal: "customer" });
     const agentHostList = await app.request("/api/notification");
@@ -875,10 +910,108 @@ describe("API integration: work-item comments (#27)", () => {
       credentialCanReadTask: false,
     });
     const customerIds = customerRows.map(({ notification }) => notification.id);
-    expect(customerIds).toContain(customerItem.id);
+    expect(customerIds).not.toContain(customerAssigned.id);
+    expect(customerIds).not.toContain(customerUnassigned.id);
     expect(customerIds).toContain(customerComment.id);
+    expect(customerIds).toContain(customerMention.id);
     expect(customerIds).not.toContain(customerInternal.id);
     expect(customerIds).not.toContain(missingResource.id);
+    expect(customerIds).not.toContain(unknownCustomerEvent.id);
+
+    expect(
+      await resolveIdentity({
+        userId: customer.user.id,
+        credential: "session",
+      }),
+    ).not.toBeNull();
+    await db
+      .delete(schema.membershipTable)
+      .where(eq(schema.membershipTable.id, customer.membership.id));
+    expect(
+      await resolveIdentity({
+        userId: customer.user.id,
+        credential: "session",
+      }),
+    ).toBeNull();
+    expect(
+      await listVisibleNotificationRows({
+        userId: customer.user.id,
+        credentialCanReadTask: false,
+      }),
+    ).toHaveLength(0);
+    expect(
+      await markOwnReadableNotificationRead(
+        customerMention.id,
+        customer.user.id,
+      ),
+    ).toBeUndefined();
+    const [mentionAfterRevocation] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, customerMention.id));
+    expect(mentionAfterRevocation?.isRead).toBe(false);
+    await markReadableNotificationsRead(customer.user.id);
+    const bulkAfterRevocation = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [
+          customerComment.id,
+          customerMention.id,
+          customerAssigned.id,
+          customerInternal.id,
+        ]),
+      );
+    expect(bulkAfterRevocation).toHaveLength(4);
+    expect(bulkAfterRevocation.every(({ isRead }) => !isRead)).toBe(true);
+    await deleteReadableNotifications(customer.user.id);
+    const retainedAfterClear = await db
+      .select({ id: schema.notificationTable.id })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [
+          customerComment.id,
+          customerMention.id,
+          customerAssigned.id,
+          customerInternal.id,
+        ]),
+      );
+    expect(retainedAfterClear.map(({ id }) => id).sort()).toEqual(
+      [
+        customerComment.id,
+        customerMention.id,
+        customerAssigned.id,
+        customerInternal.id,
+      ].sort(),
+    );
+    const [restoredMembership] = await db
+      .insert(schema.membershipTable)
+      .values({
+        personId: customer.person.id,
+        scope: customer.membership.scope,
+        scopeId: customer.membership.scopeId,
+        roleId: customer.membership.roleId,
+        seesAll: customer.membership.seesAll,
+      })
+      .returning();
+    expect(restoredMembership).toBeDefined();
+    expect(
+      await resolveIdentity({
+        userId: customer.user.id,
+        credential: "session",
+      }),
+    ).not.toBeNull();
+    expect(
+      (
+        await listVisibleNotificationRows({
+          userId: customer.user.id,
+          credentialCanReadTask: false,
+        })
+      ).map(({ notification }) => notification.id),
+    ).toContain(customerComment.id);
 
     const foreignRows = await listVisibleNotificationRows({
       userId: foreign.user.id,
@@ -889,15 +1022,37 @@ describe("API integration: work-item comments (#27)", () => {
     ).not.toContain(foreignItem.id);
 
     const directRead = await markOwnReadableNotificationRead(
-      customerItem.id,
+      customerComment.id,
       customer.user.id,
     );
     expect(directRead?.isRead).toBe(true);
     const [directlyRead] = await db
       .select({ isRead: schema.notificationTable.isRead })
       .from(schema.notificationTable)
-      .where(eq(schema.notificationTable.id, customerItem.id));
+      .where(eq(schema.notificationTable.id, customerComment.id));
     expect(directlyRead?.isRead).toBe(true);
+
+    for (const forbidden of [customerAssigned, customerUnassigned]) {
+      expect(
+        await markOwnReadableNotificationRead(forbidden.id, customer.user.id),
+      ).toBeUndefined();
+    }
+    const forbiddenRows = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [
+          customerAssigned.id,
+          customerUnassigned.id,
+        ]),
+      );
+    expect(forbiddenRows).toEqual([
+      { id: customerAssigned.id, isRead: false },
+      { id: customerUnassigned.id, isRead: false },
+    ]);
 
     const refusedDirectRead = await markOwnReadableNotificationRead(
       foreignItem.id,
@@ -926,17 +1081,25 @@ describe("API integration: work-item comments (#27)", () => {
       .where(
         inArray(schema.notificationTable.id, [
           customerComment.id,
+          customerMention.id,
           customerBulkComment.id,
           customerInternal.id,
           missingResource.id,
+          customerAssigned.id,
+          customerUnassigned.id,
+          unknownCustomerEvent.id,
         ]),
       );
     expect(afterBulkRead).toEqual(
       expect.arrayContaining([
         { id: customerComment.id, isRead: true },
+        { id: customerMention.id, isRead: true },
         { id: customerBulkComment.id, isRead: true },
         { id: customerInternal.id, isRead: false },
         { id: missingResource.id, isRead: false },
+        { id: customerAssigned.id, isRead: false },
+        { id: customerUnassigned.id, isRead: false },
+        { id: unknownCustomerEvent.id, isRead: false },
       ]),
     );
 
@@ -959,7 +1122,11 @@ describe("API integration: work-item comments (#27)", () => {
       .where(
         inArray(schema.notificationTable.id, [clearItem.id, clearInternal.id]),
       );
-    expect(afterClear).toEqual([{ id: clearInternal.id }]);
+    expect(afterClear.sort((a, b) => a.id.localeCompare(b.id))).toEqual(
+      [{ id: clearItem.id }, { id: clearInternal.id }].sort((a, b) =>
+        a.id.localeCompare(b.id),
+      ),
+    );
 
     await db
       .update(schema.organisationTable)

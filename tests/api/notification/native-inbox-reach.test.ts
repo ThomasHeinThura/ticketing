@@ -78,9 +78,9 @@ function candidate(
   return {
     userId: `user-${personId}`,
     personId,
-    resourceType: "work_item",
-    resourceId: ids.workItem,
-    kind: "work_item.assigned",
+    resourceType: "comment",
+    resourceId: "comment-serving",
+    kind: "work_item.commented",
     ...overrides,
   };
 }
@@ -197,25 +197,77 @@ describe("native inbox current reach", () => {
     ).toBe(false);
   });
 
+  it("denies customer assignment, unassignment, internal comments, and other work-item activity", () => {
+    const identity = customer(ids.requester);
+    for (const kind of [
+      "work_item.assigned",
+      "work_item.unassigned",
+      "work_item.transitioned",
+      "work_item.escalated",
+    ]) {
+      expect(
+        canReadNativeInboxCandidate(
+          identity,
+          candidate(ids.requester, {
+            resourceType: "work_item",
+            resourceId: ids.workItem,
+            kind,
+          }),
+          resource(),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      canReadNativeInboxCandidate(
+        identity,
+        candidate(ids.requester, { kind: "work_item.commented" }),
+        resource({ customerVisible: false }),
+      ),
+    ).toBe(false);
+    expect(
+      canReadNativeInboxCandidate(
+        identity,
+        candidate(ids.requester, {
+          resourceType: "work_item",
+          resourceId: ids.workItem,
+          kind: "work_item.mentioned",
+        }),
+        resource(),
+      ),
+    ).toBe(true);
+  });
+
   it("keeps staff work-item authority and API-key subset clamping", () => {
     expect(
       canReadNativeInboxCandidate(
         staff(),
-        candidate("staff-person"),
+        candidate("staff-person", {
+          resourceType: "work_item",
+          resourceId: ids.workItem,
+          kind: "work_item.assigned",
+        }),
         resource({ organisationId: null }),
       ),
     ).toBe(true);
     expect(
       canReadNativeInboxCandidate(
         staff({ credential: "api_key", keyCapabilities: ["work_item:read"] }),
-        candidate("staff-person"),
+        candidate("staff-person", {
+          resourceType: "work_item",
+          resourceId: ids.workItem,
+          kind: "work_item.assigned",
+        }),
         resource({ organisationId: null }),
       ),
     ).toBe(true);
     expect(
       canReadNativeInboxCandidate(
         staff({ credential: "api_key", keyCapabilities: [] }),
-        candidate("staff-person"),
+        candidate("staff-person", {
+          resourceType: "work_item",
+          resourceId: ids.workItem,
+          kind: "work_item.assigned",
+        }),
         resource({ organisationId: null }),
       ),
     ).toBe(false);

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { expect } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
@@ -375,10 +376,7 @@ export const PORTAL_HOST = "portal.localhost:5174";
  * Re-home the tenant's workspace to a customer organisation and create an organisation-scope
  * `customer` role (once per tenant), as the portal does for admitted customers.
  */
-export async function ensureCustomerOrg(
-  t: Tenant,
-  capabilities: string[] = ["approval:decide", "work_item:read"],
-) {
+export async function ensureCustomerOrg(t: Tenant) {
   const orgId = `cust-org-${t.workspaceId}`;
   await db
     .insert(schema.organisationTable)
@@ -401,35 +399,49 @@ export async function ensureCustomerOrg(
       id: roleId,
       scope: "organisation",
       workspaceId: null,
-      key: "customer",
+      key: BUILT_IN_ROLES.customer.key,
       name: "Customer",
-      rank: 0,
-      capabilities,
+      rank: BUILT_IN_ROLES.customer.rank,
+      capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+      isSystem: true,
+      isEditable: false,
     })
     .onConflictDoNothing();
   // The organisation-scope `customer` role is global; reuse it when another tenant made it.
   const role = requireRow(
     await db
-      .select({ id: schema.roleTable.id })
+      .select({
+        id: schema.roleTable.id,
+        rank: schema.roleTable.rank,
+        capabilities: schema.roleTable.capabilities,
+        isSystem: schema.roleTable.isSystem,
+        workspaceId: schema.roleTable.workspaceId,
+      })
       .from(schema.roleTable)
       .where(
         and(
           eq(schema.roleTable.scope, "organisation"),
-          eq(schema.roleTable.key, "customer"),
+          eq(schema.roleTable.key, BUILT_IN_ROLES.customer.key),
+          eq(schema.roleTable.isSystem, true),
         ),
       )
       .limit(1),
     "customer role",
   );
+  if (
+    role.rank !== BUILT_IN_ROLES.customer.rank ||
+    role.workspaceId !== null ||
+    JSON.stringify(role.capabilities) !==
+      JSON.stringify(BUILT_IN_ROLES.customer.capabilities)
+  ) {
+    throw new Error("customer role is not the canonical built-in");
+  }
   return { orgId, roleId: role.id };
 }
 
 /** An admitted customer (user, customer-side person, organisation-scope membership). */
-export async function addCustomer(
-  t: Tenant,
-  options: { capabilities?: string[] } = {},
-) {
-  const { orgId, roleId } = await ensureCustomerOrg(t, options.capabilities);
+export async function addCustomer(t: Tenant) {
+  const { orgId, roleId } = await ensureCustomerOrg(t);
   const id = `cust-${randomUUID()}`;
   const [user] = await db
     .insert(schema.userTable)

@@ -1,4 +1,5 @@
 import { can, type ResolvedIdentity, reaches } from "@taskdesk/permissions";
+import { isCustomerEligibleNotificationEvent } from "./customer-event-audience";
 import type { CurrentNotificationResource } from "./repository";
 import { isSupportedNotificationResourceEvent } from "./resource-contract";
 
@@ -42,7 +43,16 @@ export function canReadNativeInboxCandidate(
     return false;
   }
 
-  if (identity.side === "customer" && !resource.customerVisible) return false;
+  if (
+    identity.side === "customer" &&
+    !isCustomerEligibleNotificationEvent(
+      candidate.resourceType,
+      candidate.kind,
+      resource.customerVisible,
+    )
+  ) {
+    return false;
+  }
 
   const visibleToPersonIds =
     identity.side === "customer" ? resource.visibleToPersonIds : null;
