@@ -1,183 +1,124 @@
-import { and, eq, inArray, or } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  projectTable,
-  taskRelationTable,
-  taskTable,
-} from "../../database/schema";
 import { publishEvent } from "../../events";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
 import {
-  lockLegacyTaskRow,
+  findRelationBetween,
+  findTaskInWorkspace,
+  insertTaskRelation,
+  listProjectWorkspaces,
   lockProjectsAndAssertLive,
   lockTaskAndAssertProjectLive,
-} from "../../task/assert-task-project-live";
-import { rejectNulByte } from "../../utils/reject-nul-byte";
+  lockTasksInStableOrder,
+} from "../repository";
 
-async function createTaskRelation({
-  sourceTaskId,
-  targetTaskId,
-  relationType,
-  userId,
-  workspaceId,
-  canReachTarget,
-}: {
+async function createTaskRelation(input: {
+  identity: ResolvedIdentity;
   sourceTaskId: string;
   targetTaskId: string;
   relationType: string;
   userId: string;
   workspaceId: string;
-  /**
-   * Whether the caller reaches the target's project and may update it (`RH`: creating a
-   * relation requires update on BOTH ends). An unreachable target is treated exactly like a
-   * missing one, so the answer is the same 404 and nothing about it is revealed.
-   */
   canReachTarget: (task: {
     id: string;
     projectId: string;
     workspaceId: string;
   }) => Promise<boolean>;
 }) {
-  // #285's S4 finding: `targetTaskId` reaches the `eq(taskTable.id, targetTaskId)`
-  // query below unvalidated -- `sourceTaskId` is already checked by
-  // `scopeToSourceTask` (task-relation/index.ts) before this controller runs, but
-  // this is the one field that middleware never sees.
+  const {
+    identity,
+    sourceTaskId,
+    targetTaskId,
+    relationType,
+    userId,
+    workspaceId,
+    canReachTarget,
+  } = input;
   if (targetTaskId.includes("\u0000")) {
     await db.transaction(async (tx) => {
-      await lockTaskAndAssertProjectLive(tx, sourceTaskId);
+      await lockTaskAndAssertProjectLive(tx, identity, sourceTaskId);
       rejectNulByte(targetTaskId, "Task id");
     });
   }
-
-  const [sourceTask] = await db
-    .select({
-      id: taskTable.id,
-      projectId: taskTable.projectId,
-      workspaceId: projectTable.workspaceId,
-    })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(
-      and(
-        eq(taskTable.id, sourceTaskId),
-        eq(projectTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
-
-  if (!sourceTask) {
+  const sourceTask = await findTaskInWorkspace(
+    identity,
+    sourceTaskId,
+    workspaceId,
+  );
+  if (!sourceTask)
     throw new HTTPException(404, { message: "Source task not found" });
-  }
 
-  // Keep target existence as a preflight only. The response must wait until the
-  // source project's freeze check so a frozen source cannot reveal target existence.
-  const [foundTargetTask] = await db
-    .select({
-      id: taskTable.id,
-      projectId: taskTable.projectId,
-      workspaceId: projectTable.workspaceId,
-    })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(
-      and(
-        eq(taskTable.id, targetTaskId),
-        eq(projectTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
+  // Target probing remains a preflight; the source freeze check still precedes its error.
+  const foundTargetTask = await findTaskInWorkspace(
+    identity,
+    targetTaskId,
+    workspaceId,
+  );
   const targetTask =
     foundTargetTask && (await canReachTarget(foundTargetTask))
       ? foundTargetTask
       : undefined;
-
   const { relation, sourceProjectId } = await db.transaction(async (tx) => {
     if (!targetTask) {
-      await lockTaskAndAssertProjectLive(tx, sourceTaskId);
+      await lockTaskAndAssertProjectLive(tx, identity, sourceTaskId);
       throw new HTTPException(404, { message: "Target task not found" });
     }
-
-    const taskIds = [sourceTaskId, targetTaskId].sort();
-    const firstTaskId = taskIds[0];
-    const secondTaskId = taskIds[1];
-    if (!firstTaskId || !secondTaskId) {
-      throw new HTTPException(400, { message: "Invalid task relation" });
-    }
-    const firstTask = await lockLegacyTaskRow(tx, firstTaskId);
+    const tasks = await lockTasksInStableOrder(tx, identity, [
+      sourceTaskId,
+      targetTaskId,
+    ]);
+    const source = tasks.find((task) => task.id === sourceTaskId);
+    const target = tasks.find((task) => task.id === targetTaskId);
+    if (!source || !target)
+      throw new HTTPException(404, { message: "Task not found" });
     if (sourceTaskId === targetTaskId) {
-      await lockProjectsAndAssertLive(tx, [firstTask.projectId]);
+      await lockProjectsAndAssertLive(tx, identity, [source.projectId]);
       throw new HTTPException(400, {
         message: "Cannot create a relation between a task and itself",
       });
     }
-    const secondTask = await lockLegacyTaskRow(tx, secondTaskId);
-    const lockedSourceTask =
-      firstTask.id === sourceTaskId ? firstTask : secondTask;
-    const lockedTargetTask =
-      firstTask.id === targetTaskId ? firstTask : secondTask;
-    await lockProjectsAndAssertLive(tx, [
-      lockedSourceTask.projectId,
-      lockedTargetTask.projectId,
+    const projects = await lockProjectsAndAssertLive(tx, identity, [
+      source.projectId,
+      target.projectId,
     ]);
-    const lockedProjects = await tx
-      .select({ id: projectTable.id, workspaceId: projectTable.workspaceId })
-      .from(projectTable)
-      .where(
-        inArray(projectTable.id, [
-          lockedSourceTask.projectId,
-          lockedTargetTask.projectId,
-        ]),
-      );
-    const sourceProject = lockedProjects.find(
-      (project) => project.id === lockedSourceTask.projectId,
+    const scopedProjects = await listProjectWorkspaces(tx, identity, [
+      source.projectId,
+      target.projectId,
+    ]);
+    const sourceProject = scopedProjects.find(
+      (project) => project.id === source.projectId,
     );
-    const targetProject = lockedProjects.find(
-      (project) => project.id === lockedTargetTask.projectId,
+    const targetProject = scopedProjects.find(
+      (project) => project.id === target.projectId,
     );
     if (
       !sourceProject ||
       !targetProject ||
       sourceProject.workspaceId !== workspaceId ||
-      targetProject.workspaceId !== workspaceId
+      targetProject.workspaceId !== workspaceId ||
+      projects.length !== new Set([source.projectId, target.projectId]).size
     ) {
       throw new HTTPException(404, { message: "Task not found" });
     }
-    const existing = await tx
-      .select({ id: taskRelationTable.id })
-      .from(taskRelationTable)
-      .where(
-        and(
-          eq(taskRelationTable.relationType, relationType),
-          or(
-            and(
-              eq(taskRelationTable.sourceTaskId, sourceTaskId),
-              eq(taskRelationTable.targetTaskId, targetTaskId),
-            ),
-            and(
-              eq(taskRelationTable.sourceTaskId, targetTaskId),
-              eq(taskRelationTable.targetTaskId, sourceTaskId),
-            ),
-          ),
-        ),
-      )
-      .limit(1);
-    if (existing.length > 0) {
-      throw new HTTPException(409, {
-        message: "This relation already exists",
-      });
-    }
-    const [relation] = await tx
-      .insert(taskRelationTable)
-      .values({ sourceTaskId, targetTaskId, relationType })
-      .returning();
-    return { relation, sourceProjectId: lockedSourceTask.projectId };
-  });
-
-  if (!relation) {
-    throw new HTTPException(500, {
-      message: "Failed to create task relation",
+    const existing = await findRelationBetween(
+      tx,
+      identity,
+      sourceTaskId,
+      targetTaskId,
+      relationType,
+    );
+    if (existing.length > 0)
+      throw new HTTPException(409, { message: "This relation already exists" });
+    const relation = await insertTaskRelation(tx, identity, {
+      sourceTaskId,
+      targetTaskId,
+      relationType,
+      workspaceId,
     });
-  }
+    if (!relation) throw new HTTPException(404, { message: "Task not found" });
+    return { relation, sourceProjectId: source.projectId };
+  });
 
   await publishEvent("task-relation.created", {
     ...relation,
@@ -185,7 +126,6 @@ async function createTaskRelation({
     projectId: sourceProjectId,
     userId,
   });
-
   return relation;
 }
 

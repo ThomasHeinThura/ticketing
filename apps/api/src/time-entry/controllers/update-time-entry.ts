@@ -1,11 +1,15 @@
-import { eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { timeEntryTable } from "../../database/schema";
-import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { resolveDuration } from "../duration";
+import {
+  findTimeEntryById,
+  lockTaskAndAssertProjectLive,
+  updateTimeEntryById,
+} from "../repository";
 
 type UpdateTimeEntryParams = {
+  identity: ResolvedIdentity;
   timeEntryId: string;
   startTime: Date;
   endTime?: Date;
@@ -13,36 +17,27 @@ type UpdateTimeEntryParams = {
 };
 
 async function updateTimeEntry(params: UpdateTimeEntryParams) {
-  const { timeEntryId, startTime, endTime, description } = params;
-
-  const [existingTimeEntry] = await db
-    .select()
-    .from(timeEntryTable)
-    .where(eq(timeEntryTable.id, timeEntryId));
-
+  const { identity, timeEntryId, startTime, endTime, description } = params;
+  const existingTimeEntry = await findTimeEntryById(identity, timeEntryId);
   if (!existingTimeEntry) {
-    throw new HTTPException(404, {
-      message: "Time entry not found",
-    });
+    throw new HTTPException(404, { message: "Time entry not found" });
   }
 
   const effectiveEndTime = endTime ?? existingTimeEntry.endTime;
-
-  return db.transaction(async (tx) => {
-    await lockTaskAndAssertProjectLive(tx, existingTimeEntry.taskId);
+  const updatedTimeEntry = await db.transaction(async (tx) => {
+    await lockTaskAndAssertProjectLive(tx, identity, existingTimeEntry.taskId);
     const duration = resolveDuration(startTime, effectiveEndTime ?? undefined);
-    const [updatedTimeEntry] = await tx
-      .update(timeEntryTable)
-      .set({
-        startTime,
-        endTime: effectiveEndTime,
-        duration,
-        ...(description !== undefined && { description }),
-      })
-      .where(eq(timeEntryTable.id, timeEntryId))
-      .returning();
-    return updatedTimeEntry;
+    return updateTimeEntryById(tx, identity, timeEntryId, {
+      startTime,
+      endTime: effectiveEndTime,
+      duration,
+      ...(description !== undefined && { description }),
+    });
   });
+  if (!updatedTimeEntry) {
+    throw new HTTPException(404, { message: "Time entry not found" });
+  }
+  return updatedTimeEntry;
 }
 
 export default updateTimeEntry;

@@ -1,10 +1,15 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { subscribeToEvent } from "../events";
+import type { BaseVariables } from "../openapi";
 import {
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createActivity, {
@@ -22,6 +27,19 @@ import {
   taskIdParam,
   updateCommentBody,
 } from "./schema";
+
+async function requestIdentity(
+  c: Context<{ Variables: BaseVariables }>,
+): Promise<ResolvedIdentity> {
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  const identity = await resolveRequestIdentity({
+    userId: c.get("userId"),
+    apiKey: c.get("apiKey"),
+    impersonatedBy: session?.impersonatedBy,
+  });
+  if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+  return identity;
+}
 
 const getActivitiesRoute = createRoute({
   method: "get",
@@ -160,29 +178,59 @@ const deleteCommentRoute = createRoute({
 
 const activity = apiRouter()
   .openapi(getActivitiesRoute, async (c) =>
-    c.json(await getActivities(c.req.valid("param").taskId), 200),
+    c.json(
+      await getActivities(
+        await requestIdentity(c),
+        c.req.valid("param").taskId,
+      ),
+      200,
+    ),
   )
   .openapi(createActivityRoute, async (c) => {
     const { taskId, message, type, eventData } = c.req.valid("json");
     return c.json(
-      await createActivity(taskId, type, c.get("userId"), message, eventData),
+      await createActivity(
+        await requestIdentity(c),
+        taskId,
+        type,
+        c.get("userId"),
+        message,
+        eventData,
+      ),
       200,
     );
   })
   .openapi(createCommentRoute, async (c) => {
     const { taskId, comment } = c.req.valid("json");
-    return c.json(await createComment(taskId, c.get("userId"), comment), 200);
+    return c.json(
+      await createComment(
+        await requestIdentity(c),
+        taskId,
+        c.get("userId"),
+        comment,
+      ),
+      200,
+    );
   })
   .openapi(updateCommentRoute, async (c) => {
     const { activityId, comment } = c.req.valid("json");
     return c.json(
-      await updateComment(c.get("userId"), activityId, comment),
+      await updateComment(
+        await requestIdentity(c),
+        c.get("userId"),
+        activityId,
+        comment,
+      ),
       200,
     );
   })
   .openapi(deleteCommentRoute, async (c) =>
     c.json(
-      await deleteComment(c.get("userId"), c.req.valid("json").activityId),
+      await deleteComment(
+        await requestIdentity(c),
+        c.get("userId"),
+        c.req.valid("json").activityId,
+      ),
       200,
     ),
   );

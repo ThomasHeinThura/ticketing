@@ -1,55 +1,44 @@
-import { eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskRelationTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
-  lockLegacyTaskRow,
+  deleteTaskRelationById,
+  findRelationEndpoints,
   lockProjectsAndAssertLive,
-} from "../../task/assert-task-project-live";
+  lockTasksInStableOrder,
+} from "../repository";
 
-async function deleteTaskRelation(id: string, userId: string) {
-  const [rel] = await db
-    .select({
-      sourceTaskId: taskRelationTable.sourceTaskId,
-      targetTaskId: taskRelationTable.targetTaskId,
-    })
-    .from(taskRelationTable)
-    .where(eq(taskRelationTable.id, id))
-    .limit(1);
-
-  if (!rel) {
-    throw new HTTPException(404, {
-      message: "Task relation not found",
-    });
-  }
-
+async function deleteTaskRelation(
+  identity: ResolvedIdentity,
+  id: string,
+  userId: string,
+) {
+  const rel = await findRelationEndpoints(identity, id);
+  if (!rel)
+    throw new HTTPException(404, { message: "Task relation not found" });
   const { relation, projectId } = await db.transaction(async (tx) => {
-    const taskIds = [rel.sourceTaskId, rel.targetTaskId].sort();
-    const firstTask = await lockLegacyTaskRow(tx, taskIds[0] ?? "");
-    const secondTask = await lockLegacyTaskRow(
-      tx,
-      taskIds[1] ?? taskIds[0] ?? "",
-    );
-    const sourceTask =
-      firstTask.id === rel.sourceTaskId ? firstTask : secondTask;
-    await lockProjectsAndAssertLive(tx, [
-      firstTask.projectId,
-      secondTask.projectId,
+    const tasks = await lockTasksInStableOrder(tx, identity, [
+      rel.sourceTaskId,
+      rel.targetTaskId,
     ]);
-    const [relation] = await tx
-      .delete(taskRelationTable)
-      .where(eq(taskRelationTable.id, id))
-      .returning();
+    const sourceTask = tasks.find((task) => task.id === rel.sourceTaskId);
+    if (
+      !sourceTask ||
+      tasks.length !== new Set([rel.sourceTaskId, rel.targetTaskId]).size
+    ) {
+      throw new HTTPException(404, { message: "Task relation not found" });
+    }
+    await lockProjectsAndAssertLive(
+      tx,
+      identity,
+      tasks.map((task) => task.projectId),
+    );
+    const relation = await deleteTaskRelationById(tx, identity, id);
+    if (!relation)
+      throw new HTTPException(404, { message: "Task relation not found" });
     return { relation, projectId: sourceTask.projectId };
   });
-
-  if (!relation) {
-    throw new HTTPException(404, {
-      message: "Task relation not found",
-    });
-  }
-
   await publishEvent("task-relation.deleted", {
     ...relation,
     taskId: rel.sourceTaskId,
@@ -58,7 +47,6 @@ async function deleteTaskRelation(id: string, userId: string) {
     projectId,
     userId,
   });
-
   return relation;
 }
 
