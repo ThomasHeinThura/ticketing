@@ -2989,3 +2989,967 @@ For the substantive #785 authority path preserved in this head, the callback val
 - Ran `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/permissions/resolve-identity.test.ts ../../tests/api/notification/native-inbox-reach.test.ts`: **2 files, 65 tests passed** on this checkout.
 - Did not run PostgreSQL integration, full unit suite, typecheck, lint, Docker, browser, CI, or PR actions in this reviewer context. The author's typecheck and older runtime results are separately sourced evidence, not checks I ran.
 
+
+
+---
+
+## Current corrected SQL scope and accepted-main composition — 2026-10-16
+
+**Reviewed head:** `472ca631db2faf0b34945da221675720e3e2e503`
+
+The conductor retains every authentic adverse report, owner-answer receipt, source-author handoff and current clearance below, verbatim. Original e533 broad CLEAR was subsequently qualified by the independent query-scope adjudication and is not candidate-wide clearance. The first 665 ordinary A ancestor/team allegation was withdrawn in its separate factual adjudication against current schema/loader; its original BLOCK is retained. Later b4c ordinary A initially reviewed only the last role-ID change; that narrow report is not full structural coverage. The same independent context completed the full structural scope and identified the legacy duplicate-membership blocker. Full structural ordinary B cleared. The final independent Sol pass first verified the duplicate correction, then cleared the complete combined source at472 and explicitly closed the remaining ordinary tier under the accepted change-altitude rule. No extra reviewer count or waiver is invented.
+
+Explicit fresh dispatch provenance: three ordinary3dc/665 contexts and the two b4c structural-delta contexts used `gpt-6-luna`, fork_turns `none`; followup factual/completion records remain the SAME context and do not add reviewer counts. Final `/root/notification472_full_security_sol` used `gpt-6.1-sol`, fork_turns `none`, independent of author/fixer/advisers. Sol architecture advisers materially directed the fix and are not its security reviewers. The conductor does not self-review. Authentic reports retain their actual model-introspection limits.
+
+Owner WF-9 requires access to EVERY project in the workflow workspace, including empty and archived projects, otherwise generic refusal without hidden project/item details. WF-19 permits unknown assignee IDs at shape-only authoring; execution eligibility is unchanged. Owning spec and append-only decisions were committed before dependent implementation. The shared named repository predicate now mirrors scoped-role admission and unambiguous legacy workspace membership, while all relevant metadata/content/effect statements apply resolved identity, actual executor and current SQL reach. No new relation, schema, permission, provider or activation is introduced.
+
+The current base is accepted main1a34e5792ee9c42b15004b032e3c5410e5def44e (#796); both shared identity repository changes were conserved. #798 remains UNACCEPTED and is not imported. Its separate real required-G11 task-state270.8ms failure is held; current/other-source green cannot dispose it. No current publication CI, complete PostgreSQL, image or browser acceptance is inferred from prior runs. check:queries remains unwired; this is partial580. Final Sol N1 is a non-blocking HELD-PRODUCER residual: key-addressed native work_item notification facts versus id-only owner SQL; no active producer found. Resolve it before any such producer wiring; no claim that key form or the whole notification feature works.
+
+Evidence custody correction: the first public-safe B+C author handoff7149 was temporarily overwritten by a later report filename reuse; both authentic reports were preserved, and the first was mechanically recovered from two identical prior file-read tool outputs with its recorded hash verified before restoration. The later30091 report has its own filename. Only the labelled public-safe erratum/receipt are transported; no raw transcript, credential-bearing original incremental report or PG setup is published.
+
+---
+
+Retained evidence file — notification-current-query-scope-adjudication-sol.md
+
+# #785 current query-scope adjudication — independent bounded Sol follow-up
+
+**Source reviewed:** `a560cc081a583795aec871f0ddbefdf582914471`  
+**Publication checkout:** `e533a9875e47399247b740b53f6fd192fa43ec9d` (only the notification review-record path changed from the source head; `apps/api`, packages, tests and the governing architecture/engineering documents compare unchanged)  
+**Role:** Fresh bounded follow-up by the independent full Sol reviewer of the source head; no product authorship, direction or remediation. This adjudicates a concrete question raised after the original report, not another general review.  
+**Original report preserved:** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/notification-accepted795-main-security-sol.md`, SHA-256 `32db427ea5d282cc730998ace7ce15adb7ccc1f18c4a01d378e5ab3da3b30e3e`. No edit to that report.  
+**Verdict:** **CONFIRMED BLOCKER for current #785/#580 source acceptance under the accepted resolved-identity query contract.** The earlier full report's bounded authentication-join assessment remains its own finding, but its broad exact-head CLEAR cannot be used as current candidate security clearance. Hold merge even if later CI turns green, pending a reviewed correction of this contract class on a new exact head. I do not claim a demonstrated HTTP disclosure or a defect in the middleware's current decision.
+
+## Accepted rule and why these reads are in scope
+
+`docs/04-engineering/coding-standards.md` (Repositories own queries; Query ownership/Tenant scoping), `docs/01-architecture/multi-tenancy.md` (Query scoping), `docs/01-architecture/security-model.md` (§5), and `monorepo-layout.md` require a repository query **that can return cross-organisation data** to take the resolved identity and apply the caller's reach in its SQL predicate. A supplied workspace/project ID is an additional narrowing term, not authoritative scope. The accepted D1–D4 decision covers query location, executor/transaction plumbing, raw SQL and the dev/seed exception; it expressly preserves this tenant-scoping rule. `check:queries` is still a planned location gate, not an exception to the semantic rule or a proof of its satisfaction. I found no documented rule that exempts a row-content repository because its controller ran middleware first, or that exempts an all-reaching administrator from passing resolved authority to the repository.
+
+`workflow.workspace_id` references `workspace.id`, whose `organisation_id` is non-null. Today's supported workspace-creation route makes internal workspaces, but the schema has no internal-only workflow/workspace constraint, and the accepted rule is about what a query can return, not a promise about what one current writer usually inserts. Workflow list/detail are explicitly actor-facing read routes in `workflows.md`; their outputs include workflow content, versions and transitions. At minimum, both repository functions below are in the rule's scope. I did not infer that every workflow helper, startup query or repository in the tree is defective.
+
+## Concrete source trace
+
+1. `apps/api/src/workflow/repository.ts:30-38` builds `queryWorkflowTree(id)` with only `workflow.id = id`, loading versions and transitions. Exported `findWorkflowTree(id)` at lines 101-106 returns that content. `listWorkflowsInWorkspace(workspaceId)` at lines 109-114 selects workflow rows with only `workflow.workspace_id = workspaceId`. Neither accepts a `ResolvedIdentity`; neither query predicate applies caller reach. The repository header at lines 18-22 explicitly says the moved queries leave workspace/role/person ownership checks in controllers. That describes the existing behavior, but it cannot create an exception to the accepted repository contract.
+2. `workflow/index.ts:40-43,87-90` wires `workspaceAccess` followed by `requireWorkspaceCapability('workflow:read')`. For row-addressed detail, `workspace-access-middleware.ts`'s `workflow` lookup has an ID-and-caller-reach predicate and returns the workspace ID or null; missing and unreachable are masked as 404. The capability middleware then checks the caller's workspace role. The list route checks its requested workspace before calling the repository. The controllers merely forward `id` or `workspaceId`; handlers at `workflow/index.ts:190-193,212-215` serialize repository results. This is a substantial current HTTP guard and I found no direct bypass in these bounded routes. It does **not** put the resolved identity or reach in the later repository statements. The shadow policy's resolved identity is comparison/telemetry, not the caller-scope parameter of these queries.
+3. The same contract class is clear without the internal-workspace nuance in `apps/api/src/audit/repository.ts:97-105`: `listInstanceAuditRows(query)` selects global audit rows under action/time filters only, no resolved identity or admin-reach predicate. `audit/controllers/list-instance-audit.ts:20-28` correctly invokes `isInstanceAdmin(c)` before calling it; `audit-trail.md` AU-11 authorizes instance administrators to see everything. That establishes the current HTTP boundary, not repository-level compliance. `listWorkspaceAuditRows(workspaceId, reach, query)` at `audit/repository.ts:164-190` similarly accepts a workspace ID and precomputed project IDs/`all`, without resolved identity; its controller computes reach and relies on middleware first. These are bounded representatives, not a whole-repository inventory or a claim that AU-11's intended global visibility is wrong.
+
+The accepted-main workflow controllers already had the same ID-only reads. The #785 extraction moved them into `workflow/repository.ts` without adding SQL reach; it did not create a newly demonstrated HTTP leak. That preservation of old behavior does not exempt the candidate from the now-accepted semantic query contract. The issue is that the repository boundary itself can be invoked with arbitrary IDs (or a global audit query) and returns row content with no caller-bound SQL reach. A future caller mistake or an authorization change between the first lookup and the second query would not be contained by these statements. I have not measured or demonstrated such a race here.
+
+## Scope, action and checks
+
+This finding covers the identity-less **actor-facing row-content read** shape demonstrated by workflow list/detail and instance/workspace audit reads. It does not prescribe a particular API signature, alter AU-11, require a literal fluent `forIdentity` wrapper, or assert that identity/bootstrap existence probes have the same status without reviewing their purpose. A bounded source correction should make these repository reads consume resolved caller authority and enforce its reach in the statement predicate, preserve the current route denials and intended administrator reach, and receive fresh independent review/tests on the new exact head. The conductor should decide the implementation lane and broader #580 sweep; this note is read-only adjudication.
+
+I confirmed clean checkout at publication `e533a987`, source/contract equality to `a560cc0`, the original report digest, accepted rule text, workflow schema/repository/router/controllers/middleware/capability path, bounded audit repository/controller paths and AU-11. I compared accepted-main workflow controllers to see that the ID-only behavior predates extraction. I ran no tests, PostgreSQL, Docker, browser, CI, source edit, commit, push or PR action in this follow-up. The earlier 2-file/65-unit result belongs to the original source review and does not test this contract.
+
+---
+
+Retained evidence file — notification-query-scope-correction-final-luna.md
+
+# #785 query-scope correction — author handoff
+
+Access: mode 0600. This is a public-safe derivative of the private attempt record: it omits database URLs, credentials, and SQL parameters. The original `notification-query-scope-correction-luna.md` remains immutable and credential-bearing; do not copy or publish it.
+
+## Frozen source
+
+Worktree: `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`  
+Branch: `codex/query-ownership-580-b4`  
+Final HEAD: `3dc8b113780a069ab2454737d92ca0cbd37bf095`  
+Tree: `f56834a0c48786c67d16c467f5c444a60062a643`  
+Working tree: clean at handoff.  
+Diff SHA-256 from accepted-#784 merge base `4723801e6d7eadedca5dff87c66bf2fd7ca2b3a3`: `1761519eff1220baa8a83456b4044b52c5d2e3403b03dc7fe9aabbfc81daf0d0`.
+
+Commit sequence in this lane: `fea1bc7b1a59693314eb9fa8c71da58652cd776a` records the WF-9 owner decision; `09fbf1490693bc4b2c85627fa1fe5bf450626c14` implements scoped workflow/audit reads; `3dc8b113780a069ab2454737d92ca0cbd37bf095` adds the workflow-manage API-key validation/publish regression. Accepted #784 was brought in earlier by normal merge `4723801e6d7eadedca5dff87c66bf2fd7ca2b3a3`, parents `3600738b3b25e506a2e7d54dc19fd3f21f235e66` and `1f2ea00404e41e108fad437c2b87caa3bbf56298`.
+
+Lane changes after that accepted-main merge: `apps/api/src/audit/controllers/list-instance-audit.ts`, `apps/api/src/audit/controllers/list-workspace-audit.ts`, `apps/api/src/audit/repository.ts`, workflow create/get/list/publish/validate controllers, `apps/api/src/workflow/index.ts`, `apps/api/src/workflow/repository.ts`, the focused audit/workflow integration tests, `docs/03-features/workflows.md`, and the appended `docs/07-planning/decision-log.md` entry. No schema, route, capability, dependency, environment, or feature change was introduced.
+
+## Owner decisions recorded before dependent implementation
+
+Thomas's WF-9 access answer: “Require access to every adopting project (Recommended): otherwise return a generic refusal without project or item details.” WF-9 adoption-set answer: “Every project in the workspace, including empty and archived projects (Recommended).” The latter is sourced to `call_be4fae73c6c54175992e413270fc6f0c item0`; the exact response is also preserved in `workflow-wf9-adoption-owner-decision-20261016.json`. The receipt records `2026-10-16T08:04:55.495441+00:00`; no more precise receipt time is claimed.
+
+The WF-9 code now checks every project row in the workflow workspace, including empty and archived projects. Before returning any project/item validation details or publishing, a scalar SQL refusal query checks for an inaccessible project and returns the generic “Workflow project access required” response without IDs, counts, or names. SQL project/workspace predicates are derived from `ResolvedIdentity`; IDs further narrow the result. Validation and publication return no hidden project data and a refusal leaves `activeVersionId`, `publishedAt`, and `publishedBy` unchanged.
+
+WF-19 remains shape-only during authoring: the global person-existence preflight is removed, so an unknown literal assignee ID can be saved. Execution-time active project-roster eligibility and whole-transition refusal remain authoritative. Held `set_field`, transaction ordering, audit ordering, and existing workflow mutation behavior were preserved.
+
+Workflow reads (`findWorkflowTree`, workspace list, version and reference reads, WF-9 per-project reads) and actor-facing audit reads now take `ResolvedIdentity` and apply reach predicates in SQL. Existing route admissions and instance-admin/AU-11 behavior remain intact. API-key identity uses the already accepted #784 canonical stored-scope/owner clamp; no unaccepted #783/#784 source was imported independently.
+
+## Verification
+
+- `pnpm --filter api typecheck`: exit 0, including the API-key WF-9 regression changes.
+- `git diff --check` on authored commit deltas: clean. The normal commit hook completed successfully. Biome reported pre-existing `noNonNullAssertion` warnings in the broad integration-test file, but no blocking diagnostics; no skips or disabled assertions were added.
+- Focused PostgreSQL 18 workflow run before the error-body assertion correction: exit 1, 1 failed / 2 passed / 10 skipped. The defect was test-only: Hono emits the refusal body as plain text, while that assertion tried JSON parsing. The test was corrected to assert exact plain text; no source behavior changed to make the test pass.
+- Focused PostgreSQL 18 rerun: `workflow.test.ts`, 3 passed / 10 skipped / 13 total. Covered all-project positive validation/publication, hidden empty+archived project generic refusal/no publication effects, and WF-19 unknown-ID authoring.
+- Combined focused PostgreSQL 18 run across `workflow.test.ts`, `audit-read.test.ts`, and `notification-scheduler-workflow-audit-repositories.test.ts`: 3 files passed; 9 passed / 29 skipped / 38 total. Included API-key instance audit scope, API-key workspace audit scope, workflow-key list/detail, direct repository foreign-project filtering, and workflow/audit repository predicates.
+- Final focused PostgreSQL 18 API-key run after adding the positive key path: `workflow.test.ts`, 1 passed / 12 skipped / 13 total. A `workflow:manage` API key with its owner's explicit reach over every project successfully validated and published a version covering the empty and archived projects. The test preserved no raw key in output.
+- Final focused PostgreSQL 18 reach/denial run: 2 files passed and 1 file had no matching tests; 6 passed / 32 skipped / 38 total across three requested files. Covered direct workflow-repository current-workspace listing and foreign-workspace exclusion, route cross-workspace 404, insufficient workflow-manage denial, direct instance-audit repository authority denial, notification repository reach filtering, and WF-19 unknown-ID authoring.
+- No full suite, hosted CI, build, browser, SIT, or release check was run. Focused tests select cases by Vitest name pattern and do not imply the skipped cases passed.
+
+Raw private logs and receipts are retained under `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/`: `queryscope-wf9-focused-run.log` (failed assertion; SHA-256 `16d13fc652045c762ca55b0ede16b87835879fb491046dcf7a39af2ae483b58e`), `queryscope-wf9-focused-rerun.log` (pass; SHA-256 `5a6728a96b3ee3cf4bb5a35d8d250f812541ad3ea843305345f29147a2af9fcf`), `queryscope-accepted784-plus-wf9-focused-run.log` (pass; SHA-256 `274543d1fbb4966ac7e0315256abcd9b51cbd512d8bf4683a5f39da848229de4`), `queryscope-wf9c-key-positive.exit` (exit 0; tool output recorded one test passed and 12 skipped), and `queryscope-wf9d-reach-denials.log` (pass; its exit file and the Docker receipt/inventories are alongside it). The initial PostgreSQL 18 mount-path startup failure is preserved in `queryscope-wf9-first-attempt-container.log` and its owned-resource receipt. These files remain private.
+
+The isolated PostgreSQL instances used unique lane-owned container/network/volume names and loopback-only random ports. Exact container mount receipts were captured before cleanup. Docker events directly tied anonymous volume `1b4b291d1202850f4a6112ab84bbc859ae7607c7f4e869eb4e9a8462216904d7` to failed container `d432f1eac8d81d3f28a791d0127bfd1f42af03fe04b246cb727bd7c1c6b0ec22`, mounted at `/var/lib/postgresql`, then unmounted. A `docker ps -a --filter volume=<that exact ID>` check found no current container user; only that proven-owned unused volume was removed. Before/after container, network, and volume inventories match for both test windows. Event, inspect, mount, and inventory records are mode 0600. No existing UI/SIT/application resource was reused or removed.
+
+## Review handoff
+
+This is an author report, not a review or clearance. No independent review note was written or appended. Root can now assign three fresh ordinary reviews and a fresh full GPT-6 Sol review against exact HEAD `3dc8b113780a069ab2454737d92ca0cbd37bf095`. The earlier adverse/qualified #785 records remain unchanged. Historical broad suite counts or proof from an older candidate do not establish current-head acceptance.
+
+---
+
+Retained evidence file — notification-3dc-ordinary-a-luna.md
+
+# #785/#580 query-scope correction — ordinary review A
+
+**Role:** Fresh independent ordinary reviewer (1 of 3). I did not author, direct, or remediate this candidate. This review is limited to exact source `3dc8b113780a069ab2454737d92ca0cbd37bf095`, tree `f56834a0c48786c67d16c467f5c444a60062a643`, branch `codex/query-ownership-580-b4`, compared with accepted main `1f2ea00404e41e108fad437c2b87caa3bbf56298` and the candidate's accepted #784 merge.
+
+**Model:** GPT-6 (this independent reviewer context; no more specific platform model/version attestation is available in this report).
+
+**Verdict: CLEAR for ordinary review A.** I found no blocking correctness or contract issue in the reviewed source. This is one of the required three ordinary reviews, not security clearance, CI approval, merge approval, or feature/stage/SIT acceptance.
+
+## What I checked
+
+- Confirmed the worktree is clean and HEAD/tree match the assigned frozen source.
+- Read the repository instructions, workflow, coding standards, query ownership rule, workflow and audit feature contracts, the two specified owner decision records, the public-safe author handoff, and the prior Sol query-scope adjudication. I did not read the credential-bearing private incremental report.
+- Inspected the actual candidate diff and the workflow/audit repository and controller paths. Workflow detail/list/version/reference/project reads consistently accept `ResolvedIdentity`; their SQL predicates bind workflow workspace scope and, for projects, project reach. The detail tree's nested versions/transitions are only loaded after the scoped workflow row qualifies. IDs further narrow scoped queries.
+- Confirmed the WF-9 implementation adopts every project in the workflow workspace, including empty and archived rows. The preflight checks for an inaccessible project and returns only a scalar generic refusal before exposing project/item validation data or publishing. The publish transaction and route continue to use the same resolved identity for transition reads. WF-19 remains shape-only at authoring, as decided.
+- Checked actor-facing audit list queries. Instance audit returns rows only when the resolved identity has staff `all` reach; the route still applies the instance-admin gate and stored API-key capability check. Workspace audit applies workspace reach and the documented AU-10 row rule (non-project rows, project memberships, or `sees_all` scoped to that workspace) in SQL. Portal/customer identities fail closed. Read audit writes remain after the read query.
+- Reviewed workflow/audit regression coverage for API-key scope, cross-workspace masking, reachable and unreachable WF-9 project sets, no publication effects on refusal, instance authority, workspace `sees_all`, and foreign-workspace repository filtering.
+- Confirmed the accepted #784 API-key canonical stored-scope/owner clamp is used by request identity resolution and is not replaced with an unaccepted branch. Reviewed the executor call shape in the touched workflow transaction operations and the existing UTC clock/auth predecessor paths at source level; this candidate does not alter those accepted contracts.
+- `git diff 4723801e6d7eadedca5dff87c66bf2fd7ca2b3a3..HEAD --check` is clean.
+
+## Findings
+
+No blocking findings. No non-blocking finding requiring a code change.
+
+## Not checked
+
+I ran no tests, PostgreSQL, Docker, browser, build, full suite, hosted CI, source edit, commit, push, or PR action. Test results in the author handoff are source-bound claims I inspected for relevance; they are not runs performed by this reviewer. I did not enumerate every repository in the 67-path cumulative source; the review's primary scope was the query-scope correction, workflow/audit actor-facing reads, accepted predecessor preservation, and directly adjacent regression coverage. A fresh full Sol security review remains required after all three ordinary reviews clear.
+
+---
+
+Retained evidence file — notification-3dc-ordinary-b-luna.md
+
+# #785 / #580 exact-head ordinary review — B (2 of 3)
+
+**Reviewed source:** `3dc8b113780a069ab2454737d92ca0cbd37bf095`  
+**Tree:** `f56834a0c48786c67d16c467f5c444a60062a643`  
+**Comparison base:** accepted base `1f2ea00404e41e108fad437c2b87caa3bbf56298`  
+**Role:** fresh independent ordinary reviewer B; I did not author, direct, or remediate the candidate.  
+**Model:** GPT-6 (the runtime did not expose a Luna/Sol alias or serving-version attestation); assigned ordinary B by the conductor.  
+**Verdict:** **BLOCKED — one concrete WF-9 consistency finding.** This is not security clearance. The prior Sol adjudication of earlier head `a560cc0` is not a verdict on this head; I reviewed current source and the settled owner decisions.
+
+## Scope checked
+
+Confirmed the checkout HEAD/tree and clean working tree. Read repository instructions, workflow and coding standards, query ownership contract, data model, workflow spec, the public-safe author handoff, prior Sol adjudication, and both direct owner-decision records. Reviewed the complete net file list/stat (67 paths; 9,010 insertions and 1,302 deletions) and concentrated source inspection on the workflow repository/controllers/router and regression tests, audit repository/controller reads, and the #785 changed notification inbox/reach/repository paths. The notification review was bounded source inspection, not an exhaustive re-review of all inherited #784 notification behavior.
+
+The settled WF-9 decisions are unambiguous: adopting set is every project in the workspace, including empty and archived; caller must reach all of them or receive a generic refusal without project/item details. WF-19 authoring is payload-shape-only for `set_assignee`; execution checks active project roster and refuses the whole transition. No product decision is reopened here.
+
+At this head, the new workflow reads accept `ResolvedIdentity` and place identity-derived predicates in SQL; actor-facing audit reads were similarly moved to repositories and now consume identity. The workflow router still applies existing workspace access and capability middleware. WF-9 enumerates all project rows without an archive or work-item filter, checks for any unreachable project with a scalar result before returning details, and uses the same generic 403 text for validate and publish. Validation gathers project defaults, active concrete states, and live item state templates; project results can expose data only after the complete-reach refusal. The new tests cover a workflow-scoped API key with positive access to empty and archived projects, generic refusal when an archived project is hidden, and no publication stamps/active-version change after refusal. The unknown-person authoring test saves the literal ID. `publishWorkflowVersion` does the complete-reach check before opening its write transaction, then stamps and activates on the transaction handle; the existing effects and publication order are otherwise preserved.
+
+The concrete SQL reach helper in `workflow/repository.ts` covers instance-wide `all`, organisation reach, workspace `sees_all`, and direct project membership. It does not encode the RBAC spec's inherited ancestor-project or owner-team reach. That can conservatively deny a caller who has those grants; I did not find an overexposure from this omission in the reviewed paths. Whether the existing `ResolvedIdentity` facts are sufficient to implement those SQL predicates on this route needs a contract-level solution and is not treated as a demonstrated leak.
+
+## Blocking finding — WF-9 complete-reach check and publication are not atomic
+
+`hasCompleteWorkflowProjectReach` in `apps/api/src/workflow/repository.ts` first confirms a visible workflow and then runs a separate query for an unreachable project. `validateWorkflowVersion` calls this helper and subsequently performs additional independent queries to list the adopting projects, defaults, states, and items. `publishWorkflowVersion` calls the helper outside `db.transaction`, then starts a separate transaction for `stampVersionPublished` and `setActiveWorkflowVersion`.
+
+A concurrent project creation in the workflow workspace after the complete-reach query can therefore be absent from validation's later project list or from the publishing authorization decision. A concurrent reach revocation can similarly make the caller no longer satisfy the all-project requirement before publication. There is no shared snapshot, lock, or in-transaction recheck tying the all-project predicate to the result/publish effects. This violates the settled requirement that validation/publishing cover every workspace project and must not operate on a reachable subset. The publishing denial test proves the static hidden-project case but cannot prove this race-safe property.
+
+Keep validation's access oracle and all detail reads on one consistent transaction snapshot, and make publication's complete-reach decision and publication writes share a transaction/serialization strategy that also handles concurrent project-set changes. The precise locking mechanism is an implementation choice; the invariant must be tested with meaningful concurrency coverage. Do not return hidden IDs/counts while handling the race.
+
+## Checks and limits
+
+- Source and docs inspection only; no tests, PostgreSQL, Docker, browser, build, typecheck, CI, source/reference discovery, or edits were run.
+- `git diff --check` was run on accepted-base-to-head. It reports trailing whitespace and a final blank line in the already-present `docs/07-planning/security-reviews/query-ownership-notifications-580.md`; I made no change to that file. These whitespace diagnostics do not alter this review verdict.
+- No suite counts are claimed. Test cases were read, not executed.
+- No raw credentials, raw URLs, SQL parameters, or incremental report were copied into this note.
+
+**Residuals:** broad notification behavior was reviewed at the source-path level only; no runtime proof was performed. The prior Sol adjudication on `a560cc0` raised broader identity-less actor-facing reads; this head changes the workflow and audit paths to accept identity, but this ordinary note does not supersede or close a security-tier adjudication. No candidate clearance is granted.
+
+---
+
+Retained evidence file — notification-3dc-ordinary-c-luna.md
+
+# #785 ordinary review C — exact head 3dc8b113780a069ab2454737d92ca0cbd37bf095
+
+**Model:** GPT-6 Luna (assigned reviewer role; model/version as reported in this context)
+**Role:** Fresh independent ordinary reviewer C of 3 required.
+**Independence:** I did not author, direct, or remediate this candidate. I reviewed the frozen worktree at `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, HEAD `3dc8b113780a069ab2454737d92ca0cbd37bf095`, tree `f56834a0c48786c67d16c467f5c444a60062a643`, against accepted base `1f2ea00404e41e108fad437c2b87caa3bbf56298`.
+
+## Verdict
+
+**BLOCK.** The frozen candidate contains a concrete current-reach omission in notification inbox reads and mutations: only native `work_item`/`comment`, legacy `task`, `approval`, and two instance-alert forms receive resource-specific authorization. Other registered resource classes are accepted as recipient-only rows, contrary to the notification contract. This can expose stale resource content after reach or authority is revoked and also lets bulk operations act on such rows. Ordinary review C does not clear this source.
+
+## Blocking finding
+
+`apps/api/src/notification/inbox.repository.ts` `readableNativeRows` returns `true` for every row whose resource type is not `work_item` or `comment` (including `identity_connection`, `webhook`, `api_key`, `automation`, `pending_action`, `project`, `workspace`, `person`, and unknown types). `selectCandidatePage` adds SQL reach only for legacy `task` and approval; its self-user predicate does not establish current resource reach. `listVisibleNotificationRows` therefore returns these other row contents based only on `user_id`, while `markOwnReadableNotificationRead` likewise permits one-row mutation except for `instance`/`audit_write_failed`, and `bulkMutation` treats them as readable for mark-all and clear-all.
+
+The feature contract in `docs/03-features/notifications.md` § Permissions says list, read and mutation operations apply current reach to each referenced resource, missing/unknown mappings fail closed, and specifically requires current `instance:admin` for `identity_connection` rows. The implementation has no such check for `identity_connection`; it is guarded only when `resourceType === 'instance'` or `type === 'audit_write_failed'`. A recipient whose instance authority or resource reach was revoked can still receive the stored title/body/eventData for an older row. This is a content-read issue, not merely an inaccurate count. The task/workspace compatibility behavior in the repository comment does not supply the missing checks for the other registered mappings.
+
+**Suggested bounded correction:** have every registered resource class resolve current owning facts and apply its documented current reach/authority before returning or mutating the candidate. Reject unknown/missing resource mappings. Preserve self-recipient scoping and the established native work-item/comment policy. Add integration regressions for at least one revocable instance-authority row (`identity_connection`) across list, direct mark-read, mark-all and clear-all, plus a non-instance resource whose reach is revoked; test unknown discriminator fail-closed. These tests should seed the persisted row directly so they exercise reads of historical rows, not only creation eligibility.
+
+## Review scope and checks
+
+Read repository instructions and the relevant query-ownership, multi-tenancy, RBAC, audit-trail, notification, background-job and workflow contracts. Inspected the net diff and source for notification identity/reach handling, actor-facing workflow repository predicates, AU-10/AU-11 audit SQL and route gates, workflow validation/publication and WF-9/WF-19. Verified the supplied owner decisions: all workspace projects including empty and archived are in the adopting set; inaccessible adoption returns a generic refusal; WF-19 authoring checks shape only. The workflow paths appear aligned with those decisions at source level. Audit SQL preserves AU-10 per-workspace project membership/`sees_all` and non-project rows, and AU-11's global source predicate requires staff identity with global reach while the route retains `instance:read_audit` key-scope enforcement. The audit append-chain scan remains global for integrity verification, not an actor-facing read. No separate blocker found in those bounded source paths.
+
+No tests, PostgreSQL, Docker, browser, build, typecheck, CI, CLI cases, or full suite were run, per assignment. No raw URLs, credentials, SQL parameters or private run logs were accessed or included. The private author handoff's focused PostgreSQL counts are reported only as prior-head author evidence and were not treated as independent reproduction or proof for this review. No source/ref/PR edits were made.
+
+## Residuals / not done
+
+This is ordinary review C only. The ordinary panel is not complete until all required independent reviews clear, and a fresh full GPT-6 Sol review remains required after ordinary clearance. No approval, merge, SIT, or stage-completion claim is made. I did not audit every repository or run the full acceptance graph; the finding above is sufficient to block this candidate.
+
+---
+
+Retained evidence file — notification-wf9-consistency-reach-advice-sol.md
+
+# WF-9 consistency and canonical reach — bounded architecture advice
+
+Provenance: GPT-6 adviser context `/root/notification_wf9_consistency_reach_advice_sol`; platform exposes no more specific serving-version attestation here. Source inspected: frozen `3dc8b113780a069ab2454737d92ca0cbd37bf095`, worktree q580-b4, accepted comparison base `1f2ea00404e41e108fad437c2b87caa3bbf56298`. This is design advice, not independent review, security clearance, or disposition of the eventual implementation. This context directs the proposed repair and cannot independently review it.
+
+## Actual findings
+
+B identifies a real mixed-snapshot defect. The two queries inside hasCompleteWorkflowProjectReach use shared db; validate then independently reads templates, transitions, projects, defaults, states and live items. Publish checks reach before opening its transaction. A single Executor passed only to the write calls does not bind either preflight to those effects. Default READ COMMITTED transactions would still give each statement a fresh snapshot and do not fix the validate sequence.
+
+B's ancestor/owner-team suggestion is not a demonstrated current implementation bug. The canonical rbac.md Reach list includes those eventual grants, but its explicit current-schema qualification at lines 245–248 says neither relation exists and they remain unavailable until their own schema and loader. The actual projectTable has neither parentId nor ownerTeamId; strict-policy-enforcement.ts supplies ancestorProjectIds: [] and ownerTeamId: null. The pure evaluator supports supplied typed facts, and canonical identity loads team IDs, but team membership alone is not project ownership. Do not fabricate those facts or import unaccepted #790. Future implementation of those relations belongs to their own schema/loader work.
+
+A second parity concern worth checking during the bounded fix: workflow projectReach tests raw membershipTable existence, whereas resolveIdentity accepts only scope-consistent, well-anchored joined role rows. A malformed membership with an absent/wrong-scope/foreign-workspace role must not become project reach merely because a row exists. Use canonical loaded membership IDs or SQL with exactly its accepted validity rules; do not silently create a new grant interpretation. This is source-derived risk, not a runtime reproduction performed here.
+
+## Bounded structural plan
+
+Use existing service/controller db.transaction orchestration and repository-owned SQL; extend the affected repository functions with optional final Executor and executorOrDefault, or required first Executor where transaction-only. Thread the same handle through every awaited read, including workflow/version existence, complete-reach oracle, reference sets, project enumeration and details, and through publish stamps/activation/returned transitions. Avoid a new abstraction pretending to enforce scope automatically. Subquery builders using db must not accidentally execute separately; all actual statements must execute on tx.
+
+Validate should use one explicit REPEATABLE READ transaction snapshot (read-only if convenient), materialize its entire result inside the callback, and return only after success. SERIALIZABLE is also valid but is unnecessary merely to obtain a consistent read-only snapshot. Every project in the workspace, including empty and archived rows, remains the adopting set. Keep the scalar generic refusal before materializing detail payloads; never return hidden identifiers or counts.
+
+Publish should perform its version lookup, complete-reach predicate, writes and response reads inside one explicit SERIALIZABLE transaction, with bounded whole-transaction retry on PostgreSQL 40001. The existing inbox repository demonstrates isolation configuration and bounded retry; reuse the established error-unwrapping approach rather than inventing a global transaction framework. Retries must rerun all reads and reconstruct the response; never retry only the final update. Serialize concurrent publication of the same workflow with its existing workflow row lock if needed for the existing mutation contract; row locking only the current project rows cannot cover a newly inserted project phantom. An advisory workspace lock would work only if every project creator/reach mutator participates; adding a unilateral lock here establishes no such invariant and is not the bounded recommendation.
+
+A SERIALIZABLE predicate read covers the entire adopting-project set and participating persisted reach reads as a serializable database operation. It does not necessarily abort an overlapping insert/revoke: PostgreSQL may legally serialize publish before that other transaction. An empty project set needs no special row-lock surrogate when the predicate is read at SERIALIZABLE isolation. Do not assert that every concurrent project insertion must be refused or that revocation committed before publish's wall-clock commit must always win.
+
+Choose and document the identity epoch explicitly within this local operation. Request admission already resolves a canonical identity and capability clamp; it is not inherently a promise of instant in-flight revocation. For the strongest simple snapshot invariant, reload the same authenticated principal through existing resolveIdentity(input, tx) inside the operation snapshot, retaining the accepted credential kind and stored API-key clamp; this function already supports an executor. Pass this local canonical identity to all WF-9 queries. Do not rebuild a key identity as a session, widen its capabilities, or rewrite identity semantics globally. If retaining admission identity instead, the invariant must honestly say request-admitted reach plus snapshot-consistent resource facts; persisted membership predicates must not inconsistently use a later epoch while sees_all/all use the earlier one. The local reload is preferable because it also sees revocations committed before the snapshot begins. Credential authentication itself remains the established admission boundary; do not claim this local repair adds a fresh key/session validation system.
+
+## Contract and ordering limits
+
+The owner records settle every workspace project and generic refusal, not immediate cancellation of admitted requests. RBAC says role/key changes apply on the next call. A coherent operation snapshot and SERIALIZABLE publish order satisfy ordinary concurrent-operation semantics: an overlap can be ordered before or after the mutation. They do not promise that no detail response can arrive after a simultaneous revoke, nor that a concurrent newly created project retroactively invalidates an earlier publish. A stronger commit-time revocation barrier would require a shared lock protocol across all grant changes, project creation, account/organisation/key changes and publication; that is larger authority machinery and not justified by the supplied decisions. No new Thomas decision is necessary for standard snapshot/serial ordering. If someone requires the stronger guarantee, record that as a separate real contract question before designing it.
+
+## Meaningful PostgreSQL regression plan (not executed)
+
+Use the actual PG integration harness and two real connections with explicit barriers, not sleeps. A test seam/spy may pause after a real repository query returns; it must delegate to the real query and never inject an allow/deny predicate or fake identity. Keep fixtures in the lane's private test database and retain exact suite/file counts.
+
+For a deterministic pre-fix validate failure: begin with caller reaching all projects; pause immediately after the real all-project oracle. On the second connection commit a newly created project plus a legitimate direct grant for this caller and a distinguishing default/state/item fixture. Resume. Old code exposes a project set from after the oracle alongside older graph facts (alternatively revoke a previously reachable project's membership and observe silent omission). Assert the result is wholly the earlier snapshot or a wholly retried later snapshot, never a mixture/subset. A particularly strong variant atomically swaps caller reach between two projects so there is no database snapshot at which complete reach holds; the old helper/detail sequence can still produce partial output. A hidden-project insertion alone followed by old reachable-only enumeration may yield a result indistinguishable from legal earlier snapshot semantics, so that test alone is insufficient proof of failure.
+
+For publish test the actual transaction boundary: pause before the first real in-transaction publication write, commit hidden-project creation or direct-grant revocation on connection B, then resume. The old preflight can admit publication despite its write transaction observing the later inaccessible project. This demonstrates the transaction-boundary defect, but publication success alone is NOT an externally invalid serial history: the overlapping operation could still be ordered before creation. Require evidence of the mixed transaction snapshots or construct an actual serialization cycle; do not label this simple overlap an instant-revocation failure. With the fix, a transaction started after that committed mutation must refuse generically with unchanged publishedAt/publishedBy/activeVersionId; a transaction whose snapshot already precedes it may succeed and serialize first. Capture backend transaction/snapshot evidence via test instrumentation so the assertion does not confuse callback entry with the first snapshot-producing statement. Add a genuine SSI conflict schedule if retry handling is introduced, verifying whole-operation retry or safe exhaustion and no partial publication. Do not demand an abort from a single read/write dependency: SSI permits that schedule. Prove a mutation committed before the operation's first snapshot is visible and refused; separately accept either serial outcome for true overlap. These tests distinguish actual SQL isolation from mocks and avoid inventing instant revocation semantics.
+
+Canonical parity matrix should exercise real resolveIdentity plus actual workflow SQL: instance all, valid workspace sees_all (including owner/admin persisted grant), direct valid project membership, ordinary workspace membership with no project grant denied, foreign workspace denied, customer/portal denied, and API-key capability narrowing unchanged. Add malformed scoped role/membership fixtures if raw-row parity is repaired. Test zero projects, empty projects and archived projects. Ancestor and owner-team cases presently assert no inferred grant from a team membership or nonexistent relation; pure evaluator tests already verify hypothetical supplied ancestor/owner-team facts. There can be no honest PG positive hierarchy/ownership integration case without schema that this task forbids adding.
+
+## Evidence and limits
+
+Read repository instructions/workflow/provider adapter/active mission, coding SQL/Executor standard, WF-9/WF-19, RBAC and actual project schema, evaluator, canonical identity loader/request adapter, workflow controllers/repository, existing transaction/lock patterns, ordinary A CLEAR and B BLOCK reports, public-safe final author handoff, and both owner-decision JSONs. Did not open credential-bearing incremental report or raw test logs. C's separate mapping finding is outside this advice and is being independently adjudicated. The author handoff's test counts remain source-bound claims, not tests performed by this context. Held set_field and WF-19 shape-only authoring/active-project-roster execution must remain unchanged. No source/spec/log edits, tests, PG, Docker, browser, build, CI, commit, push or PR work performed. Only this mode-0600 private advice artifact was written. Root alone collects the complete review set and authorizes the batched implementation. No waiver, phase completion or SIT claim.
+
+---
+
+Retained evidence file — notification-resource-scope-advice-sol.md
+
+# Notification closed resource-policy advice — bounded Sol architecture analysis
+
+Source: 3dc8b113780a069ab2454737d92ca0cbd37bf095, clean frozen source at /Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2; comparison accepted base 1f2ea00404e41e108fad437c2b87caa3bbf56298. The assignment's trailing /baseaccepted1f was not a directory; source HEAD was verified at the parent worktree.
+
+Role: read-only security architecture advice for existing #785/#580 acceptance, not an independent review of a future implementation. This context materially directs the proposed correction and cannot supply its independent clearance. No stage/SIT closure or source approval.
+
+## Finding and scope distinction
+
+C's blocker is confirmed by source inspection. inbox.repository.ts taskNotificationReadable and approvalNotificationReadable explicitly admit every other discriminator. readableNativeRows returns true for non-native rows. selectCandidatePage selects the entire notification before native evaluation. list additionally tests allowed-set membership only for native rows. Direct mark-read resolves authority only for native and instance/audit alerts; bulk changes use the permissive allowed set. Recipient identity alone cannot authorize historical resource content or effects after reach loss.
+
+This is not merely hypothetical future identity_connection fanout: notification/index.ts has a current legacy workspace.created subscriber writing resourceType workspace and the stored workspace name. Creation checks only task reach in controllers/create-notification.ts. A historical workspace row survives workspace authority/reach revocation, and all four inbox operations admit it. Source establishes this path; no HTTP or PostgreSQL reproduction was run. identity_connection is an explicit spec mapping but I did not find a current producer using it; do not describe that particular event's production disclosure as demonstrated. Fanout's RESOURCE_TYPES allows the broad vocabulary but is not proof that each class has a working resolver. resource-contract.ts and current-eligibility canonicalBinding currently support only work_item/comment/approval/workspace. Unsupported send-time mappings already suppress; this must not be converted into authorization.
+
+The prior Sol adjudication establishes caller-bound SQL as an accepted contract, independently of whether a guarded HTTP path currently leaks. The same distinction applies here: preventing serialization in JS is necessary but insufficient where notification content has already been loaded by an unscoped SQL query.
+
+## Bounded structural invariant
+
+One closed resource-policy decision must govern list, direct read/mark, read-all and clear-all, with no default recipient-only branch. A row is eligible only when (1) its user recipient equals the authenticated caller, (2) its discriminator plus event/operational kind and canonical resource binding is registered, (3) owning resources exist and satisfy live/deletion rules, and (4) the resolved identity has the documented current reach, capability and recipient relationship. Unknown discriminator, missing ID, unmapped kind, malformed binding or unavailable policy implementation yields false. Admin status never permits somebody else's inbox.
+
+Apply the invariant in the SQL statement before fetching title/content/body/eventData and in each UPDATE/DELETE predicate, rather than fetching content and filtering it afterward. A bounded metadata/fact query may precede this to evaluate canonical can()/reaches() where SQL reproduction would risk semantic drift; it must fetch only the minimum identifiers/facts, take the resolved identity and executor, apply caller reach, and the later content/effect statement must bind the authorized row/resource tuple and its current owning-resource predicates. Merely caching allowed notification IDs after a recipient-only content query does not meet the contract. Avoid a generic forIdentity framework: use a notification-local closed predicate/dispatch with correlated EXISTS, current canonical identity and existing query patterns. Do not duplicate a growing list of negative exclusions.
+
+Resolve identity with the existing transaction-aware resolveIdentity adapter, including stored API-key scope/owner clamp where the route permits keys. Reuse existing can/reaches semantics, role scope tier/capability expansion and customer membership loader; never infer authority from a recipient ID, stored project ID, user.role alone, or identity-provider claims. Native facts in notification/repository.ts already resolve ID/key, comment ownership, project organisation, deletion/archive state, private requester/participants and comment customer visibility; preserve these facts and native-inbox-reach's different customer organisation versus staff work-item authority scopes. Retain the accepted customer event audience/status-transition policy; do not categorically suppress public state transitions.
+
+Keep keyset paging and apply the visible result limit after authorization, with unknown/hidden rows consuming no response count. Direct hidden/missing rows retain indistinguishable not-found; findOwnNotificationType is an internal narrow metadata probe, not authority or content permission. Preserve session-only notification writes and existing API-key read scope rather than inventing notification capabilities.
+
+## Mapping and implementation boundary
+
+| Resource | Existing authoritative rule | Frozen implementation / bounded disposition |
+| --- | --- | --- |
+| task (legacy compatibility) | Existing work_item:read authority and current project reach; owner D10 preserves hidden rows unread | Existing correlated task predicate. Preserve supported legacy type mappings explicitly; not a wildcard compatibility exemption. |
+| work_item | Live item/project; current reach + work_item:read; customer organisation authority and visibility/event audience | Existing native loader/evaluator. Move protection ahead of content SQL and share effect guard without weakening it. |
+| comment | Live visible comment and owning live item/project; NO-19, customer/public/private policy | Existing native loader/evaluator; preserve body-not-null and ownership checks. |
+| approval | Current anchored work item/project and approval visibility; customer only addressed/raised | Existing approval correlated SQL currently staff-only; do not silently expand customer exposure or use send-time state eligibility as inbox retention policy. Preserve current supported staff path; explicit held customer path fails closed pending its owning implementation. |
+| workspace | Current workspace reach / workspace:read, owning row live | Existing current writer and send-time workspace loader/can check. Concrete correction, not new feature. Handle explicit legacy workspace_created mapping and native workspace.created. |
+| instance | singleton operational AU-14, current active staff instance:admin; own inbox | Existing guard, preserve and bind inside shared SQL policy. Existing admin-grant security_alert also uses instance/singleton: it needs its explicitly documented operational-kind mapping, not an audit-only assumption. |
+| person | Own private account security notice; closed safe payload | Spec rule exists, but reset-mfa currently writes NULL discriminator/ID, while grant-admin uses instance. Do not exempt every NULL row. See compatibility issue below. |
+| identity_connection | Current instance:admin, live connection; safe projection without provider/person data | Explicit spec rule, no current notification producer established here. Either implement narrow existing connection fact policy or hold unsupported rows false; no new activation. |
+| project | budget.threshold_reached resolves budgetId -> current budget.project_id; live budget/project, project:read, current manager only | No resource-contract/send-time implementation. Do not assume payload projectId or invent manager fallback. Unsupported mapping false until canonical facts can be supplied. |
+| webhook | Current webhook:manage reach or creator ownership, event recipient rule | Future feature documented in webhooks-and-api-keys.md; unsupported policy false rather than new webhook schema/feature. |
+| api_key | Current owner identity, owner-only event | P4 key extension/service-key model is not current Better Auth storage. Do not invent mapping or treat referenceId as every key kind's owner. Unsupported false. |
+| automation | Current project/automation reach AND creator ownership | Spec exists; unimplemented notification mapping false, no new automation subsystem. |
+| pending_action | Requester ownership; requested api/mcp origins only, executed failure only | Owning architecture/pending-actions and decision-log already settle requester self-read and revocation. Use canonical requester facts if supported; otherwise false. No MCP permission or new service-key policy. |
+| submission | Current requester/org customer-visible portal policy; staff triage queue | Explicit spec, unmapped current eligibility; hold false instead of designing intake visibility here. |
+| prerequisite | Current project reach through prerequisite owner | Explicit spec, unmapped current eligibility; hold false if no existing canonical resource facts. |
+| unknown/null/missing | Fail closed, no recipient-only fallback | Must fail false on every read/effect path, including bulk. |
+
+Fail-closed support status must be explicit and tested for every vocabulary class. It is acceptable for an unimplemented product class to have no positive path; it is not acceptable to claim that class is implemented or to authorize it by recipient alone. Do not hide a currently supported workspace/native path merely to get tests green.
+
+## Compatibility issue and actual owner uncertainty
+
+D10 (2026-10-10 decision log) already settles read-all: hidden rows stay untouched and unread; restoration can reveal them unread. No owner question is needed for that. The 2026-10-07 notification self-write decision already settles session-only mutations. AK-7 and MCP decisions already distinguish service-key ownership and prohibit service MCP keys; do not reopen them or invent an owner substitution.
+
+One discovered mismatch deserves a bounded owner/spec trace before finalizing compatibility: reset-mfa inserts security_alert with null resource binding although notifications.md defines private security_alert as person. The contract provides the destination rule, so a future writer correction to canonical person binding is not a new permission. However, authorizing existing null-bound rows using only type=security_alert would create an undocumented compatibility exception; do not do that silently. Default is hide malformed historical rows. If preservation of these historical private notices is an acceptance requirement, root should locate an existing explicit compatibility decision or obtain a precise owner decision before a migration/backfill/legacy exception. The admin-grant notice is independently instance-scoped today and contains a target userId for other admins: do not remap it wholesale into private person notices. No new owner-only product gap is needed to close the demonstrated workspace/unknown/resource-policy omission.
+
+## Regression plan and preservation
+
+Use actual PostgreSQL historical notification inserts, then change current owner/resource/reach facts and invoke the repository plus supported HTTP operations. Matrix all mapped classes: positive current supported paths; denied/unavailable paths for intentionally held classes; unknown/null/missing IDs; wrong event/kind pairing; foreign recipient; deleted owner resource. For each denied row prove list omission, direct not-found, no isRead/readAt alteration and no deletion by read-all/clear-all. Restore reach and prove retained hidden rows reappear unread per D10. Cover native staff/customers, private participants, internal comments, customer organisation/portal/active state revocation, role downgrade with reach retained, sees_all without read authority, and key subset versus owner capability ceiling on permitted reads. Include >100 candidate rows / 50 visible boundary so hidden rows cannot truncate visible results. Specifically regress current legacy workspace loss and historical identity_connection admin loss; the latter validates the guard even without a current producer. Exercise supported person/instance closed kinds separately.
+
+Use the existing inbox repeatable-read/retry transaction and its executor for identity/facts/predicates/content/effects; preserve bindSameRow protection and do not perform fact queries through the global connection. Predicate subquery builders may use existing Drizzle correlated EXISTS style, but actual execution stays on tx. A repeatable-read snapshot is not itself a concurrency lock or proof against concurrent revocation; retain existing canonical lock ordering and use established identity/resource mutation serialization where the acceptance contract requires it, rather than announcing a new revocation guarantee. Do not change event/outbox fanout/dedupe, operational audit failure transaction separation, or audit/event ordering as a side effect. Denied mutations produce no notification effect or new business audit/event effects. WF-9 atomicity B is intentionally outside this advice.
+
+## Evidence and limits
+
+Read instructions, newest status/decision entries and targeted notification/D10/key/MCP decisions, governing query contract, notification mapping/acceptance sections, canonical private C blocker and author-safe handoff and prior Sol adjudication. Traced inbox, task/approval predicates, native reach and fact loaders, current eligibility/resource contract, fanout allowlist/writer, legacy workspace subscriber, generic creation path, and reset-MFA/admin-grant writers; checked owning automation and key/webhook policy text and canonical identity loader. No source/spec/log edits, tests, database, Docker, browser, build, CI, push or PR action. This is source-level advice, not a reproduction or future review. No credential-bearing incremental record, raw URLs or SQL parameters were read or copied.
+
+---
+
+Retained evidence file — notification-query-scope-bc-remediation-luna.md
+
+# Notification query-scope B+C remediation — author handoff (private, public-safe)
+
+Date: 2026-10-16 (Asia/Yangon)
+Worktree: `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`
+Branch: `codex/query-ownership-580-b4`
+
+## Source state
+
+This is an author handoff for the uncommitted remediation; it is not an acceptance, review, or merge claim. HEAD remains `3dc8b113780a069ab2454737d92ca0cbd37bf095` (tree `f56834a0c48786c67d16c467f5c444a60062a643`). The working diff SHA-256 is `5120590b196b68972adb38b828911ad987d7ff3ebd2ab063839624b21cd05264`.
+
+Eight intended modified paths:
+
+- `apps/api/src/instance/reset-mfa.ts`
+- `apps/api/src/notification/inbox.repository.ts`
+- `apps/api/src/workflow/controllers/publish-workflow-version.ts`
+- `apps/api/src/workflow/controllers/validate-workflow-version.ts`
+- `apps/api/src/workflow/index.ts`
+- `apps/api/src/workflow/repository.ts`
+- `tests/api-integration/notification-task-reach.test.ts`
+- `tests/api-integration/workflow.test.ts`
+
+No commit or source freeze has been made. The accepted #632 main import is still pending; the shared `identity/repository.ts` prospective delta was not imported. No push, PR, CI, full suite, build, browser run, or review note was created by this lane.
+
+## Implemented scope
+
+WF-9 validation resolves the existing request credential inside one `REPEATABLE READ` transaction and uses its executor for validation reads, including the complete adopting-project set. WF-9 publishing resolves identity, reads version/reach, and applies the state change plus response read in one `SERIALIZABLE` transaction, retrying the whole operation on serialization failure with a bounded retry count. The project-reach query validates canonical scoped role/project/workspace alignment and rejects malformed capability JSON instead of treating raw membership rows as reach.
+
+Notification inbox list/direct/read-all/clear-all now use a closed resource policy before fetching content or mutating rows. Unsupported or incomplete mappings fail closed. Workspace-created notices require current workspace reach; MFA reset notices bind to the target person; historical unbound rows remain hidden and unchanged. Current owner predicates are repeated on content/effect queries. Existing native resource policy, key capability clamp, private-person behavior, instance-admin operational notices, and visible-page filtering remain covered by focused tests.
+
+No new table, capability, permission, feature, route, dependency, or unsupported producer mapping was added. Inaccessible projects in WF-9 produce the generic refusal; the all-project reach question was resolved by Thomas to include every workspace project, including empty and archived projects.
+
+## Verification
+
+Passed:
+
+- `pnpm --filter api typecheck` — exit 0.
+- `git diff --check` — exit 0.
+- Direct Vitest command from the API package against exactly `../../tests/api-integration/workflow.test.ts` and `../../tests/api-integration/notification-task-reach.test.ts` with `vitest.integration.config.ts` — 2 files, 32/32 tests passed, exit 0 (`focused-tests-9.log`).
+- The malformed cross-scope role regression alone — 1 passed, 15 skipped by explicit test-name selection, exit 0 (`focused-tests-8.log`).
+- The two concurrency regressions alone — 2 passed, 13 skipped by explicit test-name selection, exit 0 (`focused-tests-6.log`).
+
+The concurrency cases use PostgreSQL: validation completes against one snapshot while a direct membership revocation commits between the reach read and the next validation read; publication encounters a real serializable project-insert SSI cycle, retries the complete transaction, then returns generic refusal with no publication effects. This verifies allowed serialization ordering, not an instant revocation barrier.
+
+Preserved adverse/incomplete attempts:
+
+- `focused-tests-1`: an initially incorrect package-script invocation started a broader integration run; interrupted with SIGINT, exit 130. It is recorded as incomplete, not a suite failure or pass.
+- `focused-tests-2` and `focused-tests-3`: the new workspace reach regression exposed a real pre-fix failure; the implementation was corrected. `focused-tests-4` passed that case; `focused-tests-5` then passed the 29-test two-file selection before subsequent regressions were added.
+- `focused-tests-7`: malformed-role test used an incorrect test database port and failed PostgreSQL password authentication. This is a harness connection error, not a product regression. The corrected connection in `focused-tests-8` passed.
+
+Raw logs, exit codes, the initial incomplete invocation, and the corrected runs are preserved under `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/notification-query-scope-bc-runtime/`. `evidence-sha256.txt` indexes key logs, exits, and the source diff. The private raw evidence includes connection setup details and must remain private; this handoff intentionally omits URLs, passwords, and SQL parameters.
+
+## Owned runtime cleanup and heavy-window release
+
+The temporary PostgreSQL 18 test resources have been reconciled and removed. Before cleanup, saved Docker inspect receipts identified both uniquely named containers with label `taskdesk.owner=notification-query-scope-bc`; the running test container mounted only `q580b4-notifbc-data2`, and the stopped failed attempt directly showed the anonymous volume `0790b17de154de80e8a238df29485a6c28b1f1d050a0a10a1a9b7017383ed166` mounted at `/var/lib/postgresql/data`. That anonymous volume also carried Docker's anonymous-volume label. The event query for it was empty; ownership is based on the direct container mount receipt, not inferred from creation time.
+
+Only the two named test containers, their three directly owned volumes (including the directly mounted anonymous volume), and the labeled `q580b4-notifbc-net` network were removed. Exact-name post-cleanup checks found none of those resources. Before/after full inventory snapshots and per-resource receipts are in the private runtime directory. Other pre-existing containers, volumes, networks, and SIT resources were not touched. The local heavy PostgreSQL window is released.
+
+## Remaining gate
+
+Await root's notice of the actual protected acceptance of #632, then perform only the authorized normal main composition and revalidate the resulting source. This author handoff does not claim final-head tests, ordinary review clearance, Sol clearance, CI, or acceptance.
+
+---
+
+Retained evidence file — notification-query-scope-bc-final-composition-luna.md
+
+# Notification query-scope B+C composition handoff (private, public-safe)
+
+Date: 2026-10-16 (Asia/Yangon)
+Worktree: `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`
+Branch: `codex/query-ownership-580-b4`
+
+## Exact composition
+
+The local author commit is `cf4c408a2e8fb1e3303e30a0a154e8dd779c55ef` (`fix(api): enforce notification and workflow query scope`), parent `3dc8b113780a069ab2454737d92ca0cbd37bf095`. It contains the eight-file B+C remediation and recorded owner decisions already present in the worktree. The normal merge commit is `665453964cf269d863d15db3bfdc7f9121b952d3`, with parents in order:
+
+1. `cf4c408a2e8fb1e3303e30a0a154e8dd779c55ef`
+2. accepted protected-main commit `1a34e5792ee9c42b15004b032e3c5410e5def44e` (#796), whose tree is `f31cf2945b9b6afeff31c755c0ed9fbeddb953af`.
+
+The merged tree is `d5c52118140121be0244d457e9c3c9528fc164e1`. It is a clean local freeze for the current review handoff; it has not been pushed. The 68 paths in the branch-versus-accepted-main net comparison are listed at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/notification-query-scope-composed-net-paths.txt` (SHA-256 `554027fe032ab94181a2cb738d7b2bbdc2fd1db3a773237c2491d54dd8090350`); the matching stat is in `notification-query-scope-composed-net-stat.txt` (SHA-256 `a21fc5eb7d6983fb158b9d1a5a37ad1503a7f3a8c11a7800275f935bd5370eb4`).
+
+The merge was a normal `--no-ff` merge of fetched `origin/main` at the exact accepted SHA. Git reported one content-level auto-merge in `apps/api/src/identity/repository.ts`; it did not report a conflict. That file retains both distinct changes: #785’s built-in customer-role exact-definition validation at `validateIdpMappingRole` (~line 898) and #632’s `revokedUserId` return in `transitionPersonLifecycleInTransaction` (~line 2711). The #632 files `apps/api/src/identity/scim-lifecycle.ts`, `apps/api/src/identity/scim-protocol.ts`, `tests/api-integration/legacy-ws-revocation.test.ts`, and `docs/07-planning/security-reviews/legacy-revocation-632.md` compare byte-for-byte to accepted `origin/main` at this merge. All other accepted-main content is conserved by the exact second parent; no manual “ours/theirs” resolution or policy choice was used.
+
+## Post-composition checks
+
+- `pnpm --filter api typecheck` — exit 0 on merge head.
+- `pnpm exec biome check` on the eight remediation files — exit 0 on merge head.
+- `git status --short` — clean.
+- `git diff --check HEAD^1..HEAD` reports trailing whitespace in four lines and an extra blank EOF in the accepted #632 security review report (`docs/07-planning/security-reviews/legacy-revocation-632.md`). These bytes are part of the accepted second parent and were preserved unchanged; no unrelated review record was edited to silence this check.
+
+Focused PostgreSQL results remain those recorded before the local formatting commit and before the #632 merge. Exact selected files were `tests/api-integration/workflow.test.ts` and `tests/api-integration/notification-task-reach.test.ts`: 2 files, 32/32 tests passed, plus the malformed cross-scope role case passed separately and the two concurrency cases passed separately. The original raw attempts and connection setup are preserved privately in `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/notification-query-scope-bc-runtime/`; the earlier credential-bearing incremental report remains private and unchanged. The source at the successful 32-test run was semantically the same remediation as `cf4c408a`; before that commit, Biome formatted the eight files, removed one unused destructured test variable, simplified a null guard to an equivalent optional chain, and replaced a non-null assertion with a null-filtered workspace-ID list. No PostgreSQL rerun was done after those style/type refinements or the independent #632 merge. Do not describe the 32 tests as run on merge SHA `6654539`.
+
+No full suite, build, CI, browser verification, independent review, Sol review, push, PR, release, or publication was done by this author lane. The dedicated PostgreSQL runtime resources were cleaned up and the local heavy-test window was released, as recorded in the preceding handoff. Root may later compose another accepted-main commit; if so, this SHA is not the final publication base and the appropriate current-head confirmation/review cycle remains required.
+
+---
+
+Retained evidence file — notification-665-ordinary-a-luna.md
+
+# #785 corrected composition — ordinary review A
+
+**Reviewed source:** `665453964cf269d863d15db3bfdc7f9121b952d3`  
+**Tree:** `d5c52118140121be0244d457e9c3c9528fc164e1`  
+**Branch:** `codex/query-ownership-580-b4`  
+**Comparison:** accepted main `1a34e5792ee9c42b15004b032e3c5410e5def44e`; candidate source parent `cf4c408a2e8fb1e3303e30a0a154e8dd779c55ef`.  
+**Role:** Fresh independent ordinary reviewer A of the corrected broad #785 candidate. I did not author, direct, advise on, or remediate this candidate.  
+**Model:** GPT-6 (the runtime did not expose a more specific Luna/Sol alias or serving-version attestation); assigned ordinary reviewer A by the conductor.
+
+## Verdict
+
+**BLOCK — WF-9 SQL reach omits two reach paths granted by the canonical evaluator.** A caller with valid current reach through an ancestor project or a project-owning team is treated as lacking access. When such a project is in the workflow workspace's adopting set, validation and publication return the generic access refusal despite the caller meeting the repository's own project-reach contract. This is a concrete correctness/availability defect in the current candidate. The earlier B/C findings appear structurally addressed in this composition, but this finding prevents ordinary clearance.
+
+## Finding
+
+`apps/api/src/workflow/repository.ts` `projectReach` handles instance-wide reach, organisation reach, workspace `sees_all`, and a direct `membership` row at the candidate project. It does not implement the other current reach cases in `packages/permissions/src/evaluator.ts` `reaches`: membership in an ancestor project and membership in the team owning the project. The evaluator's source comments define both as project reach; `ResolvedIdentity` carries the relevant memberships/team IDs. `hasCompleteWorkflowProjectReach` uses this SQL predicate to decide whether *every* workspace project is accessible, so one project reached only through either supported path causes the generic WF-9 refusal. The same predicate is also used when listing adopting projects.
+
+This is under-authorization rather than disclosure: the current query fails closed. It nevertheless contradicts the canonical reach contract and blocks complete validation/publication for authorized users. Add SQL equivalents for ancestor-project membership and owner-team membership, preserving current workspace/project scope constraints and the malformed-role fail-closed checks; add PostgreSQL regression cases for both paths, including a hidden project reachable only through each path.
+
+## Scope and evidence
+
+I inspected the exact clean worktree and verified HEAD/tree, accepted-main comparison base, 68-path net diff, and merge composition. I read repository instructions, agent workflow, CLAUDE provider notes, active mission, workflow and notification contracts, the public-safe author handoffs for the original and B+C-corrected candidate, prior ordinary A/B/C records, and the actual SQL/repository/controller/test source. I did not read the credential-bearing private correction report.
+
+Source reviewed included `workflow/repository.ts` reach predicates and adopting-project queries; the WF-9 validate/publish controllers and transaction retry; the PostgreSQL concurrency regression in `workflow.test.ts`; `notification/inbox.repository.ts`, `native-inbox-reach.ts`, candidate identity resolution, current resource resolution, API-key capability subset handling, and malformed-role/API-key regression coverage. The candidate's workflow publisher now performs full reach validation and writes in one serializable transaction with bounded full-operation retries. Inbox content reads and mutations resolve current identity and use a closed resource policy within repeatable-read transactions; the current-page/content/effect queries are bound to the candidate row and current ownership. These changes address the earlier reported validation/publish snapshot and notification recipient-only content issues at source level.
+
+The B/C handoff reports 32 focused PostgreSQL tests and separate malformed-role/concurrency cases on the pre-format, pre-merge candidate; I treated those as author-reported prior-head evidence, not tests run on this exact merge head.
+
+Commands run: `git status --short`, `git rev-parse HEAD`, `git show --stat`, `git diff --stat`, `git diff --name-only`, targeted `rg`/`sed` source inspection, and `git rev-parse HEAD^{tree}`. The worktree was clean. No tests, PostgreSQL, Docker, build, browser, CI, typecheck, edits, commit, push, or PR action was performed.
+
+## Not done / residuals
+
+This is one ordinary review only, not security clearance, CI approval, merge approval, or acceptance. No full independent audit of all inherited 68-path behavior was performed. The fresh full GPT-6 Sol security review remains required after the ordinary panel clears.
+
+---
+
+Retained evidence file — notification-665-ordinary-a-reach-adjudication-luna.md
+
+# #785 corrected composition — ordinary A reach-finding adjudication
+
+**Source adjudicated:** `665453964cf269d863d15db3bfdc7f9121b952d3`  
+**Tree:** `d5c52118140121be0244d457e9c3c9528fc164e1`  
+**Reviewer:** same independent ordinary reviewer A context as `notification-665-ordinary-a-luna.md`. This is a factual correction to that review, not a new reviewer, additional review count, or waiver.  
+**Model:** GPT-6; no more specific runtime model/version attestation was exposed.
+
+## Corrected verdict
+
+**CLEAR for ordinary review A.** I withdraw the sole BLOCK finding in my original note. I alleged that current users can reach a workflow project through ancestor-project or owner-team relations omitted by the workflow SQL predicate. The owning RBAC contract and current schema/identity loader show those relations are not currently representable as project reach facts. There is no legitimate persisted current identity/path that can exercise the alleged omission in this candidate.
+
+This correction does not change the exact-head source or any source file. The original review note remains byte-for-byte unchanged (SHA-256 at adjudication: `e1fff5cccfa02b117d502d1067094d14e3a9769def7a4bd49f0c02abf30b7afb`) as a trace of the first verdict; this document is its explicit correction. I identified no other blocking finding in my bounded A review. This is not security clearance, CI approval, merge approval, or acceptance.
+
+## Evidence
+
+- `docs/01-architecture/rbac.md` lines 245–248 explicitly states that project ancestors and owner-team relations are not represented in the current project schema and remain unavailable until their schema and loader exist. The canonical Reach steps 4–5 at lines 529–537 describe those as future relations (`parent_id`, `owner_team_id`), not facts presently available to callers.
+- `apps/api/src/database/schema.ts` `projectTable` (lines 411–477) has neither `parentId`/`parent_id` nor `ownerTeamId`/`owner_team_id`. A nearby schema comment at lines 765 onward explicitly records project ownership as outside the current schema slice. The `parentId` fields found elsewhere belong to `workItemTable`; they do not encode project hierarchy.
+- `apps/api/src/permissions/strict-policy-enforcement.ts` lines 338–346 constructs current `ProjectReachFacts` with `ancestorProjectIds: []` and `ownerTeamId: null` before calling canonical `reaches()`. So even the current application path supplying these facts to the evaluator cannot grant either relation.
+- `apps/api/src/permissions/resolve-identity.ts` lines 793–845 loads team membership rows and passes their team IDs into identity resolution, but has no project-to-owner-team relation to associate one of those memberships with a project. Team membership alone is not owner-team project reach.
+- The bounded architecture advice `notification-wf9-consistency-reach-advice-sol.md`, “Actual findings,” independently describes the same source-based disposition and says not to fabricate facts or import unaccepted #790. I verified the underlying schema and loader directly rather than relying only on the advice.
+
+Therefore `projectReach`'s omission of ancestor and owner-team checks is not a defect against the *current* persisted implementation contract. Adding/importing either relationship to clear this review would be out of scope and would invent a new current authority path. My original inference incorrectly treated documented eventual canonical evaluator cases as live persisted cases.
+
+## Commands and limits
+
+Read the cited RBAC, project schema, strict reach construction, identity loader and the cited Sol advice; used targeted `rg` and numbered `sed` inspection; checked the original note hash. No tests, PostgreSQL, Docker, build, browser, CI, edits to source, commit, push, or PR action was performed. Only this mode-0600 adjudication note was written.
+
+---
+
+Retained evidence file — notification-665-ordinary-b-luna.md
+
+# #785 / #580 exact-head ordinary review — B
+
+**Reviewed candidate:** `665453964cf269d863d15db3bfdc7f9121b952d3`  
+**Tree:** `d5c52118140121be0244d457e9c3c9528fc164e1`  
+**Parents:** `cf4c408a2e8fb1e3303e30a0a154e8dd779c55ef` and accepted-main `1a34e5792ee9c42b15004b032e3c5410e5def44e`  
+**Role/provenance:** Fresh independent ordinary reviewer B, assigned GPT-6 Luna tier. I did not author, direct, advise, or remediate this candidate. The runtime does not expose a more specific serving-model attestation.  
+**Verdict:** **BLOCK — workspace audit SQL can treat malformed, non-canonical membership rows as project reach.** This is a source-level query-scope defect in the exact candidate. It is not a finding that the external HTTP route currently bypasses its workspace capability middleware.
+
+## Scope and checks
+
+I read the repository operating instructions, active mission, workflow, adapter, and accepted #580 contract. I checked the exact merge parents and tree, the candidate changes in notification inbox authorization, WF-9 validation/publication, notification writer binding, canonical customer membership and OIDC role validation, plus the accepted-main #632 lifecycle result composed into `identity/repository.ts`. I inspected the current audit route middleware, audit repository predicates, schema constraints, identity loader and its scoped-membership validation, the relevant notification contract, and the focused regression-test inventory.
+
+The inbox correction has a closed resource-type allowlist; current identity, event-kind and recipient checks run before content materialization, while current-owner predicates guard content/effects. Workspace-created rows now check current workspace reach, person-bound MFA notices require the current person, and unknown/unbound rows fail closed. Session-only direct/bulk mutation routes remain session-only. The WF-9 validator reloads request identity in a repeatable-read transaction and threads that executor through its reads; publication reloads identity, checks complete project reach, writes, and rereads in one serializable transaction with bounded whole-transaction retry. The workflow project predicate rejects cross-scope/malformed role facts while retaining only facts the current loader recognizes; I did not infer ancestor or owner-team relations absent from current schema/loader.
+
+The customer identity query now returns the membership/role facts needed by the canonical-customer predicate; that predicate requires the exact own-organisation system Customer role and refuses ambiguous organisation memberships. The OIDC customer mapping validation checks the same built-in role definition, and repeat JIT reconciliation takes the role lock before validating it. The #632 `revokedUserId` result is added to the lifecycle transaction result without changing the transaction's grant selection or commit ordering. No widening of instance or customer authority was found in these bounded paths.
+
+No tests, PostgreSQL, Docker, build, browser, CI, push, PR, or source edits were performed in this review context. I did not read the credential-bearing correction-attempt report or raw runtime logs. Prior author/reviewer test counts were treated as reported evidence, not independently reproduced. Existing focused test inventory covers normal project audit reach and ordinary `sees_all`, but no malformed scoped-role audit case was found.
+
+## Blocking finding — audit reach trusts raw memberships
+
+In `apps/api/src/audit/repository.ts`, `listWorkspaceAuditRows` constructs `projectMembership` from `membership.personId`, `scope = 'project'`, and a project/workspace join (lines 188–205). It does not join or validate the assigned role's scope, workspace anchor, key, or safe capability shape. `workspaceSeesAll` (lines 207–218) accepts any raw workspace membership with `seesAll = true`, without checking its role or scope anchoring. `workspaceIdentityReach` (lines 148–174) likewise has an alternative raw `membership` existence check.
+
+The canonical loader in `apps/api/src/permissions/resolve-identity.ts` only admits scoped membership rows after role/scope consistency, a real scope anchor, nonempty role id/key, safe rank, and string-array capabilities are checked (around lines 497–524). The `membership` table has only a foreign key to `role.id` and a uniqueness key on person/scope/scope_id; it has no composite constraint enforcing that the membership scope, scope id, and role scope/workspace agree (`apps/api/src/database/schema.ts:2157` onward). Thus a malformed project membership whose role belongs to another scope/workspace is ignored by the resolved identity but still satisfies this audit SQL's project reach term. A malformed workspace `sees_all` row can similarly activate the all-project term. The result can include project audit rows not supported by the supplied canonical identity. The route's `workspaceAccess`, membership, and `workspace:manage_settings` checks remain in front of the repository, but they do not make these repository predicates consistent with the accepted identity/query-scope contract; this finding does not claim a demonstrated route bypass.
+
+The bounded correction should make these audit reach terms match the current loader's accepted, well-anchored role facts (and preserve the existing instance-admin / per-workspace `sees_all` semantics). Add a PostgreSQL regression that plants cross-scope and foreign-workspace role assignments with direct project and `sees_all` membership rows, then proves the repository does not return the protected project audit row; retain positive valid project and `sees_all` cases.
+
+## Other observations and limits
+
+I found no additional blocking source finding in the inspected notification inbox correction, WF-9 transaction boundaries, customer-membership mapping, OIDC composition, or #632 result composition. The existing query implementation intentionally does not invent unsupported ancestor/owner-team reach; the current RBAC loader has no such facts. Unsupported notification classes remain excluded by the closed inbox policy; I found no new producer activation in this candidate.
+
+This is ordinary review B only. It does not clear the ordinary panel, provide the required fresh full Sol review, or establish current-head runtime, image, browser, CI, merge, release, or SIT acceptance.
+
+---
+
+Retained evidence file — notification-665-ordinary-c-luna.md
+
+# #785 ordinary review C — exact composed head 665453964cf269d863d15db3bfdc7f9121b952d3
+
+**Model:** GPT-6 Luna (assigned ordinary-review tier; this report is from the current independent reviewer context)
+**Role:** Fresh independent ordinary reviewer C of 3.
+**Independence:** I did not author, direct, advise, or remediate this candidate. I reviewed the clean frozen worktree `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, exact HEAD `665453964cf269d863d15db3bfdc7f9121b952d3`, tree `d5c52118140121be0244d457e9c3c9528fc164e1`, parents `cf4c408a2e8fb1e3303e30a0a154e8dd779c55ef` and accepted-main `1a34e5792ee9c42b15004b032e3c5410e5def44e`.
+
+## Verdict
+
+**BLOCK.** The remediation closes the recipient-only resource-type fallback and performs current reach decisions before serializing notification content, but its cross-organisation resource-fact queries do not apply the resolved caller's reach in SQL. The subsequent content and mutation statements also lack those caller-reach predicates. This leaves the candidate short of the accepted repository query-scope contract and the expressly assigned structural invariant.
+
+## Blocking finding — current reach is checked after unscoped resource reads, and is absent from content/effect SQL
+
+`listVisibleNotificationRows`, direct mark-read and bulk read/clear all call `readableNativeRows` after `selectCandidatePage`. For native work-item/comment rows, `findCurrentNotificationResources` selects work-item/comment ownership facts, organisation/workspace/project identifiers, requester and visibility facts, and private-participant rows using only candidate resource ids and deletion/live predicates (`apps/api/src/notification/repository.ts:78-147,149-166`). It takes the transaction executor but no `ResolvedIdentity`, and the SQL has no caller-reach predicate. For workspace rows, `inbox.repository.ts:255-263` likewise reads workspace id and organisation id by candidate IDs alone; reach and `workspace:read` are checked only afterward in JavaScript (`:297-324`). Thus a caller-owned historical/malformed notification can cause these repositories to load cross-organisation resource facts before deciding that caller cannot reach them.
+
+The later content query `fetchAllowedRows` selects the full notification row, including title/content/body/eventData, with only `bindSameRow` plus `currentOwnerPredicate` (`inbox.repository.ts:494-524`). Those predicates establish row binding and owner-resource existence/live status; for workspace/person/instance and native work-item/comment they do not apply the resolved caller's reach/capability. Bulk UPDATE/DELETE use the same row/owner predicate (`:542-558`), and direct mark-read uses it again (`:631-642`). Candidate SQL applies caller reach only for legacy task and approval (`:369-374`); native and workspace reach is applied outside the statement predicate. The `repeatable read` snapshot keeps the prior JavaScript decision and later statements on one snapshot, but it does not satisfy the accepted query contract that a repository query returning cross-organisation data take resolved identity and apply caller reach in its statement predicate.
+
+This is a structural contract blocker, not a reproduced HTTP disclosure: the JavaScript evaluator currently makes the canonical reach/capability decisions before content is returned, and this review did not run an HTTP or PostgreSQL reproduction. A bounded metadata/fact preflight is acceptable under the prior Sol architecture advice only when it takes the resolved identity/executor and applies reach there; these fact loaders currently do not. The correction should keep the minimal facts needed for canonical `can`/`reaches` evaluation, but scope those fact queries with caller reach and make content/effect statements bind the authorized identity/resource tuple and current owner predicates. Carry the same rule through list, direct read, read-all and clear-all.
+
+## Confirmed improvements and scoped review
+
+- `registeredNotificationResource` is a positive closed discriminator for task, approval, work_item, comment, workspace, instance and person; unknown/null resource rows are excluded. Per-type checks reject missing IDs and unsupported type/kind combinations instead of reverting to recipient-only access.
+- Legacy task/approval reach remains in candidate SQL. Native work-item/comment policy preserves resolved identity, key capability clamp, staff work-item reach, customer organisation authority, customer-eligible event/status handling, participant/private visibility and comment visibility through `canReadNativeInboxCandidate`.
+- Workspace-created rows require a current workspace, explicit current workspace reach and `workspace:read`. Instance alerts require current staff `instance:admin` and the closed operational kinds. MFA-reset notices bind `personId` and `resourceId` to the caller's current person; the writer now supplies that binding. The old unbound person notice is hidden.
+- Content is fetched only after JavaScript policy filtering; visible-page count is applied after authorization, and keyset pagination advances by the candidate page, so denied candidates do not consume the 50 visible-row limit. Bulk effects preserve same-row binding and current-owner existence. D10's hidden rows remain unread and can reappear after reach restoration; the added integration cases exercise unknown/unbound rows and workspace reach loss/restoration.
+- WF-9's complete-project refusal checks the full workspace project set (including empty/archived rows) before validation/publication; the all-project query carries `projectReach`, and publication now repeats identity/reach reads and writes in a serializable retry transaction. WF-19 authoring remains shape-only per the supplied owner decision. I found no additional blocker in this bounded source check of those paths.
+
+## Review scope and checks
+
+Read `AGENTS.md`, the active mission, agent workflow/model policy, notification permissions and resource mapping, D10, query-ownership/tenant-scope contract, native reach/identity loaders, notification inbox/resource repositories, relevant integration tests, WF-9/WF-19 repository/controller changes, and the canonical private prior C/Sol/advice records. Verified clean worktree and exact HEAD/tree/parents. `git diff --check` for the notification inbox/resource, reset-MFA and notification reach-test paths from `3dc8b113780a069ab2454737d92ca0cbd37bf095` through the composed head exited 0. No tests, PostgreSQL, Docker, browser, build, typecheck, CI or other heavy commands were run, per assignment. No source edits, commit, push, PR action, credential-bearing evidence access or external messaging occurred.
+
+The earlier 32 focused PostgreSQL tests described in the author handoff are prior author evidence and were not rerun on this composed SHA; they do not close this review finding. This is ordinary review C only. The ordinary panel remains uncleared; the required fresh full GPT-6 Sol security review must follow ordinary clearance. No approval, merge, SIT, or stage-completion claim is made.
+
+---
+
+Retained evidence file — notification-30091-bc-remediation-luna.md
+
+# Notification query-scope B+C remediation — author handoff
+
+Status: local author change committed and frozen for review; not pushed or published. This is an author handoff, not an independent review, merge approval, or security clearance.
+
+## Exact source
+
+- Branch: `codex/query-ownership-580-b4`
+- Commit: `30091facb07e567872e2487cc3f85ac42670e1c8`
+- Parent: `665453964cf269d863d15db3bfdc7f9121b952d3`
+- Tree: `8a3e656d58a941e7cbee736e85b2b7731aaaa0bd`
+- Subject: `fix(api): bind notification and audit queries to current reach`
+- Working tree: clean immediately after commit.
+- Changed paths: `apps/api/src/database/identity-scope-predicates.ts`, `apps/api/src/audit/repository.ts`, `apps/api/src/workflow/repository.ts`, `apps/api/src/notification/{approval-reach.repository.ts,inbox.repository.ts,repository.ts,task-reach.repository.ts}`, `tests/api-integration/{audit-read.test.ts,notification-task-reach.test.ts,work-item-comment.test.ts}`.
+
+The batch addresses ordinary findings B and C from the 665 review. Finding A's ancestor/team concern was withdrawn by the separate adjudication; both original A records remain preserved. No ancestor/team relation, #790 import, schema, dependency, permission class, or unsupported resource feature was added.
+
+## Structural correction
+
+`identity-scope-predicates.ts` centralizes SQL reach from the current `ResolvedIdentity` and the actual query `Executor`. Its canonical scoped-role predicate checks scope equality, supported project/workspace scope, workspace anchor, nonempty role key, bounded rank, and JSONB capability-array shape. Project reach applies current direct project membership or current workspace `seesAll` membership, including those role-validity anchors; workspace reach uses current scoped membership and the resolved legacy workspace grant. The compiled `owner` role remains the documented exception because it has no `workspace_role` row; other legacy grants still require their current `is_system` role row. Current instance-admin reach is rechecked against current staff user/person state.
+
+Audit and workflow actor-facing repository reads now apply these predicates in SQL. Notification plural resource-fact reads receive the identity and transaction executor and scope project-backed facts before returning them. Inbox list, direct read, read-all and clear-all pass the transaction executor and identity through task/approval/workspace fact predicates; same-row owner/resource checks and current project/workspace reach are repeated in content/mutation SQL. Content and effect queries remain narrowed by recipient/resource tuple and the same current reach predicate; capability policy remains evaluated by the existing canonical notification policy before content access, within the existing transaction flow. No caller-provided broad boolean or precomputed ID list substitutes for the repository reach predicate.
+
+Existing key credential subset/owner clamp, native/customer behavior, instance-private/person binding, D10 hidden-row unread behavior, visible-before-pagination ordering, transaction/executor/lock and audit/outbox ordering remain in the touched paths.
+
+## Verification
+
+Commands were run from `apps/api` for Vitest and from the repository root for Biome/diff checks. Integration commands used the unique isolated PG18 test container documented below; credential-bearing environment values are intentionally omitted here.
+
+- `pnpm exec vitest run --config vitest.integration.config.ts ../../tests/api-integration/workflow.test.ts ../../tests/api-integration/notification-task-reach.test.ts` — **33 passed** on the final committed source (workflow + notification task reach).
+- `pnpm exec vitest run --config vitest.integration.config.ts ../../tests/api-integration/audit-read.test.ts` — **14 passed**.
+- `pnpm exec vitest run --config vitest.integration.config.ts ../../tests/api-integration/work-item-comment.test.ts -t 'scopes native fact reads, content and inbox mutations'` — **1 passed, 34 explicitly unselected**.
+- Earlier focused checks on the same source batch: malformed project/`seesAll` audit roles **1 passed**; foreign misanchored workspace notification role **1 passed**; native fact/inbox scope test before the last owner-helper correction **1 passed**. The native test was rerun after that correction as listed above.
+- `pnpm --filter api typecheck` — exit 0.
+- `pnpm exec biome check` on the 10 changed source/test files — no formatting or errors; it reports five unused-variable warnings in pre-existing portions of `work-item-comment.test.ts`.
+- `git diff --check` — passed.
+
+Adverse attempts are retained, not represented as passing evidence. The first combined workflow+notification run had **6 failed / 27 passed**; all six were the new helper omitting the compiled `owner` exception, which was then restored explicitly and the full two-file selection passed 33/33. A subsequent invocation inherited a stale database URL and failed authentication before tests ran (**33 setup failures**, no test assertions executed); the corrected invocation explicitly targeted the owned test container and passed. The initial audit focused attempt failed because its new fixtures used unregistered audit action names; fixtures were changed to the existing registered action, and the rerun passed. The successful native regression emits existing realtime-delivery failure warnings while its HTTP assertions pass; that warning is preserved in the raw log.
+
+No full suite, CI, build, browser check, or performance capture was run for this batch. Review and current-head hosted checks remain outstanding.
+
+## Private runtime evidence and cleanup
+
+Raw commands/logs, including the credential-bearing runtime setup file, remain private under `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/notification-query-scope-bc-round2-runtime/` with directory mode 0700 and files mode 0600. Do not copy raw environment values or connection URLs into public records.
+
+The only PG18 resources removed were the directly owned container `q580b4-bc2-pg` (ID `4564a089c682dd0fea55271f2ca7d991149bc8c4b789eb8bf7d3c67bbcf006b4`), network `q580b4-bc2-net` (ID `57603fd87138a05b6a003b7554aef3fa55f1c97209274ba432278b9cb2deb80a`), and named volume `q580b4-bc2-data`. The retained container inspect receipt directly binds that named volume to this container at `/var/lib/postgresql`; the volume and network carry the unique `taskdesk.owner=notification-query-scope-bc-round2` label. Their exact cleanup commands each exited 0. Port 57831 had no listener after cleanup; before cleanup the listener was OrbStack's forwarding process for this container. Test worker processes had exited before cleanup.
+
+A bounded Docker volume-event query for the relevant attempt window returned no matching retained events. I did not remove or claim ownership of any other/anonymous volume; in particular, any volume without a direct container/mount ownership receipt remains untouched. Before/after Docker inventories and inspect receipts are preserved in the private runtime directory. Cleanup inventory hash manifests: `cleanup-before.sha256` SHA-256 `ca030175ee1f49d73dcddaf26624a3b3e6f2ae31458cabc6fbb2e84ea4e4fca7`; `cleanup-after.sha256` SHA-256 `890953f1ca0d40b777e7599581e00010efbf726e68598472ec9126fa97ed12db`.
+
+Raw key log hashes retained:
+
+- First combined failure: `workflow-notification-full.log`, SHA-256 `8ef605a34d19ae663323cd6b1981e785a2f600ce5598157ab6e8f714eb893853`.
+- Stale-URL setup failure: `workflow-notification-full-3.log`, SHA-256 `a06eb444fc45c3f223697dc6af3280657a1b9ebaf74c0b95e7fe4d16f055e8d1`.
+- Final combined pass: `workflow-notification-full-4.log`, SHA-256 `28a9c744e651fab2ba05ecd7727ed046824e44d3a35ebc4c1c25682932bc545d`.
+- Audit suite pass: `audit-full.log`, SHA-256 `0004ff5a92b487de852ea5ad3e5044b16c27f7cb77c8db2e447b6fbb60125e50`.
+- Final native fact/inbox pass: `native-focused-final.log`, SHA-256 `2a961214f054ccd6c44e9e2307eef1547ef34f708d4ac1fbc5faa879f7bb9fec`.
+- Typecheck: `typecheck-2.log`, SHA-256 `b29bd52d7c5d63af77d7788c7d19d39746f1d9aab3fe7246f9bf27524159516b`.
+
+
+---
+
+Retained evidence file — notification-fc71b78-repository-placement-luna.md
+
+# Identity reach helper repository placement — author handoff
+
+This is a bounded path-only author correction to the B+C remediation. No authority semantics changed. It is not an independent review or clearance.
+
+## Exact source
+
+- Branch: `codex/query-ownership-580-b4`
+- Commit: `fc71b7847c7d2acab6965c1fd4b4c5d272b7f239`
+- Parent: `30091facb07e567872e2487cc3f85ac42670e1c8`
+- Tree: `e2e8b8f12bd07b2905df7d26cd167cf0ea8082b4`
+- Subject: `refactor(api): place identity reach predicates in repository`
+- Worktree clean after commit.
+
+The helper moved from `apps/api/src/database/identity-scope-predicates.ts` to the named repository module `apps/api/src/database/repositories/identity-scope.repository.ts`, consistent with coding-standards.md 132–145 and 166–167: SQL fragment helpers live in repository modules. Imports were updated in audit, workflow, notification inbox, notification resource, and notification task-reach repositories. No tests, schema, dependencies, or other source paths changed.
+
+## Content comparison
+
+Compared the exact helper body from parent commit `30091fac` with the new file after separating the top import block. The function/comment body is byte-identical:
+
+- Old body SHA-256: `22990220065a3e5c47fd757c1ce1ab96aed00f3cccc3e36638dc60bbfca5b353`
+- New body SHA-256: `22990220065a3e5c47fd757c1ce1ab96aed00f3cccc3e36638dc60bbfca5b353`
+
+Only import paths changed (`./executor`, `./index`, `./schema` to repository-relative paths); Biome also sorted the moved module's imports. No predicate expression, function signature, comment, query behavior, or capability mapping changed. Git recognized the move as a 98% rename.
+
+## Checks and inherited runtime evidence
+
+- `pnpm --filter api typecheck` — passed.
+- `pnpm exec biome check` on the moved repository and five importing repository modules — passed, no fixes needed after import organization.
+- `git diff --check` — passed.
+- No PostgreSQL or other runtime test was repeated: this commit only relocates an identical helper body and changes import specifiers. Existing focused runtime evidence remains bound to parent `30091fac`: workflow+notification 33/33, audit 14/14, and native fact/content/inbox scope 1 passed with 34 explicitly unselected. Those counts are inherited evidence, not newly run at `fc71b78`.
+
+The prior source and evidence reports remain preserved under their existing filenames; this placement handoff uses a new unique filename. No push, CI, review-note append, or publication was performed. The local heavy runtime window remains released from the prior cleanup.
+
+---
+
+Retained evidence file — notification-b4c27984-roleid-admission-luna.md
+
+# Scoped role ID admission parity — author handoff
+
+This is the final bounded correction to the shared reach predicate, addressing the loader parity omission found before fresh review. It is an author handoff, not an independent review or clearance.
+
+## Exact source
+
+- Branch: codex/query-ownership-580-b4
+- Commit: b4c279849053aecd414136d71c63461198ed1951
+- Parent: fc71b7847c7d2acab6965c1fd4b4c5d272b7f239
+- Tree: acb0d7bf99bad1107003a1e3e68774c7723aa0db
+- Subject: fix(api): reject empty scoped role identifiers
+- Worktree clean after commit.
+
+## Correction and admission parity
+
+canonicalScopedRoleMembership now receives roleTable.id and requires a nonempty ID in the shared SQL predicate. All callers in project direct reach, workspace seesAll reach, workspace reach, and notification task reach pass the current joined role ID. This matches resolveIdentity's scoped membership loader, which explicitly rejects !row.roleId.
+
+I checked the whole scoped-role admission branch against the helper before completing the change. The SQL helper covers supported project/workspace scope, equality between membership and role scope, nonempty role ID and role key, int32 rank bounds (equivalent for the database integer column to the loader's safe-integer check), capability JSON array containing only strings, and role workspace anchor equality with the actual outer workspace/project workspace. Outer project/workspace rows establish scope existence; organization/customer reach follows the existing organization path and is not admitted by this project/workspace helper. No additional loader rejection or anchor was missing. No new schema or rule was introduced.
+
+The focused PostgreSQL regression extends the existing malformed-role matrix with a representable empty text primary key, a valid role key/rank/capability array, and a project membership referencing it. The repository audit query omits that project from reach. The same test retains a valid direct project role and asserts it remains visible, giving a positive control.
+
+## Verification
+
+- pnpm --filter api typecheck — passed.
+- pnpm exec biome check on the changed repository helper, task reach repository, and audit test — passed.
+- git diff --check — passed.
+- Focused PG18 invocation from apps/api: pnpm exec vitest run --config vitest.integration.config.ts ../../tests/api-integration/audit-read.test.ts -t 'rejects malformed project and sees_all role anchors' — 1 passed, 13 explicitly unselected, exit 0.
+- No full suite or other PG test was run. The earlier B+C results (33 workflow/notification, 14 audit, and 1 selected native scope regression) remain evidence from 30091fac, not new runs at this head.
+
+## Runtime cleanup
+
+A unique PG18 container q580-roleid-pg, network q580-roleid-net, and named volume q580-roleid-data used the unique label taskdesk.owner=notification-roleid-regression-fc71. The retained container inspect directly shows the named volume mounted at /var/lib/postgresql; the volume and network carry the same unique owner label. The three exact cleanup commands each exited 0, and port 57832 is clear. No unknown or anonymous volume was touched. Before/after inventories and receipts are private under /Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/notification-roleid-regression-fc71-runtime/; cleanup hash manifests are cleanup-before.sha256 (SHA-256 0238fd7c6350fad1fbb174e089bf776eb7f40d445c17bb3e53631356212d91ce) and cleanup-after.sha256 (SHA-256 ddcb529f7b8350ab699c000b499afcb46524390d502ced79cd57e54e9c8a0dab). The raw integration log SHA-256 is 975f15d14444fcca41618551cdfc15274c77fa197d74e181fbe29156996bf75e.
+
+Credential-bearing setup values remain only in the private runtime directory; this handoff omits them. The local heavy runtime window is released. No push, review-note append, CI, or publication was performed.
+
+---
+
+Retained evidence file — notification-b4c-scope-delta-a-luna.md
+
+# #785 shared scoped-role admission — ordinary delta review A
+
+**Reviewed candidate:** `b4c279849053aecd414136d71c63461198ed1951`  
+**Tree:** `acb0d7bf99bad1107003a1e3e68774c7723aa0db`  
+**Parent:** `fc71b7847c7d2acab6965c1fd4b4c5d272b7f239`  
+**Comparison baseline:** previously reviewed `665453964cf269d863d15db3bfdc7f9121b952d3`; accepted main `1a34e5792ee9c42b15004b032e3c5410e5def44e`.  
+**Role and independence:** Fresh independent ordinary delta reviewer A. I did not author, direct, advise on, or remediate this change.  
+**Model:** GPT-6; runtime did not expose a more specific Luna/Sol alias or serving-version attestation.
+
+## Verdict
+
+**CLEAR for the bounded role-ID admission delta.** The change restores parity with `resolveIdentity` by rejecting empty persisted role IDs in the shared scoped-role SQL predicate, consistently across audit, workflow, notification inbox/resource, and legacy task-reach query paths. I found no blocking issue in this delta.
+
+## What I checked
+
+I verified exact HEAD/tree/parent and clean worktree, and compared the candidate with both the prior reviewed head and immediate parent. The total candidate delta from the prior reviewed head is 10 paths (893 additions, 216 deletions); this review focused on the final shared role-admission correction and its interactions, relying on the prior ordinary A/B/C notes and explicit A reach adjudication for unchanged coverage. The only immediate-parent changes are 40 additions across the shared predicate, task reach caller, and audit integration regression.
+
+I read the repository workflow and operating guidance, RBAC reach/identity-loader rules, notification pre-wiring query-scope contract, the prior ordinary reviews, the B+C remediation handoff, the helper-placement handoff, the role-ID correction handoff, and the explicit correction withdrawing ordinary A's prior ancestor/owner-team finding. I inspected `resolve-identity.ts` admission checks and every caller of `canonicalScopedRoleMembership`.
+
+The shared SQL predicate now receives the joined role primary key and requires `length(roleId) > 0`. That matches the loader's explicit `!row.roleId` rejection; non-null alone would not match because the text primary key can represent an empty string. All three callers in `identity-scope.repository.ts` pass `roleTable.id`; all four legacy task-reach call sites pass `schema.roleTable.id`. The existing scope equality, supported project/workspace scope, scope-to-workspace anchor, non-empty key, database-integer rank domain, and JSONB string-array checks remain intact. The project reach helper's `NULL` organisation argument in workflow remains harmless for staff (staff branch does not use it); customer access is organization-scoped and separately handled in the shared helper.
+
+The added PostgreSQL audit regression creates an empty-ID project role with otherwise valid key/rank/capabilities, binds it to a project membership, and asserts that project's audit rows are excluded. The same test retains a positive valid project membership assertion. Existing foreign-workspace, cross-scope, malformed capability/key, misanchored `sees_all`, notification, WF-9, key-subset, and customer-boundary behavior was checked by source inspection against the prior notes and unchanged diff; I found no authority widening or new role-grant semantics. The withdrawn A reach concern is explicitly adjudicated against the current schema and loader, so I did not treat future ancestor/team facts as present callers.
+
+## Checks and limits
+
+Commands: `git status --short`, exact HEAD/tree/parent inspection, `git diff --stat`, `git diff --check` from the prior reviewed head, targeted `git diff`, `rg`, and source/document inspection. Worktree was clean; `git diff --check` passed. I did not run tests, PostgreSQL, Docker, build, browser, typecheck, CI, or heavy checks. The reported focused database results and typecheck/Biome results are author evidence on their stated source heads, not runs by this reviewer on `b4c27984`.
+
+This is ordinary delta review A only. It does not provide the second ordinary delta verdict, GPT-6 Sol security clearance, exact-head CI, image/runtime/browser acceptance, merge approval, or stage completion.
+
+---
+
+Retained evidence file — notification-b4c-scope-delta-a-completion-luna.md
+
+# #785 structural B+C correction — ordinary delta review A completion
+
+**Reviewed candidate:** `b4c279849053aecd414136d71c63461198ed1951`  
+**Tree:** `acb0d7bf99bad1107003a1e3e68774c7723aa0db`  
+**Comparison base:** previously reviewed `665453964cf269d863d15db3bfdc7f9121b952d3`  
+**Accepted main:** `1a34e5792ee9c42b15004b032e3c5410e5def44e`  
+**Role and independence:** Fresh independent ordinary reviewer A for the full structural B+C delta. I did not author, direct, advise on, or remediate the candidate.  
+**Model:** GPT-6; the runtime did not expose a more specific Luna/Sol alias or serving-version attestation.
+
+## Verdict
+
+**BLOCK — `currentWorkspaceReachPredicate` does not preserve the canonical unambiguous legacy-membership rule.** A stale resolved identity can continue to authorize workspace reach through one matching `workspace_member` row even when a second row has since made that user's membership ambiguous. The full B+C candidate therefore does not yet establish current canonical workspace reach for all shared-helper consumers.
+
+## Blocking finding — legacy workspace reach accepts duplicate membership rows
+
+`resolveIdentity` only emits legacy workspace authority when `resolveMembershipRoleFrom` determines that the user's workspace membership is unambiguous; its mapper documents that `rows` must contain exactly one row. The `workspace_member` schema has ordinary indexes but no uniqueness constraint on `(workspace_id, user_id)`, so duplicate rows are representable.
+
+In `apps/api/src/database/repositories/identity-scope.repository.ts`, `currentWorkspaceReachPredicate` builds `legacyRoleChecks` from the passed identity's workspace authority and accepts `EXISTS` of a `workspace_member` row matching user, workspace and role. For non-owner roles it additionally requires a same-workspace `workspace_role` row with `is_system = true`; owner remains the documented compiled-role exception. The predicate does not reject a second `workspace_member` row for that user/workspace. If the identity was resolved while the single membership was valid, then a duplicate is inserted or changes before the reach statement, this SQL still returns true via the matching row. That differs from the loader's current fail-closed ambiguity rule and from the task notification's `legacyWorkspaceRoleCanRead`, which explicitly has a `NOT EXISTS` duplicate-row guard. This is a source-level stale-identity/current-query consistency finding; I did not run an HTTP or database reproduction.
+
+The affected shared workspace predicate is used for audit workspace reads, workflow workspace reads and WF-9 checks, inbox workspace notice facts/content/effects, and notification resource composition that relies on those workspace checks. Add the same per-user/per-workspace duplicate exclusion to the shared legacy branch, preserving the explicit owner exception and genuine `is_system` requirement for other built-ins; add a regression proving a formerly valid resolved identity no longer passes after a second membership row is present. Do not remove the separate project-scoped membership path, whose own canonical table and loader rules differ.
+
+## Full structural scope inspected
+
+I reviewed the complete ten-path candidate delta from the prior exact head (893 additions, 216 deletions), with unchanged behavior relying only on the earlier A/B/C records and the explicit adjudication withdrawing A's alleged ancestor/owner-team finding. The newly added B+C structure was inspected directly rather than treated as cleared by those prior findings.
+
+- **Shared role admission and reach:** `identity-scope.repository.ts` now validates scoped role scope equality, project/workspace scope, role ID/key non-emptiness, workspace anchor and string-array JSON capabilities, and checks current active staff/admin state. The empty role-ID delta matches the loader's explicit rejection, and all call sites pass the joined role ID. Direct project and workspace `sees_all` membership use the actual project/workspace anchors. Customer project reach is limited to the identity's organization. The compiled legacy `owner` exception and same-workspace genuine `is_system` checks for other built-in legacy roles are preserved, subject to the duplicate-row finding above. No new grant source or authority widening was found in these paths.
+- **Audit:** `listInstanceAuditRows` rechecks current instance-admin state in SQL; workspace audit rows require current workspace reach and project rows require current project reach through correlated project facts. The malformed direct project and `sees_all` roles are screened by shared canonical admission. The unrelated-project predicate cannot treat a foreign workspace project as reachable in the requested workspace.
+- **Workflow:** workspace-scoped workflow queries consistently thread the selected executor to workspace reach; project reach applies the current shared project predicate. Adopting-project reads and the complete-project check use scoped predicates. The complete check retains the workspace project set, including empty/archived projects, and publication's transaction/retry changes remain in place. The earlier ancestor/team concern is withdrawn by the explicit adjudication and the current project schema/loader, so I do not count it as a finding.
+- **Notification task and approval:** query executors now flow through task and approval reach subqueries. Task project/workspace role admission uses the shared canonical helper; the legacy workspace task branch has its own duplicate membership exclusion. The key capability clamp remains a separate gate and is preserved.
+- **Native notification fact reads:** work-item/comment fact queries take resolved identity and transaction executor and apply current project reach in SQL before returning ownership, requester, visibility and participant-fact IDs. Participant reads are limited to work items already returned by those scoped fact queries.
+- **Inbox content and effects:** workspace facts are reach-filtered before JavaScript policy evaluation. The subsequent content query and direct/bulk read/delete statements rebind the same candidate row and repeat current-owner/reach predicates for task, approval, workspace, work-item, comment, person and instance resources. Native work-item/comment content/effect SQL rechecks current project reach and liveness; task effects carry the credential capability clamp; instance effects recheck current administrator state; person notices bind to the current user's person. The canonical per-kind capability/private-visibility policy still runs before materialization inside the repeatable-read transaction. I found no B/C regression in candidate-row binding, visible-before-pagination, unknown-resource closure, D10 retention, or transaction/executor use.
+
+I also read the repository workflow and operating guide, the query-scope/notification contract, relevant RBAC and notification feature sections, the prior ordinary A/B/C notes, the A reach adjudication, and the B+C/helper-placement/role-ID author handoffs. Author-reported tests were not treated as my exact-head runtime evidence.
+
+## Checks and limits
+
+Commands: exact `git` HEAD/tree/parent and status inspection; `git diff --stat`, targeted diff and `git diff --check` from the prior reviewed head; `rg`, `sed`, and direct source/schema/contract inspection. The worktree was clean and `git diff --check` passed. No tests, PostgreSQL, Docker, build, browser, typecheck, CI, source edit, commit, push, or PR action was performed. The report is mode 0600.
+
+This is the full ordinary delta A review and one blocking finding. It does not clear ordinary review B, provide GPT-6 Sol security clearance, establish exact-head CI or runtime/browser acceptance, or authorize merge or completion.
+
+---
+
+Retained evidence file — notification-b4c-scope-delta-b-luna.md
+
+# #785 / #580 exact-head ordinary review — DELTA B
+
+**Reviewed candidate:** `b4c279849053aecd414136d71c63461198ed1951`  
+**Tree:** `acb0d7bf99bad1107003a1e3e68774c7723aa0db`  
+**Comparison:** prior B-reviewed head `665453964cf269d863d15db3bfdc7f9121b952d3`; accepted-main base `1a34e5792ee9c42b15004b032e3c5410e5def44e`  
+**Role/provenance:** Fresh independent ordinary reviewer B, GPT-6 Luna tier. I did not author, direct, advise, or remediate this candidate. The serving model/version is not exposed beyond the assigned tier.  
+**Verdict:** **CLEAR for ordinary review B at this exact head.** No blocking or non-blocking source finding remains in the checked scope.
+
+## Independence and scope
+
+I reviewed the exact clean checkout at `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`. I read `AGENTS.md`, the agent workflow, operating guide, status and decision log, the owning notification/workflow/audit specs, and the prior B and C reports plus the author handoffs for the 30091 structural batch and the b4c role-ID correction. I did not read credential-bearing setup or raw runtime logs.
+
+I re-reviewed the ten-file B+C implementation and integration seams: canonical scoped-role SQL admission, audit/workflow reach, notification list/direct-read/read-all/clear-all, resource facts/content/effects, customer/native visibility, notification type/resource allowlists, identity and transaction threading, and the malformed-role and inbox regression coverage. The earlier B finding on malformed raw audit memberships is addressed by the shared role-validity predicate and regression. The earlier C finding on unscoped facts/content/effects is addressed by passing the resolved identity and active executor through the resource and inbox paths, with reach included in the SQL resource/content/mutation predicates before protected facts are returned or actions are applied. I verified the final b4c delta adds the nonempty `role.id` condition and threads the joined role ID through all predicate call sites, matching the loader's explicit `!row.roleId` rejection. Existing role-scope, role-key, rank, JSON capability shape, workspace-anchor, and documented legacy owner exception checks remain present.
+
+Current notification recipient visibility checks continue to enforce customer public-comment rules and private-work-item requester/participant visibility after current resource reach. D10's hidden-row unread behavior and visible-before-50-row pagination remain intact. WF-9 reads use the transaction executor where supplied and require complete project reach; I found no new ancestor, owner-team, or other unsupported relationship invented by this change. The SQL reach helper derives authority from the current database facts plus the resolved identity; I found no caller-supplied allow boolean or precomputed-ID list that substitutes for this predicate in the repaired native paths.
+
+## Checks and findings
+
+Read-only checks performed:
+
+- `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse HEAD^{tree}`, `git diff --stat` and `git diff --name-status` confirmed exact head/tree, clean working tree, and the expected ten changed paths.
+- Inspected the candidate diff from `665453964cf269d863d15db3bfdc7f9121b952d3` and the relevant final source/spec/test paths.
+- `git diff --check 665453964cf269d863d15db3bfdc7f9121b952d3..HEAD` exited 0.
+
+No tests, PostgreSQL, Docker, build, browser, CI, push, PR action, or source edits were performed, per assignment. Author-reported PostgreSQL and typecheck results were not independently reproduced; they remain evidence from their reported source heads only. No full suite, image, browser, current-hosted-check, security-review, or acceptance result is inferred.
+
+I found no remaining blocker in this ordinary B scope. This is not the required full fresh Sol security review, does not clear the other ordinary delta reviewer, and does not establish merge or stage acceptance.
+
+---
+
+Retained evidence file — notification-472ca631-legacy-membership-ambiguity-luna.md
+
+# Legacy workspace membership ambiguity guard — author handoff
+
+This is a bounded author remediation for the remaining A finding from the current B+C review. It is not an independent review or clearance. Preserve the prior A BLOCK and B CLEAR assessment; fresh exact-head review is still required.
+
+## Exact source
+
+- Branch: codex/query-ownership-580-b4
+- Commit: 472ca631db2faf0b34945da221675720e3e2e503
+- Parent: b4c279849053aecd414136d71c63461198ed1951
+- Tree: 91c043df4b57898d46f69123fb72637c8411ffb9
+- Subject: fix(api): fail closed on duplicate legacy memberships
+- Worktree clean after commit.
+
+## Structural correction and loader cardinality audit
+
+The legacy branch of currentWorkspaceReachPredicate now requires that the matching workspace_member row be the sole row for the resolved user and workspace. It uses a correlated anti-duplicate check against the current workspace_member row while preserving the existing current workspace ID, user ID, resolved role key, compiled owner exception, and genuine is_system role-row requirement for other built-in roles. The project-scoped membership path is unchanged.
+
+I compared this branch with resolveIdentity: workspace memberships are loaded as raw memberRows and grouped by workspace; resolveMembershipRoleFrom accepts only exactly one row. The current workspace_member schema has workspace/user indexes and a single-value role check, but no unique workspace/user constraint. Historical migration 0007 drops the earlier workspace_member_workspace_id_user_id_unique constraint, so duplicate rows are representable and the runtime predicate must reject them.
+
+Other relevant join multiplicity was checked: person.userId has its own partial unique index (0053); workspace_role has a unique (workspace_id, role) constraint (0051); scoped role joins use role.id primary key and scope joins use their scope-table primary keys. Those joins cannot multiply one stored role/membership fact. The resolver's membership query intentionally returns all legacy workspace_member rows, which is the cardinality this fix now mirrors. No schema, dependency, relationship, feature, or new authority rule was added.
+
+## Regression and checks
+
+The focused integration regression resolves a valid identity, confirms one workflow is visible, inserts a second workspace_member row, then confirms repository listing refuses it. The parameterized cases cover both a duplicate with the same role and an additional different role; each retains the pre-insertion valid positive control.
+
+- Focused PG18 command from apps/api: pnpm exec vitest run --config vitest.integration.config.ts ../../tests/api-integration/workflow.test.ts -t 'refuses legacy workspace reach after a duplicate' — 2 passed, 16 explicitly unselected, exit 0.
+- pnpm --filter api typecheck — passed.
+- Scoped Biome on the changed repository helper and workflow test — passed.
+- git diff --check — passed.
+- No full suite was run. No claim is made that previous 33/14/1 tests were rerun at this source head.
+
+## Private runtime evidence and cleanup
+
+The one focused PG18 run used container q580-dup-pg (ID b93d82bbc3d9e13524b33864faf5c41bcc73ad931232ee7bdc5a8ca10984ef46), network q580-dup-net (ID a1add56ae43dda5b9ec702abc15378ffe069be27b7eeef61040e25792c5fa7ab), and named volume q580-dup-data. Each carries the unique taskdesk.owner=notification-legacy-duplicate-b4 label. The retained container inspect directly binds the named volume at /var/lib/postgresql. The exact container, network, and volume removal commands each exited 0; port 57833 is clear. No unknown or anonymous resource was touched.
+
+Private inventories, receipts, raw output, and credential-bearing setup file remain under /Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/notification-legacy-duplicate-b4-runtime/. Cleanup manifest hashes: cleanup-before.sha256 ebde42a21c640755b562606be7a2f6923423fb9504ea07a02d3d791e3fe67bae; cleanup-after.sha256 40a89ac21128da2358eea55be3469146dee7298d5f424008e16e0c76108afc92. Raw focused log SHA-256: dc576e088f2798def131fb2d2e4a308d788ef023db2dd8573faa2f40757c3679. The local heavy runtime window is released.
+
+No push, CI, own-note append, or publication was performed.
+
+---
+
+Retained evidence file — notification472-full-security-61-sol.md
+
+# #785 / #580 — full independent security review
+
+**Reviewed head:** 472ca631db2faf0b34945da221675720e3e2e503  
+**Tree:** 91c043df4b57898d46f69123fb72637c8411ffb9  
+**Comparison base:** accepted main 1a34e5792ee9c42b15004b032e3c5410e5def44e (verified ancestor).  
+**Context:** /root/notification472_full_security_sol, fresh independent full security reviewer. I did not author, direct, advise on, or remediate the candidate or perform its ordinary reviews.  
+**Model/provenance:** dispatched by the conductor for GPT-6.1 Sol full security review. The runtime does not provide this context with a separately verifiable serving-version attestation; the dispatch identity is recorded without inventing one.  
+**Checkout:** /Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2, clean at the exact reviewed head.
+
+## Verdict and ordinary-tier disposition
+
+**CLEAR for the full combined source-security scope, with the non-blocking held-producer residual below. No blocking security finding remains in the inspected candidate.** This is source clearance, not merge readiness or runtime acceptance.
+
+I first independently checked the complete 472ca631 delta against b4c279849053aecd414136d71c63461198ed1951: 21 added helper lines and 44 added integration-test lines. The correlated anti-duplicate predicate excludes every other workspace_member row for the same user/workspace while retaining the matching current row, current role key, compiled owner exception, and genuine is_system requirement for other legacy built-ins. This now matches resolveMembershipRoleFrom's exactly-one-row admission. Scoped project membership and valid scoped workspace membership remain separate authority sources; ambiguity in the legacy table does not incorrectly revoke an independently valid scoped grant.
+
+The regression is parameterized over identical-role and different-role duplicates. Both resolve the identity while one valid membership exists, prove the workflow is visible, insert the second row, then require the repository to return no workflow using that previously resolved identity. These are non-vacuous positive/negative controls. I did not execute their PostgreSQL assertions.
+
+**A's sole remaining duplicate-membership blocker is CLOSED by independent source inspection.** I read full structural ordinary A's BLOCK, ordinary B's CLEAR, the earlier 665 A/B/C records, A's explicit ancestor/team withdrawal, and the 30091/fc71/b4c/472 author handoffs. The shared structural helper already exists, and this correction is a narrower instance of the same canonical-admission class. Under agent-workflow.md's change-altitude rule, this clean required full security pass closes the remaining ordinary source tier; it does not manufacture another ordinary reviewer or treat the earlier narrow role-ID-only review as a complete panel. The conductor still owns provenance/accounting and the remaining gates.
+
+## Full security assessment
+
+I inspected the combined 69-path comparison (including the long append-only own review note and integration tests), with direct source review across auth/customer identity and OIDC, canonical reach, audit, workflows, inbox, fanout, scheduler, preferences and delivery. I read AGENTS, the mission, workflow/review policy, CLAUDE, accepted SQL ownership/tenant-scoping rules, RBAC, notification/WF-9/WF-19 contracts, and material adverse review records. Historical broad CLEAR was not used to override the later query-scope adjudication.
+
+**Canonical authority and SQL reach.** The shared repository helper validates supported scope and scope equality, nonempty role ID/key, workspace anchor, integer rank and string-array capability shape before admitting scoped membership. Actual project/workspace rows anchor scope existence. Current staff instance-admin SQL binds user and person, active staff state and the banned flag. Direct project and workspace sees_all paths do not invent ancestor/owner-team relations absent from the current schema/loader; RBAC explicitly excludes those until implemented. Workspace legacy reach now rejects ambiguity as above. Audit actor-facing queries and workflow reads receive resolved identity and compose these current SQL predicates rather than treating requested IDs or JavaScript allow flags as authority.
+
+**Authentication, customer admission, keys and lifecycle composition.** Customer identity requires exactly one own-organisation membership backed by the genuine system Customer role and exact compiled rank/capabilities; capabilities are still compiled, not trusted from persisted rows. Workspace/instance memberships cannot promote the customer. Portal admission and canonical resolution use the shared admission check. OIDC customer-role validation additionally requires noneditable built-in provenance; repeat JIT reconciliation locks the default role and denies invalid customer JIT admission. No IdP path grants instance administrator or sees_all. The accepted API-key owner/current-role clamp remains in place: native reads use the resolved credential/subset; legacy task reads retain the separate key task-read clamp. Inbox mutation routes remain session-only. The accepted lifecycle result retains revokedUserId, and its invalidation/outer-commit contract is preserved; this candidate does not replace accepted identity changes with an older branch copy.
+
+**All four inbox operations.** Candidate selection is bound to the authenticated recipient and a positive closed resource discriminator. Native item/comment fact queries take identity and the actual transaction executor and apply current project reach before returning protected resource facts. Workspace fact reads apply current workspace reach. Participant facts are restricted to the already-scoped returned private items. Canonical policy then enforces person binding, current work-item authority, customer serving-project organisation, NO-19 event audience, public comments and private requester/participant visibility. Content and direct/bulk effects repeat same-row recipient/resource binding and current owner/reach in SQL using that executor; unsupported rows fail closed. Instance notices remain a closed singleton operational family behind current administrator authority, and private MFA notices bind the current person/user. Denied rows do not consume the 50-visible-result cap; keyset pagination advances over candidate pages. Read-all/clear traverse pages and leave hidden rows stored/unread under D10. Repeatable-read operations resolve identity and policy in one snapshot, with bounded whole-operation serialization retries; no stronger concurrent-revocation ordering is claimed.
+
+**Workflows and transaction seams.** WF-9 examines every workspace project, including empty and archived projects. The scalar complete-reach refusal reveals no hidden IDs/counts. Validation uses one repeatable-read identity/read snapshot, and publication reloads identity, checks complete reach, writes and rereads in a serializable transaction with bounded full retries. WF-19 remains shape-only authoring for literal assignee IDs; execution eligibility is not broadened. Held set_field remains rejected. Route capability admission remains separate from SQL reach.
+
+**Audit, scheduler, fanout and preferences.** Audit append preserves the same executor, advisory chain lock, head read, single database clock sample, canonical hash and insert order; verification preserves seq order and UTC microsecond text. Instance audit SQL rechecks current administrator facts while its route retains the narrower read_audit key capability gate. Workspace audit is unconditionally workspace-bound and correlates each project row to that workspace and current canonical reach. Scheduler lease ownership/expiry, reminder dedupe and legal-hold cleanup predicates retain their extraction behavior and accepted UTC clock convention. Fanout retains the producer transaction through person locking, inbox/outbox/delivery inserts, self exclusion and idempotency. Preference/delivery relocation preserves recipient-keyed rules, selected-project ownership validation, encrypted secrets and destination checks. Existing shared-helper and pre-wiring residuals are not converted into claims of universal query compliance, provider safety, or notification completion. No held outbound producer/worker was activated.
+
+## Non-blocking held-producer finding
+
+**N1 — key-addressed native work-item rows are accepted by fact resolution but not by final owner SQL.** notifications.md's resource mapping permits a work-item id/key. repository.ts:103–105 loads either and maps both to the same canonical facts, but inbox.repository.ts:515 requires work_item.id = notification.resource_id in currentOwnerPredicate. A valid key-addressed work-item row therefore passes fact/policy preflight and is then omitted from content, direct read and bulk effects. This is a fail-closed availability gap, not a demonstrated disclosure.
+
+I found no active native work_item notification producer in the current resolver/producer paths: the existing native mention producer emits comment IDs, approvals emit approval IDs, and workspace fanout remains held. This gap predates the final structural/472 delta and concerns the held work_item producer contract, so it does not block this query-ownership/security integration. It must remain an explicit pre-wiring residual; this review does not authorize wiring that producer or claim its key form works. No database reproduction was run for N1.
+
+## Commands, evidence and limits
+
+Actual commands: pwd/cat/sed/rg/nl source and contract reads; git status, rev-parse HEAD and HEAD^{tree}, merge-base --is-ancestor, combined and delta diff/stat/numstat and source/test diff --check; gh pr list --state open and gh pr view 785; the focused unit command below. One initial evidence-filename read used the wrong adjudication suffix and returned missing-file; I corrected it and read the authentic -luna.md record. One broad evidence filename search traversed package-cache filenames and was replaced by exact record reads. Neither failure was treated as evidence of source behavior.
+
+- pnpm exec vitest run --config vitest.config.ts ../../tests/api/notification/native-inbox-reach.test.ts ../../tests/api/permissions/resolve-identity.test.ts, from apps/api: **2 files / 65 tests passed**, exit 0. These are cheap pure unit checks, not SQL or full-suite proof.
+- git diff --check for the final two-file delta and the combined apps/api/tests paths: passed.
+- Exact-head/tree and clean worktree verified. Live #785 still points to e533a9875e47399247b740b53f6fd192fa43ec9d, so its hosted state is not evidence for this local candidate. #798 remained open; it was not imported or treated as accepted authority.
+- Author evidence remains source-bound: 33 workflow/task-reach, 14 audit and 1 native PostgreSQL case at 30091; one empty-role case at b4c; two duplicate cases at 472. I did not rerun those counts or claim a full current PostgreSQL pass. Author typecheck/Biome receipts are not my reruns.
+
+No PostgreSQL, Docker, build, browser, full suite, hosted CI execution, provider I/O, source edits, commit, push, publication or PR mutation was performed. Credential-bearing correction/setup/raw runtime evidence was not opened or copied. This private report is mode 0600. Required exact-head CI, image build/boot/health and applicable runtime/browser gates remain with the conductor. No merge, SIT, whole-580, stage-completion or waiver claim is made.
+
+---
+
+Retained evidence file — workflow-query-scope-owner-decisions-20261016.json
+
+{
+  "recordedAt": "2026-10-16T07:02:28.412672+00:00",
+  "source": "Thomas direct user-message reply in this conductor session",
+  "requestCall": "call_582546f57dbd436ab10d43e1ca364923",
+  "exactReceiptSecondAttested": false,
+  "decisions": [
+    {
+      "questionItem": 0,
+      "rule": "WF-9",
+      "answer": "Require access to every adopting project (Recommended): otherwise return a generic refusal without project or item details."
+    },
+    {
+      "questionItem": 1,
+      "rule": "WF-19",
+      "answer": "Check shape only when authoring (Recommended); enforce person eligibility at execution, allowing unknown IDs to be saved."
+    }
+  ],
+  "scope": "Owning workflow spec and bounded acceptance correction; not a gate waiver or new roadmap authorization"
+}
+
+---
+
+Retained evidence file — workflow-wf9-adoption-owner-decision-20261016.json
+
+{
+  "recordedAt": "2026-10-16T08:04:55.495441+00:00",
+  "exactReceiptSecondAttested": false,
+  "source": "Thomas direct conductor chat response to request_user_input_async call_be4fae73c6c54175992e413270fc6f0c item0",
+  "question": "One definition is still missing for your WF-9 decision: types belong to the workspace, with no project–type adoption table. Should “every adopting project” include empty projects, or only projects that already contain a work item of a workflow-bound type? The current code uses the latter.",
+  "answer": "Every project in the workspace, including empty and archived projects (Recommended).",
+  "relatedEarlierDecisions": "workflow-query-scope-owner-decisions-20261016.json",
+  "scope": "WF-9 validate and publish adopting-project set; earlier all-project-access generic-refusal rule remains; WF-19 authoring shape-only/execution active-roster decision remains",
+  "isGateWaiver": false,
+  "implementationReviewCIAndSITStillRequired": true
+}
+
+---
+
+Retained evidence file — notification-bc-report-filename-erratum.md
+
+# Notification B+C handoff filename preservation correction
+
+The author reused `notification-query-scope-bc-remediation-luna.md` for the later 30091 source handoff. The conductor caught the mismatch against the already recorded first report hash. The later report was preserved byte-for-byte separately as `notification-30091-bc-remediation-luna.md` (SHA-256 `9b2559092d839a04990066b735479858523cb365424133e72af67a7508552d45`).
+
+The first report was mechanically recovered from the conductor's prior file-read tool output, with two identical matches, and verified against its original recorded SHA-256 `7149b0c633cbd4e2416be372023020b0918c483f689e98bf7bed09130b5c45db` before restoring its original filename. A separate recovered copy and private recovery receipt remain. No report was reconstructed from memory or rewritten; no raw transcript or credential-bearing runtime setup is published.
+
+Both authentic reports are retained with their actual source scopes. This correction changes no source, test result, review verdict or gate.
+
+---
+
+Retained evidence file — notification-bc-report-preservation-recovery.json
+
+{
+  "time": "2026-10-16T09:23:49.375024+00:00",
+  "originalReport": "notification-query-scope-bc-remediation-luna.md",
+  "originalSha256": "7149b0c633cbd4e2416be372023020b0918c483f689e98bf7bed09130b5c45db",
+  "newReport": "notification-30091-bc-remediation-luna.md",
+  "newSha256": "9b2559092d839a04990066b735479858523cb365424133e72af67a7508552d45",
+  "recoveryCopy": "notification-first-bc-remediation-recovered-7149b0c6.md",
+  "recoveryMethod": "mechanically extracted exact original file content from prior conductor tool output in private session JSONL; two identical matches; recorded original SHA-256 verified before restoration",
+  "rawTranscriptPublished": false,
+  "sourceChanged": false
+}
