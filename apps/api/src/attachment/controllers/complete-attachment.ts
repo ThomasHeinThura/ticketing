@@ -1,11 +1,6 @@
-import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  attachmentTable,
-  instanceSettingTable,
-  workItemTable,
-} from "../../database/schema";
+import type { attachmentTable } from "../../database/schema";
 import {
   deleteStorageObject,
   finalizeStorageObject,
@@ -18,6 +13,13 @@ import {
   assertWorkItemStillLive,
 } from "../../work-item/assert-work-item-live";
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
+import {
+  deletePendingWorkItemAttachment,
+  findAttachment,
+  getAttachmentSizeLimit,
+  lockAttachmentWorkItem,
+  updateAttachmentReady,
+} from "../repository";
 
 const SNIFF_BYTES = 512;
 
@@ -31,34 +33,18 @@ async function deleteRejectedPendingAttachmentRow(input: {
   workItemId: string;
 }) {
   return db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select({
-        projectId: workItemTable.projectId,
-        deletedAt: workItemTable.deletedAt,
-        archivedAt: workItemTable.archivedAt,
-      })
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.id, input.workItemId),
-          eq(workItemTable.workspaceId, input.workspaceId),
-        ),
-      )
-      .for("share");
+    const [locked] = await lockAttachmentWorkItem(tx, {
+      workItemId: input.workItemId,
+      workspaceId: input.workspaceId,
+    });
     assertWorkItemStillLive(locked);
     await assertProjectStillLive(tx, locked.projectId);
 
-    return tx
-      .delete(attachmentTable)
-      .where(
-        and(
-          eq(attachmentTable.id, input.attachmentId),
-          eq(attachmentTable.workspaceId, input.workspaceId),
-          eq(attachmentTable.workItemId, input.workItemId),
-          eq(attachmentTable.state, "pending"),
-        ),
-      )
-      .returning({ id: attachmentTable.id });
+    return deletePendingWorkItemAttachment(tx, {
+      id: input.attachmentId,
+      workspaceId: input.workspaceId,
+      workItemId: input.workItemId,
+    });
   });
 }
 
@@ -80,11 +66,7 @@ export type CompleteAttachmentInput = {
 export async function completeAttachment(input: CompleteAttachmentInput) {
   const { attachmentId, workspaceId, workItemId, actorId, actorType } = input;
 
-  const [attachment] = await db
-    .select()
-    .from(attachmentTable)
-    .where(eq(attachmentTable.id, attachmentId))
-    .limit(1);
+  const [attachment] = await findAttachment(db, attachmentId);
 
   if (
     !attachment ||
@@ -104,10 +86,7 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   // only bounds the CLAIMED size, and the S3 driver's presigned PUT has no
   // `content-length-range` condition (`storage/s3.ts`'s own comment), so a caller could
   // otherwise upload an arbitrarily large object and have it recorded as "ready".
-  const [settings] = await db
-    .select({ maxBytes: instanceSettingTable.attachmentMaxBytes })
-    .from(instanceSettingTable)
-    .limit(1);
+  const [settings] = await getAttachmentSizeLimit(db);
   const maxBytes = settings?.maxBytes ?? FALLBACK_MAX_BYTES;
 
   const NOT_FOUND_MESSAGE =
@@ -202,33 +181,20 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
       // activity row) on a dead item. `.for("share")` locks the row so a concurrent
       // soft-delete blocks until this transaction finishes; read-only here, so a shared
       // lock is enough.
-      const [locked] = await tx
-        .select({
-          projectId: workItemTable.projectId,
-          deletedAt: workItemTable.deletedAt,
-          archivedAt: workItemTable.archivedAt,
-        })
-        .from(workItemTable)
-        .where(eq(workItemTable.id, workItemId))
-        .for("share");
+      const [locked] = await lockAttachmentWorkItem(tx, { workItemId });
       assertWorkItemStillLive(locked);
       await assertProjectStillLive(tx, locked.projectId);
 
-      const rows = await tx
-        .update(attachmentTable)
-        .set({ state: "ready", size: contentLength, objectKey: finalObjectKey })
-        // L5 security-review fix (2026-09-27): the `WHERE state = 'pending'` condition
-        // makes the 409-under-concurrency behaviour a real database-level guard rather
-        // than something only observed because of the read-then-write check above -- two
-        // concurrent `complete` calls now have exactly one winner at the database, not at
-        // whichever request happened to read first.
-        .where(
-          and(
-            eq(attachmentTable.id, attachmentId),
-            eq(attachmentTable.state, "pending"),
-          ),
-        )
-        .returning();
+      const rows = await updateAttachmentReady(tx, {
+        id: attachmentId,
+        size: contentLength,
+        objectKey: finalObjectKey,
+      });
+      // L5 security-review fix (2026-09-27): the `WHERE state = 'pending'` condition
+      // makes the 409-under-concurrency behaviour a real database-level guard rather
+      // than something only observed because of the read-then-write check above -- two
+      // concurrent `complete` calls now have exactly one winner at the database, not at
+      // whichever request happened to read first.
 
       if (rows.length > 0) {
         await recordWorkItemActivity(tx, [
