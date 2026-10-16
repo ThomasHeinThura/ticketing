@@ -1,3 +1,13 @@
+## Approval recovery runtime held — 2026-10-16 21:43 UTC
+
+**Accepted main:** unchanged `c022915a8768b96b460c798feafafd7d48214d5c`. #809 exact publication894d remains awaiting its full PostgreSQL result; no final body or merge.
+
+Recovered #789 is now clean local source `b27e6c9bfa7d136ba06db8b6dd36595df49ea36b`, fourteen paths. Root pre-freeze inspection caught the explicit expiry INSERTSELECT bypassing its destination timestamp encoder; the author repaired it and added exact ISO/epoch checks under both existing non-UTC wrappers. Final API typecheck, scoped Biome14 and diff check pass. Fresh independent full14path ordinary A initially CLEAR is retained source-bound; runtime then failed and the same independent reviewer is recording a separate follow-up against the actual failures.
+
+Actual root focused PostgreSQL finished21:41:15Z: six of fourteen files and74 of89tests passed;15failed/native1/47.91seconds. Raw167529bytes SHA256ace179d3df30f538a05c48512ba55655a14279c75be08754d5c103b9235aa783. Failures involve customer positive/denial paths, private requester/participant reach, lost-reach metadata/decision behavior and feature-flag precedence. Their product-versus-fixture classification remains under source diagnosis; no oracle is weakened or cause assumed from counts. Exact owned cleanup returns23containers109volumes7networks unchanged, private environment removed. No repaired runtime pass, publication, full security approval or acceptance is claimed. Carrier may use its one focused source-check window after this cleanup.
+
+The conductor continues the existing selected-unit mission. All performance holds, primary dirty checkout, owner decisions and final signed-artifact/SIT/nonempty-attachment restore/audit requirements remain unchanged.
+
 ## Current verification and structural recovery — 2026-10-16 21:36 UTC
 
 **Accepted main:** unchanged `c022915a8768b96b460c798feafafd7d48214d5c` (#808). #809 publication `894d7775b384794f1387114b2dd197673391d2cc` now has actual G11 22/22 (state122.8ms, assignment137.6ms first set, render438.5ms, drag16.7ms), browser63 and unit12tasks/API121files872tests/web186files1023tests. Image `sha256:ebfc7cadba1c85b1e05e025e82f2cdcd9f7bf0444c308c1df347356e37f877ca` applied125migrations, UID10001, healthy/live-ready200, nohostports and verified owned-network cleanup. Actual artifact12075214145 and synthetic703db825/publication treee735a3f5 match. Full PostgreSQL117201467453 is still running at21:36; template honestly remains pending. No final body or merge yet. Prior two PostgreSQL order failures and assignment217.2ms adverse evidence remain source-bound, not erased.
