@@ -66,14 +66,14 @@ async function createColumn({
   const position = (maxPos?.maxPosition ?? -1) + 1;
 
   const created = await insertColumn(identity, {
-      projectId,
-      name,
-      slug,
-      position,
-      icon: icon || null,
-      color: color || null,
-      isFinal: isFinal ?? false,
-    });
+    projectId,
+    name,
+    slug,
+    position,
+    icon: icon || null,
+    color: color || null,
+    isFinal: isFinal ?? false,
+  });
 
   if (!created) {
     throw new HTTPException(500, { message: "Failed to create column" });

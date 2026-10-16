@@ -1,7 +1,9 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import db from "../../database";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 import {
+  ColumnReorderScopeError,
   listProjectColumnsOrdered,
   updateColumnPositionInProject,
 } from "../repository";
@@ -17,24 +19,26 @@ async function reorderColumns(
   // Checked once, up front, before any of the per-column writes below.
   await getProjectWorkspaceId(projectId);
 
-  for (const col of columns) {
-    const updated = await updateColumnPositionInProject(
-      identity,
-      projectId,
-      col.id,
-      col.position,
-    );
-
-    if (!updated) {
-      throw new HTTPException(400, {
-        message: `Column ${col.id} does not belong to this project`,
-      });
+  try {
+    return await db.transaction(async (tx) => {
+      for (const column of columns) {
+        const updated = await updateColumnPositionInProject(
+          identity,
+          projectId,
+          column.id,
+          column.position,
+          tx,
+        );
+        if (!updated) throw new ColumnReorderScopeError(column.id);
+      }
+      return await listProjectColumnsOrdered(identity, projectId, tx);
+    });
+  } catch (error) {
+    if (error instanceof ColumnReorderScopeError) {
+      throw new HTTPException(400, { message: error.message });
     }
+    throw error;
   }
-
-  const updated = await listProjectColumnsOrdered(identity, projectId);
-
-  return updated;
 }
 
 export default reorderColumns;

@@ -12,6 +12,7 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import {
   listReachOf,
   requireReachContext,
@@ -20,7 +21,6 @@ import {
 import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
-import { resolveCallerIdentity } from "../utils/has-project-reach";
 import {
   acceptSubmission,
   claimSubmission,

@@ -1,6 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { listProjectColumnsByPosition } from "../repository";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { listProjectColumnsByPosition } from "../repository";
 
 async function getColumns(identity: ResolvedIdentity, projectId: string) {
   // #202: rejects a soft-deleted project before returning its board. A *nonexistent*

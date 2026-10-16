@@ -149,6 +149,37 @@ describe("API integration: column CRUD through the repository", () => {
       .where(eq(schema.columnTable.id, other.columns.todo.id));
     expect(untouched?.position).not.toBe(99);
   });
+
+  it("rolls back earlier reorder writes when a later scoped update returns no row", async () => {
+    const { member, project, columns } = await adminWithProject();
+    const other = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const original = await db
+      .select({
+        id: schema.columnTable.id,
+        position: schema.columnTable.position,
+      })
+      .from(schema.columnTable)
+      .where(eq(schema.columnTable.projectId, project.id));
+
+    const response = await call("PUT", `/api/column/reorder/${project.id}`, {
+      columns: [
+        { id: columns.todo.id, position: 99 },
+        { id: other.columns.todo.id, position: 100 },
+      ],
+    });
+    expect(response.status).toBe(400);
+    await response.text();
+    const after = await db
+      .select({
+        id: schema.columnTable.id,
+        position: schema.columnTable.position,
+      })
+      .from(schema.columnTable)
+      .where(eq(schema.columnTable.projectId, project.id));
+    expect(after).toEqual(original);
+  });
 });
 
 describe("API integration: workflow-rule CRUD through the repository", () => {

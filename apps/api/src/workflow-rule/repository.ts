@@ -1,8 +1,13 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, exists, sql } from "drizzle-orm";
 import db from "../database";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
-import { columnTable, projectTable, workflowRuleTable } from "../database/schema";
+import {
+  columnTable,
+  projectTable,
+  workflowRuleTable,
+} from "../database/schema";
 
 export type NewWorkflowRule = Pick<
   typeof workflowRuleTable.$inferInsert,
@@ -180,10 +185,19 @@ export async function insertWorkflowRule(
     .select(
       db
         .select({
+          id: sql`${createId()}`.as("id"),
           projectId: projectTable.id,
-          integrationType: sql`${values.integrationType}`.as("integration_type"),
-          eventType: sql`${values.eventType}`.as("event_type"),
+          integrationType:
+            sql`${sql.param(values.integrationType, workflowRuleTable.integrationType)}`.as(
+              "integration_type",
+            ),
+          eventType:
+            sql`${sql.param(values.eventType, workflowRuleTable.eventType)}`.as(
+              "event_type",
+            ),
           columnId: columnTable.id,
+          createdAt: sql`now()`.as("created_at"),
+          updatedAt: sql`now()`.as("updated_at"),
         })
         .from(projectTable)
         .innerJoin(

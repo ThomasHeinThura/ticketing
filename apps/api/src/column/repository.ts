@@ -1,12 +1,10 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, asc, eq, exists, sql } from "drizzle-orm";
+import { and, asc, eq, exists, isNull, sql } from "drizzle-orm";
 import db from "../database";
+import { type Executor, executorOrDefault } from "../database/executor";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
-import {
-  columnTable,
-  projectTable,
-  taskTable,
-} from "../database/schema";
+import { columnTable, projectTable, taskTable } from "../database/schema";
 
 export type ColumnRow = typeof columnTable.$inferSelect;
 export type NewColumn = Pick<
@@ -17,21 +15,32 @@ export type ColumnChanges = Partial<
   Pick<typeof columnTable.$inferInsert, "name" | "icon" | "color" | "isFinal">
 >;
 
-function reachableProject(identity: ResolvedIdentity, projectId: string) {
+export class ColumnReorderScopeError extends Error {
+  constructor(columnId: string) {
+    super(`Column ${columnId} does not belong to this project`);
+  }
+}
+
+function reachableProject(
+  identity: ResolvedIdentity,
+  projectId: string,
+  executor?: Executor,
+) {
+  const query = executorOrDefault(executor);
   return exists(
-    db
+    query
       .select({ one: sql`1` })
       .from(projectTable)
       .where(
         and(
           eq(projectTable.id, projectId),
-          sql`${projectTable.deletedAt} IS NULL`,
+          isNull(projectTable.deletedAt),
           currentProjectReachPredicate(
             identity,
             projectTable.id,
             projectTable.workspaceId,
             projectTable.organisationId,
-            db,
+            query,
           ),
         ),
       ),
@@ -46,7 +55,7 @@ function reachableColumn(identity: ResolvedIdentity) {
       .where(
         and(
           eq(projectTable.id, columnTable.projectId),
-          sql`${projectTable.deletedAt} IS NULL`,
+          isNull(projectTable.deletedAt),
           currentProjectReachPredicate(
             identity,
             projectTable.id,
@@ -59,10 +68,7 @@ function reachableColumn(identity: ResolvedIdentity) {
   );
 }
 
-export async function findColumnById(
-  identity: ResolvedIdentity,
-  id: string,
-) {
+export async function findColumnById(identity: ResolvedIdentity, id: string) {
   const [row] = await db
     .select()
     .from(columnTable)
@@ -93,10 +99,15 @@ export async function getMaxColumnPosition(
   projectId: string,
 ) {
   const [maxPos] = await db
-    .select({ maxPosition: sql<number>`COALESCE(MAX(${columnTable.position}), -1)` })
+    .select({
+      maxPosition: sql<number>`COALESCE(MAX(${columnTable.position}), -1)`,
+    })
     .from(columnTable)
     .where(
-      and(eq(columnTable.projectId, projectId), reachableProject(identity, projectId)),
+      and(
+        eq(columnTable.projectId, projectId),
+        reachableProject(identity, projectId),
+      ),
     );
   return maxPos;
 }
@@ -110,13 +121,20 @@ export async function insertColumn(
     .select(
       db
         .select({
+          id: sql`${createId()}`.as("id"),
           projectId: projectTable.id,
-          name: sql`${values.name}`.as("name"),
-          slug: sql`${values.slug}`.as("slug"),
-          position: sql`${values.position}`.as("position"),
-          icon: sql`${values.icon}`.as("icon"),
-          color: sql`${values.color}`.as("color"),
-          isFinal: sql`${values.isFinal}`.as("is_final"),
+          name: sql`${sql.param(values.name, columnTable.name)}`.as("name"),
+          slug: sql`${sql.param(values.slug, columnTable.slug)}`.as("slug"),
+          position: sql`${sql.param(values.position, columnTable.position)}`.as(
+            "position",
+          ),
+          icon: sql`${sql.param(values.icon, columnTable.icon)}`.as("icon"),
+          color: sql`${sql.param(values.color, columnTable.color)}`.as("color"),
+          isFinal: sql`${sql.param(values.isFinal, columnTable.isFinal)}`.as(
+            "is_final",
+          ),
+          createdAt: sql`now()`.as("created_at"),
+          updatedAt: sql`now()`.as("updated_at"),
         })
         .from(projectTable)
         .where(
@@ -153,10 +171,7 @@ export async function countTasksInColumn(
             .select({ one: sql`1` })
             .from(columnTable)
             .where(
-              and(
-                eq(columnTable.id, columnId),
-                reachableColumn(identity),
-              ),
+              and(eq(columnTable.id, columnId), reachableColumn(identity)),
             ),
         ),
       ),
@@ -164,10 +179,7 @@ export async function countTasksInColumn(
   return taskCount;
 }
 
-export async function deleteColumnById(
-  identity: ResolvedIdentity,
-  id: string,
-) {
+export async function deleteColumnById(identity: ResolvedIdentity, id: string) {
   const [deleted] = await db
     .delete(columnTable)
     .where(and(eq(columnTable.id, id), reachableColumn(identity)))
@@ -183,7 +195,10 @@ export async function listProjectColumnsByPosition(
     .select()
     .from(columnTable)
     .where(
-      and(eq(columnTable.projectId, projectId), reachableProject(identity, projectId)),
+      and(
+        eq(columnTable.projectId, projectId),
+        reachableProject(identity, projectId),
+      ),
     )
     .orderBy(asc(columnTable.position));
 }
@@ -193,29 +208,34 @@ export async function updateColumnPositionInProject(
   projectId: string,
   id: string,
   position: number,
+  executor?: Executor,
 ) {
-  const [updated] = await db
+  const query = executorOrDefault(executor);
+  const [updated] = await query
     .update(columnTable)
     .set({ position })
     .where(
       and(
         eq(columnTable.id, id),
         eq(columnTable.projectId, projectId),
-        reachableProject(identity, projectId),
+        reachableProject(identity, projectId, query),
       ),
     )
     .returning({ id: columnTable.id });
   return updated;
 }
 
+/** Apply a reorder as one transaction; every returned update is checked before commit. */
 export async function listProjectColumnsOrdered(
   identity: ResolvedIdentity,
   projectId: string,
+  executor?: Executor,
 ) {
-  return await db.query.columnTable.findMany({
+  const query = executorOrDefault(executor);
+  return await query.query.columnTable.findMany({
     where: and(
       eq(columnTable.projectId, projectId),
-      reachableProject(identity, projectId),
+      reachableProject(identity, projectId, query),
     ),
     orderBy: (columns, { asc }) => [asc(columns.position)],
   });

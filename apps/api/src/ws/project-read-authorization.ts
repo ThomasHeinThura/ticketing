@@ -1,8 +1,8 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { resolveIdentity } from "../permissions/resolve-identity";
-import { findReachableLiveProject } from "./repository";
 import { evaluateProjectRead } from "../utils/has-project-reach";
 import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
+import { findReachableLiveProject } from "./repository";
 
 /**
  * The credential facts a realtime socket holds for its caller. The native socket and the
@@ -108,7 +108,15 @@ export function resolveSocketIdentity(
  * is the PROJECT's own (`rbac.md` Reach step 6), never the workspace's.
  */
 export async function findSocketProject(
-  credential: Pick<ProjectSocketCredential, "userId" | "apiKeyId" | "apiKeyEnabled" | "apiKeyOwnerUserId" | "apiKeyPermissions" | "impersonated">,
+  credential: Pick<
+    ProjectSocketCredential,
+    | "userId"
+    | "apiKeyId"
+    | "apiKeyEnabled"
+    | "apiKeyOwnerUserId"
+    | "apiKeyPermissions"
+    | "impersonated"
+  >,
   projectId: string,
 ): Promise<{ workspaceId: string; organisationId: string | null } | null> {
   const identity = await resolveSocketIdentity(credential);

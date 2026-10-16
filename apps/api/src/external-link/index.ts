@@ -1,3 +1,4 @@
+import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
   type BaseVariables,
@@ -5,10 +6,10 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
-import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
-import { externalLinkListSchema } from "./response";
+import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { listExternalLinksByTask } from "./repository";
+import { externalLinkListSchema } from "./response";
 import { taskIdParam } from "./schema";
 
 const getExternalLinksByTaskRoute = createRoute({
@@ -38,7 +39,9 @@ const externalLink = apiRouter<
   const { taskId } = c.req.valid("param");
 
   const identity = await resolveCallerIdentity(c, c.get("userId"));
-  if (!identity) return c.notFound();
+  if (!identity) {
+    throw new HTTPException(404, { message: "Task not found" });
+  }
   const links = await listExternalLinksByTask(identity, taskId);
 
   return c.json(

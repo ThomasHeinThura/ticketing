@@ -10,7 +10,10 @@ import {
   validateSubmissionData,
   visibleFields,
 } from "@taskdesk/domain";
-import { resolveFeatureFlag, type ResolvedIdentity } from "@taskdesk/permissions";
+import {
+  type ResolvedIdentity,
+  resolveFeatureFlag,
+} from "@taskdesk/permissions";
 import {
   and,
   asc,

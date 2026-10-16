@@ -1,5 +1,5 @@
-import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import db from "../database";
 import {
   currentProjectReachPredicate,
@@ -53,7 +53,7 @@ function projectScopeFilter(scope: SearchScope) {
 }
 
 export async function listUserWorkspaceIds(userId: string) {
-  return db
+  return await db
     .select({ workspaceId: workspaceUserTable.workspaceId })
     .from(workspaceUserTable)
     .where(eq(workspaceUserTable.userId, userId));
@@ -67,7 +67,7 @@ export async function findTasksByShortId(params: {
   taskNumber: number;
 }) {
   const { scope, projectId, slug, taskNumber } = params;
-  return db
+  return await db
     .select({
       id: taskTable.id,
       title: taskTable.title,
@@ -119,7 +119,7 @@ export async function searchTasks(params: {
       END
     `;
 
-  return db
+  return await db
     .select({
       id: taskTable.id,
       title: taskTable.title,
@@ -170,7 +170,7 @@ export async function searchProjects(params: {
       END
     `;
 
-  return db
+  return await db
     .select({
       id: projectTable.id,
       name: projectTable.name,
@@ -211,7 +211,7 @@ export async function searchWorkspaces(params: {
       END
     `;
 
-  return db
+  return await db
     .select({
       id: workspaceTable.id,
       name: workspaceTable.name,
@@ -256,7 +256,7 @@ export async function searchActivities(params: {
       END
     `;
 
-  return db
+  return await db
     .select({
       id: taskActivityTable.id,
       type: taskActivityTable.type,

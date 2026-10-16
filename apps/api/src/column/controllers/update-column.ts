@@ -25,11 +25,11 @@ async function updateColumn(
   await getProjectWorkspaceId(existing.projectId);
 
   const updated = await updateColumnById(identity, id, {
-      ...(data.name !== undefined && { name: data.name }),
-      ...(data.icon !== undefined && { icon: data.icon }),
-      ...(data.color !== undefined && { color: data.color }),
-      ...(data.isFinal !== undefined && { isFinal: data.isFinal }),
-    });
+    ...(data.name !== undefined && { name: data.name }),
+    ...(data.icon !== undefined && { icon: data.icon }),
+    ...(data.color !== undefined && { color: data.color }),
+    ...(data.isFinal !== undefined && { isFinal: data.isFinal }),
+  });
 
   if (!updated) {
     throw new HTTPException(404, { message: "Column not found" });

@@ -70,11 +70,11 @@ async function upsertWorkflowRule({
   }
 
   const created = await insertWorkflowRule(identity, {
-      projectId,
-      integrationType,
-      eventType,
-      columnId,
-    });
+    projectId,
+    integrationType,
+    eventType,
+    columnId,
+  });
 
   if (!created) {
     throw new HTTPException(500, {
