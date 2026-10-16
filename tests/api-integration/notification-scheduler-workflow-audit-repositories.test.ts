@@ -50,10 +50,23 @@ async function notification(
   userId: string,
   overrides: Partial<typeof schema.notificationTable.$inferInsert> = {},
 ) {
+  const [person] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId));
+  if (!person) throw new Error("notification fixture needs a person");
   return requireRow(
     await db
       .insert(schema.notificationTable)
-      .values({ userId, type: "info", ...overrides })
+      .values({
+        userId,
+        personId: person.id,
+        type: "security_alert",
+        resourceType: "person",
+        resourceId: person.id,
+        eventData: { kind: "mfa_reset" },
+        ...overrides,
+      })
       .returning(),
     "notification",
   );
@@ -81,7 +94,7 @@ describe("API integration: notification inbox repository", () => {
     );
     expect(await findOwnNotificationType(theirs.id, a.user.id)).toBe(undefined);
     expect(await findOwnNotificationType(mine.id, a.user.id)).toEqual({
-      type: "info",
+      type: "security_alert",
     });
 
     await markReadableNotificationsRead(a.user.id);
@@ -99,6 +112,13 @@ describe("API integration: notification inbox repository", () => {
     const a = await createWorkspaceMember({ role: "member" });
     await notification(a.user.id, {
       type: "audit_write_failed",
+      personId: null,
+      resourceType: "instance",
+      resourceId: "singleton",
+      eventData: {
+        operation: "append_audit_log",
+        occurredAt: "2026-01-02T00:00:00.000Z",
+      },
       createdAt: new Date("2026-01-02T00:00:00Z"),
     });
     const older = await notification(a.user.id, {
@@ -147,8 +167,11 @@ describe("API integration: notification inbox repository", () => {
     );
     const plain = await notification(a.user.id, { title: "plain" });
     await notification(a.user.id, {
+      type: "task_created",
       resourceType: "task",
       resourceId: task.id,
+      personId: null,
+      eventData: { taskTitle: "Reach" },
     });
 
     // No project grant: the task row is not readable; the plain row is.
