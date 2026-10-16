@@ -1249,3 +1249,128 @@ Integration tests, PG, runtime tests, build, browser, and CI were not run, per a
 ## Current machine binding
 
 **Reviewed head:** `09e3a531ce2f5213dfda1a49c7dd8fc2a3fe5609`
+
+
+## Hosted static/unit repair and bounded independent confirmations
+
+Old8b99 static and unit failures remain adverse. The formatter changes only three argument-list wraps; the unit fixture now supplies canonical session identity and retains real middleware/repository query construction and immediate NUL refusal. Prior full28-path review and focusedPG165 remain bound to09e3; current delta has separate independent ordinary and security confirmation. Current full hosted runtime/image acceptance remains mandatory.
+
+## Evidence file
+
+`b9-809-format-author-luna.md`
+
+# PR 809 scoped Biome formatting repair
+
+Published worktree `/Users/heinthura/.codex/worktrees/q580b9-current/Ticketing.v2` was clean at before-commit SHA `8b99d2f6b7b3cefaafb7e5a7e91e390dfa39eecc`. Only `apps/api/src/task/index.ts` was formatted, using the installed repository formatter: `pnpm exec biome format --write apps/api/src/task/index.ts` (exit 0; “Formatted 1 file … Fixed 1 file”).
+
+The delta consists of the formatter's argument-list line wrapping at the two `findProjectWorkspaceContext` calls and one `findAssetIdByObjectKey` call. The TypeScript token words are unchanged: `git show --format= --word-diff=porcelain --word-diff-regex='[^[:space:]]+' HEAD -- apps/api/src/task/index.ts` emitted only `~` whitespace records and no added/deleted word records. `git diff --check` passed.
+
+One verification detail: the specifically requested `git diff -w --exit-code -- apps/api/src/task/index.ts` did **not** return empty; it displayed these line-wrap changes and exited 1 because Git's `-w` comparison retains line breaks. The whitespace-token word diff above confirms there are no non-whitespace token changes, but this does not satisfy a literal empty `git diff -w` condition.
+
+The scoped PR 809 TypeScript Biome check passed (exit 0):
+
+`pnpm exec biome ci --diagnostic-level=error <the 28 changed TypeScript paths from gh pr view 809>`
+
+Biome reported “Checked 28 files … No fixes applied.” The exact 28 paths were the 21 `apps/api/src/task/**` files and 7 listed integration/unit test TypeScript files from the PR. No tests, typecheck, PostgreSQL, build, browser, or runtime checks were run.
+
+Committed on the existing branch as `e00f99005c01a6d1f4f672b3bca6fe38c9ab8acf` (`style(api): format scoped task route arguments`). Commit changes only `apps/api/src/task/index.ts` (6 insertions, 3 deletions); worktree is clean. No push or PR changes were made.
+
+## Evidence file
+
+`b9-809-permission-fixture-author-luna.md`
+
+# PR 809 permission-test fixture repair
+
+Before SHA: `e00f99005c01a6d1f4f672b3bca6fe38c9ab8acf` (the prior formatter-only commit retained). After SHA: `791f9703b93b38049476eb27bf91d9f270fb2987`. Only `tests/api/task/require-task-permission.test.ts` changed in this repair.
+
+The hosted API unit run at PR head `8b99d2f6b7b3cefaafb7e5a7e91e390dfa39eecc` had 871/872 tests pass; the failing case expected 200 but got 500. The preserved raw log is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/809-8b99-unit-failure.log` (SHA-256 `2ec938870936e6f57e9418dbdc44ebb70532e594f9971b021430c1004a0c35a2`). Its stack shows `resolveIdentity` dereferencing absent mocked schema at `resolve-identity.ts:650`, called by newly wired `resolveCallerIdentity` in `requireTaskAssigneePermission`. The prior unit fixture mocked the database with `schema: {}` and had no authenticated identity fixture.
+
+The test now creates its session identity through canonical `resolveIdentityFromFacts`, mocks the request-boundary `resolveCallerIdentity` to return that valid identity, and asserts it receives the route's `user-1`. The repository mock supports the inner-join query shape of the genuine `findTaskAssigneeId` reach predicate and still records that the query is reached. The malformed NUL-ID case continues to assert immediate 400 with no repository query or handler call, and now also asserts identity resolution is not invoked. No production code or authorization behavior changed.
+
+Focused verification passed at the after SHA:
+
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/task/require-task-permission.test.ts` — exit 0, 1 file / 2 tests passed.
+- `pnpm exec biome ci --diagnostic-level=error tests/api/task/require-task-permission.test.ts` — exit 0, 1 file checked, no fixes.
+- `git diff --check` — exit 0.
+
+No broader unit run, PostgreSQL, browser, build, or CI run was performed. This is an author fixture repair, not independent review. The worktree is clean; no push or PR update was made.
+
+## Evidence file
+
+`b9-809-791f-ordinary-a-luna.md`
+
+# Bounded Ordinary A review — PR 809 formatting and permission-test fixture repair
+
+- **Reviewer/model:** GPT-6 Luna, independent review context; I did not author the two repair commits.
+- **Exact current candidate:** `791f9703b93b38049476eb27bf91d9f270fb2987`
+- **Prior full source/security-reviewed head:** `09e3a531ce2f5213dfda1a49c7dd8fc2a3fe5609`
+- **Scope:** bounded review of the two formatting-only route changes and the `require-task-permission` unit-fixture repair, retaining prior full-candidate conclusions and the fresh 09e3 full Sol CLEAR as reported. I read the original hosted failure and both repair notes. Worktree is clean.
+- **Verdict:** **CLEAR for this bounded delta; no blocking finding.** No production authorization logic changed. This review does not independently re-review the full source scope or replace the prior fresh full Sol review.
+
+## Findings
+
+The two `task/index.ts` edits only reflow three argument lists for `findProjectWorkspaceContext` and `findAssetIdByObjectKey`. The author’s word-token comparison records whitespace-only changes. The literal `git diff -w` did retain those line-wrap differences, so it was not empty; this is accurately disclosed in the author note. Inspection of the exact diff shows the argument sequence and expressions unchanged, with formatter-style line breaks only. No behavior change is indicated.
+
+The permission unit-test repair addresses the hosted failure mode directly: the prior fixture returned `schema: {}` and lacked identity context, while the real middleware now resolves a caller identity before invoking the repository reach query. The revised test builds a valid session `ResolvedIdentity` through the canonical `resolveIdentityFromFacts` constructor and mocks only the request-boundary `resolveCallerIdentity` to return it. The well-formed request asserts exactly one resolver call with the request context and `user-1`, completes the actual `requireTaskAssigneePermission` control flow, and confirms the repository query delegate is reached. The mock query-builder implements the `select/from/innerJoin/leftJoin/where/limit` chain used by the actual `findTaskAssigneeId` repository query; it returns no assigned task so the unchanged-assignee path continues. The fixture does not change production identity/auth behavior or bypass the middleware’s resolver seam.
+
+The NUL-byte regression remains present and non-skipped. It still asserts a 400, no repository query and no handler call, with the added assertion that identity resolution is also skipped. The production guard remains before resolver/repository work. Its comment correctly explains this is defense in depth for the standalone middleware because the paired real route’s workspace-access path already rejects NUL IDs; it does not inflate the defect into a live route vulnerability.
+
+The original hosted head `8b99d2f6b7b3cefaafb7e5a7e91e390dfa39eecc` failure (871/872 tests, 1/2 in this file) and stack trace to missing mocked identity context are preserved in the author note. The author reports the focused repaired unit file passed 1 file / 2 tests and Biome at `791f`; I did not execute tests, typecheck, lint, build, PG, runtime or browser checks.
+
+The added review-ledger document keeps its evaluated source binding explicit at `09e3a531` and states that its 28-path full Sol review, focused PG result, and outstanding hosted/full-suite/image/browser acceptance refer to that source review. The formatting and fixture commits do not alter production task behavior or invalidate that prior source review. The source-level full Sol CLEAR remains the existing evidence, not a claim that this bounded unit fixture was separately security-reviewed by Sol.
+
+## Limits
+
+No blocker in the two-commit delta. This report is not a merge/PR approval, hosted-run verification, runtime claim, or another full-panel review. The previous full review and exact-head gate status remain as recorded by the orchestrating session.
+
+## Evidence file
+
+`b9-809-791f-security-61-sol.md`
+
+# PR 809 — bounded independent security confirmation
+
+**Model:** GPT-6.1 Sol
+**Model provenance:** The conductor confirmed this context's explicit dispatch as `model: gpt-6.1-sol`, `fork_turns: none`, `reasoning_effort: high`. This records requested routing. No served model/version fingerprint is independently exposed to this context or the conductor; none is invented.
+**Role/context:** Fresh independent bounded security reviewer, `/root/b9_809_791f_fixture_security_sol`.
+**Reviewed head:** 791f9703b93b38049476eb27bf91d9f270fb2987
+**Comparison base:** 09e3a531ce2f5213dfda1a49c7dd8fc2a3fe5609, the prior full independent security-reviewed source.
+**Checkout:** `/Users/heinthura/.codex/worktrees/q580b9-current/Ticketing.v2`.
+**Independence:** I did not author, direct or remediate this candidate. This is a fresh context without inherited author turns. No child agent was spawned.
+**Verdict:** **CLEAR for this bounded security confirmation.** No blocking or additional non-blocking security finding in the inspected delta. The prior full 28-path source review remains the baseline; this report does not claim a new full review or authorize merge.
+
+## Scope and history inspected
+
+Read actual AGENTS.md, active mission, agent workflow/review and evidence-reuse rules, CLAUDE.md and the applicable CI security-review scope. Read the complete prior full report `query580-b9-09e3-full-security-61-sol.md`, both author repair reports and current independent Ordinary A report `b9-809-791f-ordinary-a-luna.md` (CLEAR). Inspected actual current fixture, middleware, pure identity mapper, request identity adapter, repository lookup, executor and current persisted reach predicate; read the production call sites around the formatting edits and the preserved original API-unit failure stack/summary.
+
+Confirmed exact HEAD and a clean checkout. Per-commit raw history from the comparison base contains exactly:
+
+- `8b99d2f6b7b3cefaafb7e5a7e91e390dfa39eecc`: adds only mode-100644 `docs/07-planning/security-reviews/query-ownership-task-580.md`, 1,251 additions and zero deletions.
+- `e00f99005c01a6d1f4f672b3bca6fe38c9ab8acf`: only `apps/api/src/task/index.ts`, six additions and three deletions, wrapping three argument lists.
+- `791f9703b93b38049476eb27bf91d9f270fb2987`: only `tests/api/task/require-task-permission.test.ts`, 38 additions and one deletion.
+
+The base is an ancestor; no intervening merge, revert, rename, mode change or other path appears. Read-only byte extraction found all 33 named source reports in the private evidence directory and each complete report's bytes present unchanged in the committed ledger. The ledger retains original heads, adverse findings and causal limits, and binds its existing full review to 09e3. Byte equality verifies publication preservation, not independence by itself; the conductor remains responsible for tracing dispatch origins. Nothing in these later commits changes review/gate policy or waives a check.
+
+## Security conclusions
+
+The production edit only splits `tx, identity,` onto separate lines at two `findProjectWorkspaceContext` calls and one `findAssetIdByObjectKey` call. Exact diff and whitespace-token word diff show no added/deleted non-whitespace words. By direct syntax inspection, callee, argument sequence, expressions, commas and enclosing statement/control flow are identical; no automatic-semicolon or string/template change is involved. I did not run an AST parser or a formatter. No production authorization, tenancy, write-result or event behavior changes.
+
+The fixture now obtains a valid staff session identity from the canonical pure `resolveIdentityFromFacts`, with no instance-admin grant and empty workspace/team memberships, rather than fabricating a ResolvedIdentity object. It mocks the existing `resolveCallerIdentity` request boundary, leaving the actual `requireTaskAssigneePermission` and `findTaskAssigneeId` control flow in place. The real lookup still builds its task-ID plus persisted project-reach predicate; the database delegate gains join methods needed to construct that query. Returning an empty result preserves the intended no-existing-assignee continuation path. This narrow unit fixture does not prove live identity loading, SQL authorization or assignment permission decisions, and does not purport to.
+
+The positive case retains HTTP 200, query-reached and handler-reached assertions and additionally requires exactly one resolver call with the route's `user-1`. Per-test mock reset prevents stale resolver calls or implementations from contaminating the NUL case. The malformed-ID test retains HTTP 400, no query and no handler, and now requires no resolver call. The real NUL guard remains before JSON-body, resolver and repository work. No test was skipped, focused, deleted or weakened; no capability or scope check is removed from production.
+
+The old hosted API-unit failure genuinely reached the unprepared identity loader (`resolve-identity.ts:650`) through this middleware and returned 500; its summary remains 120/121 files and 871/872 tests passing. The repair addresses that fixture boundary rather than suppressing the response assertion. The old failed checks remain failed historical evidence, not waived gates.
+
+The prior full independent Sol CLEAR at 09e3 continues to cover its actual 28-path source scope, including structural write-admission/result, move atomicity and reset-lock repairs. This bounded pass found no production semantic change invalidating those source conclusions. It does not independently re-review all those paths or erase the inherited #773 shared-helper gap and prior unproven reader attribution.
+
+## Checks, limits and next gate
+
+Performed only read-only Git/source/evidence inspection and a read-only Python byte-containment comparison. No tests, runtime, CI checker, formatter, typecheck, package installation, PostgreSQL, Docker, image build/boot, browser, GitHub action/mutation, remediation, Git/ref write, push or merge occurred. The sole write is this new private evidence report, created exclusively with mode 0600.
+
+The author report records the focused repaired fixture result at 791f as one file/two tests passing plus scoped Biome success. Those are author results read from the report, not independently executed tests or a new full-suite result. The earlier 09e3 focused PostgreSQL ten-file/165-test result retains its original source binding. This pass makes no current hosted rollup, full-suite, image/health, browser/SIT, stage-completion or merge-readiness claim.
+
+Required GitHub status checks must be green on the exact current candidate after the ordinary/security evidence is published through the normal flow. Old 8b99 failures are not waived, and this source confirmation does not substitute for new current mandatory CI.
+
+
+## Current machine binding
+
+**Reviewed head:** `791f9703b93b38049476eb27bf91d9f270fb2987`
