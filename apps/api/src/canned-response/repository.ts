@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, exists, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
@@ -116,6 +117,7 @@ export async function insertCannedResponse(
 ): Promise<CannedResponse | undefined> {
   const reachableWorkspace = db
     .select({
+      id: sql<string>`${createId()}`.as("id"),
       workspaceId: schema.workspaceTable.id,
       name: sql<string>`${values.name}`.as("name"),
       body: sql`${JSON.stringify(values.body)}::jsonb`.as("body"),
@@ -123,6 +125,8 @@ export async function insertCannedResponse(
         "visibility_default",
       ),
       createdBy: sql<string>`${values.createdBy}`.as("created_by"),
+      createdAt: sql<Date>`now()`.as("created_at"),
+      updatedAt: sql<Date>`now()`.as("updated_at"),
     })
     .from(schema.workspaceTable)
     .where(
