@@ -8,18 +8,19 @@ import {
   type WorkflowState,
   type WorkflowTransition,
 } from "@taskdesk/domain";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import {
   findWorkflowVersionId,
   findWorkflowWorkspaceId,
+  hasCompleteWorkflowProjectReach,
   listDefaultStateTemplates,
   listEnabledProjectStates,
   listLiveItemsWithStateTemplate,
-  listProjectIdsWithItemsOfTypes,
   listReferenceableRoleIds,
   listStateTemplates,
   listVersionTransitions,
-  listWorkflowTypeIds,
+  listWorkflowAdoptingProjectIds,
 } from "../repository";
 
 export type WorkflowVersionProjectValidation = {
@@ -45,38 +46,37 @@ export type WorkflowVersionValidationResult = {
  * they find, the same "declared target, real runtime check" split
  * `create-workflow-version.ts` already uses for `validateWorkflowVersion`.
  *
- * "Every project whose work item types use this workflow" (`WF-9`) is read as: every
- * DISTINCT project that has at least one work item of a type whose `workflow_id` is this
- * workflow -- an adopting project with no items of that type yet has nothing that could
- * be stuck, and no state selection of its own to validate against THIS workflow either
- * (its `state` rows exist independently of which workflow its types happen to use), so it
- * is not reported as a distinct project here. This is the same practical reading
- * `create-workflow-version.ts`'s own scope note gives for "before it is persisted" checks
- * -- the validation panel's authoritative source is `workflows.md`'s prose, and this is a
- * bounded, disclosed interpretation of "every project ... adopting" for a route with no
- * separate "which projects intend to adopt this workflow" registry to query instead.
+ * WF-9 requires complete access to the existing adopting-project set. The repository
+ * checks that set with a scalar SQL refusal query before returning any project/item data.
  */
 export async function validateWorkflowVersion(
+  identity: ResolvedIdentity,
   workflowId: string,
   number: number,
 ): Promise<WorkflowVersionValidationResult> {
-  const workflow = await findWorkflowWorkspaceId(workflowId);
+  const workflow = await findWorkflowWorkspaceId(identity, workflowId);
   if (!workflow) {
     throw new HTTPException(404, { message: "Workflow not found" });
   }
 
-  const version = await findWorkflowVersionId(workflowId, number);
+  const version = await findWorkflowVersionId(identity, workflowId, number);
   if (!version) {
     throw new HTTPException(404, { message: "Workflow version not found" });
   }
 
-  const templateRows = await listStateTemplates(workflow.workspaceId);
+  if (!(await hasCompleteWorkflowProjectReach(identity, workflowId))) {
+    throw new HTTPException(403, {
+      message: "Workflow project access required",
+    });
+  }
+
+  const templateRows = await listStateTemplates(identity, workflow.workspaceId);
   const states: WorkflowState[] = templateRows.map((row) => ({
     id: asStateTemplateId(row.id),
     group: row.group as WorkflowState["group"],
   }));
 
-  const transitionRows = await listVersionTransitions(version.id);
+  const transitionRows = await listVersionTransitions(identity, version.id);
   const transitions: WorkflowTransition[] = transitionRows.map((row) => ({
     id: row.id,
     fromStateTemplateId:
@@ -95,32 +95,35 @@ export async function validateWorkflowVersion(
     effects: row.effects as WorkflowTransition["effects"],
   }));
 
-  const roleRows = await listReferenceableRoleIds(workflow.workspaceId);
+  const roleRows = await listReferenceableRoleIds(
+    identity,
+    workflow.workspaceId,
+  );
   const roleIds = roleRows.map((r) => r.id);
 
   const noOutboundIds = noOutboundStateIds(states, transitions);
   const noOutboundIdSet = new Set(noOutboundIds);
 
-  // Adopting projects: every project with at least one work item of a type whose
-  // `workflow_id` is this workflow -- see this function's own doc comment.
-  const typeRows = await listWorkflowTypeIds(workflowId);
-  const typeIds = typeRows.map((t) => t.id);
-
   const projects: WorkflowVersionProjectValidation[] = [];
   let unreachableIds: StateTemplateId[] = [];
 
-  if (typeIds.length > 0) {
-    const adoptingProjectRows = await listProjectIdsWithItemsOfTypes(typeIds);
-    const projectIds = adoptingProjectRows.map((r) => r.projectId);
+  // WF-9's adopting-project set is every project in this workflow's workspace,
+  // including projects with no work items and archived projects.
+  const adoptingProjectRows = await listWorkflowAdoptingProjectIds(
+    identity,
+    workflowId,
+  );
+  const projectIds = adoptingProjectRows.map((r) => r.projectId);
 
+  if (projectIds.length > 0) {
     // Every adopting project's own default state's TEMPLATE -- `unreachableStates`'
     // own `initialStateIds` argument (WF-9's own reasoning: reachability is checked
     // from wherever a new work item can actually start, across every project, not one
     // arbitrary project).
-    const defaultStateRows =
-      projectIds.length === 0
-        ? []
-        : await listDefaultStateTemplates(projectIds);
+    const defaultStateRows = await listDefaultStateTemplates(
+      identity,
+      projectIds,
+    );
     const initialStateIds = [
       ...new Set(
         defaultStateRows.map((r) => asStateTemplateId(r.stateTemplateId)),
@@ -129,7 +132,7 @@ export async function validateWorkflowVersion(
     unreachableIds = unreachableStates(states, transitions, initialStateIds);
 
     for (const projectId of projectIds) {
-      const enabledRows = await listEnabledProjectStates(projectId);
+      const enabledRows = await listEnabledProjectStates(identity, projectId);
       const enabledStateIds = enabledRows.map((r) =>
         asStateTemplateId(r.stateTemplateId),
       );
@@ -149,7 +152,7 @@ export async function validateWorkflowVersion(
       const stuckRows =
         noOutboundIdSet.size === 0
           ? []
-          : await listLiveItemsWithStateTemplate(projectId);
+          : await listLiveItemsWithStateTemplate(identity, projectId);
       const stuckWorkItemKeys = stuckRows
         .filter((row) =>
           noOutboundIdSet.has(asStateTemplateId(row.stateTemplateId)),

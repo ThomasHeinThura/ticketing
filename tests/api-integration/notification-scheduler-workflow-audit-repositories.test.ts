@@ -5,13 +5,11 @@
  * window / final-column / opt-out / already-sent rules, the lease claim/release rules and
  * the workflow ownership lookups.
  */
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { appendAuditLog } from "../../apps/api/src/audit/audit-writer";
 import {
-  findPersonIdByUserId,
-  holdsWorkspaceSeesAll,
-  listProjectMembershipIds,
+  listInstanceAuditRows,
   listWorkspaceAuditRows,
 } from "../../apps/api/src/audit/repository";
 import db, { schema } from "../../apps/api/src/database";
@@ -22,6 +20,7 @@ import {
   markOwnReadableNotificationRead,
   markReadableNotificationsRead,
 } from "../../apps/api/src/notification/inbox.repository";
+import { resolveRequestIdentity } from "../../apps/api/src/permissions/resolve-request-identity";
 import {
   claimJobLease,
   insertReminderSent,
@@ -29,6 +28,7 @@ import {
   releaseJobLease,
 } from "../../apps/api/src/scheduler/repository";
 import {
+  findWorkflowTree,
   findWorkflowVersion,
   findWorkflowWorkspaceId,
   getMaxVersionNumber,
@@ -318,6 +318,8 @@ describe("API integration: workflow repository", () => {
   it("lists workflows per workspace, numbers versions and finds them by number", async () => {
     const mine = await createWorkspaceMember({ role: "admin" });
     const theirs = await createWorkspaceMember({ role: "admin" });
+    const identity = await resolveRequestIdentity({ userId: mine.user.id });
+    expect(identity).not.toBeNull();
     const wf = requireRow(
       [
         await insertWorkflow({
@@ -335,18 +337,28 @@ describe("API integration: workflow repository", () => {
     });
 
     expect(
-      (await listWorkflowsInWorkspace(mine.workspace.id)).map((w) => w.id),
+      (await listWorkflowsInWorkspace(identity!, mine.workspace.id)).map(
+        (w) => w.id,
+      ),
     ).toEqual([wf.id]);
-    expect(await findWorkflowWorkspaceId(wf.id)).toEqual({
+    expect((await findWorkflowTree(identity!, wf.id))?.id).toBe(wf.id);
+    expect(await findWorkflowWorkspaceId(identity!, wf.id)).toEqual({
       workspaceId: mine.workspace.id,
     });
-    expect(await findWorkflowWorkspaceId("none")).toBeUndefined();
+    expect(await findWorkflowWorkspaceId(identity!, "none")).toBeUndefined();
+    expect(
+      await listWorkflowsInWorkspace(identity!, theirs.workspace.id),
+    ).toEqual([]);
 
     const otherWf = await insertWorkflow({
       workspaceId: theirs.workspace.id,
       key: "k2",
       name: "Other 2",
     });
+    expect(await findWorkflowTree(identity!, otherWf!.id)).toBeUndefined();
+    expect(
+      await findWorkflowVersion(identity!, otherWf!.id, 1),
+    ).toBeUndefined();
     await insertWorkflowVersion(db, {
       workflowId: otherWf?.id ?? "",
       number: 7,
@@ -359,9 +371,9 @@ describe("API integration: workflow repository", () => {
     await insertWorkflowVersion(db, { workflowId: wf.id, number: 2 });
     expect((await getMaxVersionNumber(db, wf.id))?.nextNumber).toBe(2);
 
-    expect((await findWorkflowVersion(wf.id, 1))?.id).toBe(v1?.id);
-    expect(await findWorkflowVersion(wf.id, 3)).toBeUndefined();
-    expect(await findWorkflowVersion("none", 1)).toBeUndefined();
+    expect((await findWorkflowVersion(identity!, wf.id, 1))?.id).toBe(v1?.id);
+    expect(await findWorkflowVersion(identity!, wf.id, 3)).toBeUndefined();
+    expect(await findWorkflowVersion(identity!, "none", 1)).toBeUndefined();
   });
 
   it("a duplicate key within a workspace violates the unique constraint", async () => {
@@ -379,6 +391,8 @@ describe("API integration: workflow repository", () => {
   it("referenceable roles are the workspace's own plus the built-in ones, never another workspace's", async () => {
     const mine = await createWorkspaceMember({ role: "admin" });
     const theirs = await createWorkspaceMember({ role: "admin" });
+    const identity = await resolveRequestIdentity({ userId: mine.user.id });
+    expect(identity).not.toBeNull();
     const now = new Date();
     const mk = async (workspaceId: string | null, key: string) =>
       requireRow(
@@ -401,9 +415,9 @@ describe("API integration: workflow repository", () => {
     const builtIn = await mk(null, "builtin");
     const foreign = await mk(theirs.workspace.id, "foreign");
 
-    const ids = (await listReferenceableRoleIds(mine.workspace.id)).map(
-      (r) => r.id,
-    );
+    const ids = (
+      await listReferenceableRoleIds(identity!, mine.workspace.id)
+    ).map((r) => r.id);
     expect(ids).toContain(own.id);
     expect(ids).toContain(builtIn.id);
     expect(ids).not.toContain(foreign.id);
@@ -443,9 +457,11 @@ describe("API integration: audit repository reach lookups", () => {
     await row(member.workspace.id, p2.id, "role.deleted");
     await row(other.workspace.id, null, "auth.sign_out");
 
-    const actions = async (reach: "all" | string[], q = {}) =>
+    const identity = await resolveRequestIdentity({ userId: member.user.id });
+    expect(identity).not.toBeNull();
+    const actions = async (caller: NonNullable<typeof identity>, q = {}) =>
       (
-        await listWorkspaceAuditRows(member.workspace.id, reach, {
+        await listWorkspaceAuditRows(caller, member.workspace.id, {
           limit: 50,
           ...q,
         })
@@ -453,29 +469,17 @@ describe("API integration: audit repository reach lookups", () => {
         .map((r) => r.action)
         .sort();
 
-    expect(await actions("all")).toEqual([
-      "auth.sign_in_succeeded",
-      "role.deleted",
-      "role.updated",
-    ]);
-    expect(await actions([])).toEqual(["auth.sign_in_succeeded"]);
-    expect(await actions([p1.id])).toEqual([
-      "auth.sign_in_succeeded",
-      "role.updated",
-    ]);
-    expect(await actions("all", { action: "role." })).toEqual([
-      "role.deleted",
-      "role.updated",
-    ]);
-    expect(await actions("all", { action: "role_" })).toEqual([]);
-    expect(await actions("all", { limit: 1 })).toHaveLength(1);
-  });
+    expect(await actions(identity!)).toEqual(["auth.sign_in_succeeded"]);
 
-  it("person, sees_all and project membership lookups", async () => {
-    const member = await createWorkspaceMember({ role: "admin" });
-    const { project } = await createProjectFixture({
-      workspaceId: member.workspace.id,
+    await grantProjectRole(member.user.id, p1.id, ["work_item:read"]);
+    const projectIdentity = await resolveRequestIdentity({
+      userId: member.user.id,
     });
+    expect(await actions(projectIdentity!)).toEqual([
+      "auth.sign_in_succeeded",
+      "role.updated",
+    ]);
+
     const person = requireRow(
       await db
         .select({ id: schema.personTable.id })
@@ -483,34 +487,17 @@ describe("API integration: audit repository reach lookups", () => {
         .where(eq(schema.personTable.userId, member.user.id)),
       "person",
     );
-    expect(await findPersonIdByUserId(member.user.id)).toEqual({
-      id: person.id,
-    });
-    expect(await findPersonIdByUserId("nobody")).toBeUndefined();
-    expect(await holdsWorkspaceSeesAll(person.id, member.workspace.id)).toBe(
-      false,
-    );
-    expect(await listProjectMembershipIds(person.id)).toEqual([]);
-
-    // A project-scope membership counts as project reach but is not sees_all.
-    await grantProjectRole(member.user.id, project.id, ["work_item:read"]);
-    expect(await listProjectMembershipIds(person.id)).toEqual([project.id]);
-    expect(await holdsWorkspaceSeesAll(person.id, member.workspace.id)).toBe(
-      false,
-    );
-
-    // A workspace-scope membership without sees_all does not count either.
     const now = new Date();
-    const plainRole = requireRow(
+    const allRole = requireRow(
       await db
         .insert(schema.roleTable)
         .values({
           scope: "workspace",
           workspaceId: member.workspace.id,
-          key: "plain-workspace-role",
-          name: "Plain",
+          key: "audit-all",
+          name: "Audit all",
           rank: 1,
-          capabilities: ["workspace:read"],
+          capabilities: ["workspace:manage_settings"],
           createdAt: now,
           updatedAt: now,
         })
@@ -521,31 +508,63 @@ describe("API integration: audit repository reach lookups", () => {
       personId: person.id,
       scope: "workspace",
       scopeId: member.workspace.id,
-      roleId: plainRole.id,
-      seesAll: false,
+      roleId: allRole.id,
+      seesAll: true,
       createdAt: now,
       updatedAt: now,
     });
-    expect(await holdsWorkspaceSeesAll(person.id, member.workspace.id)).toBe(
-      false,
-    );
+    const allIdentity = await resolveRequestIdentity({
+      userId: member.user.id,
+    });
+    expect(await actions(allIdentity!)).toEqual([
+      "auth.sign_in_succeeded",
+      "role.deleted",
+      "role.updated",
+    ]);
+    expect(await actions(allIdentity!, { action: "role." })).toEqual([
+      "role.deleted",
+      "role.updated",
+    ]);
+    expect(await actions(allIdentity!, { action: "role_" })).toEqual([]);
+    expect(await actions(allIdentity!, { limit: 1 })).toHaveLength(1);
+  });
 
-    // sees_all on this workspace only; another workspace is unaffected.
+  it("repository instance audit read requires resolved instance-admin authority", async () => {
+    const ordinary = await createWorkspaceMember({ role: "admin" });
+    const privileged = await createWorkspaceMember({ role: "admin" });
     await db
-      .update(schema.membershipTable)
-      .set({ seesAll: true })
-      .where(
-        and(
-          eq(schema.membershipTable.personId, person.id),
-          eq(schema.membershipTable.scope, "workspace"),
-        ),
-      );
-    expect(await holdsWorkspaceSeesAll(person.id, member.workspace.id)).toBe(
-      true,
-    );
-    expect(await holdsWorkspaceSeesAll(person.id, "other-workspace")).toBe(
-      false,
-    );
-    expect(await listProjectMembershipIds(person.id)).toEqual([project.id]);
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, privileged.user.id));
+    const ordinaryIdentity = await resolveRequestIdentity({
+      userId: ordinary.user.id,
+    });
+    const adminIdentity = await resolveRequestIdentity({
+      userId: privileged.user.id,
+    });
+    expect(ordinaryIdentity).not.toBeNull();
+    expect(adminIdentity).not.toBeNull();
+    const auditRows: [string, string, string][] = [
+      [ordinary.workspace.id, ordinary.user.id, "auth.sign_in_succeeded"],
+      [privileged.workspace.id, privileged.user.id, "auth.sign_out"],
+    ];
+    for (const [workspaceId, actorId, action] of auditRows) {
+      await appendAuditLog(db, {
+        actorId,
+        actorType: "person",
+        workspaceId,
+        projectId: null,
+        action,
+        entityType: "test",
+        entityId: action,
+      });
+    }
+    const query = { limit: 50 };
+    expect(await listInstanceAuditRows(ordinaryIdentity!, query)).toEqual([]);
+    expect(
+      (await listInstanceAuditRows(adminIdentity!, query))
+        .map((row) => row.action)
+        .sort(),
+    ).toEqual(["auth.sign_in_succeeded", "auth.sign_out"]);
   });
 });

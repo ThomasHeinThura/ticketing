@@ -1,8 +1,9 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
-  findPersonIdByUserId,
   findWorkflowVersion,
+  hasCompleteWorkflowProjectReach,
   listVersionTransitions,
   setActiveWorkflowVersion,
   stampVersionPublished,
@@ -16,28 +17,32 @@ import {
  * version" route to enforce it against.
  */
 async function publishWorkflowVersion(
+  identity: ResolvedIdentity,
   workflowId: string,
   number: number,
-  userId: string,
 ) {
-  const version = await findWorkflowVersion(workflowId, number);
+  const version = await findWorkflowVersion(identity, workflowId, number);
 
   if (!version) {
     throw new HTTPException(404, { message: "Workflow version not found" });
   }
 
-  const caller = await findPersonIdByUserId(userId);
+  if (!(await hasCompleteWorkflowProjectReach(identity, workflowId))) {
+    throw new HTTPException(403, {
+      message: "Workflow project access required",
+    });
+  }
 
   return db.transaction(async (tx) => {
     const published = await stampVersionPublished(
       tx,
       version.id,
-      caller?.id ?? null,
+      identity.personId,
     );
 
     await setActiveWorkflowVersion(tx, workflowId, version.id);
 
-    const transitions = await listVersionTransitions(version.id, tx);
+    const transitions = await listVersionTransitions(identity, version.id, tx);
 
     return { ...published, transitions };
   });

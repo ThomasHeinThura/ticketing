@@ -225,6 +225,45 @@ describe("GET /api/workspaces/{workspaceId}/audit (AU-10 + tenant isolation)", (
     expect(response.status).toBe(403);
   });
 
+  it("a workspace administrator API key with the required stored scope can read its workspace", async () => {
+    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
+    await seedAuditRow(workspace.id, "role.created");
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    await db.insert(schema.apikeyTable).values({
+      referenceId: user.id,
+      userId: user.id,
+      key: createHash("sha256")
+        .update(rawKey)
+        .digest()
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, ""),
+      name: "workspace audit scope test key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ workspace: ["manage_settings"] }),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/workspaces/${workspace.id}/audit`,
+      {
+        headers: { authorization: `Bearer ${rawKey}` },
+      },
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const body = (await response.json()) as {
+      rows: { action: string; workspaceId: string }[];
+    };
+    expect(body.rows.some((row) => row.action === "role.created")).toBe(true);
+    expect(body.rows.every((row) => row.workspaceId === workspace.id)).toBe(
+      true,
+    );
+  });
+
   it("a non-member is refused by the membership gate", async () => {
     const { workspace } = await createWorkspaceMember({ role: "owner" });
     const outsider = await createWorkspaceMember();

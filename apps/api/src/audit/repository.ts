@@ -1,8 +1,10 @@
 import type { JsonValue } from "@taskdesk/domain";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import {
   and,
   desc,
   eq,
+  exists,
   gte,
   inArray,
   isNull,
@@ -17,14 +19,16 @@ import type { Executor } from "../database/executor";
 import {
   auditLogTable,
   membershipTable,
-  personTable,
+  projectTable,
+  workspaceTable,
+  workspaceUserTable,
 } from "../database/schema";
 import { AUDIT_CHAIN_LOCK_KEY } from "./lock";
 
 /**
- * Query ownership for the audit log (issue #580): the two list reads and the reach facts
- * they filter by, the chain-verification read, and the five statements of the append path.
- * Moved verbatim; every function awaits and returns plain rows. The append path's
+ * Query ownership for the audit log (issue #580): actor-facing list reads scope from
+ * resolved identity in SQL; chain verification remains a global AU-15 integrity scan.
+ * Every function awaits and returns plain rows. The append path's
  * statements all run on the writer's single transaction handle in the same order
  * (lock, head read, clock read, insert), and the transaction boundary stays in
  * `audit-writer.ts`.
@@ -94,11 +98,25 @@ function combineFilters(filters: (SQL | undefined)[]): SQL | undefined {
 }
 
 /** Every audit row matching the filters, newest first (instance administrators). */
-export async function listInstanceAuditRows(query: AuditQuery) {
+export async function listInstanceAuditRows(
+  identity: ResolvedIdentity,
+  query: AuditQuery,
+) {
+  // AU-11 is explicitly instance-wide for instance administrators. The route separately
+  // enforces `instance:read_audit` (including a key's stored scope); do not require an
+  // `instance:admin` key capability here, since that would narrow the documented route
+  // contract beyond its existing read-audit capability gate.
+  const hasInstanceReach =
+    identity.side === "staff" && identity.reach.kind === "all";
   const rows = await db
     .select()
     .from(auditLogTable)
-    .where(combineFilters(auditListFilters(query)))
+    .where(
+      combineFilters([
+        hasInstanceReach ? undefined : sql`false`,
+        ...auditListFilters(query),
+      ]),
+    )
     .orderBy(desc(auditLogTable.seq))
     .limit(query.limit);
   return materializeAuditRows(rows);
@@ -109,51 +127,52 @@ export async function listInstanceAuditRows(query: AuditQuery) {
  * per-workspace `sees_all` grant) or the explicit reachable project ids, where an empty
  * list means non-project rows only (fail closed).
  */
-export type AuditProjectReach = "all" | readonly string[];
-
-/** The caller's person id, or `undefined`. */
-export async function findPersonIdByUserId(userId: string) {
-  const [person] = await db
-    .select({ id: personTable.id })
-    .from(personTable)
-    .where(eq(personTable.userId, userId))
-    .limit(1);
-  return person;
-}
-
-/** Whether the person holds `sees_all` on a workspace-scope membership of `workspaceId`. */
-export async function holdsWorkspaceSeesAll(
-  personId: string,
+function workspaceIdentityReach(
+  identity: ResolvedIdentity,
   workspaceId: string,
-): Promise<boolean> {
-  const [seesAll] = await db
-    .select({ personId: membershipTable.personId })
-    .from(membershipTable)
-    .where(
-      and(
-        eq(membershipTable.personId, personId),
-        eq(membershipTable.scope, "workspace"),
-        eq(membershipTable.scopeId, workspaceId),
-        eq(membershipTable.seesAll, true),
+) {
+  if (identity.side !== "staff") return sql`false`;
+  if (identity.reach.kind === "all") return eq(workspaceTable.id, workspaceId);
+  if (identity.reach.kind === "organisation") {
+    return and(
+      eq(workspaceTable.id, workspaceId),
+      inArray(workspaceTable.organisationId, [...identity.reach.ids]),
+    );
+  }
+  if (
+    identity.reach.kind === "membership_with_workspaces" &&
+    identity.reach.workspaceIds.includes(workspaceId)
+  ) {
+    return eq(workspaceTable.id, workspaceId);
+  }
+  return and(
+    eq(workspaceTable.id, workspaceId),
+    or(
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(workspaceUserTable)
+          .where(
+            and(
+              eq(workspaceUserTable.workspaceId, workspaceTable.id),
+              eq(workspaceUserTable.userId, identity.userId),
+            ),
+          ),
       ),
-    )
-    .limit(1);
-  return seesAll !== undefined;
-}
-
-/** Project ids the person has a project-scope membership on. */
-export async function listProjectMembershipIds(personId: string) {
-  return (
-    await db
-      .select({ projectId: membershipTable.scopeId })
-      .from(membershipTable)
-      .where(
-        and(
-          eq(membershipTable.personId, personId),
-          eq(membershipTable.scope, "project"),
-        ),
-      )
-  ).map((row) => row.projectId);
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(membershipTable)
+          .where(
+            and(
+              eq(membershipTable.personId, identity.personId),
+              eq(membershipTable.scope, "workspace"),
+              eq(membershipTable.scopeId, workspaceTable.id),
+            ),
+          ),
+      ),
+    ),
+  );
 }
 
 /**
@@ -162,26 +181,59 @@ export async function listProjectMembershipIds(personId: string) {
  * reaches any project, or no project constraint for `"all"`.
  */
 export async function listWorkspaceAuditRows(
+  identity: ResolvedIdentity,
   workspaceId: string,
-  reach: AuditProjectReach,
   query: AuditQuery,
 ) {
-  const reachFilter: SQL | undefined =
-    reach === "all"
-      ? undefined
-      : reach.length === 0
-        ? isNull(auditLogTable.projectId)
-        : or(
-            isNull(auditLogTable.projectId),
-            inArray(auditLogTable.projectId, [...reach]),
-          );
+  const projectMembership = exists(
+    db
+      .select({ one: sql`1` })
+      .from(membershipTable)
+      .innerJoin(
+        projectTable,
+        and(
+          eq(projectTable.id, membershipTable.scopeId),
+          eq(projectTable.workspaceId, workspaceId),
+        ),
+      )
+      .where(
+        and(
+          eq(membershipTable.personId, identity.personId),
+          eq(membershipTable.scope, "project"),
+          eq(membershipTable.scopeId, auditLogTable.projectId),
+        ),
+      ),
+  );
+  const workspaceSeesAll = exists(
+    db
+      .select({ one: sql`1` })
+      .from(membershipTable)
+      .where(
+        and(
+          eq(membershipTable.personId, identity.personId),
+          eq(membershipTable.scope, "workspace"),
+          eq(membershipTable.scopeId, workspaceId),
+          eq(membershipTable.seesAll, true),
+        ),
+      ),
+  );
+  const rowReach =
+    identity.side === "staff"
+      ? or(isNull(auditLogTable.projectId), workspaceSeesAll, projectMembership)
+      : sql`false`;
   const rows = await db
     .select()
     .from(auditLogTable)
     .where(
       combineFilters([
         eq(auditLogTable.workspaceId, workspaceId),
-        reachFilter,
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(workspaceTable)
+            .where(workspaceIdentityReach(identity, workspaceId)),
+        ),
+        rowReach,
         ...auditListFilters(query),
       ]),
     )

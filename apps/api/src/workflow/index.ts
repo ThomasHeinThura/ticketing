@@ -1,3 +1,5 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
@@ -6,6 +8,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createWorkflow, {
@@ -29,6 +32,19 @@ import {
   workflowVersionParam,
   workspaceIdQuery,
 } from "./schema";
+
+async function requestIdentity(
+  c: Context<{ Variables: BaseVariables & { workspaceId: string } }>,
+): Promise<ResolvedIdentity> {
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  const identity = await resolveRequestIdentity({
+    userId: c.get("userId"),
+    apiKey: c.get("apiKey"),
+    impersonatedBy: session?.impersonatedBy,
+  });
+  if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+  return identity;
+}
 
 const listWorkflowsRoute = createRoute({
   method: "get",
@@ -189,7 +205,7 @@ const validateWorkflowVersionRoute = createRoute({
 const workflow = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listWorkflowsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
-    const rows = await listWorkflows(workspaceId);
+    const rows = await listWorkflows(await requestIdentity(c), workspaceId);
     return c.json(workflowListSchema.parse(rows), 200);
   })
   .openapi(createWorkflowRoute, async (c) => {
@@ -211,24 +227,35 @@ const workflow = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(getWorkflowRoute, async (c) => {
     const { id } = c.req.valid("param");
-    const row = await getWorkflow(id);
+    const row = await getWorkflow(await requestIdentity(c), id);
     return c.json(workflowWithVersionsSchema.parse(row), 200);
   })
   .openapi(createWorkflowVersionRoute, async (c) => {
     const { id } = c.req.valid("param");
     const { transitions } = c.req.valid("json");
-    const created = await createWorkflowVersion(id, transitions);
+    const created = await createWorkflowVersion(
+      await requestIdentity(c),
+      id,
+      transitions,
+    );
     return c.json(workflowVersionSchema.parse(created), 200);
   })
   .openapi(publishWorkflowVersionRoute, async (c) => {
     const { id, number } = c.req.valid("param");
-    const userId = c.get("userId");
-    const published = await publishWorkflowVersion(id, number, userId);
+    const published = await publishWorkflowVersion(
+      await requestIdentity(c),
+      id,
+      number,
+    );
     return c.json(workflowVersionSchema.parse(published), 200);
   })
   .openapi(validateWorkflowVersionRoute, async (c) => {
     const { id, number } = c.req.valid("param");
-    const result = await validateWorkflowVersion(id, number);
+    const result = await validateWorkflowVersion(
+      await requestIdentity(c),
+      id,
+      number,
+    );
     return c.json(workflowVersionValidationSchema.parse(result), 200);
   });
 
