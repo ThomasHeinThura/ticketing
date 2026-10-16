@@ -1,4 +1,4 @@
-## Sole-conductor active queue — 2026-10-16 21:08 UTC
+## Sole-conductor active queue — 2026-10-16 21:25 UTC
 
 **Accepted main:** `c022915a8768b96b460c798feafafd7d48214d5c` (#808). Newest detailed verification belongs in [status.md](status.md); historical snapshots below retain their original dates. The existing #589 mission, selected units, owner holds and #626 deferrals remain unchanged. Thomas's direct takeover designates the root Codex session as sole conductor. Both outgoing automations remain paused; there is no verified automatic post-turn continuation. At most two active child contexts and one local heavy verification window.
 
