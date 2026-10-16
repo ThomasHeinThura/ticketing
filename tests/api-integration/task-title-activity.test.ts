@@ -366,6 +366,11 @@ describe("API integration: task title activity", () => {
 
   it("stores the existing create, import, update, bulk, assignee, due-date, and move history mappings once", async () => {
     const { member, task, identity } = await createTaskFixture();
+    // The fixture inserts task #1 directly, so synchronize the production allocator state.
+    await db
+      .update(schema.projectTable)
+      .set({ lastTaskNumber: 1 })
+      .where(eq(schema.projectTable.id, task.projectId));
     const created = await createTask({
       identity,
       projectId: task.projectId,
@@ -529,7 +534,11 @@ describe("API integration: task title activity", () => {
       ),
     ).toMatchObject({ eventData: { newStatus: "in-progress" } });
     expect(
-      taskHistory.find(({ type }) => type === "priority_changed"),
+      taskHistory.find(
+        ({ type, eventData }) =>
+          type === "priority_changed" &&
+          (eventData as { newPriority?: string }).newPriority === "high",
+      ),
     ).toMatchObject({
       eventData: { oldPriority: "medium", newPriority: "high" },
     });
@@ -558,7 +567,12 @@ describe("API integration: task title activity", () => {
       taskHistory.filter(({ type }) => type === "assignee_changed"),
     ).toHaveLength(2);
     expect(
-      taskHistory.find(({ type }) => type === "due_date_changed"),
+      taskHistory.find(
+        ({ type, eventData }) =>
+          type === "due_date_changed" &&
+          (eventData as { newDueDate?: string }).newDueDate ===
+            "2026-12-01T00:00:00.000Z",
+      ),
     ).toMatchObject({
       eventData: {
         oldDueDate: null,

@@ -4,6 +4,7 @@ import db from "../../database";
 import { resolveDuration } from "../duration";
 import {
   findTimeEntryById,
+  findTimeEntryMutationTarget,
   lockTaskAndAssertProjectLive,
   updateTimeEntryById,
 } from "../repository";
@@ -18,14 +19,22 @@ type UpdateTimeEntryParams = {
 
 async function updateTimeEntry(params: UpdateTimeEntryParams) {
   const { identity, timeEntryId, startTime, endTime, description } = params;
-  const existingTimeEntry = await findTimeEntryById(identity, timeEntryId);
-  if (!existingTimeEntry) {
+  const target = await findTimeEntryMutationTarget(identity, timeEntryId);
+  if (!target) {
     throw new HTTPException(404, { message: "Time entry not found" });
   }
 
-  const effectiveEndTime = endTime ?? existingTimeEntry.endTime;
   const updatedTimeEntry = await db.transaction(async (tx) => {
-    await lockTaskAndAssertProjectLive(tx, identity, existingTimeEntry.taskId);
+    await lockTaskAndAssertProjectLive(tx, identity, target.taskId);
+    const existingTimeEntry = await findTimeEntryById(
+      identity,
+      timeEntryId,
+      tx,
+    );
+    if (!existingTimeEntry) {
+      throw new HTTPException(404, { message: "Time entry not found" });
+    }
+    const effectiveEndTime = endTime ?? existingTimeEntry.endTime;
     const duration = resolveDuration(startTime, effectiveEndTime ?? undefined);
     return updateTimeEntryById(tx, identity, timeEntryId, {
       startTime,

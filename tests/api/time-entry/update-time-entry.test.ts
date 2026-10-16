@@ -2,6 +2,7 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  findTimeEntryMutationTarget: vi.fn(),
   findTimeEntryById: vi.fn(),
   lockTaskAndAssertProjectLive: vi.fn(),
   updateTimeEntryById: vi.fn(),
@@ -17,6 +18,8 @@ vi.mock("../../../apps/api/src/database", () => ({
 }));
 
 vi.mock("../../../apps/api/src/time-entry/repository", () => ({
+  findTimeEntryMutationTarget: (...args: unknown[]) =>
+    mocks.findTimeEntryMutationTarget(...args),
   findTimeEntryById: (...args: unknown[]) => mocks.findTimeEntryById(...args),
   lockTaskAndAssertProjectLive: (...args: unknown[]) =>
     mocks.lockTaskAndAssertProjectLive(...args),
@@ -45,6 +48,7 @@ describe("updateTimeEntry", () => {
     mocks.transaction.mockImplementation(
       async (callback: (tx: unknown) => unknown) => callback(mocks.tx),
     );
+    mocks.findTimeEntryMutationTarget.mockResolvedValue(undefined);
     mocks.findTimeEntryById.mockResolvedValue(undefined);
     mocks.lockTaskAndAssertProjectLive.mockResolvedValue(undefined);
     mocks.updateTimeEntryById.mockResolvedValue(undefined);
@@ -61,6 +65,10 @@ describe("updateTimeEntry", () => {
       duration: 2700,
       description: "renamed",
     };
+    mocks.findTimeEntryMutationTarget.mockResolvedValue({
+      id: "time-entry-1",
+      taskId: "task-1",
+    });
     mocks.findTimeEntryById.mockResolvedValue({
       id: "time-entry-1",
       taskId: "task-1",
@@ -77,9 +85,14 @@ describe("updateTimeEntry", () => {
       description: "renamed",
     });
 
+    expect(mocks.findTimeEntryMutationTarget).toHaveBeenCalledWith(
+      identity,
+      "time-entry-1",
+    );
     expect(mocks.findTimeEntryById).toHaveBeenCalledWith(
       identity,
       "time-entry-1",
+      mocks.tx,
     );
     expect(mocks.lockTaskAndAssertProjectLive).toHaveBeenCalledWith(
       mocks.tx,
@@ -100,6 +113,10 @@ describe("updateTimeEntry", () => {
   });
 
   it("rejects a startTime later than the preserved endTime", async () => {
+    mocks.findTimeEntryMutationTarget.mockResolvedValue({
+      id: "time-entry-1",
+      taskId: "task-1",
+    });
     mocks.findTimeEntryById.mockResolvedValue({
       id: "time-entry-1",
       taskId: "task-1",
@@ -116,9 +133,14 @@ describe("updateTimeEntry", () => {
       }),
     ).rejects.toMatchObject({ status: 400 });
 
+    expect(mocks.findTimeEntryMutationTarget).toHaveBeenCalledWith(
+      identity,
+      "time-entry-1",
+    );
     expect(mocks.findTimeEntryById).toHaveBeenCalledWith(
       identity,
       "time-entry-1",
+      mocks.tx,
     );
     expect(mocks.lockTaskAndAssertProjectLive).toHaveBeenCalledWith(
       mocks.tx,
@@ -129,6 +151,10 @@ describe("updateTimeEntry", () => {
   });
 
   it("rejects a startTime later than an endTime supplied in the same update", async () => {
+    mocks.findTimeEntryMutationTarget.mockResolvedValue({
+      id: "time-entry-1",
+      taskId: "task-1",
+    });
     mocks.findTimeEntryById.mockResolvedValue({
       id: "time-entry-1",
       taskId: "task-1",
@@ -146,9 +172,14 @@ describe("updateTimeEntry", () => {
       }),
     ).rejects.toMatchObject({ status: 400 });
 
+    expect(mocks.findTimeEntryMutationTarget).toHaveBeenCalledWith(
+      identity,
+      "time-entry-1",
+    );
     expect(mocks.findTimeEntryById).toHaveBeenCalledWith(
       identity,
       "time-entry-1",
+      mocks.tx,
     );
     expect(mocks.lockTaskAndAssertProjectLive).toHaveBeenCalledWith(
       mocks.tx,
@@ -160,6 +191,10 @@ describe("updateTimeEntry", () => {
 
   it("still allows an open entry to have its startTime moved forward", async () => {
     const nextStartTime = new Date("2026-08-10T12:00:00.000Z");
+    mocks.findTimeEntryMutationTarget.mockResolvedValue({
+      id: "time-entry-1",
+      taskId: "task-1",
+    });
     mocks.findTimeEntryById.mockResolvedValue({
       id: "time-entry-1",
       taskId: "task-1",
@@ -175,9 +210,14 @@ describe("updateTimeEntry", () => {
       startTime: nextStartTime,
     });
 
+    expect(mocks.findTimeEntryMutationTarget).toHaveBeenCalledWith(
+      identity,
+      "time-entry-1",
+    );
     expect(mocks.findTimeEntryById).toHaveBeenCalledWith(
       identity,
       "time-entry-1",
+      mocks.tx,
     );
     expect(mocks.lockTaskAndAssertProjectLive).toHaveBeenCalledWith(
       mocks.tx,

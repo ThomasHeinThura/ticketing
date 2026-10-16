@@ -16,6 +16,7 @@ function taskReach(
   identity: ResolvedIdentity,
   taskId: SQLWrapper,
   executor: Executor,
+  requireLiveProject = false,
 ) {
   return exists(
     executor
@@ -26,7 +27,7 @@ function taskReach(
         and(
           eq(taskTable.id, taskId),
           isNull(projectTable.deletedAt),
-          isNull(projectTable.archivedAt),
+          ...(requireLiveProject ? [isNull(projectTable.archivedAt)] : []),
           currentProjectReachPredicate(
             identity,
             projectTable.id,
@@ -174,7 +175,7 @@ export async function updateTimeEntryById(
     .where(
       and(
         eq(timeEntryTable.id, id),
-        taskReach(identity, timeEntryTable.taskId, executor),
+        taskReach(identity, timeEntryTable.taskId, executor, true),
       ),
     )
     .returning();
@@ -196,6 +197,41 @@ export async function findTimeEntryById(
       ),
     );
   return timeEntry;
+}
+
+/** Return only the mutation target facts before locking its task and project. */
+export async function findTimeEntryMutationTarget(
+  identity: ResolvedIdentity,
+  id: string,
+  executor: Executor = db,
+) {
+  const [target] = await executor
+    .select({ id: timeEntryTable.id, taskId: timeEntryTable.taskId })
+    .from(timeEntryTable)
+    .where(
+      and(
+        eq(timeEntryTable.id, id),
+        exists(
+          executor
+            .select({ one: sql`1` })
+            .from(taskTable)
+            .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
+            .where(
+              and(
+                eq(taskTable.id, timeEntryTable.taskId),
+                currentProjectReachPredicate(
+                  identity,
+                  projectTable.id,
+                  projectTable.workspaceId,
+                  projectTable.organisationId,
+                  executor,
+                ),
+              ),
+            ),
+        ),
+      ),
+    );
+  return target;
 }
 
 export async function listTimeEntriesWithUserByTask(
