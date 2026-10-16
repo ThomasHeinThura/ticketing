@@ -1918,3 +1918,304 @@ The task-provided full candidate IDs `c84df2f56030c375bba4ac9b7af8832852bce2c1` 
 
 The earlier phrase “No product source path changed by both diffs” was too broad. The narrower verified finding is: no **auth-function** source path is shared between the candidates, while `apps/api/src/database/executor.ts` is shared production source. `git rev-parse <candidate>:apps/api/src/database/executor.ts` returned blob `46ba36ee97ce4bbc71d787c27a999c4dc8021039` for each candidate, confirming byte-identical content. The path is absent at the stated common base, so the composition must retain one copy of this shared addition. This is a factual overlap clarification only; it is not clearance of executor semantics or integration.
 
+
+## Full PostgreSQL failure repair and current independent reviews
+
+**Reviewed head:** `af2d812a4569b21ca631abd732e1b7be9ee675e1`
+
+The published d17 full PostgreSQL run failed five files and five tests of206files/2947tests; that result remains adverse. The five-test-file repair preserves canonical customer authority, permitted positive reads and JIT session admission, forbidden notification event privacy, and scoped denial/no-write oracles. Production authority bytes remain unchanged from reviewed c84. Accepted main f781 imports only the accepted records. Two fresh ordinary contexts clear the corrected delta; a fresh independent Sol context clears its full bounded security scope.
+
+Ten authentic report versions follow, including the original incorrect portal-access diagnosis and its explicit correction, both ordinary BLOCKED attempts, and current clearances. Reports are reproduced unchanged. The first advisory is superseded on customer search by its follow-up; portal_access defaults true and is not the root cause. The failure advisers do not approve their proposed repairs. No PostgreSQL, image, outbound delivery, feature, carrier or mission acceptance follows from source review.
+
+### Record 1
+
+# #785 current PostgreSQL failure adjudication — read only
+
+**Disposition:** PR #785 candidate `d17d389721a38999c50eb98861b9560b8dd01cd2` is red. Hosted PostgreSQL job `116743355171`, run `38829075711`, reports **206 files, five failed; 2,947 tests, 2,942 passed and five failed**. The preceding source-security verdict applied to `c84df2f56030c375bba4ac9b7af8832852bce2c1` and did not run PostgreSQL. The current commit is its direct child, so that source verdict and ordinary reviews cannot turn this runtime failure green. Accepted-main source for the composition was `d93c0967ecc7b1a1d721ff25202737cd72430a0d`.
+
+**Provenance and independence:** Fresh Sol-tier read-only failure-adjudication context `/root/notification_current_pg_adjudication_sol`, assigned by `/root` with no authorship, direction or remediation of this candidate; actual model/version must be taken from the parent's spawn record, not inferred from this note. This is a diagnosis of observed failures, **not** independent approval of a repair I advise. The worktree `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2` was clean at the exact candidate head. I read AGENTS.md, CLAUDE.md, agent workflow, active mission, current decision log, RBAC, customer portal, notification, assignment, identity-provisioning and socket contracts, relevant source and five test fixtures. I consulted earlier hosted/privacy/current-security advisories as context and rechecked claims against source. I used `gh pr view 785 --json ...`, `git status`, `git rev-parse`, `git show --no-patch`, `rg`, and bounded `sed`/Python extraction of only failure headers and assertions from private raw log `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/785-pg-d17d3897.log`. I did not print SQL, fixture payloads or secrets, run tests or PostgreSQL/Docker/browser, edit product source, commit, push or change PR state. The observed results below come from hosted CI, not local reproduction.
+
+## Failure findings
+
+1. **`project-reach-reads.test.ts:724` — malformed positive fixture, with a genuine positive behavior to retain.** Hosted `assertSearch` expected `true`, got `false` for visible task content. This test creates a genuine system customer role and own-organisation membership, binds the visible project to that organisation, then drives `callerReach` and workspace-level filtered readers. But its organisation insertion at lines 649–654 does not set `portalAccess: true`; the new `resolveIdentityFromFacts` customer branch (`apps/api/src/permissions/resolve-identity.ts:393–415`) refuses a portal-disabled organisation. The failing assertion is therefore downstream of an invalid admission premise, not evidence to loosen project reach. Set this fixture's customer organisation active, noninternal and portal-enabled, retain the canonical role/membership, and assert a resolved customer identity and exactly one reachable bound project before checking labels/search/projects. Keep hidden-project/foreign and count tests. A real customer whose organisation is active and portal-enabled **must** still get this positive read; removing the positive would lose coverage.
+
+2. **`work-item-assignable.test.ts:619` — stale status oracle, correct fail-closed result.** Hosted got `404` versus expected `403`. L4 converts a workspace member to `person.side=customer`, points them to the internal organisation and gives them a project-scope role, with no own-organisation canonical customer membership. Such a person has no resolved customer authority/reach. The route declares project reach required before its `work_item:read` capability (`apps/api/src/work-item/policy.ts:131–135`); RBAC's project-scoped rule says no reach yields the same `404` as missing, while in-reach/no-capability yields `403` (`docs/01-architecture/rbac.md:558–565`). The response leaks no roster. Update L4 to assert `404` **and** compare it to a missing-project response, while keeping a valid in-reach, no-capability fixture that asserts `403` separately. Do not manufacture customer project authority merely to preserve `403`.
+
+3. **`work-item-comment.test.ts:753` — stale forbidden-event oracle, with a valid positive comment oracle immediately after it.** Hosted visible ids omitted the first planted id; the assertion at :753 expects `notifications[0]`, a `work_item.assigned` row. NO-19 explicitly forbids customer staff-assignment notifications. The current shared customer-event predicate (`apps/api/src/notification/customer-event-audience.ts`) rejects that event and admits eligible public `work_item.mentioned` comment rows. In the observed array, the public-mention id was present; the failure is at the assignment assertion before the public assertion. Replace the requester/participant assignment positives with exclusion and direct/bulk read/clear preservation checks. Preserve public-mention inclusion for requester and participant, internal-comment exclusion, same-organisation nonparticipant exclusion and foreign exclusion. Later `requesterItemId` read assertions at :769–781 also currently expect the forbidden assignment row to mutate; retarget positive mutation to the permitted public row and prove the assignment row remains unread/stored. Keep existing later transition/public-comment positives and private audience/membership revocation tests. Never widen the audience rule to make this fixture pass.
+
+4. **`ws-project-reach.test.ts:624` — malformed positive fixture, while both socket denials remain required.** Hosted threw `customer identity not resolved` before comparing reach. The fixture at :582–611 creates an organisation without `portalAccess: true`, changes a workspace member's person to customer, and leaves only a workspace membership. The canonical resolver correctly refuses it; neither side nor a workspace membership is a customer grant. Create an active, portal-enabled customer organisation and genuine system built-in customer role with exactly one own-organisation membership; remove or ignore the stale workspace grant according to the test's intended shape. Then verify `reaches` follows the **project** organisation rather than workspace organisation, while both legacy and native sockets still deny customer `project:read` identically. Retain invalid-grant and revoked-membership negative cases as separate assertions; no portal websocket admission is implied.
+
+5. **`identity/oidc-jit-login.test.ts:295/312` — malformed seeded default role, exposing a useful admission integration seam.** Hosted reached `expectJitIdentity`'s final sessions assertion: expected a customer session, got `[]`. Earlier assertions in that helper already found the JIT identity, `jit_default` grant and effective membership. The customer seed at :157–166 inserts `scope=organisation`, `key=customer`, but `rank: 0`, `capabilities: []` and default non-system provenance, while the built-in customer role is `rank: 10`, seven exact compiled capabilities and `isSystem: true` (`packages/permissions/src/roles.ts:196–204,263–270`). OIDC JIT accepts the id/scope/key and writes its grant, but the post-session `hasCustomerPortalIdentity` canonical check (`apps/api/src/auth.ts:261–286,990–999`) deletes the session. Repair the **fixture** by seeding the genuine built-in role shape, preferably through an existing canonical seed path. Then run the real PostgreSQL first-login test to prove actual customer JIT creates person/account/identity/provenance/effective membership **and retains a usable portal session**. Add/keep a separate tampered-role case proving session denial and no authority. This failure alone does not prove production JIT fails with a canonical role; neither does the redirect prove successful admission. Do not remove the post-login check or accept arbitrary role rows.
+
+## Minimal coherent repair and gate
+
+The five observed failures point to **four fixture/oracle corrections across five tests**, not to evidence for a new capability, route, schema or outbound notification activation. Use the one canonical customer setup (active, external, portal-enabled organisation; active non-placeholder customer person; exactly one own-organisation membership with the genuine system customer role and exact compiled role shape) in the positive reach, socket and OIDC fixtures. Where an intentionally invalid customer shape is the subject, assert the contract's denial at the correct layer. In the B1 notification test, preserve the current event audience and change its positive mutation target to the allowed public notification. Source changes should be limited to test fixtures and assertions unless a corrected, canonical positive case still fails in real PostgreSQL; any such failure requires a separate source diagnosis and fresh review.
+
+Re-run these five focused PostgreSQL files, especially real first-login session retention, exact project-org reach, public/private audience and mutation preservation. Then rerun the full hosted PostgreSQL job and all required exact-head checks/reviews before publication or merge. Preserve existing membership-revocation, private audience, foreign organisation, forbidden-event, API-key, and staff denial cases. The currently failed candidate cannot merge. This advisory does not waive any gate, certify source behavior beyond the traced cases, or preapprove the repaired candidate.
+
+
+### Record 2
+
+# #785 customer legacy-search positive — read-only follow-up
+
+**Judgment at `d17d389721a38999c50eb98861b9560b8dd01cd2`:** The failing customer `globalSearch` positive in `tests/api-integration/project-reach-reads.test.ts:718–727` is an invalid **controller-level** oracle. It does not establish a production customer-search defect. The customer identity and project reach are already valid: `organisation.portal_access` defaults to `true` in the schema. Explicitly setting it in a fixture may aid clarity, but **cannot** make this legacy controller return the expected task/comment/project results. This finding corrects item 1 and the broad “four fixture/oracle corrections” conclusion in my earlier `notification-current-pg-adjudication-sol.md`; that immutable first report should be read with this follow-up. The other four findings remain separate.
+
+**Provenance and limits:** Fresh read-only follow-up by the same Sol-tier adjudication context `/root/notification_current_pg_adjudication_sol`, requested by `/root` after the controller's earlier return was identified. The actual model/version is in the parent's spawn provenance. I inspected the clean exact-head worktree, `apps/api/src/search/controllers/global-search.ts`, route/policy, `caller-reach.ts`, direct label/project controllers, the five-file test context, `docs/01-architecture/rbac.md`, `docs/03-features/customer-portal.md` and work-item permissions, and the accepted #740 source history (`0c17da39`). Commands were bounded `sed`, `rg`, `git log`, `git show` and `git status`; no source edits, tests, database, Docker, browser, push or PR state changes. This is neither a source-security review nor advance approval of a repair.
+
+## Causal trace and contract
+
+- The customer fixture creates an own-organisation genuine built-in role/membership and binds the visible project to that organisation (`project-reach-reads.test.ts:639–699`). Although it omits `portalAccess`, the schema and migration default it to `true` (`apps/api/src/database/schema.ts:1684`; migration `0052`). The hosted run passes the exact visible-project `reachableProjectIds` assertion at :711 and fails later at `assertSearch` :724. **My earlier report incorrectly treated the omitted field as false and identified it as the cause.** The customer reach setup is a valid positive. Keeping `portalAccess: true` explicitly would document the premise but does not repair the failure.
+- Independently, `globalSearch` selects `workspace_user` rows for the supplied user and returns `{ results: [], totalCount: 0 }` when none exist **before it invokes `reachableProjectIds`** (`apps/api/src/search/controllers/global-search.ts:139–164`). The fixture intentionally creates no workspace-user row. Adding one to force the test green would misrepresent customer admission and weaken the portal-only boundary. Removing that early return for customers would be a product/authority change, not a fixture correction.
+- The actual `GET /api/search` route is guarded by `workspaceAccess.fromQuery()` and `workspace:read` (`apps/api/src/search/index.ts:26–38`, `policy.ts:60–66`). The built-in customer role has no `workspace:read`; the customer portal API is the separate `/api/portal/*` surface. RBAC explicitly says customers get `403` on agent item-scoped work-item/legacy task routes, and `POST /api/work-items/search` gets `403` for a customer (`rbac.md:467–474`). The customer portal's listed reads use `own_request` and `own_organisation`, not an agent legacy global-search endpoint (`customer-portal.md:218–260`). Thus neither the direct call's positive legacy result nor an HTTP 200 from agent search is a supported customer promise.
+- RBAC's “workspace-level lists and search return only what the caller reaches” (#740, `rbac.md:606–615`) is a **filtering bound on authorized callers**. Its mention of customer organisation as a reach source does not grant `workspace:read`, create a workspace-user row, or override the portal-only rule. The direct `callerReach.reachableProjectIds([workspaceId])` positive is meaningful for the shared project-organisation reach predicate. The direct `getLabelsByWorkspaceId` and `getProjects` calls with that set are meaningful SQL filtering tests, but their direct invocation does not establish that a customer can use the guarded agent routes.
+
+## Precise legitimate oracle without widening customer authority
+
+Keep the already valid customer positive fixture and assert: (1) current `callerReach.reachableProjectIds` is **exactly** the bound visible project id, not the hidden project; (2) direct label/project list functions given that exact set include only visible project-bound rows and preserve their count/rollup privacy invariants; (3) a missing or revoked organisation membership collapses reach to `[]` in a separate negative control. For `globalSearch`, retain its substantive positive and hidden-row/count assertions under a **real workspace-member staff caller with actual project reach**, which this same test file already exercises through HTTP for staff. A focused direct-controller test may pass that staff user and its own `callerReach` callback to prove the SQL path receives the reachable set and filters before paging. Do not claim that staff result proves a customer search route. If the customer case continues to call `globalSearch` directly, its contract-consistent result with no workspace-user row is zero, and the customer-specific project-reach proof belongs to the reach/list seams above. Also keep an HTTP customer-agent-search denial assertion if desired, using the correct host/session setup; it must not be turned into a 200.
+
+No open product decision is needed to fix this test without new scope. If an actual **customer legacy global-search** experience is desired, the owner must first decide and document a portal-specific route, result visibility/redaction and policy; that is outside this integration repair. Do not add workspace membership, grant customer `workspace:read`, remove the controller's workspace-user bound or expose legacy task/activity shapes to the portal to satisfy this oracle.
+
+**Next safe action:** Repair only this customer's positive test split as above, keep the other four PostgreSQL repairs running independently, then run focused real PostgreSQL and the exact-head hosted job. The current failed result and review gates remain in force.
+
+
+### Record 3
+
+# Notification hosted PostgreSQL failure inventory
+
+Candidate: `d17d389721a38999c50eb98861b9560b8dd01cd2` in `q580-b4`.
+Hosted run: job `116743355171`, run `38829075711`; 206 files, 2,947 tests, five failed (2,942 passed). The raw runner log remains private; this report excludes SQL, parameters, and fixture payloads.
+
+| Failure | Source/runtime evidence | Contract-aligned fixture/oracle repair |
+|---|---|---|
+| `project-reach-reads.test.ts` customer-bound project case | Test inserts a customer person and canonical customer role/membership, but its organization omits `portalAccess: true`. The canonical fixture must be admitted. Direct controller `globalSearch` additionally requires workspace reach, while the customer portal contract is own-request access; that assertion’s intended scope is unresolved and is held unchanged. | Set active/external/portal-enabled canonical organization; assert resolved customer identity and exact project-org reach. Do not add workspace identity or alter/drop global-search assertions until adjudicated. |
+| `work-item-assignable.test.ts` L4 | Fixture changes a staff person into customer and grants only project membership; customer has no canonical own-organization membership, so missing/invalid project admission returns 404. Existing same-workspace project-reached/no-capability case separately asserts 403. | Expect the indistinguishable 404 and compare with missing-project response; keep separate 403 case intact. |
+| `work-item-comment.test.ts` B1 | The failing expected notification is planted `work_item.assigned` at index 0, excluded by NO-19. The eligible public mention is index 1; private/internal comment and foreign/nonparticipant rows remain negative controls. | Exclude assignment from requester/participant list, retarget positive direct-read to the public mention; preserve assignment unread and stored through direct/bulk/clear; retain private, internal, foreign, and nonparticipant negatives. |
+| `ws-project-reach.test.ts` customer case | Side is changed on a workspace staff person without canonical customer membership; organization also lacks portal admission. The project’s organisation differs from the workspace organisation, which is the intended reach distinction. | Use an active external portal-enabled org and exact built-in customer role/own-org membership; keep workspace membership as an ignored fact. Preserve both legacy/native `project:read` denials. |
+| `identity/oidc-jit-login.test.ts` customer JIT | Seeded role is rank 0, empty-capability, non-system rather than exact `BUILT_IN_ROLES.customer` provenance. Session admission therefore fails despite the test expecting a usable customer portal identity. | Seed built-in rank/capabilities/system provenance, retain first-login grant and session assertions, add meaningful tampered-role refusal if absent. |
+
+The inventory distinguishes stale fixtures/oracles from product contract. No assertion was removed to obtain a green run. The project `globalSearch` scope remains pending; no customer workspace grant or portal route is inferred.
+
+## Adjudication correction
+
+The initial row for the project-reach customer fixture was corrected after Sol verified `organisation.portalAccess` defaults to `TRUE` (`apps/api/src/database/schema.ts:1684`). Its omitted value was not the cause. The hosted failure there was the direct legacy search controller's empty result because this customer fixture has no `workspace_user`; the customer portal contract does not grant workspace search. The repair keeps resolved customer identity and exact organization/project reach plus direct label/project positives, moves the hidden-row/search-count oracle to the real staff project-reach user, and asserts the customer portal cookie is refused by agent `GET /api/search`. No customer workspace membership or capability was added.
+
+
+### Record 4
+
+# Hosted notification fixture/oracle repair
+
+Base: `d17d389721a38999c50eb98861b9560b8dd01cd2`; hosted run `38829075711` (206 files / 2,947 tests / 5 failures, 2,942 pass). Raw PG log is private and not reproduced here. This candidate changes test fixtures/oracles only; no production source, policy, role, route, or schema changed.
+
+## Exact scope
+
+- `tests/api-integration/project-reach-reads.test.ts`: customer fixture explicitly declares active/external/portal-enabled org; asserts resolved customer identity and exact own-organization reach; keeps customer label/project positives; agent search is denied to customer portal session. Legacy generic search's visible/hidden rows and count remain asserted with the real staff project-reach principal and its own `callerReach` result. This is consistent with legacy `GET /api/search` requiring workspace authority; no customer workspace grant is invented. `portalAccess` defaults true (`apps/api/src/database/schema.ts:1684`), so explicit true is clarity, not root-cause repair.
+- `tests/api-integration/work-item-assignable.test.ts`: invalid project-only customer grant gets 404 matching missing-project body; existing valid-in-reach/no-capability 403 test remains untouched.
+- `tests/api-integration/work-item-comment.test.ts`: B1 assignment notification excluded from requester/participant visibility; public mention remains positive and private/internal/foreign/nonparticipant cases remain negative. Direct read, bulk read, and clear are checked with immediate persisted rereads proving the assignment remains unread and stored.
+- `tests/api-integration/ws-project-reach.test.ts`: canonical built-in customer role provenance plus own-organization membership and portal-enabled organization; project organization vs workspace organization distinction retained; both socket `project:read` negatives remain.
+- `tests/api-integration/identity/oidc-jit-login.test.ts`: JIT role uses `BUILT_IN_ROLES.customer` rank/capabilities and system/noneditable provenance; positive customer portal session cookie remains asserted; a tampered-role denial checks no portal session cookie/row.
+
+## Contract scope and limits
+
+The source's current hosted result fails the five test files above; this repair only aligns fixtures/oracles with canonical admission, NO-19's exclusion of staff assignment notifications, missing-project indistinguishability, and workspace-scoped search authority. It does not claim a green hosted rerun. No local PostgreSQL, Docker, or browser test was run, as instructed. The direct/list/bulk side-effect checks are authored as integration regressions but await the hosted PostgreSQL runner.
+
+## Validation
+
+- `pnpm typecheck` — passed (9 packages).
+- Scoped `pnpm exec biome check` — passed with five existing unrelated `noUnusedVariables` warnings in `work-item-comment.test.ts`; no formatting/import errors.
+- `git diff --check` — passed.
+
+Committed local candidate: `509ee11f34664c39a521e85b7bb7d558a86537b0` (`test: align hosted notification fixtures with contracts`). Worktree is clean; no push or PR was performed.
+
+
+### Record 5
+
+# #785 hosted PostgreSQL fixture repair — independent ordinary review A
+
+- **Verdict:** BLOCKED for the test-only repair composed at exact head `6a3057c86a59c2609dbaaafe48db7104b40c9e11` by the unscoped OIDC negative session assertion below. Other changed assertions and fixtures align with the traced contracts and observed failure causes. This does not establish that the PostgreSQL suite passes on this head.
+- **Comparison base:** `d17d389721a38999c50eb98861b9560b8dd01cd2` (the failed hosted candidate; repair commit `509ee11f34664c39a521e85b7bb7d558a86537b0` is an ancestor of the reviewed head).
+- **Independence/provenance:** Fresh reviewer context assigned by `/root` as ordinary reviewer A; I did not author, direct, or remediate the candidate. Dispatch requested the GPT-6 Luna ordinary-review tier. Runtime identity exposed to this context: GPT-6; no more specific version string was exposed, so the requested tier is not presented as independently verified runtime identity.
+- **Source/worktree:** assigned worktree `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2` was clean at the requested exact head `6a3057c86a59c2609dbaaafe48db7104b40c9e11`. The intervening merge from accepted main adds only the three conductor-record files; the repair commit's five test files are unchanged. I inspected the exact candidate object and the composed head.
+
+## Review findings
+
+### Blocking finding
+
+**The tampered-role OIDC negative can pass or fail because of an unrelated customer session.** In `tests/api-integration/identity/oidc-jit-login.test.ts`, the new denial case queries `sessionTable.findFirst({ where: eq(sessionTable.portal, "customer") })` and expects `undefined`. That checks the whole database rather than the attempted JIT subject/connection. A surviving customer session for an unrelated user would make the assertion fail even if tampered admission correctly created no session; conversely, the empty database assertion does not pair the denial with a meaningful unrelated-session survival control. Scope the absence assertion to the JIT attempt's user or connection (using the created external identity/user association as appropriate) and retain/create a distinct unrelated customer-session control whose row survives the denied attempt. Until this test establishes both properties, the candidate is blocked at ordinary review.
+
+### Other reviewed behavior
+
+- **Customer project reach and search:** The customer fixture now has an active, external, portal-enabled organisation, the canonical built-in customer role shape and one own-organisation membership. It asserts a resolved customer identity and exact reach to the one bound project, retaining the positive label/project filtering checks. The legacy customer `globalSearch` positive is removed: that controller requires a workspace-user row, and `GET /api/search` requires staff workspace authority. The substantive visible/hidden/count search oracle remains under a real project-reach staff caller. The customer request still asserts denial on the customer portal session. This follows the corrected Sol adjudication; explicit `portalAccess: true` is fixture clarity because the schema defaults it true.
+- **Assignable roster:** The no-canonical-customer-grant case now expects 404 and compares the response body with a missing-project request. This matches the project-reach-before-capability contract. The separate valid-in-reach/no-capability 403 case is outside the changed lines and remains intact.
+- **Customer notification audience and mutation:** Requester/participant assignment rows are now excluded per NO-19, while the public-comment mention remains a positive and internal, nonparticipant and foreign rows remain negative. Positive direct read still mutates the permitted mention; the forbidden assignment row is checked after direct read, bulk read and clear, with persisted rereads proving it remains unread and stored. This preserves both audience and mutation coverage without broadening customer visibility.
+- **Socket reach:** The customer fixture now creates an active portal-enabled organisation and a genuine built-in customer role with an own-organisation membership. It binds only the serving project to that organisation while the workspace keeps its operating organisation; the existing legacy and native `project:read` denials remain. The extra workspace grant inherited from the staff fixture does not create customer reach: the resolved customer reach branch in `reaches()` consults the organisation ids and the project's organisation id.
+- **OIDC JIT:** The positive customer seed now matches `BUILT_IN_ROLES.customer`, including rank, exact capabilities and system/noneditable provenance. The successful callback asserts the portal session row through `expectJitIdentity` and the returned portal-cookie name. The tampered built-in-role case asserts an identity error, no portal cookie, and no customer session row. These exercise both canonical admission and denial without changing auth code. The positive test does not make a follow-up request using the cookie; its evidence is the callback-issued cookie plus matching persisted session, not an independently exercised authenticated portal request.
+
+The reviewed contracts include `docs/03-features/notifications.md` NO-18/19, the RBAC project-reach and socket rules, customer portal identity scope, and identity provisioning IP-9/IP-10. I cross-checked the candidate against the authentic fixture-repair and two customer-search adjudication records, including the later correction that the customer search failure was a controller-level oracle issue. Those records informed review but did not substitute for checking the actual diff and source.
+
+## Checks and limits
+
+- `git show`, ancestry check, and `git diff` — exact repair commit and composed `6a3057c86a59c2609dbaaafe48db7104b40c9e11` inspected; five test files plus three accepted-main conductor-record files since the failed hosted base.
+- `git diff --check d17d389721a38999c50eb98861b9560b8dd01cd2 509ee11f34664c39a521e85b7bb7d558a86537b0` — passed. Checking through composed head also reports trailing whitespace and an added EOF blank line in the imported `takeover-checkpoint-20261016.md`; these are in the accepted-main review record and are outside the notification test delta.
+- I did not rerun typecheck or Biome. The fixture-repair report records them as passing on the candidate; that is author evidence, not a rerun in this review.
+- I did not run focused tests, PostgreSQL, Docker, or browser checks. The assigned environment reported PostgreSQL/Docker/browser unavailable, and these changed files are PostgreSQL integration tests. The hosted parent result remains **206 files / 2,947 tests: 2,942 passed, 5 failed**; it is evidence for why the repair was made, not a result for this candidate.
+
+This ordinary review covers only the test-only delta at the exact head and remains blocked by the finding above. It is not a hosted rerun, security review, merge authorization, or acceptance claim.
+
+
+### Record 6
+
+# Ordinary review B — hosted notification fixture repair
+
+**Verdict: BLOCKING FINDING.** Do not advance this candidate to the Sol gate until the newly added OIDC negative assertion is scoped to the tested JIT connection/user. The five-file repair otherwise follows the adjudicated contracts by inspection. No changes were made.
+
+## Provenance
+
+- Review role: fresh independent ordinary review, context `/root/notification_pg_repair_ordinary_b` (assigned without inherited author turns).
+- Model selector: GPT-6 Luna (ordinary-review tier assigned by conductor). No model-runtime/version metadata was exposed to this reviewer beyond that selector.
+- Exact reviewed source: `6a3057c86a59c2609dbaaafe48db7104b40c9e11`.
+- Candidate under review: `509ee11f34664c39a521e85b7bb7d558a86537b0`; base `d17d389721a38999c50eb98861b9560b8dd01cd2`.
+- Worktree: `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`.
+- Candidate diff contains only the five assigned test files; no product source changes. Worktree remained clean.
+
+## Finding
+
+`tests/api-integration/identity/oidc-jit-login.test.ts` adds a tampered-customer-role refusal assertion that checks `sessionTable.findFirst({ where: portal = "customer" })` is undefined. That predicate is global to the test database and is not tied to `jit-tampered-customer-role-connection`, its identity, or its user. Other tests in the full integration suite create customer portal sessions, so this can fail based on test ordering or shared database contents even when the attempted JIT login correctly creates no session. It also does not prove that this attempted login created no session: an unrelated row can satisfy it. Filter by the connection/user of this attempt (or snapshot/query the exact identity-associated user) and retain the cookie refusal assertion. This is a blocker because the candidate's authored negative control is not isolated and cannot reliably establish its claimed invariant.
+
+## Scope reviewed
+
+- Compared the complete candidate diff against its base and verified the only changed paths are the five assigned integration tests.
+- Read the notification, RBAC, API-design and customer-portal contracts, plus the supplied fixture inventory and Sol correction adjudication.
+- Confirmed the search change preserves a genuine customer identity and exact organisation reach, denies customer access to agent search, and retains search hidden-row/count assertions through a real project-reached staff principal. It does not invent workspace membership or customer `workspace:read`.
+- Confirmed the assignable test compares the invalid customer grant response to a missing-project response; the separate reached/no-capability 403 test remains.
+- Confirmed the notification test switches the positive recipient oracle from the excluded assignment event to public mention and checks assignment persistence/unread state after direct, bulk and clear operations. Private/internal/foreign/nonparticipant negatives remain in the surrounding test.
+- Confirmed the websocket customer fixture adds built-in customer role provenance and own-organisation membership while keeping project-organisation distinct from workspace organisation and retaining both socket denials.
+- Confirmed OIDC fixture uses `BUILT_IN_ROLES.customer` values and adds a positive portal cookie check. The tampered-role refusal is semantically aligned, subject to the global-session query blocker above.
+
+## Validation
+
+- `git diff --check 509ee11f^ 509ee11f` — passed.
+- `pnpm typecheck` — passed, 9 packages (Turbo reported all 9 cached).
+- No PostgreSQL integration test, hosted runner, Docker or browser run was performed, consistent with the bounded review assignment. Prior hosted failure remains the base evidence: 206 files / 2,947 tests, five failures (2,942 passing); this review does not establish a green rerun.
+
+## Non-blocking observations and limits
+
+- The explicit `portalAccess: true` in the customer reach fixture documents the premise; the Sol adjudication correctly notes the schema default is already true and this is not itself a repair.
+- Typecheck and source inspection cannot establish runtime test isolation or hosted PostgreSQL behavior. The exact-head hosted rerun is still required after the blocker is fixed.
+- No independent security verdict is supplied here; the fresh Sol pass remains a separate required gate.
+
+
+### Record 7
+
+# Scoped OIDC customer-session denial regression
+
+Candidate base: `6a3057c86a59c2609dbaaafe48db7104b40c9e11` (ordinary reviews A and B identified the same sole blocker). Candidate commit: pending at report creation.
+
+The only source file changed is `tests/api-integration/identity/oidc-jit-login.test.ts`; no product/auth source changed. The tampered-role negative now has a non-vacuous, identity-scoped control:
+
+1. Sign in a distinct, canonical customer JIT identity and retain its legitimate customer session as the unrelated-session control.
+2. Sign in the target canonical customer connection and assert its created identity matches that exact connection and `SUBJECT`.
+3. Delete only the target identity user's session and reread to confirm the starting state.
+4. Tamper that connection's configured customer role and retry sign-in. Assert identity-error redirect, validator invocation, no portal session cookie, and continued exact connection+subject identity association.
+5. Query customer sessions by portal and the exact target identity user; require none. Separately reread the unrelated customer's portal session and require it survives.
+
+This covers the refused retry's subject/user without relying on a database-global “no customer sessions” assertion. It preserves the other legitimate session as a control and makes no product-behavior change.
+
+Validation: scoped Biome passed; `pnpm typecheck` passed (9 packages); `git diff --check` passed. No PostgreSQL integration test, Docker, or browser was run. The negative test awaits the hosted PostgreSQL runner and the independent ordinary/Sol reviews.
+
+Committed locally as `af2d812a4569b21ca631abd732e1b7be9ee675e1` (`test: scope tampered OIDC session denial`). Worktree is clean; no push.
+
+
+### Record 8
+
+# #785 OIDC session-oracle repair — independent ordinary review A delta
+
+- **Verdict:** CLEAR for the bounded OIDC test delta at exact head `af2d812a4569b21ca631abd732e1b7be9ee675e1`. It resolves my previous blocked finding about the database-wide customer-session absence assertion. This verdict covers only this delta and relies on my prior review of the other four test files; it does not establish PostgreSQL pass or merge readiness.
+- **Comparison base:** `6a3057c86a59c2609dbaaafe48db7104b40c9e11`.
+- **Independence/provenance:** Fresh reviewer context assigned by `/root` for this exact delta as ordinary reviewer A. I did not author, direct or remediate it. Dispatch requested the GPT-6 Luna ordinary-review tier. Runtime identity exposed to this context: GPT-6; no more specific version string was exposed, so requested tier is not presented as independently verified runtime identity.
+- **Source/worktree:** `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2` was clean at the exact reviewed head. Diff is limited to `tests/api-integration/identity/oidc-jit-login.test.ts`.
+
+## Delta assessment
+
+The negative case now starts with two distinct successful JIT admissions for the same validated subject on separate customer connections: the intended target connection and an unrelated valid connection. `expectJitIdentity` verifies each connection's own canonical customer identity, grant, membership and session row; the test also asserts their user ids differ. This establishes a real unrelated customer session before the denial path.
+
+For the target, the test records the exact external identity by both connection id and subject, confirms a user id exists, and confirms it differs from the unrelated user. It removes sessions only for that target user and verifies the target has no session before tampering. It then changes only the target connection's configured customer role, retries that same connection and subject, and asserts token validation ran, the exact target identity remains associated with the same user, the response is an identity error, no portal cookie is issued, and no customer session exists for that target user. Finally, it verifies the separate unrelated user's customer session still exists. The exact connection-plus-subject and user-scoped predicates prevent a wrong-subject or empty-database result from satisfying the absence check; the surviving unrelated session proves the retry did not globally clear customer sessions.
+
+The test intentionally exercises a successful first JIT admission followed by a tampered-role return-login attempt. It does not claim that a fresh first-login attempt under an already-tampered role is covered by this particular case; the separate existing tampered first-login scenario remains in the file and continues to test that path. The prior OIDC positive case still asserts a callback-issued portal cookie; this delta's target first-admission helper verifies the matching persisted portal session before the retry.
+
+The previous ordinary A report at `notification-pg-repair-ordinary-a-luna.md` remains an immutable record of its earlier BLOCKED verdict at `6a3057c8`. This delta closes that finding; it does not rewrite the historical report. My earlier review of the other four repair files remains the basis for their coverage.
+
+## Checks and limits
+
+- `git show --stat` and exact `git diff 6a3057c86a59c2609dbaaafe48db7104b40c9e11 af2d812a4569b21ca631abd732e1b7be9ee675e1` — one test file changed; reviewed all 107 added/removed lines in context.
+- `git diff --check 6a3057c86a59c2609dbaaafe48db7104b40c9e11 af2d812a4569b21ca631abd732e1b7be9ee675e1` — passed.
+- Author evidence reports typecheck and Biome passed; I did not rerun them.
+- No focused tests or PostgreSQL were run. This is a PostgreSQL integration-test file and PostgreSQL/Docker are unavailable in the assigned environment. The hosted result for the earlier source remains 206 files / 2,947 tests with five failures; this delta has no hosted rerun evidence.
+
+This is an ordinary source review of the exact test delta, not runtime verification, a security review, merge authorization, or acceptance of #785.
+
+
+### Record 9
+
+# Ordinary review B delta — scoped OIDC session denial oracle
+
+**Verdict: CLEAR for this delta.** The prior blocker is repaired in the reviewed delta. No new blocking or non-blocking findings.
+
+## Provenance
+
+- Role: fresh independent ordinary reviewer B, context `/root/notification_pg_repair_ordinary_b`.
+- Model selector: GPT-6 Luna (ordinary tier); runtime/version metadata beyond the selector was not exposed.
+- Exact source HEAD: `af2d812a4569b21ca631abd732e1b7be9ee675e1`.
+- Delta base: `6a3057c86a59c2609dbaaafe48db7104b40c9e11` (the earlier review source). The corrected candidate commit is `af2d812a4569b21ca631abd732e1b7be9ee675e1`; original candidate/base remain `509ee11f34664c39a521e85b7bb7d558a86537b0` / `d17d389721a38999c50eb98861b9560b8dd01cd2`.
+- Worktree: `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`; clean at review.
+- Reviewed only the OIDC test delta plus the external-identity uniqueness definition needed to validate its scope. No files changed.
+
+## Delta finding review
+
+The prior global customer-session lookup is replaced with an identity-scoped check and a live unrelated-session control:
+
+- A separate customer connection is successfully signed in first; `expectJitIdentity` verifies its customer session, and its external identity/user id are retained.
+- The target connection is successfully signed in before tampering. `expectJitIdentity` verifies the positive login; the test then selects the exact target connection plus `SUBJECT`, requires a nonempty user id, and confirms that id differs from the unrelated user's id.
+- It deletes and rereads sessions only for the target user's id, leaving the unrelated customer's session intact.
+- After mutating only the target configured role and retrying, it verifies the ID-token validator was reached, the exact target connection/subject identity still belongs to the expected user, no portal cookie was returned, no customer session exists for the target user, and the unrelated user's customer session remains.
+
+The subject selector is non-vacuous: the mocked validator supplies the fixed nonempty `SUBJECT`, and the test first proves the successful target login created its external identity under the exact connection and subject. Schema uniqueness is `(identity_connection_id, subject)`, so the same test subject under the distinct unrelated connection is valid. The retry is tied to the existing target identity, and the unrelated session control demonstrates the test does not depend on global session-table emptiness or delete unrelated records.
+
+## Validation and limits
+
+- `git diff --check af2d812a^ af2d812a` — passed.
+- Author's recorded validation in the supplied session note: scoped Biome, `pnpm typecheck` (9 packages), and `git diff --check` passed.
+- No PostgreSQL integration run, hosted runner, Docker, or browser was run. Runtime behavior still awaits the exact-head hosted PostgreSQL run.
+- This clears only the OIDC session-oracle delta. The prior review's findings on all five original test files remain part of the candidate and are not re-reviewed here. This is not the separate Sol security verdict.
+
+
+### Record 10
+
+# #785 PostgreSQL fixture/oracle repair — independent security review
+
+**Verdict: CLEAR for the bounded source-security delta at exact head `af2d812a4569b21ca631abd732e1b7be9ee675e1`.** No blocking or non-blocking security finding in the five revised integration tests or their conservation against the previously reviewed implementation. This is not a PostgreSQL pass, exact-head CI result, merge authorization, or runtime acceptance.
+
+**Reviewed head:** `af2d812a4569b21ca631abd732e1b7be9ee675e1`  
+**Comparison base:** `c84df2f56030c375bba4ac9b7af8832852bce2c1` for the full post-security-review delta; `d17d389721a38999c50eb98861b9560b8dd01cd2` for the failed hosted candidate.  
+**Role and independence:** Fresh `/root/notification_pg_repair_security_sol` context, assigned by `/root` for a full Sol-tier security review after the ordinary A/B delta findings were independently cleared. I did not author, direct, advise, remediate, or perform an ordinary review of this candidate. The two earlier Sol adjudication notes were diagnosis, including a corrected customer-search diagnosis; I treated them as evidence to challenge against source, not as approvals.  
+**Model provenance:** Parent dispatch selected `gpt-6-sol` for this context. The runtime exposed no independently verifiable model/version attestation here; that selector is recorded as provenance, not as a claimed runtime measurement.  
+**Worktree:** `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, clean at the reviewed head.
+
+## Scope and assessment
+
+`git diff c84df2..af2d812 -- apps packages` is empty. The candidate's implementation is byte-unchanged from the earlier full independent security review at `c84df2`; the intervening accepted-main import adds three queue/status/review-record files, with conservation recorded in `notification-records-main-conservation.json`. The security-bearing delta is limited to five PostgreSQL integration test files (`project-reach-reads`, `work-item-assignable`, `work-item-comment`, `ws-project-reach`, `identity/oidc-jit-login`). I inspected their complete diff and relevant surrounding fixtures, policy/source, and canonical RBAC, customer portal, notification, project, identity and socket contracts. The prior `notification-structural-security-current-sol.md` source verdict remains applicable to unchanged implementation, within its explicit limits.
+
+- **Customer project reach and search.** The positive fixture has an active, external, portal-enabled organisation, a genuine built-in customer role, an own-organisation membership and an assertion that `resolveIdentity` returns the exact organisation reach. The bound project remains the sole reachable project; direct label/project SQL checks retain the visible positive and hidden/count exclusions. Customer agent-search access is asserted denied through a customer portal session. The legacy `globalSearch` positive and hidden-row/count oracle now run under an actual staff workspace member with its own `callerReach`; the controller first requires `workspace_user`, and the route requires `workspace:read`. No fake customer workspace grant or customer legacy-search promise was added. The explicit `portalAccess: true` documents the fixture; schema default is already true, so it is not asserted as the cause of the original search failure.
+- **Assignable roster.** The intentionally invalid customer grant now returns 404 with the same body as a missing project, matching reach-before-capability privacy. The valid in-reach/no-capability 403 branch is retained in `project-scoped-reach.test.ts` for this route (the prior ordinary note's implication that it was in the changed file was imprecise). The production policy still declares project reach and `work_item:read`.
+- **NO-19 customer inbox.** Staff-assignment rows are excluded for requester and participant; the public mention remains a positive while internal, nonparticipant and foreign rows remain negative. The permitted mention mutates on direct read. The forbidden assignment remains unread and stored after direct read, bulk read and clear, proven by separate persisted rereads. The test therefore does not make a forbidden notification eligible to satisfy its original oracle.
+- **Sockets.** The repaired customer fixture supplies an active portal-enabled organisation, the exact built-in customer role and an own-organisation membership. The serving project's organisation differs from the workspace's operating organisation. The `reaches` positive for the serving project and negative for the other project are retained, while both legacy and native `project:read` socket authorization deny the customer on both projects. The inherited workspace membership does not grant customer authority in the canonical resolver.
+- **OIDC JIT.** The customer seed uses exact compiled role rank/capabilities and system/noneditable provenance; the positive first login verifies identity, grant, membership, stored customer portal session and returned portal cookie. The tampered-role retry begins after successful admission of a distinct unrelated customer and the target. It binds the attempted identity to exact connection plus subject, verifies different user IDs, deletes only the target user's prior session, mutates only the target configured role, and confirms token validation, identity-error redirect, no portal cookie, no target customer session, and survival of the unrelated customer session. This is a non-vacuous return-login denial; it does not claim a full browser-authenticated follow-up request or a new first-login-under-tamper case.
+
+The existing structural checks for current customer membership, role provenance, event audience, private/foreign reach, API-key/customer separation and source-authority checks were not removed by this test delta. The previous full source review's held customer external-delivery path remains held: real `current-eligibility.ts` still reaches `read_authority_lost` for customer work-item/comment delivery, and this change does not create portal HTTP inbox or outbound delivery acceptance.
+
+## Checks and limits
+
+I ran `git status --porcelain`, `git rev-parse HEAD`, `git diff c84df2..af2d812` (five tests plus accepted records), `git diff c84df2..af2d812 -- apps packages` (empty), `git diff --check c84df2..af2d812 -- tests/api-integration` (passed), `git merge-base --is-ancestor c84df2 af2d812` (passed), and bounded `rg`/`sed` source and contract inspection. I read both initial ordinary BLOCKED records and both current CLEAR delta dispositions; their adverse finding is preserved in the record. I did not rerun typecheck or Biome; the author reports both passing. I ran no PostgreSQL, Docker, browser, focused integration tests, provider I/O or SIT in this context.
+
+Live `gh pr view 785` still reports PR head `d17d389721a38999c50eb98861b9560b8dd01cd2`, whose hosted PostgreSQL run failed **5 of 2,947 tests across 206 files** (2,942 passed), and whose current PR checks include failed PostgreSQL and review-template jobs. That result is the repair's input, not a result on `af2d812`. The repaired exact head needs publication to PR #785, real focused/full hosted PostgreSQL execution and all required current-head checks and recorded review before merge. No waiver or stage/source-runtime acceptance is implied by this verdict.
+
+
