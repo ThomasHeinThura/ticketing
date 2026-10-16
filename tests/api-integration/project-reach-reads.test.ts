@@ -718,6 +718,7 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         userId: user.id,
         credential: "session",
       });
+      if (!customerIdentity) throw new Error("customer identity missing");
       expect(customerIdentity).toMatchObject({
         side: "customer",
         portal: "customer",
@@ -729,9 +730,10 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
       expect(await reach.reachableProjectIds([a.world.workspaceId])).toEqual([
         a.world.project.id,
       ]);
-      const labels = await getLabelsByWorkspaceId(a.world.workspaceId, [
-        a.world.project.id,
-      ]);
+      const labels = await getLabelsByWorkspaceId(
+        customerIdentity,
+        a.world.workspaceId,
+      );
       assertLabels(labels, "visible");
       // The legacy search controller requires legitimate workspace membership. Keep its
       // hidden-row/count oracle under a staff member with its own project reach; customers

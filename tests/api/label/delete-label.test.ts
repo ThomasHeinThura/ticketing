@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import {
   afterEach,
   beforeEach,
@@ -7,6 +8,14 @@ import {
   type Mock,
   vi,
 } from "vitest";
+
+const IDENTITY = {
+  side: "staff",
+  userId: "user-1",
+  personId: "person-1",
+  reach: { kind: "all" },
+  authority: [],
+} as unknown as ResolvedIdentity;
 
 const mockFindFirst = vi.fn();
 const mockTxSelect = vi.fn();
@@ -176,7 +185,7 @@ describe("deleteLabel", () => {
         .mockReturnValueOnce(makeDeleteMock([DELETED_WORKSPACE_LABEL]))
         .mockReturnValueOnce(makeDeleteMock([TASK_LABEL_1, TASK_LABEL_2]));
 
-      await deleteLabel("label-ws-1", "user-1");
+      await deleteLabel(IDENTITY, "label-ws-1", "user-1");
 
       expect(mockTxExecute).toHaveBeenCalledTimes(1);
       expect(mockPublishEvent).toHaveBeenCalledTimes(2);
@@ -203,7 +212,7 @@ describe("deleteLabel", () => {
       queueTxSelectRows([WORKSPACE_LABEL], []);
       mockDelete.mockReturnValue(makeDeleteMock([DELETED_WORKSPACE_LABEL]));
 
-      await deleteLabel("label-ws-1", "user-1");
+      await deleteLabel(IDENTITY, "label-ws-1", "user-1");
 
       expect(mockTxExecute).toHaveBeenCalledTimes(1);
       expect(mockPublishEvent).not.toHaveBeenCalled();
