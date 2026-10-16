@@ -275,18 +275,20 @@ pull-request time. The script fails if either run reports a skipped test, becaus
 run would otherwise read as green. Without `TASKDESK_REAL_DOCKER=1` the test file reports
 every test as skipped, so it is inert in the fast unit run.
 
-The same required browser job also builds the checked-out event candidate's Dockerfile
-locally after the deploy-helper test, then starts it with the canonical Postgres 18 and
-Valkey Compose services.
-The smoke verifies the source journal's migration count was applied, the application runs
-under its non-root UID, the image healthcheck is healthy, and the public live and ready
-probes pass. It records the candidate and checkout SHAs, local image ID/platform, and
-sanitized proof in a short-lived workflow artifact. It performs no registry login, push,
-deployment, or SIT acceptance. Its isolated Compose project and uniquely named network have
-no published ports; cleanup removes only its own containers, volumes, network, local image
-tag, temporary environment file and source context. The hosted runner platform is tested
-here; the Release workflow remains responsible for its separately published
-multi-architecture artifact.
+The same required browser job also builds the explicit pull-request head commit (or the
+workflow SHA for merge-queue/manual runs) from a clean commit archive after the deploy-helper
+test, then starts that image with the canonical Postgres 18 and Valkey Compose services.
+The PR head can differ from Actions' synthetic merge checkout SHA; the proof records both.
+The smoke verifies the source journal's migration count was applied, both the one-shot
+migrator and running application use the built image ID, the application runs under its
+non-root UID, the image healthcheck is healthy, its container has no host port bindings, and
+the public live and ready endpoints return exactly HTTP 200 without following redirects. It
+records the candidate and checkout SHAs, local image ID/platform, and sanitized proof in a
+short-lived workflow artifact. It performs no registry login, push, deployment, or SIT
+acceptance. Its isolated Compose project and randomly named, ownership-labeled network have
+no published ports; cleanup removes only resources bearing this run's identity. The hosted
+runner platform is tested here; the Release workflow remains responsible for its separately
+published multi-architecture artifact.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
