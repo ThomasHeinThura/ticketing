@@ -810,9 +810,9 @@ describe("S6a reject (POST /api/invitation/{id}/reject)", () => {
 
     expect(changedEmail).toBe(true);
     expect(rejected.status).toBe(403);
-    await expect(rejected.json()).resolves.toMatchObject({
-      message: "You are not the recipient of this invitation",
-    });
+    await expect(rejected.text()).resolves.toBe(
+      "You are not the recipient of this invitation",
+    );
     expect((await invitationRow(invitation.id))?.status).toBe("pending");
     expect(await membershipRowCount(workspaceId, invitee.user.id)).toBe(0);
     const [currentUser] = await db
