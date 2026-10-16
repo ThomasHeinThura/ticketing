@@ -49,7 +49,10 @@ import {
   type ScimRequestAuthority,
 } from "./scim-authentication";
 import { ScimGroupWriteError, writeScimGroup } from "./scim-group-sync";
-import { setScimIdentityActiveInTransaction } from "./scim-lifecycle";
+import {
+  announceScimDeactivation,
+  setScimIdentityActiveInTransaction,
+} from "./scim-lifecycle";
 
 type ScimVariables = BaseVariables & { scimAuthority: ScimRequestAuthority };
 const scim = apiRouter<ScimVariables>();
@@ -458,6 +461,7 @@ async function applyScimActiveState(
   );
   if (!changed) return false;
   await reportPendingActionAuditFailures(changed.pendingActionAuditFailures);
+  await announceScimDeactivation(changed.revokedUserId);
   return true;
 }
 
@@ -1016,6 +1020,7 @@ export default scim
         if (!lockedIdentity || lockedIdentity.personId !== current.personId)
           return false;
         let pendingActionAuditFailures = 0;
+        let revokedUserId: string | null = null;
         if (nextActive !== lockedIdentity.active) {
           const lifecycle = await applyScimActiveStateInTransaction(
             tx,
@@ -1026,6 +1031,7 @@ export default scim
           );
           if (!lifecycle) return false;
           pendingActionAuditFailures = lifecycle.pendingActionAuditFailures;
+          revokedUserId = lifecycle.revokedUserId;
         }
         await lockAndVerifyScimMutation(tx, authority, "users");
         await tx
@@ -1061,7 +1067,7 @@ export default scim
           detail: { personId: current.personId, profileUpdated: true },
           actorType: "scim",
         });
-        return { pendingActionAuditFailures };
+        return { pendingActionAuditFailures, revokedUserId };
       }),
     );
     if (!updateResult)
@@ -1071,6 +1077,7 @@ export default scim
     await reportPendingActionAuditFailures(
       updateResult.pendingActionAuditFailures,
     );
+    await announceScimDeactivation(updateResult.revokedUserId);
     const [row] = await getScimUser(
       and(
         ...scimUserPredicates(authority),
@@ -1177,6 +1184,7 @@ export default scim
         if (!lockedIdentity || lockedIdentity.personId !== current.personId)
           return false;
         let pendingActionAuditFailures = 0;
+        let revokedUserId: string | null = null;
         const requestedActive = patchChangesActive
           ? (patched.value.active ?? lockedIdentity.active)
           : lockedIdentity.active;
@@ -1190,6 +1198,7 @@ export default scim
           );
           if (!lifecycle) return false;
           pendingActionAuditFailures = lifecycle.pendingActionAuditFailures;
+          revokedUserId = lifecycle.revokedUserId;
         }
         await lockAndVerifyScimMutation(tx, authority, "users");
         await tx
@@ -1225,7 +1234,7 @@ export default scim
           detail: { personId: current.personId, profileUpdated: true },
           actorType: "scim",
         });
-        return { pendingActionAuditFailures };
+        return { pendingActionAuditFailures, revokedUserId };
       }),
     );
     if (!updateResult)
@@ -1235,6 +1244,7 @@ export default scim
     await reportPendingActionAuditFailures(
       updateResult.pendingActionAuditFailures,
     );
+    await announceScimDeactivation(updateResult.revokedUserId);
     const [row] = await getScimUser(
       and(
         ...scimUserPredicates(authority),
