@@ -138,7 +138,7 @@ async function removeProjectMembership(userId: string, projectId: string) {
     .limit(1);
   if (!person)
     throw new Error("Expected fixture person before reach revocation");
-  await db
+  const removed = await db
     .delete(schema.membershipTable)
     .where(
       and(
@@ -146,7 +146,9 @@ async function removeProjectMembership(userId: string, projectId: string) {
         eq(schema.membershipTable.scope, "project"),
         eq(schema.membershipTable.scopeId, projectId),
       ),
-    );
+    )
+    .returning({ id: schema.membershipTable.id });
+  expect(removed).toHaveLength(1);
 }
 
 describe("API integration: canned responses (#27)", () => {
@@ -445,13 +447,30 @@ describe("API integration: canned responses (#27)", () => {
     const positiveKey = await createScopedApiKey(admin.user.id, {
       work_item: ["read"],
     });
-    expect(
-      (
-        await app.request(`/api/canned-responses?workItemKey=${key}`, {
-          headers: { "x-api-key": positiveKey },
-        })
-      ).status,
-    ).toBe(200);
+    const positiveRow = await insertCannedResponse(
+      await identityFor(admin.user.id),
+      {
+        workspaceId: admin.workspace.id,
+        name: "API key visible",
+        body: { type: "doc", content: [] },
+        visibilityDefault: "internal",
+        createdBy: admin.user.id,
+      },
+    );
+    if (!positiveRow)
+      throw new Error("Expected API-key-visible response fixture");
+    const positiveList = await app.request(
+      `/api/canned-responses?workItemKey=${key}`,
+      { headers: { "x-api-key": positiveKey } },
+    );
+    expect(positiveList.status).toBe(200);
+    const positiveBody = (await positiveList.json()) as {
+      id: string;
+      name: string;
+    }[];
+    expect(positiveBody).toEqual([
+      expect.objectContaining({ id: positiveRow.id, name: "API key visible" }),
+    ]);
     const scopeDeniedKey = await createScopedApiKey(admin.user.id, {
       work_item: [],
     });
