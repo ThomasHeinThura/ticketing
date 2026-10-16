@@ -10,16 +10,15 @@ import type { callerReach } from "../../utils/caller-reach";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
 import {
-  deleteTaskLabelByName,
+  addTaskLabelForIdentity,
   deleteTaskReturningId,
   findColumnBySlugForIdentity,
   findLabelInWorkspaceScope,
   findProjectWorkspaceContext,
-  findTaskLabelByName,
   findUserName,
   findWorkspaceMembershipId,
-  insertTaskLabelOnConflictDoNothing,
   listWorkspaceScopedTasks,
+  removeTaskLabelForIdentity,
   updateTaskRowReturningId,
 } from "../repository";
 import {
@@ -366,40 +365,33 @@ async function bulkUpdateTasks({
 
           case "delete": {
             const deleted = await deleteTaskReturningId(tx, identity, taskId);
-            if (deleted) {
-              itemEvents.push(() =>
-                publishEvent("task.deleted", {
-                  taskId,
-                  projectId: task.projectId,
-                  userId,
-                  title: task.title,
-                }),
-              );
+            if (!deleted) {
+              throw new HTTPException(404, { message: "Task not found" });
             }
-            return deleted ? 1 : 0;
+            itemEvents.push(() =>
+              publishEvent("task.deleted", {
+                taskId,
+                projectId: task.projectId,
+                userId,
+                title: task.title,
+              }),
+            );
+            return 1;
           }
 
           case "addLabel": {
             if (!label)
               throw new HTTPException(404, { message: "Label not found" });
-            const existing = await findTaskLabelByName(
-              tx,
-              identity,
+            const result = await addTaskLabelForIdentity(tx, identity, {
+              name: label.name,
+              color: label.color,
+              workspaceId,
               taskId,
-              label.name,
-            );
-            if (existing) return 0;
-            const inserted = await insertTaskLabelOnConflictDoNothing(
-              tx,
-              identity,
-              {
-                name: label.name,
-                color: label.color,
-                workspaceId,
-                taskId,
-              },
-            );
-            if (inserted) {
+            });
+            if (result.kind === "refused") {
+              throw new HTTPException(404, { message: "Task not found" });
+            }
+            if (result.kind === "changed") {
               itemEvents.push(() =>
                 publishEvent("task.label_assigned", {
                   projectId: task.projectId,
@@ -409,21 +401,24 @@ async function bulkUpdateTasks({
                 }),
               );
             }
-            return inserted ? 1 : 0;
+            return result.kind === "changed" ? 1 : 0;
           }
 
           case "removeLabel": {
             if (!label)
               throw new HTTPException(404, { message: "Label not found" });
-            const deleted = await deleteTaskLabelByName(tx, identity, {
+            const result = await removeTaskLabelForIdentity(tx, identity, {
               workspaceId,
               name: label.name,
               taskId,
             });
-            if (deleted) {
+            if (result.kind === "refused") {
+              throw new HTTPException(404, { message: "Task not found" });
+            }
+            if (result.kind === "changed") {
               itemEvents.push(() =>
                 publishEvent("task.label_unassigned", {
-                  label: deleted,
+                  label: result.value,
                   task,
                   projectId: task.projectId,
                   taskId,
@@ -432,7 +427,7 @@ async function bulkUpdateTasks({
                 }),
               );
             }
-            return deleted ? 1 : 0;
+            return result.kind === "changed" ? 1 : 0;
           }
 
           case "updateDueDate": {

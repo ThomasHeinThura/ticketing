@@ -27,6 +27,9 @@ const mutationEvents = [
   "task.priority_changed",
   "task.assignee_changed",
   "task.unassigned",
+  "task.deleted",
+  "task.label_assigned",
+  "task.label_unassigned",
   "task-relation.refresh",
 ] as const;
 let eventCaptureInstalled = false;
@@ -567,4 +570,173 @@ describe("API integration: task title activity", () => {
       ).toHaveLength(0);
     },
   );
+
+  it.each([
+    { operation: "delete", name: "delete-present" },
+    { operation: "addLabel", name: "add-missing" },
+    { operation: "removeLabel", name: "remove-present" },
+  ] as const)(
+    "bulk $name reports current-scope refusal after persisted grant revocation",
+    async ({ operation, name }) => {
+      const { member, task, identity } = await createTaskFixture();
+      const labelName = `revoked-${name}`;
+      let labelId: string | undefined;
+      if (operation === "addLabel") {
+        const [label] = await db
+          .insert(schema.labelTable)
+          .values({
+            name: labelName,
+            color: "#123456",
+            taskId: null,
+            workspaceId: member.workspace.id,
+          })
+          .returning();
+        if (!label) throw new Error("expected workspace label fixture");
+        labelId = label.id;
+      } else if (operation === "removeLabel") {
+        const [label] = await db
+          .insert(schema.labelTable)
+          .values({
+            name: labelName,
+            color: "#123456",
+            taskId: task.id,
+            workspaceId: member.workspace.id,
+          })
+          .returning();
+        if (!label) throw new Error("expected attached label fixture");
+        labelId = label.id;
+      }
+      const original = await db.query.taskTable.findFirst({
+        where: eq(schema.taskTable.id, task.id),
+      });
+      if (!original) throw new Error("expected persisted task fixture");
+      const gate = pauseAfterProjectContext(task.projectId);
+      const reach = {
+        reaches: async () => true,
+        can: async () => true,
+        reachableProjectIds: async () => [task.projectId],
+      };
+      let update:
+        | Promise<Awaited<ReturnType<typeof bulkUpdateTasks>>>
+        | undefined;
+      try {
+        update = bulkUpdateTasks({
+          identity,
+          taskIds: [task.id],
+          operation,
+          ...(labelId ? { value: labelId } : {}),
+          userId: member.user.id,
+          workspaceId: member.workspace.id,
+          reach,
+        });
+        await gate.reached;
+        await revokeProjectGrant(identity.personId, task.projectId);
+        gate.release();
+        await expect(update).resolves.toMatchObject({
+          success: true,
+          updatedCount: 0,
+          results: [
+            { taskId: task.id, success: false, error: "Task not found" },
+          ],
+        });
+      } finally {
+        gate.release();
+        await Promise.allSettled(update ? [update] : []);
+        gate.restore();
+      }
+
+      const persistedTask = await db.query.taskTable.findFirst({
+        where: eq(schema.taskTable.id, task.id),
+      });
+      expect(persistedTask).toMatchObject({ version: original.version });
+      expect(persistedTask?.title).toBe(original.title);
+      const labels = await db
+        .select()
+        .from(schema.labelTable)
+        .where(eq(schema.labelTable.taskId, task.id));
+      expect(labels.map((label) => label.name)).toEqual(
+        operation === "removeLabel" ? [labelName] : [],
+      );
+      expect(capturedEvents).toEqual([]);
+      expect(
+        await db
+          .select()
+          .from(schema.taskActivityTable)
+          .where(eq(schema.taskActivityTable.taskId, task.id)),
+      ).toHaveLength(0);
+    },
+  );
+
+  it("keeps bulk label add and remove idempotent for present and absent labels", async () => {
+    const { member, task, identity } = await createTaskFixture();
+    const [existingSource] = await db
+      .insert(schema.labelTable)
+      .values({
+        name: "already-present",
+        color: "#123456",
+        taskId: null,
+        workspaceId: member.workspace.id,
+      })
+      .returning();
+    const [absentSource] = await db
+      .insert(schema.labelTable)
+      .values({
+        name: "already-absent",
+        color: "#654321",
+        taskId: null,
+        workspaceId: member.workspace.id,
+      })
+      .returning();
+    if (!existingSource || !absentSource)
+      throw new Error("expected workspace label fixtures");
+    const [attached] = await db
+      .insert(schema.labelTable)
+      .values({
+        name: existingSource.name,
+        color: existingSource.color,
+        taskId: task.id,
+        workspaceId: member.workspace.id,
+      })
+      .returning();
+    if (!attached) throw new Error("expected attached label fixture");
+    const reach = {
+      reaches: async () => true,
+      can: async () => true,
+      reachableProjectIds: async () => [task.projectId],
+    };
+
+    const addResult = await bulkUpdateTasks({
+      identity,
+      taskIds: [task.id],
+      operation: "addLabel",
+      value: existingSource.id,
+      userId: member.user.id,
+      workspaceId: member.workspace.id,
+      reach,
+    });
+    expect(addResult).toMatchObject({
+      updatedCount: 0,
+      results: [{ success: true }],
+    });
+    const removeResult = await bulkUpdateTasks({
+      identity,
+      taskIds: [task.id],
+      operation: "removeLabel",
+      value: absentSource.id,
+      userId: member.user.id,
+      workspaceId: member.workspace.id,
+      reach,
+    });
+    expect(removeResult).toMatchObject({
+      updatedCount: 0,
+      results: [{ success: true }],
+    });
+    expect(
+      await db
+        .select()
+        .from(schema.labelTable)
+        .where(eq(schema.labelTable.taskId, task.id)),
+    ).toEqual([attached]);
+    expect(capturedEvents).toEqual([]);
+  });
 });

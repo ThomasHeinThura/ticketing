@@ -1036,6 +1036,131 @@ export async function deleteTaskReturningId(
   return deleted;
 }
 
+export type TaskLabelWriteResult<T = undefined> =
+  | { kind: "refused" }
+  | { kind: "unchanged" }
+  | { kind: "changed"; value: T };
+
+/** Add a task label and classify authorization, idempotency, and mutation atomically. */
+export async function addTaskLabelForIdentity(
+  executor: Executor,
+  identity: ResolvedIdentity,
+  values: { name: string; color: string; workspaceId: string; taskId: string },
+): Promise<TaskLabelWriteResult<{ id: string }>> {
+  const eligible = executor.$with("eligible_task").as(
+    executor
+      .select({ id: taskTable.id })
+      .from(taskTable)
+      .innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))
+      .where(
+        and(
+          eq(taskTable.id, values.taskId),
+          eq(projectTable.workspaceId, values.workspaceId),
+          taskProjectReach(identity, executor),
+        ),
+      ),
+  );
+  const inserted = executor.$with("inserted_label").as(
+    executor
+      .insert(labelTable)
+      .select(
+        executor
+          .select({
+            id: sql`${sql.param(createId(), labelTable.id)}`.as("id"),
+            name: sql`${sql.param(values.name, labelTable.name)}`.as("name"),
+            color: sql`${sql.param(values.color, labelTable.color)}`.as(
+              "color",
+            ),
+            createdAt: sql`now()`.as("createdAt"),
+            updatedAt: sql`now()`.as("updatedAt"),
+            taskId: eligible.id,
+            workspaceId:
+              sql`${sql.param(values.workspaceId, labelTable.workspaceId)}`.as(
+                "workspaceId",
+              ),
+          })
+          .from(eligible),
+      )
+      .onConflictDoNothing({ target: [labelTable.taskId, labelTable.name] })
+      .returning({ id: labelTable.id }),
+  );
+  const [result] = await executor
+    .with(eligible, inserted)
+    .select({ eligibleId: eligible.id, insertedId: inserted.id })
+    .from(eligible)
+    .leftJoin(inserted, sql`true`);
+  if (!result) return { kind: "refused" };
+  if (!result.insertedId) return { kind: "unchanged" };
+  return { kind: "changed", value: { id: result.insertedId } };
+}
+
+/** Remove a task label and distinguish denied scope from an idempotent absence. */
+export async function removeTaskLabelForIdentity(
+  executor: Executor,
+  identity: ResolvedIdentity,
+  input: { workspaceId: string; name: string; taskId: string },
+): Promise<TaskLabelWriteResult<typeof labelTable.$inferSelect>> {
+  const eligible = executor.$with("eligible_task").as(
+    executor
+      .select({ id: taskTable.id })
+      .from(taskTable)
+      .innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))
+      .where(
+        and(
+          eq(taskTable.id, input.taskId),
+          eq(projectTable.workspaceId, input.workspaceId),
+          taskProjectReach(identity, executor),
+        ),
+      ),
+  );
+  const deleted = executor.$with("deleted_label").as(
+    executor
+      .delete(labelTable)
+      .where(
+        and(
+          eq(labelTable.workspaceId, input.workspaceId),
+          eq(labelTable.name, input.name),
+          eq(labelTable.taskId, input.taskId),
+          exists(
+            executor
+              .select({ one: sql`1` })
+              .from(eligible)
+              .where(eq(eligible.id, labelTable.taskId)),
+          ),
+        ),
+      )
+      .returning(),
+  );
+  const [result] = await executor
+    .with(eligible, deleted)
+    .select({
+      eligibleId: eligible.id,
+      deletedId: deleted.id,
+      deletedName: deleted.name,
+      deletedColor: deleted.color,
+      deletedCreatedAt: deleted.createdAt,
+      deletedUpdatedAt: deleted.updatedAt,
+      deletedTaskId: deleted.taskId,
+      deletedWorkspaceId: deleted.workspaceId,
+    })
+    .from(eligible)
+    .leftJoin(deleted, sql`true`);
+  if (!result) return { kind: "refused" };
+  if (!result.deletedId) return { kind: "unchanged" };
+  return {
+    kind: "changed",
+    value: {
+      id: result.deletedId,
+      name: result.deletedName as string,
+      color: result.deletedColor as string,
+      createdAt: result.deletedCreatedAt as Date,
+      updatedAt: result.deletedUpdatedAt as Date,
+      taskId: result.deletedTaskId as string | null,
+      workspaceId: result.deletedWorkspaceId as string,
+    },
+  };
+}
+
 export async function findTaskLabelByName(
   executor: Executor,
   identity: ResolvedIdentity,
