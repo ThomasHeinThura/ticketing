@@ -276,6 +276,7 @@ async function expectJitIdentity(
     scopeId: string;
     roleId: string;
   },
+  expectedSubject = SUBJECT,
 ) {
   const [identity] = await db
     .select()
@@ -283,7 +284,7 @@ async function expectJitIdentity(
     .where(eq(schema.externalIdentityTable.identityConnectionId, connectionId));
   expect(identity).toMatchObject({
     issuer: ISSUER,
-    subject: SUBJECT,
+    subject: expectedSubject,
     provisionedVia: "jit",
     active: true,
   });
@@ -302,7 +303,7 @@ async function expectJitIdentity(
     .from(schema.accountTable)
     .where(eq(schema.accountTable.userId, identity?.userId ?? ""));
   expect(account?.providerId).toBe(`taskdesk-entra:${connectionId}`);
-  expect(account?.accountId).toBe(identityAccountId(ISSUER, SUBJECT));
+  expect(account?.accountId).toBe(identityAccountId(ISSUER, expectedSubject));
   expect(account?.accountId).not.toContain("\u0000");
   const [grant] = await db
     .select()
@@ -408,7 +409,12 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
     );
     const initialResponse = await signIn(attemptConnectionId, "customer");
     expect(initialResponse.status).toBe(302);
-    await expectJitIdentity(attemptConnectionId, "customer", target);
+    await expectJitIdentity(
+      attemptConnectionId,
+      "customer",
+      target,
+      attemptedSubject,
+    );
     const attemptedIdentity = await db.query.externalIdentityTable.findFirst({
       where: and(
         eq(
