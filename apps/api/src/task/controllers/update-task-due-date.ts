@@ -27,8 +27,8 @@ async function updateTaskDueDate({
       const dueDate = dueDateInput
         ? validateAndParseDate(dueDateInput, "dueDate")
         : null;
-      await clearTaskReminders(identity, tx, id);
-      const updatedTask = await updateTaskRow(identity, tx, id, {
+      await clearTaskReminders(tx, identity, id);
+      const updatedTask = await updateTaskRow(tx, identity, id, {
         dueDate: dueDate || null,
       });
       return { existingTask, updatedTask, dueDate };

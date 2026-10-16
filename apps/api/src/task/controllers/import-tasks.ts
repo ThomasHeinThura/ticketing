@@ -43,7 +43,7 @@ async function importTasks(
       identity,
       "Project not found",
     );
-    const liveProject = await findProjectById(identity, tx, projectId);
+    const liveProject = await findProjectById(tx, identity, projectId);
 
     if (!liveProject) {
       throw new HTTPException(404, { message: "Project not found" });
@@ -80,7 +80,7 @@ async function importTasks(
     project.workspaceId,
   );
 
-  const validStatuses = await getValidTaskStatuses(projectId);
+  const validStatuses = await getValidTaskStatuses(identity, projectId, db);
 
   const results = [];
 
@@ -107,8 +107,8 @@ async function importTasks(
       const warnings = [statusWarning, priorityWarning].filter(Boolean);
 
       const column = await findColumnBySlugForIdentity(
-        identity,
         db,
+        identity,
         projectId,
         status,
       );
@@ -133,7 +133,7 @@ async function importTasks(
           tx,
         );
 
-        const task = await insertTask(identity, tx, {
+        const task = await insertTask(tx, identity, {
           projectId,
           userId: assigneeId,
           title: taskData.title,

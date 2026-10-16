@@ -25,7 +25,7 @@ async function updateTaskTitle({
     if (existingTask.title === title) {
       return { existingTask, updatedTask: existingTask };
     }
-    const task = await updateTaskRow(identity, tx, id, { title });
+    const task = await updateTaskRow(tx, identity, id, { title });
 
     if (!task) {
       throw new HTTPException(500, {
@@ -33,7 +33,7 @@ async function updateTaskTitle({
       });
     }
 
-    await insertTaskActivity(identity, tx, {
+    await insertTaskActivity(tx, identity, {
       taskId: task.id,
       type: "title_changed",
       userId: currentUserId,

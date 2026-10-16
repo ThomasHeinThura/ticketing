@@ -1,7 +1,8 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import type { Executor } from "../../apps/api/src/database/executor";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import * as taskRepository from "../../apps/api/src/task/repository";
 import { resetTestDatabase } from "./helpers/database";
@@ -17,40 +18,59 @@ const scoped =
   ) =>
   (...args: Args) =>
     fn(testIdentity, ...args);
-const deleteTaskLabelByName = scoped(taskRepository.deleteTaskLabelByName);
-const deleteTaskReturningId = scoped(taskRepository.deleteTaskReturningId);
-const findLabelInWorkspaceScope = scoped(
+const scopedExecutor =
+  <Args extends unknown[], Result>(
+    fn: (
+      executor: Executor,
+      identity: ResolvedIdentity,
+      ...args: Args
+    ) => Promise<Result>,
+  ) =>
+  (executor: Executor, ...args: Args) =>
+    fn(executor, testIdentity, ...args);
+
+const deleteTaskLabelByName = scopedExecutor(
+  taskRepository.deleteTaskLabelByName,
+);
+const deleteTaskReturningId = scopedExecutor(
+  taskRepository.deleteTaskReturningId,
+);
+const findLabelInWorkspaceScope = scopedExecutor(
   taskRepository.findLabelInWorkspaceScope,
 );
-const findLiveUnarchivedProjectInWorkspace = scoped(
+const findLiveUnarchivedProjectInWorkspace = scopedExecutor(
   taskRepository.findLiveUnarchivedProjectInWorkspace,
 );
-const findMaxTaskPositionInColumnOrStatus = scoped(
+const findMaxTaskPositionInColumnOrStatus = scopedExecutor(
   taskRepository.findMaxTaskPositionInColumnOrStatus,
 );
-const findMaxTaskPositionInStatusAndColumn = scoped(
+const findMaxTaskPositionInStatusAndColumn = scopedExecutor(
   taskRepository.findMaxTaskPositionInStatusAndColumn,
 );
-const findNotDeletedProjectInWorkspace = scoped(
+const findNotDeletedProjectInWorkspace = scopedExecutor(
   taskRepository.findNotDeletedProjectInWorkspace,
 );
-const findProjectById = scoped(taskRepository.findProjectById);
-const findProjectFreezeState = scoped(taskRepository.findProjectFreezeState);
-const findProjectIdentity = scoped(taskRepository.findProjectIdentity);
-const findTaskLabelByName = scoped(taskRepository.findTaskLabelByName);
-const insertTask = scoped(taskRepository.insertTask);
-const insertTaskLabelOnConflictDoNothing = scoped(
+const findProjectById = scopedExecutor(taskRepository.findProjectById);
+const findProjectFreezeState = scopedExecutor(
+  taskRepository.findProjectFreezeState,
+);
+const findProjectIdentity = scopedExecutor(taskRepository.findProjectIdentity);
+const findTaskLabelByName = scopedExecutor(taskRepository.findTaskLabelByName);
+const insertTask = scopedExecutor(taskRepository.insertTask);
+const insertTaskLabelOnConflictDoNothing = scopedExecutor(
   taskRepository.insertTaskLabelOnConflictDoNothing,
 );
-const listColumnsForMove = scoped(taskRepository.listColumnsForMove);
+const listColumnsForMove = scopedExecutor(taskRepository.listColumnsForMove);
 const listWorkspaceScopedTasks = scoped(
   taskRepository.listWorkspaceScopedTasks,
 );
-const lockLiveProjectForMove = scoped(taskRepository.lockLiveProjectForMove);
-const reassignTaskAssetsToProject = scoped(
+const lockLiveProjectForMove = scopedExecutor(
+  taskRepository.lockLiveProjectForMove,
+);
+const reassignTaskAssetsToProject = scopedExecutor(
   taskRepository.reassignTaskAssetsToProject,
 );
-const updateTaskRowReturningId = scoped(
+const updateTaskRowReturningId = scopedExecutor(
   taskRepository.updateTaskRowReturningId,
 );
 const { findWorkspaceMembershipId } = taskRepository;
@@ -119,6 +139,25 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
 
   it("workspace-scoped task lookup keeps the workspace, archived and deleted predicates", async () => {
     const { a, b, identityA, identityB, p1, p2, t1, t2, tb } = await seed();
+    const insertedTasks = await db
+      .select({
+        id: schema.taskTable.id,
+        projectId: schema.taskTable.projectId,
+      })
+      .from(schema.taskTable)
+      .where(
+        and(
+          inArray(schema.taskTable.projectId, [p1.id, p2.id]),
+          inArray(schema.taskTable.id, [t1.id, t2.id]),
+        ),
+      );
+    expect(insertedTasks).toHaveLength(2);
+    expect(insertedTasks).toEqual(
+      expect.arrayContaining([
+        { id: t1.id, projectId: p1.id },
+        { id: t2.id, projectId: p2.id },
+      ]),
+    );
     const ids = [t1.id, t2.id, tb.id];
     expect(
       (await listWorkspaceScopedTasks(ids, a.workspace.id))
@@ -303,6 +342,7 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
   it("move preflights: freeze flags, workspace-scoped destination, lock modes and identities", async () => {
     const { a, b, identityB, p1, p2, pb, c1 } = await seed();
     expect((await findProjectById(db, p1.id))?.id).toBe(p1.id);
+    expect((await findProjectById(db, p2.id))?.id).toBe(p2.id);
     expect(await findProjectById(db, "missing")).toBeUndefined();
     await db
       .update(schema.columnTable)

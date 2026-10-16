@@ -2,6 +2,7 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import type { Executor } from "../../apps/api/src/database/executor";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import * as taskRepository from "../../apps/api/src/task/repository";
 import { resetTestDatabase } from "./helpers/database";
@@ -18,31 +19,48 @@ const scoped =
   ) =>
   (...args: Args) =>
     fn(testIdentity, ...args);
-const advanceProjectTaskNumber = scoped(
+const scopedExecutor =
+  <Args extends unknown[], Result>(
+    fn: (
+      executor: Executor,
+      identity: ResolvedIdentity,
+      ...args: Args
+    ) => Promise<Result>,
+  ) =>
+  (executor: Executor, ...args: Args) =>
+    fn(executor, testIdentity, ...args);
+
+const advanceProjectTaskNumber = scopedExecutor(
   taskRepository.advanceProjectTaskNumberForIdentity,
 );
-const clearTaskReminders = scoped(taskRepository.clearTaskReminders);
+const clearTaskReminders = scopedExecutor(taskRepository.clearTaskReminders);
 const countProjectTasks = scoped(taskRepository.countProjectTasks);
-const deleteTaskById = scoped(taskRepository.deleteTaskById);
-const findColumnBySlug = scoped(taskRepository.findColumnBySlugForIdentity);
+const deleteTaskById = scopedExecutor(taskRepository.deleteTaskById);
+const findColumnBySlug = scopedExecutor(
+  taskRepository.findColumnBySlugForIdentity,
+);
 const findLiveProject = scoped(taskRepository.findLiveProject);
-const findProjectWorkspaceContext = scoped(
+const findProjectWorkspaceContext = scopedExecutor(
   taskRepository.findProjectWorkspaceContext,
 );
 const findTaskAssigneeId = scoped(taskRepository.findTaskAssigneeId);
-const insertAsset = scoped(taskRepository.insertAsset);
-const listColumnSlugs = scoped(taskRepository.listColumnSlugsForIdentity);
+const insertAsset = scopedExecutor(taskRepository.insertAsset);
+const listColumnSlugs = scopedExecutor(
+  taskRepository.listColumnSlugsForIdentity,
+);
 const listLabelsForTasks = scoped(taskRepository.listLabelsForTasks);
 const listProjectColumns = scoped(taskRepository.listProjectColumns);
 const listProjectTasks = scoped(taskRepository.listProjectTasks);
 const listProjectTasksForExport = scoped(
   taskRepository.listProjectTasksForExport,
 );
-const listTaskRelations = scoped(taskRepository.listTaskRelations);
-const lockLiveProjectRow = scoped(taskRepository.lockLiveProjectRowForIdentity);
-const lockTaskRow = scoped(taskRepository.lockTaskRowForIdentity);
-const updateAssetById = scoped(taskRepository.updateAssetById);
-const updateTaskRow = scoped(taskRepository.updateTaskRow);
+const listTaskRelations = scopedExecutor(taskRepository.listTaskRelations);
+const lockLiveProjectRow = scopedExecutor(
+  taskRepository.lockLiveProjectRowForIdentity,
+);
+const lockTaskRow = scopedExecutor(taskRepository.lockTaskRowForIdentity);
+const updateAssetById = scopedExecutor(taskRepository.updateAssetById);
+const updateTaskRow = scopedExecutor(taskRepository.updateTaskRow);
 
 async function seedTask(
   userId: string,
@@ -181,6 +199,10 @@ describe("legacy task repository (#580 b9a)", () => {
     const { project: p3 } = await createProjectFixture({
       workspaceId: a.workspace.id,
     });
+    const [p2BeforeAdvance] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, p2.id));
     await db.transaction(async (tx) => {
       expect((await lockLiveProjectRow(tx, p3.id))?.id).toBe(p3.id);
       const first = await advanceProjectTaskNumber(tx, p3.id, 3);
@@ -190,6 +212,13 @@ describe("legacy task repository (#580 b9a)", () => {
       );
       expect(await advanceProjectTaskNumber(tx, "missing", 1)).toBeUndefined();
     });
+    const [p2AfterAdvance] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, p2.id));
+    expect(p2AfterAdvance?.lastTaskNumber).toBe(
+      p2BeforeAdvance?.lastTaskNumber,
+    );
     expect((await findProjectWorkspaceContext(db, p3.id))?.workspaceId).toBe(
       a.workspace.id,
     );
@@ -290,6 +319,7 @@ describe("legacy task repository (#580 b9a)", () => {
       targetTaskId: t2.id,
       relationType: "relates_to",
     });
+    expect(await listTaskRelations(db, t1.id)).toHaveLength(1);
     expect(await listTaskRelations(db, t2.id)).toHaveLength(1);
     expect(await listTaskRelations(db, t3.id)).toHaveLength(0);
 

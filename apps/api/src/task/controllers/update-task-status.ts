@@ -23,14 +23,14 @@ async function updateTaskStatus({
       id,
       identity,
     );
-    await assertValidTaskStatus(status, existingTask.projectId, tx);
+    await assertValidTaskStatus(identity, status, existingTask.projectId, tx);
     const column = await findColumnBySlugForIdentity(
-      identity,
       tx,
+      identity,
       existingTask.projectId,
       status,
     );
-    const updatedTask = await updateTaskRow(identity, tx, id, {
+    const updatedTask = await updateTaskRow(tx, identity, id, {
       status,
       columnId: column?.id ?? null,
     });

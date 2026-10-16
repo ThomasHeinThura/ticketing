@@ -47,7 +47,7 @@ export async function lockTaskAndAssertProjectLiveForIdentity(
   taskId: string,
   identity: ResolvedIdentity,
 ) {
-  const task = await lockTaskRowForIdentity(identity, tx, taskId);
+  const task = await lockTaskRowForIdentity(tx, identity, taskId);
   if (!task) throw new HTTPException(404, { message: "Task not found" });
   await assertProjectStillLive(tx, task.projectId, "Task not found");
   return task;
@@ -109,7 +109,7 @@ export async function lockProjectAndAssertLiveForTaskNumberForIdentity(
   identity: ResolvedIdentity,
   projectNotFoundMessage = "Task not found",
 ) {
-  const project = await lockLiveProjectRowForIdentity(identity, tx, projectId);
+  const project = await lockLiveProjectRowForIdentity(tx, identity, projectId);
   if (!project)
     throw new HTTPException(404, { message: projectNotFoundMessage });
 }

@@ -1,7 +1,7 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import db from "../database";
 import type { Executor } from "../database/executor";
-import { listColumnSlugs } from "./repository";
+import { listColumnSlugsForIdentity } from "./repository";
 
 type DbOrTx = Executor;
 
@@ -24,20 +24,30 @@ export function assertValidPriority(priority: string): void {
 }
 
 export async function getValidTaskStatuses(
+  identity: ResolvedIdentity,
   projectId: string,
-  executor: DbOrTx = db,
+  executor: DbOrTx,
 ): Promise<string[]> {
-  const columns = await listColumnSlugs(executor, projectId);
+  const columns = await listColumnSlugsForIdentity(
+    executor,
+    identity,
+    projectId,
+  );
 
   return [...columns.map((c) => c.slug), ...VIRTUAL_STATUSES];
 }
 
 export async function assertValidTaskStatus(
+  identity: ResolvedIdentity,
   status: string,
   projectId: string,
-  executor: DbOrTx = db,
+  executor: DbOrTx,
 ): Promise<void> {
-  const validStatuses = await getValidTaskStatuses(projectId, executor);
+  const validStatuses = await getValidTaskStatuses(
+    identity,
+    projectId,
+    executor,
+  );
 
   if (!validStatuses.includes(status)) {
     throw new HTTPException(400, {

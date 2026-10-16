@@ -7,8 +7,9 @@ import { recordTaskEventActivity } from "../../apps/api/src/activity/controllers
 import db, { schema } from "../../apps/api/src/database";
 import * as eventBus from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
+import { resolveRequestIdentity } from "../../apps/api/src/permissions/resolve-request-identity";
 import { lockProjectAndAssertLiveForTaskNumber } from "../../apps/api/src/task/assert-task-project-live";
-import { claimTaskNumber } from "../../apps/api/src/task/controllers/claim-task-numbers";
+import { claimTaskNumberForIdentity } from "../../apps/api/src/task/controllers/claim-task-numbers";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -1818,6 +1819,9 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     });
     await grantProjectManageAccess(member.user.id, project.id);
     await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
+    const identity = await resolveRequestIdentity({ userId: member.user.id });
+    if (!identity)
+      throw new Error("expected resolved task-number test identity");
     const [projectBefore] = await db
       .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
       .from(schema.projectTable)
@@ -1875,7 +1879,11 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       ) =>
         txDb.transaction(async (tx) => {
           await lockProjectAndAssertLiveForTaskNumber(tx, project.id);
-          const number = await claimTaskNumber(project.id, tx);
+          const number = await claimTaskNumberForIdentity(
+            identity,
+            project.id,
+            tx,
+          );
           await tx.insert(schema.taskTable).values({
             projectId: project.id,
             title,

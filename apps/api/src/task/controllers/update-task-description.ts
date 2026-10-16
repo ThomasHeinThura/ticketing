@@ -25,7 +25,7 @@ async function updateTaskDescription({
       id,
       identity,
     );
-    const updatedTask = await updateTaskRow(identity, tx, id, { description });
+    const updatedTask = await updateTaskRow(tx, identity, id, { description });
     return { existingTask, updatedTask };
   });
 

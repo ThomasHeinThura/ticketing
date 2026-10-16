@@ -22,7 +22,7 @@ async function updateTaskPriority({
       id,
       identity,
     );
-    const updatedTask = await updateTaskRow(identity, tx, id, { priority });
+    const updatedTask = await updateTaskRow(tx, identity, id, { priority });
     return { existingTask, updatedTask };
   });
 

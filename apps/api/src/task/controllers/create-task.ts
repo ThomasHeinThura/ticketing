@@ -69,7 +69,7 @@ async function createTask({
         rejectNulByte(normalizedUserId, "Assignee id");
       }
       const workspaceId = await getProjectWorkspaceId(projectId, tx);
-      await assertValidTaskStatus(resolvedStatus, projectId, tx);
+      await assertValidTaskStatus(identity, resolvedStatus, projectId, tx);
 
       let assignee: { name: string } | undefined;
       if (normalizedUserId) {
@@ -88,14 +88,14 @@ async function createTask({
       }
 
       const column = await findColumnBySlugForIdentity(
-        identity,
         tx,
+        identity,
         projectId,
         resolvedStatus,
       );
       const maxPositionResult = await findMaxTaskPositionInColumnOrStatus(
-        identity,
         tx,
+        identity,
         projectId,
         resolvedStatus,
         column?.id,
@@ -108,7 +108,7 @@ async function createTask({
         tx,
       );
 
-      const task = await insertTask(identity, tx, {
+      const task = await insertTask(tx, identity, {
         projectId,
         userId: normalizedUserId ?? null,
         title: title || "",

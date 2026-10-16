@@ -77,7 +77,7 @@ async function updateTask(
         rejectNulByte(normalizedUserId, "Assignee id");
       }
       const projectWorkspaceId = await getProjectWorkspaceId(projectId, tx);
-      await assertValidTaskStatus(status, projectId, tx);
+      await assertValidTaskStatus(identity, status, projectId, tx);
       if (normalizedUserId) {
         await assertAssignableUserAndLockMembership(
           normalizedUserId,
@@ -86,12 +86,12 @@ async function updateTask(
         );
       }
       const column = await findColumnBySlugForIdentity(
-        identity,
         tx,
+        identity,
         projectId,
         status,
       );
-      const updatedTask = await updateTaskRow(identity, tx, id, {
+      const updatedTask = await updateTaskRow(tx, identity, id, {
         title,
         status,
         columnId: column?.id ?? null,

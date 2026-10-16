@@ -14,9 +14,9 @@ async function deleteTask(
   const { relations, assetKeys, deletedTask } = await db.transaction(
     async (tx) => {
       await lockTaskAndAssertProjectLiveForIdentity(tx, taskId, identity);
-      const relations = await listTaskRelations(identity, tx, taskId);
+      const relations = await listTaskRelations(tx, identity, taskId);
       const assetKeys = await getTaskAssetKeys(taskId, tx);
-      const deletedTask = await deleteTaskById(identity, tx, taskId);
+      const deletedTask = await deleteTaskById(tx, identity, taskId);
       return { relations, assetKeys, deletedTask };
     },
   );

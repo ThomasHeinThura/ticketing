@@ -46,7 +46,7 @@ async function updateTaskAssignee({
         tx,
       );
     }
-    const updatedTask = await updateTaskRow(identity, tx, id, {
+    const updatedTask = await updateTaskRow(tx, identity, id, {
       userId: nextAssigneeId,
     });
     return { existingTask, updatedTask };

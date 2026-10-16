@@ -36,8 +36,8 @@ async function resolveDestinationStatus(
   requestedStatus?: string,
 ) {
   const destinationColumns = await listColumnsForMove(
-    identity,
     dbOrTx,
+    identity,
     destinationProjectId,
   );
 
@@ -74,8 +74,8 @@ async function getNextTaskPosition(
   columnId: string,
 ) {
   const maxPositionResult = await findMaxTaskPositionInStatusAndColumn(
-    identity,
     dbOrTx,
+    identity,
     projectId,
     status,
     columnId,
@@ -118,8 +118,8 @@ async function moveTask({
     // Reject frozen sources before touching a request-selected destination id.
     // These reads only establish reach; sorted row locks below recheck both rows.
     const sourcePreflight = await findProjectFreezeState(
-      identity,
       tx,
+      identity,
       lockedTask.projectId,
     );
     if (
@@ -137,8 +137,8 @@ async function moveTask({
     }
 
     const destinationPreflight = await findLiveUnarchivedProjectInWorkspace(
-      identity,
       tx,
+      identity,
       destinationProjectId,
       sourcePreflight.workspaceId,
     );
@@ -156,8 +156,8 @@ async function moveTask({
     ].sort()) {
       const isDestination = projectId === destinationProjectId;
       const liveProject = await lockLiveProjectForMove(
-        identity,
         tx,
+        identity,
         projectId,
         {
           mode: isDestination ? "update" : "share",
@@ -176,8 +176,8 @@ async function moveTask({
     }
 
     const sourceProject = await findProjectIdentity(
-      identity,
       tx,
+      identity,
       lockedTask.projectId,
     );
     if (!sourceProject) {
@@ -187,8 +187,8 @@ async function moveTask({
     // S2 (review of PR #307): scope the destination lookup to the source's
     // current workspace so foreign and missing project ids remain indistinct.
     const destinationProject = await findNotDeletedProjectInWorkspace(
-      identity,
       tx,
+      identity,
       destinationProjectId,
       sourceProject.workspaceId,
     );
@@ -214,7 +214,7 @@ async function moveTask({
       ),
     ]);
 
-    const updatedTask = await updateTaskRow(identity, tx, taskId, {
+    const updatedTask = await updateTaskRow(tx, identity, taskId, {
       projectId: destinationProjectId,
       status: resolvedColumn.slug,
       columnId: resolvedColumn.id,
@@ -229,8 +229,8 @@ async function moveTask({
     }
 
     await reassignTaskAssetsToProject(
-      identity,
       tx,
+      identity,
       taskId,
       destinationProjectId,
     );
