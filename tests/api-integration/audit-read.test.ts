@@ -10,11 +10,13 @@
  *   refused the workspace route.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { appendAuditLog } from "../../apps/api/src/audit/audit-writer";
+import { listWorkspaceAuditRows } from "../../apps/api/src/audit/repository";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -225,6 +227,45 @@ describe("GET /api/workspaces/{workspaceId}/audit (AU-10 + tenant isolation)", (
     expect(response.status).toBe(403);
   });
 
+  it("a workspace administrator API key with the required stored scope can read its workspace", async () => {
+    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
+    await seedAuditRow(workspace.id, "role.created");
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    await db.insert(schema.apikeyTable).values({
+      referenceId: user.id,
+      userId: user.id,
+      key: createHash("sha256")
+        .update(rawKey)
+        .digest()
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, ""),
+      name: "workspace audit scope test key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ workspace: ["manage_settings"] }),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/workspaces/${workspace.id}/audit`,
+      {
+        headers: { authorization: `Bearer ${rawKey}` },
+      },
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const body = (await response.json()) as {
+      rows: { action: string; workspaceId: string }[];
+    };
+    expect(body.rows.some((row) => row.action === "role.created")).toBe(true);
+    expect(body.rows.every((row) => row.workspaceId === workspace.id)).toBe(
+      true,
+    );
+  });
+
   it("a non-member is refused by the membership gate", async () => {
     const { workspace } = await createWorkspaceMember({ role: "owner" });
     const outsider = await createWorkspaceMember();
@@ -286,11 +327,24 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
     seesAll = false,
   ) {
     const now = new Date();
+    let workspaceId: string | null = null;
+    if (scope === "workspace") {
+      workspaceId = scopeId;
+    } else {
+      const [project] = await db
+        .select({ workspaceId: schema.projectTable.workspaceId })
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.id, scopeId))
+        .limit(1);
+      if (!project) throw new Error("Expected project for audit role anchor");
+      workspaceId = project.workspaceId;
+    }
     const role = requireRow(
       await db
         .insert(schema.roleTable)
         .values({
           scope,
+          workspaceId,
           key: `role-${randomUUID()}`,
           name: "Audit Test Role",
           rank: 1,
@@ -445,5 +499,187 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
 
     const actions = await readActions(manager.user, manager.workspace.id);
     expect(actions).toEqual(["auth.sign_out"]);
+  });
+
+  it("rejects malformed project and sees_all role anchors in repository SQL while retaining valid project reach", async () => {
+    const manager = await createWorkspaceMember({ role: "admin" });
+    const foreignWorkspace = await createWorkspaceMember({ role: "admin" });
+    const { project: malformedDirect } = await createProjectFixture({
+      workspaceId: manager.workspace.id,
+    });
+    const { project: malformedSeesAll } = await createProjectFixture({
+      workspaceId: manager.workspace.id,
+    });
+    const { project: validDirect } = await createProjectFixture({
+      workspaceId: manager.workspace.id,
+    });
+    const { project: crossScope } = await createProjectFixture({
+      workspaceId: manager.workspace.id,
+    });
+    const { project: malformedDefinition } = await createProjectFixture({
+      workspaceId: manager.workspace.id,
+    });
+    const { project: malformedRoleIdProject } = await createProjectFixture({
+      workspaceId: manager.workspace.id,
+    });
+    const personId = await addPersonForUser(manager.user.id);
+
+    const foreignAnchoredProjectRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "project",
+          workspaceId: foreignWorkspace.workspace.id,
+          key: `audit-foreign-project-${randomUUID()}`,
+          name: "Foreign anchored project role",
+          rank: 1,
+          capabilities: ["project:read"],
+        })
+        .returning(),
+      "foreign anchored project role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId,
+      scope: "project",
+      scopeId: malformedDirect.id,
+      roleId: foreignAnchoredProjectRole.id,
+    });
+
+    const crossScopeRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: manager.workspace.id,
+          key: `audit-cross-scope-${randomUUID()}`,
+          name: "Cross scope project membership role",
+          rank: 1,
+          capabilities: ["workspace:read"],
+        })
+        .returning(),
+      "cross-scope project membership role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId,
+      scope: "project",
+      scopeId: crossScope.id,
+      roleId: crossScopeRole.id,
+    });
+
+    const malformedDefinitionRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "project",
+          workspaceId: manager.workspace.id,
+          key: "",
+          name: "Invalid role definition",
+          rank: 1,
+          capabilities: sql`'["project:read", 1]'::jsonb`,
+        })
+        .returning(),
+      "invalid role definition",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId,
+      scope: "project",
+      scopeId: malformedDefinition.id,
+      roleId: malformedDefinitionRole.id,
+    });
+
+    const emptyRoleId = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          id: "",
+          scope: "project",
+          workspaceId: manager.workspace.id,
+          key: `audit-empty-id-${randomUUID()}`,
+          name: "Empty role id",
+          rank: 1,
+          capabilities: ["project:read"],
+        })
+        .returning(),
+      "empty role id",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId,
+      scope: "project",
+      scopeId: malformedRoleIdProject.id,
+      roleId: emptyRoleId.id,
+    });
+
+    const invalidSeesAllRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: foreignWorkspace.workspace.id,
+          key: `audit-invalid-seesall-${randomUUID()}`,
+          name: "Misanchored sees all role",
+          rank: 1,
+          capabilities: ["workspace:read"],
+        })
+        .returning(),
+      "misanchored sees_all role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId,
+      scope: "workspace",
+      scopeId: manager.workspace.id,
+      roleId: invalidSeesAllRole.id,
+      seesAll: true,
+    });
+    await addMembership(personId, "project", validDirect.id);
+
+    await seedProjectScopedRow(
+      manager.workspace.id,
+      malformedDirect.id,
+      "plugin.changed",
+    );
+    await seedProjectScopedRow(
+      manager.workspace.id,
+      malformedSeesAll.id,
+      "plugin.changed",
+    );
+    await seedProjectScopedRow(
+      manager.workspace.id,
+      crossScope.id,
+      "plugin.changed",
+    );
+    await seedProjectScopedRow(
+      manager.workspace.id,
+      malformedDefinition.id,
+      "plugin.changed",
+    );
+    await seedProjectScopedRow(
+      manager.workspace.id,
+      malformedRoleIdProject.id,
+      "plugin.changed",
+    );
+    await seedProjectScopedRow(
+      manager.workspace.id,
+      validDirect.id,
+      "plugin.changed",
+    );
+
+    const identity = await resolveIdentity({
+      userId: manager.user.id,
+      credential: "session",
+    });
+    expect(identity).not.toBeNull();
+    if (!identity) throw new Error("Expected canonical audit identity");
+    const rows = await listWorkspaceAuditRows(identity, manager.workspace.id, {
+      limit: 100,
+    });
+    const projectIds = rows
+      .map((row) => row.projectId)
+      .filter((projectId): projectId is string => projectId !== null);
+    expect(projectIds).toContain(validDirect.id);
+    expect(projectIds).not.toContain(malformedDirect.id);
+    expect(projectIds).not.toContain(malformedSeesAll.id);
+    expect(projectIds).not.toContain(crossScope.id);
+    expect(projectIds).not.toContain(malformedDefinition.id);
+    expect(projectIds).not.toContain(malformedRoleIdProject.id);
   });
 });
