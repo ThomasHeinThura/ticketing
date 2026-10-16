@@ -368,3 +368,87 @@ No full integration suite, image build/boot, browser journey, CI acceptance, mai
 ```
 
 **Reviewed head:** `0e9a6387c688305cfb59600622ace899549c5e99`
+
+
+## Accepted #804 main composition — 2026-10-16
+
+Normal composition c8430f2cc9e617a5c343324640d067a02adfd136 has parents review publication67a64238ae5d76c5aefb6a49d70ee20f8c4a2a69 and protected accepted804 main8c3456be02d6e81c76ed2b7fc35fa7b29850a0d4. The three source/test blobs and prior note are unchanged from67a; every other path matches accepted8c. Fresh independent strong ordinary import review and bounded independent Sol security composition confirmation CLEAR below. Original FULL three-path Sol review and author-executed14/14 remain source-bound, not new runtime on this composition. The prior attempted security context was interrupted with no report and does not count. Exact-head hosted CI, shipping-image build/boot/health, future accepted-main compatibility and integrated workflows remain required. Original post-test metadata wrapper1 and corrected offline proof retain their distinct meanings; no wrapper-success or global absence claim. No issue632, feature, stage, release or SIT acceptance.
+
+### Authentic report: realtime632-accepted804-ordinary-luna.md
+
+# #632 accepted-main import ordinary review
+
+- **Model:** GPT-6 Luna
+- **Role:** Strong independent ordinary reviewer
+- **Context / independence:** Fresh reviewer context assigned by the conductor. I did not author, direct, advise on, or remediate this candidate or the imported project-creator work.
+- **Exact candidate:** `c8430f2cc9e617a5c343324640d067a02adfd136`
+- **Comparison base:** accepted main `8c3456be02d6e81c76ed2b7fc35fa7b29850a0d4`
+- **Composition parent:** review publication `67a64238ae5d76c5aefb6a49d70ee20f8c4a2a69`; accepted main is the second parent.
+- **Scope:** Exact import composition, unchanged #632 source and own review-note identity, main-relative changed paths, and compatibility of the accepted project-creator transaction with the legacy integration fixture seam. No source edits.
+- **Risk:** Existing security-scope realtime integration proof imported onto newer accepted main. This review does not claim a fresh full review of every accepted-main change or whole-repository re-review.
+
+## Checks performed
+
+- Confirmed `HEAD` is exactly the requested candidate, with a clean worktree.
+- Compared the three #632 source blobs and its own 370-line review-note blob between the publication parent and candidate. All four blob IDs are identical: `apps/api/src/index.ts` `14e756fc3745870826f5b6a9f23f4081f34618be`; helper `72f1880e8bec5197558879335a3f974b5fd61938`; integration test `819ee73c92055dcaa25b8a8217e899462e0db823`; review note `9dee6adfed1d65cba903b7fe9aa40ddf80adb1d0`.
+- Compared candidate to accepted main. The only changed paths are those same three source/test paths plus the #632 proof note. Thus all imported accepted-main product, test, and record paths are unchanged.
+- Read the prior full-source ordinary and GPT-6.1 Sol reports and own-note/custody proofs supplied for this composition, plus the complete current composition diff and the accepted project-creator controller/repository seam and relevant integration fixture helpers.
+- Confirmed the cross-instance case uses `createProjectFixture`, which directly inserts a project and columns and therefore deliberately bypasses the newly accepted project-creation controller transaction. It then uses `grantProjectRole`, whose established contract inserts explicit project authority or widens an existing fixture role. The creator path's new transaction writes creator grants only for real controller-created projects; it does not alter the fixture helper or workspace creation/member invitation helpers used here. The #632 test's separate workspace-member removal and retained direct project grant assertions remain meaningful under that accepted behavior.
+- Reviewed optional hostname forwarding: production call still omits it; the test child explicitly binds and checks `127.0.0.1`. No authority or listener-default change is introduced by the composition.
+- `git diff --name-status 8c3456be02d6e81c76ed2b7fc35fa7b29850a0d4 HEAD` confirms the four-path bounded delta. `git diff --check` reports Markdown hard-break trailing spaces in the unchanged imported #632 review note at its report-field lines; this is report formatting and does not affect source behavior. I did not edit the authenticated note.
+- No tests, API typecheck, PostgreSQL, Docker, Valkey, browser, build, CI, Git ref, or remote-state operations were run.
+
+## Reused evidence and limits
+
+The prior source-bound reports establish the full three-path review and actual focused run (14/14 tests) on `0e9a6387c688305cfb59600622ace899549c5e99` against `9f736c39d4310cde458d76e561b245619d08c3bd`. For the current candidate, reuse is limited to those unchanged blobs and the separately inspected project-creator seam. The supplied custody proof establishes the own-note addition is byte-identical and that the previous publication carried nine authentic reports; the supplied corrected offline metadata proof preserves the original wrapper exit failure and corrects only the retained metadata attribution. I do not claim a new 14/14 execution on this candidate, full integration acceptance, image/browser evidence, CI, issue closure, or stage completion.
+
+## Findings
+
+No blocking or non-blocking product correctness finding in the accepted-main import composition or its relevant fixture seam. The imported #632 source is byte-identical to the already reviewed source; all other current product paths match accepted main. The project-creator change is accepted-main content, and its runtime controller transaction is separate from the legacy direct-insert fixture path used by the new cross-instance proof.
+
+## Verdict
+
+**CLEAR** for the bounded accepted-main import and relevant project-creator/legacy-fixture compatibility scope at exact candidate `c8430f2cc9e617a5c343324640d067a02adfd136` against accepted-main base `8c3456be02d6e81c76ed2b7fc35fa7b29850a0d4`.
+
+This ordinary review does not replace the fresh composition-specific GPT-6 Sol confirmation or remaining exact-head acceptance gates.
+
+### Authentic report: realtime632-accepted804-security-resume-61-sol.md
+
+# Independent security composition confirmation — #632 on accepted #804
+
+**Reviewed head:** c8430f2cc9e617a5c343324640d067a02adfd136
+**Comparison base:** 8c3456be02d6e81c76ed2b7fc35fa7b29850a0d4
+**Publication parent:** 67a64238ae5d76c5aefb6a49d70ee20f8c4a2a69
+**Model:** GPT-6.1 Sol (conductor dispatch identity; this context has no separate model-introspection API).
+**Context:** /root/realtime632_accepted804_security_resume_sol, fresh independent security reviewer. I did not author, direct, advise on, remediate, or ordinary-review the candidate. No child reviewer was spawned. This report is a new completed review, not an approval inferred from the interrupted predecessor.
+**Verdict:** CLEAR for the bounded security composition confirmation at the exact head and base above. No blocking or non-blocking security finding within this scope.
+
+## Scope and checks actually performed
+
+I read the candidate repository AGENTS.md, agent-workflow.md, CLAUDE.md and active mission, the fresh accepted804 ordinary report, previous full-source security report, relevant published note, custody and corrected offline metadata proofs. The scope is accepted-main import compatibility and the project-creator/create-query seam, not a fresh full security review of all accepted-main content. The prior full-source report remains labelled with its original head 0e9a6387c688305cfb59600622ace899549c5e99 and base 9f736c39d4310cde458d76e561b245619d08c3bd.
+
+Read-only git commands in /Users/heinthura/.codex/worktrees/realtime632-cross-instance-luna confirmed clean HEAD c8430f2cc9e617a5c343324640d067a02adfd136, parents 67a64238ae5d76c5aefb6a49d70ee20f8c4a2a69 and 8c3456be02d6e81c76ed2b7fc35fa7b29850a0d4. Commands included git status --short, git show -s, git diff --name-status/--stat, git ls-tree, targeted source reads and rg. A Python subprocess assertion independently checked each main-relative changed blob against the publication parent. The only four changed paths are the three #632 source/test paths and its own note; all other paths match accepted main. All four blobs match the publication parent exactly:
+
+- apps/api/src/index.ts: 14e756fc3745870826f5b6a9f23f4081f34618be
+- tests/api-integration/helpers/legacy-ws-instance-server.ts: 72f1880e8bec5197558879335a3f974b5fd61938
+- tests/api-integration/legacy-ws-revocation.test.ts: 819ee73c92055dcaa25b8a8217e899462e0db823
+- docs/07-planning/security-reviews/realtime-632-cross-instance-proof.md: 9dee6adfed1d65cba903b7fe9aa40ddf80adb1d0
+
+The note SHA-256 independently calculated is 2a27e643c9b8580e4c79aa4d420e87913fb9d0d8e6f182aa4204f48692c3d31d, matching supplied custody. Custody records nine authentic retained reports and a 370-addition/zero-deletion own-note publication. Identity hashes prove byte equality, not reviewer independence; origin verification remains the conductor's responsibility.
+
+I inspected the accepted create-project controller and repository, fixture project insertion and explicit role grant, cross-instance scenario, child helper, child lifecycle, hostname forwarding and shared socket workspace lookup. The new accepted controller transaction performs creator locking/granting through repository queries. createProjectFixture directly inserts project and column rows and only imports the controller's DEFAULT_PROJECT_COLUMNS constant; importing that module performs no project creation or creator grant. grantProjectRole explicitly persists project:read/work_item:read authority with seesAll false. No new controller creator grant changes these test actors. The test's retained direct project membership after workspace removal remains a meaningful negative case because findSocketProject independently requires reachableWorkspacePredicate. The accepted creator repository split does not change that path or widen these actors to instance authority.
+
+The optional hostname remains caller-supplied server construction configuration; the production caller omits it and its listener default is unchanged. The child explicitly binds and checks 127.0.0.1 before IPC readiness. It receives the shared isolated database/Valkey environment without printing credentials. Readiness is private IPC, cleanup targets its owned child/process group, and the actual cross-instance assertions still require initial delivery, idle close 1008 after real administrator sign-out and workspace removal, absence of subsequent frames, and continued valid user-channel delivery after scoped reach loss. No compatibility issue in these preserved mechanisms was found.
+
+One initial read-only command accidentally used the default workspace and observed unrelated dirty state/HEAD; it did not edit anything. Those observations were excluded. All subsequent source conclusions above used the explicitly assigned clean worktree and exact candidate.
+
+## Verification and evidence limits
+
+No runtime tests, PostgreSQL, Valkey, Docker, browser, typecheck, build, full suite, remote GitHub operations, ref mutations or source edits were performed. git diff --check against accepted main exited 2 solely for existing Markdown hard-break trailing spaces in the byte-identical imported note at lines 144–148; I preserved that authentic record. This is not a product security finding.
+
+The retained author/operator proof reports one focused file with 14/14 passing tests on the original reviewed source, Vitest exit 0 and owned child exit 0. It is reused here only as unchanged-source evidence, not new runtime execution on c8430f2. The original post-test wrapper exit 1 remains authentic: the wrapper expected the wrong Testcontainers label. The separate corrected offline proof identifies org.testcontainers.session-id and evaluates retained metadata; it neither reruns Vitest nor recasts the original wrapper as successful. I did not independently execute or reacquire those runtime receipts.
+
+The fresh ordinary CLEAR report and prior full security CLEAR report were read as evidence with their stated scopes, not substituted for this independent seam inspection. This confirmation does not establish exact-head CI, image build/boot, complete integration/runtime acceptance, deployed SIT, issue #632 closure or any stage completion. Current required checks and image/runtime acceptance remain the conductor's work. No gate is waived.
+
+
+**Reviewed head:** `c8430f2cc9e617a5c343324640d067a02adfd136`
