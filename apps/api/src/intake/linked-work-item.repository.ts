@@ -23,7 +23,6 @@ export async function findWorkItemProjectOwner(
       and(
         eq(schema.workItemTable.id, workItemId),
         isNull(schema.projectTable.deletedAt),
-        isNull(schema.projectTable.archivedAt),
         currentProjectReachPredicate(
           identity,
           schema.projectTable.id,
