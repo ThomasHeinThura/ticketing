@@ -5,7 +5,12 @@
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import {
+  listPortalSubmissionAttachments,
+  listStaffSubmissionAttachments,
+} from "../../apps/api/src/attachment/repository";
 import db, { schema } from "../../apps/api/src/database";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import {
   addCustomer,
   buildTenant,
@@ -132,6 +137,119 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
     );
     expect(ok.status).toBe(200);
     expect(await names(ok)).toEqual(["owner-private.pdf"]);
+  });
+
+  it("direct repository reads bind both parent arms to the actual requester and acceptance state", async () => {
+    const s = await seed();
+    const visibleOwn = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: s.t.workspaceId,
+          organisationId: s.owner.orgId,
+          submissionId: s.accepted.id,
+          objectKey: `own/${randomUUID()}`,
+          filename: "own-submission.txt",
+          mimeType: "text/plain",
+          size: 1,
+          state: "ready",
+          customerVisible: true,
+          uploadedBy: s.owner.person.id,
+        })
+        .returning(),
+      "own submission attachment",
+    );
+    await db.insert(schema.attachmentTable).values({
+      workspaceId: s.t.workspaceId,
+      organisationId: s.owner.orgId,
+      submissionId: s.accepted.id,
+      objectKey: `hidden/${randomUUID()}`,
+      filename: "hidden-submission.txt",
+      mimeType: "text/plain",
+      size: 1,
+      state: "ready",
+      customerVisible: false,
+      uploadedBy: s.owner.person.id,
+    });
+    const ownerIdentity = await resolveIdentity({
+      userId: s.owner.user.id,
+      credential: "session",
+    });
+    const otherIdentity = await resolveIdentity({
+      userId: s.other.user.id,
+      credential: "session",
+    });
+    const ownerRows = await listPortalSubmissionAttachments(db, ownerIdentity, {
+      submissionId: s.accepted.id,
+      workItemId: s.t.workItem.id,
+    });
+    expect(ownerRows.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([visibleOwn.id, s.privateAttachment.id]),
+    );
+    expect(ownerRows.map(({ filename }) => filename)).not.toContain(
+      "hidden-submission.txt",
+    );
+    expect(
+      await listPortalSubmissionAttachments(db, otherIdentity, {
+        submissionId: s.accepted.id,
+        workItemId: s.t.workItem.id,
+      }),
+    ).toEqual([]);
+    expect(
+      await listPortalSubmissionAttachments(db, ownerIdentity, {
+        submissionId: s.duplicate.id,
+        workItemId: s.t.workItem.id,
+      }),
+    ).toEqual([]);
+    const staffIdentityBeforeRevocation = await resolveIdentity({
+      userId: s.t.requester.user.id,
+      credential: "session",
+    });
+    const staffVisible = await listStaffSubmissionAttachments(
+      db,
+      staffIdentityBeforeRevocation,
+      {
+        submissionId: s.accepted.id,
+        workItemId: s.t.workItem.id,
+      },
+    );
+    expect(staffVisible.map(({ id }) => id)).toContain(s.privateAttachment.id);
+    const [staffPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, s.t.requester.user.id));
+    if (staffPerson)
+      await db
+        .delete(schema.membershipTable)
+        .where(
+          and(
+            eq(schema.membershipTable.personId, staffPerson.id),
+            eq(schema.membershipTable.scope, "project"),
+            eq(schema.membershipTable.scopeId, s.t.workItem.projectId),
+          ),
+        );
+    const staffIdentity = await resolveIdentity({
+      userId: s.t.requester.user.id,
+      credential: "session",
+    });
+    expect(
+      await listStaffSubmissionAttachments(db, staffIdentity, {
+        submissionId: s.accepted.id,
+        workItemId: s.t.workItem.id,
+      }),
+    ).toEqual([]);
+    expect(
+      await listStaffSubmissionAttachments(db, staffIdentity, {
+        submissionId: s.duplicate.id,
+        workItemId: s.t.workItem.id,
+      }),
+    ).toEqual([]);
+    expect(
+      await listPortalSubmissionAttachments(db, null, {
+        submissionId: s.accepted.id,
+        workItemId: s.t.workItem.id,
+      }),
+    ).toEqual([]);
   });
 
   it("a duplicate does not list the linked work item's attachments to staff either", async () => {

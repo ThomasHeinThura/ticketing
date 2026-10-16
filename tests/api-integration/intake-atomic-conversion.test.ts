@@ -6,7 +6,7 @@ import type { FormSchema, FormValue } from "@taskdesk/domain";
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { Client } from "pg";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { completeSubmissionAttachment } from "../../apps/api/src/attachment/controllers/complete-submission-attachment";
 import {
   listPortalSubmissionAttachments,
@@ -20,6 +20,7 @@ import {
   publishRequestType,
 } from "../../apps/api/src/intake/repository";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import * as storage from "../../apps/api/src/storage";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -231,6 +232,7 @@ async function waitForBlockedProjectArchive(
 
 describe("intake atomic conversion", () => {
   beforeEach(async () => resetTestDatabase());
+  afterEach(() => vi.restoreAllMocks());
 
   it("refuses to publish auto-accept to an organisation the pinned project cannot serve", async () => {
     const { workspace } = await createWorkspaceMember({ role: "admin" });
@@ -1259,6 +1261,13 @@ describe("intake atomic conversion", () => {
     expect(staffRows.map(({ id }) => id)).toEqual(
       expect.arrayContaining([pendingRequesterUpload.id, staffUpload.id]),
     );
+    const deleteObject = vi
+      .spyOn(storage, "deleteStorageObject")
+      .mockResolvedValue();
+    vi.spyOn(storage, "finalizeStorageObject").mockResolvedValue();
+    vi.spyOn(storage, "getObjectSizeAndHeader").mockRejectedValue(
+      new Error("injected verification failure"),
+    );
     await expect(
       completeSubmissionAttachment({
         attachmentId: pendingRequesterUpload.id,
@@ -1269,6 +1278,14 @@ describe("intake atomic conversion", () => {
         identity: requesterIdentity,
       }),
     ).rejects.toMatchObject({ status: 400 });
+    expect(deleteObject.mock.calls).toEqual([
+      [storage.toFinalAttachmentObjectKey(pendingRequesterUpload.objectKey)],
+    ]);
+    const [afterRollback] = await db
+      .select({ state: schema.attachmentTable.state })
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, pendingRequesterUpload.id));
+    expect(afterRollback?.state).toBe("pending");
     await expect(
       completeSubmissionAttachment({
         attachmentId: staffUpload.id,
