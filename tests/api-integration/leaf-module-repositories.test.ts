@@ -14,6 +14,7 @@ import {
 import { listTaskCommentRows } from "../../apps/api/src/comment/repository";
 import db, { schema } from "../../apps/api/src/database";
 import { listExternalLinksByTask } from "../../apps/api/src/external-link/repository";
+import { reachableLinkedWorkItemId } from "../../apps/api/src/intake/submission-linked-work-item";
 import { findCustomProviderIdToken } from "../../apps/api/src/oauth/repository";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import {
@@ -53,6 +54,125 @@ async function seedTask(projectId: string, columnId: string) {
 }
 
 describe("current leaf repository reach", () => {
+  it("requires resolved identity and current SQL reach for linked-work-item facts", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    await grantProjectManageAccess(member.user.id, project.id);
+    const identity = await resolveIdentity({
+      userId: member.user.id,
+      credential: "session",
+    });
+    if (!identity) throw new Error("test caller identity did not resolve");
+
+    const type = requireRow(
+      await db
+        .insert(schema.workItemTypeTable)
+        .values({
+          workspaceId: member.workspace.id,
+          key: `linked-reach-${randomUUID()}`,
+          name: "Linked reach test item",
+          category: "service",
+        })
+        .returning(),
+      "linked reach work item type",
+    );
+    const template = requireRow(
+      await db
+        .insert(schema.stateTemplateTable)
+        .values({
+          workspaceId: member.workspace.id,
+          key: `linked-reach-state-${randomUUID()}`,
+          name: "Open",
+          group: "backlog",
+        })
+        .returning(),
+      "linked reach state template",
+    );
+    const state = requireRow(
+      await db
+        .insert(schema.stateTable)
+        .values({
+          projectId: project.id,
+          stateTemplateId: template.id,
+          isDefault: true,
+        })
+        .returning(),
+      "linked reach state",
+    );
+    const item = requireRow(
+      await db
+        .insert(schema.workItemTable)
+        .values({
+          projectId: project.id,
+          workspaceId: member.workspace.id,
+          typeId: type.id,
+          stateId: state.id,
+          number: 1,
+          key: `${project.slug}-1`,
+          title: "Linked reach test item",
+        })
+        .returning(),
+      "linked reach work item",
+    );
+
+    let reachChecks = 0;
+    const allowedReach = {
+      reaches: async (row: {
+        projectId: string;
+        workspaceId: string;
+        organisationId: string | null;
+      }) => {
+        reachChecks += 1;
+        expect(row).toMatchObject({
+          projectId: project.id,
+          workspaceId: member.workspace.id,
+        });
+        return true;
+      },
+    };
+    expect(
+      await reachableLinkedWorkItemId(identity, allowedReach, item.id),
+    ).toBe(item.id);
+
+    expect(
+      await reachableLinkedWorkItemId(
+        identity,
+        { reaches: async () => false },
+        item.id,
+      ),
+    ).toBeNull();
+
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, member.user.id))
+      .limit(1);
+    if (!person) throw new Error("test person was not provisioned");
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, person.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, project.id),
+        ),
+      );
+
+    expect(
+      await reachableLinkedWorkItemId(identity, allowedReach, item.id),
+    ).toBeNull();
+    expect(reachChecks).toBe(1);
+    expect(
+      await reachableLinkedWorkItemId(null, allowedReach, item.id),
+    ).toBeNull();
+    expect(
+      await reachableLinkedWorkItemId(identity, allowedReach, null),
+    ).toBeNull();
+    expect(reachChecks).toBe(1);
+  });
+
   it("reads only the authenticated user's custom-provider id token", async () => {
     const member = await createWorkspaceMember({ role: "member" });
     const other = await createWorkspaceMember({ role: "member" });

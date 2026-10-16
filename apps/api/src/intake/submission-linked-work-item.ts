@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { findWorkItemProjectOwner } from "./linked-work-item.repository";
 
 /**
@@ -22,10 +23,11 @@ export type LinkedWorkItemReach = {
 };
 
 export async function reachableLinkedWorkItemId(
+  identity: ResolvedIdentity | null,
   reach: LinkedWorkItemReach,
   workItemId: string | null,
 ): Promise<string | null> {
-  if (!workItemId) return null;
-  const owner = await findWorkItemProjectOwner(workItemId);
+  if (!identity || !workItemId) return null;
+  const owner = await findWorkItemProjectOwner(identity, workItemId);
   return owner && (await reach.reaches(owner)) ? workItemId : null;
 }
