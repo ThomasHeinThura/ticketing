@@ -2396,3 +2396,176 @@ Committed locally as `e9b169fc` (`test: reset OIDC fixture principal between tes
 
 I read the complete 12-test OIDC file, its current diff, both hook layers, the Vitest integration config, the installed mock behavior, the production exact-subject admission branch, the schema unique index, the relevant RBAC and identity contracts, the two previous blocked reports and the author's repair handoff. I ran `git rev-parse HEAD`, `git status --porcelain` (clean), `git diff --name-status 7135900e..e9b169fc` (one test file), `git diff --exit-code c84df2..e9b169fc -- apps packages` (empty), accepted-main import equality checks, `git merge-base --is-ancestor c84df2 e9b169fc` (passed), and `git diff --check 7135900e e9b169fc` (passed). The author reports scoped Biome (one file) and `pnpm typecheck` (nine packages) passed; those are not reruns in this context. **Zero PostgreSQL tests were run on this head here**, despite 12 cases being defined in the file. I ran no Docker, browser, provider I/O or SIT. The old published `d9ffe9eb` PostgreSQL run passed 2,947 of 2,948 tests across 206 files and failed the duplicate-role setup; it cannot clear `e9b169fc`. The conductor still needs authentic publication and green required checks, including full hosted PostgreSQL on the exact published SHA, before any merge or acceptance claim. No gate is waived.
 
+
+
+## Repeat-login canonical Customer role admission repair — 2026-10-16
+
+**Reviewed head:** `ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e`
+
+Actual prior publication33312e30 full PostgreSQL run38840868896/job116780393239 FAILED206files/2949tests:205files2948tests passed; tampered-role retry returned success / instead of identity_error. Its new session/cookie assertions were not reached. Read-only independent Sol identified a production repeat-login admission gap, not another fixture-only issue. The fix enforces the existing canonical persisted Customer role shape in common IdP validation and rejects invalid enabled customer JIT defaults on repeat admission after reconciling only the affected identity/connection grants, before issuing a new session. Agent policy is preserved. Tests retain canonical positives and individual OIDC/SCIM corruption negatives, same-principal retired grant/no-new-session assertions, and unrelated persisted grant/session controls; their integration execution remains pending.
+
+Two NEW fresh independent ordinary contexts and a NEW fresh full independent Sol clear ded9; the fixture-only change-altitude exception is not used for these production authentication semantics. Ordinary B independently ran121APIunitfiles/872tests; author also passed permissions16files107tests and typecheck. Sol performed source/closure/session checks without claiming test execution. Five raw records below include non-approving adjudication and author handoff, not five approvals. B's original dated2026-10-16 report was copied byteexact to central evidence with SHA256 origin receipt before publication. One author handoff calls116780393239 a run; it is the job ID in actual run38840868896, preserved authentically rather than rewritten.
+
+New publication requires real full hosted PostgreSQL and exact-head/image gates; prior failures stay adverse. #780 is accepted, #764 remains a prerequisite. Existing CI-helper802 is independently reviewed and in normal hosted acceptance; current product source is genuinely changed to test the discovered security defect, not an unchanged rerun. Future accepted-main composition requires its own conservation/current-head validation. No new schema, capability, route, provider activation or owner-hold change. Root directed composition and is not an independent reviewer. Platform selectors for the new ordinary contexts are gpt-6-luna, security gpt-6-sol, all fresh fork_turns=none; no introspected serving version is fabricated.
+
+### Record 1
+
+# #785 tampered Customer role: hosted runtime adjudication
+
+**Role:** bounded, read-only critical adjudication; no approval, remediation, or independent security review.  
+**Source:** frozen publication `33312e305296c35d84eeb5eec0e78ed40e9bd5fd`; source `e9b169fcd19db369dcf4ae3e2356674ad3a8afd2`; production `c84df2f56030c375bba4ac9b7af8832852bce2c1`.  
+**Runtime evidence:** hosted PostgreSQL 18 job `116780393239`, raw mode-600 log `785-pg-33312e30.log`. The integration command exited 1. Its one failure among 206 files/2,949 tests was `tests/api-integration/identity/oidc-jit-login.test.ts:470`: expected the callback location to contain `identity_error`, received `/`. The other 205 files and 2,948 tests passed. Log timestamps show the assertion at 2026-10-16 03:00:28 UTC; the supplied job result records completion at 03:00:31 UTC. The private log was inspected only by targeted result lines, not copied wholesale.
+
+## Contract
+
+`docs/03-features/identity-provisioning.md` IP-3 says customer connections use **only the canonical Customer organisation role**. IP-27 requires an existing canonical TaskDesk role ID as `default_role_id` and Entra subject admission at every login, including repeat login, before session issuance. `docs/03-features/customer-portal.md` § Permissions admits a customer-side person with the built-in Customer role on an organisation membership. `docs/01-architecture/rbac.md` § The customer role is special makes it a distinct portal actor. The concrete built-in definition in `packages/permissions/src/roles.ts` has organisation scope, rank 10, `isEditable: false`, and the defined Customer capability list. `apps/api/src/permissions/customer-membership.ts` requires the live membership's role to retain system status, rank, and exact capabilities before request identity resolution; its resulting capabilities are compiled in.
+
+## Observed mechanism
+
+The test first signs in an unrelated customer on a different connection and organisation, then signs in the target subject successfully on its own connection. Both connections intentionally reference one global canonical Customer role. It removes **only** the target user's session, updates that role row to rank 0, empty capabilities, `isSystem: false`, and `isEditable: true`, then retries the same connection and subject. It stops at the first negative assertion, so the runtime log does not itself report the subsequent cookie/session and unrelated-session assertions.
+
+This is not explained by the fixture accidentally tampering a different role or repeating an unrelated subject. `seedCustomer` reuses the role by global `(scope, null workspace, key)` and the test asserts matching role IDs and distinct users. The validator mock retains the target subject across both target logins. `signIn` creates a new `createApp()` for each attempt, but `createApp()` is route/middleware construction; it does not seed `role` rows. The boot seed found in `apps/api/src/index.ts` is `seedDefaultWorkspaceRoles()` and changes the distinct `workspace_role` table. There is no evidence here of a Customer-role repair between tamper and retry.
+
+The code path explains the successful `/` redirect. On repeat login, `signInAdmittedIdentity` finds the existing external identity and skips the first-person default-role block in `apps/api/src/identity/oidc-login.ts`. It subsequently reads the configured JIT role and calls `validateOidcMappingRole` to decide whether to keep its `jit_default` grant. That function delegates to `validateIdpMappingRole` in `apps/api/src/identity/repository.ts`. The Customer branch checks active organisation, role scope, nonnegative rank, safe capability composition, null workspace and key `customer`. It does **not** compare canonical Customer rank/capabilities or check `isSystem`/`isEditable`. Rank 0 and an empty array pass those checks. The grant is kept; sign-in returns `denied: false`, creates and binds a Better Auth session, and the callback redirects Customer traffic to `/`. There is no request-identity resolution before session creation. The separate `hasCanonicalCustomerMembership` gate would reject the tampered role on a subsequent portal API request, but it does not enforce the IP-27 login-admission boundary.
+
+**Verdict:** production admission defect, not a fixture-only failure. The repeat-login OIDC role validator accepts a noncanonical persisted Customer role; login reports success despite the role being unusable under the request identity resolver. The visible `/` confirms the success branch. The failure at line 470 prevents a direct hosted assertion of the actual cookie, new session row, or unrelated session persistence after retry; those remain to be verified by the repair run. No independent security approval is conferred by this adjudication.
+
+## Bounded repair criterion for the fixer
+
+For a Customer connection, validate the persisted role against the **genuine canonical built-in Customer shape** at every place a configured default or mapping role is accepted or reconciled, including repeat OIDC login, before any new session is issued. Preserve the accepted first-login and SCIM paths, the exact connection/subject binding, and grant-source isolation. The tampered-role retry must yield the existing generic identity failure, no new target portal cookie/session, and leave the unrelated previously persisted session untouched. The test should observe the tampered row after the update and again after the retry if needed to rule out fixture repair, while retaining its positive sign-ins and all post-denial assertions. Do not change the expectation to allow login, suppress the positive flows, relax admission, or disable the test. A fresh independent security context must review the eventual changed exact head after ordinary review.
+
+**Limits:** No code or test was changed; no database, Docker, or browser runtime was invoked here. This packet is source/log adjudication on the specified frozen SHA, not a new reproduction or a review verdict for a future fix.
+
+
+### Record 2
+
+# #785 tampered Customer role repeat-login repair
+
+**Role:** fixer handoff; no independent review or runtime approval.  
+**Source:** `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`, commit `ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e`.  
+**Base:** `33312e305296c35d84eeb5eec0e78ed40e9bd5fd`.  
+**Prior adverse evidence:** hosted PostgreSQL run `116780393239`, frozen on base, reported 206 files / 2,949 tests, 2,948 passing and the target repeated OIDC customer login returning `/` instead of `identity_error`. Original raw log and Sol adjudication remain preserved; no prior report was altered.
+
+## Contract and repair
+
+The source adjudication cites identity-provisioning IP-3 (customer connections use only the canonical Customer organisation role) and IP-27 (subject admission also applies on repeat login before session issuance), plus the Customer portal permission contract and the compiled built-in role in `packages/permissions/src/roles.ts`.
+
+`apps/api/src/identity/repository.ts` now makes the common IdP mapping/default predicate compare customer roles against `BUILT_IN_ROLES.customer`: organisation scope, global/null workspace, canonical key, system row, noneditable row, exact rank, and exact ordered capability list. This predicate serves OIDC defaults and mappings, SCIM mappings, and connection reference validation. Existing agent role checks are unchanged.
+
+`apps/api/src/identity/oidc-login.ts` now locks the configured JIT default role while reconciling a repeat sign-in. When a customer connection has JIT enabled and the configured default fails the shared role predicate, reconciliation retires only that identity connection's invalid JIT grant as `mapping_changed`, projects the membership change, and returns the existing generic denied result before a new session is issued. First-login validation still fails before creating the identity when its default role is invalid. The lock uses the existing transaction and role-lock path.
+
+The existing OIDC retry regression retains its successful unrelated-customer and target first sign-ins. It now rereads the tampered role both before and after the retry; asserts the failed retry leaves the target without a customer cookie/session; asserts the target JIT grant is retired; and checks the other connection's grant and previously stored session remain. Mapping-role tests now seed the real canonical role and individually reject wrong rank, capabilities, system status, and editability through both OIDC and SCIM predicates. The OIDC mapping-admin integration fixture was updated to use the canonical persisted role; its corruption cases remain intact.
+
+## Validation
+
+Passed on `ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e`:
+
+- `pnpm --filter @taskdesk/api test:unit` — 121 files, 872 tests passed.
+- `pnpm --filter @taskdesk/api test:permissions` — 16 files, 107 tests passed.
+- `pnpm --filter @taskdesk/api typecheck` — all five configured TypeScript projects passed.
+- `pnpm exec biome ci` on the five changed files — no errors; it reports three existing optional-chain warnings in unchanged lines of `oidc-login.ts`.
+- `git diff --check` — passed before commit.
+
+No PostgreSQL integration run, Docker, browser, push, or publication was performed. The focused role-predicate and OIDC retry tests are integration tests and therefore remain unexecuted locally; the hosted PostgreSQL rerun is required before claiming runtime repair. The production changes are security-sensitive authentication semantics and need the ordinary reviewer count and a fresh full independent Sol review chosen by the conductor.
+
+## Changed files
+
+- `apps/api/src/identity/repository.ts`
+- `apps/api/src/identity/oidc-login.ts`
+- `tests/api-integration/identity/mapping-role-guards.test.ts`
+- `tests/api-integration/identity/oidc-group-mapping-admin.test.ts`
+- `tests/api-integration/identity/oidc-jit-login.test.ts`
+
+
+### Record 3
+
+# #785 tampered Customer role repeat-login repair — ordinary review A
+
+**Role:** fresh independent ordinary reviewer A. This context did not author, direct, or remediate the candidate. It is not a security review or runtime approval.  
+**Model label:** GPT-6 Luna (selected by assignment; serving model/version was not independently introspected).  
+**Reviewed head:** \`ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e\`  
+**Comparison base:** \`33312e305296c35d84eeb5eec0e78ed40e9bd5fd\`  
+**Accepted-main ancestor supplied by assignment:** \`d603...\` (not independently refreshed against GitHub in this read-only task).  
+**Verdict:** CLEAR for the bounded ordinary review scope. No blocking or non-blocking findings.
+
+## Scope checked
+
+Read the repository instructions (\`AGENTS.md\`, \`docs/04-engineering/agent-workflow.md\`, \`CLAUDE.md\`), the owning \`IP-3\` and \`IP-27\` rules in \`docs/03-features/identity-provisioning.md\`, and the exact five-file diff. Traced the common \`validateIdpMappingRole\` predicate and \`validateOidcMappingRole\` wrapper, first-login default-role validation, repeat-login role reconciliation and session-issuance boundary, \`lockScimGrantClosure\` lock acquisition, \`lockOidcDefaultRole\`, and the existing OIDC denial/session path. Inspected the focused changes in \`mapping-role-guards.test.ts\`, \`oidc-group-mapping-admin.test.ts\`, and \`oidc-jit-login.test.ts\`. Used the prior private runtime adjudication and author handoff only to understand the reported failure and claimed validation; neither was treated as review evidence for this candidate.
+
+## Findings
+
+The shared customer-role predicate now checks the complete built-in Customer shape: organisation scope, null workspace, canonical key, system status, non-editable status, exact built-in rank and exact ordered capability list. This closes the repeat-login gap in the common predicate while keeping customer admission scoped to the configured organisation. The existing connection and issuer/tenant/client checks plus immutable subject lookup remain in place. The signed Entra admission decision still occurs before \`signInAdmittedIdentity\`; no callback email or group claim selects the customer organisation or subject.
+
+On repeat sign-in, the configured JIT default is now selected with the role row lock before it is validated and reconciled. \`lockScimGrantClosure\` already includes the observed configured role in its sorted role-lock set before acquiring connection, mapping, external-identity and grant locks, so the new call reuses a role lock already acquired in the documented IP-22 order. Reconciliation remains in the same transaction as role validation and grant retirement/projection. A customer JIT-enabled identity whose persisted default role is no longer canonical is marked denied after reconciliation; the callback follows the existing generic failure path before creating a portal session. The grant loop is constrained to the current person, connection, external identity, and OIDC/JIT source kinds. Direct grants, SCIM grants, and other-connection grants are not selected for retirement. Post-commit invalidation occurs only when the affected grant projection changed.
+
+The regression preserves positive first sign-ins for a separate customer connection and the target connection, verifies the target and unrelated connections share the global role as expected, asserts the role remains tampered before and after retry, checks no target customer cookie/session is issued, checks the target JIT grant is retired, and checks the other customer's stored session and grant remain. The test comment accurately limits the latter claim to persistence: both connections use the same global role, so tampering that role does not establish that the unrelated session retains usable authorization. This is a suitable failure oracle for the requested no-global-session-deletion property.
+
+The mapping-role tests now use the true canonical persisted customer role and cover tampered rank, capabilities, system status and editability through both OIDC and SCIM shared validation. The mapping-admin fixture update is consistent with the stronger common predicate. I found no tenant escape, identity-subject substitution, source-isolation regression, lock-order inversion, or newly issued session path in the reviewed delta.
+
+## Validation evidence and limits
+
+No tests or runtime commands were run by this reviewer. The author handoff reports, on this exact head, API unit tests at 121 files / 872 tests, permissions tests at 16 files / 107 tests, API typecheck across five TypeScript projects, Biome on the changed files and \`git diff --check\` as passing. I did not independently verify those outputs. The handoff reports that the focused PostgreSQL integration tests were not run; the prior hosted PostgreSQL failure is on the base and is not evidence that this repair passes. No Docker or browser verification was performed.
+
+This ordinary review covers the bounded production-authentication fix only. Because the candidate changes security-sensitive authentication semantics, it still requires the separate current-head GPT-6 Sol security pass and required hosted integration evidence. This report does not clear either gate.
+
+
+
+### Record 4
+
+# #785 repeat Customer admission repair — ordinary review B
+
+**Role:** Fresh independent ordinary code review; did not author, direct, or remediate the candidate.  
+**Model provenance:** Selected GPT-6 Luna context per review assignment. Runtime model attestation is unavailable in this session; the model label records the assigned tier, not an independently observed runtime identifier.  
+**Candidate:** `ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e`  
+**Base:** `33312e305296c35d84eeb5eec0e78ed40e9bd5fd`  
+**Scope:** Full five-file candidate delta, emphasizing shared validator callers and fixtures, positive agent/customer behavior, negative canonical Customer-role fields, repeat OIDC JIT reconciliation, mapping-admin and SCIM caller behavior, and grant/session isolation.
+
+## Verdict
+
+**CLEAR — no blocking findings.** The changed predicate enforces the persisted canonical Customer shape at every caller using the shared IdP mapping/default validator. Repeat OIDC login locks the configured JIT role, revalidates it, retires only invalid active OIDC grants tied to the current person/connection/external identity, reconciles membership projection, and denies before issuing a new session when a customer JIT default is invalid.
+
+The customer retry fixture preserves its unrelated-customer and target first-login positives. It verifies the corrupted role remains corrupted through retry, the target gets no portal cookie/session, its JIT grant is retired, and the unrelated connection's session and grant remain. The predicate tests cover canonical rank, capability list, system status, and editability, through both OIDC and SCIM; they also preserve positive controls for agent and customer mappings. The mapping-admin fixture now uses a valid persisted canonical Customer role, consistent with the contract.
+
+## Review evidence
+
+Read the repository agent workflow, provider guide, status and decision log, the identity-provisioning/customer-portal/RBAC contracts, both supplied adjudication/fixer reports, the full five-file diff, and relevant caller/query implementations.
+
+Commands run on the frozen worktree:
+
+- `git diff --find-renames 33312e305296c35d84eeb5eec0e78ed40e9bd5fd ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e -- <five changed files>` — inspected.
+- `git diff --check 33312e305296c35d84eeb5eec0e78ed40e9bd5fd ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e` — passed.
+- `pnpm --filter @taskdesk/api test:unit` — 121 files, 872 tests passed.
+- `rg` searches of validator, role-default, and grant-list callsites — traced OIDC, connection-admin, group-mapping, and SCIM paths.
+
+## Findings and limits
+
+No blocking or non-blocking code findings. The five-file PostgreSQL integration tests, including the new retry and canonical-role assertions, were not run in this review; the supplied fixer report also says they remain unexecuted locally. The earlier hosted run belongs to the old base and records the original defect, so it is not evidence that this candidate passes integration. No Docker, browser, or hosted runtime verification was performed. This ordinary review does not substitute for the required independent GPT-6 Sol security review.
+
+
+### Record 5
+
+# #785 repeat Customer admission repair — independent security review
+
+**Role:** Fresh, full Sol-tier security reviewer. This context did not author, direct, remediate, or run the prior adjudication of this candidate.  
+**Model provenance:** GPT-6 Sol selected by the parent spawn assignment with `fork_turns=none`; no independent platform version attestation is available.  
+**Reviewed head:** ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e  
+**Comparison base:** 33312e305296c35d84eeb5eec0e78ed40e9bd5fd  
+**Accepted-main ancestor:** d603c068 (ancestor relationship checked locally).  
+**Verdict:** CLEAR for the exact-head source security review. No blocking or non-blocking findings. This is not integration, image, or runtime acceptance.
+
+## Scope and evidence
+
+I read AGENTS.md, the active mission, agent-workflow.md, CLAUDE.md, the IP-2/IP-3/IP-22/IP-27 identity-provisioning contract, the Customer portal permission contract, the built-in Customer role, the prior hosted-failure adjudication, the author handoff, and both independent ordinary CLEAR reports. I independently inspected the complete five-file diff and traced the surrounding OIDC callback, transaction, grant-closure locks, first and repeat login, SCIM/shared-role validation, membership projection, native authorization invalidation, Customer request identity resolver, and session/cookie creation. The prior reports were context, not a substitute for source inspection.
+
+The common IdP role predicate checks the active customer organisation, exact organisation scope, null workspace, built-in Customer key, system status, noneditable status, rank, and the exact ordered built-in capability list. Customer roles cannot be supplied from IdP claims. The agent branch still enforces its workspace, role ceiling, and forbidden-capability checks; the new Customer comparison does not relax it. Connection save, OIDC default/mapping reconciliation, and SCIM mapping callers use the shared predicate.
+
+The selected Entra connection, issuer, tenant, client and immutable subject remain bound before the repeat-login transaction. Signed app-role and account-type admission is rechecked under the current connection configuration before person/grant reconciliation. The closure includes the observed configured default role in its sorted role-lock set; the new repeat-path `lockOidcDefaultRole` reuses that lock before validation. A concurrent configuration change is caught by the connection version check and retried. Invalid Customer default state retires only active JIT grants of this current person, connection and external identity, projects affected memberships, and returns a denied result. Native authorization invalidation follows a changed projection; the callback takes its generic failure branch before Better Auth session creation or portal session-cookie issuance. Other-connection and direct/SCIM grant sources are outside this OIDC retirement selection. The unchanged request resolver independently compiles Customer capabilities from the built-in role after its live membership check.
+
+The regression keeps the unrelated and target successful initial sign-ins, proves their global role ID is shared, observes the tampered persisted row before and after retry, checks generic denial and token validation, absence of a new target portal cookie/session, target JIT retirement, and persistence of the other connection's grant/session. The separate role-predicate test seeds a canonical role and varies rank, capabilities, system status, and editability individually through OIDC and SCIM validators; the mapping-admin fixture is updated to the same canonical shape. Its unrelated-session assertion proves persistence, not usable authorization after the globally shared role was tampered.
+
+## Checks actually run and limits
+
+I ran `git diff --check` on the exact base/head (pass), inspected the exact five-file diff, checked the worktree was clean and its HEAD matched the reviewed SHA, and verified d603c068 is an ancestor. I did not run tests, PostgreSQL, Docker, browser, or hosted CI. The author reports API unit 121 files/872 tests and permissions 16 files/107 tests on this SHA; ordinary reviewer B independently ran API unit 121/872. Those are their evidence, not tests run in this security context. The prior hosted PostgreSQL job was on the base and failed 1 of 2,949 tests; it does not verify this repair.
+
+The newly changed PostgreSQL integration cases remain unexecuted in the supplied evidence. A real current-head hosted PostgreSQL run, image/runtime proof, and all required exact-head GitHub checks are still necessary before merge. No runtime success is asserted here.
+
