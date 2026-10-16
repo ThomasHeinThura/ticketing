@@ -1,3 +1,4 @@
+import { defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -158,7 +159,20 @@ describe("label repository (#580)", () => {
       role: "member",
       joinedAt: new Date(),
     });
-    const identityWorkspaceOnly = await identityFor(workspaceOnly.user.id);
+    const missingCanonicalRoleIdentity = await identityFor(
+      workspaceOnly.user.id,
+    );
+    const missingCanonicalRoleRows = await db
+      .select({ id: schema.workspaceRoleTable.id })
+      .from(schema.workspaceRoleTable)
+      .where(
+        and(
+          eq(schema.workspaceRoleTable.workspaceId, a.workspace.id),
+          eq(schema.workspaceRoleTable.role, "member"),
+          eq(schema.workspaceRoleTable.isSystem, true),
+        ),
+      );
+    expect(missingCanonicalRoleRows).toHaveLength(0);
     const definition = must(
       await insertWorkspaceLabelOnConflictDoNothing(db, identityA, {
         name: "Bug",
@@ -187,6 +201,37 @@ describe("label repository (#580)", () => {
       color: "#444444",
       workspaceId: b.workspace.id,
     });
+
+    expect(
+      await listLabelsByWorkspaceId(
+        missingCanonicalRoleIdentity,
+        a.workspace.id,
+      ),
+    ).toEqual([]);
+
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: a.workspace.id,
+      role: "member",
+      permission: JSON.stringify(defaultRolePayloads.member),
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const identityWorkspaceOnly = await identityFor(workspaceOnly.user.id);
+    expect(
+      identityWorkspaceOnly.authority.filter(
+        (grant) =>
+          grant.scope === "workspace" &&
+          grant.scopeId === a.workspace.id &&
+          grant.roleKey === "member",
+      ),
+    ).toHaveLength(1);
+    expect(
+      identityWorkspaceOnly.authority.filter(
+        (grant) => grant.scope === "project",
+      ),
+    ).toEqual([]);
 
     const noProjects = await listLabelsByWorkspaceId(
       identityWorkspaceOnly,
