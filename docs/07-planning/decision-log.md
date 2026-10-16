@@ -1,3 +1,33 @@
+### 2026-10-15 · Owner decisions on acceptance risks: API-key authority, erasure, Intake claims and RT-6
+
+**Decisions (Thomas, 2026-10-15, answered in the conductor session and recorded on each issue):**
+- **#724 — API keys are clamped by the owner's project role.** A key's effective authority is its stored scope ∩ the owner's current authority in that project (workspace role and project role). A key never exceeds what the owner's session can do there.
+- **#734 — account erasure counts IdP-provisioned members.** SCIM/OIDC memberships count in the sole-member check. If anyone else has access to the workspace, erasure stops with a clear `409`, and the workspace must be transferred or removed first. Nobody else loses access silently.
+- **#743 — a failed accept releases the claim.** Thomas's owner-approved invariant is that a failed accept (for example a missing or unreachable destination) leaves no claim. He permits either validating the destination before committing the claim, or rolling the claim back in the same transaction when accept fails. This entry does not choose between those implementation mechanisms. No new route, policy or timeout.
+- **#761 — IQ-7 governs the work-item type at accept.** The triager may override the type; the request-type pre-fill is a suggestion. The published snapshot still pins the form schema, SLA override and default assignee. An ineligible snapshotted default assignee leaves the work item unassigned, and the reason is recorded so a lead can assign it. RT-6 is amended to match.
+- **#718 item 1 — not deferred.** The open 2026-09-05 review findings for `webhooks-and-api-keys.md` are mapped to evidence and dispositioned by an independent reviewer before the self-row paragraph merges.
+
+**Supersedes:**
+- **2026-10-14 accept entry.** In "Submission accept answers an unreachable destination exactly like a missing one", every statement that a failed accept is answered *after the claim has committed* and leaves the submission claimed. That covers the claim-ordering clause, the "A failed accept leaves the submission claimed by the caller" consequence, the IQ-16a rationale tied to it, and the reversal text that assumed it. Now the owner-approved invariant is that failed acceptance leaves no claim; the implementation may validate the destination before committing the claim or roll the claim back in the same transaction when acceptance fails. The "unreachable looks missing" answer itself is unchanged.
+- **2026-10-13 recovered RT-6 wording.** "fails atomically if they are unavailable", for the type and default assignee. Now: IQ-7 type choice; an ineligible assignee leaves the item unassigned with a recorded reason.
+
+**Reversal:** each decision reverses by a new owner entry; the code changes are confined to the PRs for each issue.
+
+### 2026-10-15 · Conductor implementation decisions: query ownership contract and identity admin UI
+
+**Decisions (conductor, under existing contracts; reversible), plus one owner decision marked as such:**
+- **#580 query ownership** (under `monorepo-layout.md`: `repository.ts` is the only place feature queries appear):
+  - D1: opening a `db.transaction` is orchestration and may stay outside repositories; every statement inside goes through repository functions that receive the handle (`Executor`).
+  - D2: raw `execute`/`sql` statements are in scope; SQL fragment helpers live in repositories.
+  - D3: allowed locations are repositories by name (`repository.ts`, `*.repository.ts`, `repository/**`) plus an explicit list of persistence-infrastructure files under `apps/api/src/database/`. There is no wildcard, per-site allowlist or baseline.
+  - D4: `apps/api/scripts/**` dev and seed tooling is outside the gate.
+  - The accepted tenant-scoping convention remains: cross-organisation reads use scoped repositories taking the resolved identity, as documented in `multi-tenancy.md` and illustrated by `forIdentity(identity)` in `monorepo-layout.md`. These query-location and executor choices do not replace that convention or claim the checker proves a universal type-level `forIdentity`/`ScopedQuery` wrapper for every query.
+  - The enforced `check:queries` gate is enabled only by the final batch.
+  - The full D1–D4 text and explicit persistence-path list in `coding-standards.md` are proposed in open PR #764; they are not yet part of accepted main. This entry records the conductor's implementation choices, not acceptance of that proposed contract or completion of #580.
+- **#713 God Mode Authentication/SCIM UI — owner decision (Thomas, 2026-10-15), not a conductor one.** The screen ships the accepted API's step-up-protected staff-connection and SCIM enable/disable actions. The standing hold on "unapproved identity/notification activation" still applies: nothing is activated on the laptop SIT, UAT or production without Thomas's approval, and SIT tests only fixture or closed states. Registration, invitations and typed-domain SSO stay held.
+
+**Supersedes:** nothing. **Reversal:** a later conductor or owner entry. The accepted `monorepo-layout.md` query-ownership rule remains the canonical baseline; the additional coding-standards wording and path list await review and acceptance of #764.
+
 ### 2026-10-14 · Submission accept answers an unreachable destination exactly like a missing one
 
 **Decision (conductor, 2026-10-14; reversible):** `POST /api/submissions/{ref}/accept` answers a destination project outside the triager's reach with the same 422 as a missing destination, after the claim has committed. It does not answer 404 before the claim.
@@ -2276,6 +2306,10 @@ delete it (rejected — destructive, and the release may already be referenced/p
 something).
 
 **Decided by:** Thomas, 2026-09-28.
+
+## 2026-10-16 — Technical disposition: public #780 reviewer filename
+
+The generic-api-key scan of immutable publication `33f2ec22b161bc214d76b2e0e3dd264cf950bd5d` matches the public filename `780-records-main-ordinary-luna.md` in its review-note heading (line260), not a credential. Preserve the authentic report and commit. Add only that exact commit/file/rule/line fingerprint to `.gitleaksignore`, following the existing immutable-review-filename precedent; no path/rule exemption or secret-scan waiver. This technical false-positive disposition requires independent ordinary and Sol review and current CI before acceptance; it creates no owner decision or product authority.
 
 ## Format
 
