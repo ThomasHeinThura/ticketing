@@ -4,7 +4,7 @@
  * update/delete, newest-first activity listing, relation duplicate/self/delete rules and
  * the time-entry list/update shapes.
  */
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   deleteOwnComment,
@@ -79,14 +79,49 @@ describe("API integration: activity through the repository", () => {
       eventData: { a: 1 },
     });
     expect(first.status).toBe(200);
-    await first.text();
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    const firstActivity = (await first.json()) as { id: string };
+    expect(firstActivity.id).toBeTruthy();
     const second = await call("POST", "/api/activity/create", {
       taskId: task.id,
       type: "note",
       message: "second",
     });
-    await second.text();
+    expect(second.status).toBe(200);
+    const secondActivity = (await second.json()) as { id: string };
+    expect(secondActivity.id).toBeTruthy();
+    expect(secondActivity.id).not.toBe(firstActivity.id);
+
+    const firstCreatedAt = new Date("2026-10-01T00:00:00.000Z");
+    const secondCreatedAt = new Date("2026-10-02T00:00:00.000Z");
+    await db
+      .update(schema.taskActivityTable)
+      .set({ createdAt: firstCreatedAt })
+      .where(eq(schema.taskActivityTable.id, firstActivity.id));
+    await db
+      .update(schema.taskActivityTable)
+      .set({ createdAt: secondCreatedAt })
+      .where(eq(schema.taskActivityTable.id, secondActivity.id));
+    const persisted = await db
+      .select({
+        id: schema.taskActivityTable.id,
+        createdAt: schema.taskActivityTable.createdAt,
+      })
+      .from(schema.taskActivityTable)
+      .where(
+        inArray(schema.taskActivityTable.id, [
+          firstActivity.id,
+          secondActivity.id,
+        ]),
+      );
+    expect(persisted).toHaveLength(2);
+    expect(persisted).toContainEqual({
+      id: firstActivity.id,
+      createdAt: firstCreatedAt,
+    });
+    expect(persisted).toContainEqual({
+      id: secondActivity.id,
+      createdAt: secondCreatedAt,
+    });
 
     const list = await call("GET", `/api/activity/${task.id}`);
     const rows = (await list.json()) as {
