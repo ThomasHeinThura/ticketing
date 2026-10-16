@@ -2683,3 +2683,121 @@ A whole-range `git diff --check 9053...4381...` reports trailing whitespace in t
 
 The corrected mapping-admin test and full PostgreSQL suite have not yet run on 4381 in evidence reviewed here. The current-head hosted PostgreSQL rerun, actual shipping-image proof, and required exact-head GitHub checks must pass before merge. No new runtime acceptance is asserted.
 
+
+
+## Accepted #764 main import - 2026-10-16
+
+**Reviewed head:** `966e1ba2c0f28b58fb1db3008cb0995c1048a90a`
+
+Author handoff and independent import reviews follow unchanged. Author handoffs are not approvals; earlier reviews retain their actual source scopes.
+
+### Author handoff
+
+`notification-accepted764-main-composition-luna.md`
+
+SHA-256 `59b97dfd02b8133ffa242cc33519a14293df17ea1c031177cab43504804e8015`
+
+# #785 accepted #764/main composition handoff
+
+## Result
+
+**COMPOSED LOCALLY; no push, PR action, runtime, or heavy test was performed.** The bounded #785 candidate is a normal merge of the refreshed accepted main into the existing branch. No unresolved semantic choice was encountered.
+
+## Exact history
+
+- Worktree: `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`
+- Branch: `codex/query-ownership-580-b4`
+- Before: clean at `6b244fbbcd4e058374cb1036f2f22694aa6a678d`
+- Refreshed `origin/main`: `3d1894ba2b28fd4d9ba40baecd96fc61a92a8c8e`
+- Composition: `966e1ba2c0f28b58fb1db3008cb0995c1048a90a`
+- Parents, in order: `6b244fbbcd4e058374cb1036f2f22694aa6a678d`, `3d1894ba2b28fd4d9ba40baecd96fc61a92a8c8e`
+- Worktree is clean. The accepted main is an ancestor of the composition. The branch is local and ahead of its prior tracking ref; it was not pushed.
+
+## Composition and provenance
+
+The merge was run with `git merge --no-commit --no-ff origin/main`; Git reported no conflicts. A normal two-parent merge commit was then created. `git diff-tree -r --name-status HEAD^1 HEAD` identifies the incoming main delta as exactly eight paths:
+
+1. `docs/01-architecture/monorepo-layout.md`
+2. `docs/01-architecture/multi-tenancy.md`
+3. `docs/01-architecture/security-model.md`
+4. `docs/03-features/webhooks-and-api-keys.md`
+5. `docs/04-engineering/coding-standards.md`
+6. `docs/07-planning/reviews/2026-09-05/features-governance-design.md`
+7. `docs/07-planning/security-reviews/764-query-ownership.md`
+8. `docs/07-planning/security-reviews/782-webhooks-review-disposition.md`
+
+The seven incoming files other than the 764 review note have blobs exactly matching accepted main. The 764 review note also matches accepted main exactly. Thus the note retains the accepted #764 resolved-identity conformance material and its original review records without author edits. Durable contract docs (`monorepo-layout.md`, `multi-tenancy.md`, `security-model.md`, and `coding-standards.md`) match current accepted main. Their rule requires the resolved identity and derives caller reach in the predicate; any narrower workspace/project ID is checked against that identity. `forIdentity(identity)` is described as an accepted illustration/convention, without claiming a universal fluent API/type. The historical notification review note remains byte-identical to its pre-merge 6b blob, preserving raw adverse and positive records; historical review text was not rewritten.
+
+The candidate source/tests were not altered by the merge: `git diff --quiet 6b244fbb... HEAD -- apps/api packages tests` exited 0. Production API/packages are byte-identical to reviewed production source `ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e`; the canonical Customer fixture remains byte-identical to `4381fdb21b3a532bdb569c7f80f158e787031c54`. The preserved note records the two original ordinary production reviews and full Sol review, plus the fixture delta's strong ordinary and full Sol confirmation. The private canonical own-note proof identifies the original `+114/-0`, mode `100644` append and its exact publication provenance; that append is unchanged here.
+
+## Checks and limits
+
+- Refreshed `origin/main` and verified it was exactly `3d1894ba2b28fd4d9ba40baecd96fc61a92a8c8e` before merging.
+- Verified merge parents, clean status, main ancestry, incoming path list, accepted-main blob equality, candidate source/test conservation, reviewed production equality, fixture equality, and resolved contract document equality.
+- Staged `git diff --check` excluding two imported authentic review records emitted no findings; those raw review-note bytes were preserved as accepted evidence.
+- No tests, PostgreSQL, Docker, browser, CI, PR/body/comment, push, or runtime action was run. Existing full 206-file/2,950-test and image results at 6b remain historical evidence, not new-head acceptance. Current hosted checks and any later required acceptance remain outstanding.
+
+
+### Independent ordinary review
+
+`notification-accepted764-main-ordinary-luna.md`
+
+SHA-256 `2dd61700b80ee9885198f48d4adf0a25923bcf31754c1e29ab543ba60e2f7bb2`
+
+# #785 accepted #764/main import — ordinary review
+
+**Reviewed head:** `966e1ba2c0f28b58fb1db3008cb0995c1048a90a`  
+**Compared parents:** first `6b244fbbcd4e058374cb1036f2f22694aa6a678d`; accepted-main second parent `3d1894ba2b28fd4d9ba40baecd96fc61a92a8c8e`  
+**Role:** Fresh ordinary-review context for the bounded accepted-main import. I did not author, direct, or remediate this merge. GPT-6 Luna was the assigned ordinary tier; this runtime does not expose a separate serving-version attestation.  
+**Scope:** Exact merge history, imported-path identity, preservation of the previously reviewed #785 production/test source, and whether the accepted import introduces a semantic conflict, authority change, or gate pass/fail change.
+
+## Verdict
+
+**CLEAR for the bounded accepted-main import; no blocking findings.** The exact two-parent merge imports eight documentation paths byte-for-byte from accepted main. It leaves the #785 application, package, test, and notification-review-note bytes unchanged from the reviewed first parent. The current accepted resolved-identity contract is preserved; the superseded explicit-tenant wording from the older branch is not present in the four canonical contract documents. This is an import confirmation, not a new full production review, current runtime acceptance, hosted CI result, or merge authorization.
+
+## Evidence and checks
+
+- `HEAD` is the requested merge commit with exactly the stated parents. The worktree was clean. Accepted main is the second parent and is an ancestor.
+- `git diff-tree -r --name-status HEAD^1 HEAD` lists exactly these eight incoming paths: `docs/01-architecture/monorepo-layout.md`, `multi-tenancy.md`, `security-model.md`, `docs/03-features/webhooks-and-api-keys.md`, `docs/04-engineering/coding-standards.md`, `docs/07-planning/reviews/2026-09-05/features-governance-design.md`, `docs/07-planning/security-reviews/764-query-ownership.md`, and `782-webhooks-review-disposition.md`. I compared each merge-result blob with the same path at accepted-main parent `3d1894ba`; all eight match exactly.
+- `git diff --quiet 6b244fbb..966e1ba -- apps/api packages tests docs/07-planning/security-reviews/query-ownership-notifications-580.md` exited 0. Thus this merge did not change the production source, package tree, test tree, or the existing notification/query-ownership review record.
+- `apps/api` and `packages` at the reviewed head compare byte-for-byte with the production fix reviewed at `ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e`. The canonical customer-role fixture in `tests/api-integration/helpers/approval-fixtures.ts` matches its restoration at `4381fdb21b3a532bdb569c7f80f158e787031c54`. The preserved review record binds two ordinary production reviews and a full Sol review to `ded9b7e`; the fixture-only restoration has its separate strong ordinary and full Sol review at `4381fdb`. I rely on those reports only for their unchanged source scopes; I do not characterize this as a fresh full review panel.
+- The four canonical identity/query documents in the import exactly match accepted main. They require cross-organisation repository reads to take resolved identity and derive caller reach in the statement predicate; any additional workspace/project ID must be checked against that identity and included as a narrower predicate. `forIdentity(identity)` is an illustration/convention, not a claim of a universal implemented wrapper or type guarantee. The decision-log summary of the accepted tenant-scoping convention says the same. The branch's older wording that treated explicit tenant IDs as alternative authoritative scope and said the identity convention was replaced is superseded and is not present in these current documents.
+- The imported webhook/API-key specification and its review disposition also match accepted main exactly. The spec distinguishes existing storage from unimplemented feature tables/extensions, marks named feature tests as planned rather than passing, and says the #724 implementation remains proposed/pending. The preserved Sol report's self-read precision caveat remains visible: target stored-read-capability wording is not proof of current runtime enforcement. I found no new identity authority, API-key write grant, feature acceptance, route change, or gate activation in this import. `.github` and `scripts/ci` are unchanged from the first parent.
+- `git diff --check` on the six imported documents outside the two authentic review records exited 0. The two imported review records retain raw historical report whitespace from accepted main; I did not normalize or claim the full imported diff is whitespace-clean.
+
+## Findings and limits
+
+**Blocking findings:** none.
+
+**Non-blocking:** the two imported authentic review records contain preserved Markdown trailing spaces/final blank-line formatting. Their blobs are identical to accepted main; this has no semantic effect and was left intact.
+
+No tests, PostgreSQL, Docker, browser, hosted CI, or live PR action was run. The 6b runtime/image and hosted results remain historical evidence bound to their original heads. This review does not assert exact-head CI or runtime acceptance for `966e1ba`, does not claim #580 completion or checker activation, and does not replace the separately required fresh Sol import confirmation.
+
+
+### Independent security review
+
+`notification-accepted764-main-security-sol.md`
+
+SHA-256 `d152a5a1e5e4b7132950ec72adf98924d843fa4621fe8b636feec46f1f7b4f15`
+
+# #785 accepted #764/main import — independent security confirmation
+
+**Reviewed head:** `966e1ba2c0f28b58fb1db3008cb0995c1048a90a`  
+**Comparison:** first parent `6b244fbbcd4e058374cb1036f2f22694aa6a678d`; accepted-main second parent `3d1894ba2b28fd4d9ba40baecd96fc61a92a8c8e`  
+**Role and independence:** Fresh, read-only Sol-tier security reviewer context dispatched for this bounded import confirmation. I did not author, direct, remediate, or ordinarily review this merge. The parent selected `gpt-6-sol` with `fork_turns=none`; the runtime provides no separate serving-version attestation.  
+**Verdict:** **CLEAR for this exact-head accepted-main import.** No blocking or non-blocking security finding. This is a lightweight import confirmation, not a new full review of the production changes or current-head runtime acceptance.
+
+## Actual scope and checks
+
+I read AGENTS.md, agent-workflow.md, CLAUDE.md, active-mission.md, the current decision-log query-ownership entry, the takeover HANDOVER, the two current ordinary/composition reports, and the preserved production and fixture ordinary/Sol reports in `query-ownership-notifications-580.md`. I inspected the first-parent documentation diff, including the resolved-identity query contract and webhook/API-key spec/disposition. I checked `HEAD`, clean worktree, exact two parents, accepted-main ancestry, first-parent changed-path list, and all eight incoming blob IDs against accepted main. Every imported blob is byte-identical to accepted main.
+
+`git diff --quiet 6b244fbb..966e1ba -- apps/api packages tests .github scripts/ci docs/07-planning/security-reviews/query-ownership-notifications-580.md` exited 0. The merge changes none of those paths. `apps/api` and `packages` at this head are byte-identical to the full-reviewed production-auth head `ded9b7e93e6b5bd3b054d1b9d2362f4561faa58e`; the canonical Customer helper at `tests/api-integration/helpers/approval-fixtures.ts` is byte-identical to its reviewed restoration at `4381fdb21b3a532bdb569c7f80f158e787031c54`. The original two ordinary plus full Sol production reviews, and the fixture strong ordinary plus full Sol delta review, retain only their original source scopes. I did not convert them into a new full production panel.
+
+The incoming eight paths are documentation only: `monorepo-layout.md`, `multi-tenancy.md`, `security-model.md`, `webhooks-and-api-keys.md`, `coding-standards.md`, the features-governance design register, and the #764 and #782 security-review records. The four canonical query/identity documents now require a cross-organisation repository read to derive caller reach from resolved identity in the SQL predicate. A workspace/project ID can narrow the query only after validation against that identity; `forIdentity(identity)` remains an illustration, not a claimed universal implemented wrapper. This agrees with the current decision-log entry. The older first-parent wording allowing an explicit tenant ID as alternative authoritative scope is absent from the merged result. This changes written guidance relative to the older branch, but imports the already accepted contract and neither grants runtime authority nor weakens the rule.
+
+The imported webhook/API-key material marks absent feature tables/extensions and named tests as pending; it does not assert feature implementation or activate routes, providers, key authority, or a review gate. The accepted #764/#782 review records are preserved verbatim. No `.github`, `scripts/ci`, package manifest, schema, policy, route or test byte changes occur in this import. The CI security-scope path list in `ci-cd.md` has no newly changed path in this first-parent import, and no gate pass/fail semantics change. `git diff --check` on the full first-parent diff reports inherited trailing Markdown spaces in the two accepted review records; these are byte-identical to accepted main and have no security effect.
+
+## Limits and disposition
+
+No tests, PostgreSQL, Docker, browser, hosted CI, GitHub review mutation, push, or runtime acceptance ran in this context. The 6b PostgreSQL 206-file/2,950-test and image proofs are historical evidence for 6b, not acceptance for `966e1ba`. Current exact-head hosted checks, image/runtime proof and the normal protected PR gates remain the conductor's work. This report does not claim #580 completion, `check:queries` activation, stage closure, a gate waiver, or merge authorization.
+
