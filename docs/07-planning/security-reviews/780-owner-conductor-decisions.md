@@ -317,3 +317,77 @@ The `dd72a200…` to `4e432041…` merge adds 247 lines in exactly three files: 
 No source edit, ref update, PR update, push, merge, runtime test, Docker/database/browser proof, issue closure or stage acceptance was performed. The prepared #780 head still needs its own published exact-head checks and normal protected merge flow; this confirmation does not transfer #801's checks to it.
 
 
+
+## Narrow scanner-finding disposition reviews
+
+**Reviewed head:** `aadb267e59e609a8e97bffd8f94265404832620c`
+
+One exact immutable public-filename finding is dispositioned under the existing scanner convention. Current strong ordinary and full independent Sol reviews below clear this bounded gate-control delta. Authentic earlier reports and adverse scans remain unchanged. No path-wide or rule-wide ignore, credential exemption or quality-gate waiver is authorized.
+
+### Ordinary review
+
+# PR #780 filename false-positive gate repair — ordinary review
+
+**Reviewed head:** `aadb267e59e609a8e97bffd8f94265404832620c`
+**Comparison base:** accepted main `f781b954b41811e810b093647254a384c8e83e78`
+**Gate-repair parent:** `33f2ec22b161bc214d76b2e0e3dd264cf950bd5d`
+**Reviewer selection:** GPT-6 Luna, fresh independent ordinary context selected for this review. Runtime/tool metadata does not expose a separately verifiable model/provider identity, so this report records the requested selection without claiming platform attestation.
+**Risk classification:** strong ordinary review of a narrow gate-control case. The change adds one exact immutable gitleaks finding fingerprint; it does not alter a scan rule or gate behavior generally.
+
+## Scope and source
+
+Inspected the exact candidate diff and full source range from accepted main. Relative to `f781b954…`, the candidate adds/changes only `.gitleaksignore`, `docs/07-planning/decision-log.md`, and the preserved `docs/07-planning/security-reviews/780-owner-conductor-decisions.md`. Runtime paths under `apps`, `packages`, and `tests` are byte-identical to accepted main. The diff from parent `4e432041d95613662b84741ce8b885aff1cc1e11` is the eight-line gate/technical-record fix; the previously reviewed decision-log content is unchanged. The worktree is clean.
+
+The `.gitleaksignore` addition is exactly:
+
+`33f2ec22b161bc214d76b2e0e3dd264cf950bd5d:docs/07-planning/security-reviews/780-owner-conductor-decisions.md:generic-api-key:260`
+
+It is bound to one immutable commit, one public review-note path, one detector rule, and one line. It adds no path-wide or rule-wide suppression. The decision-log addition calls this a technical false-positive disposition, cites the exact publication, says no credential is present, and explicitly says the change requires independent ordinary and Sol review plus current CI. It creates no owner decision, product authority, or waiver. The preserved authentic report and its history were not rewritten.
+
+## False-positive validation and scan
+
+Inspected the restricted raw gitleaks finding metadata without displaying its matched value. It identifies commit `33f2ec22…`, the report path above, rule `generic-api-key`, line 260, and its `Secret` field exactly equals the public report basename `780-records-main-ordinary-luna.md`. The corresponding private adjudication records `credential: false` and no path/rule-wide exemption. The immutable commit’s line 260 is the matching “Authentic report” heading. This is a public filename match, not a credential.
+
+Ran the pinned local gitleaks binary against the entire candidate commit range, including the accepted-main merge/imports and current `.gitleaksignore`:
+
+`gitleaks git . --log-opts='--full-history f781b954b41811e810b093647254a384c8e83e78..aadb267e59e609a8e97bffd8f94265404832620c' --no-banner --redact --report-format=json --report-path=<restricted evidence file>`
+
+Result: exit 0, 8 commits scanned, approximately 51.25 KB scanned, “no leaks found”; the JSON report contains zero findings. The report is stored mode 600 at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/780-gitleaks-scan-final.json`. The raw adjudication evidence remains private; no matched value was printed in this report or the scan output.
+
+## Verdict and limits
+
+**CLEAR — ordinary review of the exact narrow gate-control candidate `aadb267e59e609a8e97bffd8f94265404832620c`.** The adjudicated match is a public filename, the ignore is exact and immutable, the entire candidate range scans clean with the current ignore, and runtime/source behavior is unchanged.
+
+This is not the required independent GPT-6 Sol review, current hosted CI, or merge acceptance. Those remain separate. No source, ref, or PR was changed by this reviewer; no runtime, browser, database, or product tests were run.
+
+
+### Independent security review
+
+# PR #780 filename false-positive disposition — independent security review
+
+**Reviewed head:** `aadb267e59e609a8e97bffd8f94265404832620c`
+**Accepted-main comparison:** `f781b954b41811e810b093647254a384c8e83e78`
+**Gate-fix parent:** `33f2ec22b161bc214d76b2e0e3dd264cf950bd5d`
+**Previously reviewed records head:** `4e432041d95613662b84741ce8b885aff1cc1e11`
+**Worktree:** `/Users/heinthura/.codex/worktrees/pr780-current-prep/Ticketing.v2`
+**Reviewer / model provenance:** Fresh independent context for this full, bounded security-control review. I did not author, direct or remediate the ignore or technical record. I previously reviewed the unchanged decision source and record-only delta, so this is not an additional independent reviewer count for those earlier changes. The conductor requested GPT-6 Sol; runtime tooling does not expose a separately verifiable model/version or dispatch token. This records the requested tier without claiming external runtime attestation.
+
+## Verdict
+
+**CLEAR — security review of the exact narrow gate disposition at this head.** The matched value is a public report filename, and the new `.gitleaksignore` entry suppresses only the one immutable finding. It changes neither detector rules nor path coverage and does not waive the secret-scan gate. The technical decision record attributes no new Thomas decision or product authority. Prior full-source contract review remains applicable because its decision-log blob was conserved up to the gate fix.
+
+## Evidence and threat boundary
+
+I inspected the exact commit diff and the full candidate range from accepted main. The gate fix adds one fingerprint plus three explanatory comment lines to `.gitleaksignore` and four lines to the append-only decision log. Its fingerprint binds commit `33f2ec22b161bc214d76b2e0e3dd264cf950bd5d`, `docs/07-planning/security-reviews/780-owner-conductor-decisions.md`, rule `generic-api-key`, and line 260. There is no wildcard, rule exclusion, path exclusion, scan-disable option, baseline exemption, rewrite or history deletion. The technical record explicitly calls this a false-positive disposition and requires independent ordinary and Sol review plus current CI; it does not say a required gate passed or was waived.
+
+I read the redacted scanner finding and verified the restricted original in memory without printing the matched value. The original contains one finding; its fingerprint, rule, commit and line match the ignore entry, and its `Secret` field is exactly the public heading filename `780-records-main-ordinary-luna.md`. Git's immutable `33f2ec22…` line 260 is that “Authentic report” heading. The private adjudication packet agrees; the underlying finding is a filename, not a credential. I also read the ordinary reviewer’s exact-head CLEAR report, independently checked its key factual claims, and did not rely on that verdict as a substitute for this review.
+
+The `33f2ec22…` review publication only appends 67 lines to the prior authentic note. Its first 34,005 bytes are byte-identical to head `4e432041…`, preserving the original reports. The original owner/conductor decision-log blob at `10d117bd…`, `4e432041…` and `33f2ec22…` is identical (`337ff769da86dc7cec895bef02d0944fd47e319e`); `aadb267e…` adds only the separate technical disposition. Against accepted main, the current candidate changes exactly `.gitleaksignore`, the decision log and the #780 review note. `apps`, `packages`, `tests`, `.github`, `scripts/ci`, `package.json` and `pnpm-lock.yaml` are byte-identical to accepted main. No authority evaluator, runtime route, schema, dependency, or gate implementation changed.
+
+I independently ran `gitleaks git . --log-opts='--full-history f781b954b41811e810b093647254a384c8e83e78..aadb267e59e609a8e97bffd8f94265404832620c' --no-banner --redact --report-format=json --report-path=<private evidence>`. Exit 0: 8 commits, about 51.25 KB scanned, zero findings. The zero-finding JSON is retained mode 600 at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/780-gitleaks-security-sol-scan.json`. `git diff --check 33f2ec22…aadb267e…`, `pnpm check:policy` (8 coherent policy files), and `pnpm check:reviews` (no feature spec named) passed. The worktree was clean and `HEAD` matched the reviewed SHA immediately before this report was written.
+
+## Limits
+
+This is full security scrutiny of the bounded secret-scan disposition, not runtime or product acceptance. The current head still needs its own published CI statuses and protected merge; the local scan cannot stand in for hosted checks. No code edits, ref/PR changes, push, merge, database/browser/image test, or issue/stage closure were performed. This reviewer did not disclose the raw scanner match in public output beyond its verified public filename.
+
+
