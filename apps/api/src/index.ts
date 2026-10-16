@@ -1980,7 +1980,9 @@ export async function runMigrationStep(): Promise<void> {
  * `runMigrationStep`'s doc comment above for why these are two separate functions,
  * run from two separate OS processes, rather than two calls in one.
  */
-export async function runApiBootTasks(): Promise<void> {
+export async function runApiBootTasks(
+  options: Pick<NodeServerShutdownOptions, "hostname"> = {},
+): Promise<void> {
   // S1's structural backstop: fail loudly, before anything else, if this process's
   // own environment carries the owner/migration credential at all. A correctly
   // configured compose/Helm deployment never sets it here in the first place; this
@@ -2018,7 +2020,7 @@ export async function runApiBootTasks(): Promise<void> {
   initializePlugins();
   initializeScheduler();
   await initializeWebSocketAdapter();
-  await startObservabilityRuntime();
+  await startObservabilityRuntime(options);
 }
 
 const DEFAULT_PORT = 5173;
@@ -2194,7 +2196,7 @@ export async function startServer(
   options: Pick<NodeServerShutdownOptions, "hostname"> = {},
 ) {
   try {
-    await runApiBootTasks();
+    await runApiBootTasks(options);
   } catch {
     logHttpLifecycleFailure();
     process.exit(1);
