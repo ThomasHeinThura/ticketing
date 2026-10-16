@@ -72,7 +72,7 @@ if (args[0] === "image" && args[1] === "inspect") {
   if (format.includes(".Id")) out(state.image ? "sha256:built" : "sha256:foreign");
   else if (format.includes(".Os")) out("linux");
   else if (format.includes(".Architecture")) out("amd64");
-  else if (format.includes(".Config.User")) out("10001:10001");
+  else if (format.includes(".Config.User")) out(process.env.FAKE_CONFIGURED_USER || "10001:10001");
   else if (format.includes(".Config.Labels")) out(state.imageLabel || "foreign");
   stop(0);
 }
@@ -103,7 +103,7 @@ if (args[0] === "compose") {
     stop(0);
   }
   if (action === "ps") {
-    out(args.includes("migrate") ? "migrate-container" : "taskdesk-container");
+    out(String(args.at(-1)) + "-container");
     stop(0);
   }
   if (action === "exec") {
@@ -122,10 +122,18 @@ if (args[0] === "compose") {
   }
 }
 if (args[0] === "inspect") {
+  const service = args.at(-1).replace("-container", "");
   if (format.includes(".State.ExitCode")) out("0");
-  else if (format.includes(".Image")) out(process.env.FAKE_WRONG_RUNNING_IMAGE === "1" ? "sha256:foreign" : "sha256:built");
-  else if (format.includes(".HostConfig.PortBindings")) out(process.env.FAKE_PORT_BINDINGS || "null");
-  else if (format.includes(".HostConfig.PublishAllPorts")) out("false");
+  else if (format.includes(".Image")) {
+    const appImage = service === "migrate" || service === "taskdesk";
+    out(appImage && process.env.FAKE_WRONG_RUNNING_IMAGE === "1" ? "sha256:foreign" :
+      (appImage ? "sha256:built" : "sha256:" + service));
+  } else if (format.includes(".HostConfig.PortBindings")) {
+    out(process.env["FAKE_" + service.toUpperCase() + "_PORT_BINDINGS"] ||
+      (service === "taskdesk" ? process.env.FAKE_PORT_BINDINGS : undefined) || "null");
+  } else if (format.includes(".HostConfig.PublishAllPorts")) {
+    out(process.env["FAKE_" + service.toUpperCase() + "_PUBLISH_ALL"] || "false");
+  }
   else if (format.includes(".State.Health.Status")) out(process.env.FAKE_HEALTH || "healthy");
   stop(0);
 }
@@ -248,6 +256,7 @@ test("archives the explicit PR head, binds running services to built image, and 
   const fixture = await makeFixture(t);
   const result = await runSmoke(fixture);
   assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /shipping image smoke passed for candidate/);
   const proof = await readProof(fixture);
   const state = await readState(fixture);
   assert.equal(proof.candidateSha, fixture.candidateSha);
@@ -267,7 +276,20 @@ test("archives the explicit PR head, binds running services to built image, and 
   assert.equal(proof.runtimeUid, 10001);
   assert.equal(proof.liveStatus, 200);
   assert.equal(proof.readyStatus, 200);
-  assert.deepEqual(proof.hostPortBindings, null);
+  assert.deepEqual(proof.hostPortBindingsByService, {
+    migrate: null,
+    taskdesk: null,
+    postgres: null,
+    valkey: null,
+  });
+  assert.deepEqual(proof.publishAllPortsByService, {
+    migrate: false,
+    taskdesk: false,
+    postgres: false,
+    valkey: false,
+  });
+  assert.equal(proof.serviceImageIds.postgres, "sha256:postgres");
+  assert.equal(proof.serviceImageIds.valkey, "sha256:valkey");
   assert.equal(proof.cleanup.status, "complete");
   assert.equal(proof.finalVerdict, "passed");
   assert.equal(state.networkRemoved, true);
@@ -292,6 +314,13 @@ for (const [name, overrides] of [
   ["migration ledger mismatch", { FAKE_MIGRATIONS: "1" }],
   ["wrong running image", { FAKE_WRONG_RUNNING_IMAGE: "1" }],
   ["root runtime UID", { FAKE_UID: "0" }],
+  ["configured root user", { FAKE_CONFIGURED_USER: "root" }],
+  ["configured root user with group", { FAKE_CONFIGURED_USER: "root:group" }],
+  ["configured zero UID with group", { FAKE_CONFIGURED_USER: "0:10001" }],
+  [
+    "configured padded zero UID with group",
+    { FAKE_CONFIGURED_USER: "000:10001" },
+  ],
   ["unhealthy image", { FAKE_HEALTH: "unhealthy" }],
   ["redirect response", { FAKE_READY_STATUS: "302" }],
   [
@@ -314,6 +343,24 @@ for (const [name, overrides] of [
   });
 }
 
+test("fails closed on a host port binding in the Postgres service", async (t) => {
+  const fixture = await makeFixture(t, {
+    FAKE_POSTGRES_PORT_BINDINGS:
+      '{"5432/tcp":[{"HostIp":"0.0.0.0","HostPort":"5432"}]}',
+  });
+  const result = await runSmoke(fixture);
+  assert.notEqual(result.code, 0);
+  const proof = await readProof(fixture);
+  assert.equal(proof.finalVerdict, "failed");
+});
+
+test("fails closed on automatic host-port publishing in the Postgres service", async (t) => {
+  const fixture = await makeFixture(t, { FAKE_POSTGRES_PUBLISH_ALL: "true" });
+  const result = await runSmoke(fixture);
+  assert.notEqual(result.code, 0);
+  assert.equal((await readProof(fixture)).finalVerdict, "failed");
+});
+
 for (const resource of ["network", "image"]) {
   test(`preserves a pre-existing foreign ${resource} with the generated resource name`, async (t) => {
     const fixture = await makeFixture(t, {
@@ -332,6 +379,10 @@ test("cleanup failure fails the smoke and is recorded", async (t) => {
   const fixture = await makeFixture(t, { FAKE_NETWORK_RM_FAIL: "1" });
   const result = await runSmoke(fixture);
   assert.notEqual(result.code, 0);
+  assert.doesNotMatch(
+    result.stdout,
+    /shipping image smoke passed for candidate/,
+  );
   const proof = await readProof(fixture);
   assert.equal(proof.cleanup.status, "failed");
   assert.equal(proof.cleanup.networkRemoval, 1);

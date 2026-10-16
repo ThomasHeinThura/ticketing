@@ -50,8 +50,9 @@ fs.writeFileSync(file, `${JSON.stringify({
   runtimeUid: null,
   migrateImageId: null,
   taskdeskImageId: null,
-  hostPortBindings: null,
-  publishAllPorts: null,
+  serviceImageIds: {},
+  hostPortBindingsByService: {},
+  publishAllPortsByService: {},
   migrationJournalEntries: null,
   appliedMigrations: null,
   healthcheck: "pending",
@@ -121,14 +122,23 @@ proof.cleanup = {
   temporaryContextRemoved: tempRemoval === "0",
   commandExitCode: Number(exitCode),
 };
-const bindingsEmpty = proof.hostPortBindings === null ||
-  (typeof proof.hostPortBindings === "object" && Object.keys(proof.hostPortBindings).length === 0);
+const services = ["migrate", "taskdesk", "postgres", "valkey"];
+const noServicePorts = services.every((service) => {
+  const bindings = proof.hostPortBindingsByService?.[service];
+  const publishAll = proof.publishAllPortsByService?.[service];
+  return publishAll === false && (bindings === null ||
+    (typeof bindings === "object" && !Array.isArray(bindings) && Object.keys(bindings).length === 0));
+});
+const configuredUserAccount = String(proof.configuredUser ?? "").split(":", 1)[0];
+const configuredUserIsNonRoot = configuredUserAccount.length > 0 &&
+  configuredUserAccount !== "root" && !/^0+$/.test(configuredUserAccount);
 const complete = proof.candidateSha && /^[0-9a-f]{40}$/.test(proof.candidateSha) &&
   proof.checkoutSha && /^[0-9a-f]{40}$/.test(proof.checkoutSha) &&
   proof.build === "passed" && proof.imageId && proof.platform &&
-  proof.configuredUser && proof.configuredUser !== "0" && proof.configuredUser !== "root" &&
-  proof.runtimeUid > 0 && proof.migrateImageId === proof.imageId &&
-  proof.taskdeskImageId === proof.imageId && bindingsEmpty && proof.publishAllPorts === false &&
+  configuredUserIsNonRoot && proof.runtimeUid > 0 && proof.migrateImageId === proof.imageId &&
+  proof.taskdeskImageId === proof.imageId && noServicePorts &&
+  proof.serviceImageIds?.migrate === proof.imageId && proof.serviceImageIds?.taskdesk === proof.imageId &&
+  proof.serviceImageIds?.postgres && proof.serviceImageIds?.valkey &&
   Number.isInteger(proof.migrationJournalEntries) && proof.migrationJournalEntries > 0 &&
   proof.appliedMigrations === proof.migrationJournalEntries && proof.healthcheck === "healthy" &&
   proof.liveStatus === 200 && proof.readyStatus === 200 &&
@@ -145,6 +155,9 @@ NODE
   if [[ $status -eq 0 && ( $down_status -ne 0 || $network_status -ne 0 || $image_status -ne 0 || $temp_status -ne 0 || $proof_status -ne 0 ) ]]; then
     printf 'shipping image smoke: owned-resource cleanup or proof recording failed\n' >&2
     status=1
+  fi
+  if [[ $status -eq 0 ]]; then
+    printf 'shipping image smoke passed for candidate %s (checkout %s, image %s)\n' "$candidate_sha" "$checkout_sha" "$image_id"
   fi
   exit "$status"
 }
@@ -173,7 +186,7 @@ TASKDESK_APP_DB_PASSWORD=$app_password
 TASKDESK_ENCRYPTION_KEY=$encryption_key
 TASKDESK_AUTH_SECRET=$auth_secret
 TASKDESK_AGENT_URL=https://ticketing.localhost
-TASKDESK_PORTAL_URL=https://portal.ticketing.localhost
+TASKDESK_PORTAL_URL=https://portal.localhost
 TASKDESK_IMAGE_TAG=$image_tag
 TASKDESK_IMAGE_DIGEST=
 EOF_ENV
@@ -203,7 +216,8 @@ image_os="$(docker image inspect --format '{{.Os}}' "$image_id")"
 image_arch="$(docker image inspect --format '{{.Architecture}}' "$image_id")"
 configured_user="$(docker image inspect --format '{{.Config.User}}' "$image_id")"
 [[ "$image_os" == linux && "$image_arch" == "$platform_arch" ]] || fail "built image platform does not match the hosted platform"
-[[ -n "$configured_user" && "$configured_user" != 0 && "$configured_user" != root ]] || fail "image does not declare a non-root runtime user"
+configured_user_account="${configured_user%%:*}"
+[[ -n "$configured_user_account" && "$configured_user_account" != root && ! "$configured_user_account" =~ ^0+$ ]] || fail "image does not declare a non-root runtime user"
 
 journal_entries="$(node -e 'process.stdout.write(String(require(process.argv[1]).entries.length))' "$context/apps/api/drizzle/meta/_journal.json")"
 [[ "$journal_entries" =~ ^[1-9][0-9]*$ ]] || fail "source migration journal is empty or unreadable"
@@ -221,24 +235,35 @@ timeout 300s docker compose --project-name "$project" --project-directory "$cont
   --env-file "$env_file" -f "$context/compose.yml" -f "$override_file" \
   up -d --wait --wait-timeout 285 taskdesk >/dev/null 2>&1 || fail "candidate stack failed to migrate or become healthy"
 
-migrate_id="$(compose ps -a -q migrate)"
-taskdesk_id="$(compose ps -q taskdesk)"
-[[ -n "$migrate_id" && -n "$taskdesk_id" ]] || fail "Compose did not retain the migration and application containers"
+services=(migrate taskdesk postgres valkey)
+service_ids=()
+service_image_ids=()
+service_port_bindings=()
+service_publish_all=()
+for index in 0 1 2 3; do
+  service="${services[$index]}"
+  service_ids[$index]="$(compose ps -a -q "$service")"
+  [[ -n "${service_ids[$index]}" ]] || fail "Compose did not retain the $service container"
+  service_image_ids[$index]="$(docker inspect --format '{{.Image}}' "${service_ids[$index]}")"
+  service_port_bindings[$index]="$(docker inspect --format '{{json .HostConfig.PortBindings}}' "${service_ids[$index]}")"
+  service_publish_all[$index]="$(docker inspect --format '{{.HostConfig.PublishAllPorts}}' "${service_ids[$index]}")"
+done
+migrate_id="${service_ids[0]}"
+taskdesk_id="${service_ids[1]}"
 migrate_exit="$(docker inspect --format '{{.State.ExitCode}}' "$migrate_id")"
 [[ "$migrate_exit" == 0 ]] || fail "migration service did not exit successfully"
-migrate_image_id="$(docker inspect --format '{{.Image}}' "$migrate_id")"
-taskdesk_image_id="$(docker inspect --format '{{.Image}}' "$taskdesk_id")"
+for index in 0 1 2 3; do
+  service="${services[$index]}"
+  [[ "${service_publish_all[$index]}" == false ]] || fail "$service container has automatic host-port publishing enabled"
+done
+migrate_image_id="${service_image_ids[0]}"
+taskdesk_image_id="${service_image_ids[1]}"
 [[ "$migrate_image_id" == "$image_id" && "$taskdesk_image_id" == "$image_id" ]] || fail "running services do not use the locally built candidate image"
-
-port_bindings="$(docker inspect --format '{{json .HostConfig.PortBindings}}' "$taskdesk_id")"
-publish_all="$(docker inspect --format '{{.HostConfig.PublishAllPorts}}' "$taskdesk_id")"
-node - "$port_bindings" "$publish_all" <<'NODE'
-const bindings = process.argv[2] === "null" ? null : JSON.parse(process.argv[2]);
-if ((bindings && Object.keys(bindings).length > 0) || process.argv[3] === "true") {
-  process.stderr.write("shipping image smoke: taskdesk container has host port bindings\n");
-  process.exit(1);
-}
-NODE
+for index in 0 1 2 3; do
+  service="${services[$index]}"
+  bindings="${service_port_bindings[$index]}"
+  [[ "$bindings" == null || "$bindings" == '{}' ]] || fail "$service container has host port bindings"
+done
 
 applied_migrations="$(compose exec -T postgres sh -ec 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atqc "select count(*) from \"drizzle\".\"__drizzle_migrations\""')"
 [[ "$applied_migrations" == "$journal_entries" ]] || fail "qualified migration-ledger count differs from the candidate source journal"
@@ -273,17 +298,31 @@ probe() {
 live_status="$(probe live)" || fail "live endpoint did not return exactly HTTP 200"
 ready_status="$(probe ready)" || fail "ready endpoint did not return exactly HTTP 200"
 
-node - "$proof_file" "$runtime_uid" "$migrate_image_id" "$taskdesk_image_id" \
-  "$port_bindings" "$publish_all" "$applied_migrations" "$live_status" "$ready_status" "$health_status" <<'NODE'
+node - "$proof_file" "$runtime_uid" "$applied_migrations" "$live_status" "$ready_status" "$health_status" \
+  "${service_image_ids[0]}" "${service_port_bindings[0]}" "${service_publish_all[0]}" \
+  "${service_image_ids[1]}" "${service_port_bindings[1]}" "${service_publish_all[1]}" \
+  "${service_image_ids[2]}" "${service_port_bindings[2]}" "${service_publish_all[2]}" \
+  "${service_image_ids[3]}" "${service_port_bindings[3]}" "${service_publish_all[3]}" <<'NODE'
 const fs = require("node:fs");
-const [file, uid, migrateImage, taskdeskImage, bindings, publishAll, applied, live, ready, health] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const [file, uid, applied, live, ready, health, ...serviceValues] = args;
 const proof = JSON.parse(fs.readFileSync(file, "utf8"));
+const services = ["migrate", "taskdesk", "postgres", "valkey"];
+const serviceImageIds = {};
+const hostPortBindingsByService = {};
+const publishAllPortsByService = {};
+for (let index = 0; index < services.length; index += 1) {
+  const service = services[index];
+  const [imageId, bindings, publishAll] = serviceValues.slice(index * 3, index * 3 + 3);
+  serviceImageIds[service] = imageId;
+  hostPortBindingsByService[service] = bindings === "null" ? null : JSON.parse(bindings);
+  publishAllPortsByService[service] = publishAll === "true";
+}
 Object.assign(proof, {
-  runtimeUid: Number(uid), migrateImageId: migrateImage, taskdeskImageId: taskdeskImage,
-  hostPortBindings: bindings === "null" ? null : JSON.parse(bindings),
-  publishAllPorts: publishAll === "true",
+  runtimeUid: Number(uid), migrateImageId: serviceImageIds.migrate, taskdeskImageId: serviceImageIds.taskdesk,
+  serviceImageIds, hostPortBindingsByService, publishAllPortsByService,
   appliedMigrations: Number(applied), liveStatus: Number(live), readyStatus: Number(ready), healthcheck: health,
 });
 fs.writeFileSync(file, `${JSON.stringify(proof, null, 2)}\n`, { mode: 0o600 });
 NODE
-printf 'shipping image smoke passed for candidate %s (checkout %s, image %s)\n' "$candidate_sha" "$checkout_sha" "$image_id"
+printf 'shipping image smoke runtime checks complete; cleanup and proof validation pending\n'

@@ -281,9 +281,11 @@ test, then starts that image with the canonical Postgres 18 and Valkey Compose s
 The PR head can differ from Actions' synthetic merge checkout SHA; the proof records both.
 The smoke verifies the source journal's migration count was applied, both the one-shot
 migrator and running application use the built image ID, the application runs under its
-non-root UID, the image healthcheck is healthy, its container has no host port bindings, and
-the public live and ready endpoints return exactly HTTP 200 without following redirects. It
-records the candidate and checkout SHAs, local image ID/platform, and sanitized proof in a
+non-root UID, the image healthcheck is healthy, and each started service (migrate, taskdesk,
+Postgres, and Valkey) has no host port bindings or automatic host-port publishing. The public
+live and ready endpoints must return exactly HTTP 200 without following redirects. Cleanup
+must complete and the final proof artifact must be complete before the step reports success.
+It records the candidate and checkout SHAs, local image ID/platform, and sanitized proof in a
 short-lived workflow artifact. It performs no registry login, push, deployment, or SIT
 acceptance. Its isolated Compose project and randomly named, ownership-labeled network have
 no published ports; cleanup removes only resources bearing this run's identity. The hosted
