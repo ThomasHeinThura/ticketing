@@ -362,3 +362,89 @@ The imported test wraps `@tiptap/react` `useEditor` but calls the actual hook an
 
 The original hosted #790 full unit job at `e49e88c9` failed with one uncaught Tiptap teardown exception; its passing per-file test counts are not a passing job. The accepted #800 repair was reviewed and hosted at its own source; this review does not claim the current `67b934a9` complete hosted unit run passed. Current exact-head CI, PostgreSQL-backed checks, image build/boot/health, and #764/#780 prerequisites still require conductor verification. No browser, Docker, PostgreSQL, release, SIT or phase-finalizer proof was run or inferred here. The verdict is security/source clearance for this import only, not merge readiness or #580 completion.
 
+
+
+## Accepted-main import confirmation — 2026-10-16
+
+**Reviewed head:** `b2ffb6b2c90c81c8e9b0ef95e0763c4cc63512bd`
+
+Normal accepted-main1a34 composition preserves all23 net source/test/prior-note blobs from d118 and all other accepted-main paths. The following reports are authentic, unedited separate-context reviews. Ordinary dispatch used gpt-6-luna; security dispatch used gpt-6.1-sol. No source review establishes hosted runtime, image or merge acceptance. Historical EOF whitespace is retained with the original bytes.
+
+### Authentic report: 790-accepted1a-import-ordinary-luna.md
+
+# #790 accepted-main composition — ordinary review
+
+**Reviewer:** GPT-6 Luna, fresh independent reviewer context
+**Role:** bounded ordinary review of the current-main import/composition for existing #790
+**Reviewed head:** b2ffb6b2c90c81c8e9b0ef95e0763c4cc63512bd
+**Reviewed tree:** e4a1e161a666d46399c84e15d257272d2a6597fc
+**Comparison:** accepted main 1a34e5792ee9c42b15004b032e3c5410e5def44e, with old reviewed publication d1183b1b3f7422f587a5433f9235db90e5186723 as first parent
+**Independence:** I did not author, direct, or remediate this candidate. Review was limited to the accepted-main composition of the existing #790 import.
+
+## Scope checked
+
+- Verified the candidate is a normal merge with the stated parents and exact tree.
+- Inspected the private composition and 23-blob conservation evidence. The 23 imported source, test and publication-note blobs match the old reviewed publication, and the evidence records that no unaccepted source was imported.
+- Inspected the new query-owner repositories and the callers that delegate lookups to them, focusing on whether the moved queries preserve predicates, projection, joins, limits/order, time arguments, executor/transaction handles, row locks, and the callers' existing decisions and side effects.
+- Checked the interaction with accepted-main query/executor work, especially workspaceMemberRoles and capability reads: repository calls continue to receive the caller's Executor; assignability lookups use executorOrDefault; transaction row locks remain on the supplied executor. The accepted-main changes outside the 23 paths (including #784 project clamp, #795 clock handling, and #796 revocation work) remain present in the composed tree.
+- Did not review the whole #580/#790 feature as new work, prove its complete runtime behavior, or treat prior source review as proof of accepted-main runtime acceptance.
+
+## Commands and evidence
+
+- git status --short --branch, git rev-parse HEAD, git show --no-patch --pretty=raw HEAD
+- git diff --stat 1a34e5792ee9c42b15004b032e3c5410e5def44e...b2ffb6b2c90c81c8e9b0ef95e0763c4cc63512bd
+- Inspected focused diffs and repository/caller source for the paths above.
+- pnpm --filter @taskdesk/api typecheck — passed (exit 0).
+- Read /Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/790-accepted1a-composition.json and 790-accepted1a-23blob-conservation.json.
+
+## Findings
+
+No blocking or non-blocking findings in the bounded accepted-main composition review.
+
+The wrapper/repository extraction preserves the reviewed query behavior and transaction executor flow in the inspected paths. The unchanged-blob evidence supports provenance of the import; this review independently checked the important current-main interactions and does not extend the old publication's review scope.
+
+## Verdict
+
+**CLEAR — bounded ordinary composition review.** This verdict applies only to importing the existing #790 publication onto accepted main at the exact reviewed head above. Required hosted CI and hosted/runtime acceptance remain separate gates; this is not a whole-feature or security review.
+
+
+### Authentic report: 790-accepted1a-security-61-sol.md
+
+# #790 accepted-main import — independent security confirmation
+
+**Reviewed head:** b2ffb6b2c90c81c8e9b0ef95e0763c4cc63512bd
+**Reviewed tree:** e4a1e161a666d46399c84e15d257272d2a6597fc
+**Comparison base:** accepted main 1a34e5792ee9c42b15004b032e3c5410e5def44e
+**Parents:** d1183b1b3f7422f587a5433f9235db90e5186723 (old publication), 1a34e5792ee9c42b15004b032e3c5410e5def44e (accepted main).
+**Reviewer:** GPT-6 Sol security role in a fresh independent context. This is the assigned reviewer identity; no runtime model introspection was available. I did not author, direct, advise on, or remediate this candidate, nor perform its ordinary review. No merge authority.
+
+## Scope and depth
+
+CLEAR for the bounded accepted-main import/composition at this exact head. This is a current-head security confirmation of conserved, previously fully reviewed source and its interaction with accepted main, not a new whole-feature security clearance. Security scope is mandatory because utils paths are changed. Lightweight composition depth is justified by independently verified byte conservation of all 23 net imported paths and all other accepted-main paths, plus inspection showing no newly altered authority, gate semantics or transaction boundary. The original substantive extraction's full Sol review and ordinary panel remain required historical evidence and are not replaced or downgraded here.
+
+Read repository AGENTS/CLAUDE/workflow, current status and decision-log excerpts, security path policy, executor contract, original full Sol report and fresh ordinary import report. Inspected actual net source changes and current callers, rather than treating old review text as current runtime proof.
+
+## Security assessment
+
+The imported key lookup continues to require the supplied hash, enabled flag and null-or-future expiry. The owner lookup preserves the existing user/person left join; verifyApiKey still refuses missing, banned or inactive owners and preserves permission parsing. The session/portal authentication adapter is conserved from accepted main and remains responsible for its host/session restrictions. User-role and membership lookups do not cache or bypass those adapters.
+
+Asset lookup preserves its project join, persisted scope, reachableWorkspacePredicate and key ID/ownership filter. loadReachableAsset still resolves caller identity before the query and applies project reach afterward; the shadow denied-row lookup remains evidence-only and cannot replace the masked 404. Current resolveCallerIdentity continues projecting the key capability subset, and callerReach.can keeps the owner authority ceiling. Imported task and project lookups retain their soft-delete predicates. Accepted-main project clamp, identity, session and revocation source outside the exact import are byte-conserved; this import does not overwrite those fixes.
+
+Executor-sensitive role/capability reads use the supplied Executor. Optional assignee lookups resolve executorOrDefault, which returns the provided handle or the same shared db; transaction-bound membership FOR UPDATE and admin FOR SHARE remain on the caller handle. Workspace-admin reach queries likewise use that transaction, retaining person-before-grant locks and ordered bulk person locking. Role resolution still rejects ambiguous membership/custom admin substitution, and a custom carrier cannot become a system carrier. Grant writes remain workspace-scoped direct system_backfill only; explicit admin grants are untouched. Projection, creator-grant revocation and audit remain in the service and in the same transaction and order. No new identity-provider authority or sees_all path appears in this composition.
+
+## Checks actually performed
+
+- git status --short; git show -s --format='%H %P %T': exact head/parents/tree confirmed; clean checkout.
+- git diff --stat and focused source diffs against 1a34e5792ee9c42b15004b032e3c5410e5def44e; repository/caller reads for access, assignability, registration, customer-principal and workspace-admin reach.
+- Independent Python/git-object checks: **23/23 net imported blobs equal old publication d1183b1b**; **3,330 accepted-main paths outside the import retain exact tree entries**, with no additional unlisted files. The checkout remained clean.
+- pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/utils/authorize-asset-access.test.ts ../../tests/api/utils/require-workspace-capability.test.ts ../../tests/api/database-executor.test.ts: **3 files / 29 tests passed**, exit 0. These are offline checks, not PostgreSQL or concurrency proof.
+- git diff --check base HEAD: exit 2, solely the carried historical review note's final blank line at docs/07-planning/security-reviews/query-ownership-reach-580.md:364.
+- Read private composition receipts and fresh ordinary report. Its API typecheck PASS is attributed to that reviewer, not claimed as rerun by me.
+
+## Findings and limitations
+
+No blocking security finding. One non-blocking formatting finding: the byte-conserved historical review note has a final blank line reported by diff --check. No source finding.
+
+No PostgreSQL/integration/concurrency run, Docker build/boot/health, browser verification, hosted CI or live remote-head acceptance verification was performed in this bounded reviewer role. BROWSER VERIFICATION: BLOCKED for this review's explicitly offline scope. No runtime, merge, deployment, prerequisite acceptance, #580 completion or phase-finalizer claim. Historical PR environment claims are not current evidence. The conductor must verify current exact-head hosted gates, prerequisite acceptance and required runtime/image evidence independently. No gate is waived.
+
+**Verdict: CLEAR — exact-head bounded security composition confirmation**, with the non-blocking historical note whitespace finding above.
