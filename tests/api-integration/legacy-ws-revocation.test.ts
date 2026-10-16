@@ -9,10 +9,17 @@
  * once on the user socket (no reuse window) and after the bounded #748 window on the project
  * socket.
  */
+
+import { type ChildProcess, fork } from "node:child_process";
 import { createRequire } from "node:module";
 import type { AddressInfo } from "node:net";
-import { eq } from "drizzle-orm";
+import { fileURLToPath } from "node:url";
+import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  GenericContainer,
+  Wait,
+} from "../../apps/api/node_modules/testcontainers";
 import { sha256 } from "../../apps/api/src/auth/step-up-service";
 import db, { schema } from "../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
@@ -27,8 +34,14 @@ import {
 import { LEGACY_AUTHORIZATION_REUSE_MS } from "../../apps/api/src/ws/legacy-connection-authorization";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
-import { createProjectFixture, requireRow } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  grantProjectRole,
+  requireRow,
+} from "./helpers/fixtures";
 import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
+import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
+import { removeWorkspaceMemberNative } from "./helpers/workspace-membership-write-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 type TestSocket = {
@@ -53,6 +66,15 @@ const WebSocket = apiRequire("ws") as {
 };
 
 type Node = ReturnType<typeof createNodeServer>;
+
+class LoopbackValkeyContainer extends GenericContainer {
+  protected override async beforeContainerCreated(): Promise<void> {
+    this.hostConfig.PortBindings = {
+      ...this.hostConfig.PortBindings,
+      "6379/tcp": [{ HostIp: "127.0.0.1", HostPort: "0" }],
+    };
+  }
+}
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function listening(server: Node["server"]) {
@@ -63,6 +85,20 @@ function listening(server: Node["server"]) {
 }
 function open(node: Node, path: string, cookie: string) {
   const target = `ws://127.0.0.1:${(node.server.address() as AddressInfo).port}${path}`;
+  return new Promise<TestSocket>((resolve, reject) => {
+    const socket = new WebSocket(target, {
+      headers: {
+        host: "localhost:1337",
+        origin: "http://localhost:1337",
+        cookie,
+      },
+    });
+    socket.once("open", () => resolve(socket));
+    socket.once("error", reject);
+  });
+}
+function openOnPort(port: number, path: string, cookie: string) {
+  const target = `ws://127.0.0.1:${port}${path}`;
   return new Promise<TestSocket>((resolve, reject) => {
     const socket = new WebSocket(target, {
       headers: {
@@ -91,6 +127,100 @@ function closedWithin(socket: TestSocket, ms: number) {
   });
 }
 
+function startIsolatedApiProcess(valkeyUrl: string) {
+  const entry = fileURLToPath(
+    new URL("./helpers/legacy-ws-instance-server.ts", import.meta.url),
+  );
+  const child = fork(entry, [], {
+    cwd: process.cwd(),
+    detached: true,
+    execArgv: ["--import", "tsx"],
+    env: { ...process.env, TASKDESK_PORT: "0", TASKDESK_VALKEY_URL: valkeyUrl },
+    stdio: ["ignore", "ignore", "ignore", "ipc"],
+  });
+  const ready = new Promise<number>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error("API child startup timed out")),
+      15_000,
+    );
+    child.once("error", () => {
+      clearTimeout(timer);
+      reject(new Error("API child failed to start"));
+    });
+    child.once("exit", (code) => {
+      clearTimeout(timer);
+      reject(new Error(`API child exited before ready (${code ?? "signal"})`));
+    });
+    child.on("message", (message: unknown) => {
+      if (
+        typeof message !== "object" ||
+        message === null ||
+        !("type" in message)
+      )
+        return;
+      if (message.type === "startup-error") {
+        clearTimeout(timer);
+        reject(new Error("API child reported startup failure"));
+      } else if (
+        message.type === "ready" &&
+        "port" in message &&
+        typeof message.port === "number"
+      ) {
+        clearTimeout(timer);
+        resolve(message.port);
+      }
+    });
+  });
+  return { child, ready };
+}
+
+async function stopIsolatedApiProcess(child: ChildProcess) {
+  const exitReceipt = () => ({
+    pid: child.pid ?? null,
+    exitCode: child.exitCode,
+    signalCode: child.signalCode,
+    exited: child.exitCode !== null || child.signalCode !== null,
+  });
+  if (child.exitCode !== null || child.signalCode !== null)
+    return exitReceipt();
+  const exited = new Promise<void>((resolve) => {
+    if (child.exitCode !== null || child.signalCode !== null) return resolve();
+    child.once("exit", () => resolve());
+  });
+  const waitBounded = async (ms: number) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const completed = await Promise.race([
+      exited.then(() => true),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(false), ms);
+      }),
+    ]);
+    if (timer) clearTimeout(timer);
+    return completed;
+  };
+  try {
+    child.send("stop", () => {});
+  } catch {
+    // A disconnected IPC channel is handled by the owned-process signal fallback.
+  }
+  if (await waitBounded(5_000)) return exitReceipt();
+  const signalOwnedGroup = (signal: NodeJS.Signals) => {
+    if (child.pid === undefined) return;
+    try {
+      process.kill(-child.pid, signal);
+    } catch {
+      // The owned process group may have exited between the check and signal.
+    }
+  };
+  signalOwnedGroup("SIGTERM");
+  if (await waitBounded(2_000)) return exitReceipt();
+  signalOwnedGroup("SIGKILL");
+  if (!(await waitBounded(2_000))) {
+    throw new Error("Owned API child did not exit after bounded cleanup");
+  }
+  return exitReceipt();
+}
+
 const KINDS = ["user", "project"] as const;
 type Kind = (typeof KINDS)[number];
 
@@ -101,7 +231,6 @@ describe("legacy sockets after access revocation (#632)", () => {
   beforeEach(async () => {
     process.env.TASKDESK_ENCRYPTION_KEY = "ab".repeat(32);
     await resetTestDatabase();
-    await initializeWebSocketAdapter();
   });
   afterEach(async () => {
     if (originalEncryptionKey === undefined)
@@ -113,6 +242,7 @@ describe("legacy sockets after access revocation (#632)", () => {
   });
 
   async function world() {
+    await initializeWebSocketAdapter();
     const { app } = createApp();
     const node = createNodeServer(app);
     closeServer = node.close;
@@ -346,6 +476,228 @@ describe("legacy sockets after access revocation (#632)", () => {
       expect(received, change).toEqual([]);
       await closeServer?.();
       closeServer = undefined;
+    }
+  });
+
+  it("Valkey: delivers and revokes legacy sockets across independent API processes", async () => {
+    const originalValkeyUrl = process.env.TASKDESK_VALKEY_URL;
+    const sockets: TestSocket[] = [];
+    const valkey = await new LoopbackValkeyContainer("valkey/valkey:9-alpine")
+      .withExposedPorts(6379)
+      .withWaitStrategy(Wait.forListeningPorts())
+      .start();
+    const valkeyUrl = `redis://${valkey.getHost()}:${valkey.getMappedPort(6379)}`;
+    let child: ChildProcess | undefined;
+    try {
+      process.env.TASKDESK_VALKEY_URL = valkeyUrl;
+      await initializeWebSocketAdapter();
+      const { app } = createApp();
+      const admin = await signUpInstanceAdmin(app);
+      const owner = await signUpUser(app);
+      const workspaceResponse = await createWorkspaceNative(app, owner.cookie, {
+        name: "Cross-instance revocation",
+      });
+      expect(
+        workspaceResponse.status,
+        await workspaceResponse.clone().text(),
+      ).toBe(200);
+      const workspace = (await workspaceResponse.json()) as { id: string };
+      const signoutMember = await inviteAndAcceptAsNewMemberNative(
+        app,
+        owner.cookie,
+        workspace.id,
+        "member",
+      );
+      const reachMember = await inviteAndAcceptAsNewMemberNative(
+        app,
+        owner.cookie,
+        workspace.id,
+        "member",
+      );
+      const { project } = await createProjectFixture({
+        workspaceId: workspace.id,
+      });
+      await grantProjectRole(signoutMember.user.id, project.id, [
+        "project:read",
+        "work_item:read",
+      ]);
+      await grantProjectRole(reachMember.user.id, project.id, [
+        "project:read",
+        "work_item:read",
+      ]);
+      const api = startIsolatedApiProcess(valkeyUrl);
+      child = api.child;
+      const remotePort = await api.ready;
+      const signoutUserSocket = await openOnPort(
+        remotePort,
+        "/api/ws/user",
+        signoutMember.cookie,
+      );
+      sockets.push(signoutUserSocket);
+      const signoutProjectSocket = await openOnPort(
+        remotePort,
+        `/api/ws/${project.id}`,
+        signoutMember.cookie,
+      );
+      sockets.push(signoutProjectSocket);
+      const reachUserSocket = await openOnPort(
+        remotePort,
+        "/api/ws/user",
+        reachMember.cookie,
+      );
+      sockets.push(reachUserSocket);
+      const reachProjectSocket = await openOnPort(
+        remotePort,
+        `/api/ws/${project.id}`,
+        reachMember.cookie,
+      );
+      sockets.push(reachProjectSocket);
+
+      const signoutUserDelivery = next(signoutUserSocket);
+      const signoutProjectDelivery = next(signoutProjectSocket);
+      const reachUserDelivery = next(reachUserSocket);
+      const reachProjectDelivery = next(reachProjectSocket);
+      broadcastToUser(signoutMember.user.id, {
+        type: "NOTIFICATION_CREATED",
+      });
+      broadcastToProject(project.id, {
+        type: "work_item.updated",
+        projectId: project.id,
+        taskId: "TD-cross-instance-project-prime",
+      });
+      await expect(signoutUserDelivery).resolves.toMatchObject({
+        type: "NOTIFICATION_CREATED",
+      });
+      await expect(signoutProjectDelivery).resolves.toMatchObject({
+        type: "work_item.updated",
+        taskId: "TD-cross-instance-project-prime",
+      });
+      await expect(reachProjectDelivery).resolves.toMatchObject({
+        type: "work_item.updated",
+        taskId: "TD-cross-instance-project-prime",
+      });
+      broadcastToUser(reachMember.user.id, { type: "NOTIFICATION_CREATED" });
+      await expect(reachUserDelivery).resolves.toMatchObject({
+        type: "NOTIFICATION_CREATED",
+      });
+
+      const signoutMessages: string[] = [];
+      signoutUserSocket.on("message", (data) =>
+        signoutMessages.push(data.toString()),
+      );
+      signoutProjectSocket.on("message", (data) =>
+        signoutMessages.push(data.toString()),
+      );
+      const userClosed = closedWithin(signoutUserSocket, 5_000);
+      const projectClosed = closedWithin(signoutProjectSocket, 5_000);
+      const response = await csrfRequest(
+        app,
+        `/api/instance/users/${signoutMember.user.id}/sign-out`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            cookie: admin.cookie,
+          },
+          body: "{}",
+        },
+        admin.cookie,
+      );
+      expect(response.status, await response.clone().text()).toBe(200);
+      expect(await userClosed).toBe(1008);
+      expect(await projectClosed).toBe(1008);
+      broadcastToUser(signoutMember.user.id, {
+        type: "NOTIFICATION_CREATED",
+      });
+      broadcastToProject(project.id, {
+        type: "work_item.updated",
+        projectId: project.id,
+        taskId: "TD-cross-instance-after-signout",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      expect(signoutMessages).toEqual([]);
+
+      const reachProjectMessages: string[] = [];
+      reachProjectSocket.on("message", (data) =>
+        reachProjectMessages.push(data.toString()),
+      );
+      const reachProjectClosed = closedWithin(reachProjectSocket, 5_000);
+      const removed = await removeWorkspaceMemberNative(
+        app,
+        owner.cookie,
+        workspace.id,
+        reachMember.user.id,
+      );
+      expect(removed.status, await removed.clone().text()).toBe(200);
+      const removedWorkspaceMembership = await db
+        .select({ userId: schema.workspaceUserTable.userId })
+        .from(schema.workspaceUserTable)
+        .where(
+          and(
+            eq(schema.workspaceUserTable.userId, reachMember.user.id),
+            eq(schema.workspaceUserTable.workspaceId, workspace.id),
+          ),
+        );
+      expect(removedWorkspaceMembership).toEqual([]);
+      const reachPerson = requireRow(
+        await db
+          .select({ id: schema.personTable.id })
+          .from(schema.personTable)
+          .where(eq(schema.personTable.userId, reachMember.user.id)),
+        "cross-instance reach member person",
+      );
+      const retainedProjectGrant = await db
+        .select({ scopeId: schema.membershipTable.scopeId })
+        .from(schema.membershipTable)
+        .where(
+          and(
+            eq(schema.membershipTable.personId, reachPerson.id),
+            eq(schema.membershipTable.scope, "project"),
+            eq(schema.membershipTable.scopeId, project.id),
+          ),
+        );
+      expect(retainedProjectGrant).toEqual([{ scopeId: project.id }]);
+      expect(await reachProjectClosed).toBe(1008);
+      broadcastToProject(project.id, {
+        type: "work_item.updated",
+        projectId: project.id,
+        taskId: "TD-cross-instance-after-reach-loss",
+      });
+      const allowedUserDelivery = next(reachUserSocket);
+      broadcastToUser(reachMember.user.id, { type: "NOTIFICATION_CREATED" });
+      await expect(allowedUserDelivery).resolves.toMatchObject({
+        type: "NOTIFICATION_CREATED",
+      });
+      expect(await closedWithin(reachUserSocket, 100)).toBe("open");
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      expect(reachProjectMessages).toEqual([]);
+    } finally {
+      for (const socket of sockets) socket.close();
+      try {
+        if (child) {
+          const receipt = await stopIsolatedApiProcess(child);
+          expect(receipt.exited).toBe(true);
+          process.stdout.write(
+            `${JSON.stringify({
+              event: "realtime632_owned_child_exit",
+              ...receipt,
+            })}\n`,
+          );
+        }
+      } finally {
+        try {
+          await shutdownWebSocketAdapter();
+        } finally {
+          if (originalValkeyUrl === undefined)
+            delete process.env.TASKDESK_VALKEY_URL;
+          else process.env.TASKDESK_VALKEY_URL = originalValkeyUrl;
+          await valkey.stop({
+            timeout: 5_000,
+            remove: true,
+            removeVolumes: true,
+          });
+        }
+      }
     }
   });
 });
