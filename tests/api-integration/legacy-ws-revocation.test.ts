@@ -14,7 +14,7 @@ import { type ChildProcess, fork } from "node:child_process";
 import { createRequire } from "node:module";
 import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   GenericContainer,
@@ -34,7 +34,11 @@ import {
 import { LEGACY_AUTHORIZATION_REUSE_MS } from "../../apps/api/src/ws/legacy-connection-authorization";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
-import { createProjectFixture, requireRow } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  grantProjectRole,
+  requireRow,
+} from "./helpers/fixtures";
 import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import { removeWorkspaceMemberNative } from "./helpers/workspace-membership-write-http";
@@ -171,7 +175,14 @@ function startIsolatedApiProcess(valkeyUrl: string) {
 }
 
 async function stopIsolatedApiProcess(child: ChildProcess) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
+  const exitReceipt = () => ({
+    pid: child.pid ?? null,
+    exitCode: child.exitCode,
+    signalCode: child.signalCode,
+    exited: child.exitCode !== null || child.signalCode !== null,
+  });
+  if (child.exitCode !== null || child.signalCode !== null)
+    return exitReceipt();
   const exited = new Promise<void>((resolve) => {
     if (child.exitCode !== null || child.signalCode !== null) return resolve();
     child.once("exit", () => resolve());
@@ -192,7 +203,7 @@ async function stopIsolatedApiProcess(child: ChildProcess) {
   } catch {
     // A disconnected IPC channel is handled by the owned-process signal fallback.
   }
-  if (await waitBounded(5_000)) return;
+  if (await waitBounded(5_000)) return exitReceipt();
   const signalOwnedGroup = (signal: NodeJS.Signals) => {
     if (child.pid === undefined) return;
     try {
@@ -202,11 +213,12 @@ async function stopIsolatedApiProcess(child: ChildProcess) {
     }
   };
   signalOwnedGroup("SIGTERM");
-  if (await waitBounded(2_000)) return;
+  if (await waitBounded(2_000)) return exitReceipt();
   signalOwnedGroup("SIGKILL");
   if (!(await waitBounded(2_000))) {
     throw new Error("Owned API child did not exit after bounded cleanup");
   }
+  return exitReceipt();
 }
 
 const KINDS = ["user", "project"] as const;
@@ -505,6 +517,14 @@ describe("legacy sockets after access revocation (#632)", () => {
       const { project } = await createProjectFixture({
         workspaceId: workspace.id,
       });
+      await grantProjectRole(signoutMember.user.id, project.id, [
+        "project:read",
+        "work_item:read",
+      ]);
+      await grantProjectRole(reachMember.user.id, project.id, [
+        "project:read",
+        "work_item:read",
+      ]);
       const api = startIsolatedApiProcess(valkeyUrl);
       child = api.child;
       const remotePort = await api.ready;
@@ -609,6 +629,34 @@ describe("legacy sockets after access revocation (#632)", () => {
         reachMember.user.id,
       );
       expect(removed.status, await removed.clone().text()).toBe(200);
+      const removedWorkspaceMembership = await db
+        .select({ userId: schema.workspaceUserTable.userId })
+        .from(schema.workspaceUserTable)
+        .where(
+          and(
+            eq(schema.workspaceUserTable.userId, reachMember.user.id),
+            eq(schema.workspaceUserTable.workspaceId, workspace.id),
+          ),
+        );
+      expect(removedWorkspaceMembership).toEqual([]);
+      const reachPerson = requireRow(
+        await db
+          .select({ id: schema.personTable.id })
+          .from(schema.personTable)
+          .where(eq(schema.personTable.userId, reachMember.user.id)),
+        "cross-instance reach member person",
+      );
+      const retainedProjectGrant = await db
+        .select({ scopeId: schema.membershipTable.scopeId })
+        .from(schema.membershipTable)
+        .where(
+          and(
+            eq(schema.membershipTable.personId, reachPerson.id),
+            eq(schema.membershipTable.scope, "project"),
+            eq(schema.membershipTable.scopeId, project.id),
+          ),
+        );
+      expect(retainedProjectGrant).toEqual([{ scopeId: project.id }]);
       expect(await reachProjectClosed).toBe(1008);
       broadcastToProject(project.id, {
         type: "work_item.updated",
@@ -626,7 +674,16 @@ describe("legacy sockets after access revocation (#632)", () => {
     } finally {
       for (const socket of sockets) socket.close();
       try {
-        if (child) await stopIsolatedApiProcess(child);
+        if (child) {
+          const receipt = await stopIsolatedApiProcess(child);
+          expect(receipt.exited).toBe(true);
+          process.stdout.write(
+            `${JSON.stringify({
+              event: "realtime632_owned_child_exit",
+              ...receipt,
+            })}\n`,
+          );
+        }
       } finally {
         try {
           await shutdownWebSocketAdapter();
