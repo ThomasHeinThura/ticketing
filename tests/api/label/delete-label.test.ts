@@ -1,3 +1,4 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import {
   afterEach,
   beforeEach,
@@ -8,8 +9,17 @@ import {
   vi,
 } from "vitest";
 
-const mockFindFirst = vi.fn();
+const IDENTITY = {
+  side: "staff",
+  userId: "user-1",
+  personId: "person-1",
+  reach: { kind: "all" },
+  authority: [],
+} as unknown as ResolvedIdentity;
+
+const mockSelect = vi.fn();
 const mockTxSelect = vi.fn();
+const txSelectRows: unknown[][] = [];
 const mockTxExecute = vi.fn(async (..._args: unknown[]) => ({ rows: [] }));
 const mockDelete = vi.fn();
 const mockPublishEvent = vi.fn();
@@ -27,11 +37,7 @@ function createMockTxContext() {
 
 vi.mock("../../../apps/api/src/database", () => ({
   default: {
-    query: {
-      labelTable: {
-        findFirst: (...args: unknown[]) => mockFindFirst(...args),
-      },
-    },
+    select: (...args: unknown[]) => mockSelect(...args),
     transaction: (cb: (tx: unknown) => unknown) => mockTransaction(cb),
   },
 }));
@@ -105,9 +111,7 @@ function makeSelectMock(rows: unknown[]) {
 }
 
 function queueTxSelectRows(...rows: unknown[][]) {
-  for (const result of rows) {
-    mockTxSelect.mockReturnValueOnce(makeSelectMock(result));
-  }
+  txSelectRows.push(...rows);
 }
 
 /**
@@ -134,10 +138,21 @@ function makeDeleteMock(deletedRows: unknown[]) {
 describe("deleteLabel", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    txSelectRows.length = 0;
+    mockSelect.mockImplementation(() => makeSelectMock([WORKSPACE_LABEL]));
     mockTxExecute.mockImplementation(async (..._args: unknown[]) => ({
       rows: [],
     }));
-    mockTxSelect.mockImplementation(() => makeSelectMock([]));
+    mockTxSelect.mockImplementation((selection?: unknown) => {
+      if (
+        typeof selection === "object" &&
+        selection !== null &&
+        "one" in selection
+      ) {
+        return makeSelectMock([]);
+      }
+      return makeSelectMock(txSelectRows.shift() ?? []);
+    });
     mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) =>
       cb(createMockTxContext()),
     );
@@ -149,7 +164,6 @@ describe("deleteLabel", () => {
 
   describe("workspace-level label deletion (taskId is null)", () => {
     it("emits task.label_deleted events for each affected task-level label", async () => {
-      mockFindFirst.mockResolvedValue(WORKSPACE_LABEL);
       queueTxSelectRows(
         [WORKSPACE_LABEL],
         [
@@ -174,14 +188,15 @@ describe("deleteLabel", () => {
       );
       mockDelete
         .mockReturnValueOnce(makeDeleteMock([DELETED_WORKSPACE_LABEL]))
-        .mockReturnValueOnce(makeDeleteMock([TASK_LABEL_1, TASK_LABEL_2]));
+        .mockReturnValueOnce(
+          makeDeleteMock([{ taskId: "task-1" }, { taskId: "task-2" }]),
+        );
 
-      await deleteLabel("label-ws-1", "user-1");
+      await deleteLabel(IDENTITY, "label-ws-1", "user-1");
 
       expect(mockTxExecute).toHaveBeenCalledTimes(1);
       expect(mockPublishEvent).toHaveBeenCalledTimes(2);
       expect(mockPublishEvent).toHaveBeenCalledWith("task.label_deleted", {
-        label: TASK_LABEL_1,
         task: { id: "task-1", projectId: "proj-1" },
         projectId: "proj-1",
         taskId: "task-1",
@@ -189,7 +204,6 @@ describe("deleteLabel", () => {
         type: "label_deleted",
       });
       expect(mockPublishEvent).toHaveBeenCalledWith("task.label_deleted", {
-        label: TASK_LABEL_2,
         task: { id: "task-2", projectId: "proj-2" },
         projectId: "proj-2",
         taskId: "task-2",
@@ -199,11 +213,10 @@ describe("deleteLabel", () => {
     });
 
     it("fires no events when no task-level labels are affected", async () => {
-      mockFindFirst.mockResolvedValue(WORKSPACE_LABEL);
       queueTxSelectRows([WORKSPACE_LABEL], []);
       mockDelete.mockReturnValue(makeDeleteMock([DELETED_WORKSPACE_LABEL]));
 
-      await deleteLabel("label-ws-1", "user-1");
+      await deleteLabel(IDENTITY, "label-ws-1", "user-1");
 
       expect(mockTxExecute).toHaveBeenCalledTimes(1);
       expect(mockPublishEvent).not.toHaveBeenCalled();
