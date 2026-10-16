@@ -563,8 +563,8 @@ document links, columns, workflow rules and the create-into-project routes (`POS
 validation or write: an out-of-reach project answers the same `404` as a missing one, in reach
 without the registered capability answers `403`, and a request that carries an API key still
 needs project reach (its capability stays with the key-aware gate). `PUT /api/project/{id}`
-keeps its handler-level `project:manage_settings` check for `defaultCommentVisibility`, which
-runs after reach, so an outsider never learns the project exists from that `403`.
+keeps its handler-level `project:manage_settings` check for `defaultCommentVisibility`,
+`kind`, `supportLevel` and `serviceCalendarId` (#766), which runs after reach, so an outsider never learns the project exists from that `403`.
 `project-reach-guard.test.ts` fails any such route that omits project reach, and the
 integration tables (`project-scoped-reach.test.ts`) drive the real middleware per route.
 

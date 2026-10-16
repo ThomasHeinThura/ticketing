@@ -282,7 +282,8 @@ const updateProjectRoute = createRoute({
   summary: "Update project",
   description:
     "Replace a project's name, icon, slug, description, and visibility. " +
-    "defaultCommentVisibility (CA-2) is optional and needs project:manage_settings.",
+    "defaultCommentVisibility (CA-2) and the engagement fields kind, supportLevel and " +
+    "serviceCalendarId (#766) are optional and each needs project:manage_settings.",
   middleware: [
     workspaceAccess.fromProject("id", {
       requireProjectReach: true,
@@ -301,7 +302,7 @@ const updateProjectRoute = createRoute({
     200: jsonResponse("The updated project", projectSchema),
     400: errorResponse("Invalid body"),
     403: errorResponse(
-      "Missing project:update permission, or defaultCommentVisibility was sent without the project:manage_settings capability",
+      "Missing project:update permission, or defaultCommentVisibility, kind, supportLevel or serviceCalendarId was sent without the project:manage_settings capability",
     ),
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
@@ -961,7 +962,14 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
     // without it changes nothing. An API key must also carry the `project:manage_settings`
     // scope; `assertCallerHasCapability` intersects the role with the key. A caller who
     // omits the field is not asked for the capability, so today's update behaviour stands.
-    if (body.defaultCommentVisibility !== undefined) {
+    // #766: `kind`, `supportLevel` and `serviceCalendarId` drive SLA computation and are
+    // "SLA and calendar assignment" in rbac.md, so they take the same strict check.
+    if (
+      body.defaultCommentVisibility !== undefined ||
+      body.kind !== undefined ||
+      body.supportLevel !== undefined ||
+      body.serviceCalendarId !== undefined
+    ) {
       const userId = c.get("userId");
       if (!workspaceId || !userId) {
         throw new HTTPException(403, { message: "Insufficient permissions" });
@@ -1012,7 +1020,16 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
         slug,
         description,
         workspaceId,
-        configuration,
+        // Write only the engagement fields the caller SENT. `configuration` above merges
+        // the stored values for PR-9 validation; writing that merge back would let a
+        // plain `project:update` rename revert a concurrent `project:manage_settings`
+        // change it read before (#767 security review, finding 2).
+        {
+          kind: body.kind,
+          supportLevel: body.supportLevel,
+          serviceCalendarId: body.serviceCalendarId,
+          defaultCommentVisibility: body.defaultCommentVisibility,
+        },
       );
       return c.json(updatedProject, 200);
     } catch (error) {
