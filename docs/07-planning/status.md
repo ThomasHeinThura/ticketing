@@ -1,3 +1,11 @@
+## Recovered successor security clearance — 2026-10-16 21:09 UTC
+
+Fresh independent GPT-6.1 Sol FULL security review CLEAR covers all40 current paths at `d7f628fa89cedc25d610f93c5bd49ce6ae9c2df9` against unaccepted809 `bb298c181c213e695c5a8e857679536d355df8aa`. Exact report17740bytes SHA2565fbd168e8175532231ab5216095f2301796d5db4706ea1729f039320aa619121 was read in full by the conductor. It independently closes the deterministic-fixture finding, retains storage cross-system atomicity as a disclosed inherited limitation, and does not claim runtime, publication or dependency acceptance. Source remains clean/frozen pending809 acceptance and current-main composition.
+
+Carrier's nested-predicate repair now passes66/66 focused tests. One fresh pure source inventory observes357paths444rows506keys490inherited,14unresolved,658validatorfailures,0unsupportedforegrounds. Exactly eight invitation occurrences cleared. Manifest remains unchanged. Nine helper definitions and Search/Alert/Form/Shortcut remain blockers; a bounded read-only per-caller trace is running before further design. #789's existing four-path approval recovery is also under read-only planning; no implementation or new PR has begun.
+
+Accepted main remainsc022915a;809 fullPG remains pending;810 required calibration and807/798/Carrier performance holds persist. No new merge/release/SIT/restore/final-audit or completion claim.
+
 ## Recovered task-history slice reaches full security review — 2026-10-16 21:06 UTC
 
 **Blocked first:** #810 current required calibration failure, #807/#798 performance findings, Carrier contrast provenance and historical performance findings remain held. #809 full PostgreSQL is still pending; its current required G11/browser/image checks have passed. Accepted main remains `c022915a8768b96b460c798feafafd7d48214d5c`.
