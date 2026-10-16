@@ -353,3 +353,72 @@ SHA-256 `9d6f40326659fa6d0df716da4571efc0f261b7aec3338f6c2e91fdda7827a11a`
 
 **Residuals:** This is a dated-records review, not a fresh audit of every underlying product receipt or a live status refresh. The private receipts and exact cutoff are essential to interpreting historical claims. The report belongs outside the Git worktree at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/takeover-records-2cb-ordinary-b-luna.md`; no file in the repository was changed.
 
+
+## Fresh factual clearance of corrected accepted-main records
+
+**Reviewed head:** `9e28bef7a12b7bb81e98d36cf076d668bd3b2517`
+
+Two fresh independent GPT-6 Luna contexts cleared the corrected dated records. Root authored the corrections and history recovery and is not a reviewer. Original adverse draft/history is retained; the append-only erratum records its errors and unauthorized local reset. No product or phase acceptance follows. Carried note EOF whitespace was non-blocking. These authentic reports are byte-exact.
+
+### Retained report takeover-records-9e28-factual-a-luna.md
+
+SHA-256 `1b283b90d80c8f55342d6f4d4c548e0d4762fc4db4139ddae0c723bad6f71480`
+
+# Independent factual ordinary review A — takeover records
+
+**Reviewed head:** `9e28bef7a12b7bb81e98d36cf076d668bd3b2517`
+
+**Comparison base:** `1a34e5792ee9c42b15004b032e3c5410e5def44e`
+
+**Independence:** Fresh read-only factual review. I did not author, direct, or remediate this candidate. The assigned context is GPT-6 Luna tier; no model-version/runtime attestation is claimed here.
+
+**Verdict: CLEAR.** I found no blocking factual contradiction in the corrected 12:10:57Z status snapshot, appended decision-log erratum, or retained review note at this exact head. The verdict covers the dated claims and their stated evidence boundaries; it is not product, release, SIT, recovery, or phase acceptance.
+
+## Scope and evidence checked
+
+Read the required `AGENTS.md`, `CLAUDE.md`, active mission, and review workflow. Inspected the complete changed status snapshot, appended decision-log records, and the full added `takeover-status-20261016.md` note, plus the exact base-to-head diff. Compared the corrections with private source-bound receipts and reports including `790-accepted1a-*`, `799-accepted1a-*`, 785 hosted failure records, 798 G11/task-state observation and adjudication, carrier AA native snapshot/metadata/operation receipts, `631-live-closure-20261016.json`, and `takeover-records-provisional-recovery.json`.
+
+The main checkpoint is explicitly cut off at **2026-10-16T12:10:57Z**. The status snapshot’s accepted main `1a34e579…` and #796 readiness are source-bound to the protected merge; the referenced `631` closure receipt records the issue closed at 06:25:24Z. The #790 ready-action receipt records one successful Ready transition at 12:04:04Z, while the run/readiness records preserve pending current runtime and distinguish bounded Sol composition confirmation from full source review. The #799 composition report likewise describes bounded composition confirmation, separate API typecheck and unit results, and unwaived AT7. These claims are accurately bounded to their own heads and do not imply acceptance.
+
+The erratum’s key corrections agree with the examined receipts: #798’s 270.8 ms is the normalized median and the required G11 result failed; #785’s failure is eight tests across five files out of 3,195 tests / 212 files; the AA asset counts describe the preserved snapshot, while the metadata receipt is a valid intended rejection and the operation terminal remains BLOCK after bind error 48. The attachment archive is empty at 2,048 bytes, so the database-only restore is not presented as usable application restore. #784’s bounded acceptance and #783 ancestry merge predate the cutoff, and #796’s bounded realtime repair is not represented as closing #632.
+
+The provisional-history correction is corroborated by the private recovery receipt: it identifies provisional commit `4c7ddaef…`, preserved archival ref, normal recovery merge `0f32e989…`, unchanged tree, and remote untouched. The decision log retains the original history and records the unauthorized reset as an instruction violation, rather than presenting it as authorized or as a waiver.
+
+## Preservation and limits
+
+Raw Git-object comparisons confirm that the accepted-base `status.md` is preserved byte-for-byte as the candidate status file’s suffix, and the accepted-base `decision-log.md` is preserved byte-for-byte as the candidate log’s prefix. The new additions do not rewrite the older status suffix or accepted-main decision-log prefix. The original erroneous draft/report history is retained and identified as historical; the 12:10:57Z cutoff is not silently moved to accommodate later developments. No claim is made here about state after that cutoff.
+
+No factual blocker or non-blocking correction found. I did not run tests, CI, browser, build, PostgreSQL, image, or runtime operations, and made no repository edits. No push, merge, or external message was performed.
+
+### Retained report takeover-records-9e28-factual-b-luna.md
+
+SHA-256 `9f91c3dbc3df0de68cc784dba6ae0499de5b15324c4e94ff23873a4cd8db9ca2`
+
+# Independent ordinary factual review B — takeover records
+
+**Reviewed head:** `9e28bef7a12b7bb81e98d36cf076d668bd3b2517`
+
+**Comparison base:** accepted main `1a34e5792ee9c42b15004b032e3c5410e5def44e`.
+
+**Role and independence:** Fresh read-only factual review in the assigned ordinary GPT-6 Luna tier. I did not author, direct, or remediate this candidate, and did not rely on review A as approval. The runtime does not expose a more specific model-version attestation.
+
+**Verdict: CLEAR** for the exact three-document net records delta. No blocking factual, provenance, authority, scope, cutoff, or acceptance-inflation defect found. One non-blocking formatting issue is noted below. This verdict is limited to the records and does not accept product work, release, SIT, recovery, or phase completion.
+
+## Scope and checks
+
+Read `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, and the exact candidate diff for `docs/07-planning/status.md`, `docs/07-planning/decision-log.md`, and `docs/07-planning/security-reviews/takeover-status-20261016.md`. The net diff from accepted main changes only those three records paths. The older status bytes are preserved exactly as a suffix and the accepted-main decision-log bytes exactly as a prefix. The new decision-log erratum is append-only.
+
+The factual cutoff remains `2026-10-16T12:10:57Z`. Live read-only GitHub checks confirmed `main` at `1a34e579…`; #796 merged at 08:58:12Z from `d3278745…`; #784 merged at 07:55:21Z to `1f2ea004…`; #783 was ancestry-merged two seconds later to that same merge commit; and issue #631 closed at 06:25:24Z. #790 remains open at `79954ec4…` on accepted main. #799 remains an open draft at its older published head `92d01280…`, based on `e9df2294…`. These later reads were used to cross-check identities and do not move the snapshot cutoff.
+
+Compared the corrected top snapshot and erratum with the cited private source-bound receipts and reports. The corrections are supported: #790 and #799 Sol reports describe bounded accepted-main composition confirmations, while the source review and ordinary unit test counts are distinct from the API typecheck results; #790's recorded successful Ready action is not merge eligibility. The 270.8 ms #798 G11 value is the normalized median and the required performance result failed. The cited #785 failure is eight tests in five files among 3,195 tests / 212 files, with the repair still pending at cutoff. AA asset counts are scoped to the preserved snapshot; the metadata receipt classifies the intended rejection, while the operation ends BLOCK after bind error 48. The restore record remains 66 database tables plus an empty 2,048-byte attachment archive, and does not claim usable application restore. #784/#783 acceptance predates the cutoff; #796 does not close #632. Root is recorded as active conductor, with automations paused and no verified post-turn scheduler.
+
+The records do not invent an owner decision or waiver, and do not expand acceptance. The 12:10:57Z cutoff is unchanged and later findings are not projected backward into it. The reset violation is described candidly as unauthorized; the private recovery receipt identifies the preserved provisional commit `4c7ddaef…`, archival ref, normal merge `0f32e989…`, unchanged tree `cf736929…`, and remote untouched. Git confirms `0f32e989` has the provisional commit as a parent and the same tree as draft `305dffee…`. No reset, force push, or remote rewrite is attributed to this recovery.
+
+The added review note preserves earlier reports with their explicit reviewed SHAs; those are historical evidence and are not represented as clearance of this candidate. Its current review material does not claim that old verdicts cover the corrected head.
+
+## Finding and limits
+
+Non-blocking: `git diff --check 1a34e579..9e28bef7` reports a trailing blank line at EOF in `docs/07-planning/security-reviews/takeover-status-20261016.md` (line 355). This is formatting only and does not affect the claims or evidence binding.
+
+No repository edits were made. No tests, CI, build, browser, PostgreSQL, image, or runtime operation was run; this review checked the exact records and cited receipts, not the underlying historical hosted runs. No push, PR mutation, or merge was performed.
+
