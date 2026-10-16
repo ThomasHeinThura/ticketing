@@ -8221,6 +8221,11 @@ These are product-contract decisions, not quality-gate waivers. The owning workf
 **Source:** Thomas's direct conductor-chat response to `request_user_input_async` call `call_be4fae73c6c54175992e413270fc6f0c`, item 0. The provenance record is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/workflow-wf9-adoption-owner-decision-20261016.json`. The conductor record timestamp is 2026-10-16 08:04:55 UTC; the receipt record does not attest an exact receipt second. This is a product-contract decision, not a waiver of independent review, CI, merge, or acceptance.
 
 
+### 2026-10-16 17:20 UTC · Thomas: narrow authenticated-subject erasure safety summary
+
+Direct answer to takeover question call_4a7aaffbe65c48dd910917a0d6b05c6f: "Allow the narrow erasure safety summary, including names of currently joined workspaces (Recommended)." The internal planner may read own current persisted workspace memberships, member/owner safety counts and names used only in the existing conflict message, bound to the authenticated deletion subject. It returns no other members' identities or individual role rows and grants no general query exception. Safety checks must include persisted memberships even when canonical identity/reach is unusable. Existing owner interpretation, deletion eligibility, locks, two-pass checks and refusal-before-invalidation/deletion remain. The owning security model records this before dependent implementation. This authorizes neither broader reads nor gate waiver; raw direct-answer provenance is retained privately in owner-erasure-summary-release-classification-decisions-20261016.json and the takeover records branch. No implementation/runtime/review/acceptance follows from this record.
+
+
 ### 2026-10-16 · Record protected takeover checkpoint at accepted main 3d1894ba
 
 **Record:** This factual checkpoint records the continuing Thomas-authorized #589 Integration Freeze/SIT mission and the accepted protected state after #764. It makes no new owner decision, roadmap authorization, gate waiver, or phase claim.
