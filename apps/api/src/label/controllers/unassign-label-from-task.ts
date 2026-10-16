@@ -1,22 +1,22 @@
-import { eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { labelTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
-import { lockWorkspaceLabelNames } from "../label-name-lock";
+import {
+  deleteLabelById,
+  findLabelSnapshot,
+  lockLabelRow,
+  lockWorkspaceLabelNames,
+} from "../repository";
 
-async function unassignLabelFromTask(id: string, userId: string) {
+async function unassignLabelFromTask(
+  identity: ResolvedIdentity,
+  id: string,
+  userId: string,
+) {
   const { deletedLabel, task } = await db.transaction(async (tx) => {
-    const [labelSnapshot] = await tx
-      .select({
-        taskId: labelTable.taskId,
-        workspaceId: labelTable.workspaceId,
-        name: labelTable.name,
-      })
-      .from(labelTable)
-      .where(eq(labelTable.id, id))
-      .limit(1);
+    const labelSnapshot = await findLabelSnapshot(tx, identity, id);
     if (!labelSnapshot) {
       throw new HTTPException(404, { message: "Label not found" });
     }
@@ -36,11 +36,7 @@ async function unassignLabelFromTask(id: string, userId: string) {
       tx,
       labelSnapshot.taskId,
     );
-    const [label] = await tx
-      .select()
-      .from(labelTable)
-      .where(eq(labelTable.id, id))
-      .for("update");
+    const label = await lockLabelRow(tx, identity, id);
     if (!label) {
       throw new HTTPException(404, { message: "Label not found" });
     }
@@ -54,10 +50,7 @@ async function unassignLabelFromTask(id: string, userId: string) {
       });
     }
 
-    const [deletedLabel] = await tx
-      .delete(labelTable)
-      .where(eq(labelTable.id, id))
-      .returning();
+    const deletedLabel = await deleteLabelById(tx, identity, id);
     return {
       deletedLabel,
       task: {
