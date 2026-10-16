@@ -48,17 +48,27 @@ async function createWorkflowVersion(id: string, body: unknown) {
   });
 }
 
-async function publishWorkflowVersion(id: string, number: number) {
+async function publishWorkflowVersion(
+  id: string,
+  number: number,
+  init?: RequestInit,
+) {
   const { app } = createApp();
   return app.request(`/api/workflows/${id}/versions/${number}/publish`, {
     method: "POST",
+    ...init,
   });
 }
 
-async function validateWorkflowVersion(id: string, number: number) {
+async function validateWorkflowVersion(
+  id: string,
+  number: number,
+  init?: RequestInit,
+) {
   const { app } = createApp();
   return app.request(`/api/workflows/${id}/versions/${number}/validate`, {
     method: "POST",
+    ...init,
   });
 }
 
@@ -197,9 +207,32 @@ describe("API integration: workflow persistence", () => {
       id: string;
     };
 
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    await db.insert(schema.apikeyTable).values({
+      referenceId: owner.user.id,
+      userId: owner.user.id,
+      key: createHash("sha256")
+        .update(rawKey)
+        .digest()
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, ""),
+      name: "workflow validation scope test key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ workflow: ["manage"] }),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const keyRequest = {
+      headers: { authorization: `Bearer ${rawKey}` },
+    };
+
     const validationResponse = await validateWorkflowVersion(
       workflow.id,
       version.number,
+      keyRequest,
     );
     expect(
       validationResponse.status,
@@ -226,6 +259,7 @@ describe("API integration: workflow persistence", () => {
     const publishResponse = await publishWorkflowVersion(
       workflow.id,
       version.number,
+      keyRequest,
     );
     expect(publishResponse.status, await publishResponse.clone().text()).toBe(
       200,
