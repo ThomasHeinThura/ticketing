@@ -227,13 +227,13 @@ export async function insertTaskLabelOnConflictDoNothing(
     : undefined;
 }
 
-export function buildTaskLabelByNameQuery(
+export async function findTaskLabelByName(
   executor: Executor,
   identity: ResolvedIdentity,
   taskId: string,
   name: string,
 ) {
-  return executor
+  const [label] = await executor
     .select()
     .from(labelTable)
     .where(
@@ -244,20 +244,6 @@ export function buildTaskLabelByNameQuery(
       ),
     )
     .limit(1);
-}
-
-export async function findTaskLabelByName(
-  executor: Executor,
-  identity: ResolvedIdentity,
-  taskId: string,
-  name: string,
-) {
-  const [label] = await buildTaskLabelByNameQuery(
-    executor,
-    identity,
-    taskId,
-    name,
-  );
   return label;
 }
 
@@ -307,13 +293,13 @@ export async function insertWorkspaceLabelOnConflictDoNothing(
     : undefined;
 }
 
-export function buildWorkspaceLabelByNameQuery(
+export async function findWorkspaceLabelByName(
   executor: Executor,
   identity: ResolvedIdentity,
   workspaceId: string,
   name: string,
 ) {
-  return executor
+  const [label] = await executor
     .select()
     .from(labelTable)
     .where(
@@ -329,20 +315,6 @@ export function buildWorkspaceLabelByNameQuery(
       ),
     )
     .limit(1);
-}
-
-export async function findWorkspaceLabelByName(
-  executor: Executor,
-  identity: ResolvedIdentity,
-  workspaceId: string,
-  name: string,
-) {
-  const [label] = await buildWorkspaceLabelByNameQuery(
-    executor,
-    identity,
-    workspaceId,
-    name,
-  );
   return label;
 }
 
