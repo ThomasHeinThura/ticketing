@@ -28,8 +28,8 @@ import {
   invalidateAccountDeletionCredentials,
   requestAccountDeletionRetry,
 } from "../../pending-action/credential-invalidation";
-import { lockProjectCreation } from "../../project/project-creation-lock";
 import { revokeProjectCreatorGrantsForMember } from "../../project/project-creator-grant";
+import { lockProjectOrdering } from "../../project/repository";
 import { isLockNotAvailable } from "../../utils/is-lock-not-available";
 import {
   deleteWorkspaceRoleDependents,
@@ -298,7 +298,7 @@ async function deleteAccountDataInTransaction(
       // creator may have no staff person). A project that wins commits before this lock is
       // acquired and is seen by the guarded recheck below.
       for (const workspaceId of [...plan.workspaceIdsToDelete].sort()) {
-        await lockProjectCreation(tx, workspaceId);
+        await lockProjectOrdering(tx, workspaceId);
       }
       await tx.execute(
         sql`LOCK TABLE person, membership_grant, membership IN SHARE ROW EXCLUSIVE MODE`,

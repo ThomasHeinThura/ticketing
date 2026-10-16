@@ -400,9 +400,12 @@ describe("API integration: task update concurrency", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    // Owner-side update authority lets the key reach the downstream scope check; the
+    // workspace viewer still lacks the legacy permission for the session deny controls.
     await grantProjectRole(member.user.id, project.id, [
       "project:read",
       "work_item:read",
+      "work_item:update",
     ]);
     const task = requireRow(
       await db
@@ -503,5 +506,13 @@ describe("API integration: task update concurrency", () => {
     await expect(scopedKey.text()).resolves.toContain(
       "Insufficient API key scope",
     );
+    const unchanged = await db.query.taskTable.findFirst({
+      where: eq(schema.taskTable.id, task.id),
+    });
+    expect(unchanged).toMatchObject({
+      title: "Permission boundary",
+      description: "Original",
+      version: 1,
+    });
   });
 });

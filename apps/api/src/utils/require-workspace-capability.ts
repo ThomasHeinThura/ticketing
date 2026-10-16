@@ -4,14 +4,14 @@ import {
   type Capability,
   expandCapabilities,
 } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import { type Executor, executorOrDefault } from "../database/executor";
 import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { findRoleIsSystem } from "./access-lookups.repository";
 import {
   type ApiKeyPermissionScope,
   apiKeyHasCapabilityScope,
@@ -23,7 +23,7 @@ import {
 } from "./workspace-member-roles";
 
 /** Anything `db` or `db.transaction`'s callback argument can run a `select` through. */
-type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbOrTx = Executor;
 
 function apiKeyHasCapability(
   apiKey: ApiKeyPermissionScope | undefined,
@@ -171,7 +171,7 @@ export async function assertCallerHasCapability(
   userId: string,
   capability: Capability,
   credential: CapabilityCredential,
-  executor: DbOrTx = db,
+  executor: DbOrTx = executorOrDefault(),
 ): Promise<void> {
   if (
     credential.kind === "api_key" &&
@@ -242,7 +242,11 @@ export async function assertCallerHasCapabilityOrSelf(
   isSelfTarget: boolean,
   apiKey?: ApiKeyPermissionScope,
 ): Promise<void> {
-  const roles = await workspaceMemberRoles(db, workspaceId, userId);
+  const roles = await workspaceMemberRoles(
+    executorOrDefault(),
+    workspaceId,
+    userId,
+  );
   if (!isUnambiguousMembership(roles)) {
     throw new HTTPException(403, { message: "Insufficient permissions" });
   }
@@ -275,7 +279,7 @@ export async function assertCallerHasCapabilityOrOwner(
   ownerCapability: Capability,
   isOwner: boolean,
   credential: CapabilityCredential,
-  executor: DbOrTx = db,
+  executor: DbOrTx = executorOrDefault(),
 ): Promise<void> {
   const roles = await workspaceMemberRoles(executor, workspaceId, userId);
   if (!isUnambiguousMembership(roles)) {
@@ -323,7 +327,7 @@ export async function builtInRoleHasCapability(
   workspaceId: string,
   role: string | null | undefined,
   capability: Capability,
-  executor: DbOrTx = db,
+  executor: DbOrTx = executorOrDefault(),
 ): Promise<boolean> {
   // `Object.hasOwn`, not `role in BUILT_IN_ROLES` -- `in` also matches
   // `Object.prototype` members, so role values like `"toString"`,
@@ -377,16 +381,7 @@ async function isGenuineBuiltInRoleAssignment(
 ): Promise<boolean> {
   if (role === "owner") return true;
 
-  const [row] = await executor
-    .select({ isSystem: schema.workspaceRoleTable.isSystem })
-    .from(schema.workspaceRoleTable)
-    .where(
-      and(
-        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-        eq(schema.workspaceRoleTable.role, role),
-      ),
-    )
-    .limit(1);
+  const row = await findRoleIsSystem(executor, workspaceId, role);
 
   return isGenuineBuiltInRoleGrant(role, row?.isSystem === true);
 }

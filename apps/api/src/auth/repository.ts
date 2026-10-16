@@ -1,5 +1,6 @@
 import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
+import { dbNowUtc } from "../utils/db-time";
 
 export function getAuthUserLocale(email: string) {
   return db
@@ -294,7 +295,9 @@ export function lockActiveStepUpSession(
         eq(schema.sessionTable.id, sessionId),
         eq(schema.sessionTable.userId, userId),
         eq(schema.sessionTable.portal, "agent"),
-        gt(schema.sessionTable.expiresAt, sql`now()`),
+        // `session.expires_at` is a UTC wall clock in a `timestamp without time zone` column: a
+        // bare `now()` would be coerced through the session TimeZone (#631).
+        gt(schema.sessionTable.expiresAt, dbNowUtc()),
       ),
     )
     .for("update")
@@ -382,9 +385,28 @@ export function lockOperationChallenge(
     .limit(1);
 }
 
-export function getCustomerPortalIdentityRow(userId: string) {
-  return db
-    .select({ personId: schema.personTable.id })
+export async function getCustomerPortalIdentityRow(userId: string) {
+  return await db
+    .select({
+      personId: schema.personTable.id,
+      organisationId: schema.personTable.organisationId,
+      side: schema.personTable.side,
+      personActive: schema.personTable.active,
+      isPlaceholder: schema.personTable.isPlaceholder,
+      organisationActive: schema.organisationTable.active,
+      organisationPortalAccess: schema.organisationTable.portalAccess,
+      organisationDeletedAt: schema.organisationTable.deletedAt,
+      scope: schema.membershipTable.scope,
+      scopeId: schema.membershipTable.scopeId,
+      seesAll: schema.membershipTable.seesAll,
+      roleId: schema.roleTable.id,
+      roleKey: schema.roleTable.key,
+      roleScope: schema.roleTable.scope,
+      roleWorkspaceId: schema.roleTable.workspaceId,
+      roleIsSystem: schema.roleTable.isSystem,
+      roleRank: schema.roleTable.rank,
+      roleCapabilities: schema.roleTable.capabilities,
+    })
     .from(schema.personTable)
     .innerJoin(
       schema.organisationTable,
@@ -392,11 +414,7 @@ export function getCustomerPortalIdentityRow(userId: string) {
     )
     .innerJoin(
       schema.membershipTable,
-      and(
-        eq(schema.membershipTable.personId, schema.personTable.id),
-        eq(schema.membershipTable.scope, "organisation"),
-        eq(schema.membershipTable.scopeId, schema.personTable.organisationId),
-      ),
+      eq(schema.membershipTable.personId, schema.personTable.id),
     )
     .innerJoin(
       schema.roleTable,
@@ -411,11 +429,8 @@ export function getCustomerPortalIdentityRow(userId: string) {
         eq(schema.organisationTable.active, true),
         eq(schema.organisationTable.portalAccess, true),
         isNull(schema.organisationTable.deletedAt),
-        eq(schema.roleTable.scope, "organisation"),
-        eq(schema.roleTable.key, "customer"),
       ),
-    )
-    .limit(1);
+    );
 }
 
 export function getStoredAuthPluginConfigRows() {

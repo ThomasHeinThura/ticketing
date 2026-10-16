@@ -1,12 +1,8 @@
-import { eq } from "drizzle-orm";
-import db from "../../database";
-import { workflowTable } from "../../database/schema";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { listWorkflowsInWorkspace } from "../repository";
 
-async function listWorkflows(workspaceId: string) {
-  return db
-    .select()
-    .from(workflowTable)
-    .where(eq(workflowTable.workspaceId, workspaceId));
+async function listWorkflows(identity: ResolvedIdentity, workspaceId: string) {
+  return listWorkflowsInWorkspace(identity, workspaceId);
 }
 
 export default listWorkflows;

@@ -13,7 +13,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
 import { createApp } from "../../apps/api/src/index";
 import createProject from "../../apps/api/src/project/controllers/create-project";
-import { lockProjectCreation } from "../../apps/api/src/project/project-creation-lock";
+import { lockProjectOrdering } from "../../apps/api/src/project/repository";
 import deleteAccountData, {
   ERASURE_LOCK_TIMEOUT_MS,
 } from "../../apps/api/src/user/controllers/delete-account-data";
@@ -988,7 +988,7 @@ describe("#734 account erasure and IdP-provisioned members", () => {
       acquired = resolve;
     });
     const blocker = db.transaction(async (tx) => {
-      await lockProjectCreation(tx, owner.workspace.id);
+      await lockProjectOrdering(tx, owner.workspace.id);
       acquired();
       await gate;
     });

@@ -98,12 +98,8 @@
  *     becomes an `instance_admin` `RoleGrant` with reach `"all"`; workspace capabilities
  *     must still come from the caller's actual workspace role. Runtime legacy permission
  *     checks and canonical capability checks now preserve that separation.
- *  5. **Customer identity has no `membership`/`role` backing at all.** No code path in
- *     `apps/api/src` ever assigns the `"customer"` role (`grep` returns nothing outside
- *     `packages/permissions`) — being `side === "customer"` is itself the grant, per
- *     rbac.md ("off the ladder"). This mapper treats it that way: a customer always holds
- *     exactly the built-in `customer` `RoleGrant`, organisation-scoped, never sourced from
- *     any row.
+ *  5. Customer identity requires the documented own-organisation membership. The persisted
+ *     row proves admission; capabilities still come from the compiled-in customer role.
  *  6. **`portal` mirrors `side` 1:1.** `auth-and-identity.md`'s two-better-auth-instance
  *     portal split (`session.portal`, compared against the request host) is not built —
  *     there is no `portal` column on `session` (confirmed by reading `schema.ts`).
@@ -130,6 +126,7 @@ import {
   isGenuineBuiltInRoleGrant,
   resolveMembershipRoleFrom,
 } from "../utils/workspace-member-roles";
+import { hasCanonicalCustomerMembership } from "./customer-membership";
 
 /* ------------------------------------------------------------------ *
  * The pure mapper
@@ -221,6 +218,7 @@ export type ScopedRoleMembershipFact = {
   readonly roleKey: string;
   readonly roleScope: string;
   readonly roleWorkspaceId: string | null;
+  readonly roleIsSystem: boolean;
   readonly scopeWorkspaceId: string | null;
   readonly scopeExists: boolean;
   readonly rank: number;
@@ -405,9 +403,17 @@ export function resolveIdentityFromFacts(
       return null;
     }
 
-    // A customer's grant is never sourced from `workspace_member` — being `side ===
-    // "customer"` IS the grant (KNOWN GAP 5). Any `workspace_member` row for this user,
-    // however it got there, is ignored: a portal session must never gain agent roles.
+    // The own-organisation membership is the documented admission proof. Never source
+    // customer authority from workspace/instance grants or persisted capability contents;
+    // only the compiled-in customer role supplies the resulting grant.
+    if (
+      !hasCanonicalCustomerMembership(
+        person.organisationId,
+        facts.scopedRoleMemberships ?? [],
+      )
+    ) {
+      return null;
+    }
     const customerGrant: RoleGrant = {
       roleKey: BUILT_IN_ROLES.customer.key,
       scope: BUILT_IN_ROLES.customer.scope,
@@ -748,6 +754,7 @@ export async function resolveIdentity(
       roleKey: schema.roleTable.key,
       roleScope: schema.roleTable.scope,
       roleWorkspaceId: schema.roleTable.workspaceId,
+      roleIsSystem: schema.roleTable.isSystem,
       rank: schema.roleTable.rank,
       capabilities: schema.roleTable.capabilities,
       projectId: schema.projectTable.id,
@@ -819,6 +826,7 @@ export async function resolveIdentity(
       roleKey: membership.roleKey,
       roleScope: membership.roleScope,
       roleWorkspaceId: membership.roleWorkspaceId,
+      roleIsSystem: membership.roleIsSystem,
       scopeWorkspaceId: membership.projectWorkspaceId,
       scopeExists:
         (membership.scope === "project" && membership.projectId !== null) ||

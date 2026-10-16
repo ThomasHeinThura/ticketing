@@ -26,9 +26,9 @@ cosign uses its OIDC identity; v1's Azure Pipelines are not carried over).
 ## Pull request pipeline
 
 Two required stages, so the fast one stays fast enough that nobody routes around it. **This
-is the single list of CI checks**; [testing-strategy.md](testing-strategy.md) links here.
-`pnpm test:all` is the local alias that runs every check in this list; CI runs them as the
-stages below.
+is the canonical list of CI checks and planned additions**; [testing-strategy.md](testing-strategy.md)
+links here. Entries marked **planned — not wired** describe future checks, not active CI gates.
+`pnpm test:all` runs the enabled checks; CI runs its active checks as the stages below.
 
 **Fast — required on every push, target under 15 minutes:**
 
@@ -77,7 +77,7 @@ its source-binding limit are recorded in the
 │ pnpm check:overrides one override source only    │
 │ pnpm check:dockerfile-deps Dockerfile=workspace  │
 │ gitleaks             no secrets in the diff      │
-│ pnpm check:queries   no db.select() outside repo │
+│ pnpm check:queries   planned — not wired (#580) │
 │ pnpm check:inventory screen counts match rows    │
 │ pnpm check:reviews   review section empty        │
 │ pnpm check:env       no stray process.env        │
