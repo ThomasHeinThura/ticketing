@@ -22,8 +22,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
 export const cannedResponsePolicies = {
   "GET /api/canned-responses": {
     capability: "work_item:read",
-    scope: "workspace",
-    scopeSource: "request",
+    scope: "work_item",
+    scopeSource: "row",
     reach: "required",
   },
   "POST /api/canned-responses": {

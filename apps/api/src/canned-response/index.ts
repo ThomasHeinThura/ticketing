@@ -1,3 +1,4 @@
+import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
   type BaseVariables,
@@ -5,19 +6,23 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createCannedResponse from "./controllers/create-canned-response";
 import deleteCannedResponse from "./controllers/delete-canned-response";
 import listCannedResponses from "./controllers/list-canned-responses";
 import updateCannedResponse from "./controllers/update-canned-response";
-import { requireCannedResponseReach } from "./require-canned-response-reach";
+import {
+  requireCannedResponseListReach,
+  requireCannedResponseReach,
+} from "./require-canned-response-reach";
 import { cannedResponseListSchema, cannedResponseSchema } from "./response";
 import {
   cannedResponseIdParam,
+  cannedResponseListQuery,
   createCannedResponseBody,
   updateCannedResponseBody,
-  workspaceIdQuery,
 } from "./schema";
 
 const listCannedResponsesRoute = createRoute({
@@ -26,19 +31,18 @@ const listCannedResponsesRoute = createRoute({
   path: "/",
   tags: ["Canned responses"],
   summary: "List canned responses",
-  description: "A workspace's reusable composer snippets (`CA-19`).",
-  middleware: [
-    workspaceAccess.fromQuery("workspaceId"),
-    requireWorkspaceCapability("work_item:read"),
-  ] as const,
-  request: { query: workspaceIdQuery },
+  description:
+    "Reusable composer snippets available on this work item (`CA-19`).",
+  middleware: [requireCannedResponseListReach()] as const,
+  request: { query: cannedResponseListQuery },
   responses: {
     200: jsonResponse(
-      "The workspace's canned responses",
+      "Canned responses available on the work item",
       cannedResponseListSchema,
     ),
-    400: errorResponse("Workspace ID could not be determined"),
+    400: errorResponse("Work item key is required"),
     403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Work item not found or not reachable"),
   },
 });
 
@@ -117,13 +121,17 @@ const deleteCannedResponseRoute = createRoute({
 
 const cannedResponse = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listCannedResponsesRoute, async (c) => {
-    const { workspaceId } = c.req.valid("query");
-    const rows = await listCannedResponses(workspaceId);
+    const { workItemKey } = c.req.valid("query");
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity) throw new HTTPException(401, { message: "Unauthorized" });
+    const rows = await listCannedResponses(identity, workItemKey);
     return c.json(rows, 200);
   })
   .openapi(createCannedResponseRoute, async (c) => {
     const { workspaceId, name, body, visibilityDefault } = c.req.valid("json");
-    const created = await createCannedResponse({
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity) throw new HTTPException(401, { message: "Unauthorized" });
+    const created = await createCannedResponse(identity, {
       workspaceId,
       name,
       body,
@@ -136,13 +144,22 @@ const cannedResponse = apiRouter<BaseVariables & { workspaceId: string }>()
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const input = c.req.valid("json");
-    const updated = await updateCannedResponse(id, workspaceId, input);
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity) throw new HTTPException(401, { message: "Unauthorized" });
+    const updated = await updateCannedResponse(
+      identity,
+      id,
+      workspaceId,
+      input,
+    );
     return c.json(updated, 200);
   })
   .openapi(deleteCannedResponseRoute, async (c) => {
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const deleted = await deleteCannedResponse(id, workspaceId);
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity) throw new HTTPException(401, { message: "Unauthorized" });
+    const deleted = await deleteCannedResponse(identity, id, workspaceId);
     return c.json(deleted, 200);
   });
 
