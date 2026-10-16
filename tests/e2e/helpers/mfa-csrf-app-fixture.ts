@@ -7,7 +7,15 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { PostgreSqlContainer } from "../../../apps/api/node_modules/@testcontainers/postgresql";
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(currentDir, "../../..");
+const apiPackageRequire = createRequire(
+  resolve(repoRoot, "apps/api/package.json"),
+);
+const { PostgreSqlContainer } = apiPackageRequire(
+  "@testcontainers/postgresql",
+) as typeof import("../../../apps/api/node_modules/@testcontainers/postgresql");
 
 type PostgreSqlContainerInstance = {
   getConnectionUri(): string;
@@ -402,11 +410,6 @@ export function totpForUri(uri: string, now = Date.now()) {
   return String(binary % 1_000_000).padStart(6, "0");
 }
 
-const currentDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(currentDir, "../../..");
-const apiPackageRequire = createRequire(
-  resolve(repoRoot, "apps/api/package.json"),
-);
 const apiEntrypoint = resolve(repoRoot, "apps/api/dist/index.js");
 const agentBuild = resolve(repoRoot, "apps/web/dist/agent/index.html");
 const portalBuild = resolve(repoRoot, "apps/web/dist/portal/index.html");
