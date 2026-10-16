@@ -697,7 +697,9 @@ describe("project socket reach (#745)", () => {
       .select({ organisationId: schema.workspaceTable.organisationId })
       .from(schema.workspaceTable)
       .where(eq(schema.workspaceTable.id, workspace.id));
-    expect(row?.organisationId).toBe(org.id);
+    // A customer's project reach is still derived from the project's customer
+    // organisation, but customers do not hold workspace reach for these staff sockets.
+    expect(row).toBeNull();
     expect(ws?.organisationId).not.toBe(org.id);
 
     const [workspaceMembership] = await db
@@ -714,12 +716,12 @@ describe("project socket reach (#745)", () => {
 
     // Reach (rbac.md step 6) follows that organisation...
     const identity = await resolveSocketIdentity(credential);
-    if (!identity || !row) throw new Error("customer identity not resolved");
+    if (!identity) throw new Error("customer identity not resolved");
     expect(
       reaches(identity, {
         projectId: own.id,
         workspaceId: workspace.id,
-        organisationId: row.organisationId,
+        organisationId: org.id,
         ancestorProjectIds: [],
         ownerTeamId: null,
       }),

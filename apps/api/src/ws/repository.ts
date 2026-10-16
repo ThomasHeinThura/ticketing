@@ -1,7 +1,10 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, isNull } from "drizzle-orm";
 import db, { schema } from "../database";
-import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
+import {
+  currentProjectReachPredicate,
+  currentWorkspaceReachPredicate,
+} from "../database/repositories/identity-scope.repository";
 
 /** Live work-item topic facts, selected only while current project reach holds. */
 export async function findLiveWorkItemSocketScope(
@@ -39,7 +42,7 @@ export async function findLiveWorkItemSocketScope(
   return item;
 }
 
-/** Live project facts for either socket, with current reach in the selecting statement. */
+/** Live project facts for either socket, with current workspace and project reach in SQL. */
 export async function findReachableLiveProject(
   identity: ResolvedIdentity,
   projectId: string,
@@ -55,6 +58,11 @@ export async function findReachableLiveProject(
         eq(schema.projectTable.id, projectId),
         isNull(schema.projectTable.deletedAt),
         isNull(schema.projectTable.archivedAt),
+        currentWorkspaceReachPredicate(
+          identity,
+          schema.projectTable.workspaceId,
+          db,
+        ),
         currentProjectReachPredicate(
           identity,
           schema.projectTable.id,
