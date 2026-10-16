@@ -395,7 +395,7 @@ describe("label repository (#580)", () => {
       "foreign",
     );
 
-    await db
+    const revokedMemberships = await db
       .delete(schema.membershipTable)
       .where(
         and(
@@ -403,7 +403,9 @@ describe("label repository (#580)", () => {
           eq(schema.membershipTable.scope, "project"),
           eq(schema.membershipTable.scopeId, taskA2.projectId),
         ),
-      );
+      )
+      .returning({ id: schema.membershipTable.id });
+    expect(revokedMemberships).toHaveLength(1);
     expect(await findLabelById(identityA, copyA2.id)).toBeUndefined();
 
     const listed = await listTaskLabelCopiesWithTask(db, a.workspace.id, "Fam");
@@ -427,6 +429,10 @@ describe("label repository (#580)", () => {
     });
 
     await updateLabelsByIds(db, [copyA.id], { name: "Renamed", color: "#abc" });
+    expect(await findLabelById(identityA, copyA.id)).toMatchObject({
+      name: "Renamed",
+      color: "#abc",
+    });
     const deleted = await deleteLabelsByIds(db, [copyA.id, copyA2.id]);
     expect(deleted.map((row) => row.taskId).sort()).toEqual(
       [taskA.id, taskA2.id].sort(),
