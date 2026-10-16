@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { columnTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { findColumnById, updateColumnById } from "../repository";
 
 async function updateColumn(
+  identity: ResolvedIdentity,
   id: string,
   data: {
     name?: string;
@@ -13,9 +13,7 @@ async function updateColumn(
     isFinal?: boolean;
   },
 ) {
-  const existing = await db.query.columnTable.findFirst({
-    where: eq(columnTable.id, id),
-  });
+  const existing = await findColumnById(identity, id);
 
   if (!existing) {
     throw new HTTPException(404, { message: "Column not found" });
@@ -26,19 +24,15 @@ async function updateColumn(
   // soft-deleted project (#187); the workspace id itself isn't needed here.
   await getProjectWorkspaceId(existing.projectId);
 
-  const [updated] = await db
-    .update(columnTable)
-    .set({
+  const updated = await updateColumnById(identity, id, {
       ...(data.name !== undefined && { name: data.name }),
       ...(data.icon !== undefined && { icon: data.icon }),
       ...(data.color !== undefined && { color: data.color }),
       ...(data.isFinal !== undefined && { isFinal: data.isFinal }),
-    })
-    .where(eq(columnTable.id, id))
-    .returning();
+    });
 
   if (!updated) {
-    throw new HTTPException(500, { message: "Failed to update column" });
+    throw new HTTPException(404, { message: "Column not found" });
   }
 
   return updated;

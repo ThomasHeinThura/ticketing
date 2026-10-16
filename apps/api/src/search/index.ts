@@ -10,6 +10,7 @@ import {
 } from "../utils/reach-filtered-list";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import globalSearch from "./controllers/global-search";
 import { searchResponseSchema } from "./response";
 import { searchQuery } from "./schema";
@@ -38,14 +39,14 @@ const globalSearchRoute = createRoute({
 });
 
 const search = apiRouter().openapi(globalSearchRoute, async (c) => {
-  const { q, type, workspaceId, projectId, limit, userEmail } =
-    c.req.valid("query");
+  const { q, type, workspaceId, projectId, limit } = c.req.valid("query");
+  const identity = await resolveCallerIdentity(c, c.get("userId"));
+  if (!identity) return c.json({ results: [], totalCount: 0, searchQuery: q }, 200);
 
   return c.json(
     await globalSearch({
       query: q,
-      userId: c.get("userId"),
-      userEmail,
+      identity,
       type,
       workspaceId,
       projectId,

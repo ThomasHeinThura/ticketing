@@ -20,6 +20,7 @@ import {
 import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import {
   acceptSubmission,
   claimSubmission,
@@ -260,7 +261,9 @@ async function submissionReach(c: IntakeContext, next: Next) {
     throw new HTTPException(400, {
       message: "Submission reference is required",
     });
-  const row = await findSubmission(ref);
+  const identity = await resolveCallerIdentity(c, c.get("userId"));
+  if (!identity) return notFound("Submission not found");
+  const row = await findSubmission(ref, undefined, undefined, identity);
   try {
     await validateWorkspaceAccess(
       c.get("userId"),
@@ -1027,11 +1030,13 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
     );
   })
   .openapi(submissionDetailRoute, async (c) => {
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity) return notFound("Submission not found");
     const detail = await findSubmission(
       c.req.valid("param").ref,
       c.get("workspaceId"),
       undefined,
-      listReachOf(c),
+      identity,
     );
     return c.json(
       {

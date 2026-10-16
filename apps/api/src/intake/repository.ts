@@ -10,13 +10,14 @@ import {
   validateSubmissionData,
   visibleFields,
 } from "@taskdesk/domain";
-import { resolveFeatureFlag } from "@taskdesk/permissions";
+import { resolveFeatureFlag, type ResolvedIdentity } from "@taskdesk/permissions";
 import {
   and,
   asc,
   count,
   desc,
   eq,
+  exists,
   gt,
   inArray,
   isNull,
@@ -27,6 +28,10 @@ import {
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
+import {
+  currentProjectReachPredicate,
+  currentWorkspaceReachPredicate,
+} from "../database/repositories/identity-scope.repository";
 import {
   type DbTransaction,
   enqueueOutboxEvent,
@@ -40,10 +45,6 @@ import {
   findWorkspaceDefaultSlaPolicyQuery,
   findWorkspaceOwnedSlaPolicyQuery,
 } from "../work-item/repository";
-import {
-  type LinkedWorkItemReach,
-  reachableLinkedWorkItemId,
-} from "./submission-linked-work-item";
 
 type RequestTypeInput = {
   workspaceId: string;
@@ -1333,7 +1334,7 @@ export async function findSubmission(
    * comments carried over from it are left out (`submission-linked-work-item.ts`). The portal
    * requester's own view passes nothing and keeps its existing behaviour.
    */
-  staffReach?: LinkedWorkItemReach,
+  staffIdentity?: ResolvedIdentity,
 ) {
   const number = /^SUB-([1-9]\d{0,9})$/u.exec(ref)?.[1];
   if (!number)
@@ -1366,6 +1367,15 @@ export async function findSubmission(
         ...(requesterId
           ? [eq(schema.submissionTable.requesterId, requesterId)]
           : []),
+        ...(staffIdentity
+          ? [
+              currentWorkspaceReachPredicate(
+                staffIdentity,
+                schema.requestTypeTable.workspaceId,
+                db,
+              ),
+            ]
+          : []),
       ),
     )
     .limit(1);
@@ -1373,7 +1383,35 @@ export async function findSubmission(
   const storedMessages = await db
     .select()
     .from(schema.submissionMessageTable)
-    .where(eq(schema.submissionMessageTable.submissionId, row.submission.id))
+    .where(
+      and(
+        eq(schema.submissionMessageTable.submissionId, row.submission.id),
+        staffIdentity
+          ? exists(
+              db
+                .select({ one: sql`1` })
+                .from(schema.submissionTable)
+                .innerJoin(
+                  schema.requestTypeTable,
+                  eq(
+                    schema.requestTypeTable.id,
+                    schema.submissionTable.requestTypeId,
+                  ),
+                )
+                .where(
+                  and(
+                    eq(schema.submissionTable.id, row.submission.id),
+                    currentWorkspaceReachPredicate(
+                      staffIdentity,
+                      schema.requestTypeTable.workspaceId,
+                      db,
+                    ),
+                  ),
+                ),
+            )
+          : undefined,
+      ),
+    )
     .orderBy(
       asc(schema.submissionMessageTable.createdAt),
       asc(schema.submissionMessageTable.id),
@@ -1383,24 +1421,70 @@ export async function findSubmission(
     createdAt: message.createdAt.toISOString(),
   }));
   let linkedWorkItemId = row.submission.workItemId;
-  if (staffReach) {
-    linkedWorkItemId = await reachableLinkedWorkItemId(
-      staffReach,
-      row.submission.workItemId,
-    );
+  if (staffIdentity) {
+    const [reachableWorkItem] = row.submission.workItemId
+      ? await db
+          .select({ id: schema.workItemTable.id })
+          .from(schema.workItemTable)
+          .innerJoin(
+            schema.projectTable,
+            eq(schema.projectTable.id, schema.workItemTable.projectId),
+          )
+          .where(
+            and(
+              eq(schema.workItemTable.id, row.submission.workItemId),
+              isNull(schema.projectTable.deletedAt),
+              currentProjectReachPredicate(
+                staffIdentity,
+                schema.projectTable.id,
+                schema.projectTable.workspaceId,
+                schema.projectTable.organisationId,
+                db,
+              ),
+            ),
+          )
+          .limit(1)
+      : [];
+    linkedWorkItemId = reachableWorkItem?.id ?? null;
     if (linkedWorkItemId === null) {
       row.submission = { ...row.submission, workItemId: null };
     }
   }
   if (row.submission.state === "accepted" && linkedWorkItemId) {
     const comments = await db
-      .select()
+      .select({
+        id: schema.commentTable.id,
+        authorId: schema.commentTable.authorId,
+        actorType: schema.commentTable.actorType,
+        body: schema.commentTable.body,
+        createdAt: schema.commentTable.createdAt,
+      })
       .from(schema.commentTable)
+      .innerJoin(
+        schema.workItemTable,
+        eq(schema.workItemTable.id, schema.commentTable.workItemId),
+      )
+      .innerJoin(
+        schema.projectTable,
+        eq(schema.projectTable.id, schema.workItemTable.projectId),
+      )
       .where(
         and(
           eq(schema.commentTable.workItemId, linkedWorkItemId),
           eq(schema.commentTable.visibility, "public"),
           isNull(schema.commentTable.deletedAt),
+          ...(staffIdentity ? [isNull(schema.projectTable.deletedAt)] : []),
+          ...(staffIdentity
+            ? [
+                currentProjectReachPredicate(
+                  staffIdentity,
+                  schema.projectTable.id,
+                  schema.projectTable.workspaceId,
+                  schema.projectTable.organisationId,
+                  db,
+                ),
+              ]
+            : []),
         ),
       )
       .orderBy(asc(schema.commentTable.createdAt), asc(schema.commentTable.id));
