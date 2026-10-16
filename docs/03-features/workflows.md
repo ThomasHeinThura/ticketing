@@ -93,11 +93,13 @@ Jira has this and charges for it. Plane and kaneo do not have it at all.
   remains interpretable after a change.
 - `WF-9` If a work item's concrete state maps to a template that the new version has no
   outbound transition from, it is *stuck*. The editor detects this before publishing —
-  checking every project whose work item types use this workflow, not just one — and
-  lists affected items. The caller must have access to every adopting project for this
-  complete validation; otherwise validation returns a generic refusal with no project or
-  item details. Publishing must apply the same complete-reach requirement and must not
-  silently validate or publish against only a reachable subset.
+  checking every project in the workflow's workspace, including projects with no work
+  items and archived projects — and lists affected items. `work_item_type` is workspace-
+  scoped and no project-to-type adoption table exists, so WF-9's adopting-project set is
+  every project in that workspace. The caller must have access to every project in this
+  set for complete validation; otherwise validation returns a generic refusal with no
+  project or item details. Publishing applies the same complete-reach requirement and
+  must not silently validate or publish against only a reachable subset.
 
 **Notes**
 
