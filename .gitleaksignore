@@ -35,3 +35,7 @@ aea7da52bddab201a6de5882e70551e7da0cc55c:docs/07-planning/security-reviews/ident
 aea7da52bddab201a6de5882e70551e7da0cc55c:docs/07-planning/security-reviews/identity-timezones-631.md:generic-api-key:77
 aea7da52bddab201a6de5882e70551e7da0cc55c:docs/07-planning/security-reviews/identity-timezones-631.md:generic-api-key:146
 aea7da52bddab201a6de5882e70551e7da0cc55c:docs/07-planning/security-reviews/identity-timezones-631.md:generic-api-key:178
+
+# Public reviewer-report filename in immutable #780 review publication; not a credential.
+# Exact finding only; authentic reports unchanged. Technical record: 2026-10-16.
+33f2ec22b161bc214d76b2e0e3dd264cf950bd5d:docs/07-planning/security-reviews/780-owner-conductor-decisions.md:generic-api-key:260
