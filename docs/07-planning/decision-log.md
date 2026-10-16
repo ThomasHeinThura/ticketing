@@ -8202,3 +8202,12 @@ authority. Thomas answered: **“Keep native admission for this release (Recomme
 preserved at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/s7-mixed-authority-admission-owner-decision.json`.
 This authorizes the bounded spec and test-oracle correction, not runtime authorization changes,
 independent review, CI, merge or stage acceptance.
+
+### 2026-10-16 · Owner decisions: workflow validation reach and assignee authoring
+
+**Decisions (Thomas, direct response to Codex request `call_582546f57dbd436ab10d43e1ca364923`, received by the conductor on 2026-10-16; exact response recorded):**
+
+- **WF-9 adopting-project access:** “Require access to every adopting project (Recommended): otherwise return a generic refusal without project or item details.” Validation and publishing must not silently operate on a reachable subset. If the caller cannot access every adopting project, return a generic refusal with no project or item details.
+- **WF-19 assignee validation:** “Check shape only when authoring (Recommended); enforce person eligibility at execution, allowing unknown IDs to be saved.” Authoring may save an unknown person ID. At execution, enforce eligibility against the work item's active project roster; refuse the entire transition if ineligible, with no effects applied.
+
+These are product-contract decisions, not quality-gate waivers. The owning workflow spec is updated in this change. Implementation, tests, review, CI, merge, and acceptance remain separate.
