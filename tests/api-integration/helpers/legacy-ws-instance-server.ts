@@ -5,7 +5,7 @@ import {
 } from "../../../apps/api/src/ws";
 
 const app = createApp().app;
-const node = createNodeServer(app, 0);
+const node = createNodeServer(app, 0, { hostname: "127.0.0.1" });
 let stopping = false;
 
 async function stop() {
@@ -29,7 +29,13 @@ try {
     });
   }
   const address = node.server.address();
-  if (!address || typeof address === "string") throw new Error();
+  if (
+    !address ||
+    typeof address === "string" ||
+    address.address !== "127.0.0.1"
+  ) {
+    throw new Error();
+  }
   process.send?.({ type: "ready", port: address.port });
 } catch {
   process.send?.({ type: "startup-error" });
