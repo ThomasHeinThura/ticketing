@@ -3,11 +3,16 @@
 
 import { randomUUID } from "node:crypto";
 import type { FormSchema, FormValue } from "@taskdesk/domain";
+import { can, reaches } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { Client } from "pg";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { completeSubmissionAttachment } from "../../apps/api/src/attachment/controllers/complete-submission-attachment";
+import {
+  listPortalSubmissionAttachments,
+  listStaffSubmissionAttachments,
+} from "../../apps/api/src/attachment/repository";
 import db, { schema } from "../../apps/api/src/database";
 import {
   acceptSubmission,
@@ -15,10 +20,14 @@ import {
   findPortalSubmission,
   publishRequestType,
 } from "../../apps/api/src/intake/repository";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import * as storage from "../../apps/api/src/storage";
+import { grantCustomerOrganisationMembership } from "./helpers/approval-fixtures";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -226,6 +235,7 @@ async function waitForBlockedProjectArchive(
 
 describe("intake atomic conversion", () => {
   beforeEach(async () => resetTestDatabase());
+  afterEach(() => vi.restoreAllMocks());
 
   it("refuses to publish auto-accept to an organisation the pinned project cannot serve", async () => {
     const { workspace } = await createWorkspaceMember({ role: "admin" });
@@ -1067,6 +1077,7 @@ describe("intake atomic conversion", () => {
         .returning(),
       "requester",
     );
+    await grantCustomerOrganisationMembership(organisation.id, requester.id);
     const [staff] = await db
       .select()
       .from(schema.personTable)
@@ -1075,6 +1086,10 @@ describe("intake atomic conversion", () => {
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
     });
+    await grantProjectRole(staffUser.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     await db
       .update(schema.projectTable)
       .set({ organisationId: organisation.id })
@@ -1210,6 +1225,47 @@ describe("intake atomic conversion", () => {
         .returning(),
       "pending requester upload",
     );
+    const requesterIdentity = await resolveIdentity({
+      userId: customerUser.id,
+      credential: "session",
+    });
+    if (!requesterIdentity) {
+      throw new Error(
+        "auto-accept requester must resolve as an admitted customer",
+      );
+    }
+    expect(requesterIdentity).toMatchObject({
+      side: "customer",
+      personId: requester.id,
+    });
+    const staffIdentity = await resolveIdentity({
+      userId: staffUser.id,
+      credential: "session",
+    });
+    if (!staffIdentity) {
+      throw new Error("auto-accept staff reader identity was not resolved");
+    }
+    expect(
+      reaches(staffIdentity, {
+        projectId: project.id,
+        workspaceId: workspace.id,
+        organisationId: organisation.id,
+        ancestorProjectIds: [],
+        ownerTeamId: null,
+      }),
+    ).toBe(true);
+    expect(
+      can(staffIdentity, "work_item:read", "work_item", {
+        workspaceId: workspace.id,
+        workItemProjectId: project.id,
+      }),
+    ).toBe(true);
+    expect(
+      can(requesterIdentity, "work_item:read", "work_item", {
+        workspaceId: workspace.id,
+        workItemProjectId: project.id,
+      }),
+    ).toBe(false);
     const staffUpload = requireRow(
       await db
         .insert(schema.attachmentTable)
@@ -1228,6 +1284,33 @@ describe("intake atomic conversion", () => {
         .returning(),
       "pending staff work-item upload",
     );
+    const portalRows = await listPortalSubmissionAttachments(
+      db,
+      requesterIdentity,
+      {
+        submissionId: result.id,
+        workItemId: result.workItemId,
+      },
+    );
+    const staffRows = await listStaffSubmissionAttachments(db, staffIdentity, {
+      submissionId: result.id,
+      workItemId: result.workItemId,
+    });
+    expect(portalRows.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([pendingRequesterUpload.id, staffUpload.id]),
+    );
+    expect(staffRows.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([pendingRequesterUpload.id, staffUpload.id]),
+    );
+    const deleteObject = vi
+      .spyOn(storage, "deleteStorageObject")
+      .mockResolvedValue();
+    const finalizeObject = vi
+      .spyOn(storage, "finalizeStorageObject")
+      .mockResolvedValue();
+    vi.spyOn(storage, "getObjectSizeAndHeader").mockRejectedValue(
+      new Error("injected verification failure"),
+    );
     await expect(
       completeSubmissionAttachment({
         attachmentId: pendingRequesterUpload.id,
@@ -1235,8 +1318,24 @@ describe("intake atomic conversion", () => {
         submissionWorkItemId: result.workItemId,
         requesterId: requester.id,
         workspaceId: workspace.id,
+        identity: requesterIdentity,
       }),
     ).rejects.toMatchObject({ status: 400 });
+    expect(finalizeObject).toHaveBeenCalledTimes(1);
+    expect(finalizeObject.mock.calls[0]?.[0]).toBe(
+      pendingRequesterUpload.objectKey,
+    );
+    const finalizedTarget = finalizeObject.mock.calls[0]?.[1];
+    expect(finalizedTarget).toEqual(expect.any(String));
+    if (!finalizedTarget)
+      throw new Error("final attachment key was not captured");
+    expect(deleteObject.mock.calls).toEqual([[finalizedTarget]]);
+    const [afterRollback] = await db
+      .select({ state: schema.attachmentTable.state })
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, pendingRequesterUpload.id));
+    expect(afterRollback?.state).toBe("pending");
+    const deleteCallsAfterRollback = deleteObject.mock.calls.length;
     await expect(
       completeSubmissionAttachment({
         attachmentId: staffUpload.id,
@@ -1244,8 +1343,11 @@ describe("intake atomic conversion", () => {
         submissionWorkItemId: result.workItemId,
         requesterId: requester.id,
         workspaceId: workspace.id,
+        identity: requesterIdentity,
       }),
     ).rejects.toMatchObject({ status: 404 });
+    expect(deleteObject).toHaveBeenCalledTimes(deleteCallsAfterRollback);
+    expect(deleteObject.mock.calls).toEqual([[finalizedTarget]]);
 
     const ref = `SUB-${result.number}`;
     const events = await db
