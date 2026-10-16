@@ -1,18 +1,19 @@
-import { and, eq, isNull, max, sql } from "drizzle-orm";
 import db from "../../database";
-import {
-  columnTable,
-  organisationTable,
-  projectSlugClaimTable,
-  projectTable,
-  workspaceTable,
-} from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { seedProjectStates } from "../../utils/seed-project-states";
 import {
   grantProjectCreatorLead,
   lockCreatorPerson,
 } from "../project-creator-grant";
+import {
+  claimProjectSlug,
+  getMaxProjectPosition,
+  hasProjectSlugClaim,
+  insertProject,
+  insertProjectColumn,
+  isServableCustomerOrganisation,
+  lockProjectOrdering,
+} from "../repository";
 
 export const DEFAULT_PROJECT_COLUMNS = [
   { name: "To Do", slug: "to-do", position: 0, isFinal: false },
@@ -99,8 +100,6 @@ async function createProject(
   }
 }
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
 /**
  * The binding rule, evaluated in the creating transaction. The organisation row is locked
  * `FOR SHARE` so a concurrent deactivation or delete cannot slip between this check and the
@@ -109,38 +108,6 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
  * customer organisation, and the workspace is one of the internal organisation's own
  * (`multi-tenancy.md`: the internal organisation's staff work across the customer ones).
  */
-async function assertServableCustomerOrganisation(
-  tx: Tx,
-  workspaceId: string,
-  organisationId: string,
-) {
-  const [organisation] = await tx
-    .select({ id: organisationTable.id })
-    .from(organisationTable)
-    .where(
-      and(
-        eq(organisationTable.id, organisationId),
-        eq(organisationTable.active, true),
-        eq(organisationTable.isInternal, false),
-        isNull(organisationTable.deletedAt),
-      ),
-    )
-    .for("share")
-    .limit(1);
-  if (!organisation) throw new InvalidProjectOrganisationError();
-
-  const [workspaceOwner] = await tx
-    .select({ isInternal: organisationTable.isInternal })
-    .from(workspaceTable)
-    .innerJoin(
-      organisationTable,
-      eq(organisationTable.id, workspaceTable.organisationId),
-    )
-    .where(eq(workspaceTable.id, workspaceId))
-    .limit(1);
-  if (!workspaceOwner?.isInternal) throw new InvalidProjectOrganisationError();
-}
-
 async function createProjectRow(
   workspaceId: string,
   name: string,
@@ -151,20 +118,19 @@ async function createProjectRow(
 ) {
   return db.transaction(async (tx) => {
     if (configuration.organisationId !== null) {
-      await assertServableCustomerOrganisation(
+      const servable = await isServableCustomerOrganisation(
         tx,
         workspaceId,
         configuration.organisationId,
       );
+      if (!servable) throw new InvalidProjectOrganisationError();
     }
 
     // Serialize ordering writes per workspace: without this, two concurrent
     // creates can read the same max(position) and land on the same slot, and a
     // create can interleave with a reorder's renumber. `reorderProjects` takes
     // the same lock with the same key.
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(1524, hashtext(${workspaceId}))`,
-    );
+    await lockProjectOrdering(tx, workspaceId);
 
     // #261 F1's delta-confirmation (D1): a slug can be free among LIVE projects (so the
     // `project_slug_unique` constraint below would let it through) while still being
@@ -173,11 +139,7 @@ async function createProjectRow(
     // here, ahead of the insert, for a clean 409 in the common case; the claim table's own
     // PRIMARY KEY (inserted below) is the real arbiter of the race between this check and
     // the write, same idiom `project_slug_unique` already uses one layer up.
-    const [existingClaim] = await tx
-      .select({ slug: projectSlugClaimTable.slug })
-      .from(projectSlugClaimTable)
-      .where(eq(projectSlugClaimTable.slug, slug))
-      .limit(1);
+    const existingClaim = await hasProjectSlugClaim(tx, slug);
     if (existingClaim) {
       throw new ProjectSlugTakenError(slug);
     }
@@ -188,38 +150,32 @@ async function createProjectRow(
     const creator = await lockCreatorPerson(tx, creatorUserId);
 
     // New projects go to the bottom of the workspace's ordering.
-    const [{ maxPosition } = { maxPosition: null }] = await tx
-      .select({ maxPosition: max(projectTable.position) })
-      .from(projectTable)
-      .where(eq(projectTable.workspaceId, workspaceId));
+    const maxPosition = await getMaxProjectPosition(tx, workspaceId);
 
-    const [createdProject] = await tx
-      .insert(projectTable)
-      .values({
-        workspaceId,
-        name,
-        icon,
-        slug,
-        kind: configuration.kind,
-        supportLevel: configuration.supportLevel,
-        serviceCalendarId: configuration.serviceCalendarId,
-        organisationId: configuration.organisationId,
-        createdBy: creator?.id ?? null,
-        position: maxPosition === null ? 0 : maxPosition + 1,
-      })
-      .returning();
+    const createdProject = await insertProject(tx, {
+      workspaceId,
+      name,
+      icon,
+      slug,
+      kind: configuration.kind,
+      supportLevel: configuration.supportLevel,
+      serviceCalendarId: configuration.serviceCalendarId,
+      organisationId: configuration.organisationId,
+      createdBy: creator?.id ?? null,
+      position: maxPosition === null ? 0 : maxPosition + 1,
+    });
 
     if (createdProject) {
       // Claim the slug PERMANENTLY, in the same transaction as the project that just took
       // it -- see `projectSlugClaimTable`'s schema.ts comment for why this never happens
       // via a trigger and never gets undone by a later rename or delete.
-      await tx.insert(projectSlugClaimTable).values({
+      await claimProjectSlug(tx, {
         slug,
         projectId: createdProject.id,
       });
 
       for (const col of DEFAULT_PROJECT_COLUMNS) {
-        await tx.insert(columnTable).values({
+        await insertProjectColumn(tx, {
           projectId: createdProject.id,
           name: col.name,
           slug: col.slug,
