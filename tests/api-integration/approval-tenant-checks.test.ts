@@ -14,6 +14,7 @@ import {
   lockApproval,
   lockApprovalsForWorkItemTransition,
   lockLiveWorkItem,
+  resolveApprovalIdentity,
 } from "../../apps/api/src/approval/repository";
 import db, { schema } from "../../apps/api/src/database";
 import {
@@ -68,29 +69,49 @@ describe("approvals: 0120 tenant runtime checks (S3)", () => {
     const a = await buildTenant("a");
     const b = await buildTenant("b");
     const approval = await createApproval(a);
-    expect(await listApprovalRows(a.workItem.id, a.workspaceId)).toHaveLength(
-      1,
-    );
-    expect(await listApprovalRows(a.workItem.id, b.workspaceId)).toEqual([]);
+    const identity = await resolveApprovalIdentity(a.requester.user.id);
     expect(
-      await listApprovalsForWorkItemTransition(a.workItem.id, b.workspaceId),
+      await listApprovalRows(identity, a.workItem.id, a.workspaceId),
+    ).toHaveLength(1);
+    expect(
+      await listApprovalRows(identity, a.workItem.id, b.workspaceId),
+    ).toEqual([]);
+    expect(
+      await listApprovalsForWorkItemTransition(
+        identity,
+        a.workItem.id,
+        b.workspaceId,
+      ),
     ).toEqual([]);
     await db.transaction(async (tx) => {
       expect(
-        await lockApproval(tx, approval.id, a.workItem.id, b.workspaceId),
+        await lockApproval(
+          tx,
+          identity,
+          approval.id,
+          a.workItem.id,
+          b.workspaceId,
+        ),
       ).toBeNull();
       expect(
         await lockApprovalsForWorkItemTransition(
           tx,
+          identity,
           a.workItem.id,
           b.workspaceId,
         ),
       ).toEqual([]);
       expect(
-        await lockApproval(tx, approval.id, a.workItem.id, a.workspaceId),
+        await lockApproval(
+          tx,
+          identity,
+          approval.id,
+          a.workItem.id,
+          a.workspaceId,
+        ),
       ).not.toBeNull();
       expect(
-        await lockLiveWorkItem(tx, b.workspaceId, a.workItem.id),
+        await lockLiveWorkItem(tx, identity, b.workspaceId, a.workItem.id),
       ).toBeNull();
     });
   });

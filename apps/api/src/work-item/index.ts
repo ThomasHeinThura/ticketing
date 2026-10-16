@@ -16,6 +16,7 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { isCustomerPrincipal } from "../utils/is-customer-principal";
 import { markReach } from "../utils/reach-mark";
 import {
@@ -1550,17 +1551,21 @@ const workItem = apiRouter<
     const userId = c.get("userId");
     const { toStateTemplateId, note } = c.req.valid("json");
     const { actorId, actorType } = resolveActor(userId, c.get("apiKey"));
-
-    const [callerPerson] = await db
-      .select({ id: personTable.id })
-      .from(personTable)
-      .where(eq(personTable.userId, userId))
-      .limit(1);
+    const session = c.get("session") as {
+      impersonatedBy?: string | null;
+    } | null;
+    const identity = await resolveRequestIdentity({
+      userId,
+      apiKey: c.get("apiKey"),
+      impersonatedBy: session?.impersonatedBy,
+    });
+    if (!identity) throw new HTTPException(403, { message: "Forbidden" });
 
     try {
       const transitioned = await transitionWorkItem(
         workItemId,
-        callerPerson?.id ?? null,
+        identity,
+        identity.personId,
         actorId,
         actorType,
         { toStateTemplateId, note },
@@ -1588,15 +1593,20 @@ const workItem = apiRouter<
   .openapi(listWorkItemTransitionsRoute, async (c) => {
     const workItemId = c.get("workItemId");
     const userId = c.get("userId");
-    const [callerPerson] = await db
-      .select({ id: personTable.id, side: personTable.side })
-      .from(personTable)
-      .where(eq(personTable.userId, userId))
-      .limit(1);
+    const session = c.get("session") as {
+      impersonatedBy?: string | null;
+    } | null;
+    const identity = await resolveRequestIdentity({
+      userId,
+      apiKey: c.get("apiKey"),
+      impersonatedBy: session?.impersonatedBy,
+    });
+    if (!identity) throw new HTTPException(403, { message: "Forbidden" });
     const offers = await listWorkItemTransitions(
       workItemId,
-      callerPerson?.id ?? null,
-      callerPerson?.side ?? null,
+      identity,
+      identity.personId,
+      identity.side,
     );
     return c.json(offers, 200);
   })
