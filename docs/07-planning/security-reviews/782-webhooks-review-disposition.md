@@ -170,3 +170,62 @@ The sentence “Read-only self routes remain available under the key’s stored 
 **Residual:** implementation and tests for P4/#47 and the #724 paired change remain open; exact-head GitHub checks/review publication and protected merge belong to the conductor.
 
 
+
+
+## Accepted-main composition confirmation — 2026-10-16
+
+**Reviewed head:** `97f4772a63821bcbe3d3be4a1397afffa3f76a5d`
+
+This clean normal merge includes accepted main09dd5acf9b66579f6f1bb89622fac9ddbd7de1b6 after protected PR802. All12 imported paths are blob-identical to accepted main; the three PR-specific files remain byte-identical to prior reviewed publication8ea03bf9. Original normative d930 retains two ordinary and full Sol clearance. One new independent ordinary context and one new lightweight independent Sol context confirm this mechanical import changes no candidate-specific authority or gate semantics. Both original and current reports remain authentic; seven report versions are not seven approvals. Fresh contexts were explicitly selected as gpt-6-luna/gpt-6-sol with fork_turns=none; runtime version introspection remains unavailable and is not invented. Root composed/published and is not a reviewer.
+
+The self-row read-only subset remains a target contract, not runtime proof. Twelve design findings are dispositioned without accepting implementation, planned tests, issue718/777/47, standalone783, provider activation or H1–H6. Preserved raw Markdown whitespace is not rewritten or claimed clean. Required exact-publication hosted CI remains pending; the accepted main image proof does not transfer a product-implementation result to this documentation change.
+
+### Record 1
+
+# PR #782 accepted-main import — ordinary confirmation
+
+**Reviewed head:** `97f4772a63821bcbe3d3be4a1397afffa3f76a5d`
+**Comparison base:** previously reviewed publication `8ea03bf9f2d67c420aa2ecfc73e33a9e0d48567e`; accepted main `09dd5acf9b66579f6f1bb89622fac9ddbd7de1b6`
+**Role:** fresh independent ordinary confirmation of accepted-main composition; did not author, direct, or remediate this candidate. The assigned model selector was GPT-6 Luna. Runtime metadata does not independently attest model/provider identity, so this report records the selector without claiming external identity verification.
+**Scope:** exact-head parent/tree/blob conservation, preservation and coverage of the original #782 review record, and whether this candidate changes authority or gate semantics beyond the already accepted main import.
+
+## Checks and evidence
+
+- `HEAD` is exactly `97f4772a63821bcbe3d3be4a1397afffa3f76a5d`, a normal two-parent merge of `8ea03bf9f2d67c420aa2ecfc73e33a9e0d48567e` and `09dd5acf9b66579f6f1bb89622fac9ddbd7de1b6`. Both expected parents are ancestors.
+- The accepted-main-to-candidate tree delta is exactly three PR-specific paths: `docs/03-features/webhooks-and-api-keys.md`, `docs/07-planning/reviews/2026-09-05/features-governance-design.md`, and `docs/07-planning/security-reviews/782-webhooks-review-disposition.md`. All three compare byte-for-byte equal to the previous publication. The 12 imported paths and blob IDs in `782-accepted-image-main-conservation.json` match accepted main exactly. The `apps/`, `packages/`, and `tests/` trees also match accepted main. Worktree status was clean.
+- Read the repository authority/workflow guidance and the complete preserved #782 disposition note. Its five authentic report versions remain source-bound: the original ordinary-A blocker; original ordinary-B report and explicit superseding re-evaluation; current-head ordinary-A and ordinary-B clears; and the current-source Sol contract review. The previous independent reports cover the underlying normative source `d930cfc2d9d9db6d660820bc7fb3a5a18ed90777`, with the original twelve governance findings retained and each dispositioned as design closure only. The Sol report's caveat remains explicit: the self-row stored read-capability subset is target contract, not proof of runtime enforcement. Planned webhook/API-key tests remain identified as absent; no feature, #47, #783, #784, runtime, or stage acceptance is claimed.
+- Re-read the three PR-specific files and relevant accepted-main CI workflow/helper sections. The spec still says the #724 implementation is proposed in paired open #784/#783 work, #783 is not separately accepted, and runtime acceptance is pending. It does not imply a standalone #783 acceptance. The accepted import adds no additional change on top of accepted main: the shipping-image workflow invocation and helper, their tests, and accompanying CI/decision/status records are byte-identical to accepted main. Thus this candidate introduces no new authority or pass/fail semantics beyond the already accepted #802/main change.
+- `git diff --quiet` checks passed for all 12 imported paths, the three PR-specific paths against old publication, and `apps/ packages/ tests` against accepted main. `git diff --check 09dd5acf9b66579f6f1bb89622fac9ddbd7de1b6 HEAD` reports trailing whitespace and a final blank line in the preserved raw Sol report inside the PR's review note. Inspection confirms those bytes are unchanged from the previous publication and intentionally preserved with the authentic source-bound report; this is not introduced by this merge/import.
+
+No suites, Docker, PostgreSQL, browser, or runtime behavior were run; this task only needed composition and scope confirmation. The accepted-main import itself has its separate recorded PR #802 checks and hosted image evidence; those are not recast here as checks run by this reviewer.
+
+## Verdict
+
+**CLEAR — ordinary confirmation of accepted-main composition at exact head `97f4772a63821bcbe3d3be4a1397afffa3f76a5d`.** Parentage, imported path/blob identity, PR-specific source conservation, and the original review coverage are intact. No blocking finding. The whitespace finding is inherited, intentional preservation in the unchanged authentic report text. This report does not replace the required lightweight independent Sol confirmation for this current import confirmation, current-head GitHub checks, or protected merge gates.
+
+
+### Record 2
+
+# PR #782 accepted-main import — lightweight security confirmation
+
+**Reviewed head:** `97f4772a63821bcbe3d3be4a1397afffa3f76a5d`  
+**Comparison:** old reviewed publication `8ea03bf9f2d67c420aa2ecfc73e33a9e0d48567e`; accepted main `09dd5acf9b66579f6f1bb89622fac9ddbd7de1b6`  
+**Role and independence:** fresh independent security reviewer context. I did not author, direct, or remediate this candidate. The parent dispatched this context with `model=gpt-6-sol` and `fork_turns=none` for the Sol-tier review. This records the explicit selector and fresh-context provenance; the runtime exposes no separate serving-model/version attestation.  
+**Depth:** lightweight confirmation of a mechanical accepted-main import. The underlying security-relevant PR #782 documentation contract already received two independent ordinary clears and a full independent Sol clearance on normative source `d930cfc2d9d9db6d660820bc7fb3a5a18ed90777`; this pass does not replace or re-label those reviews.
+
+## Checks and result
+
+- `git rev-list --parents -n 1 HEAD` confirms an ordinary two-parent merge: the reviewed publication and accepted main are its exact parents. The normative source `d930cfc2d9d9db6d660820bc7fb3a5a18ed90777` is an ancestor. The worktree is clean.
+- Independently recalculated the conservation ledger from Git objects: all **12** imported paths have the ledger's blob ID and the same blob at accepted main; the **three** PR-specific paths have the same blobs as the old reviewed publication; the `apps/`, `packages/`, and `tests/` trees equal accepted main. The accepted-main-to-candidate diff is only `webhooks-and-api-keys.md`, `features-governance-design.md`, and the PR's own review-disposition note. `git diff --quiet` for those three paths against the old publication exited 0.
+- Read the preserved PR #782 note and its five authentic report versions, including the original A blocker, B re-evaluation, two current-source ordinary clears and full Sol contract review. The original twelve governance findings remain dispositioned as **design** findings; the note retains the Sol caveat that a target read-capability subset for self rows is not evidence of current runtime clamping. No new API-key write grant or identity-provider authority is introduced by this merge.
+- Checked the feature spec's relevant current contract. It identifies #783/#784 as a proposed paired implementation, says #783 was not separately accepted, and leaves runtime implementation and acceptance pending. Live GitHub still lists #783 and #784 as open. Named webhook/API-key tests for P4/#47 remain planned; no feature, runtime, issue, or stage closure follows from this document import.
+- The security-scope import (`.github/workflows/ci-full.yml`, `scripts/ci/**`, `docs/04-engineering/ci-cd.md`, and related records) is blob-identical to accepted main. It adds **zero** candidate-specific authority or CI pass/fail behavior beyond accepted main. The separate #802 accepted-main conservation receipt reports its merge tree equals reviewed candidate `da6fdb1a86f5415cd14601fbd0e40ec070718dea`; I also verified that tree ID equality locally. #802's ordinary/full-Sol clearance and hosted image proof remain source-bound evidence, not tests performed in this review.
+- `git diff --check` against accepted main exits 2 on five trailing-space lines and a final blank line inside the preserved raw Sol report. The same three-file `git diff --quiet` against old publication exits 0, proving these bytes were inherited intact. They are intentional Markdown hard-break/report-preservation bytes, not a new security or gate change. I did not rewrite the authentic report or claim a clean whole diff.
+- Queried live PR #782: its remote head is still `5a82e30c7c3207b454545144bd3658a0ad5827df`, with cancelled checks on that older head. They cannot establish required exact-publication CI for local candidate `97f4772a63821bcbe3d3be4a1397afffa3f76a5d`.
+
+**Tests run here:** no suites, database, Docker, image, browser, or runtime test. This is a Git-object and source-coverage confirmation for the mechanical import; those other proofs are either bound to accepted #802 or must run on the published #782 head as applicable.
+
+## Verdict
+
+**CLEAR — lightweight independent Sol-tier security confirmation for exact local head `97f4772a63821bcbe3d3be4a1397afffa3f76a5d`.** No blocking finding. The accepted-main import preserves the reviewed PR-specific contract and report bytes and introduces no new authority or gate semantics beyond accepted main. Non-blocking: inherited raw-report Markdown whitespace and the previously recorded self-row runtime precision caveat. Residual gates: publish the exact candidate and obtain required GitHub checks on that exact remote head, then use the normal protected merge flow. This verdict does not accept P4/#47, #783/#784, runtime behavior, or stage completion.
+
