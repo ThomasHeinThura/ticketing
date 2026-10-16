@@ -2801,3 +2801,191 @@ The imported webhook/API-key material marks absent feature tables/extensions and
 
 No tests, PostgreSQL, Docker, browser, hosted CI, GitHub review mutation, push, or runtime acceptance ran in this context. The 6b PostgreSQL 206-file/2,950-test and image proofs are historical evidence for 6b, not acceptance for `966e1ba`. Current exact-head hosted checks, image/runtime proof and the normal protected PR gates remain the conductor's work. This report does not claim #580 completion, `check:queries` activation, stage closure, a gate waiver, or merge authorization.
 
+
+
+## Accepted identity-clock main composition - current source reviews
+
+**Reviewed head:** `a560cc081a583795aec871f0ddbefdf582914471`
+
+This normal accepted-main composition has two independent ordinary reviews and a full independent security review. Source clearance is not current runtime, image, hosted-check, integrated SIT or merge acceptance. Existing authentic records remain unchanged. The non-UTC OIDC binding coverage gap is retained below.
+
+
+### Composition author
+
+`notification-accepted795-main-composition-luna.md`
+
+SHA-256 `e5a4e481638f1c7b6785dcee8b6faa918a3e88e2d25d821c87cd20bcbfd251e5`
+
+# #785 accepted #795/main composition handoff
+
+## Result
+
+**COMPOSED LOCALLY.** Accepted main was merged normally into the existing #785 publication. The two overlapping authentication files auto-merged into a small, reviewable join; I inspected the exact hunks and surrounding lock flows and found no unresolved semantic choice. No push, PR action, CI, PostgreSQL, Docker, browser, image build, or full suite was run.
+
+## Exact history
+
+- Worktree: `/Users/heinthura/.codex/worktrees/q580-b4/Ticketing.v2`
+- Branch: `codex/query-ownership-580-b4`
+- Before: clean at `fae77b205d0df4c4502cfd32350d29b7b08946d8`
+- Refreshed `origin/main`: `81781ab244cc1e6c9fac667f309de17a1e494caa`
+- Composition: `a560cc081a583795aec871f0ddbefdf582914471`
+- Parents, in order: `fae77b205d0df4c4502cfd32350d29b7b08946d8`, `81781ab244cc1e6c9fac667f309de17a1e494caa`
+- The accepted main is an ancestor of the composition. Worktree is clean; branch is local and ahead of its tracking ref, and was not pushed.
+
+## Net diff and provenance
+
+The normal merge used `git merge --no-commit --no-ff origin/main`. Git reported no conflicts. The first-parent merge delta contains exactly these ten accepted-main paths:
+
+1. `.gitleaksignore`
+2. `apps/api/src/auth/repository.ts`
+3. `apps/api/src/identity/oidc-login.ts`
+4. `apps/api/src/instance/users/repository.ts`
+5. `apps/api/src/pending-action/service.ts`
+6. `apps/api/src/work-item/controllers/create-comment.ts`
+7. `docs/07-planning/decision-log.md`
+8. `docs/07-planning/security-reviews/identity-timezones-631.md`
+9. `tests/api-integration/identity-clock-ahead-of-utc.test.ts`
+10. `tests/api-integration/identity-clock-behind-utc.test.ts`
+
+The eight non-overlapping paths match `81781ab` byte-for-byte, including both 67-test non-UTC PostgreSQL wrappers, the accepted #795 review note, decision record, and scanner fingerprints. The durable #764 resolved-identity contract documents also match accepted main byte-for-byte. The notification own-note prefix is unchanged from `fae77b2`; all historical positive and adverse reports remain intact.
+
+The two overlapping files are `auth/repository.ts` and `identity/oidc-login.ts`. Comparing the merge against the #785 first parent shows only the #795 UTC-clock correction in these files: import/use `dbNowUtc()` for `lockActiveStepUpSession`, `bindOidcSessionProvenance`, and `bindTwoFactorOidcSession`. The existing transaction and lock order in those functions is unchanged. The accepted #795 changes in the other three API files are exact matches to main. The `ded9b7e9` production-auth/query-ownership source remains intact with those five accepted #795 API-file deltas layered on it. The canonical Customer role-restoration fixture remains byte-identical to `4381fdb21b3a532bdb569c7f80f158e787031c54`.
+
+The source/test diff from `ded9b7e9` is limited to the five #795 API files above, the two #795 timezone wrappers, and the already reviewed #785 fixture repair. Thus the repository extractions, notification guards, canonical customer admission, and existing locks from the #785 candidate are conserved. The authenticated OIDC flow still takes connection and external-identity locks before updating the session; only the expiry comparison changed. Step-up still uses the same `FOR UPDATE` session query; only its timestamp expression changed. No new authority, route, capability, migration, dependency, environment variable, or gate semantics were introduced.
+
+## Validation
+
+- Refreshed and verified `origin/main`, exact merge parents, clean status, ancestry, incoming path list, non-overlap byte equality, accepted #764 contract equality, notification note conservation, fixture equality, and exact `ded9b7e9` plus #795/fixture source-test delta.
+- `pnpm --filter @taskdesk/api typecheck` passed all five configured TypeScript projects.
+- Scoped `git diff --check` over the five API files and two timezone tests passed.
+- The commit hook reported three Biome `useOptionalChain` warnings at existing OIDC guard expressions (then lines 531, 581, 929); it made no changes and the merge commit succeeded. No lint fix was applied as part of this composition.
+- No tests were run. The #785 full PostgreSQL 206-file / 2,950-test pass and its image proof remain bound to `fae77b2`, not this new head. The #795 run evidence is bound to its own accepted source/publication; neither is represented as a fresh runtime result for `a560cc0`.
+
+The current authentication join is a new composition delta. The conductor should classify its review tier at the exact head; this handoff is not independent review or acceptance.
+
+
+### Independent ordinary review A
+
+`notification-accepted795-main-ordinary-a-luna.md`
+
+SHA-256 `2fba2d18c1945c34bc19c4682cb0764cf0ab641fda8a12d14fb7cc394752f930`
+
+# #785 accepted #795/main composition — independent ordinary review A
+
+**Reviewed head:** `a560cc081a583795aec871f0ddbefdf582914471`  
+**Comparison base:** `fae77b205d0df4c4502cfd32350d29b7b08946d8`  
+**Accepted-main parent:** `81781ab244cc1e6c9fac667f309de17a1e494caa`  
+**Role and independence:** Fresh independent ordinary reviewer A, assigned GPT-6 Luna tier. I did not author, direct, or remediate this composition. The platform does not expose a serving-model/version attestation in this context; GPT-6 Luna records the explicitly assigned role.  
+**Verdict:** **CLEAR for the bounded authentication composition delta; no blocking findings.** One non-blocking regression-coverage gap is recorded below. This does not assert current-head PostgreSQL, image, runtime, hosted CI, or merge acceptance.
+
+## Scope checked
+
+Read repository `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, the active mission, current status and decision log, `docs/03-features/identity-provisioning.md` (IP-3 and IP-27), and the session provenance contract in `docs/01-architecture/auth-and-identity.md`. Inspected the exact merge and focused source diffs for `apps/api/src/auth/repository.ts`, `apps/api/src/identity/oidc-login.ts`, `apps/api/src/utils/db-time.ts`, and the two imported timezone wrappers. Traced `lockActiveStepUpSession`, `bindOidcSessionProvenance`, and `bindTwoFactorOidcSession`, including their current transactions and source-lock calls. Confirmed the canonical Customer predicate, OIDC JIT admission implementation, and its retry regression test are unchanged from the prior reviewed source.
+
+I read the composition handoff, prior #785 repeat-admission ordinary A/B and full Sol reports, the canonical Customer fixture repair reports, and the #631 ordinary and composition reports. The older hosted #785 failure remains adverse evidence on its original predecessor SHA; it was not treated as a result for this head. Prior clear verdicts remain scoped to their reviewed SHAs and source paths.
+
+## Review findings
+
+The auth-file merge delta is limited to importing `dbNowUtc()` and replacing three bare `now()` expiry comparisons: `lockActiveStepUpSession`, `bindOidcSessionProvenance`, and `bindTwoFactorOidcSession`. The helper returns `(now() AT TIME ZONE 'UTC')`, a `timestamp without time zone`, matching the session column's documented UTC-wall-clock representation. That avoids PostgreSQL session-TimeZone coercion while keeping the database clock as the source of time.
+
+No transaction, row-lock, or failure-path logic changed. The step-up session query retains its `FOR UPDATE` and the exact user, portal, and session predicates. OIDC provenance binding still locks the enabled connection before the matching external identity and only then updates an unbound, matching, unexpired session. Two-factor binding still consumes the verification marker in the same transaction, validates its recorded connection/portal/user tuple, rechecks the enabled connection and external identity, and returns `invalid` when the session update matches no active row. This preserves the connection-disable serialization and fail-closed behavior. The merge does not modify canonical Customer admission, repeat-login reconciliation, source-scoped grant retirement, or session issuance; `apps/api/src/identity/repository.ts` and the OIDC JIT regression fixture compare unchanged to the first parent.
+
+**Non-blocking coverage note:** the new ahead/behind-UTC wrappers import `work-item-comment`, `instance-users-guards`, `instance-users`, and `session-freshness` tests. They do not import `identity-connection-admin.test.ts`, which contains direct tests for `bindOidcSessionProvenance` and `bindTwoFactorOidcSession`. Therefore these wrappers do not directly assert those two binding paths under a non-UTC PostgreSQL session, although the source-level type/convention is correct and the existing identity-connection tests remain in the ordinary suite. Consider adding focused timezone coverage if these call sites need an explicit regression oracle.
+
+**Blocking findings:** none.  
+**Residual acceptance limits:** exact-head hosted checks and real PostgreSQL execution remain necessary. The earlier failure and later #785 success evidence belong only to their recorded SHAs.
+
+## Checks actually run
+
+- Verified `HEAD` is exactly `a560cc081a583795aec871f0ddbefdf582914471`; checkout is clean.
+- Inspected exact two-parent metadata and the merge delta against first parent.
+- `git diff --check fae77b205d0df4c4502cfd32350d29b7b08946d8 HEAD` for the focused auth/timezone files — passed.
+- `git diff --quiet fae77b205d0df4c4502cfd32350d29b7b08946d8 HEAD -- apps/api/src/identity/repository.ts tests/api-integration/identity/oidc-jit-login.test.ts tests/api-integration/identity/mapping-role-guards.test.ts` — passed; these reviewed #785 inputs are unchanged.
+- No tests, typecheck, lint, PostgreSQL, Docker, browser, image build, provider I/O, CI, or PR action was run in this review context.
+
+
+### Independent ordinary review B
+
+`notification-accepted795-main-ordinary-b-luna.md`
+
+SHA-256 `f5db04407fea72fe19e6f4e8ac38e73ed630b15f09aec52df33264a65445d0f9`
+
+# Notification accepted #795 main composition — independent ordinary review B
+
+**Reviewed head:** `a560cc081a583795aec871f0ddbefdf582914471`
+
+**Verdict: CLEAR for the bounded accepted-main composition and conservation scope.** I found no blocking defect in the merge or the reviewed notification/customer-admission safeguards.
+
+## Reviewer and scope
+
+- **Model selector:** GPT-6 Luna. No platform-reported runtime version is attested here.
+- **Role and independence:** Fresh independent ordinary reviewer B; I did not author, direct, or remediate this candidate. Review was read-only.
+- **Parents:** `fae77b205d0df4c4502cfd32350d29b7b08946d8` and accepted main `81781ab244cc1e6c9fac667f309de17a1e494caa`.
+- **Scope:** exact merge composition; conservation of the #785 notification repository extraction, fail-closed notification authorization, canonical customer admission, and fixtures; the #795 UTC clock fixes and non-UTC coverage; retention of accepted #764 resolved-identity tenant scoping.
+- **Guidance read:** repository `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, current `docs/07-planning/status.md` and decision log, `docs/03-features/notifications.md`, customer portal and multi-tenancy contracts, plus the #580 and #631 security-review records.
+
+## Checks and assessment
+
+The candidate is the expected two-parent merge; both supplied parents are ancestors. The merge-parent delta contains ten paths. Eight are byte-identical to accepted main: `.gitleaksignore`, `apps/api/src/instance/users/repository.ts`, `apps/api/src/pending-action/service.ts`, `apps/api/src/work-item/controllers/create-comment.ts`, `docs/07-planning/decision-log.md`, the #631 review note, and both timezone integration wrappers. The remaining two paths, `apps/api/src/auth/repository.ts` and `apps/api/src/identity/oidc-login.ts`, deliberately join accepted-main changes with the #631 UTC wall-clock correction. I inspected both parent-relative diffs: the admitted-customer query now returns all persisted membership/role facts for canonical validation, and the OIDC changes retain main's default-role locking and customer JIT denial behavior while using `dbNowUtc()` for both session-expiry comparisons.
+
+The first-parent diff is limited to those ten merge paths, so the notification implementation and fixtures are conserved through this merge. I inspected the notification audience gates and their focused tests. Customer eligibility requires a supported event and customer-visible resource; assignment/unassignment, internal comments and other staff-only activity fail closed before preferences/provider projection. Native inbox checks also require the recipient person match, current resource, current reach and canonical `work_item:read`; customer authority is checked at the serving organisation. The tests exercise public/private audiences, requester/participant versus nonparticipant, foreign organisation, staff-only event denials, absent resource/identity, unknown event, and post-revocation behavior.
+
+The canonical-customer admission safeguard is present in the shared resolver: it refuses missing, ambiguous, wrong-organisation, non-system, wrong-role or malformed-capability membership facts and constructs capabilities only from the compiled built-in role. The #785 integration oracle in `work-item-comment.test.ts` removes the admitted organisation membership while person and organisation remain active, then verifies `resolveIdentity` becomes null, inbox list is empty, direct mark leaves the row unread, bulk read leaves rows unread, and clear retains them; restoring the membership restores access. The shared customer fixture now writes the actual built-in customer role and own-organisation membership and validates its rank, capabilities, system provenance and workspace binding. `portal-identity-boundary.test.ts` also checks that portal access is refused after membership revocation.
+
+The #795 wrappers set Node and PostgreSQL session time zones before dynamically importing the suites, assert both are non-UTC, and run comment, user-guard, user-directory and session-freshness suites under Yangon and New York. The joined auth files use the same UTC wall-clock helper for expiry predicates. The wrappers and the other eight exact imports match accepted-main blobs.
+
+The accepted #764 tenant contract remains in `multi-tenancy.md` and the related coding/layout guidance: cross-organisation repository reads take resolved identity, constrain any supplied tenant identifier against it, and apply reach in the query predicate. The contract explicitly treats `forIdentity(identity)` as an illustration, not a universal implemented wrapper. The merge introduces no identity-provider authority grant or route/gate change.
+
+**Checks actually run:** exact parent/ancestor checks; merge-parent path and Git blob comparisons; source and fixture inspection; `git diff --check fae77b20 a560cc08`. No test, PostgreSQL, build/image, browser, hosted CI or remote PR check was run.
+
+## Findings and residuals
+
+- **Blocking:** none.
+- **Non-blocking:** `git diff --check` reports one new blank line at EOF in the accepted-main-imported `docs/07-planning/security-reviews/identity-timezones-631.md` (line 548). The file is byte-identical to accepted main; this is a whitespace-only cleanliness issue and does not alter the preserved review evidence or product behavior.
+- Runtime behavior of the timezone wrappers and integration oracles was inspected but not executed here. Exact-head tests, image/boot/health, hosted checks, browser verification, and the separate required Sol review remain outside this ordinary review.
+
+**Conclusion:** CLEAR for this bounded composition review at exact head `a560cc081a583795aec871f0ddbefdf582914471`.
+
+
+### Independent full security review
+
+`notification-accepted795-main-security-sol.md`
+
+SHA-256 `32db427ea5d282cc730998ace7ce15adb7ccc1f18c4a01d378e5ab3da3b30e3e`
+
+# #785 accepted #795/main composition — independent full security review
+
+**Reviewed head:** `a560cc081a583795aec871f0ddbefdf582914471`  
+**Comparison base:** first parent `fae77b205d0df4c4502cfd32350d29b7b08946d8`; accepted-main second parent `81781ab244cc1e6c9fac667f309de17a1e494caa`  
+**Role and provenance:** Fresh independent full security reviewer; parent assignment explicitly selected `gpt-6-sol` with a fresh context. I did not author, direct, remediate, or adjudicate this composition or its prior candidates. No separate serving-model/version attestation is available here.  
+**Verdict:** **CLEAR for the exact-head source security review.** No blocking findings. The coverage and runtime limits below remain; this verdict does not attest PostgreSQL, image, browser, hosted CI, or merge readiness on this head.
+
+## Scope and security assessment
+
+I read `AGENTS.md`, `agent-workflow.md`, `CLAUDE.md`, current status/decision records, the identity-provisioning IP-2/IP-3/IP-7/IP-22/IP-27/IP-28 contracts, the native OIDC session-provenance contract, and the notifications customer-audience/reach contract. I independently inspected both parent-relative diffs and the current `auth.ts`, auth repository, OIDC callback/repository, customer-membership and resolved-identity code, notification current eligibility and native inbox reach. I read the composition and both ordinary CLEAR reports and the earlier full Sol repeat-admission and canonical-fixture reports as context; none substitutes for this review or supplies current-head runtime evidence.
+
+The ten first-parent paths are the accepted #795 import. Eight are byte-identical to accepted main, including its two non-UTC integration wrappers. The two overlapping authentication files retain the #785 customer admission and OIDC reconciliation changes, then add the #795 `dbNowUtc()` expression in exactly three `session.expires_at` predicates: step-up's `lockActiveStepUpSession`, direct OIDC `bindOidcSessionProvenance`, and `bindTwoFactorOidcSession`. The session column is a UTC-wall-clock `timestamp without time zone`; `(now() AT TIME ZONE 'UTC')` gives the same SQL type and UTC convention, avoiding a database session-TimeZone shift. No new clock source, exception path, transaction boundary, identity selector, or authority grant appears in the join.
+
+The step-up query still binds the exact session and user, requires the agent portal, and locks the unexpired row before proof use. Both OIDC provenance paths still lock the enabled connection and matching external identity before updating only an unbound session for that user and portal. The two-factor path consumes the signed challenge marker in its transaction, verifies its connection/portal/user tuple, and returns `invalid` when no live session can be bound; the caller deletes the newly created session. The direct path likewise deletes an unbound session on failure before a cookie is emitted. Connection disable and provenance binding remain serialized by the connection row lock.
+
+For the substantive #785 authority path preserved in this head, the callback validates the protocol token before reading claims, binds the selected connection and immutable subject, and rechecks signed Entra admission under the current connection configuration in the grant transaction. The closure includes the proposed default role, and repeat login takes the default-role lock before the common role predicate. A customer default is eligible only when its persisted role is the canonical system Customer role with the exact rank and ordered compiled capabilities in the active bound organisation. An invalid default denies customer JIT repeat login; current-identity OIDC/JIT grants alone are retired and projected before returning denial, with no new Better Auth session/cookie. Direct, SCIM, and other-connection grant sources are outside that retirement selection. The request resolver and portal session gate independently require the live own-organisation canonical membership; resulting Customer authority comes from the compiled role, and inbox read/send paths re-evaluate current identity, recipient, event audience, resource reach, and capability. I found no path in this join for IdP data to grant staff or instance authority or for stale notification reach to become customer-visible.
+
+## Findings and residuals
+
+**Blocking findings:** none.
+
+**Non-blocking coverage gap:** the accepted #795 ahead/behind-UTC wrappers exercise session freshness, comments and user-directory suites, but do not directly import the existing identity-connection tests for either OIDC provenance-binding function under a non-UTC PostgreSQL session. Source and SQL-type inspection support the correction; this review does not claim that those two paths have a non-UTC integration result on this head.
+
+**Non-blocking record hygiene:** whole first-parent `git diff --check` reports the accepted-main-imported blank line at EOF in `identity-timezones-631.md:548`. Its blob matches accepted main. The focused source/test diff check passes.
+
+**Acceptance limits:** no current-head PostgreSQL test, shipping image/boot/health proof, browser workflow, or required GitHub status checks were run or inferred here. Historical adverse and passing runs remain attached to their recorded SHAs. The exact candidate must satisfy its normal current-head gates before merge.
+
+## Checks actually run
+
+- Confirmed clean checkout at exact reviewed SHA and both exact merge parents.
+- Compared all eight non-overlapping imported paths against accepted main (`git diff --quiet HEAD^2 HEAD -- <eight paths>`: pass) and the notification, identity-repository, canonical-membership and JIT-test paths against the first parent (`git diff --quiet HEAD^1 HEAD -- <paths>`: pass).
+- Inspected the complete focused auth-file joins and traced the relevant transaction, role lock, source-scoped retirement, session-creation, portal-identity and notification predicates in current source.
+- Ran `git diff --check HEAD^1 HEAD` (one accepted review-note EOF blank line, identified above) and a scoped source/test `git diff --check` (pass).
+- Ran `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/permissions/resolve-identity.test.ts ../../tests/api/notification/native-inbox-reach.test.ts`: **2 files, 65 tests passed** on this checkout.
+- Did not run PostgreSQL integration, full unit suite, typecheck, lint, Docker, browser, CI, or PR actions in this reviewer context. The author's typecheck and older runtime results are separately sourced evidence, not checks I ran.
+
