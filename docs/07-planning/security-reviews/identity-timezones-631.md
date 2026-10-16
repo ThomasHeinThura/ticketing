@@ -393,3 +393,9 @@ I inspected the five-file API diff relative to accepted main. It contains only t
 ## Limits
 
 No PostgreSQL, Docker/image build or boot, browser, full test suite, hosted CI, remote PR-head, or release proof was run or checked here. Historical test results are not claimed as candidate runtime acceptance. The exact candidate still needs its applicable hosted checks and current image/boot/health evidence under the normal flow. This verdict addresses only the local composition at `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`.
+
+## Machine-readable binding clarification
+
+**Reviewed head:** `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`
+
+This field records the exact source already identified and cleared by the unchanged current ordinary and Sol reports above. The prior unbackticked header was not machine-readable. This clarification supplies no new verdict, does not relabel a source, and changes no report bytes or product code. Publicationfb7 is only the +112/-0 append of those authentic reports after92; this later clarification also changes only this same regular review-note file. The body model name is GPT-6 Sol without trailing punctuation. Main has since advanced, so strict current-main composition and new publication-SHA checks remain required.
