@@ -1,5 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import { insertRequiredTaskActivity } from "../../activity/repository";
 import db from "../../database";
 import { publishEvent } from "../../events";
 import { validateAndParseDate } from "../../utils/validate-dates";
@@ -36,6 +37,16 @@ async function updateTaskDueDate({
           message: "Failed to update task due date",
         });
       }
+      await insertRequiredTaskActivity(tx, identity, {
+        taskId: updatedTask.id,
+        type: "due_date_changed",
+        userId: currentUserId,
+        content: null,
+        eventData: {
+          oldDueDate: existingTask.dueDate,
+          newDueDate: dueDate,
+        },
+      });
       return { existingTask, updatedTask, dueDate };
     },
   );

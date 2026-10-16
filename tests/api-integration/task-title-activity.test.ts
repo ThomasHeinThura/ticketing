@@ -7,7 +7,13 @@ import { subscribeToEvent } from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import bulkUpdateTasks from "../../apps/api/src/task/controllers/bulk-update-tasks";
+import createTask from "../../apps/api/src/task/controllers/create-task";
+import importTasks from "../../apps/api/src/task/controllers/import-tasks";
+import moveTask from "../../apps/api/src/task/controllers/move-task";
+import updateTaskAssignee from "../../apps/api/src/task/controllers/update-task-assignee";
 import updateTaskDueDate from "../../apps/api/src/task/controllers/update-task-due-date";
+import updateTaskPriority from "../../apps/api/src/task/controllers/update-task-priority";
+import updateTaskStatus from "../../apps/api/src/task/controllers/update-task-status";
 import updateTaskTitle from "../../apps/api/src/task/controllers/update-task-title";
 import * as taskRepository from "../../apps/api/src/task/repository";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -356,6 +362,253 @@ describe("API integration: task title activity", () => {
         newTitle: "Updated title",
       },
     });
+  });
+
+  it("stores the existing create, import, update, bulk, assignee, due-date, and move history mappings once", async () => {
+    const { member, task, identity } = await createTaskFixture();
+    const created = await createTask({
+      identity,
+      projectId: task.projectId,
+      currentUserId: member.user.id,
+      title: "Created task",
+      status: "to-do",
+    });
+    let rows = await db
+      .select()
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.taskId, created.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      type: "created",
+      userId: member.user.id,
+      content: null,
+      eventData: {},
+    });
+
+    const imported = await importTasks(
+      identity,
+      task.projectId,
+      [{ title: "Imported task", status: "to-do" }],
+      member.user.id,
+    );
+    const importedTask = imported.results.tasks[0];
+    expect(importedTask?.success).toBe(true);
+    const importedTaskId =
+      importedTask && "id" in importedTask.task
+        ? importedTask.task.id
+        : undefined;
+    if (!importedTaskId) throw new Error("expected imported task");
+    rows = await db
+      .select()
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.taskId, importedTaskId));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      type: "create",
+      userId: member.user.id,
+      content: null,
+      eventData: {},
+    });
+
+    await updateTaskStatus({
+      identity,
+      id: task.id,
+      status: "done",
+      currentUserId: member.user.id,
+    });
+    await updateTaskPriority({
+      identity,
+      id: task.id,
+      priority: "high",
+      currentUserId: member.user.id,
+    });
+    await updateTaskAssignee({
+      identity,
+      id: task.id,
+      userId: member.user.id,
+      currentUserId: member.user.id,
+    });
+    await updateTaskAssignee({
+      identity,
+      id: task.id,
+      userId: null,
+      currentUserId: member.user.id,
+    });
+    await updateTaskDueDate({
+      identity,
+      id: task.id,
+      dueDate: "2026-12-01",
+      currentUserId: member.user.id,
+    });
+
+    const bulk = await bulkUpdateTasks({
+      identity,
+      taskIds: [task.id],
+      operation: "updateStatus",
+      value: "in-progress",
+      userId: member.user.id,
+      workspaceId: member.workspace.id,
+      reach: {
+        reaches: async () => true,
+        can: async () => true,
+        reachableProjectIds: async () => [task.projectId],
+      },
+    });
+    expect(bulk.updatedCount).toBe(1);
+
+    for (const [operation, value] of [
+      ["updatePriority", "low"],
+      ["updateAssignee", member.user.id],
+      ["updateAssignee", null],
+      ["updateDueDate", "2026-12-02"],
+    ] as const) {
+      const bulkResult = await bulkUpdateTasks({
+        identity,
+        taskIds: [task.id],
+        operation,
+        value,
+        userId: member.user.id,
+        workspaceId: member.workspace.id,
+        reach: {
+          reaches: async () => true,
+          can: async () => true,
+          reachableProjectIds: async () => [task.projectId],
+        },
+      });
+      expect(bulkResult.updatedCount).toBe(1);
+    }
+
+    const destination = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    await grantWorkItemProjectAccess(member.user.id, destination.project.id);
+    const currentIdentity = await resolveIdentity({
+      userId: member.user.id,
+      credential: "session",
+    });
+    if (!currentIdentity) throw new Error("expected move identity");
+    const moved = await moveTask({
+      identity: currentIdentity,
+      taskId: task.id,
+      destinationProjectId: destination.project.id,
+      currentUserId: member.user.id,
+    });
+
+    const taskHistory = await db
+      .select()
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.taskId, task.id));
+    expect(taskHistory.map(({ type }) => type).sort()).toEqual(
+      [
+        "status_changed",
+        "due_date_changed",
+        "assignee_changed",
+        "unassigned",
+        "priority_changed",
+        "status_changed",
+        "priority_changed",
+        "assignee_changed",
+        "unassigned",
+        "due_date_changed",
+        "moved",
+      ].sort(),
+    );
+    expect(taskHistory).toHaveLength(11);
+    expect(
+      taskHistory.find(
+        ({ type, eventData }) =>
+          type === "status_changed" &&
+          (eventData as { oldStatus?: string }).oldStatus === "to-do",
+      ),
+    ).toMatchObject({ eventData: { oldStatus: "to-do", newStatus: "done" } });
+    expect(
+      taskHistory.find(
+        ({ type, eventData }) =>
+          type === "status_changed" &&
+          (eventData as { newStatus?: string }).newStatus === "in-progress",
+      ),
+    ).toMatchObject({ eventData: { newStatus: "in-progress" } });
+    expect(
+      taskHistory.find(({ type }) => type === "priority_changed"),
+    ).toMatchObject({
+      eventData: { oldPriority: "medium", newPriority: "high" },
+    });
+    expect(
+      taskHistory.find(
+        ({ type, eventData }) =>
+          type === "priority_changed" &&
+          (eventData as { newPriority?: string }).newPriority === "low",
+      ),
+    ).toMatchObject({ eventData: { newPriority: "low" } });
+    expect(
+      taskHistory.find(({ type }) => type === "assignee_changed"),
+    ).toMatchObject({
+      eventData: {
+        newAssigneeId: member.user.id,
+        isSelfAssigned: true,
+      },
+    });
+    expect(taskHistory.find(({ type }) => type === "unassigned")).toMatchObject(
+      { eventData: {} },
+    );
+    expect(
+      taskHistory.filter(({ type }) => type === "unassigned"),
+    ).toHaveLength(2);
+    expect(
+      taskHistory.filter(({ type }) => type === "assignee_changed"),
+    ).toHaveLength(2);
+    expect(
+      taskHistory.find(({ type }) => type === "due_date_changed"),
+    ).toMatchObject({
+      eventData: {
+        oldDueDate: null,
+        newDueDate: "2026-12-01T00:00:00.000Z",
+      },
+    });
+    expect(
+      taskHistory.find(
+        ({ type, eventData }) =>
+          type === "due_date_changed" &&
+          (eventData as { newDueDate?: string }).newDueDate ===
+            "2026-12-02T00:00:00.000Z",
+      ),
+    ).toMatchObject({
+      eventData: {
+        oldDueDate: "2026-12-01T00:00:00.000Z",
+        newDueDate: "2026-12-02T00:00:00.000Z",
+      },
+    });
+    expect(taskHistory.find(({ type }) => type === "moved")).toMatchObject({
+      eventData: {
+        fromProjectId: task.projectId,
+        toProjectId: moved.destinationProjectId,
+        oldStatus: "in-progress",
+        newStatus: "in-progress",
+      },
+    });
+  });
+
+  it("rolls back a task status change when its required history insert is refused", async () => {
+    const { task, identity } = await createTaskFixture();
+
+    await expect(
+      updateTaskStatus({
+        identity,
+        id: task.id,
+        status: "done",
+        currentUserId: "missing-user",
+      }),
+    ).rejects.toThrow();
+
+    const persistedTask = await db.query.taskTable.findFirst({
+      where: eq(schema.taskTable.id, task.id),
+    });
+    const activities = await db
+      .select()
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.taskId, task.id));
+    expect(persistedTask?.status).toBe("to-do");
+    expect(activities).toHaveLength(0);
   });
 
   it("does not create activity for an unchanged title", async () => {

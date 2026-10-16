@@ -1,5 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import { insertRequiredTaskActivity } from "../../activity/repository";
 import db from "../../database";
 import { publishEvent } from "../../events";
 import {
@@ -121,6 +122,16 @@ async function createTask({
         number: taskNumber,
         position: nextPosition,
       });
+
+      if (task) {
+        await insertRequiredTaskActivity(tx, identity, {
+          taskId: task.id,
+          type: "created",
+          userId: currentUserId,
+          content: null,
+          eventData: {},
+        });
+      }
 
       return { task, assigneeName: assignee?.name };
     },

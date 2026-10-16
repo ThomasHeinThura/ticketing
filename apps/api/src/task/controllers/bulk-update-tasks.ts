@@ -1,5 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import { insertRequiredTaskActivity } from "../../activity/repository";
 import db from "../../database";
 import type { Executor } from "../../database/executor";
 import type { labelTable } from "../../database/schema";
@@ -279,6 +280,13 @@ async function bulkUpdateTasks({
             if (!updated) {
               throw new HTTPException(404, { message: "Task not found" });
             }
+            await insertRequiredTaskActivity(tx, identity, {
+              taskId,
+              type: "status_changed",
+              userId,
+              content: null,
+              eventData: { oldStatus: undefined, newStatus: status },
+            });
             itemEvents.push(() =>
               publishEvent("task.status_changed", {
                 taskId,
@@ -304,6 +312,13 @@ async function bulkUpdateTasks({
             if (!updated) {
               throw new HTTPException(404, { message: "Task not found" });
             }
+            await insertRequiredTaskActivity(tx, identity, {
+              taskId,
+              type: "priority_changed",
+              userId,
+              content: null,
+              eventData: { oldPriority: undefined, newPriority: priority },
+            });
             itemEvents.push(() =>
               publishEvent("task.priority_changed", {
                 taskId,
@@ -343,6 +358,19 @@ async function bulkUpdateTasks({
             if (!updated) {
               throw new HTTPException(404, { message: "Task not found" });
             }
+            await insertRequiredTaskActivity(tx, identity, {
+              taskId,
+              type: assigneeId ? "assignee_changed" : "unassigned",
+              userId,
+              content: null,
+              eventData: assigneeId
+                ? {
+                    newAssigneeId: assigneeId,
+                    newAssignee: newAssigneeName,
+                    isSelfAssigned: userId === assigneeId,
+                  }
+                : {},
+            });
             const eventData = {
               taskId,
               projectId: task.projectId,
@@ -442,6 +470,22 @@ async function bulkUpdateTasks({
             if (!updated) {
               throw new HTTPException(404, { message: "Task not found" });
             }
+            await insertRequiredTaskActivity(tx, identity, {
+              taskId,
+              type: "due_date_changed",
+              userId,
+              content: null,
+              eventData: {
+                oldDueDate:
+                  task.dueDate instanceof Date
+                    ? task.dueDate.toISOString()
+                    : task.dueDate,
+                newDueDate:
+                  parsedDate instanceof Date
+                    ? parsedDate.toISOString()
+                    : parsedDate,
+              },
+            });
             itemEvents.push(() =>
               publishEvent("task.due_date_changed", {
                 taskId,

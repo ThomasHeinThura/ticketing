@@ -19,11 +19,6 @@ import {
   taskTable,
   userTable,
 } from "../database/schema";
-import { resolveIdentity } from "../permissions/resolve-identity";
-
-export async function resolveActorIdentity(userId: string) {
-  return resolveIdentity({ userId, credential: "session" });
-}
 
 function taskReach(
   identity: ResolvedIdentity,
@@ -172,6 +167,17 @@ export async function insertTaskActivity(
     .select(select)
     .returning();
   return row;
+}
+
+/** A task mutation and its history row must commit or roll back together. */
+export async function insertRequiredTaskActivity(
+  executor: Executor,
+  identity: ResolvedIdentity,
+  values: NewTaskActivity,
+) {
+  const activity = await insertTaskActivity(executor, identity, values);
+  if (!activity) throw new HTTPException(404, { message: "Task not found" });
+  return activity;
 }
 
 export async function insertCommentActivity(
@@ -344,11 +350,14 @@ export async function listTaskActivitiesNewestFirst(
   taskId: string,
   executor: Executor = db,
 ) {
-  return executor.query.taskActivityTable.findMany({
-    where: and(
-      eq(taskActivityTable.taskId, taskId),
-      taskReach(identity, taskActivityTable.taskId, executor),
-    ),
-    orderBy: [desc(taskActivityTable.createdAt)],
-  });
+  return executor
+    .select()
+    .from(taskActivityTable)
+    .where(
+      and(
+        eq(taskActivityTable.taskId, taskId),
+        taskReach(identity, taskActivityTable.taskId, executor),
+      ),
+    )
+    .orderBy(desc(taskActivityTable.createdAt));
 }

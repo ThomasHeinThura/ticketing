@@ -1,5 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import { insertRequiredTaskActivity } from "../../activity/repository";
 import db from "../../database";
 import { publishEvent } from "../../events";
 import { assertAssignableUserAndLockMembership } from "../../utils/assert-assignable-user";
@@ -23,38 +24,70 @@ async function updateTaskAssignee({
   currentUserId: string;
 }) {
   const nextAssigneeId = userId?.trim() || null;
-  const { existingTask, updatedTask } = await db.transaction(async (tx) => {
-    const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
-      tx,
-      id,
-      identity,
-    );
-    // Validate body identifiers after the frozen-task check, before they reach raw
-    // database filters. `null` (unassign) is left alone.
-    if (userId) {
-      rejectNulByte(userId, "Assignee id");
-    }
-    if (existingTask.userId === nextAssigneeId) {
-      return { existingTask, updatedTask: existingTask };
-    }
-    if (nextAssigneeId) {
-      const project = await findProjectWorkspaceContext(
+  const { existingTask, updatedTask, newAssigneeName } = await db.transaction(
+    async (tx) => {
+      const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
         tx,
+        id,
         identity,
-        existingTask.projectId,
       );
-      if (!project) throw new HTTPException(404, { message: "Task not found" });
-      await assertAssignableUserAndLockMembership(
-        nextAssigneeId,
-        project.workspaceId,
-        tx,
-      );
-    }
-    const updatedTask = await updateTaskRow(tx, identity, id, {
-      userId: nextAssigneeId,
-    });
-    return { existingTask, updatedTask };
-  });
+      // Validate body identifiers after the frozen-task check, before they reach raw
+      // database filters. `null` (unassign) is left alone.
+      if (userId) {
+        rejectNulByte(userId, "Assignee id");
+      }
+      if (existingTask.userId === nextAssigneeId) {
+        return {
+          existingTask,
+          updatedTask: existingTask,
+          newAssigneeName: undefined,
+        };
+      }
+      if (nextAssigneeId) {
+        const project = await findProjectWorkspaceContext(
+          tx,
+          identity,
+          existingTask.projectId,
+        );
+        if (!project)
+          throw new HTTPException(404, { message: "Task not found" });
+        await assertAssignableUserAndLockMembership(
+          nextAssigneeId,
+          project.workspaceId,
+          tx,
+        );
+      }
+      const newAssigneeName = nextAssigneeId
+        ? (
+            await findUserName(
+              identity,
+              nextAssigneeId,
+              existingTask.projectId,
+              tx,
+            )
+          )?.name
+        : undefined;
+      const updatedTask = await updateTaskRow(tx, identity, id, {
+        userId: nextAssigneeId,
+      });
+      if (updatedTask) {
+        await insertRequiredTaskActivity(tx, identity, {
+          taskId: updatedTask.id,
+          type: nextAssigneeId ? "assignee_changed" : "unassigned",
+          userId: currentUserId,
+          content: null,
+          eventData: nextAssigneeId
+            ? {
+                newAssigneeId: nextAssigneeId,
+                newAssignee: newAssigneeName,
+                isSelfAssigned: currentUserId === nextAssigneeId,
+              }
+            : {},
+        });
+      }
+      return { existingTask, updatedTask, newAssigneeName };
+    },
+  );
   if (existingTask.userId === nextAssigneeId) return updatedTask;
 
   if (!updatedTask) {
@@ -62,11 +95,6 @@ async function updateTaskAssignee({
       message: "Failed to update task assignee",
     });
   }
-
-  const newAssigneeName = nextAssigneeId
-    ? (await findUserName(identity, nextAssigneeId, existingTask.projectId))
-        ?.name
-    : undefined;
 
   if (!nextAssigneeId) {
     await publishEvent("task.unassigned", {

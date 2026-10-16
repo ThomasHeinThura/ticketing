@@ -455,7 +455,7 @@ describe("API integration: project preference insert-select shape", () => {
     const { member, project } = await world();
     mockAuthenticatedSession(member.user);
 
-    const response = await call("PATCH", "/api/user-preference/settings", {
+    const response = await call("PATCH", "/api/me/settings", {
       [`layout.${project.id}`]: "list",
     });
     expect(response.status).toBe(200);

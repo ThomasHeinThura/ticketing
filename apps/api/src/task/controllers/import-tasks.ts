@@ -1,5 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import { insertRequiredTaskActivity } from "../../activity/repository";
 import db from "../../database";
 import { publishEvent } from "../../events";
 import {
@@ -145,6 +146,17 @@ async function importTasks(
           priority,
           number: taskNumber,
         });
+
+        // Preserve the existing task.created subscriber's missing-actor guard.
+        if (task && currentUserId) {
+          await insertRequiredTaskActivity(tx, identity, {
+            taskId: task.id,
+            type: "create",
+            userId: currentUserId,
+            content: null,
+            eventData: {},
+          });
+        }
 
         return task;
       });

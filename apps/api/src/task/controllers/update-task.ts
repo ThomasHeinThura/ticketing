@@ -1,5 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import { insertRequiredTaskActivity } from "../../activity/repository";
 import db from "../../database";
 import { publishEvent } from "../../events";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
@@ -102,6 +103,15 @@ async function updateTask(
         position,
         userId: normalizedUserId ?? null,
       });
+      if (updatedTask && lockedTask.status !== status && currentUserId) {
+        await insertRequiredTaskActivity(tx, identity, {
+          taskId: updatedTask.id,
+          type: "status_changed",
+          userId: currentUserId,
+          content: null,
+          eventData: { oldStatus: lockedTask.status, newStatus: status },
+        });
+      }
       return { existingTask: lockedTask, updatedTask };
     },
   );
