@@ -988,7 +988,8 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
           });
         }
         const context = await findProjectWorkspaceContext(
-          tx, identity,
+          tx,
+          identity,
           task.projectId,
         );
         if (!context)
@@ -1039,7 +1040,8 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         });
       }
       const context = await findProjectWorkspaceContext(
-        tx, identity,
+        tx,
+        identity,
         task.projectId,
       );
       if (!context) throw new HTTPException(404, { message: "Task not found" });
@@ -1057,7 +1059,8 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       }
 
       const existingAsset = await findAssetIdByObjectKey(
-        tx, identity,
+        tx,
+        identity,
         normalizedKey,
         task.id,
       );
