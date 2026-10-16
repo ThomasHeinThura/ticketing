@@ -281,3 +281,115 @@ The only API code change removes an unused `sql` import. A source search found n
 I inspected `git diff` and `git log` for both exact objects, the published note lines, hosted scanner finding metadata, restricted local finding metadata, the prior review records, and the retained proof JSON. `git diff --check aea7da52... 569b1a1...` passed. I ran **0** new tests, Gitleaks scans, PostgreSQL checks, Docker/image checks, browser checks, or hosted CI jobs in this reviewer context; the local proof and typecheck are evidence produced by the repair owner, not my runs.
 
 No blocking or non-blocking finding remains within this review scope. The local head is not yet the remote PR head, so required GitHub checks on `569b1a1...` cannot be inferred from earlier runs. The hosted secret scan must confirm this repair with Gitleaks 8.24.3, and the complete required check set, image build/boot/health, and other candidate acceptance gates remain with the conductor. This review does not approve a push, merge, waiver, issue closure, or stage completion.
+
+## Accepted shipping-image main composition
+
+**Reviewed head:** 92f899dc528a1bc51ac47ea878a0148b9dbc5ed7
+
+Accepted main09dd5acf9b66579f6f1bb89622fac9ddbd7de1b6 is normally merged. All five API files and both timezone tests remain byte-identical to publicatione9e94a77a4939ab065c887f40065f6d8fcf39ab5. Prior original full reviews and bounded CI-repair clearances remain at their actual heads. A new strong ordinary context and separate fresh lightweight Sol confirmation clear this mechanical import, including additive preservation of both fingerprint/decision records; the author handoff is not a review. No new scanner exclusion or gate semantics are introduced. Current publication-SHA full hosted checks and actual image/runtime proof remain pending.
+
+### Source report — 795-current-image-main-composition-luna.md
+
+Source SHA-256: `3fff3791f0787f824444cffb517b8822521c326aa72482d7727b625dc4b7d467`.
+
+# PR795 accepted-main composition handoff
+
+**Result:** DONE — composed and committed locally; not pushed, not reviewed by this author context, and not merge-ready on this evidence alone.
+
+**Branch:** `codex/identity-db-timezones-631`
+**Candidate:** `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`
+**Parents:** publication `e9e94a77a4939ab065c887f40065f6d8fcf39ab5`; pinned accepted main `09dd5acf9b66579f6f1bb89622fac9ddbd7de1b6`.
+**Reviewed product source:** `569b1a161de71088599fbbfadef8e681519afd50`.
+
+## Composition and conservation
+
+Performed a normal local `git merge --no-commit --no-ff 09dd5acf...` into the clean e9e94a77 worktree. The only conflicts were additive records in `.gitleaksignore` and `docs/07-planning/decision-log.md`. Resolved by retaining both complete, independent #631 and #780 fingerprint records and both independent decision-log entries. No semantic/product conflict was present.
+
+The following #795 source, test, and authentic review-note Git blobs match publication e9e94a77 exactly:
+
+- `apps/api/src/auth/repository.ts` — `00a26f96fe3414f8f6a5cd70f89a1e23779009f7`
+- `apps/api/src/identity/oidc-login.ts` — `5083b417e7d62f98121b90af109e220e7bf93200`
+- `apps/api/src/instance/users/repository.ts` — `dcd9f1775313b7ba3818427872e0f7dc5bc74c18`
+- `apps/api/src/pending-action/service.ts` — `45118fc39b01b60c5cb2b9a65e43f4ffbeee7159`
+- `apps/api/src/work-item/controllers/create-comment.ts` — `8efa98ccd7954fcdd4fe3228c3c7ba608b17eb14`
+- `tests/api-integration/identity-clock-ahead-of-utc.test.ts` — `91a17f9f8316870078c7bbfc423817ff14b680b0`
+- `tests/api-integration/identity-clock-behind-utc.test.ts` — `545dfc0962877051be32e47166ea7c7caad11768`
+- `docs/07-planning/security-reviews/identity-timezones-631.md` — `53aa0b4f90f636df3a2310d341ea44a8fcb13bda`
+
+The four original #631 exact-fingerprint lines and their complete technical disposition remain byte-identical within `.gitleaksignore` and the decision log. All 12 accepted-main paths not involved in those two additive conflicts match pinned 09dd5acf byte-for-byte. The candidate is a descendant of pinned accepted main; `git diff --check 09dd5acf..92f899dc` passes.
+
+The unchanged authentic #631 note retains two independent ordinary reports and a full independent Sol source report at 952ced75, ordinary and Sol composition clearances at c695eb1f, and ordinary plus full Sol CI-repair clearances at 569b1a16. This author context did not act as a reviewer and adds no review verdict.
+
+## Verification run on local candidate
+
+- API typecheck — PASS (`pnpm --filter @taskdesk/api typecheck`).
+- Web typecheck — PASS (`pnpm --filter @taskdesk/web typecheck`).
+- Shipping-image smoke checker unit tests — PASS, 31/31 (`node --test scripts/ci/run-shipping-image-smoke.test.mjs`; mocked/failure-path tests only).
+- Restored task-description regression unit test — PASS, 2/2 (`pnpm --filter @taskdesk/web exec vitest run --config vitest.config.ts src/components/task/task-description.test.tsx`).
+- Exact Git blob conservation checks and accepted-main path checks — PASS.
+- Merge-base ancestry and candidate diff check against pinned accepted main — PASS.
+- Commit hook reported “Checked 2 files … No fixes applied.”
+
+No PostgreSQL, Docker build/boot, browser, full test suite or hosted GitHub check was run. No old hosted result was transferred to this candidate. Fresh hosted checks and current shipping-image proof are still required after publication; any changed-main compatibility beyond the pinned 09dd5acf base is for the conductor to reconcile. PR body was not changed and this branch was not pushed.
+
+### Source report — 795-current-image-main-ordinary-luna.md
+
+Source SHA-256: `7b0b55dac555276bf9c2833dccd4ff98e66a512d5aed799a33c4cb4e8ca28fcd`.
+
+# PR795 current-image/main composition — independent ordinary review
+
+**Verdict: CLEAR for the accepted-main composition at exact candidate `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`.** No blocking or non-blocking findings in this composition scope.
+
+## Reviewer and scope
+
+- **Model dispatch:** GPT-6 Luna selector `gpt-6-luna`; fresh independent context, spawned with `fork_turns=none`. No platform-reported model-version string was available to attest.
+- **Role and independence:** ordinary review of the current local PR795 composition. I did not author, direct, or remediate the candidate or its merge resolution.
+- **Base and candidate:** publication `e9e94a77a4939ab065c887f40065f6d8fcf39ab5` plus pinned accepted main `09dd5acf9b66579f6f1bb89622fac9ddbd7de1b6`, composed at `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`.
+- **Scope:** composition and conflict resolution; claimed exact-blob conservation; whether accepted-main imports add a scanner exclusion or CI gate pass/fail behavior; review-history preservation. I read `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, and `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/795-current-image-main-composition-luna.md` and checked its material composition claims against Git objects.
+
+## Checks and findings
+
+The candidate is a merge commit with parents `e9e94a77...` and `09dd5acf...`; the pinned accepted-main commit is an ancestor. `git diff --check 09dd5acf...92f899dc` passed, and the checkout was clean.
+
+I independently compared Git blob IDs. All eight PR-owned paths are byte-identical to publication `e9e94a77`: the five API source files, two timezone integration tests, and `identity-timezones-631.md`. All 12 other paths changed since publication are byte-identical to pinned accepted main. This accounts for the full 14-path publication-to-candidate diff.
+
+The only additive conflicts were `.gitleaksignore` and `docs/07-planning/decision-log.md`. The resulting ignore file retains all four exact #631 fingerprints from the publication and the exact #780 fingerprint from accepted main. The #780 entry is limited to one immutable commit, file, rule and line; it does not create a path-wide, rule-wide or future-commit exclusion. The decision log retains both complete, independent records. The accepted-main workflow, CI policy, and shipping-image smoke checker imports match the accepted-main blobs exactly. No changed CI-control file differs from accepted main, and this merge introduces no new scanner exclusion or gate pass/fail semantics.
+
+I inspected the current PR-owned source delta relative to accepted main. It remains the previously reviewed bounded timezone correction: UTC-wall-clock comparisons for the session expiry checks and explicit UTC timestamps for comment creation/update. This composition adds no route, permission, identity-provider authority, or other runtime behavior beyond that published patch. The published security note is unchanged and still contains the prior source, composition, and CI-repair review records; this review does not replace or broaden those clearances.
+
+Checks actually run: Git ancestry check; `git diff --check`; exact Git blob comparisons for all eight PR-owned paths and 12 accepted-main imports; name/status accounting of the full diff; manual inspection of the two conflict resolutions and the relevant CI/scanner policy. No tests, PostgreSQL, Docker/image, browser, or hosted CI checks were run in this review context.
+
+## Residuals
+
+This verdict covers the local composition only. No current image/boot/health proof or hosted checks on this exact candidate were established here. I did not verify a remote PR head or review status. Historical test counts in the author handoff remain author evidence. Those acceptance checks and any PR disposition remain separate conductor work.
+
+**Conclusion:** CLEAR for the exact current-main composition at `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`; no composition finding remains. This report makes no claim of image acceptance, current hosted CI success, merge readiness, release, or issue/stage completion.
+
+### Source report — 795-current-image-main-security-sol.md
+
+Source SHA-256: `968cf339681a122916880d9dfb46642f2731967644307318aa575ba1ac0c0c11`.
+
+# PR795 accepted-main composition — independent security confirmation
+
+**Verdict: CLEAR for the mechanical composition at exact local candidate `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`.** No blocking or non-blocking finding in this review scope.
+
+## Identity, independence, and scope
+
+- **Model dispatch:** `gpt-6-sol`, fresh context spawned with `fork_turns=none` for this security review. This records the requested selector, not a measured serving-model version.
+- **Independence:** I did not author, direct, adjudicate, or remediate this candidate or either conflict resolution. I read the prior ordinary review as evidence and checked material claims directly against Git objects.
+- **Exact commits:** candidate `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`, first parent/publication `e9e94a77a4939ab065c887f40065f6d8fcf39ab5`, second parent/pinned accepted main `09dd5acf9b66579f6f1bb89622fac9ddbd7de1b6`.
+- **Scope:** whether current-main composition changed previously reviewed #631 security behavior, scanner exclusions, CI gate semantics, or review history. This is a lightweight confirmation of the composition. The retained full Sol source and CI-repair reviews remain separate clearances at their recorded heads.
+
+## Checks and assessment
+
+The candidate is a two-parent merge with the publication and pinned accepted main as its exact parents; pinned main is an ancestor. The worktree was clean. `git diff --check 09dd5acf..92f899dc` passed. The publication-to-candidate diff contains 14 paths: 12 accepted-main imports plus the two additive conflict files.
+
+I independently compared Git blob IDs. All eight PR-owned blobs — five API files, two timezone integration tests, and `identity-timezones-631.md` — equal publication `e9e94a77` byte for byte. All 12 other changed paths equal pinned accepted main `09dd5acf` byte for byte, including `.github/workflows/ci-full.yml`, `docs/04-engineering/ci-cd.md`, and both shipping-image smoke files. There is no independently edited CI control or shipping-image checker in this candidate.
+
+The only conflict resolutions are `.gitleaksignore` and `docs/07-planning/decision-log.md`. The ignore file retains the four publication #631 fingerprints (immutable commit `aea7da52`, one review note, `generic-api-key`, lines 45/77/146/178) and accepted main's one #780 fingerprint (immutable commit `33f2ec22`, its review note, `generic-api-key`, line 260). Every active fingerprint line from both parents is present. The candidate adds only the four #631 exact fingerprints relative to accepted main; it adds no path-wide, rule-wide, or future-commit scanner exemption. The decision-log diff relative to accepted main adds only the complete #631 technical disposition; the existing #780/conductor record remains intact. The #631 disposition section is identical to publication.
+
+I inspected the five-file API diff relative to accepted main. It contains only the published replacement of `now()` with `dbNowUtc()` in session-expiry comparisons and explicit UTC timestamps for comment creation/update. The exact blob comparison confirms no new route, authority, tenancy, or clock behavior was introduced by this merge. The unchanged #631 note retains the original two ordinary source reviews, full Sol source review, prior composition reviews, and ordinary/full Sol CI-repair clearances. This pass confirms their code and note were conserved; it does not relabel earlier heads as this head.
+
+## Limits
+
+No PostgreSQL, Docker/image build or boot, browser, full test suite, hosted CI, remote PR-head, or release proof was run or checked here. Historical test results are not claimed as candidate runtime acceptance. The exact candidate still needs its applicable hosted checks and current image/boot/health evidence under the normal flow. This verdict addresses only the local composition at `92f899dc528a1bc51ac47ea878a0148b9dbc5ed7`.
