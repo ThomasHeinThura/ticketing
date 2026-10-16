@@ -206,3 +206,147 @@ AT-7 requires a pending action and explicit requester confirmation for attachmen
 This exact candidate excludes the separate API-key attachment-reach authority clamp. The supplied current pair head `1bd6851496e286a111a83c658fe44bd116e11e74` is a later fixture-typing commit and descends from the actual clamp commit `00ce4b517f83587f0f46fa165b6d477dae187996`. Later composition must preserve and review that authority delta at its own exact head; this review does not cover it. The shared #764 query-ownership contract remains unaccepted in the described integration train. No #580, AT-7, #764, carrier, image, or runtime acceptance follows from this review.
 
 **Blocking findings introduced by this candidate:** none. **Non-blocking findings:** the generic id-only lookup retains the original caller-enforced tenant boundary; the conditional work-item lock projection adds an unused `id` when `workspaceId` is supplied but changes no predicate or lock.
+
+
+## Accepted-main composition — 2026-10-16
+
+**Reviewed head:** `36ce9b609d53592ebe74fc44c1cc2e0b5c3abd8c`
+
+Normal merge parents are accepted main1a34 and retained source92d; treebf9d471ea90ee6b31aeec642287eb25deb029155 equals preflight. The accepted API-key project-authority clamp and repository lookup coexist. Existing PR branch was restored by fast-forward; both references and original source remain. The four reports below are authentic and unedited, including the branch erratum. Original preparation report came from the10/16 evidence directory, copied byte-exact into canonical10/15 custody (SHA c9cf37c5f7c5ba0290256955e3e2cb2dec0df0ab6d84a8926f100547ca5ff37c). Author/ordinary dispatch usedgpt-6-luna; fresh security dispatch usedgpt-6.1-sol. Prior source reviews retain their actual coverage. AT-7 is inherited and UNWAIVED; no whole-feature/runtime/merge acceptance follows.
+
+### Retained report attachment799-accepted1a-composition-preparation-luna.md
+
+# #799 accepted-1a composition preparation
+
+## Result
+
+Composed the existing #799 attachment query-ownership source onto the exact accepted #796 main input, without importing #785, #790, #798 or Carrier. The normal merge commit is `36ce9b609d53592ebe74fc44c1cc2e0b5c3abd8c` on `codex/attachment-799-compose-accepted1a`.
+
+- Parent 1 (accepted main): `1a34e5792ee9c42b15004b032e3c5410e5def44e`
+- Parent 2 (#799 source): `92d0128035d1e2cf5361ad26e00d8fba3a913061`
+- Tree: `bf9d471ea90ee6b31aeec642287eb25deb029155` (identical to the clean read-only merge-tree preflight)
+- Worktree is clean after composition.
+
+## Payload and conservation
+
+The accepted-main-relative payload is the 11 attachment implementation paths below plus the retained review note. `apps/api/src/database/executor.ts`, `tests/api/database-executor.test.ts`, and `tests/api-integration/database-executor.test.ts` are already equivalent on accepted main and therefore correctly do not appear as unique added changes. No source-history-only #580 payload was replayed separately.
+
+- `apps/api/src/attachment/controllers/complete-attachment.ts`
+- `apps/api/src/attachment/controllers/complete-submission-attachment.ts`
+- `apps/api/src/attachment/controllers/delete-attachment.ts`
+- `apps/api/src/attachment/controllers/download-attachment.ts`
+- `apps/api/src/attachment/controllers/list-work-item-attachments.ts`
+- `apps/api/src/attachment/controllers/presign-attachment.ts`
+- `apps/api/src/attachment/controllers/presign-submission-attachment.ts`
+- `apps/api/src/attachment/index.ts`
+- `apps/api/src/attachment/repository.ts`
+- `apps/api/src/attachment/require-attachment-reach.ts`
+- `apps/api/src/attachment/require-submission-attachment-reach.ts`
+- `docs/07-planning/security-reviews/query-ownership-attachments-580.md`
+
+The overlapping `require-attachment-reach.ts` composition conserves the accepted #784 API-key project-capability guard: imports and calls `projectCapabilityRefused`, passes `deferCapability`, `deferApiKeyCapability`, and `isApiKey: Boolean(apiKey)`, and obtains the row via `findAttachmentWorkItemForReach(db, id)`. The final blob is `fb64319ba0d061685fbd498afddb821c1786204e`, matching the preflight result; it is not the uncomposed source blob.
+
+## Checks run
+
+- `pnpm --filter @taskdesk/api typecheck` — passed.
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/database-executor.test.ts ../../tests/api/attachment/magic-bytes.test.ts` — 2 files, 17 tests passed.
+- `pnpm exec biome check` on the 11 changed API attachment implementation files — passed, no fixes.
+- Tree, parents, full-tree identity with the preflight, guard semantics, and clean worktree checked after merge.
+
+No PG-backed integration suite, app build, Docker, browser or CI run was performed. No test was altered or skipped.
+
+## Adverse findings and limits
+
+The merge was clean; no conflict resolution or manual source edit was needed. AT-7 remains an inherited, unwaived discrepancy: the feature spec requires requester-approved pending-action confirmation before attachment soft deletion, while the existing delete path performs immediate soft deletion. This query-ownership composition does not change that behavior and does not close attachment feature acceptance. Retained original reviews cover the original source SHA only; they are not review evidence for composition SHA `36ce9b6...`. Authoring this preparation/composition is not an independent review.
+
+No PR, push, review assertion, feature acceptance claim, gate waiver, or control-plane edit was made.
+
+### Retained report attachment799-existing-branch-restoration-luna.md
+
+# #799 existing branch restoration erratum
+
+## Correction
+
+The preparation report dated 2026-10-16 described composition on a new branch as the result, which did not preserve the existing #799 PR branch as the canonical lane. Per the conductor's follow-up, I restored the composed merge commit onto the existing branch by fast-forward. The original preparation report remains unchanged.
+
+## Evidence
+
+- Before the operation, `refs/heads/codex/query-ownership-580-attachments` resolved to source head `92d0128035d1e2cf5361ad26e00d8fba3a913061`. `git worktree list --porcelain` showed that branch was not checked out in another worktree.
+- The composed commit already existed locally as `36ce9b609d53592ebe74fc44c1cc2e0b5c3abd8c`, with parents `1a34e5792ee9c42b15004b032e3c5410e5def44e` and `92d0128035d1e2cf5361ad26e00d8fba3a913061`, and tree `bf9d471ea90ee6b31aeec642287eb25deb029155`.
+- Commands run: `git worktree list --porcelain`; `git show-ref --verify refs/heads/codex/query-ownership-580-attachments`; `git show -s` on the source and composition commits; `git switch codex/query-ownership-580-attachments`; `git merge --ff-only 36ce9b609d53592ebe74fc44c1cc2e0b5c3abd8c`; and post-operation `git status --short --branch` / `git show -s` on both refs.
+- The original branch now resolves to `36ce9b609d53592ebe74fc44c1cc2e0b5c3abd8c`. The preparation branch ref `codex/attachment-799-compose-accepted1a` remains at that same commit. Both therefore retain the same parents and tree. Fast-forward added no commit and changed no tree.
+- The original branch reports `ahead 90` of its configured remote tracking ref. No push was made. This local ancestry state is recorded as observed; no remote state was changed.
+- Worktree is clean. No tests were rerun, as requested.
+
+No reset, force, update-ref, history rewrite, push, new PR or additional commit was attempted. No additional adverse attempt occurred.
+
+### Retained report attachment799-accepted1a-ordinary-luna.md
+
+# #799 accepted-main composition — independent strong ordinary review
+
+- **Verdict:** CLEAR for the bounded composition delta reviewed; this is not feature acceptance.
+- **Reviewed head:** `36ce9b609d53592ebe74fc44c1cc2e0b5c3abd8c`
+- **Comparison base:** accepted-main parent `1a34e5792ee9c42b15004b032e3c5410e5def44e`; source parent `92d0128035d1e2cf5361ad26e00d8fba3a913061`; tree `bf9d471ea90ee6b31aeec642287eb25deb029155`.
+- **Independence/model:** Fresh reviewer context; did not author, direct or remediate the composition. Assigned strong ordinary GPT-6 Luna role by the conductor. The runtime did not expose a more specific model/version identifier to this context.
+- **Scope:** Current composition delta for #799, centered on `apps/api/src/attachment/require-attachment-reach.ts`; conservation of the already accepted #784 API-key project-capability clamp alongside the attachment repository lookup; consistency with the retained independent full source reviews at `f2f78c921e2c337d52bacbdc63102fe2850e0be4`. This is not a fresh whole-feature review of every source behavior.
+- **Repository instructions/specs read:** `AGENTS.md`, `CLAUDE.md`, `docs/04-engineering/agent-workflow.md`, `docs/07-planning/status.md`, `docs/07-planning/decision-log.md`, `docs/03-features/attachments.md`, and retained #799 source review note `docs/07-planning/security-reviews/query-ownership-attachments-580.md`.
+
+## Checks and review evidence
+
+- Verified clean worktree and exact `HEAD`, both parents and tree.
+- Compared `require-attachment-reach.ts` from source parent to reviewed head. The composed code retains `projectCapabilityRefused`, `deferCapability`, `deferApiKeyCapability`, and `isApiKey: Boolean(apiKey)`, and calls `findAttachmentWorkItemForReach(db, id)` for the repository-owned lookup.
+- Read the shared `projectCapabilityRefused` implementation. For ordinary sessions and non-deferred API keys it refuses when `decision.capable` is false; for API keys whose capability decision is deferred downstream it still requires `decision.ownerCapable`; full deferral remains limited to the explicit `deferCapability` option. The attachment integration passes the options and key identity signal through unchanged.
+- `pnpm --filter @taskdesk/api typecheck` — passed (all five configured TypeScript projects).
+- `pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/database-executor.test.ts ../../tests/api/attachment/magic-bytes.test.ts` — 2 files, 17 tests passed.
+- `git diff --check 1a34e5792ee9c42b15004b032e3c5410e5def44e 36ce9b609d53592ebe74fc44c1cc2e0b5c3abd8c` — passed; worktree remained clean.
+- No API integration/PG suite, image, browser or CI run was performed in this review.
+
+## Findings
+
+No blocking or non-blocking defect found in the bounded composition delta. The attachment-specific authority clamp remains intact with the accepted #784 helper semantics, while the attachment-row lookup uses the extracted repository function. The source review note preserves two independent ordinary source reviews and a full Sol source clearance at their stated source head; those reports are not relabelled as reviews of this composition head.
+
+The existing AT-7 discrepancy remains: the route immediately soft-deletes although the feature spec calls for requester-approved pending-action confirmation. This composition does not change or resolve it; it remains unwaived and prevents attachment feature acceptance. This review does not cover the rest of #784's broad authority changes beyond verifying the clamp at the attachment call site.
+
+**Security review remains required:** obtain fresh independent GPT-6 Sol review on exact head `36ce9b609d53592ebe74fc44c1cc2e0b5c3abd8c` after ordinary clearance. No merge, push, gate waiver, image/runtime claim, or #799/#580 acceptance is authorized by this report.
+
+### Retained report attachment799-accepted1a-security-61-sol.md
+
+# #799 accepted-main composition — independent security confirmation
+
+**Verdict: CLEAR for the bounded composition at the exact reviewed head.** No introduced blocking or non-blocking security defect found. This is source review, not feature or runtime acceptance.
+
+**Reviewed head:** 36ce9b609d53592ebe74fc44c1cc2e0b5c3abd8c
+
+- Comparison base / accepted-main parent: `1a34e5792ee9c42b15004b032e3c5410e5def44e`.
+- Source parent: `92d0128035d1e2cf5361ad26e00d8fba3a913061`; tree: `bf9d471ea90ee6b31aeec642287eb25deb029155`.
+- Original fully reviewed source: `f2f78c921e2c337d52bacbdc63102fe2850e0be4`.
+- Role/model: fresh independent GPT-6 Sol security context, dispatched for this role; runtime model/version introspection unavailable. I did not author, direct, advise on implementation, remediate, or ordinarily review this candidate. I read the fresh ordinary CLEAR report before this review.
+
+## Depth and scope
+
+This is the required fresh security confirmation of a bounded import/composition, retaining the two independent ordinary reviews and full Sol source review recorded in `docs/07-planning/security-reviews/query-ownership-attachments-580.md` at their original source SHA. Those earlier verdicts are not relabelled as exact-current-head reviews. The current composition does not redesign authority: relative to accepted main it extracts the attachment lookup while preserving the already accepted owner-capability clamp; relative to the source attachment tree the only production difference is that clamp. Accordingly a focused independent confirmation is appropriate, rather than repeating the entire source full-review panel. Security-scope controller/router paths still receive this explicit Sol pass.
+
+Read AGENTS.md, agent workflow, CLAUDE.md, current status and decision-log portions, CI security path policy, attachment feature/storage contracts, retained source review records and fresh ordinary report. Independently examined both-parent diffs, current reach middleware, actual repository lookup and executor contract, shared project decision/refusal helper, route deferral call sites, completion/delete and download ordering.
+
+## Findings and conservation
+
+The accepted-main comparison changes only the attachment subtree and its retained review note: no accepted-main file outside that set is changed or lost. A scripted byte comparison confirms all 14 source attachment files other than the intentionally composed reach file are identical to original reviewed source. Thus repository transaction/lock/storage/audit code is conserved rather than rewritten by composition.
+
+The extracted lookup selects the same attachment/work-item/workspace/project/organisation fields, joins the same tables, and retains id equality, work-item deleted/archived exclusion, project deleted exclusion and limit 1. It receives the actual shared db executor and awaits materialized rows. The row-derived workspace/project/work-item identifiers still feed workspace validation and project policy evaluation; reach failure remains 404 and capability/customer refusal 403. No caller-supplied tenant scope replaces these values.
+
+`projectCapabilityRefused` and its inputs match accepted-main behavior. Normal sessions/nondeferred keys require capable; API keys deferring their stored-scope check still require ownerCapable in the target project; full capability deferral requires the existing explicit option. Complete/delete retain downstream workspace/key checks; download retains nondeferred project capability evaluation. Query extraction does not restore the old API-key owner-ceiling bypass.
+
+Completion/delete continue supplying tx to repository statements, retaining shared parent locks and guarded state writes with activity in the winning transaction. Storage finalization/rejected-byte cleanup ordering and download URL then mandatory audit then response ordering are unchanged, confirmed through byte conservation and targeted source inspection. No new storage or audit escape is introduced.
+
+No introduced blockers or non-blocking findings. Existing id-only attachment reads retain caller-enforced workspace/parent checks and the original read-to-use boundary; this review claims no stronger tenant guarantee. Existing AT-7 immediate soft deletion remains UNWAIVED: requester-approved pending-action confirmation is not implemented by this composition and prevents attachment feature acceptance. It is not new scope or a new fix in this review.
+
+## Commands actually run and limits
+
+- git status / show: clean exact head, parents and tree verified.
+- git diff accepted parent to head, source parent to head; focused original-source attachment diff: inspected.
+- Python subprocess git assertions: accepted-parent changed-path conservation PASS; original-source 14 attachment-file byte comparisons PASS.
+- git diff --check HEAD^1 HEAD: PASS.
+- pnpm --filter @taskdesk/api exec vitest run --config vitest.config.ts ../../tests/api/database-executor.test.ts ../../tests/api/attachment/magic-bytes.test.ts: PASS, 2 files / 17 tests. These are focused executor/magic-byte checks, not authorization or PostgreSQL proof.
+- gh pr list / issue list and gh pr view 799: inspected live. Published #799 still pointed to `92d0128035d1e2cf5361ad26e00d8fba3a913061` at inspection; this report covers the local prepared composition, not a claim that it was already published.
+
+The ordinary reviewer separately ran API typecheck; I did not rerun it and do not claim that as my execution. No PG/integration, image/build/boot/health, browser, hosted CI or deployment run in this security review. No source edits, commit, push or merge performed. No whole #580/attachment feature/stage acceptance, gate waiver, or merge authority is conferred.
