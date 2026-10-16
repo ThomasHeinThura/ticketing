@@ -4,10 +4,13 @@ import {
   eq,
   exists,
   inArray,
+  ne,
+  not,
   or,
   type SQLWrapper,
   sql,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import db from "..";
 import type { Executor } from "../executor";
 import {
@@ -172,6 +175,10 @@ export function currentWorkspaceReachPredicate(
   const legacyRoleChecks = identity.authority
     .filter((grant) => grant.scope === "workspace")
     .map((grant) => {
+      const duplicateWorkspaceMember = alias(
+        workspaceUserTable,
+        "duplicate_workspace_member",
+      );
       const roleIsCanonical =
         grant.roleKey === "owner"
           ? sql`true`
@@ -191,6 +198,20 @@ export function currentWorkspaceReachPredicate(
         eq(workspaceUserTable.workspaceId, workspaceId),
         eq(workspaceUserTable.userId, identity.userId),
         eq(workspaceUserTable.role, grant.roleKey),
+        not(
+          exists(
+            executor
+              .select({ one: sql`1` })
+              .from(duplicateWorkspaceMember)
+              .where(
+                and(
+                  eq(duplicateWorkspaceMember.workspaceId, workspaceId),
+                  eq(duplicateWorkspaceMember.userId, identity.userId),
+                  ne(duplicateWorkspaceMember.id, workspaceUserTable.id),
+                ),
+              ),
+          ),
+        ),
         roleIsCanonical,
       );
     });

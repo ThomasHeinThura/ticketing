@@ -11,6 +11,11 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import {
+  insertWorkflow,
+  listWorkflowsInWorkspace,
+} from "../../apps/api/src/workflow/repository";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -119,6 +124,45 @@ describe("API integration: workflow persistence", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual([]);
   });
+
+  it.each([
+    { initialRole: "owner", duplicateRole: "owner", shape: "same role" },
+    { initialRole: "admin", duplicateRole: "member", shape: "different role" },
+  ])(
+    "refuses legacy workspace reach after a duplicate $shape membership is added",
+    async ({ initialRole, duplicateRole }) => {
+      const member = await createWorkspaceMember({ role: initialRole });
+      const workflow = await insertWorkflow({
+        workspaceId: member.workspace.id,
+        key: `duplicate-membership-${randomUUID()}`,
+        name: "Duplicate membership reach check",
+      });
+      if (!workflow) throw new Error("Expected inserted workflow");
+      const identity = await resolveIdentity({
+        userId: member.user.id,
+        credential: "session",
+      });
+      expect(identity).not.toBeNull();
+      if (!identity) throw new Error("Expected resolved member identity");
+
+      expect(
+        (await listWorkflowsInWorkspace(identity, member.workspace.id)).map(
+          (row) => row.id,
+        ),
+      ).toEqual([workflow.id]);
+
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: member.workspace.id,
+        userId: member.user.id,
+        role: duplicateRole,
+        joinedAt: new Date(),
+      });
+
+      expect(
+        await listWorkflowsInWorkspace(identity, member.workspace.id),
+      ).toEqual([]);
+    },
+  );
 
   it("allows an unknown literal assignee id to be saved when authoring a version", async () => {
     const owner = await createWorkspaceMember({ role: "owner" });
