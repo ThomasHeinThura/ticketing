@@ -1346,10 +1346,15 @@ describe("API integration: work-item comments (#27)", () => {
       .where(
         inArray(schema.notificationTable.id, [ownNotice.id, foreignNotice.id]),
       );
-    expect(mutationState).toEqual([
+    const expectedMutationState = [
       { id: ownNotice.id, isRead: true },
       { id: foreignNotice.id, isRead: false },
-    ]);
+    ];
+    const byId = (left: { id: string }, right: { id: string }) =>
+      left.id.localeCompare(right.id);
+    expect([...mutationState].sort(byId)).toEqual(
+      expectedMutationState.sort(byId),
+    );
     await deleteReadableNotifications(actor.creator.user.id);
     const retainedForeign = await db
       .select({
