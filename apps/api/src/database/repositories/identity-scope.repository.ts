@@ -22,6 +22,7 @@ import {
 /** Role facts admitted by resolveIdentity's scoped-role membership loader. */
 export function canonicalScopedRoleMembership(
   scope: SQLWrapper,
+  roleId: SQLWrapper,
   roleScope: SQLWrapper,
   roleWorkspaceId: SQLWrapper,
   roleKey: SQLWrapper,
@@ -32,6 +33,7 @@ export function canonicalScopedRoleMembership(
   return and(
     eq(scope, roleScope),
     inArray(roleScope, ["project", "workspace"]),
+    sql`length(${roleId}) > 0`,
     eq(roleWorkspaceId, scopeWorkspaceId),
     sql`length(${roleKey}) > 0`,
     sql`${roleRank} BETWEEN -2147483648 AND 2147483647`,
@@ -93,6 +95,7 @@ export function currentProjectReachPredicate(
           eq(membershipTable.scopeId, projectId),
           canonicalScopedRoleMembership(
             membershipTable.scope,
+            roleTable.id,
             roleTable.scope,
             roleTable.workspaceId,
             roleTable.key,
@@ -116,6 +119,7 @@ export function currentProjectReachPredicate(
           eq(membershipTable.seesAll, true),
           canonicalScopedRoleMembership(
             membershipTable.scope,
+            roleTable.id,
             roleTable.scope,
             roleTable.workspaceId,
             roleTable.key,
@@ -153,6 +157,7 @@ export function currentWorkspaceReachPredicate(
           eq(membershipTable.scopeId, workspaceId),
           canonicalScopedRoleMembership(
             membershipTable.scope,
+            roleTable.id,
             roleTable.scope,
             roleTable.workspaceId,
             roleTable.key,

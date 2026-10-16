@@ -519,6 +519,9 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
     const { project: malformedDefinition } = await createProjectFixture({
       workspaceId: manager.workspace.id,
     });
+    const { project: malformedRoleIdProject } = await createProjectFixture({
+      workspaceId: manager.workspace.id,
+    });
     const personId = await addPersonForUser(manager.user.id);
 
     const foreignAnchoredProjectRole = requireRow(
@@ -584,6 +587,28 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
       roleId: malformedDefinitionRole.id,
     });
 
+    const emptyRoleId = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          id: "",
+          scope: "project",
+          workspaceId: manager.workspace.id,
+          key: `audit-empty-id-${randomUUID()}`,
+          name: "Empty role id",
+          rank: 1,
+          capabilities: ["project:read"],
+        })
+        .returning(),
+      "empty role id",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId,
+      scope: "project",
+      scopeId: malformedRoleIdProject.id,
+      roleId: emptyRoleId.id,
+    });
+
     const invalidSeesAllRole = requireRow(
       await db
         .insert(schema.roleTable)
@@ -629,6 +654,11 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
     );
     await seedProjectScopedRow(
       manager.workspace.id,
+      malformedRoleIdProject.id,
+      "plugin.changed",
+    );
+    await seedProjectScopedRow(
+      manager.workspace.id,
       validDirect.id,
       "plugin.changed",
     );
@@ -650,5 +680,6 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
     expect(projectIds).not.toContain(malformedSeesAll.id);
     expect(projectIds).not.toContain(crossScope.id);
     expect(projectIds).not.toContain(malformedDefinition.id);
+    expect(projectIds).not.toContain(malformedRoleIdProject.id);
   });
 });

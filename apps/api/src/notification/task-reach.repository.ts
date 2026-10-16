@@ -86,6 +86,7 @@ export function projectReachPredicate(userId: string, executor: Executor = db) {
           eq(schema.roleTable.workspaceId, projectTable.workspaceId),
           canonicalScopedRoleMembership(
             schema.membershipTable.scope,
+            schema.roleTable.id,
             schema.roleTable.scope,
             schema.roleTable.workspaceId,
             schema.roleTable.key,
@@ -128,6 +129,7 @@ export function projectReachPredicate(userId: string, executor: Executor = db) {
           eq(schema.membershipTable.scope, schema.roleTable.scope),
           canonicalScopedRoleMembership(
             schema.membershipTable.scope,
+            schema.roleTable.id,
             schema.roleTable.scope,
             schema.roleTable.workspaceId,
             schema.roleTable.key,
@@ -172,6 +174,7 @@ export function projectReachPredicate(userId: string, executor: Executor = db) {
           eq(schema.membershipTable.scope, schema.roleTable.scope),
           canonicalScopedRoleMembership(
             schema.membershipTable.scope,
+            schema.roleTable.id,
             schema.roleTable.scope,
             schema.roleTable.workspaceId,
             schema.roleTable.key,
@@ -260,6 +263,7 @@ export function projectReachPredicate(userId: string, executor: Executor = db) {
           sql`jsonb_typeof(${schema.roleTable.capabilities}) = 'array'`,
           canonicalScopedRoleMembership(
             schema.membershipTable.scope,
+            schema.roleTable.id,
             schema.roleTable.scope,
             schema.roleTable.workspaceId,
             schema.roleTable.key,
