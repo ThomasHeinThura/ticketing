@@ -250,3 +250,70 @@ I reviewed the prior ordinary-A and ordinary-B final reports, both CLEAR for thi
 No source edits, push, PR update, merge, issue closure, Docker/database/browser verification, or runtime test were performed. The report is limited to the decision-log prerequisite and its authority provenance; it does not certify that any downstream implementation meets the decisions.
 
 
+
+## Accepted records-main composition confirmation
+
+**Reviewed head:** `4e432041d95613662b84741ce8b885aff1cc1e11`
+
+Accepted main `f781b954b41811e810b093647254a384c8e83e78` imports only status, queue and the authentic #801 review note. The decision-log source is byte-unchanged from `10d117bd`; prior two-context ordinary coverage and independent Sol clearance remain source-bound. The following two current confirmations continue existing independent reviewer contexts; they are not additional independent reviewers. Preserved authentic report whitespace causes disclosed diff-check warnings; no whole-diff clean result is claimed.
+
+### Authentic report: 780-records-main-ordinary-luna.md
+
+# PR #780 bounded records/main conservation confirmation
+
+**Reviewed head:** `4e432041d95613662b84741ce8b885aff1cc1e11`
+**Merge parents:** pre-merge prepared candidate `dd72a200dfb09f2f78abe2422f2f3581d740b19e`; accepted main `f781b954b41811e810b093647254a384c8e83e78`.
+**Compared decision-log review head:** `10d117bd8cb554ab5298323d3f145617240c7c0c`
+**Reviewer selection:** GPT-6 Luna, fresh independent bounded confirmation selected by the orchestrator. Runtime/tool metadata does not expose a separately verifiable model/provider identity, so this report records the requested selection without claiming independent platform attestation.
+**Risk classification:** bounded ordinary delta confirmation. The A/B ordinary reviews and Sol confirmation already cover the full 780 decision-log addition at `10d117bd…`; this pass checks source conservation and the final record-only merge delta, not the prior review stack again.
+
+## Evidence reviewed
+
+Read `780-records-main-conservation.json` and `780-prerequisite-own-note-proof.json`, then independently checked their claims against the exact Git objects.
+
+- The retained #780 component source `4d7e2d0170e855b830a5f6ee98e1886871cac6b7`, final A-reviewed head `10d117bd…`, pre-merge candidate `dd72a200…`, and accepted main `f781b954…` are in the reviewed head's ancestry. The merge parents are exactly `dd72a200…` and `f781b954…`.
+- The only delta from pre-merge `dd72a200…` to reviewed head `4e432041…` is the three accepted-main imports: `docs/07-planning/integration-execution-queue.md`, `docs/07-planning/security-reviews/takeover-checkpoint-20261016.md`, and `docs/07-planning/status.md` (+247 lines, no deletions). Each imported path is byte-identical to accepted main; the receipt names only these expected imports and records `allImportsEqualMain: true` and `onlyExpectedImports: true`.
+- `docs/07-planning/decision-log.md` is byte-identical between final A-reviewed head `10d117bd…`, pre-merge head `dd72a200…`, and merged review head `4e432041…`. It remains the unique decision-log addition against accepted main, with no post-review edit.
+- The published `docs/07-planning/security-reviews/780-owner-conductor-decisions.md` is unchanged from pre-merge `dd72a200…` to `4e432041…`. The source receipt records the exact source `10d117bd…`, raw addition of 252 lines and zero deletions, and `ownNoteOnly: true`. The merged note retains the exact reviewed head and its recorded A, B and Sol verdicts; it does not claim that downstream product implementation or the merge gates were satisfied by this note.
+- `apps`, `packages`, and `tests` are byte-identical between accepted main and reviewed head.
+- The worktree is clean.
+
+## Check result and limit
+
+`git diff --check f781b954…..4e432041…` reports one formatting warning at line 251 of the newly published review note: a new blank line at EOF; command exit code is 2. The note is the authentic, previously reviewed 252-line report and its bytes were preserved. I did not alter it. This warning does not affect the source-conservation assertions above, but this report does not call `git diff --check` clean.
+
+No tests, runtime, browser, database, image, or CI results were run or reassessed. This confirmation does not re-certify exact-head GitHub checks, PR merge eligibility, downstream issue completion, or phase acceptance.
+
+## Verdict
+
+**CLEAR — bounded records/main conservation confirmation for exact merged review head `4e432041d95613662b84741ce8b885aff1cc1e11`.** The accepted-main imports, final decision-log text, and authentic own-note are conserved as described, and product/runtime paths match accepted main. The separate EOF whitespace warning is disclosed above; no evidence was fabricated or rewritten.
+
+
+### Authentic report: 780-records-main-security-sol.md
+
+# PR #780 accepted-main records delta — independent Sol confirmation
+
+**Reviewed head:** `4e432041d95613662b84741ce8b885aff1cc1e11`
+**Previously fully reviewed source:** `10d117bd8cb554ab5298323d3f145617240c7c0c`
+**Own-note parent:** `dd72a200dfb09f2f78abe2422f2f3581d740b19e`
+**New accepted-main parent:** `f781b954b41811e810b093647254a384c8e83e78` (protected merge of #801)
+**Worktree:** `/Users/heinthura/.codex/worktrees/pr780-current-prep/Ticketing.v2`
+**Reviewer / independence:** Fresh independent reviewer context assigned to Sol-tier security and contract confirmation. I did not author, direct, or remediate the candidate. This is the same reviewer context that fully reviewed source `10d117bd…`; it is a bounded follow-up, **not** another independent reviewer count. The conductor requested GPT-6 Sol, but the available runtime gives no separately verifiable model identity, version or dispatch token; the tier is recorded as dispatch, not independently attested runtime metadata.
+
+## Verdict
+
+**CLEAR for the exact-head records/accepted-main delta.** The earlier full-source CLEAR verdict remains applicable because the decision-log source blob is byte-identical. The new head adds authentic review evidence and imports already accepted records; it changes no owner decision, authority contract, hold, gate semantics, waiver, or product/runtime bytes relative to its accepted-main parent. This is a proportional delta confirmation, not a new full product or runtime review.
+
+## What changed and what was checked
+
+The `10d117bd…` to `dd72a200…` commit adds only `docs/07-planning/security-reviews/780-owner-conductor-decisions.md` as a regular 100644 file (+252 lines). I read the file. It preserves adverse and clearing reports with their original reviewed heads and limits, and explicitly says the seven report versions come from three contexts rather than seven approvals. The embedded `780-prerequisite-security-current-sol.md` body is byte-equal to my original 5,325-byte central report. The supplied `780-prerequisite-own-note-proof.json` agrees with Git's own-note-only diff.
+
+The `dd72a200…` to `4e432041…` merge adds 247 lines in exactly three files: `integration-execution-queue.md` (+46), `status.md` (+46), and `security-reviews/takeover-checkpoint-20261016.md` (+155). Git blob IDs for each imported file match `f781b954…` exactly; the supplied `780-records-main-conservation.json` agrees. I read the new queue/status passages: they report blockers, pending acceptance work and holds, with no waiver or new authority. Live GitHub reports #801 MERGED at `f781b954…`; its historical status rollup includes cancelled/failed superseded attempts as well as success, so I do not infer a fresh #780 gate result from it.
+
+`git rev-parse 10d117bd…:docs/07-planning/decision-log.md HEAD:docs/07-planning/decision-log.md` produced the same blob ID, `337ff769da86dc7cec895bef02d0944fd47e319e`. A quiet diff across that file and `apps`, `packages`, `tests`, `package.json`, `pnpm-lock.yaml`, `.github`, and `scripts/ci` confirmed no changes from the previously reviewed source. Against accepted main, the candidate differs only in the decision log and the PR #780 review note. The original #743 two-mechanism answer, #580 accepted scoped-repository convention and proposed #764 distinction, #761 reason without invented audit placement, and #713 activation hold therefore remain as fully reviewed.
+
+`pnpm check:policy` passed (8 policy files coherent); `pnpm check:reviews` passed (no feature spec named). The worktree was clean immediately before writing this report. `git diff --check dd72a200…HEAD` flags intentional trailing Markdown spaces and an EOF blank line inside the imported #801 checkpoint report. Those bytes are identical to accepted main and were not introduced or changed by PR #780; I do not report that command as passing.
+
+No source edit, ref update, PR update, push, merge, runtime test, Docker/database/browser proof, issue closure or stage acceptance was performed. The prepared #780 head still needs its own published exact-head checks and normal protected merge flow; this confirmation does not transfer #801's checks to it.
+
+
