@@ -1,5 +1,5 @@
 import { BUILT_IN_ROLES, defaultRolePayloads } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
@@ -77,13 +77,16 @@ beforeEach(async () => {
   delete process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS;
 });
 
-async function creator(organisationId: string) {
+async function creator(organisationId: string, suffix = "") {
+  const id = suffix ? `jit-login-creator-${suffix}` : "jit-login-creator";
   const [user] = await db
     .insert(schema.userTable)
     .values({
-      id: "jit-login-creator",
+      id,
       name: "Creator",
-      email: "jit-creator@example.test",
+      email: suffix
+        ? `jit-creator-${suffix}@example.test`
+        : "jit-creator@example.test",
     })
     .returning();
   const [person] = await db
@@ -145,11 +148,58 @@ async function seedAgent(connectionId: string) {
   };
 }
 
+async function ensureCanonicalCustomerRole() {
+  const matches = await db
+    .select()
+    .from(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.scope, BUILT_IN_ROLES.customer.scope),
+        eq(schema.roleTable.key, BUILT_IN_ROLES.customer.key),
+        isNull(schema.roleTable.workspaceId),
+      ),
+    )
+    .limit(2);
+  if (matches.length > 1)
+    throw new Error("customer built-in role is ambiguous");
+  const current = matches[0];
+  if (current) {
+    if (
+      current.scope !== BUILT_IN_ROLES.customer.scope ||
+      current.workspaceId !== null ||
+      current.key !== BUILT_IN_ROLES.customer.key ||
+      current.rank !== BUILT_IN_ROLES.customer.rank ||
+      JSON.stringify(current.capabilities) !==
+        JSON.stringify(BUILT_IN_ROLES.customer.capabilities) ||
+      current.isSystem !== true ||
+      current.isEditable !== false
+    )
+      throw new Error("existing customer built-in role is not canonical");
+    return current.id;
+  }
+  const [created] = await db
+    .insert(schema.roleTable)
+    .values({
+      id: CUSTOMER_ROLE_ID,
+      scope: BUILT_IN_ROLES.customer.scope,
+      workspaceId: null,
+      key: BUILT_IN_ROLES.customer.key,
+      name: "Customer",
+      rank: BUILT_IN_ROLES.customer.rank,
+      capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+      isSystem: true,
+      isEditable: false,
+    })
+    .returning();
+  if (!created) throw new Error("customer built-in role insert failed");
+  return created.id;
+}
+
 async function seedCustomer(connectionId: string, suffix?: string) {
   const organisationId = suffix
     ? `${CUSTOMER_ORG_ID}-${suffix}`
     : CUSTOMER_ORG_ID;
-  const roleId = suffix ? `${CUSTOMER_ROLE_ID}-${suffix}` : CUSTOMER_ROLE_ID;
+  const roleId = await ensureCanonicalCustomerRole();
   const internal = await ensureInternalOrganisation();
   await db.insert(schema.organisationTable).values({
     id: organisationId,
@@ -158,18 +208,7 @@ async function seedCustomer(connectionId: string, suffix?: string) {
     isInternal: false,
     portalAccess: true,
   });
-  await db.insert(schema.roleTable).values({
-    id: roleId,
-    scope: BUILT_IN_ROLES.customer.scope,
-    workspaceId: null,
-    key: BUILT_IN_ROLES.customer.key,
-    name: "Customer",
-    rank: BUILT_IN_ROLES.customer.rank,
-    capabilities: [...BUILT_IN_ROLES.customer.capabilities],
-    isSystem: true,
-    isEditable: false,
-  });
-  const createdBy = await creator(internal.id);
+  const createdBy = await creator(internal.id, suffix ?? "");
   await db.insert(schema.identityConnectionTable).values({
     id: connectionId,
     providerType: "entra",
@@ -325,7 +364,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
 
   it("refuses JIT customer admission when its configured customer role is tampered", async () => {
     const attemptConnectionId = "jit-tampered-customer-role-connection";
-    const attemptedSubject = SUBJECT;
+    const attemptedSubject = "jit-tampered-customer-subject";
     const unrelatedTarget = await seedCustomer(
       "jit-unrelated-customer-session-connection",
     );
@@ -348,6 +387,25 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
     expect(unrelatedIdentity?.userId).toBeTruthy();
 
     const target = await seedCustomer(attemptConnectionId, "tampered");
+    // The built-in customer role is global for (scope, null workspace, key), so both
+    // connections intentionally share it. The unrelated session below is only checked for
+    // persistence after tampering; this does not claim the now-tampered role remains usable.
+    expect(target.roleId).toBe(unrelatedTarget.roleId);
+    vi.mocked(validateEntraIdToken).mockImplementation(
+      (_token, _jwks, expectation) => ({
+        ok: true,
+        claims: {
+          iss: expectation.issuer,
+          tid: expectation.tenantId,
+          oid: attemptedSubject,
+          email: "jit-tampered-customer@example.test",
+          email_verified: true,
+          name: "Tampered Customer",
+          acct: 0,
+          roles: ["TaskDesk.User"],
+        },
+      }),
+    );
     const initialResponse = await signIn(attemptConnectionId, "customer");
     expect(initialResponse.status).toBe(302);
     await expectJitIdentity(attemptConnectionId, "customer", target);
@@ -357,7 +415,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
           schema.externalIdentityTable.identityConnectionId,
           attemptConnectionId,
         ),
-        eq(schema.externalIdentityTable.subject, SUBJECT),
+        eq(schema.externalIdentityTable.subject, attemptedSubject),
       ),
     });
     expect(attemptedIdentity?.userId).toBeTruthy();
