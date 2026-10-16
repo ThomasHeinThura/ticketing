@@ -8,7 +8,7 @@
  */
 import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
@@ -353,6 +353,225 @@ describe("API integration: workflow persistence", () => {
     expect(unpublishedWorkflow?.activeVersionId).toBeNull();
     expect(unpublishedVersion?.publishedAt).toBeNull();
     expect(unpublishedVersion?.publishedBy).toBeNull();
+  });
+
+  it("keeps WF-9 validation on one PostgreSQL snapshot when project reach is revoked mid-read", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(admin.user);
+    const { backlog, done } = await seedStateTemplates(admin.workspace.id);
+    const workflowResponse = await createWorkflow({
+      workspaceId: admin.workspace.id,
+      key: "snapshot-validation",
+      name: "Snapshot validation",
+    });
+    const workflow = (await workflowResponse.json()) as { id: string };
+    const project = await createProjectFixture({
+      workspaceId: admin.workspace.id,
+    });
+    await grantProjectRole(admin.user.id, project.project.id, ["project:read"]);
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        { fromStateTemplateId: backlog.id, toStateTemplateId: done.id },
+        { fromStateTemplateId: done.id, toStateTemplateId: backlog.id },
+      ],
+    });
+    const version = (await versionResponse.json()) as { number: number };
+    const repository = await import("../../apps/api/src/workflow/repository");
+    const original = repository.hasCompleteWorkflowProjectReach;
+    let releaseRead!: () => void;
+    let reachedOracle!: () => void;
+    const readPaused = new Promise<void>((resolve) => {
+      reachedOracle = resolve;
+    });
+    const continueRead = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    const spy = vi
+      .spyOn(repository, "hasCompleteWorkflowProjectReach")
+      .mockImplementation(async (identity, workflowId, executor) => {
+        const result = await original(identity, workflowId, executor);
+        reachedOracle();
+        await continueRead;
+        return result;
+      });
+    try {
+      const responsePromise = validateWorkflowVersion(
+        workflow.id,
+        version.number,
+      );
+      await readPaused;
+      const [person] = await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, admin.user.id))
+        .limit(1);
+      if (!person) throw new Error("Expected person fixture");
+      await db
+        .delete(schema.membershipTable)
+        .where(eq(schema.membershipTable.personId, person.id));
+      releaseRead();
+      const response = await responsePromise;
+      expect(response.status).toBe(200);
+      const result = (await response.json()) as {
+        projects: Array<{ projectId: string }>;
+      };
+      expect(result.projects.map(({ projectId }) => projectId)).toContain(
+        project.project.id,
+      );
+    } finally {
+      releaseRead();
+      spy.mockRestore();
+    }
+  });
+
+  it("does not count a malformed cross-scope role row as WF-9 project reach", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(admin.user);
+    const { backlog, done } = await seedStateTemplates(admin.workspace.id);
+    const workflowResponse = await createWorkflow({
+      workspaceId: admin.workspace.id,
+      key: "malformed-reach",
+      name: "Malformed reach",
+    });
+    const workflow = (await workflowResponse.json()) as { id: string };
+    const project = await createProjectFixture({
+      workspaceId: admin.workspace.id,
+    });
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, admin.user.id))
+      .limit(1);
+    if (!person) throw new Error("Expected person fixture");
+    const [wrongScopeRole] = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "workspace",
+        workspaceId: admin.workspace.id,
+        key: "malformed-project-reach",
+        name: "Malformed project reach",
+        rank: 1,
+        capabilities: ["project:read"],
+      })
+      .returning();
+    if (!wrongScopeRole) throw new Error("Expected malformed role fixture");
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "project",
+      scopeId: project.project.id,
+      roleId: wrongScopeRole.id,
+      seesAll: false,
+    });
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        { fromStateTemplateId: backlog.id, toStateTemplateId: done.id },
+        { fromStateTemplateId: done.id, toStateTemplateId: backlog.id },
+      ],
+    });
+    const version = (await versionResponse.json()) as { number: number };
+    const validation = await validateWorkflowVersion(
+      workflow.id,
+      version.number,
+    );
+    expect(validation.status).toBe(403);
+    expect(await validation.text()).toBe("Workflow project access required");
+  });
+
+  it("retries the full serializable WF-9 publication after a project-insert SSI cycle", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(admin.user);
+    const { backlog, done } = await seedStateTemplates(admin.workspace.id);
+    const workflowResponse = await createWorkflow({
+      workspaceId: admin.workspace.id,
+      key: "ssi-publication",
+      name: "SSI publication",
+    });
+    const workflow = (await workflowResponse.json()) as { id: string };
+    const project = await createProjectFixture({
+      workspaceId: admin.workspace.id,
+    });
+    await grantProjectRole(admin.user.id, project.project.id, ["project:read"]);
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        { fromStateTemplateId: backlog.id, toStateTemplateId: done.id },
+        { fromStateTemplateId: done.id, toStateTemplateId: backlog.id },
+      ],
+    });
+    const version = (await versionResponse.json()) as {
+      number: number;
+      id: string;
+    };
+    const repository = await import("../../apps/api/src/workflow/repository");
+    const originalStamp = repository.stampVersionPublished;
+    let releaseWrite!: () => void;
+    let reachedWrite!: () => void;
+    const writePaused = new Promise<void>((resolve) => {
+      reachedWrite = resolve;
+    });
+    const continueWrite = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+    let firstWrite = true;
+    const stampSpy = vi
+      .spyOn(repository, "stampVersionPublished")
+      .mockImplementation(async (executor, versionId, publishedBy) => {
+        if (firstWrite) {
+          firstWrite = false;
+          reachedWrite();
+          await continueWrite;
+        }
+        return originalStamp(executor, versionId, publishedBy);
+      });
+    let reachChecks = 0;
+    const originalReach = repository.hasCompleteWorkflowProjectReach;
+    const reachSpy = vi
+      .spyOn(repository, "hasCompleteWorkflowProjectReach")
+      .mockImplementation(async (...args) => {
+        reachChecks += 1;
+        return originalReach(...args);
+      });
+    try {
+      const responsePromise = publishWorkflowVersion(
+        workflow.id,
+        version.number,
+      );
+      await writePaused;
+      await db.transaction(
+        async (tx) => {
+          await tx
+            .select({ id: schema.workflowTable.id })
+            .from(schema.workflowTable)
+            .where(eq(schema.workflowTable.id, workflow.id))
+            .limit(1);
+          await tx.insert(schema.projectTable).values({
+            workspaceId: admin.workspace.id,
+            name: "SSI inserted adopting project",
+            slug: `ssi-${randomUUID()}`,
+          });
+        },
+        { isolationLevel: "serializable" },
+      );
+      releaseWrite();
+      const response = await responsePromise;
+      expect(response.status).toBe(403);
+      expect(await response.text()).toBe("Workflow project access required");
+      expect(reachChecks).toBeGreaterThanOrEqual(2);
+      const [storedWorkflow] = await db
+        .select()
+        .from(schema.workflowTable)
+        .where(eq(schema.workflowTable.id, workflow.id));
+      const [storedVersion] = await db
+        .select()
+        .from(schema.workflowVersionTable)
+        .where(eq(schema.workflowVersionTable.id, version.id));
+      expect(storedWorkflow?.activeVersionId).toBeNull();
+      expect(storedVersion?.publishedAt).toBeNull();
+      expect(storedVersion?.publishedBy).toBeNull();
+    } finally {
+      releaseWrite();
+      stampSpy.mockRestore();
+      reachSpy.mockRestore();
+    }
   });
 
   it("allows a workflow-scoped API key to read reachable list and detail rows", async () => {

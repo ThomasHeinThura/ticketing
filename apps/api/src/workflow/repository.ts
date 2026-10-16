@@ -12,6 +12,7 @@ import {
   type SQLWrapper,
   sql,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import db from "../database";
 import { type Executor, executorOrDefault } from "../database/executor";
 import {
@@ -75,8 +76,10 @@ function workflowWorkspaceReach(
 function projectReach(
   identity: ResolvedIdentity,
   projectId: string | SQLWrapper,
+  executor: Executor = db,
 ) {
   const projectFilter = eq(projectTable.id, projectId);
+  const scopedProject = alias(projectTable, "workflow_reach_project");
   if (identity.side !== "staff") return sql`false`;
   if (identity.reach.kind === "all") return projectFilter;
   if (identity.reach.kind === "organisation") {
@@ -96,14 +99,23 @@ function projectReach(
     );
   }
   const projectMembership = exists(
-    db
+    executor
       .select({ one: sql`1` })
       .from(membershipTable)
+      .innerJoin(roleTable, eq(roleTable.id, membershipTable.roleId))
+      .innerJoin(scopedProject, eq(scopedProject.id, membershipTable.scopeId))
       .where(
         and(
           eq(membershipTable.personId, identity.personId),
           eq(membershipTable.scope, "project"),
           eq(membershipTable.scopeId, projectTable.id),
+          eq(roleTable.scope, "project"),
+          eq(roleTable.workspaceId, scopedProject.workspaceId),
+          sql`CASE WHEN jsonb_typeof(${roleTable.capabilities}) = 'array' THEN NOT EXISTS (
+            SELECT 1 FROM jsonb_array_elements(${roleTable.capabilities}) AS role_capability(value)
+            WHERE jsonb_typeof(role_capability.value) <> 'string'
+          ) ELSE false END`,
+          sql`length(${roleTable.key}) > 0`,
         ),
       ),
   );
@@ -218,8 +230,9 @@ export async function listWorkflowsInWorkspace(
 export async function findWorkflowWorkspaceId(
   identity: ResolvedIdentity,
   workflowId: string,
+  executor?: Executor,
 ) {
-  const [workflow] = await db
+  const [workflow] = await executorOrDefault(executor)
     .select({ workspaceId: workflowTable.workspaceId })
     .from(workflowTable)
     .innerJoin(workspaceTable, eq(workspaceTable.id, workflowTable.workspaceId))
@@ -237,8 +250,9 @@ export async function findWorkflowVersion(
   identity: ResolvedIdentity,
   workflowId: string,
   number: number,
+  executor?: Executor,
 ) {
-  const [version] = await db
+  const [version] = await executorOrDefault(executor)
     .select({ version: workflowVersionTable })
     .from(workflowVersionTable)
     .innerJoin(
@@ -261,8 +275,9 @@ export async function findWorkflowVersionId(
   identity: ResolvedIdentity,
   workflowId: string,
   number: number,
+  executor?: Executor,
 ) {
-  const [version] = await db
+  const [version] = await executorOrDefault(executor)
     .select({ id: workflowVersionTable.id })
     .from(workflowVersionTable)
     .innerJoin(
@@ -334,8 +349,9 @@ export async function listVersionTransitions(
 export async function listStateTemplates(
   identity: ResolvedIdentity,
   workspaceId: string,
+  executor?: Executor,
 ) {
-  return db
+  return executorOrDefault(executor)
     .select({ id: stateTemplateTable.id, group: stateTemplateTable.group })
     .from(stateTemplateTable)
     .innerJoin(
@@ -354,8 +370,9 @@ export async function listStateTemplates(
 export async function listReferenceableRoleIds(
   identity: ResolvedIdentity,
   workspaceId: string,
+  executor?: Executor,
 ) {
-  return db
+  return executorOrDefault(executor)
     .select({ id: roleTable.id })
     .from(roleTable)
     .where(
@@ -412,8 +429,9 @@ export async function insertWorkflowTransitions(
 export async function listWorkflowAdoptingProjectIds(
   identity: ResolvedIdentity,
   workflowId: string,
+  executor?: Executor,
 ) {
-  return db
+  return executorOrDefault(executor)
     .select({ projectId: projectTable.id })
     .from(projectTable)
     .innerJoin(
@@ -425,7 +443,7 @@ export async function listWorkflowAdoptingProjectIds(
       and(
         eq(workflowTable.id, workflowId),
         workflowWorkspaceReach(identity, workspaceTable.id),
-        projectReach(identity, projectTable.id),
+        projectReach(identity, projectTable.id, executor),
       ),
     );
 }
@@ -436,9 +454,11 @@ export async function listWorkflowAdoptingProjectIds(
 export async function hasCompleteWorkflowProjectReach(
   identity: ResolvedIdentity,
   workflowId: string,
+  executor?: Executor,
 ) {
   if (identity.side !== "staff") return false;
-  const [visibleWorkflow] = await db
+  const query = executorOrDefault(executor);
+  const [visibleWorkflow] = await query
     .select({ id: workflowTable.id })
     .from(workflowTable)
     .innerJoin(workspaceTable, eq(workspaceTable.id, workflowTable.workspaceId))
@@ -451,7 +471,7 @@ export async function hasCompleteWorkflowProjectReach(
     .limit(1);
   if (!visibleWorkflow) return false;
 
-  const rows = await db
+  const rows = await query
     .select({ projectId: projectTable.id })
     .from(workflowTable)
     .innerJoin(workspaceTable, eq(workspaceTable.id, workflowTable.workspaceId))
@@ -463,7 +483,7 @@ export async function hasCompleteWorkflowProjectReach(
       and(
         eq(workflowTable.id, workflowId),
         workflowWorkspaceReach(identity, workspaceTable.id),
-        not(projectReach(identity, projectTable.id) ?? sql`false`),
+        not(projectReach(identity, projectTable.id, executor) ?? sql`false`),
       ),
     )
     .limit(1);
@@ -473,9 +493,10 @@ export async function hasCompleteWorkflowProjectReach(
 export async function listDefaultStateTemplates(
   identity: ResolvedIdentity,
   projectIds: string[],
+  executor?: Executor,
 ) {
   if (projectIds.length === 0) return [];
-  return db
+  return executorOrDefault(executor)
     .select({
       projectId: stateTable.projectId,
       stateTemplateId: stateTable.stateTemplateId,
@@ -486,7 +507,7 @@ export async function listDefaultStateTemplates(
       and(
         inArray(stateTable.projectId, projectIds),
         eq(stateTable.isDefault, true),
-        projectReach(identity, projectTable.id) ?? sql`false`,
+        projectReach(identity, projectTable.id, executor) ?? sql`false`,
       ),
     );
 }
@@ -494,8 +515,9 @@ export async function listDefaultStateTemplates(
 export async function listEnabledProjectStates(
   identity: ResolvedIdentity,
   projectId: string,
+  executor?: Executor,
 ) {
-  return db
+  return executorOrDefault(executor)
     .select({
       stateTemplateId: stateTable.stateTemplateId,
       isDefault: stateTable.isDefault,
@@ -505,7 +527,7 @@ export async function listEnabledProjectStates(
     .where(
       and(
         eq(stateTable.projectId, projectId),
-        projectReach(identity, projectTable.id) ?? sql`false`,
+        projectReach(identity, projectTable.id, executor) ?? sql`false`,
         isNull(stateTable.archivedAt),
       ),
     );
@@ -515,8 +537,9 @@ export async function listEnabledProjectStates(
 export async function listLiveItemsWithStateTemplate(
   identity: ResolvedIdentity,
   projectId: string,
+  executor?: Executor,
 ) {
-  return db
+  return executorOrDefault(executor)
     .select({
       key: workItemTable.key,
       stateTemplateId: stateTable.stateTemplateId,
@@ -527,7 +550,7 @@ export async function listLiveItemsWithStateTemplate(
     .where(
       and(
         eq(workItemTable.projectId, projectId),
-        projectReach(identity, projectTable.id) ?? sql`false`,
+        projectReach(identity, projectTable.id, executor) ?? sql`false`,
         isNull(workItemTable.archivedAt),
         isNull(workItemTable.deletedAt),
       ),

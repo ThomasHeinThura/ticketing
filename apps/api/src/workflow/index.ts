@@ -8,7 +8,9 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import type { ResolveIdentityInput } from "../permissions/resolve-identity";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
+import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createWorkflow, {
@@ -44,6 +46,30 @@ async function requestIdentity(
   });
   if (!identity) throw new HTTPException(403, { message: "Forbidden" });
   return identity;
+}
+
+function requestIdentityInput(
+  c: Context<{ Variables: BaseVariables & { workspaceId: string } }>,
+): ResolveIdentityInput {
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  const apiKey = c.get("apiKey");
+  return {
+    userId: c.get("userId"),
+    credential: apiKey
+      ? "api_key"
+      : session?.impersonatedBy
+        ? "impersonation"
+        : "session",
+    ...(apiKey
+      ? {
+          apiKey: {
+            enabled: apiKey.enabled,
+            ownerUserId: apiKey.userId,
+            capabilities: apiKeyCapabilitySubset(apiKey),
+          },
+        }
+      : {}),
+  };
 }
 
 const listWorkflowsRoute = createRoute({
@@ -243,7 +269,7 @@ const workflow = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(publishWorkflowVersionRoute, async (c) => {
     const { id, number } = c.req.valid("param");
     const published = await publishWorkflowVersion(
-      await requestIdentity(c),
+      requestIdentityInput(c),
       id,
       number,
     );
@@ -252,7 +278,7 @@ const workflow = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(validateWorkflowVersionRoute, async (c) => {
     const { id, number } = c.req.valid("param");
     const result = await validateWorkflowVersion(
-      await requestIdentity(c),
+      requestIdentityInput(c),
       id,
       number,
     );
