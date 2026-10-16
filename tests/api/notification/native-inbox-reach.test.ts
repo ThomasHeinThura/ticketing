@@ -202,7 +202,6 @@ describe("native inbox current reach", () => {
     for (const kind of [
       "work_item.assigned",
       "work_item.unassigned",
-      "work_item.transitioned",
       "work_item.escalated",
     ]) {
       expect(
@@ -235,6 +234,28 @@ describe("native inbox current reach", () => {
         resource(),
       ),
     ).toBe(true);
+    expect(
+      canReadNativeInboxCandidate(
+        identity,
+        candidate(ids.requester, {
+          resourceType: "work_item",
+          resourceId: ids.workItem,
+          kind: "work_item.transitioned",
+        }),
+        resource(),
+      ),
+    ).toBe(true);
+    expect(
+      canReadNativeInboxCandidate(
+        identity,
+        candidate(ids.requester, {
+          resourceType: "work_item",
+          resourceId: ids.workItem,
+          kind: "work_item.transitioned",
+        }),
+        resource({ customerVisible: false }),
+      ),
+    ).toBe(false);
   });
 
   it("keeps staff work-item authority and API-key subset clamping", () => {

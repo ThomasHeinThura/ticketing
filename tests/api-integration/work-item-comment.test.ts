@@ -274,6 +274,8 @@ async function plantNativeNotification(input: {
   resourceId: string;
   kind: string;
   createdAt?: Date;
+  title?: string;
+  content?: string;
 }) {
   const [row] = await db
     .insert(schema.notificationTable)
@@ -284,8 +286,8 @@ async function plantNativeNotification(input: {
       resourceId: input.resourceId,
       kind: input.kind,
       type: "info",
-      title: "Native resource notice",
-      content: "Current reach controls this row",
+      title: input.title ?? "Native resource notice",
+      content: input.content ?? "Current reach controls this row",
       ...(input.createdAt ? { createdAt: input.createdAt } : {}),
     })
     .returning();
@@ -870,6 +872,15 @@ describe("API integration: work-item comments (#27)", () => {
       publicComment.id,
       "work_item.commented",
     );
+    const customerTransition = await plantNativeNotification({
+      userId: customer.user.id,
+      personId: customer.person.id,
+      resourceType: "work_item",
+      resourceId: workItem.id,
+      kind: "work_item.transitioned",
+      title: "Your request has an update",
+      content: "There is a new update to your request.",
+    });
     const customerMention = await plantFor(
       customer,
       "comment",
@@ -910,9 +921,18 @@ describe("API integration: work-item comments (#27)", () => {
       credentialCanReadTask: false,
     });
     const customerIds = customerRows.map(({ notification }) => notification.id);
+    expect(
+      customerRows.find(
+        ({ notification }) => notification.id === customerTransition.id,
+      )?.notification,
+    ).toMatchObject({
+      title: "Your request has an update",
+      content: "There is a new update to your request.",
+    });
     expect(customerIds).not.toContain(customerAssigned.id);
     expect(customerIds).not.toContain(customerUnassigned.id);
     expect(customerIds).toContain(customerComment.id);
+    expect(customerIds).toContain(customerTransition.id);
     expect(customerIds).toContain(customerMention.id);
     expect(customerIds).not.toContain(customerInternal.id);
     expect(customerIds).not.toContain(missingResource.id);
@@ -960,12 +980,13 @@ describe("API integration: work-item comments (#27)", () => {
       .where(
         inArray(schema.notificationTable.id, [
           customerComment.id,
+          customerTransition.id,
           customerMention.id,
           customerAssigned.id,
           customerInternal.id,
         ]),
       );
-    expect(bulkAfterRevocation).toHaveLength(4);
+    expect(bulkAfterRevocation).toHaveLength(5);
     expect(bulkAfterRevocation.every(({ isRead }) => !isRead)).toBe(true);
     await deleteReadableNotifications(customer.user.id);
     const retainedAfterClear = await db
@@ -974,6 +995,7 @@ describe("API integration: work-item comments (#27)", () => {
       .where(
         inArray(schema.notificationTable.id, [
           customerComment.id,
+          customerTransition.id,
           customerMention.id,
           customerAssigned.id,
           customerInternal.id,
@@ -982,6 +1004,7 @@ describe("API integration: work-item comments (#27)", () => {
     expect(retainedAfterClear.map(({ id }) => id).sort()).toEqual(
       [
         customerComment.id,
+        customerTransition.id,
         customerMention.id,
         customerAssigned.id,
         customerInternal.id,
@@ -1022,15 +1045,15 @@ describe("API integration: work-item comments (#27)", () => {
     ).not.toContain(foreignItem.id);
 
     const directRead = await markOwnReadableNotificationRead(
-      customerComment.id,
+      customerTransition.id,
       customer.user.id,
     );
     expect(directRead?.isRead).toBe(true);
-    const [directlyRead] = await db
+    const [transitionAfterDirectRead] = await db
       .select({ isRead: schema.notificationTable.isRead })
       .from(schema.notificationTable)
-      .where(eq(schema.notificationTable.id, customerComment.id));
-    expect(directlyRead?.isRead).toBe(true);
+      .where(eq(schema.notificationTable.id, customerTransition.id));
+    expect(transitionAfterDirectRead?.isRead).toBe(true);
 
     for (const forbidden of [customerAssigned, customerUnassigned]) {
       expect(
@@ -1071,6 +1094,15 @@ describe("API integration: work-item comments (#27)", () => {
       publicComment.id,
       "work_item.mentioned",
     );
+    const customerBulkTransition = await plantNativeNotification({
+      userId: customer.user.id,
+      personId: customer.person.id,
+      resourceType: "work_item",
+      resourceId: workItem.id,
+      kind: "work_item.transitioned",
+      title: "Your request has an update",
+      content: "There is a new update to your request.",
+    });
     await markReadableNotificationsRead(customer.user.id);
     const afterBulkRead = await db
       .select({
@@ -1083,6 +1115,7 @@ describe("API integration: work-item comments (#27)", () => {
           customerComment.id,
           customerMention.id,
           customerBulkComment.id,
+          customerBulkTransition.id,
           customerInternal.id,
           missingResource.id,
           customerAssigned.id,
@@ -1095,6 +1128,7 @@ describe("API integration: work-item comments (#27)", () => {
         { id: customerComment.id, isRead: true },
         { id: customerMention.id, isRead: true },
         { id: customerBulkComment.id, isRead: true },
+        { id: customerBulkTransition.id, isRead: true },
         { id: customerInternal.id, isRead: false },
         { id: missingResource.id, isRead: false },
         { id: customerAssigned.id, isRead: false },
@@ -1115,12 +1149,25 @@ describe("API integration: work-item comments (#27)", () => {
       internalComment.id,
       "work_item.mentioned",
     );
+    const clearTransition = await plantNativeNotification({
+      userId: customer.user.id,
+      personId: customer.person.id,
+      resourceType: "work_item",
+      resourceId: workItem.id,
+      kind: "work_item.transitioned",
+      title: "Your request has an update",
+      content: "There is a new update to your request.",
+    });
     await deleteReadableNotifications(customer.user.id);
     const afterClear = await db
       .select({ id: schema.notificationTable.id })
       .from(schema.notificationTable)
       .where(
-        inArray(schema.notificationTable.id, [clearItem.id, clearInternal.id]),
+        inArray(schema.notificationTable.id, [
+          clearItem.id,
+          clearInternal.id,
+          clearTransition.id,
+        ]),
       );
     expect(afterClear.sort((a, b) => a.id.localeCompare(b.id))).toEqual(
       [{ id: clearItem.id }, { id: clearInternal.id }].sort((a, b) =>

@@ -24,7 +24,12 @@ export function isCustomerEligibleNotificationEvent(
       "approval.withdrawn",
     ].includes(eventKind);
   }
-  // A direct description mention has no comment resource. Other work-item events include
-  // assignment or internal activity and are not customer-facing notification events.
-  return resourceType === "work_item" && eventKind === "work_item.mentioned";
+  // A direct description mention has no comment resource. A state transition is public
+  // activity under CA-7 and is a default requester notification under notifications.md.
+  // Assignment and other internal/staff activity remain excluded by NO-19.
+  return (
+    resourceType === "work_item" &&
+    (eventKind === "work_item.mentioned" ||
+      eventKind === "work_item.transitioned")
+  );
 }

@@ -582,6 +582,45 @@ describe("current notification reach and preference", () => {
       evaluateCurrentNotificationReachAndPreference(tx, descriptionMention),
     ).resolves.toEqual({ kind: "destination_unresolved" });
   });
+
+  it("keeps a visible customer transition eligible through reach and fails closed at the missing customer projection seam", async () => {
+    mocks.resolveIdentity.mockResolvedValue({
+      personId: "person-1",
+      side: "customer",
+    });
+    mocks.findCurrentNotificationResource.mockResolvedValue({
+      ...resource,
+      visibleToPersonIds: ["person-1"],
+      staffUrl: null,
+    });
+    const transition = {
+      ...delivery,
+      eventKind: "work_item.transitioned",
+      payload: {
+        id: delivery.eventId,
+        kind: "work_item.transitioned",
+        scope: {
+          workspaceId: delivery.workspaceId,
+          organisationId: delivery.organisationId,
+        },
+        payload: {
+          workItemId: "item-1",
+          fromStateId: "state-backlog",
+          toStateId: "state-in-progress",
+        },
+      },
+      title: "Your request has an update",
+      body: "There is a new update to your request.",
+    };
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, transition),
+    ).resolves.toEqual({ kind: "destination_unresolved" });
+    expect(mocks.reaches).toHaveBeenCalledWith(
+      expect.objectContaining({ side: "customer" }),
+      expect.objectContaining({ visibleToPersonIds: ["person-1"] }),
+    );
+    expect(mocks.resolveNotificationPreference).toHaveBeenCalled();
+  });
 });
 
 describe("approval notification eligibility (S3, 0120-anchored)", () => {
