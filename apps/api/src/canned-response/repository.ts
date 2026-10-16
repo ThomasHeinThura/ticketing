@@ -13,7 +13,10 @@ export type NewCannedResponse = Pick<
   "workspaceId" | "name" | "body" | "visibilityDefault" | "createdBy"
 >;
 export type CannedResponseChanges = Partial<
-  typeof cannedResponseTable.$inferInsert
+  Pick<
+    typeof cannedResponseTable.$inferInsert,
+    "name" | "body" | "visibilityDefault"
+  >
 >;
 
 export async function findCannedResponseWorkspaceId(
