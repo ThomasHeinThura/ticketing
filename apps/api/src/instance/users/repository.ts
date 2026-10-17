@@ -249,6 +249,8 @@ export async function assertAdminRemovalAllowed(
     throw new HTTPException(409, { message: "last_instance_admin" });
 }
 
-export function lockInstanceAdminSerialization(executor: Executor) {
-  return executor.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
+export async function lockInstanceAdminSerialization(
+  executor: Executor,
+): Promise<void> {
+  await executor.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
 }
