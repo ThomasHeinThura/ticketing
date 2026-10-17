@@ -7,6 +7,16 @@
 export { generatedRouteMetadata } from "./generated-route-metadata";
 
 import { generatedRouteMetadata } from "./generated-route-metadata";
+import {
+  appendWorkItemQueryState,
+  isWorkItemSearchSortField,
+  parseWorkItemListSearch,
+  parseWorkItemQueryState,
+  type WorkItemListSearch,
+  type WorkItemQueryState,
+} from "./work-item-list-search";
+
+export * from "./work-item-list-search";
 
 export type RouteSurface = keyof typeof generatedRouteMetadata;
 
@@ -59,17 +69,6 @@ export function parseGeneratedRouteUrl(
   return { pathname: url.pathname, params };
 }
 
-export const WORK_ITEM_SORT_FIELDS = [
-  "key",
-  "position",
-  "title",
-  "priority",
-  "dueDate",
-] as const;
-export type WorkItemSortField = (typeof WORK_ITEM_SORT_FIELDS)[number];
-
-export const WORK_ITEM_SORT_DIRECTIONS = ["asc", "desc"] as const;
-export type WorkItemSortDirection = (typeof WORK_ITEM_SORT_DIRECTIONS)[number];
 export type WorkItemActivityFilter = "everything" | "comments" | "public";
 export type WorkItemDetailSearch = {
   activity?: Exclude<WorkItemActivityFilter, "everything">;
@@ -120,6 +119,27 @@ export function godModeUserActionBinding(
 }
 
 export type PendingActionsSearch = { cursor?: string };
+export type SavedViewsSearch = { query?: string };
+/**
+ * The URL form of a saved view (`SV-19`): the view's context (`workspaceId`, `scope`,
+ * `scopeId`, `layout`) and its query properties as plain parameters, so a link fully encodes
+ * it. Every part is optional; a URL naming all four context parts is a complete snapshot.
+ */
+export type SavedViewUrlSearch = {
+  workspaceId?: string;
+  scope?: "workspace" | "project";
+  scopeId?: string;
+  layout?: string;
+} & WorkItemQueryState;
+
+const SAVED_VIEW_URL_LAYOUTS = [
+  "board",
+  "list",
+  "table",
+  "calendar",
+  "timeline",
+  "chart",
+] as const;
 
 export function parsePendingActionsSearch(raw: unknown): PendingActionsSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
@@ -130,6 +150,60 @@ export function parsePendingActionsSearch(raw: unknown): PendingActionsSearch {
       ? value.cursor
       : undefined;
   return { cursor };
+}
+
+export function parseSavedViewsSearch(raw: unknown): SavedViewsSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return {
+    ...(typeof value.query === "string" && value.query.trim()
+      ? { query: value.query.trim().slice(0, 200) }
+      : {}),
+  };
+}
+
+function boundedId(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 && value.length <= 200
+    ? value
+    : undefined;
+}
+
+/**
+ * Parses a saved view's URL. Total and bounded like every route parser: each property that is
+ * absent or invalid is simply omitted, and no default is added, so a link keeps meaning what
+ * it said. `position` is the list's rank order and is not a saved-view sort.
+ */
+export function parseSavedViewUrlSearch(raw: unknown): SavedViewUrlSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const { sort, ...rest } = parseWorkItemQueryState(value);
+  const workspaceId = boundedId(value.workspaceId);
+  const scopeId = boundedId(value.scopeId);
+  return {
+    ...(workspaceId ? { workspaceId } : {}),
+    ...(value.scope === "workspace" || value.scope === "project"
+      ? { scope: value.scope }
+      : {}),
+    ...(scopeId ? { scopeId } : {}),
+    ...((SAVED_VIEW_URL_LAYOUTS as readonly unknown[]).includes(value.layout)
+      ? { layout: value.layout as string }
+      : {}),
+    ...(isWorkItemSearchSortField(sort) ? { sort } : {}),
+    ...rest,
+  };
+}
+
+export function parseSavedViewUrlSearchFromQueryString(queryString: string) {
+  const params = new URLSearchParams(queryString);
+  return parseSavedViewUrlSearch({
+    workspaceId: params.get("workspaceId") ?? undefined,
+    scope: params.get("scope") ?? undefined,
+    scopeId: params.get("scopeId") ?? undefined,
+    layout: params.get("layout") ?? undefined,
+    filter: params.get("filter") ?? undefined,
+    filterMode: params.get("filterMode") ?? undefined,
+    sort: params.get("sort") ?? undefined,
+    dir: params.get("dir") ?? undefined,
+    columns: params.get("columns") ?? undefined,
+  });
 }
 
 export function parseGodModeUsersSearch(raw: unknown): GodModeUsersSearch {
@@ -160,20 +234,6 @@ export function parseGodModeUsersSearch(raw: unknown): GodModeUsersSearch {
       : {}),
   };
 }
-
-// The screen inventory names three `layout` values on this one route
-// (`/agent/projects/{key}/work?layout=board|list|table`). `list` and `board` are built;
-// table is a separate, not-yet-built P1 row in `docs/02-design/screen-inventory.md`.
-// `layout` is parsed from the URL, so a bookmark naming a not-yet-built layout degrades
-// to `list` instead of 404ing and starts working once that layout ships.
-export const WORK_ITEM_LIST_LAYOUTS = ["list", "board"] as const;
-export type WorkItemListLayout = (typeof WORK_ITEM_LIST_LAYOUTS)[number];
-
-export type WorkItemListSearch = {
-  layout: WorkItemListLayout;
-  sort: WorkItemSortField;
-  dir: WorkItemSortDirection;
-};
 
 export type ServiceCalendarListSearch = { cursor?: string };
 export type SlaPolicyListSearch = { cursor?: string };
@@ -209,55 +269,6 @@ export function parseServiceCalendarListSearchFromQueryString(
   return parseServiceCalendarListSearch({
     cursor: params.get("cursor"),
   });
-}
-
-export const DEFAULT_WORK_ITEM_LIST_SEARCH: WorkItemListSearch = {
-  layout: "list",
-  sort: "key",
-  dir: "asc",
-};
-
-function isWorkItemSortField(value: unknown): value is WorkItemSortField {
-  return (
-    typeof value === "string" &&
-    (WORK_ITEM_SORT_FIELDS as readonly string[]).includes(value)
-  );
-}
-
-function isWorkItemSortDirection(
-  value: unknown,
-): value is WorkItemSortDirection {
-  return (
-    typeof value === "string" &&
-    (WORK_ITEM_SORT_DIRECTIONS as readonly string[]).includes(value)
-  );
-}
-
-function isWorkItemListLayout(value: unknown): value is WorkItemListLayout {
-  return (
-    typeof value === "string" &&
-    (WORK_ITEM_LIST_LAYOUTS as readonly string[]).includes(value)
-  );
-}
-
-/**
- * Parses a raw, possibly malformed search object (a hand-edited URL, an old bookmark, an
- * unset param) into a valid `WorkItemListSearch`, falling back to the default for any
- * missing or invalid field. Never throws -- this is also this route's `validateSearch`.
- */
-export function parseWorkItemListSearch(raw: unknown): WorkItemListSearch {
-  const candidate = (raw ?? {}) as Record<string, unknown>;
-  return {
-    layout: isWorkItemListLayout(candidate.layout)
-      ? candidate.layout
-      : DEFAULT_WORK_ITEM_LIST_SEARCH.layout,
-    sort: isWorkItemSortField(candidate.sort)
-      ? candidate.sort
-      : DEFAULT_WORK_ITEM_LIST_SEARCH.sort,
-    dir: isWorkItemSortDirection(candidate.dir)
-      ? candidate.dir
-      : DEFAULT_WORK_ITEM_LIST_SEARCH.dir,
-  };
 }
 
 export type IntakeQueueSearch = {
@@ -332,13 +343,6 @@ export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
     stage: stage ?? "email",
     factor: value.factor === "backup" ? "backup" : "totp",
   };
-}
-
-/** The inverse direction, for a column-header sort toggle. */
-export function toggleWorkItemSortDirection(
-  dir: WorkItemSortDirection,
-): WorkItemSortDirection {
-  return dir === "asc" ? "desc" : "asc";
 }
 
 export const routes = {
@@ -446,6 +450,11 @@ export const routes = {
         sort: resolved.sort,
         dir: resolved.dir,
       });
+      appendWorkItemQueryState(query, {
+        filter: resolved.filter,
+        filterMode: resolved.filterMode,
+        columns: resolved.columns,
+      });
       return `/agent/projects/${encodeURIComponent(params.projectKey)}/work?${query.toString()}`;
     },
   },
@@ -467,6 +476,36 @@ export const routes = {
       if (resolved.activity) query.set("activity", resolved.activity);
       const suffix = query.toString();
       return `/agent/work-items/${encodeURIComponent(params.key)}${suffix ? `?${suffix}` : ""}`;
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "Saved views index", `/agent/views`. */
+  savedViews: {
+    path: "/agent/views" as const,
+    build: (search: SavedViewsSearch = {}) => {
+      const resolved = parseSavedViewsSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.query) query.set("query", resolved.query);
+      const suffix = query.toString();
+      return suffix ? `/agent/views?${suffix}` : "/agent/views";
+    },
+  },
+  /**
+   * `docs/02-design/screen-inventory.md` "Saved view", `/agent/views/{id}`. The query string
+   * encodes the whole view (`SV-19`), so the link can be shared with someone who cannot open
+   * the saved view itself.
+   */
+  savedView: {
+    path: "/agent/views/$id" as const,
+    build: (params: { id: string }, search: SavedViewUrlSearch = {}) => {
+      const resolved = parseSavedViewUrlSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.workspaceId) query.set("workspaceId", resolved.workspaceId);
+      if (resolved.scope) query.set("scope", resolved.scope);
+      if (resolved.scopeId) query.set("scopeId", resolved.scopeId);
+      if (resolved.layout) query.set("layout", resolved.layout);
+      appendWorkItemQueryState(query, resolved);
+      const suffix = query.toString();
+      return `/agent/views/${encodeURIComponent(params.id)}${suffix ? `?${suffix}` : ""}`;
     },
   },
   /** God Mode Users directory and its query-string-backed selection/filters. */
@@ -524,5 +563,8 @@ export function parseWorkItemListSearchFromQueryString(
     layout: params.get("layout") ?? undefined,
     sort: params.get("sort") ?? undefined,
     dir: params.get("dir") ?? undefined,
+    filter: params.get("filter") ?? undefined,
+    filterMode: params.get("filterMode") ?? undefined,
+    columns: params.get("columns") ?? undefined,
   });
 }
