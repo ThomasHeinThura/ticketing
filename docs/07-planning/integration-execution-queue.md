@@ -1,3 +1,23 @@
+## Conductor checkpoint — 2026-10-17 13:29 UTC
+
+Main is protected #807 merge2951838a at13:19:58Z, exact publication/synthetic tree2f65124d. The matching status snapshot and public acceptance comment bind all actual tests/reviews/image results; historical dated rows below retain their earlier scopes.
+
+| Unit | State | Exact source/publication | Owner and next action |
+| --- | --- | --- | --- |
+| Canned responses #807 | DONE | source657618 / publication1ed689 / main295183 | Conductor; protected acceptance recorded, preserve N1/NB1 and historical adverse evidence |
+| Partial canned predecessor #759 | SUPERSEDED | preserved branchd83f240e | Conductor; selected seven paths/five query responsibilities absorbed by accepted807, authentic accounting/correction published; no whole580 claim |
+| Records #821 | DONE | publication200832 / mainf0b7 | Conductor; records-only protected acceptance,1393 tests1373PASS20opt-inSKIP, product steps skipped; no product acceptance from records |
+| Identity/users #822 | WAITING_CI | sourcefd061392 / publication8b7c23a7 | Conductor; ordinary/current Sol CLEAR, new FAST39036599989/FULL39036588761 pending; verify actual full counts/image/current18 gates before merge |
+| SAME Carrier C #791 | RUNNING | local31fc00b9; last tested723eef/15c294, current repairs moving | Sole Luna author; fix canonical contract propagation/binding, freeze exact inputs, root scoped tests/full suite/census, then current combined review/gates |
+| Boot/outbox #798 | READY | publicationc4556ec6 / reviewedfc094 | Conductor; necessary current-main composition/conservation/current reviews and fresh exact checks when prioritized; old225/3303 proof stays source-bound |
+| Query checker preparation #797 | READY | publication82224710 / reviewed6fc8ce0 | Conductor; current-main composition and current reviews/gates; diagnostic-only preparation stays unwired, no production gate claim |
+| Leaf/intake #810 | BLOCKED | publication3f5e8dab | Conductor; G11 actual223.2ms failed/unwaived. Prerequisite accepted Carrier#772 scheduler/integration inputs or evidence-backed cause repair; no unchanged retry |
+| Time/cost #811 and predecessor #773 | WAITING_DECISION | remote73ce0912 / local09bcfa38 | Thomas; existing valuation/midnight/timezone questions and13 owning findings; preserve source, no P5 expansion |
+| Remaining #580 and selected #589 | RUNNING | accepted295183 plus existing owner ledger | Conductor; reconcile actual combined source inventory, complete conversions/structural gate and selected unit dispositions without overlapping totals |
+| Signed combined image/SIT/recovery/final audit | BLOCKED | no final combined accepted digest | Conductor; prerequisite selected integration complete, then canonical signed prerelease/exact digest workflows/NONEMPTY backup/usable isolated restore/fresh independent Sol audit |
+
+#715 is an existing Carrier owner unit with #768 source lineage through #769; it remains unaccepted, not absent. #717 is DONE and is not repeated. Primary dirty5+1, inherited N1, owner holds and626 deferrals stay preserved. No local heavy window is active at this cutoff; sole Carrier author and bounded read-only822 verifier preparation are the two active children. No automatic continuation is verified.
+
 ## Conductor checkpoint — 2026-10-17 12:05 UTC
 
 Main is protected #820 merge `fe063765774b73587488b753c91c6477653662cc` (11:56:59Z), exact publication treebf1c605e. The dated status snapshot records its full tests/image/review evidence. This records checkpoint neither accepts remaining product candidates nor enables #580.
