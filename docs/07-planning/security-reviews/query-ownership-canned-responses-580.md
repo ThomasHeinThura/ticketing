@@ -1763,3 +1763,581 @@ Read the private direct-owner answer receipt `owner-erasure-summary-release-clas
 Performed only read-only Git/text inspection, Python object/hash comparisons, read-only GitHub metadata queries, and exclusive creation of this private report. No tests, checkers, Node/AST/runtime/compiler, database, browser, Docker, image build/boot, CI trigger, source edit, commit, push, PR mutation, release or deployment was performed. Two broad reads were truncated; follow-up bounded reads covered the classifier, full security and ordinary reports, exact registration/workflow and policy details relied on here. An initially overbroad home-directory file search produced unrelated permission/time-out diagnostics; the evidence root was then supplied and used directly. An initial main lookup at a guessed TaskDesk repository returned 404 and proved nothing; after reading origin, the correct explicit-host ticketing query resolved main to the exact accepted-main SHA above.
 
 Read-only live PR metadata still reports #807 OPEN and nondraft at source publication `198a5abde93a899199af2d37eca86c5467317d17`; it does not report ef80 as the remote candidate. No hosted checks were evaluated as ef80 evidence. Current required CI, product/runtime/image evidence and merge readiness remain separate conductor-owned gates. Historical assignment readings 218.0 ms and 200.43141014024977 ms remain adverse to the strict <200 ms budget; this review establishes no G11 remediation or pass. BROWSER VERIFICATION: BLOCKED by the no-runtime review assignment. No signed release, exact-digest SIT, recovery, phase completion or final acceptance is claimed.
+
+
+## 2026-10-17 — customer-principal denial repair and independent disposition
+
+**Reviewed head:** 304d36e9cb4717be88e8879d37ddb19ce08f3ed7
+
+Normal sole-parent source commit on ec64 changes only the list reach middleware and its integration tests. The existing canonical isCustomerPrincipal denial follows current item reach and capability, preserving outsider404 and owner/key ceilings. A legacy workspace customer with a canonical project-read grant actually returned200 before the fix; it now returns403 without internal body or creator data. Canonical organisation-only customers were already incapable and refused403: the original P1's broader exploit wording is corrected, not adopted. No permission/evaluator/SQL/contract/classifier change.
+
+Two fresh independent Luna ordinary contexts CLEAR and a further fresh FULL independent Sol context CLEAR at the exact source above. The author, root and Carrier adviser are not approvers. Dispatch identity is requested provenance; unavailable served-model fingerprints are not invented. The existing surrounding shadow legacy-authorization marker gap is non-blocking and not fixed. Full required exact-publication CI remains mandatory and pending; no merge/release/SIT/phase claim or waiver.
+
+Clean exact304d PostgreSQL:1file13PASS/native0/PID8951/7.732s; API five configurations/native0/PID9494/19.272s. Earlier working-source passes and adverse fixture failure remain separately scoped below. Root retained owned-resource cleanup/private-environment removal and unchanged23container/109volume/7network inventory. Normal precommit formatting refusal was corrected with standard formatting only (whitespace/trailing commas); no hook bypass.
+
+Transport precision: ordinary A's phrase “on ec64” describes the pre-format two-file working delta BASED on ec64, not the unchanged ec64 commit; current exact304d receipts below supersede that runtime inference. Ordinary B's abbreviated raw-log directory is actually canned807-304d-current-pg, and the foreign-organisation404 assertion belongs to the organisation-customer test. Original reports are copied byte-for-byte, followed by this explicit precision; verdicts are not rewritten.
+
+The entire205740-byte prefix and its45 authentic entries/44 unique bodies remain unchanged. Thirteen new authentic artifact bodies below bring58 entries/57 unique bodies. This append is publication evidence only and changes no reviewed source.
+
+### acceptance audit, not source review
+
+Source: `canned807-ec64-final-acceptance-audit-luna.md`; SHA-256 `fbd093331c06baa1b2362c22eb675f584f2e64501bffa99715cedbc4f62acee7`; copied verbatim.
+
+~~~text
+# PR #807 ec64 final acceptance evidence audit
+
+**Result: WAITING — not merge ready.** This is a read-only acceptance-evidence audit and preparation note, not source review or merge authorization. The exact live PR head is `ec64bf031e9441352ade4306c186a9fa963adc79`; reviewed source is `ef80b4ed004c42d618af41a14d3031523566646b`; accepted `main` is `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`.
+
+## Publication and source conservation
+
+Live GitHub reports PR #807 OPEN, non-draft, base `main` at the accepted SHA above, head at ec64, and mergeable. The exact live PR body equals `807-ec64-current-pr-body-v2.md`; its gates section is now stale relative to current hosted results (see below).
+
+I independently compared Git objects for ef80→ec64. The candidate delta is exactly one regular `100644` modification to `docs/07-planning/security-reviews/query-ownership-canned-responses-580.md`: 195 insertions, zero deletions, no source changes. The source note is 178,904 bytes, SHA-256 `50575804a56112834268f8bee00bccd89b6b4485cd14e625d2b68c53635a0b33`; the candidate note is 205,740 bytes, SHA-256 `6554c9df72ac9d987a35c39d54ceba7b78a1cf1a29982621c864bf2d2c428299`, and begins byte-for-byte with the full source note. The publication proof records 45 authentic report entries / 44 unique bodies, with the original 40 preserved and five current reports appended. Its prefix and full-note hashes match the independently read Git objects. The composition receipt records all 29 owned non-overlap paths and 85 accepted-main non-overlap paths preserved, 3,403 total tree entries, clean worktree, and unchanged accepted-main decision log. Evidence files: `807-ef80-root-composition-conservation.json`, `807-ef80-root-prepublication-proof.json`, and `807-ec64-publication-proof.json`.
+
+The ordinary composition report approves ef80 for its bounded composition/documentation scope; the independent Sol-tier confirmation clears that same bounded composition security scope. Both disclose that a more specific served model fingerprint was unavailable, and neither claims to be a full source implementation review. The earlier full ordinary/security reviews remain bounded to their recorded source. Requested Luna high/fork-none dispatch metadata is not evidence of a platform-reported served fingerprint.
+
+## Current exact-head CI and runtime evidence
+
+The live ruleset `22365005` is active on the default branch and requires exactly 18 status contexts: static; unit + component; build; registers - env, vocabulary, reviews, skips, overrides; route policy coverage + permission matrix; gate checkers + red probes; contract - OpenAPI drift; CI matches ci-cd.md; supply chain - dependency audit; supply chain - secret scan; helm lint + template; domain coverage (90%); integration - Postgres 18; e2e - protected-route redirect; a11y - accessibility (G4, axe); visual regression (G8); performance - budgets (G11); pull request template + security review.
+
+A live exact-ec64 check-run query shows 17 of the 18 required contexts successful and `integration - Postgres 18` (job `117362828278`, run `39021072865`) still in progress. Do not count the earlier canceled run's checks as results; a later exact-head run supplies the successful contexts. Unit/component job `117362830204` is successful with 121 API files / 872 tests, 186 web files / 1,023 tests, and 12 successful tasks. Gate-checkers job `117362830279` succeeded at 1,392 tests, 1,372 passed, 0 failed, 20 expected opt-in skips. G11 job `117362828163` succeeded with 22 passed and no manual rerun. E2E job `117362828042` succeeded with 64 passed. Current receipts and raw-log digests are in the four `807-ec64-conductor-verified-*-success-receipt.json` files.
+
+Expected PostgreSQL output from the dispatch is 223 files, 3,299 tests, and 5 tasks; the count derivation is accepted-main baseline 3,292 plus a net 7 canned-response cases (the test module grows from 4 cases to 11). These figures are independently recorded in `807-ec64-expected-pg-count-provenance.json` (candidate ec64, base accepted main); that artifact explicitly labels them prediction only. Job `117362828278` is still running; no raw completion output was available in this audit, so none of those PostgreSQL counts or a pass is claimed. The hosted synthetic-image evidence `807-ec64-hosted-synthetic-image-validation.json` independently records a successful build/migration/boot/health/cleanup proof for candidate ec64 (synthetic merge commit `e4aef7e3e973be2f4dcfab8c476b9ac03dd3dedd`, tree `b15201e184cc13818f0a54c4558ee8bd7e30d806`, HTTP live/ready 200). It is hosted shipping-image validation, not signed release or laptop SIT evidence.
+
+The published PR body still says all current gates are pending, says no current G11 pass exists, and has browser/shipping proof pending. That body predates these green receipts. It needs a factual update after PostgreSQL completes; this task did not edit it.
+
+## Live review-thread blocker
+
+I paginated the complete GitHub GraphQL `reviewThreads(first:100)` connection for #807; `hasNextPage=false`. There is one thread and it is **unresolved and not outdated**. The P1 comment [Reject customer principals from the canned-response agent route](https://github.com/ThomasHeinThura/ticketing/pull/807#discussion_r4297533554) says a customer principal with reach and built-in `work_item:read` can retrieve the workspace-wide canned-response library and asks for an explicit customer-principal rejection. The thread has no reply/disposition. The associated Codex review-state issue comment reports `has_unresolved_findings:true` for the review on `fb4b49af59a05e631328316b6e418e75d3df2864`.
+
+The flagged source file is unchanged from ef80 to ec64 and still reaches `return next()` at line 66 after reach/capability checks without the requested explicit principal rejection. This observation is only to bind the live finding to the unchanged candidate; I did not perform a source review or decide the finding's technical merits. Its reason and current lack of disposition are a merge-readiness blocker under the workflow. The active ruleset itself reports `required_review_thread_resolution:false`; that does not dispose the review finding or replace the repository's unresolved-blocker rule. No independent review verdict for ec64 was queried or recorded as part of this bounded task.
+
+## Readiness checklist
+
+- [x] Exact source, candidate, base, live PR state, and current ruleset checked.
+- [x] Publication is only the append-only own-note change; source note prefix and no-deletion conservation checked.
+- [x] All 45 report-entry / 44 unique-body counts agree with the publication proof; 40 historical entries are retained.
+- [x] Exact-head unit, gate-checker, G11, E2E, and hosted synthetic-image success receipts inspected.
+- [ ] PostgreSQL 18 job `117362828278` completes successfully and its raw output is inspected against 223 files / 3,299 tests / 5 tasks.
+- [ ] The sole live P1 thread receives an actual disposition, and any necessary candidate change gets the required exact-head review and CI.
+- [ ] PR body is refreshed from actual current evidence, preserving all limitations and outstanding SIT/final-audit work.
+- [ ] Re-query exact head, all threads, required contexts and protection immediately before any merge decision.
+
+No source, PR body, branch ref, or Git history was changed. No tests, local Node/AST/compiler, browser, Docker, database, or CI were run or triggered by this audit. Git/GitHub metadata and existing evidence were read only.
+
+~~~
+
+### author original regression preflight
+
+Source: `REPORT.md`; SHA-256 `fb5fdc127ba6f723b816846691a7063dd9eb04e2a1150413ddf7198d53c2c3ac`; copied verbatim.
+
+~~~text
+# #807 regression-only preflight
+
+- Worktree: `/Users/heinthura/.codex/worktrees/canned-response-ca19-reach/Ticketing.v2`
+- Base/source SHA: `ec64bf031e9441352ade4306c186a9fa963adc79`
+- Scope: write regression test(s) only; stop before product middleware edits and runtime.
+- Current product source remains unchanged; only `tests/api-integration/canned-response.test.ts` is modified.
+
+## Immutable ec64 preimages
+- `apps/api/src/canned-response/require-canned-response-reach.ts`: 4445 bytes, SHA256 `06a01942c8eea3032d2a3cf3e7c2c279cdebc439f7c0b1ecce52629fbe7e7ce5`, preserved at `/tmp/taskdesk-807-regression-preflight-ec64bf031e9441352ade4306c186a9fa963adc79/preimages/require-canned-response-reach.ts`.
+  Current source identical to preimage: `True`.
+- `tests/api-integration/canned-response.test.ts`: 22836 bytes, SHA256 `54cd57261eb894cdeb134ab9a7fed31a8c1bf745bee6f2de8132ebd7f865733a`, preserved at `/tmp/taskdesk-807-regression-preflight-ec64bf031e9441352ade4306c186a9fa963adc79/preimages/canned-response.test.ts`.
+  Case heads: baseline `11`; current `13`; all existing names retained `True`.
+  - `CA-19: an admin creates, lists, updates and deletes a canned response`
+  - `403s a member without workspace:manage_settings`
+  - `409s a duplicate name within the same workspace`
+  - `404s a PATCH against another tenant`
+  - `DELETE against another tenant`
+  - `PATCH and DELETE of a canned response that does not exist 404`
+  - `lists only responses available to the requested work item, ordered by name`
+  - `HTTP listing requires a reachable item and the owner`
+  - `list SQL enforces same-workspace project reach and live-item state at read time`
+  - `foreign identity cannot bootstrap, insert, update or delete using the victim workspace`
+  - `update and delete by id only act inside the supplied workspace`
+  Added case heads:
+  - `refuses a reachable customer-side principal before exposing internal snippets`
+  - `refuses a reachable workspace-customer principal on the agent snippet list`
+
+## Regression expectations
+
+- A customer-side person whose organisation owns the project reaches the work item and has `work_item:read`; list returns 403 with neither the internal body marker nor creator ID in the response.
+- A customer-side person from a different organisation receives 404 and no snippet body or creator ID.
+- A workspace-role `customer` with explicit reachable project `work_item:read` receives 403 and no body or creator ID.
+- The existing CA-19 staff create/list/update/delete flow and staff listing positives are unchanged.
+
+## Static checks and runtime boundary
+
+- `git diff --check`: clean.
+- `git status`: only `tests/api-integration/canned-response.test.ts` modified.
+- No test, typecheck, compiler, install, database, browser, or Docker command was run.
+- Product fix is pending the root session's runtime grant and actual focused PostgreSQL result.
+
+## Exact current diff
+
+- `/tmp/taskdesk-807-regression-preflight-ec64bf031e9441352ade4306c186a9fa963adc79/regression-only.diff`: 8464 bytes, SHA256 `43561d3145a579ef198634e974b306efb02107717fdd14f22698296fb0a5b6b4`.
+
+~~~
+
+### author fixture correction1
+
+Source: `CORRECTION-1.md`; SHA-256 `c45e6c76f80b8a72bbffdc2ce152d75831c4e7c4bfe6943293e036b227af3c56`; copied verbatim.
+
+~~~text
+# #807 regression fixture correction 1
+
+- Base/source SHA: `ec64bf031e9441352ade4306c186a9fa963adc79`.
+- Scope remains test-only; no middleware/product edits.
+- The original preflight report and diff are retained unchanged: `REPORT.md` SHA256 `fb5fdc127ba6f723b816846691a7063dd9eb04e2a1150413ddf7198d53c2c3ac`; `regression-only.diff` SHA256 `43561d3145a579ef198634e974b306efb02107717fdd14f22698296fb0a5b6b4`.
+
+## Corrections
+
+- Relative `app.request` strings pass through `tests/api-integration/setup.ts`, which normalizes them to `TASKDESK_AGENT_URL=http://localhost:1337` and supplies the agent host. `mockAuthenticatedSession` defaults to `portal: "agent"`; the API adapter requires session portal to match host (`apps/api/src/utils/authenticate-api-request.ts`). The customer-side regression now uses the default agent session, so authentication reaches the list route. Persisted person side plus canonical own-organisation membership still resolves this caller as `side: customer` with organisation reach (`apps/api/src/permissions/resolve-identity.ts`).
+- The reachable customer assertion now uses the persisted work-item ID. `reaches` receives the persisted project ID, workspace ID, and the exact project `organisationId`; `can` receives the persisted work-item/project IDs. The work-item’s project is updated to the customer’s organisation before the request, matching the live list middleware facts.
+- The distinct workspace-customer case has a persisted `workspace_user.role = customer` in the work-item workspace and a project-scoped `work_item:read` grant. Its current project membership proves reach; the raw workspace-role row exercises the first `isCustomerPrincipal` branch.
+- The canonical organisation customer role is inserted once in the customer-org case. The file calls `resetTestDatabase` before every test; the schema has unique index `role_scope_workspace_key_unique` over `(scope, COALESCE(workspace_id, ''), key)`, so each test has a fresh unique-key table. The two customer identities in the same test share that one canonical row.
+
+## Current source facts
+
+- Product middleware still matches the ec64 preimage: `06a01942c8eea3032d2a3cf3e7c2c279cdebc439f7c0b1ecce52629fbe7e7ce5` (preimage `06a01942c8eea3032d2a3cf3e7c2c279cdebc439f7c0b1ecce52629fbe7e7ce5`; identical: `True`).
+- Canned-response integration tests: baseline 11 named case heads, current 13; the two added heads are the customer-side and workspace-customer regressions. All original heads remain present.
+- Only `tests/api-integration/canned-response.test.ts` is modified; `git diff --check` is clean.
+- No runtime, test, typecheck, compiler, install, database, browser, or Docker command was run. Awaiting root’s actual focused PostgreSQL run.
+
+## Exact current candidate diff
+
+- `regression-correction-1-full.diff`: 9256 bytes, SHA256 `cf5d375ef7914a5c42e93a36abdbfbcc25c7e72b15fd1fe2524062ab83309195`.
+- Current test file: 30910 bytes, SHA256 `601e66ec672cbf2f55e298c2da1da3711496b5f50316059612f8a9c514d5f57d`.
+- Immutable ec64 test preimage: 22836 bytes, SHA256 `54cd57261eb894cdeb134ab9a7fed31a8c1bf745bee6f2de8132ebd7f865733a`.
+
+~~~
+
+### author actual decision correction2
+
+Source: `CORRECTION-2.md`; SHA-256 `c72d4026f9911529b609076477f77e5b1ac8fd7aaa0edaa0d394fea2984b60e9`; copied verbatim.
+
+~~~text
+# #807 regression correction 2: pre-fix source and decision alignment
+
+- Base/source SHA: `ec64bf031e9441352ade4306c186a9fa963adc79`.
+- Scope: test-only correction complete; root-authorized middleware guard may now be added after this preimage.
+- Prior author packets remain unchanged: `REPORT.md`, `regression-only.diff`, `CORRECTION-1.md`, and `regression-correction-1-full.diff`.
+
+## Immutable pre-fix files
+- `apps/api/src/canned-response/require-canned-response-reach.ts`: `4445` bytes, SHA256 `06a01942c8eea3032d2a3cf3e7c2c279cdebc439f7c0b1ecce52629fbe7e7ce5`, saved at `/tmp/taskdesk-807-regression-preflight-ec64bf031e9441352ade4306c186a9fa963adc79/correction-2-preimages/require-canned-response-reach.ts` with mode 0600.
+- `tests/api-integration/canned-response.test.ts`: `31033` bytes, SHA256 `bfa0a7a9e922576c8cf13377f784e10f5abc72fb7e6fe2f1690a7d8c212f66d6`, saved at `/tmp/taskdesk-807-regression-preflight-ec64bf031e9441352ade4306c186a9fa963adc79/correction-2-preimages/canned-response.test.ts` with mode 0600.
+
+## Actual prior root PostgreSQL result (source-bound to test SHA `601e66ec672cbf2f55e298c2da1da3711496b5f50316059612f8a9c514d5f57d`)
+
+- Root focused run: native 1, PID 4825, 7.817 seconds, one file / 13 cases; 11 passed and 2 failed. Root evidence directory: `EVID/canned807-ec64-customer-regression-pg/` (`vitest.full.log`, `vitest-result.json`, pre/postflight and cleanup receipts). Runtime resources were removed; inventories were unchanged 23 containers / 109 volumes / 7 networks, and the private environment was removed.
+- The customer-side test stopped at its capability assertion before HTTP: organisation reach was real, but `can(work_item:read, work_item)` was false. `GRANT_SCOPES_FOR.work_item` accepts instance/workspace/project grants; the built-in customer role is organisation-scoped. A project read policy decision for that caller is reachable=true/capable=false, so existing middleware already returns 403. This test now records that exact decision and retains the 403/no-content and foreign-organisation 404 assertions; it does not claim to red-test the missing guard.
+- The workspace-customer test reached the HTTP request and returned 200 where 403 was expected. It is the source-bound failing regression for the missing `isCustomerPrincipal` check.
+
+## Corrected test decision oracles
+
+- Both customer cases now use `evaluateProjectRead` with `cannedResponsePolicies["GET /api/canned-responses"]` and the actual persisted work-item ID, project ID, workspace ID, and project organisation ID (null for the internal workspace-customer project).
+- Customer-side person still resolves from persisted `side=customer` and canonical own-organisation membership. Its agent session is required because relative integration requests are sent to configured agent host `localhost:1337`; customer-portal session would fail host/session matching before reaching this route.
+- Workspace-role customer has a persisted target-workspace `workspace_user.role=customer` plus project `work_item:read`; current policy decision is reachable=true/capable=true, and the prior root PG request returned 200.
+- Test case count remains 13; original 11 case heads retained, with two added customer cases.
+
+## Exact pre-fix combined diff
+
+- `/tmp/taskdesk-807-regression-preflight-ec64bf031e9441352ade4306c186a9fa963adc79/regression-correction-2-full.diff`: 9800 bytes, SHA256 `9d68bd37a5c8c3b5f821aedbaf7c12500a5ae4e940cf2bf24a00d82529901da8`.
+- No runtime/test/typecheck/compiler/install/browser/Docker command was run by this author context during this correction.
+
+~~~
+
+### author final guard handoff
+
+Source: `AUTHOR-FIX-REPORT.md`; SHA-256 `a9eb6d66107aa0d15e95996c02b77ab3c5edadda0f8c96e3146ba9cba5587773`; copied verbatim.
+
+~~~text
+# #807 bounded customer-denial fix: author static handoff
+
+- Base SHA: `ec64bf031e9441352ade4306c186a9fa963adc79`.
+- Product change: one `isCustomerPrincipal(userId, target.workspaceId)` denial in canned-response list middleware, after row reach and capability checks; status/message matches existing item-scoped denial (`403`, `Insufficient permissions`). No route policy, evaluator, schema, contract, dependency, or list-query changes.
+- Test change: two cases in the existing integration file. The actual root pre-fix PG run exposed the valid workspace-customer branch returning 200; corrected policy decision asserts reachable=true/capable=true then HTTP403 and no internal content/creator ID. Organisation customer case asserts the registered route decision reachable=true/capable=false with full persisted project/org/work-item facts, keeps HTTP403/no content and foreign-org404; it does not claim the missing guard caused its denial.
+
+## Preserved exact source and evidence
+
+- Pre-fix product helper: SHA256 `06a01942c8eea3032d2a3cf3e7c2c279cdebc439f7c0b1ecce52629fbe7e7ce5` (saved in correction2 preimages).
+- Fixed product helper: SHA256 `8260e0604a361205063f714c2922d81748a8506e6ec092bd2e8769e5d95e694a`.
+- Test file at correction2 pre-fix baseline: SHA256 `bfa0a7a9e922576c8cf13377f784e10f5abc72fb7e6fe2f1690a7d8c212f66d6`.
+- Current test file: SHA256 `bfa0a7a9e922576c8cf13377f784e10f5abc72fb7e6fe2f1690a7d8c212f66d6`.
+- Root first focused PG, source-bound to test SHA `601e66ec672cbf2f55e298c2da1da3711496b5f50316059612f8a9c514d5f57d`: native 1/PID4825/7.817s, 1 file/13 cases, 11 pass/2 fail. Artifacts and exact cleanup receipt are under `EVID/canned807-ec64-customer-regression-pg/`. Failures were the stale org-only `can` expectation before HTTP and the real workspace-customer 200-vs-403.
+- That runtime’s owned resources were removed; inventory remained 23 containers / 109 volumes / 7 networks and the private environment was removed.
+- The original report/diff and correction1/2 packets remain unedited; these files are additive.
+
+## Static review and pending verification
+
+- `git diff --check`: clean. Only the two assigned files are modified.
+- No post-fix tests, typecheck, compiler, CI, install, DB, browser, or Docker command was run by this author context.
+- Root owns next exact-head 13-case PostgreSQL run and API typecheck. This context is not an independent approver and makes no pass or merge claim.
+
+## Exact candidate diff
+
+- `implementation-full.diff`: 10829 bytes, SHA256 `3f54e376252b43ae03e987875d8e84ab8facd7a396e8cbf27043dbaab2876e9c`.
+
+~~~
+
+### root adverse native reproduction receipt
+
+Source: `807-ec64-root-verified-customer-regression-failure.json`; SHA-256 `f6eb157cc8160f4ceddc5bad8df16b6fb003c5f3413b6de367e6fe46c881a094`; copied verbatim.
+
+~~~text
+{
+  "at": "2026-10-17T09:49:58.780720+00:00",
+  "basePublication": "ec64bf031e9441352ade4306c186a9fa963adc79",
+  "nativeExit": 1,
+  "pid": 4825,
+  "durationSeconds": 7.817,
+  "files": 1,
+  "tests": 13,
+  "passed": 11,
+  "failed": 2,
+  "scope": "regression-first test-only working delta; product unchanged",
+  "actualFindings": [
+    "workspace-role customer reaches HTTP and receives200 expected403: genuine missing-principal-denial reproduction",
+    "customer-side org case fails earlier can(...) capability precondition at598; fixture assertion must be corrected before claiming org HTTP reproduction"
+  ],
+  "rawBytes": 14817,
+  "rawSha256": "81b62ce3e0fd19f466b9aa9939abb09cd8ae6a7cdf1e5eb216c3147e3f97e881",
+  "sourceHashesUnchanged": {
+    "apps/api/src/canned-response/require-canned-response-reach.ts": "06a01942c8eea3032d2a3cf3e7c2c279cdebc439f7c0b1ecce52629fbe7e7ce5",
+    "tests/api-integration/canned-response.test.ts": "601e66ec672cbf2f55e298c2da1da3711496b5f50316059612f8a9c514d5f57d"
+  },
+  "ownedPostgresRemoved": "3be88fd632adb6c366923e3b316e4a247fca61c26fc7532ad6d8d93fe2460c5d",
+  "inventoryUnchanged": {
+    "containers": {
+      "before_count": 23,
+      "after_count": 23,
+      "added": [],
+      "missing": []
+    },
+    "volumes": {
+      "before_count": 109,
+      "after_count": 109,
+      "added": [],
+      "missing": []
+    },
+    "networks": {
+      "before_count": 7,
+      "after_count": 7,
+      "added": [],
+      "missing": []
+    }
+  },
+  "privateEnvironmentRemoved": true,
+  "passClaim": false
+}
+~~~
+
+### root pre-format working-source verification
+
+Source: `807-ec64-root-verified-customer-fixed-pg-success.json`; SHA-256 `e02e0a5a1a68e43ef4c88fb62b0d2324b6b7e6a126c6bf132288b5484cce7f3f`; copied verbatim.
+
+~~~text
+{
+  "at": "2026-10-17T09:51:55.421109+00:00",
+  "basePublication": "ec64bf031e9441352ade4306c186a9fa963adc79",
+  "nativeExit": 0,
+  "pid": 6310,
+  "durationSeconds": 7.188,
+  "files": 1,
+  "tests": 13,
+  "passed": 13,
+  "failed": 0,
+  "scope": "post-fix two-file working remediation; org-only capability denial retained, project-granted workspace-customer denied403; foreign404 and staffpositive retained",
+  "rawBytes": 11313,
+  "rawSha256": "8cb99352530a929cb8f2ea883d461eb3b12dddd686483d8b82d0c6b57157e006",
+  "sourceHashesUnchanged": {
+    "apps/api/src/canned-response/require-canned-response-reach.ts": "8260e0604a361205063f714c2922d81748a8506e6ec092bd2e8769e5d95e694a",
+    "tests/api-integration/canned-response.test.ts": "bfa0a7a9e922576c8cf13377f784e10f5abc72fb7e6fe2f1690a7d8c212f66d6"
+  },
+  "ownedPostgresRemoved": "cc25552b7112e1f23eb33715ddd491a35db13ac73fd2fe9c2e091cdf4e350ab6",
+  "inventoryUnchanged": {
+    "containers": {
+      "before_count": 23,
+      "after_count": 23,
+      "added": [],
+      "missing": []
+    },
+    "volumes": {
+      "before_count": 109,
+      "after_count": 109,
+      "added": [],
+      "missing": []
+    },
+    "networks": {
+      "before_count": 7,
+      "after_count": 7,
+      "added": [],
+      "missing": []
+    }
+  },
+  "privateEnvironmentRemoved": true,
+  "limits": "Focused verification only; full required exact-publication CI and independent repair reviews remain mandatory."
+}
+~~~
+
+### root clean exact304d PostgreSQL verification
+
+Source: `807-304d-root-verified-current-pg-success.json`; SHA-256 `42ff9e22e4f43232420d3ddaacac62c7558e7c5480570edf852aa7829a4ea814`; copied verbatim.
+
+~~~text
+{
+  "at": "2026-10-17T09:55:47.847721+00:00",
+  "source": "304d36e9cb4717be88e8879d37ddb19ce08f3ed7",
+  "nativeExit": 0,
+  "pid": 8951,
+  "durationSeconds": 7.732,
+  "files": 1,
+  "tests": 13,
+  "passed": 13,
+  "rawBytes": 11306,
+  "rawSha256": "c1a94d95c5d9a27a0574b5ff49b1e8e91bbe108f14cee4c90eb51deae48444b3",
+  "currentCleanCommitVerified": true,
+  "ownedPostgresRemoved": "c622d080f7a098ca2c60f9c66fe1e8eed1554c65913b2bc92f064e9f5ccc4f5f",
+  "privateEnvRemoved": true,
+  "inventoryUnchanged": {
+    "containers": {
+      "before_count": 23,
+      "after_count": 23,
+      "added": [],
+      "missing": []
+    },
+    "volumes": {
+      "before_count": 109,
+      "after_count": 109,
+      "added": [],
+      "missing": []
+    },
+    "networks": {
+      "before_count": 7,
+      "after_count": 7,
+      "added": [],
+      "missing": []
+    }
+  },
+  "limits": "Focused current exactsource only; fullrequiredCI and current independent security review remain pending."
+}
+~~~
+
+### root clean exact304d API typecheck
+
+Source: `807-304d-current-api-typecheck-receipt.json`; SHA-256 `c8269fcea05a4eda86c25866135e6d7f23afc05fda626fefdda247adc8714bd0`; copied verbatim.
+
+~~~text
+{
+  "source": "304d36e9cb4717be88e8879d37ddb19ce08f3ed7",
+  "start": "2026-10-17T09:56:19.625276+00:00",
+  "end": "2026-10-17T09:56:38.897643+00:00",
+  "pid": 9494,
+  "nativeExit": 0,
+  "elapsedSeconds": 19.271840875037014,
+  "command": [
+    "pnpm",
+    "--filter",
+    "@taskdesk/api",
+    "typecheck"
+  ],
+  "rawBytes": 334,
+  "rawSha256": "ae5d832a3f05e0e2113d67bcad37dbda07a78a0074df02af15a416b9f36ae682",
+  "cleanCurrentCommitPrePostVerified": true
+}
+~~~
+
+### root exact source conservation
+
+Source: `807-304d-source-conservation-proof.json`; SHA-256 `d480a10fa3a7be5b6046b1483ff97e62aff5e32a90938be1f33a636af34744c9`; copied verbatim.
+
+~~~text
+{
+  "at": "2026-10-17T09:53:56.112582+00:00",
+  "source": "304d36e9cb4717be88e8879d37ddb19ce08f3ed7",
+  "parent": "ec64bf031e9441352ade4306c186a9fa963adc79",
+  "tree": "19cb2988578c122e069224ad58fc67192861d222",
+  "totalEntries": 3403,
+  "changedPaths": [
+    "apps/api/src/canned-response/require-canned-response-reach.ts",
+    "tests/api-integration/canned-response.test.ts"
+  ],
+  "allOtherEntriesExact": true,
+  "oldNoteBytes": 205740,
+  "oldNoteSha256": "6554c9df72ac9d987a35c39d54ceba7b78a1cf1a29982621c864bf2d2c428299",
+  "oldNoteEntirelyUnchanged": true,
+  "authenticOldEntries": 45,
+  "authenticOldUniqueBodies": 44,
+  "workingTreeClean": true,
+  "runtimeEvidence": "807-ec64-root-verified-customer-fixed-pg-success.json + 807-customer-api-typecheck-receipt.json; only standard whitespace/trailing-comma formatting followed, full delta read, sourceguard unchanged",
+  "requiredReviews": "two fresh ordinary then full fresh Sol pending",
+  "currentCI": "remote ec64 results do not imply304d pass"
+}
+~~~
+
+### fresh independent ordinary A
+
+Source: `canned807-304d-customer-ordinary-a-luna.md`; SHA-256 `ea43ea157698aabc43594ad627c6e88b75cb745cddf9b3c98eb228d954d56296`; copied verbatim.
+
+~~~text
+# PR #807 ordinary review A — customer-principal reach repair
+
+- **Reviewer:** GPT-6 Luna (requested Luna-tier independent ordinary review; served fingerprint unavailable)
+- **Role/context:** Fresh independent ordinary reviewer A; this context did not author, direct, or remediate the repair.
+- **Candidate:** `304d36e9cb4717be88e8879d37ddb19ce08f3ed7`
+- **Comparison base:** `ec64bf031e9441352ade4306c186a9fa963adc79`
+- **Accepted main recorded for the composition:** `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`
+- **Worktree:** `/Users/heinthura/.codex/worktrees/canned-response-ca19-reach/Ticketing.v2`
+- **Verdict:** CLEAR for this bounded auth repair, with one non-blocking shadow-evidence note below. This does not replace or expand prior full-source/composition reviews, approve exact-head CI, or establish merge readiness.
+
+## Scope checked
+
+I verified the worktree's exact `HEAD` is the candidate above, with no uncommitted changes. The reviewed delta from `ec64` adds the `isCustomerPrincipal` import and a denial after the route's live reach and capability checks in `apps/api/src/canned-response/require-canned-response-reach.ts`, plus two customer-principal integration cases in `tests/api-integration/canned-response.test.ts` (13 tests total).
+
+I read the complete middleware and both added test cases, and traced the relevant route registration, `GET /api/canned-responses` policy, list repository/controller path, `isCustomerPrincipal` and its repository queries, `resolveIdentity`, `evaluateProjectRead`/`projectCapabilityRefused`, and the analogous work-item, attachment, and shared project-reach gates. I also read the CA-19/20 contract, RBAC customer-role rules, multi-tenancy reach rules, and the required agent workflow, active mission, status, and decision-log guidance.
+
+The new check preserves the intended order: no resolved identity is 401; an absent or out-of-reach work item is 404; an in-reach caller without `work_item:read` is 403; then a customer principal is refused with 403 before `next()` can expose snippets. The role/person classification uses the existing canonical helper. Its role query is scoped to the resolved work item's workspace, and its person-side query rejects customer-side persons independently of any inflated capability. The exact new regression case proves the previously missed combination: a staff-side person with legacy workspace role `customer`, a canonical project grant for `work_item:read`, and reachable target must still receive 403. The test separately retains the customer-side organisation reach/capability shape and foreign-organisation 404 behavior. I found no route, API-key owner-ceiling, or 404/403 ordering regression in this delta.
+
+## Evidence and checks
+
+- `git status --short --branch`, `git rev-parse HEAD`, and the exact base-to-candidate diff were inspected read-only. The worktree was clean; the branch was shown one commit ahead of its tracking ref.
+- `git diff --check ec64bf031e9441352ade4306c186a9fa963adc79 304d36e9cb4717be88e8879d37ddb19ce08f3ed7` — PASS.
+- I did not run a test, compiler, browser, Docker, or database command, per the assigned exclusive-runtime constraint.
+- I read the root-provided receipts for the prior `ec64` reproduction and focused PostgreSQL run. They report the real legacy workspace-customer request returning 200 before the fix, and 13/13 passing after the fix on `ec64`. These are evidence for that exact source, not runs by me or current-`304d` acceptance evidence. The separate API typecheck receipt and exact-head CI are likewise not part of this review's execution.
+
+## Non-blocking note
+
+The new customer-denial branch does not call `setShadowLegacyAuthorization(c, "denied")`, while the corresponding branch in `require-work-item-reach.ts`, `require-attachment-reach.ts`, and `assert-work-item-project-reach.ts` does. With policy shadow enabled, this request can therefore be recorded as unknown legacy authorization rather than an explicit denial. The canned-response middleware already leaves its earlier reach/capability denials unmarked, so this is a consistency gap in the surrounding middleware, not an access-control bypass or a blocker for this repair. Consider setting the marker on the new refusal branch when that middleware's shadow behavior is next addressed.
+
+## Limits
+
+This verdict covers only `ec64` → `304d` for the customer-principal repair. Prior review reports retain their stated source and composition scopes; I did not re-review their full candidate coverage. No exact-`304d` PostgreSQL result, full required CI, browser result, hosted check state, security-tier review, or merge readiness is claimed here.
+
+~~~
+
+### fresh independent ordinary B
+
+Source: `canned807-304d-customer-ordinary-b-luna.md`; SHA-256 `4dcfe430d22248b0940ebbfa76e0b688824420af3e0dd2087af701337c9a37ea`; copied verbatim.
+
+~~~text
+# PR #807 — independent ordinary review B: customer-principal canned-response access
+
+- **Reviewed head:** `304d36e9cb4717be88e8879d37ddb19ce08f3ed7`
+- **Comparison base:** `ec64bf031e9441352ade4306c186a9fa963adc79`
+- **Candidate commit:** `304d36e9cb4717be88e8879d37ddb19ce08f3ed7` (parent `ec64bf031e9441352ade4306c186a9fa963adc79`)
+- **Branch/worktree:** `codex/canned-response-ca19-reach-20261016`; `/Users/heinthura/.codex/worktrees/canned-response-ca19-reach/Ticketing.v2`
+- **Reviewer/model:** fresh independent ordinary reviewer B, assigned GPT-6 Luna. The execution surface did not expose a served model/version fingerprint, so I cannot independently attest the requested model label from platform metadata.
+- **Independence:** I did not author, direct, advise, or remediate this change. Read-only review; no child agents or source/ref/PR mutations.
+- **Checkout state:** HEAD matched the reviewed head and the worktree was clean (`git status --short --branch`, `git rev-parse HEAD`).
+- **PR state at review:** `gh pr view 807` showed the open PR head still at `ec64bf031e9441352ade4306c186a9fa963adc79`; therefore this report reviews the local committed candidate, not the then-published PR head. Checks shown by GitHub belong to the older published head and are not evidence for `304d36e`.
+
+## Scope checked
+
+Reviewed the complete exact two-file diff and traced the list middleware through its route registration, caller-identity resolution, canonical customer-principal helper and repository reach query. Inspected the customer branch and staff branch of `resolveIdentity`, `evaluateProjectRead`/`projectCapabilityRefused`, the existing item-reach customer guard, the fixture helpers used by both added tests, and the canned-response list query. Read the relevant CA-19 contract, RBAC customer-role and 404/403 rules, active mission, and review/evidence instructions in `AGENTS.md`, `CLAUDE.md`, `agent-workflow.md`, `status.md`, and `decision-log.md`.
+
+Files in the candidate diff:
+
+- `apps/api/src/canned-response/require-canned-response-reach.ts`
+- `tests/api-integration/canned-response.test.ts`
+
+The implementation change is four lines: import `isCustomerPrincipal`, then after target reach and `work_item:read` capability checks, return 403 when the current caller is a customer principal in the resolved target workspace. No policy, capability, schema, identity-resolution, or query predicate changed.
+
+## Findings
+
+No blocking or non-blocking findings.
+
+The guard uses authenticated `userId` and the work item's row-derived `workspaceId`; it runs only after `findCannedResponseWorkItem` applies current project reach. This preserves the existing observable ordering: missing/out-of-reach work items remain 404, reachable callers without `work_item:read` remain 403, and a reachable, capable customer principal is now refused with 403 before the list handler can return snippets. `isCustomerPrincipal` checks both the persisted workspace `customer` role and the persisted customer-side person flag, matching the existing work-item and attachment guard semantics. Identity resolution has already rejected absent, inactive, banned, or otherwise invalid principals before this helper is reached.
+
+The two added tests cover distinct paths. The organisation-side case proves canonical customer identity and verifies a reachable target in the customer's organisation is refused without response-body leakage; the added evaluator assertion records that this scenario is already incapable and would be refused by the earlier capability gate. The workspace-customer case proves `reachable: true, capable: true`, then expects 403 and no snippet/owner data, so it specifically fails if the new customer-principal guard is removed. Its second organisation case verifies that a customer outside target reach still receives 404. Thus the test set does not incorrectly attribute the org-only `capable: false` behavior to this guard, while it does exercise the actual missing guard for a reachable capable customer.
+
+This aligns with RBAC's rule that customers receive 403 on agent item-scoped routes even within reach and with CA-19's read capability being scoped to the work item. The repository's SQL reach filter remains in place as defense in depth; the new middleware refuses before the response query.
+
+## Commands and execution evidence
+
+Read-only commands run by this reviewer:
+
+- `git status --short --branch`
+- `git rev-parse HEAD`
+- `git diff --stat ec64bf031e9441352ade4306c186a9fa963adc79..304d36e9cb4717be88e8879d37ddb19ce08f3ed7`
+- `git diff --unified=80 ec64bf031e9441352ade4306c186a9fa963adc79..304d36e9cb4717be88e8879d37ddb19ce08f3ed7`
+- targeted `sed`/`rg` source and contract reads
+- `gh pr view 807 --json number,title,headRefOid,baseRefOid,state,url,reviewDecision,statusCheckRollup`
+
+I did not run tests, PostgreSQL, typecheck, formatter, build, Docker, or browser checks. Separately attributed coordinating-session evidence supplied for this review says the clean `304d36e` source passed the focused PostgreSQL integration file: native exit 0, one file, 13 passed, 0 failed, 7.732 seconds. The referenced artifacts are `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/807-304d-root-verified-current-pg-success.json` and `.../807-304d-current-pg/vitest.full.log`; this is not my execution. The exact-source conservation receipt is `.../807-304d-source-conservation-proof.json`.
+
+## Verdict and limits
+
+**Ordinary review B: CLEAR** for exact candidate `304d36e9cb4717be88e8879d37ddb19ce08f3ed7` against `ec64bf031e9441352ade4306c186a9fa963adc79`, within the source and contracts described above. This is one independent ordinary review only. It is not the required current GPT-6 Sol security review, exact-head CI evidence, merge authorization, or overall PR acceptance. The GitHub PR was still published at the base SHA when checked.
+
+~~~
+
+### fresh independent FULL security
+
+Source: `canned807-304d-customer-full-security-61-sol.md`; SHA-256 `46d3fca32599397c84f8271991438381c016cd9c0f56e2457b978b213e871ae8`; copied verbatim.
+
+~~~text
+# PR #807 — full independent customer-principal security review
+
+**Model:** GPT-6.1 Sol (requested assignment `gpt-6.1-sol`, high reasoning, fresh `fork_turns=none`; no served-model/version fingerprint is exposed to this context, so this is not an independently verified runtime model attestation).
+**Role/context:** Fresh independent FULL Sol-tier security reviewer, `/root/canned807_304d_customer_full_security_sol`.
+**Reviewed head:** 304d36e9cb4717be88e8879d37ddb19ce08f3ed7
+**Comparison base:** ec64bf031e9441352ade4306c186a9fa963adc79
+**Accepted-main baseline:** 23fb0fe8b78d09249d77957a9a0000b8a9f45d2c
+**Tree:** 19cb2988578c122e069224ad58fc67192861d222
+**Worktree:** /Users/heinthura/.codex/worktrees/canned-response-ca19-reach/Ticketing.v2
+
+## Verdict and independence
+
+**CLEAR — full current security pass for the customer-principal authorization repair and its applicable authority seams.** No blocking finding remains in this reviewed scope. The customer-principal P1 is independently dispositioned **remediated**, with the reproduction correction described below. One non-blocking shadow-evidence consistency limitation is retained. This is a full security assessment of the authorization repair, not lightweight confirmation and not a claim that old approval automatically covers new authorization code.
+
+I did not author, direct, advise on implementation, remediate, or perform ordinary review of this candidate. No child agent was used. I performed read-only Git, source, evidence and GitHub inspection, then created this new private report. No source/ref/PR mutation, commit, push, resolution or merge was performed.
+
+## Authority, exact source and scope
+
+Read current AGENTS, active mission, canonical workflow and provider adapter. Independently verified their bytes against accepted main. Read the newest status/blocked snapshot and relevant queue/decision entries, CA-19/20, RBAC's customer restrictions (lines 451–474), and the accepted release-policy decision. The customer rule is behavioural and cannot be granted away by capabilities: customers are portal-only and receive 403 on agent item-scoped routes even inside reach.
+
+Verified the clean checkout and exact 40-character HEAD, parent and tree. An independent recursive Git-tree comparison found 3,403 entries and exactly two changed paths from ec64: `apps/api/src/canned-response/require-canned-response-reach.ts` and `tests/api-integration/canned-response.test.ts`. The implementation adds the canonical helper import and three-line denial; the test file adds two cases and their evaluator/import support. `git diff --check` passed. All remaining entries are exact base entries. The entire old designated review note is unchanged: 205,740 bytes, SHA-256 `6554c9df72ac9d987a35c39d54ceba7b78a1cf1a29982621c864bf2d2c428299`.
+
+Read the complete current canned router, policy, reach middleware, four controllers, repository, input schema, canned table definition and integration file. Traced the canonical customer helper and both repository queries, caller identity adapter, persisted identity loader and customer/staff resolution branches, project read evaluator, permission grant containment/override/key intersection, current SQL project/workspace reach predicates, workspace access and capability gates, authentication/session host checks and the analogous work-item customer denial. Read fixture provisioning, project-role grant and session-mock semantics used by the regressions. Targeted rereads covered security-relevant ranges after combined output was truncated.
+
+Read both fresh ordinary reports at 304d. Ordinary A is CLEAR with the non-blocking marker note; ordinary B is CLEAR with no findings. Read the retained full security report at `2826ac1e8b5f7e21a7d132dcc06fc35c36ea22a8` against `f5d8f51c1d502b58af2e7b6b9cf01a6e01f7680e`, and accepted-main composition security report at `ef80b4ed004c42d618af41a14d3031523566646b`. Their original full-source and bounded composition scopes remain labelled with those SHAs. I did not perform a new whole-repository audit or relabel the composition confirmation as full review. The current two-file repair is assessed here at its full required tier. Comparing current relevant objects to 2826 independently confirmed that the classifier/tests/register/workflow and shared identity resolver, request adapter, canonical customer helper/repository, project evaluator, SQL reach helpers and workspace capability middleware are byte-identical; among canned source/tests only the two current repair paths differ.
+
+## Authorization assessment
+
+The list remains authenticated and registered as a work-item-scoped `work_item:read` route. It resolves the requested live, unarchived item joined to a non-deleted project, enforces matching item/project workspace and current SQL project reach, and records row-derived item/project/workspace facts. Missing or out-of-reach items return 404 before the customer check. The evaluator requires reach and the effective credential's capability without deferral; a reachable incapable caller returns 403. Only then does the new canonical customer-principal check run, before `next()` and any list response.
+
+The helper uses the authenticated user id and target item's own workspace id. A persisted workspace role `customer` is refused regardless of the resolved staff identity's project capabilities. A customer-side person is also refused independently of workspace role. There is no request-selected workspace, role, side or organisation flag that can evade or redirect the guard. The helper does not grant authority or bypass failures. Its placement preserves 404 concealment for unreachable customers and 403 for reachable customers.
+
+The unchanged resolver admits only active, provisioned and non-banned identities. Customer-side resolution requires a live portal-enabled organisation and canonical own-organisation customer membership, ignores attempted wider grants, and refuses key credentials. Staff resolution excludes `customer` as a workspace authority grant, while accepting properly anchored project grants; that distinction explains the genuine legacy-role reproduction. API keys are resolved to their authenticated owner and stored scope, and `can` intersects scope with current owner project authority. The new guard applies to the same authenticated owner id for keys and sessions; it adds no API-key scope deferral or owner-ceiling bypass. Session mocks deliberately use the agent portal/host to reach the agent route while customer classification comes from persisted facts; this is an authorization regression, not a production login-flow proof. The actual portal host separately restricts API surfaces.
+
+The list statement still independently correlates each snippet's workspace with the requested item and project, repeats live-item/project predicates and current project reach. No workspace-wide fallback path is introduced. CRUD retains its settings capability, row-derived workspace and current workspace-reach statement constraints. Input NUL handling, parameterized inserts/updates, internal visibility default and tenant-scoped uniqueness are unchanged. The new denial occurs before internal bodies or creator identifiers can be returned.
+
+## P1 disposition and non-vacuous regressions
+
+Read the actual live comment `https://github.com/ThomasHeinThura/ticketing/pull/807#discussion_r4297533554`, bound to ec64. Its requested behavioural guard is valid, but its stated organisation-only exploit is overstated. The built-in customer role contains `work_item:read`; its canonical grant is organisation-scoped. The unchanged evaluator's containment table does not let an organisation grant satisfy a work-item policy. Canonical customer identity therefore has organisation reach but `capable: false` here, and was already refused with 403 by the earlier capability gate. The pre-fix organisation test failed its capability assertion before making the HTTP request. I do not claim that case returned 200.
+
+The actual missing-guard case is a staff-side person with persisted legacy `workspace_member.role = customer` in the target workspace plus a canonical project grant for `work_item:read`. The resolver legitimately obtains project reach and capability, while the existing canonical behavioural helper still identifies this actor as a customer principal. Root's retained pre-fix raw run proves HTTP 200 instead of expected 403 for that case. At the current head, the new test explicitly evaluates the registered policy using exact persisted target facts and asserts `reachable: true, capable: true`, then expects HTTP 403 and no private snippet text or creator user id. This is the meaningful new-guard regression.
+
+The second case accurately records canonical customer `reachable: true, capable: false`, verifies HTTP 403 with no internal content/creator data, and verifies another-organisation customer gets 404. These assertions preserve coverage without inventing an organisation-only bypass. Both helper classifications are checked, and existing positive staff/scoped-key, empty-key-scope, owner-ceiling, unreachable-item, tenant-write and SQL live/revocation cases remain. The P1's real missing behavioural check is therefore remediated; the inaccurate exploit explanation is corrected by this disposition, not adopted as evidence.
+
+## Preserved contract/security-control scope
+
+The guard adds denial only; it changes no route registration, query contract, capability, migration, schema, owner decision, classifier or break exception. I spot-checked the current gate: origin-bounded GitHub repository parsing; explicit `gh api --hostname github.com --paginate`; strict array/record/boolean validation; stable-shaped v2+ non-draft/non-prerelease classification; failure and output-bound error refusal; and exact/new-relative-to-main break matching. The two registrations remain only GET /canned-responses / new-required-request-parameter / `37225a236da8` and request-parameter-removed / `c23172869ba9`, owned by #807. Workflow GH_TOKEN stays on the existing contract step with contents:read. This repair does not invalidate the preserved classifier inspection or introduce a waiver. This spot-check is not a new execution of the contract gate.
+
+## Evidence actually inspected and execution limits
+
+I ran no tests, compiler, Node/AST/checker/probe, PostgreSQL, browser, Docker, install or image build/boot. Runtime ownership stayed with the conductor. Independently checked the retained raw evidence hashes and read the actual logs/receipts:
+
+- Pre-fix ec64 product with regression-first test-only delta: native exit 1, one file, 11 passed and two failed. Raw 14,817 bytes, SHA-256 `81b62ce3e0fd19f466b9aa9939abb09cd8ae6a7cdf1e5eb216c3147e3f97e881`. One failure is the incorrect organisation capability precondition; the other is the genuine workspace-customer HTTP 200. This is root execution, not mine.
+- Clean committed 304d focused PostgreSQL run: native exit 0, one file, 13/13 passed; wrapper PID 8951, elapsed 7.732 seconds. Raw 11,306 bytes, SHA-256 `c1a94d95c5d9a27a0574b5ff49b1e8e91bbe108f14cee4c90eb51deae48444b3`. The native Vitest summary is one passed file and 13 passed tests. The receipt's elapsed time is the command wrapper duration, not the different Vitest internal timing. Root's cleanup receipt reports its isolated loopback PostgreSQL/private environment removed and inventories unchanged at 23 containers, 109 volumes and seven networks.
+- Exact 304d API typecheck: native exit 0; wrapper PID 9494, 19.271840875 seconds; the actual command runs five TypeScript configurations. Raw 334 bytes, SHA-256 `ae5d832a3f05e0e2113d67bcad37dbda07a78a0074df02af15a416b9f36ae682`. This is also root execution.
+
+A first Python metadata read assumed `vitest-result.json` was a Vitest reporter JSON; it is a wrapper receipt, so the script stopped on absent `testResults`. I then read the actual receipt and native log. No counts were inferred from that failed metadata lookup. Guessed source paths that did not exist were replaced by the actual source paths; no failed lookup is supporting evidence.
+
+## Non-blocking finding and remaining gates
+
+**Non-blocking — existing shadow-authorization consistency gap:** the canned middleware does not explicitly mark its reach/capability/customer refusals with `setShadowLegacyAuthorization(c, "denied")`. The new branch follows that surrounding behaviour, unlike the analogous work-item branch. Shadow observation can therefore retain unknown legacy authorization instead of an explicit denial. The HTTP refusal still occurs before the handler and shadow middleware is observer-only; this is not an access bypass. Ordinary A's note is retained without expanding this bounded repair into optional shadow refactoring or claiming shadow evidence acceptance.
+
+Live read-only GitHub inspection still shows OPEN #807 published at ec64, not 304d. Its old checks, including the then-running PostgreSQL job, are not current-candidate CI. Required exact-head CI and all applicable image/browser/runtime/merge gates remain conductor-owned and must be satisfied after publication. BROWSER VERIFICATION: BLOCKED by this review's no-runtime assignment. This report grants no merge authorization, current image/SIT/backup/restore acceptance, G11 remediation, phase/stage completion, release or deployment claim.
+
+~~~
