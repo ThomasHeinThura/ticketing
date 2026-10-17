@@ -15,6 +15,7 @@ import {
 } from "../database/schema";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import { PolicyVersionConflictError } from "./errors";
 import {
   type PolicyGoalCandidate,
   type PolicyGoalInput,
@@ -339,16 +340,6 @@ export async function getPolicy(id: string, workspaceId: string) {
     )
     .limit(1);
   return policy ? loadPolicyResult(workspaceId, policy) : undefined;
-}
-
-export class PolicyVersionConflictError extends Error {
-  constructor(
-    public readonly assertedVersion: number,
-    public readonly currentVersion: number,
-  ) {
-    super("SLA policy version conflict");
-    this.name = "PolicyVersionConflictError";
-  }
 }
 
 function decodeCursor(cursor: string, workspaceId: string) {

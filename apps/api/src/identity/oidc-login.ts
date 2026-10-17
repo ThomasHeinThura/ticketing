@@ -33,6 +33,8 @@ import { dbNowUtc } from "../utils/db-time";
 import { ensureInternalOrganisation } from "../utils/seed-internal-organisation";
 import { invalidateNativeAuthorization } from "../ws";
 import { decryptIdentityClientSecret } from "./client-secret";
+import { IdentityGrantClosureChangedError } from "./errors";
+import { retryIdentityGrantClosure } from "./grant-closure-retry";
 import { projectMembershipKeys } from "./membership-projection";
 import {
   exchangeEntraCode,
@@ -49,7 +51,6 @@ import {
   getOidcIdentityForSignIn,
   getOidcPersonForSignIn,
   getOidcUserFactorState,
-  IdentityGrantClosureChangedError,
   listActiveOidcGrantsForSignIn,
   listAdmissionFailedOidcGrants,
   listEnabledOidcDomainOwners,
@@ -62,7 +63,6 @@ import {
   lockOidcPerson,
   lockOidcVerification,
   lockScimGrantClosure,
-  retryIdentityGrantClosure,
   validateOidcMappingRole,
 } from "./repository";
 

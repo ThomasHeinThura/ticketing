@@ -7,7 +7,6 @@ import {
   completeNotificationDelivery,
   deferNotificationDelivery,
   hasRecentNotificationSuccess,
-  NotificationReservationContentionError,
   type ReservationToken,
   renewNotificationReservation,
   updateUnreservedNotificationDelivery,
@@ -15,6 +14,7 @@ import {
 import type { DbTransaction } from "../events/outbox";
 import { logTaskDesk } from "../instance/observability/runtime";
 import { evaluateCurrentNotificationReachAndPreference } from "./current-eligibility";
+import { NotificationReservationContentionError } from "./delivery-errors";
 import {
   callNotificationProvider,
   NOTIFICATION_LEASE_MS,
