@@ -207,6 +207,13 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       "export function maybeIdentity<T>(value: T): T | undefined { return value; }",
     ],
     [
+      "database/unresolved-shapes.repository.ts",
+      `export function unknownResult(): unknown { return "value"; }
+export function anyResult(): any { return "value"; }
+export function genericResult<T>(value: T): T { return value; }
+export const nestedResult = { payload: "value" as unknown };`,
+    ],
+    [
       "database/imported-sql-shape.ts",
       'import type { SQL } from "drizzle-orm"; export interface Escape { read(): SQL }',
     ],
@@ -527,6 +534,35 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
         `${relative} should produce its specific ownership violation; got ${byFile.get(key(relative)) ?? "<none>"}`,
       );
     }
+    const unresolvedShapes =
+      byFile.get(key("database/unresolved-shapes.repository.ts")) ?? "";
+    assert.equal(
+      unresolvedShapes.match(
+        /line 1: exported repository value shape is unresolved/g,
+      )?.length ?? 0,
+      1,
+      "multiple unresolved exports in one module must remain one unresolved finding",
+    );
+    assert.match(
+      unresolvedShapes,
+      /unknownResult \[unknown-type; export:unknownResult → call-return\[0\]\]/,
+      "unknown return values report the export path and unknown-type reason",
+    );
+    assert.match(
+      unresolvedShapes,
+      /anyResult \[any-type; export:anyResult → call-return\[0\]\]/,
+      "any return values report the export path and any-type reason",
+    );
+    assert.match(
+      unresolvedShapes,
+      /genericResult \[unconstrained-type-parameter; export:genericResult → call-return\[0\] → type-parameter:T\]/,
+      "generic return values report the unconstrained type parameter path",
+    );
+    assert.match(
+      unresolvedShapes,
+      /nestedResult \[unknown-type; export:nestedResult → member:payload\]/,
+      "object member output reports the exact unresolved member path",
+    );
     for (const relative of [
       "database/generic-identity.repository.ts",
       "database/generic-sql.repository.ts",

@@ -270,19 +270,32 @@ function exportedQueryBoundary(
   source,
   seen = new Set(),
   depth = 0,
+  path = [],
 ) {
-  if (!type) return { kind: "unresolved" };
+  const unresolved = (reason, extra = {}) => ({
+    kind: "unresolved",
+    failure: { reason, path, ...extra },
+  });
+  if (!type) return unresolved("missing-type");
   if (type.isTypeParameter?.()) {
+    const typeParameterName = type.getSymbol?.()?.name ?? "<anonymous>";
     let constraint;
     try {
       constraint = checker.getConstraintOfTypeParameter(type);
     } catch {
-      return { kind: "unresolved" };
+      return unresolved("type-parameter-constraint-lookup-failed", {
+        path: [...path, `type-parameter:${typeParameterName}`],
+      });
     }
-    if (!constraint) return { kind: "unresolved" };
+    if (!constraint)
+      return unresolved("unconstrained-type-parameter", {
+        path: [...path, `type-parameter:${typeParameterName}`],
+      });
     return isQueryBuilder(constraint, checker)
       ? { kind: "builder" }
-      : { kind: "unresolved" };
+      : unresolved("unproven-type-parameter-constraint", {
+          path: [...path, `type-parameter:${typeParameterName}`, "constraint"],
+        });
   }
   // A query builder can also implement SQLWrapper. Check the executable families first so
   // a wrapper around a pending statement cannot be mistaken for a composable predicate.
@@ -292,7 +305,8 @@ function exportedQueryBoundary(
     // before treating the library implementation as opaque; default unknown carries no
     // executable builder surface, while an explicit builder payload must fail.
     try {
-      for (const argument of checker.getTypeArguments?.(type) ?? []) {
+      const argumentsList = checker.getTypeArguments?.(type) ?? [];
+      for (const [index, argument] of argumentsList.entries()) {
         if (argument.flags & UNKNOWN_TYPE_FLAG) continue;
         const nested = exportedQueryBoundary(
           argument,
@@ -300,35 +314,48 @@ function exportedQueryBoundary(
           source,
           seen,
           depth + 1,
+          [...path, `sql-payload[${index}]`],
         );
         if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
       }
     } catch {
-      return { kind: "unresolved" };
+      return unresolved("sql-fragment-payload-lookup-failed");
     }
     return { kind: "fragment" };
   }
-  if (depth >= 20 || seen.size >= 512) return { kind: "limit" };
+  if (depth >= 20)
+    return {
+      kind: "limit",
+      failure: { reason: "depth-limit", path, depth, visitedNodes: seen.size },
+    };
+  if (seen.size >= 512)
+    return {
+      kind: "limit",
+      failure: { reason: "node-limit", path, depth, visitedNodes: seen.size },
+    };
   if (seen.has(type.id)) return { kind: "safe" };
   seen.add(type.id);
 
-  if (
-    isAnyOrError(type) ||
-    ["any", "unknown", "<error>"].includes(checker.typeToString(type))
-  )
-    return { kind: "unresolved" };
+  if (type.isErrorType?.()) return unresolved("error-type");
+  if ((type.flags & 1) !== 0) return unresolved("any-type");
+  const typeName = checker.typeToString(type);
+  if (typeName === "any") return unresolved("any-type");
+  if (typeName === "unknown") return unresolved("unknown-type");
+  if (typeName === "<error>") return unresolved("error-type");
 
   // Every constituent of a union or intersection is part of the public output graph.
   // In particular, T | undefined must not hide an unconstrained type parameter.
   const constituents = type.getTypes?.() ?? [];
+  const constituentKind = type.isUnion?.() ? "union" : "intersection";
   if (constituents.length) {
-    for (const constituent of constituents) {
+    for (const [index, constituent] of constituents.entries()) {
       const nested = exportedQueryBoundary(
         constituent,
         checker,
         source,
         seen,
         depth + 1,
+        [...path, `${constituentKind}[${index}]`],
       );
       if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
     }
@@ -337,13 +364,15 @@ function exportedQueryBoundary(
   // Promise type arguments must be inspected before their awaited result: async function
   // return inference can otherwise reduce a returned builder to its assimilated row type.
   try {
-    for (const argument of checker.getTypeArguments?.(type) ?? []) {
+    const argumentsList = checker.getTypeArguments?.(type) ?? [];
+    for (const [index, argument] of argumentsList.entries()) {
       const nested = exportedQueryBoundary(
         argument,
         checker,
         source,
         seen,
         depth + 1,
+        [...path, `type-argument[${index}]`],
       );
       if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
     }
@@ -358,18 +387,24 @@ function exportedQueryBoundary(
       source,
       seen,
       depth + 1,
+      [...path, "awaited-result"],
     );
     if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
   }
 
   for (const signatureKind of [0, 1]) {
-    for (const signature of checker.getSignaturesOfType(type, signatureKind)) {
+    const signatures = checker.getSignaturesOfType(type, signatureKind);
+    for (const [index, signature] of signatures.entries()) {
       const nested = exportedQueryBoundary(
         checker.getReturnTypeOfSignature(signature),
         checker,
         source,
         seen,
         depth + 1,
+        [
+          ...path,
+          `${signatureKind === 0 ? "call" : "construct"}-return[${index}]`,
+        ],
       );
       if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
     }
@@ -402,10 +437,15 @@ function exportedQueryBoundary(
       ].includes(declaration.kind),
     );
     if (!memberDeclarations.length) {
-      return { kind: "unresolved" };
+      return unresolved("member-declaration-unavailable", {
+        path: [...path, `member:${property.name}`],
+      });
     }
     const visibility = memberDeclarations.map(visibleMemberDeclaration);
-    if (visibility.includes(undefined)) return { kind: "unresolved" };
+    if (visibility.includes(undefined))
+      return unresolved("member-visibility-unresolved", {
+        path: [...path, `member:${property.name}`],
+      });
     const publicDeclarations = memberDeclarations.filter(
       (_declaration, index) => visibility[index],
     );
@@ -414,7 +454,9 @@ function exportedQueryBoundary(
     try {
       propertyType = checker.getTypeOfSymbolAtLocation(property, source);
     } catch {
-      return { kind: "unresolved" };
+      return unresolved("member-type-lookup-failed", {
+        path: [...path, `member:${property.name}`],
+      });
     }
     const nested = exportedQueryBoundary(
       propertyType,
@@ -422,6 +464,7 @@ function exportedQueryBoundary(
       source,
       seen,
       depth + 1,
+      [...path, `member:${property.name}`],
     );
     if (nested.kind !== "safe" && nested.kind !== "fragment") return nested;
   }
@@ -432,6 +475,7 @@ function exportedQueryBoundary(
       source,
       seen,
       depth + 1,
+      [...path, "index-signature:value"],
     );
     if (nested.kind !== "safe") return nested;
   }
@@ -954,8 +998,9 @@ export function analyzeQueryOwnership({
         );
       } else {
         const seenExports = new Set();
+        const unresolvedExports = [];
         let exportNodes = 0;
-        const inspectExport = (exported, depth = 0) => {
+        const inspectExport = (exported, depth = 0, parentExportPath = []) => {
           if (++exportNodes > 512 || depth > 20) {
             reportNode(
               source,
@@ -963,6 +1008,7 @@ export function analyzeQueryOwnership({
             );
             return;
           }
+          const exportPath = [...parentExportPath, exported.name];
           if (typeOnlyExports.has(exported.name)) return;
           let target = exported;
           const declarations = exported.declarations ?? [];
@@ -1024,7 +1070,8 @@ export function analyzeQueryOwnership({
               );
               return;
             }
-            for (const member of members) inspectExport(member, depth + 1);
+            for (const member of members)
+              inspectExport(member, depth + 1, exportPath);
             return;
           }
 
@@ -1041,17 +1088,27 @@ export function analyzeQueryOwnership({
             );
             return;
           }
-          const result = exportedQueryBoundary(type, checker, source);
+          const result = exportedQueryBoundary(
+            type,
+            checker,
+            source,
+            new Set(),
+            0,
+            [`export:${exportPath.join(".")}`],
+          );
           if (result.kind === "builder")
             reportNode(
               source,
               "exported repository value exposes a query builder instead of awaited rows, DTOs, or scalars",
             );
           else if (result.kind !== "safe")
-            reportNode(
-              source,
-              "exported repository value shape is unresolved or exceeds safe inspection limits; query-builder escape cannot be excluded",
-            );
+            unresolvedExports.push({
+              exportPath: exportPath.join("."),
+              failure: result.failure ?? {
+                reason: `non-safe-boundary-${result.kind}`,
+                path: [`export:${exportPath.join(".")}`],
+              },
+            });
         };
         let runtimeExports;
         try {
@@ -1064,6 +1121,22 @@ export function analyzeQueryOwnership({
           runtimeExports = [];
         }
         for (const exported of runtimeExports) inspectExport(exported);
+        if (unresolvedExports.length) {
+          const details = unresolvedExports
+            .map(({ exportPath, failure }) => {
+              const measurements =
+                failure.depth === undefined &&
+                failure.visitedNodes === undefined
+                  ? ""
+                  : ` depth=${failure.depth ?? "n/a"} nodes=${failure.visitedNodes ?? "n/a"}`;
+              return `${exportPath} [${failure.reason}; ${failure.path.join(" → ")}${measurements}]`;
+            })
+            .join("; ");
+          reportNode(
+            source,
+            `exported repository value shape is unresolved or exceeds safe inspection limits; query-builder escape cannot be excluded; exports: ${details}`,
+          );
+        }
       }
     }
   }
