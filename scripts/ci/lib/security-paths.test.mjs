@@ -168,7 +168,11 @@ describe("security-review paths — F15 scope", () => {
       "apps/api/src/auth/repository.ts",
       "apps/api/src/auth/step-up-service.ts",
     ]) {
-      assert.equal(matches(file), true, `${file} must be covered by canonical scope`);
+      assert.equal(
+        matches(file),
+        true,
+        `${file} must be covered by canonical scope`,
+      );
       assert.equal(
         counterfactualPatterns.some((pattern) => pattern.test(file)),
         false,

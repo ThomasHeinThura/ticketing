@@ -147,8 +147,16 @@ describe("GPT-F1 — security-review scope is the union of merge base and HEAD",
     const base = commit(dir, "chore: bootstrap the canonical security scope");
     setOriginMain(dir, base);
 
-    write(dir, "apps/api/src/auth/repository.ts", "export const changed = true;\n");
-    write(dir, "apps/api/src/auth/step-up-service.ts", "export const changed = true;\n");
+    write(
+      dir,
+      "apps/api/src/auth/repository.ts",
+      "export const changed = true;\n",
+    );
+    write(
+      dir,
+      "apps/api/src/auth/step-up-service.ts",
+      "export const changed = true;\n",
+    );
     commit(dir, "test: change only nested auth sources");
 
     const scope = evaluateInRepo(
@@ -201,7 +209,11 @@ describe("GPT-F1 — security-review scope is the union of merge base and HEAD",
       (glob) => glob !== "apps/api/src/auth/**",
     );
     write(dir, "docs/04-engineering/ci-cd.md", ciCdWith(narrowed));
-    write(dir, "apps/api/src/auth/repository.ts", "export const changed = true;\n");
+    write(
+      dir,
+      "apps/api/src/auth/repository.ts",
+      "export const changed = true;\n",
+    );
     commit(dir, "test: narrow auth directory scope while changing nested auth");
 
     const scope = evaluateInRepo(
