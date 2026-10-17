@@ -8397,3 +8397,37 @@ Operational record only, no new owner decision/waiver. Protected815 merged asff5
 Existing803 normally absorbs stronger816 regressions and authentic reports rather than opening a duplicate repair PR. Exactcf724 nine-path composition has fresh ordinary/full independent Sol CLEAR and14/14 focused gate tests. New accepted815 import is disjoint3paths and retains its own current confirmation/publication/CI requirements; no older pass is promoted. Separateauthread14helper sourcee52/publication445 has exact reviewer-authored bindings, actualAPItypecheck0 after workspacebuild and8PGfiles136tests/native0 with owned resource cleanup. Initial environment failure remains retained; no hosted or signed-image acceptance is inferred.
 
 Carrier fd9b completed78tests62pass16fail0skip in543.848seconds under the explicit900second measurement cap. Seven finite private obligation fixtures then exposed actual open leaves/contexts without changing production source or assertions. Frozen7b961 structural source has only syntax/diff checks and pending independent ordinary review; its remaining16 failure classes are not declared fixed. Owner scope, unanswered time-and-cost questions, primary preservation, selected-source conservation and final release/SIT/nonemptyrestore/audit limits remain unchanged.
+
+
+### 2026-10-17 06:55 UTC · Protected nested-auth gate acceptance and next read composition
+
+**Technical progress (conductor; no new owner decision or waiver):** protected803 accepted publication3277 at main2e6aa3dc with all18 current required contexts. Later fresh complete cf724 reviews and source-bound f044/9b518 confirmations supersede reliance on the old squash's historical reviews; the open provenance thread was dispositioned and resolved before merge. Issue816 is closed after its canonical nested-auth counterfactual/refusal regressions and five authentic artifacts were conserved. The accepted GitHub-prerelease normative clarification does not approve #807 implementation or any exact break fingerprint.
+
+The next bounded580 source normally composes accepted803 into preserved e52/445 auth read materialization at a43ce919; query bodies, executors, clocks and awaited callers are unchanged. Current review/publication/CI remain mandatory. Carrier's seven residual render-proof failures, owner questions, N1 lock-order residual, selected-unit accounting and signed release/SIT/nonempty recovery/final audit remain open as stated in status. No policy or scope change, formal phase claim, gate waiver, UAT or production action.
+
+
+### 2026-10-17 07:59 UTC · Protected #817 acceptance and separated records recovery
+
+Operational progress only; no new owner decision or waiver. Protected #817 accepted main `7a99ae9e8696d6202f3a3b39472cc058cc0d61da` at 07:58:07Z. The exact candidate `deed55cd38658d415723a840cd3af8ca83cac262` and tree `59c6d7acf3a1690c760d76585102294fc76d5f6d` passed all 18 latest required checks. The strict readiness receipt verifies the exact source/publication, synthetic parent/tree, eight authentic artifacts and runtime evidence. Full PostgreSQL passed223 files/3292 tests/five tasks; final unit/API/web passed12 tasks,121 files/872 API tests and186 files/1023 web tests; E2E63 and G11 22/22 passed. G11 used the existing second measurement set (202.6ms to178.1ms), not the first; no manual retry. The exact image applied125 migrations as UID10001, was healthy/live-ready200, published no host ports and completed owned cleanup. See the 07:59 status for receipt path and scope limits.
+
+The earlier `cf847f86c89641f32f900b124f2ddef84ec2bd13` mixed product/records candidate remains rejected and preserved on its original branch; it was Sol-blocked despite source clearance. Corrected `a43ce9191d643a2fc5719009efdc478037fb1902` excluded it, conserved records from accepted main, and had separate source and publication reviews with eight authentic artifacts. The exact three-file historical 06:55 record diff is now recovered on a separate records-only branch from #817; no product source or workflow was changed, and no history was rewritten.
+
+Root’s 07:59:26Z read-only #810 preflight independently verifies 22 authentic embedded reports and a disjoint 39-path overlay onto 67 accepted-main changes (3,412 reconstructed tree entries, clean merge-tree); it is conservation evidence only, not current review/runtime/CI approval. Current Carrier `f7c5` remains incomplete at native28:17 pass/11 fail/62 not run. The current Sol gap report names unresolved route, producer, host/domain, wrapper, Story and state joins; `fdc` false closure is corrected in the records. The sole checker/test owner continues static implementation only. UI9ac/erasure cc5 remain unintegrated. #810 is next for normal composition after this records checkpoint; #807 and #773 owner holds, N1, #589 and release/SIT/recovery/audit remain open. No acceptance, waiver, phase completion or release claim is made here.
+
+
+### 2026-10-17 08:00 UTC · Additive correction to the 07:59 records checkpoint
+
+This entry corrects factual imprecision in the preceding 07:59 operational checkpoint; it changes no owner decision, policy or waiver. The records-only candidate requires **two fresh independent ordinary factual reviews**, followed by its applicable records-only CI. The prior queue line saying one review was incorrect.
+
+The prior checkpoint incorrectly described #807 documentation conflicts as waiting on Thomas. Existing accepted policy resolves them: preserve both `auth*` and `auth/**`, use the more-specific GitHub-prerelease wording in `ci-cd.md`, and preserve the append-only decision log. The existing #807 branch should use normal composition, fresh reviews and CI; no owner-only disposition is pending. #807 calibration factors 1.392/1.480 are valid. Its assignment's 218.0 ms and 200.43141014024977 ms readings leave the strict <200 ms threshold failed at 21/22, cause undiagnosed. The 1.752 host refusal belongs to #810. The classifier and two exact break fingerprints remain unaccepted.
+
+The 07:59 checkpoint omitted bounded invalidation source `e67c3e8b5d7cc539898196bd89efc7d7dd625c2f`: four invalidation statements, fresh ordinary and mandatory lightweight Sol source clearances, and actual PostgreSQL3 files/43 tests/native0. Current-main composition, publication, review bindings and current gates remain pending. Author raw install/build/typecheck logs were not persisted, so root raw-log verification is not claimed.
+
+The phrase about the earlier `fdc` false closure is clarified: the authentic finding is preserved, while current `f7c5` end-to-end remediation is unknown and the candidate remains unaccepted. UI9ac and erasure cc5 remain prepared but unintegrated; signed combined release, exact-digest SIT, consistent nonempty backup, usable isolated restore, fresh final Sol audit, #589 accounting and phase completion remain unfinished.
+
+
+### 2026-10-17 08:01 UTC · Records candidate frozen; #807 calibration count clarified
+
+The records-only candidate is frozen on its isolated branch from accepted #817 main. It waits on two fresh independent ordinary factual reviews, followed by records-only CI; no push or PR has been made.
+
+The preceding additive correction described #807's strict <200 ms result as “failed at 21/22,” which could be read as 21 failures. The actual result is 21 passes and one failed test, with cause undiagnosed. #807's 1.392/1.480 calibration remains valid; #810 owns the separate 1.752 host refusal.
