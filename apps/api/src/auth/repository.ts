@@ -3,35 +3,35 @@ import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 import { dbNowUtc } from "../utils/db-time";
 
-export function getAuthUserLocale(email: string) {
-  return db
+export async function getAuthUserLocale(email: string) {
+  return await db
     .select({ locale: schema.userTable.locale })
     .from(schema.userTable)
     .where(eq(schema.userTable.email, email))
     .limit(1);
 }
 
-export function countAuthUsers() {
-  return db.select({ value: count() }).from(schema.userTable);
+export async function countAuthUsers() {
+  return await db.select({ value: count() }).from(schema.userTable);
 }
 
-export function countAuthUsersForExecutor(
+export async function countAuthUsersForExecutor(
   executor: typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0],
 ) {
-  return executor.select({ value: count() }).from(schema.userTable);
+  return await executor.select({ value: count() }).from(schema.userTable);
 }
 
-export function getSetupCompletionMarker(
+export async function getSetupCompletionMarker(
   executor: typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0],
 ) {
-  return executor
+  return await executor
     .select({ setupCompletedAt: schema.instanceSettingTable.setupCompletedAt })
     .from(schema.instanceSettingTable)
     .limit(1);
 }
 
-export function getFirstUserWorkspaceMembership(userId: string) {
-  return db
+export async function getFirstUserWorkspaceMembership(userId: string) {
+  return await db
     .select({ workspaceId: schema.workspaceUserTable.workspaceId })
     .from(schema.workspaceUserTable)
     .where(eq(schema.workspaceUserTable.userId, userId))
@@ -57,12 +57,12 @@ export async function getActiveSessionForStepUp(
     .limit(1);
 }
 
-export function getPendingActionForStepUp(
+export async function getPendingActionForStepUp(
   actionId: string,
   personId: string,
   now: Date,
 ) {
-  return db
+  return await db
     .select({
       action: schema.pendingActionTable.action,
       targetType: schema.pendingActionTable.targetType,
@@ -81,24 +81,24 @@ export function getPendingActionForStepUp(
     .limit(1);
 }
 
-export function getUserFactorEnabled(userId: string) {
-  return db
+export async function getUserFactorEnabled(userId: string) {
+  return await db
     .select({ enabled: schema.userTable.twoFactorEnabled })
     .from(schema.userTable)
     .where(eq(schema.userTable.id, userId))
     .limit(1);
 }
 
-export function getUserId(userId: string) {
-  return db
+export async function getUserId(userId: string) {
+  return await db
     .select({ id: schema.userTable.id })
     .from(schema.userTable)
     .where(eq(schema.userTable.id, userId))
     .limit(1);
 }
 
-export function getScimConnectionDetails(connectionId: string) {
-  return db
+export async function getScimConnectionDetails(connectionId: string) {
+  return await db
     .select({
       version: schema.identityConnectionTable.configVersion,
       childId: schema.scimConnectionTable.identityConnectionId,
@@ -115,8 +115,8 @@ export function getScimConnectionDetails(connectionId: string) {
     .limit(1);
 }
 
-export function getScimConfigVersion(connectionId: string) {
-  return db
+export async function getScimConfigVersion(connectionId: string) {
+  return await db
     .select({ version: schema.identityConnectionTable.configVersion })
     .from(schema.identityConnectionTable)
     .innerJoin(
@@ -130,16 +130,16 @@ export function getScimConfigVersion(connectionId: string) {
     .limit(1);
 }
 
-export function getIdentityConfigVersion(connectionId: string) {
-  return db
+export async function getIdentityConfigVersion(connectionId: string) {
+  return await db
     .select({ version: schema.identityConnectionTable.configVersion })
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.id, connectionId))
     .limit(1);
 }
 
-export function getPasswordCredential(userId: string) {
-  return db
+export async function getPasswordCredential(userId: string) {
+  return await db
     .select({ password: schema.accountTable.password })
     .from(schema.accountTable)
     .where(
@@ -785,8 +785,8 @@ export async function getCustomerPortalIdentityRow(userId: string) {
     );
 }
 
-export function getStoredAuthPluginConfigRows() {
-  return db
+export async function getStoredAuthPluginConfigRows() {
+  return await db
     .select({
       id: schema.instancePluginConfigTable.id,
       pluginId: schema.instancePluginConfigTable.pluginId,
@@ -799,8 +799,8 @@ export function getStoredAuthPluginConfigRows() {
     .where(sql`${schema.instancePluginConfigTable.pluginId} like 'auth.%'`);
 }
 
-export function getIdentityConnectionConfigVersions() {
-  return db
+export async function getIdentityConnectionConfigVersions() {
+  return await db
     .select({
       id: schema.identityConnectionTable.id,
       configVersion: schema.identityConnectionTable.configVersion,
