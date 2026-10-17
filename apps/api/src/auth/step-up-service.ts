@@ -847,7 +847,7 @@ export async function issuePendingActionToken(
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.pendingActionId}))`,
     );
-    const [activeSession] = await lockActiveStepUpSession(
+    const activeSession = await lockActiveStepUpSession(
       tx,
       input.sessionId,
       input.userId,
@@ -1078,7 +1078,7 @@ async function issueOperationToken(
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.operation}))`,
     );
-    const [activeSession] = await lockActiveStepUpSession(
+    const activeSession = await lockActiveStepUpSession(
       tx,
       input.sessionId,
       input.userId,

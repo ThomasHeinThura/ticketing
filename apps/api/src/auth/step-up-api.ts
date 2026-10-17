@@ -125,7 +125,7 @@ async function requireCurrentAgentSession(c: Context) {
   if (session.portal !== "agent") {
     throw new HTTPException(403, { message: "Forbidden" });
   }
-  const [activeSession] = await getActiveSessionForStepUp(
+  const activeSession = await getActiveSessionForStepUp(
     session.id,
     c.get("userId"),
     new Date(),
