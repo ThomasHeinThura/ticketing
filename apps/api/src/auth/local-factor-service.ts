@@ -5,6 +5,7 @@ import {
   type LocalFactorPolicy,
   parseLocalFactorPolicy,
 } from "./local-factor-policy";
+import type { StepUpExecutor } from "./repository";
 
 export type LocalFactorState = {
   policy: LocalFactorPolicy;
@@ -23,8 +24,9 @@ export class InactiveFactorIdentityError extends Error {
 
 export async function loadLocalFactorState(
   userId: string,
+  executor: typeof db | StepUpExecutor = db,
 ): Promise<LocalFactorState> {
-  const [person] = await db
+  const [person] = await executor
     .select({
       id: schema.personTable.id,
       side: schema.personTable.side,
@@ -44,7 +46,7 @@ export async function loadLocalFactorState(
     )
     .limit(1);
   if (!person || (person.side !== "staff" && person.side !== "customer")) {
-    const [inactivePerson] = await db
+    const [inactivePerson] = await executor
       .select({ id: schema.personTable.id })
       .from(schema.personTable)
       .where(
@@ -62,7 +64,7 @@ export async function loadLocalFactorState(
 
   // Resolve the person first so an inactive identity is denied as such even when the
   // instance setting row is missing or the stored policy does not parse.
-  const [setting] = await db
+  const [setting] = await executor
     .select({ policy: schema.instanceSettingTable.localFactorPolicy })
     .from(schema.instanceSettingTable)
     .where(eq(schema.instanceSettingTable.id, "singleton"))
@@ -70,7 +72,7 @@ export async function loadLocalFactorState(
   if (!setting) throw new Error("Instance factor policy is unavailable");
   const policy = parseLocalFactorPolicy(setting.policy);
 
-  const memberships = await db
+  const memberships = await executor
     .select({ roleId: schema.membershipTable.roleId })
     .from(schema.membershipTable)
     .innerJoin(
@@ -82,7 +84,7 @@ export async function loadLocalFactorState(
     const requiredRoleId = policy.requiredRoleId;
     if (!requiredRoleId)
       throw new Error("Configured factor role is unavailable");
-    const configuredRole = await db
+    const configuredRole = await executor
       .select({ id: schema.roleTable.id })
       .from(schema.roleTable)
       .where(eq(schema.roleTable.id, requiredRoleId))

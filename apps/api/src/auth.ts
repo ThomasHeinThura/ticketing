@@ -53,6 +53,7 @@ import {
   currentTotpEnrollmentTransaction,
   noteTotpEnrollmentMutationAuditFailure,
   revokeTotpPeerSessions,
+  runOrAfterTotpEnrollmentCommit,
   withAccountDeletionTransaction,
   withExplicitCredentialMutation,
   withTotpSessionEnrollment,
@@ -641,7 +642,9 @@ function createAuth(
         },
         delete: {
           after: async (session) => {
-            await invalidateNativeAuthorization({ userId: session.userId });
+            await runOrAfterTotpEnrollmentCommit(() =>
+              invalidateNativeAuthorization({ userId: session.userId }),
+            );
           },
         },
       },
