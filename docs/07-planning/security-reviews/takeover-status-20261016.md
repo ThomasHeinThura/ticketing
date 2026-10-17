@@ -509,3 +509,435 @@ Residual limits: this full pass covers the bounded policy/records candidate and 
 **Completed at:** 2026-10-17T02:18:17.122905+00:00
 
 **Reviewed head:** `a92e2798d6eb28f6f1ee58821473b8a65dc7fec0`
+
+
+## Current composition, scope correction and operational snapshot
+
+Earlier reports retain their exact scopes. All adverse findings, metadata corrections and current confirmations below are authentic and unedited. The author handoff is not independent approval; reused independent reviewer contexts are not newly spawned contexts. Owner decisions and prior note bytes are preserved. Current candidate CI and protected acceptance remain separate.
+
+
+### Preserved report `records803-402-ordinary-luna.md`
+
+SHA-256 `792c66c18a577943dc017471d30fb9a1e397e3a8dae5a20b8303865f9b6a7735`; 5824 bytes.
+
+# Independent ordinary records review — #803 current snapshot
+
+Reviewer: GPT-6 Luna, fresh independent context. I did not author, direct, or remediate the candidate. Scope is the dated status/queue/decision-log record update at the exact candidate head and its cited source/evidence. This is not a re-review of the full historical policy/source set.
+
+## Candidate and provenance
+
+- **Exact candidate:** `402558cc003a3a36b2c9f5c2e4ca94851056bb99`
+- **First parent:** `24893ab7662b13d9c9d7b0ba868528cd97dfc0ff`
+- **Second parent / accepted main:** `130508ef24f6442a59dbccaf305712891c8b3fbb`
+- **Previous records publication:** `9d7d01eb6434122bd257e5b268b111a4fd20b9f8`
+- **Verdict: BLOCKED by one concrete factual error in the new dated snapshot.**
+
+The worktree HEAD is the candidate and its status is clean. The normal accepted-main merge at `24893ab7` has the stated parents and changes exactly three accepted #813 source paths (`auth/repository.ts`, the step-up query-ownership note, and `local-factor-policy.test.ts`). The #803 records commit itself is limited to `status.md`, `integration-execution-queue.md`, and `decision-log.md`. I verified the preservation proof against Git objects: all recorded prior bytes match their stated old-byte lengths and hashes; the full old status and queue contents remain exact suffixes, and the old decision log remains an exact prefix. `api-design.md` and `ci-cd.md` are blob-identical to their reviewed `a92e2798…` versions, so this update introduces no new normative policy text.
+
+## Blocking finding
+
+**B1 — incorrect PostgreSQL completion timestamp.** In the new 02:58 UTC status snapshot, [status.md](/Users/heinthura/.codex/worktrees/takeover-status-20261016/docs/07-planning/status.md:5) says PostgreSQL job `117282971158` completed at `02:42:50Z`. The bound receipt `813-pg-success-receipt.json` records the same job as completed at `2026-10-17T02:42:53Z`. The timestamp is three seconds early. Correct the snapshot to the receipt's `02:42:53Z` before this records candidate is cleared. This is a dated factual record, so the correction should be preserved in the candidate's normal records flow.
+
+## Other bounded fact checks
+
+- `813-protected-acceptance.json` binds accepted main `130508ef…` to normal protected #813 acceptance at `02:55:50Z`, with parents `5a26ca75…` and publication `433ea776…`, and matching synthetic/publication tree `b82c2b8e…`. The premerge readiness receipt records 18 required contexts with none pending. The PG receipt records 222 files / 3,284 tests / five tasks and the raw log length/hash quoted in the snapshot. E2E/G11 receipts support 63 browser tests, G11 22/22 and the listed performance medians; final-unit receipt supports 12 tasks, API 121 files/872 tests and web 186 files/1,023 tests. The shipping-image evidence supports 125 migrations, UID 10001, healthy/live/ready, no host ports, owned isolation and cleanup. The status appropriately disclaims causal performance evidence and whole-authentication compliance.
+- The #811 paragraph is consistent with the cited old `e30eb752…` PG/E2E/G11/image receipts, the 7671 bounded unit/typecheck receipt, and the accepted-main composition proof for `c3329e7d…`. It states that old passes do not accept the repaired/current composition and preserves the prior failed final-body run and checklist correction.
+- The #812 paragraph matches the adverse `d65c498c…` PostgreSQL result and 0d600 failed negative-body probe. The focused 5fa receipt binds to the cited run and SHA; its native return is zero, Vitest reports six files/78 tests, and the raw log is 153,217 bytes with SHA-256 `8555382dec678d2b16641d2e1d4813d956834a568c0c85fac9debe0c3f159ebe`. Container inventory is unchanged at 23/109/7. The accepted-main composition proof binds current `24711f61…` and confirms the exact three incoming paths. The snapshot does not treat these as full or image acceptance.
+- The operation-proof paragraph is consistent with the exact `dcf4071f…` composition proof: its first-parent and merge tree are identical (`d1526050…`). The two ordinary reviews and full Sol report bind to source `7f4f0a28…`; the retained corrections accurately say the attempt-limit throw is inside the transaction and image checks remain mandatory. The report correctly keeps operation-proof race and outer rollback coverage open.
+- The Carrier row's checker/test hashes and unchanged manifest match completion addendum 6. Its own report leaves linkage, state-frontier and other listed obligations open, claims no test/current inventory, and states that preserving the historical 27 failure-oracle bodies / 60 occurrence IDs / 32 helper calls is by inspection only. The candidate labels the 71/44/27 run historical and does not claim current execution or readiness.
+- The later #803 hosted receipts and full ordinary/Sol reports remain bound to the prior `9d7d01eb…` publication. The status says those runs do not accept this newer record. Other queue entries preserve remaining SIT, restore, owner-hold and phase-completion limits.
+
+No further concrete factual blocker was identified in the bounded new record against the supplied receipts. This review did not audit every historical statement or rerun previous source reviews.
+
+## Checks and limits
+
+Read-only inspection verified worktree status, commit parents, changed paths, source-proof preservation against Git blobs, unchanged normative file blobs, the new snapshot and queue text, and the specifically cited acceptance, repair/composition, operation and Carrier evidence. The prior full #803 reports were read for scope and remaining limitations. No tests, builds, runtime/PostgreSQL, Docker, browser, GitHub calls, source/ref mutations, or shared-record edits were performed. No source or evidence bytes were changed by this reviewer.
+
+
+### Preserved report `records803-6f990-ordinary-confirmation-luna.md`
+
+SHA-256 `0ff85959cb1704969371e0781abc1cbef929f9540cde66da7a6caa550b8df521`; 2349 bytes.
+
+# Independent ordinary confirmation — #803 timestamp correction
+
+Reviewer: GPT-6 Luna, fresh read-only confirmation context. I did not author, direct, or remediate the correction. This addendum reviews the exact one-line records delta that fixes B1 in `records803-402-ordinary-luna.md`; that original report remains unchanged.
+
+## Exact current head and parent metadata
+
+- **Current candidate:** `6f990aae91590ef79db60c6433fa425b2390424e`
+- **Single parent:** `402558cc003a3a36b2c9f5c2e4ca94851056bb99`
+- **Changed path:** `docs/07-planning/status.md`
+- **Verdict: CLEAR — B1 closed for this exact candidate.**
+
+I verified the worktree HEAD and clean status, commit parent, and full `402558cc..6f990aae` diff. The only change is one timestamp in the new 02:58 snapshot: `PG117282971158 completed02:42:50Z` is corrected to `completed02:42:53Z`. The proof file records the same one-line correction and commit. The bound `813-pg-success-receipt.json` identifies candidate `433ea7769d1b8440046cfe7ba39acc23e029489c`, run `38994198800`, job `117282971158`, success, and `completedAt: 2026-10-17T02:42:53Z`; its 222-file / 3,284-test / five-task result and raw-log size/hash remain unchanged. The raw log's Vitest summary line is timestamped 02:42:50.559Z; that is the test-summary time, not the job completion time. The corrected record now uses the receipt's completion time.
+
+## Correction to my prior report metadata
+
+My original report inaccurately listed `130508ef24f6442a59dbccaf305712891c8b3fbb` as a second parent of candidate `402558cc…`. It is not. Candidate `402558cc…` is a single-parent commit whose parent is merge commit `24893ab7662b13d9c9d7b0ba868528cd97dfc0ff`. That merge has two parents: previous records publication `9d7d01eb6434122bd257e5b268b111a4fd20b9f8` and accepted main `130508ef24f6442a59dbccaf305712891c8b3fbb`. This addendum corrects my report metadata only; it does not edit or replace the original report.
+
+## Scope and limits
+
+No further finding arises from the correction. This CLEAR closes the identified dated-record timestamp discrepancy at `6f990aae…`; it is not a new review of the full historical records candidate or any different source/CI/runtime gate. I performed only read-only Git, receipt, and raw-log inspection. I ran no tests or runtime actions and made no candidate or evidence-source edits.
+
+
+### Preserved report `accepted813-four-candidates-security-61-sol.md`
+
+SHA-256 `cc90399fa7e48a2bedf2939c27e985814a9a9efbc65490bb515cc92773e25bff`; 21687 bytes.
+
+# Accepted #813 — four independent exact-head security verdicts
+
+**Model / role:** GPT-6.1 Sol, fresh independent security reviewer context `/root/accepted813_four_candidates_security_sol`.
+**Dispatch provenance:** The conductor supplied the actual tool-request arguments `model="gpt-6.1-sol"`, `reasoning_effort="high"`, `fork_turns="none"`. This is requested/accepted route provenance, not an independently measured serving attestation. The served provider/model/build fingerprint is unavailable to this context and is not invented.
+**Independence:** I did not author, direct, plan, or remediate any of the four candidates. No child agent was spawned. I reviewed after reading the applicable current ordinary CLEAR reports and their authentic corrections. Their conclusions were claims to verify, not substitutes for source inspection.
+**Method:** Four separate bounded source/composition security reviews. Earlier full-source review coverage remains attributed to its original reviewer, exact source and limits; this report neither restarts those full scopes nor silently claims to have re-audited them.
+**Evidence root (E):** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover`.
+
+## Separate verdicts
+
+| Candidate | Exact reviewed head | Verdict and depth |
+| --- | --- | --- |
+| A — #811, activity/relations/time-entry recovery | `c3329e7d195c63a6e46caebdd2f306b4dc9ba1a4` | **CLEAR** — full security inspection of the bounded post-admission 404 repair, plus bounded accepted-#813 composition confirmation |
+| B — #812, approval recovery | `24711f617d5e1134e36d83e3afadd85e206f0afa` | **CLEAR** — bounded fixture-security and accepted-#813 composition confirmation |
+| C — #580 operation-proof persistence | `dcf4071f79c7046cab343e51acadc2e9983b9e09` | **CLEAR** — lightweight metadata-only confirmation retaining the prior full two-path security review |
+| D — #803 records | `6f990aae91590ef79db60c6433fa425b2390424e` | **CLEAR** — bounded new dated-fact, preservation and composition security confirmation retaining the prior full normative review |
+
+**Blocking findings:** none in any of these four assigned deltas.
+**New non-blocking security findings:** none in any of these four assigned deltas.
+These are source security verdicts only. They are not current required-CI passes, image acceptance, permission to merge, whole-#580 acceptance, a phase finalizer, or release/SIT/mission completion.
+
+## A — #811 at c3329e7d
+
+**Reviewed head:** c3329e7d195c63a6e46caebdd2f306b4dc9ba1a4
+
+- Worktree: `/Users/heinthura/.codex/worktrees/query773-current-luna`.
+- Bounded repair base/publication: `e30eb752eedf09bc8fcfa9a54c856a7771ff3cf4`.
+- Repair/source parent: `7671c1c700b31ae4d7c821d61d5791362d8d29cf`.
+- Other exact parent: accepted #813 `130508ef24f6442a59dbccaf305712891c8b3fbb`.
+- Current tree: `713a5c84844c0beda52b18d25054ea3d0acbf826`.
+- Retained full-source baseline: `d7f628fa89cedc25d610f93c5bd49ce6ae9c2df9`, full 40-path review `query773-d7f6-full-security-61-sol.md`, followed by accepted-#809 composition confirmation at `8a89525cb2a55f6a50b1b793e1e82ee5d367a5fe` in `accepted809-dual-composition-security-61-sol.md`.
+
+I inspected the complete two-path repair: `apps/api/src/time-entry/controllers/get-time-entry.ts` and the new `tests/api/time-entry/get-time-entry.test.ts`. The controller still uses the authenticated resolved identity and exact id in the same reach-scoped repository read. It now awaits that read, throws `HTTPException(404, { message: "Time entry not found" })` for no row, and returns the unchanged row otherwise. There is no unscoped retry, stale middleware-row fallback, new disclosure, or widened authority.
+
+The mounted GET route already declares concealed 404 and applies `workspaceAccess.fromTimeEntry` with project reach plus `time_entry:read_any` enforcement. The second repository lookup composes the entry id, its task/project relationship, deleted-project exclusion and current canonical project-reach predicate. A missing row or a current reach refusal observed at that read therefore takes the declared 404 path, instead of being serialized as an empty success. Query exceptions still propagate; the new guard does not turn an execution error into a row or retry through weaker scope. This is closure of the reported post-admission undefined-result defect, not a claim of serializable instantaneous revocation throughout a request.
+
+The two controller tests directly cover undefined second-read rejection and returning the present row, with exact identity/id forwarding. They model the post-admission observation; they do not reproduce real database concurrency or constitute a complete HTTP denial journey. `query811-7671-static-unit-receipt.json` records root's exact-7671 one-file/two-test run and API typecheck, both exit 0. I inspected that receipt, did not run them, and do not transfer old e30 full-suite passes to c332.
+
+Direct Git comparison independently confirms all 42 owned mode/blob entries remain identical to 7671, all three incoming entries match accepted 1305, the owned/incoming sets are disjoint, and the first-parent diff contains exactly those three incoming paths. Relative to the prior full 40-path baseline, only the reviewed time-entry controller, authentic own-note publication, and new regression differ among the current owned paths; the unchanged full-source coverage is retained. The incoming auth source/test seam is assessed below.
+
+**Separate A verdict: CLEAR.** The reported undefined-result concealment defect is closed in source at this exact head. Prior storage cross-system atomicity and legacy/native-feature coverage limits remain as disclosed in the full review; this repair adds no new recovery guarantee.
+
+## B — #812 at 24711f61
+
+**Reviewed head:** 24711f617d5e1134e36d83e3afadd85e206f0afa
+
+- Worktree: `/Users/heinthura/.codex/worktrees/query789-current-luna`.
+- Accumulated fixture-repair base/publication: `d65c498cc9983cc89d11a670f90ee062ae99c310`.
+- Repair/source parent: `5fa659555d237ef29e24b6872676bc4ba7355a02`, following `0d6003df5a6f805bb3a5ccea85bc950e2ea187e7`.
+- Other exact parent: accepted #813 `130508ef24f6442a59dbccaf305712891c8b3fbb`.
+- Current tree: `7c04eb0f21b20464517df20e5fbf817eed5498fc`.
+- Retained full-source baseline: `f7fb4cb6f8038deeb257709f776553023456c3d8`, full 15-path review `query789-f7fb-full-security-61-sol.md`, followed by the real disjoint accepted-#809 import confirmation at `88b7807378447cc74e584a37a48f277ddc1c34c8` in `accepted809-dual-composition-security-61-sol.md`.
+
+I inspected the complete accumulated two-fixture-path delta in `tests/api-integration/helpers/reach-world.ts` and `tests/api-integration/work-item-project-reach.test.ts`. It changes no application source, schema, policy, capability, product status behavior or feature flag. The approval route's preparation adds exact private-item participant facts for the capable project member, reachable reader and project outsider. It does not change the item to a broader visibility class or grant either negative actor additional project authority.
+
+Source inspection confirms the preserved conjunction: approval SQL applies current project reach AND private requester/exact-participant visibility, while route/handler checks separately require `approval:request`. The staff middleware does project reach before body validation; the handler then resolves the scoped target and enforces the capability. The new negative body contains nonempty `transitionId`, customer `kind`, and nonempty `approverId`, satisfying the actual strict request schema. Its dummy downstream identifiers do not mask the tested denials because the outsider fails project reach and the reachable reader fails capability before approval creation/transition eligibility. Participation therefore cannot replace project reach or authority: the tests retain outsider 404 and reachable-reader 403. The original empty-body positive/validation case still expects 400.
+
+The earlier `query812-0d600-fixture-ordinary-luna.md` incorrectly treated the empty negative body as reaching the handler. Its authentic report remains intact and is not authoritative for the final repair. I read the final `query811812-runtime-repairs-ordinary-luna.md` and independently checked the schema/order above. The added approval count strengthens the existing snapshot against approval insertion. Snapshot equality remains a selected set of work-item rows and table counts, not a complete database-wide write audit or proof against every possible equal-count mutation.
+
+I inspected root's `query812-runtime-5fa659` result/invocation, runtime and exact-id cleanup receipts, final inventory comparison, and raw-log summary. It binds to 5fa, native exit 0/no timeout, 29.931 seconds, six files/78 tests passed. The independently recomputed raw-log size/hash are 153,217 bytes / `8555382dec678d2b16641d2e1d4813d956834a568c0c85fac9debe0c3f159ebe`. Saved cleanup records 23 containers/109 volumes/seven networks unchanged; the private environment file is absent. These are inspected root-owned receipts, not a new runtime execution or live Docker-state observation. They are focused evidence on 5fa, not a full runtime result at 247.
+
+Direct Git checks independently preserve all 18 owned entries from 5fa and all three incoming entries from accepted 1305, with no same-path overlap and exactly the three-path first-parent import. All 15 original full-review-owned source/test entries are unchanged except their designated own review note; the two fixture paths are the newly inspected repair. The prior #789 whole-tree-equivalence error was already explicitly withdrawn in its authentic composition correction; I do not revive it.
+
+**Separate B verdict: CLEAR.** No authority regression or weakened permission oracle appears in this fixture repair or composition. Existing GM-9 impersonation-decision/double-audit, per-request authority/revocation, durable-activity single-use and notification limitations retain their original disclosed scope; this verdict does not certify them closed.
+
+## Shared accepted-#813 import in A, B and D
+
+The exact incoming paths are `apps/api/src/auth/repository.ts`, `tests/api-integration/local-factor-policy.test.ts`, and `docs/07-planning/security-reviews/query-ownership-step-up-session-580.md`. I read the actual production/test diff, the retained full security report in that note, and surrounding consumers. The production change only makes the two existing session selects async/materialized. All three consumers retain first-row destructuring and no-row rejection. Exact session/user/agent-portal/expiry predicates, the supplied transaction executor, UTC-wall-clock expiry expression, row lock and limit remain. No array-truthiness bypass or global-connection fallback is introduced. The accepted regression covers deleted-session HTTP preflight plus non-agent-session denial during operation and pending-action issuance, with the authentication verifier uncalled.
+
+These imports are blob-identical to accepted 1305; A's time-entry controller and B's approval fixtures do not alter the auth callers or session query contract. I examined the intervening commit graph as well as endpoint trees; the authentic intermediate 455 defect and later 7d301 repair remain in the accepted history and review record. They are not hidden by a net-tree comparison. Accepted-#813 clearance remains source-bound to its prior reviewers and acceptance evidence, not a new full auth audit performed here.
+
+## C — operation-proof persistence at dcf4071f
+
+**Reviewed head:** dcf4071f79c7046cab343e51acadc2e9983b9e09
+
+- Worktree: `/Users/heinthura/.codex/worktrees/remaining580-operation-proof-persistence-author-luna`.
+- First parent / fully reviewed source: `7f4f0a2865e9ff1006f88edab264f4c9d3031324`.
+- Other exact parent: accepted #813 `130508ef24f6442a59dbccaf305712891c8b3fbb`.
+- Both first-parent and current tree: `d15260509b29f187945946c64a8ebf785db622e3`.
+- Prior full-source comparison base: `433ea7769d1b8440046cfe7ba39acc23e029489c`; full two-path security report `operation7f4-full-security-61-sol.md`.
+
+I verified the exact parents, complete tree equality, empty first-parent path diff and both owned mode/blob entries. The source already contains accepted #813's publication; this normal merge adds accepted-parent metadata without changing source. The intervening graph introduces accepted merge1305 and the final metadata composition, not an unreviewed reverted source experiment. There is no new lifecycle source delta requiring another full two-file audit.
+
+I read the two original ordinary reports, both authentic wording corrections, the full independent security report and the current ordinary composition confirmation. The retained full review covers the three awaited repository lifecycle batches using the exact caller transaction and materialized rows, with existing operation/session/person/route/version/hash/state/expiry bindings and rollback seams. Its analysis stays attributed to source7f4 and its original reviewer. The earlier dependent-base caveat is resolved only as to the accepted-parent composition established here, not as to current candidate CI/image acceptance.
+
+I independently inspected the exact-7f4 result/invocation/runtime records and raw footer: four files/159 tests, native exit 0/no timeout, 67.76 seconds. Raw log is 362,634 bytes / SHA-256 `4cf595ead210ed81d84984d0046fec479c3a0f175e6794b10d66543ac7e32cd2`; saved cleanup comparison is unchanged 23/109/7, private environment absent. The run's four files are local-factor policy, policy concurrency, and the two identity non-UTC wrappers. Role/policy concurrency is not an operation-proof race test. The audit-savepoint-failure case followed by a successful protected mutation is not an outer proof-plus-mutation rollback test. Canonicalization unit coverage was inspected previously but was not one of those executed files. The attempt-limit throw is inside its transaction callback. Those precise coverage corrections remain controlling.
+
+**Separate C verdict: CLEAR for lightweight metadata-only composition.** Prior full source clearance remains valid for what it actually covered; no duplicate full-audit claim or new runtime claim is made. Shipping image build, boot, migration and health proof remain mandatory for the candidate and are not supplied by this focused PostgreSQL evidence.
+
+## D — records #803 at 6f990aae
+
+**Reviewed head:** 6f990aae91590ef79db60c6433fa425b2390424e
+
+- Worktree: `/Users/heinthura/.codex/worktrees/takeover-status-20261016`.
+- Previously published records base: `9d7d01eb6434122bd257e5b268b111a4fd20b9f8`.
+- Normal accepted-#813 merge: `24893ab7662b13d9c9d7b0ba868528cd97dfc0ff`, parents 9d7 and `130508ef24f6442a59dbccaf305712891c8b3fbb`.
+- Dated-record commit: `402558cc003a3a36b2c9f5c2e4ca94851056bb99`, single parent24893ab7.
+- Current one-line correction: 6f990aae, single parent402558cc; current tree `2236c04f1e65f4256f451431cf7b9ea98c2b328e`.
+- Retained full normative review: source `a92e2798d6eb28f6f1ee58821473b8a65dc7fec0` against accepted `5a26ca75e60c7232ab8280a13e599fcbe4fd3518`, `records803-a92-full-ordinary-luna.md` and `records803-a92-full-security-61-sol.md`.
+
+I read the full new status/queue/decision-log diff, preservation and timestamp proofs, current ordinary blocked report and authentic CLEAR correction, and prior full normative reviews. I independently compared raw Git objects: all 1,326,849 old status bytes and 225,676 old queue bytes remain exact suffixes; all 662,278 old decision-log bytes remain an exact prefix, with the proof's original hashes matching. The normal merge imports exactly the same three accepted paths assessed above, whose current blobs match1305. The API-design and CI/CD normative files are exactly blob-identical to reviewed a92 (respectively `73e4a93c4b3d6aa757cc20b58bf5cdc540c15364` and `4a54d988498bf4bdfdc16c20a576fba146fd93f5`). No new release classification, erasure entitlement, reviewer authority, retry policy, exception or waiver is introduced by the dated records.
+
+The retained normative scope still requires live GitHub prerelease classification, fail-closed uncertainty and exact independently reviewed finding fingerprints. The erasure summary stays bound to the authenticated deletion subject's current persisted memberships and member/owner safety counts, with joined workspace names only for the existing conflict message. No other-member identity disclosure or general reach exemption follows. Those are conserved prior contracts, not product implementation approved here.
+
+The new accepted-#813 facts match the supplied protected-acceptance/readiness and run receipts: normal merge02:55:50Z, accepted1305/publication433, exact publication/synthetic tree, 18 completed successful contexts, PostgreSQL222files/3284tests/five tasks, browser63/G1122 and the stated medians, final unit12/API121files872tests/web186files1023tests, and the candidate shipping-image record125migrations/UID10001/health200/nohostports/owned isolation/cleanup. I independently matched raw PG and final-unit log byte counts/hashes and their suite footers. I did not reauthenticate hosted jobs or rerun image verification. These remain accepted-813 facts at the snapshot cutoff, not current passes for records6f990 or the other three candidates.
+
+The sole 402 ordinary blocker is closed: the current snapshot uses job117282971158 completion02:42:53Z, matching `813-pg-success-receipt.json`. Raw Vitest summary02:42:50.559Z is a distinct timestamp. The ordinary report's mistaken second-parent description for402 is explicitly corrected by its authentic addendum; actual Git metadata agrees with that correction.
+
+The new A/B/C paragraphs retain adverse runs and required new gates honestly. Carrier addendum6/frozen5 and earlier main5a references are historical source-bound observations, not claims of present Carrier readiness or current accepted main. Old dated text remains immutable. The remaining held performance, owner decisions/deferrals, final signed artifact, exact-digest SIT, nonempty-attachment backup/usable isolated restore, final audit and phase obligations remain open. I did not audit every old snapshot or current Carrier implementation.
+
+**Separate D verdict: CLEAR.** No dated-fact, authority inflation, provenance-erasure or composition security blocker remains in the assigned current records delta.
+
+## Actual checks, preserved coverage and limits
+
+I read the supplied user instructions, then reloaded the actual accepted guide/mission/workflow/provider-adapter versions from candidate worktrees and verified their blobs equal accepted1305 in all four worktrees. Relevant specialist reads covered the current CI security-path list and review/evidence-reuse rules, query-ownership/results/executor and UTC rules, approval reach/authority/private visibility, legacy time-entry routing/repository scope, PA-15 and session step-up contracts, and the conserved release/erasure standards. Read the newest dated record and decision context. No open product question was invented.
+
+Read-only checks actually performed: `pwd`; bounded `cat`, `sed`, `rg`, `head`, `tail`, `ls`; exact `git status`, `log`, `show`, `rev-parse`, `diff`, `ls-tree`; read-only Python subprocess/pathlib/json/hashlib for parent/tree/path/mode/blob conservation, old-byte preservation and saved-log verification. `git diff --check` exits0 for A:e30..c332, B:d65..247, C:7f4..dcf, D:9d7..6f990. Final pre-report assertions confirm all four exact heads and clean candidate worktrees.
+
+Some initial combined reads exceeded tool output limits; relevant guide, source and prior-report ranges were subsequently read separately or verified directly against Git objects. Two initially guessed specialist-document paths were absent and corrected to `docs/01-architecture/pending-actions.md` and `docs/01-architecture/api-design.md`. No conclusion relies on unseen truncated text or absent-file output.
+
+**No tests/reproductions, typecheck, install, build, PostgreSQL, Docker, browser, live inventory, CI action, GitHub/ref mutation, source/shared-document edit, commit, push, merge or delegation was performed by this reviewer.** No live GitHub state was queried; the assignment froze exact local heads and authorized source/actual saved-receipt inspection. Current remote readiness must still be established by the conductor. The only new file is this authentic external report, exclusively created with mode0600.
+
+Earlier full reviews remain at their real scope: A40 paths, B15 paths and its real earlier import, C2 paths, and D's full normative/records candidate. The 21 A and13 B authentic-publication report sets and their earlier publication proofs are preserved, not claimed newly re-verified byte-for-byte by this bounded review. `accepted813-next-hosted-count-expectations.json` is explicitly expectations only, not an executed result or pass. Old811 green CI never accepts the repaired source. No required GitHub check is reused. No existing source-review report becomes runtime/SIT evidence or supplies a gate waiver.
+
+**Completed at:** 2026-10-17T03:06:39.911519+00:00
+
+## Reviewer precision addendum before delivery
+
+The B paragraph saying the original 15 entries are unchanged “except their designated own review note” should read precisely: **all 15 original full-review-owned source/test paths are unchanged; the designated own review note is an additional publication path outside those original 15, and the two fixture paths are the newly reviewed repair.** This clarifies the original inventory and changes no finding, source comparison or verdict. The full text above is retained.
+
+
+### Preserved report `records803-nested-auth-scope-fix-author-luna.md`
+
+SHA-256 `6e6453dbed8ed13a0e11babf636de5d6a94f18a4b47dc48efd8ab04d0f4f8307`; 1978 bytes.
+
+# Records803 nested auth security-scope fix — author evidence
+
+- **Author context:** GPT-6 Luna (implementation; not an independent reviewer).
+- **Branch:** codex/takeover-status-20261016
+- **Comparison base:** 130508ef24f6442a59dbccaf305712891c8b3fbb
+- **Exact candidate head:** 400f7dc3946303b4642e222207e8f5dbc919fa9e
+- **Merge-base verification:** `git merge-base 130508ef24f6442a59dbccaf305712891c8b3fbb HEAD` returned the exact comparison base above.
+
+## Change
+
+Added `apps/api/src/auth/**` to the authoritative security-review path list in `docs/04-engineering/ci-cd.md`, preserving existing `apps/api/src/auth*` coverage. Extended the existing `MUST_REQUIRE_REVIEW` regression cases with the actual `auth/repository.ts` and `auth/step-up-service.ts` paths and an additional nested descendant, and asserted the recursive glob remains registered. No matcher/parser/evaluator behavior was changed.
+
+## Reproduction and verification
+
+Pre-fix matcher probe using `readSecurityReviewPaths().matches(path)`: native exit 0; root `apps/api/src/auth.ts` was IN; both real nested files and `apps/api/src/auth/nested/probe.ts` were OUT; 43 globs.
+
+Post-fix same matcher probe: native exit 0; all four paths IN; 44 globs.
+
+Test: `node --test scripts/ci/lib/security-paths.test.mjs` — native exit 0; 7 tests, 1 suite, 7 pass, 0 fail/cancelled/skipped/todo. `git diff --check` — native exit 0. Commit hook completed normally on commit `400f7dc3`.
+
+## Risk and limits
+
+This is a bounded pass/fail scope correction: nested API auth source changes now trigger the existing security-review requirement through the existing matcher. Regression coverage verifies the canonical registry through its reader. No CI configuration, parser semantics, other scope, reviews, status/queue/decision records, or dependencies changed. This author evidence is not an independent review or security clearance. No full suite, Docker, database, browser, build, push, PR edit, or merge was performed.
+
+
+### Preserved report `records803-400-nested-auth-ordinary-luna.md`
+
+SHA-256 `42177636f4f589ecc7ce2e53a06b4948199c504b5124d2ae80cd3d9a093f6a9a`; 3232 bytes.
+
+# Independent ordinary review — #803 nested auth security-scope correction
+
+Reviewer: GPT-6 Luna, fresh read-only context. I did not author, direct, or remediate this change. This is one strong ordinary review of the bounded registry/test delta, building on my prior #803 records review and timestamp confirmation; it does not replace or reopen those reviews.
+
+## Exact head and provenance
+
+- Candidate: `400f7dc3946303b4642e222207e8f5dbc919fa9e`
+- Direct parent/base: `6f990aae91590ef79db60c6433fa425b2390424e`
+- Commit has one parent; the checkout is clean at the candidate (branch reports ahead 8).
+- Independent author evidence inspected: `records803-nested-auth-scope-fix-author-luna.md`. Its pre/post probes and test result are attributed to the author; I did not rerun them.
+- **Verdict: CLEAR for this exact narrow candidate.**
+
+## What I checked
+
+I inspected the exact parent-to-head diff, the authoritative security-review scope paragraph in `docs/04-engineering/ci-cd.md`, the existing reader/parser/matcher in `scripts/ci/lib/security-paths.mjs`, and the complete relevant unit test. The candidate changes exactly two files: the scope document and `scripts/ci/lib/security-paths.test.mjs` (six insertions, one deletion). The registry retains `apps/api/src/auth*` and adds `apps/api/src/auth/**`. The test adds the two real paths `apps/api/src/auth/repository.ts` and `apps/api/src/auth/step-up-service.ts`, plus a deeper nested descendant, to its must-match cases; it also asserts the recursive glob remains in the parsed list. Those assertions call `readSecurityReviewPaths()`, the existing reader for the canonical document, and exercise its `matches` predicate.
+
+The bounded gap is real under this repository's actual matcher: `globToRegExp` anchors each pattern and treats a single `*` as unable to cross `/`. Thus `apps/api/src/auth*` covers the root auth file but cannot match `apps/api/src/auth/repository.ts`; the new `apps/api/src/auth/**` covers paths below that directory, including deeper descendants. It does not remove or replace the pre-existing root coverage. This is a precise missing-scope repair rather than a matcher/parser redesign.
+
+The diff does not modify the reader, parser, glob conversion, merge-base logic, or `readSecurityReviewScope` union behavior. The new test is deliberately a current-registry regression test; the existing historical-union shrink protection remains in the separate scope reader/probe path and is not purportedly re-proven by this test. I also checked the source diff for whitespace errors (`git diff --check`); it reported none. The supplied author report records the actual reader probe moving both nested auth files from out-of-scope to in-scope, 43 to 44 globs, and the focused native test at 7/7. These are author-run results, not my execution.
+
+## Findings and limits
+
+No blocking or non-blocking finding in this bounded delta. The added glob reaches the actual nested auth implementation paths and preserves root auth coverage; regression assertions use the real canonical-list reader. I ran no tests or runtime actions and made no edits. This review does not audit the broader security gate or substitute for the required independent GPT-6 Sol security pass.
+
+
+### Preserved report `records803-400-nested-auth-security-61-sol.md`
+
+SHA-256 `ee35e3bd352e7f717a772da68ce0ec9ad19e3f9aed5f8bea06546a934bf7737c`; 7901 bytes.
+
+# Independent full security review — #803 nested auth scope correction
+
+**Model / role:** GPT-6.1 Sol, fresh independent security reviewer context `/root/records803_400_nested_auth_security_sol`.
+**Dispatch provenance:** The conductor supplied the actual requested arguments `model="gpt-6.1-sol"`, `reasoning_effort="high"`, `fork_turns="none"`. These identify the requested review route. The served provider/model/version/build fingerprint is unavailable to this context; no independently measured serving attestation is claimed.
+**Independence:** I did not author, direct, plan or remediate this candidate or its parent. I received a bounded task in a fresh context and spawned no child. I read the strong ordinary CLEAR before reviewing, then verified the relevant claims against the exact source.
+**Reviewed head:** 400f7dc3946303b4642e222207e8f5dbc919fa9e
+**Comparison base / direct parent:** 6f990aae91590ef79db60c6433fa425b2390424e
+**Accepted-main reference:** 130508ef24f6442a59dbccaf305712891c8b3fbb
+**Worktree:** `/Users/heinthura/.codex/worktrees/takeover-status-20261016`
+
+## Verdict
+
+**CLEAR — full security pass for the bounded nested-auth review-trigger correction at the exact reviewed head.**
+
+**Blocking findings:** none.
+**New non-blocking security findings:** none.
+
+This is the bounded CI/gate fix tier: one narrow, well-understood pass/fail case with one strong ordinary review and this full independent security pass. It changes the registry used by the existing control, rather than redesigning its parser, matcher, historical union, evidence binding or authority. The verdict is security source clearance only. It is not a current required-CI pass, image or runtime acceptance, permission to merge, phase finalizer, whole-#580 acceptance, or release/SIT/mission completion.
+
+## Source and actual trigger inspection
+
+The candidate has the single direct parent named above. Its complete parent-to-head diff contains exactly two regular files, `docs/04-engineering/ci-cd.md` and `scripts/ci/lib/security-paths.test.mjs`: six insertions and one deletion. No other source, record, workflow, test configuration or dependency changes occur in this delta. The worktree was clean at the exact head before and after the checks.
+
+The authoritative scope retains `apps/api/src/auth*` and adds `apps/api/src/auth/**`. I independently compared the scope block tokens at parent and head: 43 becomes 44, the sole added token is `apps/api/src/auth/**`, and none are removed. The relocated `apps/api/src/index.ts` token is preserved. This is monotonic scope expansion; existing root-auth and other protected paths retain coverage.
+
+The gap is real under the actual source in `scripts/ci/lib/security-paths.mjs`: `globToRegExp` anchors its expression, converts a single `*` to `[^/]*`, and converts a terminal `**` to `.*`. Thus the old root `auth*` covers `apps/api/src/auth.ts` but cannot cross the slash into `auth/repository.ts` or `auth/step-up-service.ts`. The added directory glob covers both of those real current tracked files and arbitrarily deeper descendants beneath `auth/`, without replacing the root glob or matching a separate sibling directory merely sharing its prefix.
+
+I traced the actual consumer in `scripts/ci/check-pr-template.mjs`. `securitySurfaceTouched()` calls `readSecurityReviewScope()`, filters the changed paths with `scope.matches`, and returns that result. The control requires security review when a path is touched or a scope glob is removed. Its required section, accepted-model check and committed exact-source review-note binding still run for that result. The scope reader parses the canonical document, unions merge-base and current globs, and retains explicit failure on unavailable history or unparseable previous scope. The new glob participates immediately in the current half of that existing union. No new conditional, exclusion, skip, catch, fallback, error masking or weakened review requirement was introduced.
+
+Direct Git blob comparisons confirm that the PR checker, scope reader/matcher, Git-baseline reader and changed-path library are all unchanged from the parent. Historical-union semantics are preserved by inspection and source conservation; I did not rerun the separate shrink/history probes or claim this unit file proves those mechanisms anew.
+
+## Regression and verification actually performed
+
+The new cases add the actual `auth/repository.ts`, actual `auth/step-up-service.ts`, and deeper `auth/nested/probe.ts` to `MUST_REQUIRE_REVIEW`, retaining the existing root-auth example. The existing test calls `readSecurityReviewPaths()` and its real `matches` predicate, so it reads and parses the authoritative document rather than testing a duplicated synthetic registry. A separate assertion now requires the recursive glob to remain present. Existing negative examples, parse-refusal cases and anchoring checks remain unchanged. No tests were disabled, focused or skipped.
+
+I executed exactly the permitted native focused file:
+
+`node --test scripts/ci/lib/security-paths.test.mjs`
+
+Result: native exit 0; **one suite, seven tests, seven passed, zero failed/cancelled/skipped/todo** (119.06075 ms reported duration). This is my execution at the reviewed head. I also ran `git diff --check` for the exact parent-to-head range, exit 0. Independent read-only Git/Python checks established the parent, accepted-main merge base, clean worktree, actual file existence, unchanged control blobs, and the 43-to-44 token comparison. The token comparison was a static source-inventory check, not an additional gate/probe execution.
+
+I read the author report `records803-nested-auth-scope-fix-author-luna.md` and the strong ordinary CLEAR `records803-400-nested-auth-ordinary-luna.md`. Their reported pre-fix OUT/post-fix IN matcher execution remains attributed to the author. I did not rerun the old source, the full PR-template checker or a hosted workflow, and do not turn the author probe into my execution claim. My focused test and source analysis independently establish the added coverage.
+
+## Policy and retained prior coverage
+
+I read the repository guide, active mission, canonical workflow and provider adapter, relevant CI/CD authoritative-scope contract, newest dated status and decision context, and the prior accepted-#813 four-candidate security report's records/source limits. The guide, mission, workflow and adapter blobs at the reviewed head are identical to the supplied accepted-main reference. Initial combined reads exceeded output limits; the relevant policy, full two-file delta, complete scope reader/test, and actual gate-consumer/enforcement ranges were read separately before conclusion.
+
+Prior records source `6f990aae` retains the source-bound clearance recorded in `accepted813-four-candidates-security-61-sol.md`, including its retained full normative review at `a92e2798`. This review adds only the complete new two-file scope correction. It does not re-audit all historical records, reauthenticate saved hosted results, relabel prior reviewer work, or certify unrelated gate residuals closed. No new owner policy, waiver, erasure entitlement, release classification, stage claim, status/queue update or decision-log entry is present in the assigned delta.
+
+## Limits and next ownership
+
+No install, full suite, PostgreSQL, Docker, image build/boot, browser, live inventory, hosted CI action, GitHub/ref mutation, source/shared-record edit, commit, push, merge or delegation was performed. No live GitHub readiness was queried: this review is bound to the frozen exact local source, and current remote checks and merge eligibility remain the conductor's responsibility. The only new file created by this reviewer is this authentic external report, with exclusive creation and mode 0600. No gate is waived or acceptance inferred from a source review.
+
+**Completed at:** 2026-10-17T03:22:10.152067+00:00
+
+
+### Preserved report `records803-c8-operational-snapshot-ordinary-luna.md`
+
+SHA-256 `236437548996c58809fa89c85150dd2681c4cfc41541dac18b2eb7e0c5bdc45c`; 3621 bytes.
+
+# Records #803 c8e949 operational snapshot review
+
+Verdict: CLEAR for the bounded operational-facts delta at exact head `c8e9493568f0fbcf06955bbe68b7d268afcffdb0`.
+
+## Independence and scope
+
+Fresh ordinary GPT-6 Luna context, independent of the records author and fixer. The records author did not request or direct this review. I reviewed only the operational additions introduced after the previously cleared `400f7dc3946303b4642e222207e8f5dbc919fa9e`, including the correction commit `c8e949…`; I did not repeat the normative/API-design audit or the earlier auth-scope review.
+
+## Checks performed
+
+- Confirmed exact candidate SHA, parent `1824fcbc3fe76d88cf49da51ae9157e869b6b4f5`, clean worktree, and changed-file set limited to `status.md`, `integration-execution-queue.md`, and `decision-log.md`.
+- Compared the operational snapshot delta and then the exact `1824fcbc..c8e949` correction. The latter changes only the three new headings from 03:36 to 03:33 UTC. The source proof records `400f7dc → 1824fcbc`, prior bytes preserved; the time-correction proof records `1824fcbc → c8e949` and the same 03:33 cutoff.
+- Checked the three hosted synthetic/image-validation receipts against the stated publications and parent/tree bindings. All three report verified artifact validation and exact publication-tree matches. This supports the snapshot’s bounded image/synthetic claims; it does not imply combined release or laptop SIT.
+- Checked the #812 live-review observation: comment `4300828072`, path `apps/api/src/approval/repository.ts`, exact publication `78c3b49…`, and timestamp before the snapshot cutoff. The recorded staff/private-audience P1 is concrete and consistent with the cited customer-only visibility boundary. The snapshot correctly treats it as an unresolved blocker.
+- Checked Carrier `2cbbe3` native receipt: complete-file command timed out at 240 seconds with exit 124, 4101 raw bytes and no suite summary; recorded tracked diff and status were unchanged. The owned-process observation captures the process tree at 03:26:55Z. The snapshot calls this a partial diagnostic with semantic failures and makes no complete-suite or performance claim.
+- Checked the private handoff recovery record: it identifies the overwrite, preserves both 4852-byte versions, records the recovered original’s SHA-256 and exact static-writer extraction method, and explicitly says neither author artifact is independent approval.
+- Reviewed the dated entries for disposition language. They preserve the #811 review-section failure and #812 P1, pending PostgreSQL jobs, Carrier incomplete state, owner/phase holds, and lack of final acceptance. No new normative rule, permission, gate waiver, or policy semantics appear in this snapshot.
+- Ran no tests, CI, browser, database, build, or other heavy runtime operation; made no source, ref, or GitHub changes.
+
+## Findings
+
+No blocking or non-blocking factual issue found in the bounded snapshot. The corrected 03:33 heading matches the recorded source cutoff. The snapshot distinguishes partial Carrier output from completion and keeps the outstanding blockers and release limits explicit.
+
+## Limits
+
+This is a historical snapshot review at the stated 03:33 UTC cutoff, not a claim about later mutable CI or diagnostic state. The later Carrier `67d01` diagnostic was still running at review time and is outside this snapshot. This review does not clear #811/#812, approve any PR, validate full PostgreSQL completion, or satisfy a security review or stage finalizer. Earlier normative/security conclusions remain those of their separate exact-head reviews.
+
+
+### Preserved report `records803-c8-operational-snapshot-ordinary-precision-luna.md`
+
+SHA-256 `c3d078d8f5df4b7b79591344c11b019d21ff086d44bff4cca20f12002bd70108`; 668 bytes.
+
+# Precision addendum — records #803 c8e949 ordinary review
+
+This addendum corrects reviewer-process wording in `records803-c8-operational-snapshot-ordinary-luna.md`; that original report remains unchanged.
+
+The records author/root requested this bounded review and supplied the evidence packet. The reviewer independently inspected the candidate and cited evidence, and did not materially author or fix the candidate. The reviewer context was reused from the prior bounded `400f7dc` review; it was not a newly created context for this `c8e949` request. The author’s request and evidence packet do not change the review’s independent assessment or CLEAR verdict.
+
+
+### Preserved report `records803-c8-operational-snapshot-security-61-sol.md`
+
+SHA-256 `e6de0e23b3d8096b18d7b2a2a6b167471735c6db212dd07994362c6a895c0292`; 8606 bytes.
+
+# Independent security confirmation — #803 operational snapshot at c8e949
+
+**Model / role:** GPT-6.1 Sol, independent security reviewer context `/root/records803_400_nested_auth_security_sol`.
+**Dispatch provenance:** Original conductor-provided requested route: `model="gpt-6.1-sol"`, `reasoning_effort="high"`, `fork_turns="none"`. Served provider/model/version/build fingerprint is unavailable and is not invented. This is the same independent reviewer context that fully reviewed the bounded auth-scope correction at400; it is not a newly spawned context for this follow-up.
+**Independence:** I did not author, direct, plan or remediate the snapshot, the correction or the prior candidate. Root requested this bounded review and supplied the evidence packet; my judgment and checks are independent. No delegation occurred.
+**Reviewed head:** c8e9493568f0fbcf06955bbe68b7d268afcffdb0
+**Comparison base:** 400f7dc3946303b4642e222207e8f5dbc919fa9e
+**Intervening commit:** 1824fcbc3fe76d88cf49da51ae9157e869b6b4f5
+**Accepted-main reference:** 130508ef24f6442a59dbccaf305712891c8b3fbb
+**Worktree:** `/Users/heinthura/.codex/worktrees/takeover-status-20261016`
+
+## Verdict
+
+**CLEAR — lightweight security confirmation of the bounded operational-records delta at this exact head.** No blocking or new non-blocking security finding.
+
+The prior full bounded auth-scope CLEAR in `records803-400-nested-auth-security-61-sol.md` remains attributed to400 and its actual checks. Prior normative/records coverage remains at its real a92/6f sources and limits, as retained by `accepted813-four-candidates-security-61-sol.md`. This confirmation does not restart those audits or infer current hosted acceptance from them.
+
+## Exact delta and preservation
+
+I verified the clean exact head, both intervening commits and the complete400-to-c8 diff. Only three record files change: status, integration execution queue and decision log. The net delta is36 added lines. Commit1824 adds the snapshot; c8 changes only its three new heading times from03:36 to03:33UTC. The source and time-correction proofs bind to those exact parents and heads.
+
+Independent raw Git checks confirm all1,332,395 prior status bytes and228,098 prior queue bytes remain exact suffixes, and all664,206 prior decision-log bytes remain an exact prefix. The CI/CD scope document, scope tests, scope reader/matcher, PR checker and API-design standard remain blob-identical to400. No application auth or other product source changes occur. `git diff --check 400..c8` exits0.
+
+These additions describe operational observations and pending actions. They do not introduce owner policy, merge authority, evidence-reuse exceptions, new capabilities, release classifications, erasure entitlements or gate waivers. The decision-log addition explicitly records no new owner decision or waiver. Its references to scope correction preserve the existing rule and source-bound reviews rather than authorizing a bypass.
+
+## Ordinary review and process precision
+
+I read `records803-c8-operational-snapshot-ordinary-luna.md` and its authentic separate `records803-c8-operational-snapshot-ordinary-precision-luna.md`. The verdict is CLEAR. The original report's statement that the author did not request the review, and its implication of a newly created context, are corrected by the addendum: root/records author requested the bounded review and supplied evidence, and the reviewer reused its prior independent400 context. The original report remains intact; the corrected provenance does not claim authorship or remediation by the reviewer.
+
+My earlier turn was deliberately interrupted by root for the active-child limit before any c8 verdict/report existed. I resumed only after root's follow-up. No approval was inferred from dispatch, partial reads or interruption.
+
+## Evidence and security implications checked
+
+I inspected the three `*-hosted-synthetic-image-validation.json` receipts and actual shipping-image proof JSON files. Source bindings match811publication73ce,812publication78c3 and814publication518f. Direct Git-object checks independently confirm each actual synthetic commit has accepted1305 and its publication as parents and exactly the publication's tree. The saved proof records the stated image IDs,125migrations,UID10001,healthy/live-ready200,no published host ports, sole run-owned local bridge attachments and completed cleanup. These are inspected saved evidence, not a fresh image execution or remote reauthentication.
+
+I read all nine conductor-verified initial-unit/E2E/G11 receipts. Independently recomputed sizes and SHA-256 values match their raw logs, and inspected raw summary lines confirm browser63/G1122, unit12tasks,811API122files874tests,812/814API121files872tests and allweb186files1023tests. The job completion timestamps precede03:33; some conductor verification receipts were created later, so their creation time is not represented as the job's completion or original snapshot time. They retain FIRST SET and missing-app-frame/causal-trace limits. These successful jobs are not transferred to this records candidate or treated as all gates green.
+
+The811adverse registers receipt and actual raw log show job117293975112 failing `check:reviews` on the still-open time-and-cost section with27lines. The snapshot does not clear those findings, delete them or waive the gate; it calls for independent scope/contract disposition. The812saved review observation records comment4300828072 on approval/repository.ts, with publication78c3 binding and a pre-cutoff observation, identifying the customer-only private-audience predicate being applied to staff. The snapshot explicitly keeps that credible finding blocking despite earlier source reviews. This confirmation does not assess or approve its eventual repair or independently close either blocker.
+
+The Carrier981fe8 native receipt records73tests/7pass/66fail/native1. The subsequent2cbbe3 receipt records a complete-file command terminated at240seconds/native124 with no summary. I checked its4101-byte raw log hash against the receipt and read its partial semantic failures. The saved03:33:13 disposition records all exact owned PIDs absent and no broad kill/prune. This supports a historical cutoff observation, not a current process inventory or completed-suite/performance verdict. Test and manifest hashes are conserved in the saved native receipts; I performed no current analyzer/source inventory. Later67d01 activity is outside the snapshot.
+
+The private author-handoff overwrite recovery record discloses the violation and exact static-literal extraction method. Both preserved4852-byte files independently match their recorded original/final hashes (`d56b932b…` / `82eb91f5…`). I did not reread the entire private session transcript or independently re-extract the writer. The snapshot retains the recovery provenance and makes neither author artifact an independent approval; it does not hide the overwrite or manufacture review evidence.
+
+The records continue to label full PostgreSQL as pending at the stated observation time, preserve deliberately pending template checklists and the newly surfaced blockers, and deny final-body/FAST/merge readiness. Final signed release, exact-digest laptop SIT, nonempty attachment backup/usable restore, final audit, performance holds and owner/phase limits remain open. No false pass or new acceptance authority appears in this delta.
+
+## Checks and limits
+
+Read-only operations: bounded Git status/log/show/diff/rev-parse and raw object inspection; bounded text/JSON reads; Python pathlib/json/hashlib/subprocess checks of preservation, exact source binding and saved-log hashes/summary lines. An initial broad evidence filename search traversed an irrelevant dependency cache and produced truncated output; it was replaced with shallow, named-file reads, and no conclusion relies on that truncated listing.
+
+No test, analyzer, install, database, Docker, browser, build, live process inventory, hosted CI action, GitHub/ref mutation, source/shared-document edit, commit, push or merge was performed for this confirmation. The unchanged400focused7/7 result was not rerun or relabelled as a c8execution. Current live CI, remote review state and protected merge readiness remain the conductor's responsibility. This is source security confirmation only, not a runtime/SIT acceptance, stage finalizer, whole-#580/#589 approval, gate waiver or permission to merge.
+
+The only newly written file is this authentic external report, created exclusively with mode0600.
+
+**Completed at:** 2026-10-17T03:39:17.920274+00:00
+
+
+## Current exact source binding
+
+Prior full normative review and each bounded delta retain their stated scopes. This publication appends only the candidate own regular review note after the independently reviewed source. No current hosted pass, merge, finalizer, release, SIT or restore acceptance is inferred.
+
+**Reviewed head:** `c8e9493568f0fbcf06955bbe68b7d268afcffdb0`
