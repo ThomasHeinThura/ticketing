@@ -16,6 +16,7 @@ import { NavMain } from "./nav-main";
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   user: { id: "viewer-1" } as { id: string } | undefined,
+  workspaceId: "ws-1",
   paint: { resolve: () => {} },
   getSavedViews: vi.fn(),
   countSavedView: vi.fn(),
@@ -34,7 +35,7 @@ vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
   default: () => ({ user: mocks.user }),
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: { id: "ws-1" } }),
+  default: () => ({ data: { id: mocks.workspaceId } }),
 }));
 vi.mock("@/hooks/queries/invitation/use-pending-invitations", () => ({
   usePendingInvitations: () => ({ data: [] }),
@@ -50,10 +51,16 @@ vi.mock("@/fetchers/saved-views", () => ({
   countSavedView: (...args: unknown[]) => mocks.countSavedView(...args),
 }));
 
-const view = (id: string, name: string, isPinned: boolean) => ({
+const view = (
+  id: string,
+  name: string,
+  isPinned: boolean,
+  visibility: "private" | "team" | "workspace" = "private",
+) => ({
   id,
   name,
   isPinned,
+  visibility,
   updatedAt: "2026-10-01T00:00:00.000Z",
 });
 
@@ -84,11 +91,14 @@ beforeEach(() => {
       }) as MediaQueryList,
   );
   mocks.user = { id: "viewer-1" };
+  mocks.workspaceId = "ws-1";
   mocks.navigate.mockReset();
   mocks.getSavedViews.mockResolvedValue([
-    view("v-pinned", "Escalations", true),
-    view("v-other", "Not pinned", false),
-    view("v-pinned-2", "Everything open", true),
+    view("v-pinned", "Escalations", true, "private"),
+    view("v-workspace", "Workspace open", false, "workspace"),
+    view("v-pinned-2", "Everything open", true, "team"),
+    view("v-private", "Private unpinned", false, "private"),
+    view("v-team", "Team unpinned", false, "team"),
   ]);
   mocks.countSavedView.mockImplementation(async (id: string) =>
     id === "v-pinned" ? 12 : 148,
@@ -118,25 +128,64 @@ describe("NavMain saved views (SV-20, SV-22)", () => {
     );
   });
 
-  it("lists only the viewer's pinned views, directly under Saved views, each with its count badge", async () => {
+  it("lists pinned reachable views and every workspace view, pinned first under Saved views", async () => {
     renderNav();
     mocks.paint.resolve();
     expect(
       await screen.findByRole("button", { name: /Escalations/u }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Not pinned/u })).toBeNull();
+    expect(
+      await screen.findByRole("button", { name: /Workspace open/u }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Private unpinned/u }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /Team unpinned/u })).toBeNull();
     await waitFor(() =>
       expect(
         screen
           .getAllByTestId("saved-view-count-badge")
           .map((badge) => badge.textContent),
-      ).toEqual(["12", "148"]),
+      ).toEqual(["12", "148", "148"]),
     );
     const labels = screen
       .getAllByRole("button")
       .map((button) => button.textContent?.replace(/\d+$/u, ""));
     expect(labels.indexOf("Saved views")).toBe(
       labels.indexOf("Escalations") - 1,
+    );
+    expect(labels.indexOf("Escalations")).toBeLessThan(
+      labels.indexOf("Workspace open"),
+    );
+  });
+
+  it("deduplicates ids and preserves the server order within pinned and workspace groups", async () => {
+    mocks.getSavedViews.mockResolvedValue([
+      view("workspace-first", "Workspace first", false, "workspace"),
+      view("pinned-first", "Pinned first", true, "private"),
+      view("workspace-first", "Duplicate workspace row", false, "workspace"),
+      view("pinned-second", "Pinned second", true, "team"),
+    ]);
+    renderNav();
+    mocks.paint.resolve();
+    const first = await screen.findByRole("button", { name: /Pinned first/u });
+    const second = await screen.findByRole("button", {
+      name: /Pinned second/u,
+    });
+    const workspace = await screen.findByRole("button", {
+      name: /Workspace first/u,
+    });
+    expect(
+      screen.queryByRole("button", { name: /Duplicate workspace row/u }),
+    ).toBeNull();
+    const labels = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+    expect(labels.indexOf(first.textContent)).toBeLessThan(
+      labels.indexOf(second.textContent),
+    );
+    expect(labels.indexOf(second.textContent)).toBeLessThan(
+      labels.indexOf(workspace.textContent),
     );
   });
 
@@ -167,7 +216,7 @@ describe("NavMain saved views (SV-20, SV-22)", () => {
         screen
           .getAllByTestId("saved-view-count-badge")
           .map((badge) => badge.textContent),
-      ).toEqual(["148"]),
+      ).toEqual(["148", "148"]),
     );
   });
 
@@ -193,6 +242,30 @@ describe("NavMain saved views (SV-20, SV-22)", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Escalations/u })).toBeNull();
     expect(mocks.getSavedViews).toHaveBeenCalledTimes(2);
+  });
+
+  it("keys the list separately by workspace as well as viewer", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const first = renderNav(client);
+    mocks.paint.resolve();
+    await screen.findByRole("button", { name: /Escalations/u });
+    first.unmount();
+
+    mocks.workspaceId = "ws-2";
+    mocks.getSavedViews.mockResolvedValue([
+      view("v-ws-two", "Workspace two", false, "workspace"),
+    ]);
+    renderNav(client);
+    mocks.paint.resolve();
+    expect(
+      await screen.findByRole("button", { name: /Workspace two/u }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Workspace open/u }),
+    ).toBeNull();
+    expect(mocks.getSavedViews).toHaveBeenCalledWith("ws-2");
   });
 
   it("reads nothing without a signed-in viewer", async () => {

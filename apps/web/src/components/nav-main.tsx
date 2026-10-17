@@ -44,8 +44,9 @@ export function NavMain() {
   const navigate = useNavigate();
   const { data: invitations = [] } = usePendingInvitations();
   const { user } = useAuth();
-  // Pinned views and their counts are not needed to paint the shell (G11), so they are read
-  // once the page has painted. The list and each count are keyed by viewer (SV-20, SV-22).
+  // Reachable views and their counts are not needed to paint the shell (G11), so they are
+  // read once the page has painted. The list and each count are keyed by viewer
+  // (SV-18, SV-20, SV-22).
   const [shellPainted, setShellPainted] = useState(false);
   useEffect(() => {
     let cancelled = false;
@@ -64,9 +65,26 @@ export function NavMain() {
     },
     enabled: Boolean(workspace?.id && user?.id && shellPainted),
   });
-  const pinnedViews = (savedViews.data ?? []).filter((view) => view.isPinned);
-  const pinnedCounts = useQueries({
-    queries: pinnedViews.map((view) => ({
+  // Workspace-visible views appear in everyone's navigation (SV-18); other reachable views
+  // appear only when this viewer pinned them (SV-20). The endpoint decides reach. Preserve its
+  // order within each group, put pinned views first, and deduplicate defensively by id.
+  const navigationViews: NonNullable<typeof savedViews.data> = [];
+  const navigationViewIds = new Set<string>();
+  for (const view of savedViews.data ?? []) {
+    if (
+      (!view.isPinned && view.visibility !== "workspace") ||
+      navigationViewIds.has(view.id)
+    ) {
+      continue;
+    }
+    navigationViewIds.add(view.id);
+    navigationViews.push(view);
+  }
+  navigationViews.sort(
+    (left, right) => Number(right.isPinned) - Number(left.isPinned),
+  );
+  const navigationCounts = useQueries({
+    queries: navigationViews.map((view) => ({
       queryKey: savedViewKeys.count(user?.id, view.id, view.updatedAt),
       queryFn: async () => {
         const { countSavedView } = await loadSavedViewFetchers();
@@ -145,9 +163,9 @@ export function NavMain() {
                       )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  {/* Pinned views sit directly under the Saved views entry (SV-20). */}
+                  {/* Reachable workspace views and this viewer's pins sit under Saved views. */}
                   {item.url === routes.savedViews.path
-                    ? pinnedViews.map((view, index) => (
+                    ? navigationViews.map((view, index) => (
                         <SidebarMenuItem key={view.id}>
                           <SidebarMenuButton
                             tooltip={view.name}
@@ -168,12 +186,12 @@ export function NavMain() {
                             }
                           >
                             <span className="truncate">{view.name}</span>
-                            {pinnedCounts[index]?.data !== undefined && (
+                            {navigationCounts[index]?.data !== undefined && (
                               <span
                                 className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-sm border border-sidebar-border/60 px-1 font-medium text-[11px] text-sidebar-foreground"
                                 data-testid="saved-view-count-badge"
                               >
-                                {pinnedCounts[index]?.data}
+                                {navigationCounts[index]?.data}
                               </span>
                             )}
                           </SidebarMenuButton>

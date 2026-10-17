@@ -2,11 +2,13 @@ import {
   createFileRoute,
   ErrorComponent,
   type ErrorComponentProps,
+  Outlet,
   redirect,
   useRouter,
 } from "@tanstack/react-router";
 import { Button } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import { AuthenticatedRouteContent } from "@/components/authenticated-route-content";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { authClient } from "@/lib/auth-client";
 
@@ -101,6 +103,11 @@ function SessionRouteError({ error }: ErrorComponentProps) {
 // protects all child routes, must be logged in
 export const Route = createFileRoute("/_layout/_authenticated")({
   errorComponent: SessionRouteError,
+  component: () => (
+    <AuthenticatedRouteContent>
+      <Outlet />
+    </AuthenticatedRouteContent>
+  ),
   beforeLoad: async ({ location }) => {
     const checkFactors =
       location.pathname !== "/dashboard/settings/account/security";
