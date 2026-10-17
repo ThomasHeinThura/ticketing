@@ -6,7 +6,7 @@ import { dbNowUtc } from "../../utils/db-time";
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export const userDirectoryProjection = {
+const userDirectoryProjection = {
   id: schema.userTable.id,
   name: schema.userTable.name,
   email: schema.userTable.email,

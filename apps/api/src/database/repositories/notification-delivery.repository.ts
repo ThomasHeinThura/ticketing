@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { JsonValue } from "@taskdesk/domain";
 import { sql } from "drizzle-orm";
 import type { DbTransaction } from "../../events/outbox";
+import { NotificationReservationContentionError } from "../../notification/delivery-errors";
 import {
   NOTIFICATION_ATTEMPT_LIMIT,
   notificationReservationKey,
@@ -40,18 +41,6 @@ export type ReservationClaim =
   | { status: "deferred"; leaseExpiresAt: Date }
   | { status: "not_pending" }
   | { status: "digest_collision" };
-
-/** A cleanup/acquire race could not be resolved within the bounded DB retry budget. */
-export class NotificationReservationContentionError extends Error {
-  readonly retryable = true;
-
-  constructor() {
-    super(
-      "Notification reservation row remained unavailable during acquisition",
-    );
-    this.name = "NotificationReservationContentionError";
-  }
-}
 
 // This is a bounded row-acquisition retry budget, independent of the six provider-attempt
 // limit. It never authorizes a provider call or increments notification_delivery.attempts.

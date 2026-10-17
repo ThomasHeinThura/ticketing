@@ -22,6 +22,7 @@ import { enqueueOutboxEvent } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { withWorkspaceDeletionAccessLifecycle } from "../pending-action/workspace-access-invalidation";
+import { ServiceCalendarVersionConflictError } from "./errors";
 
 type CalendarActor = {
   actorId: string;
@@ -435,18 +436,6 @@ export async function createCalendar(input: {
   }
   return materializeCalendar(outcome.row);
 }
-export class ServiceCalendarVersionConflictError extends Error {
-  constructor(
-    public readonly assertedVersion: number,
-    public readonly currentVersion: number,
-  ) {
-    super(
-      `Version mismatch: expected version ${assertedVersion}, but the calendar is now at version ${currentVersion}`,
-    );
-    this.name = "ServiceCalendarVersionConflictError";
-  }
-}
-
 export async function updateCalendar(
   id: string,
   workspaceId: string,
