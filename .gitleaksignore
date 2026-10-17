@@ -39,3 +39,9 @@ aea7da52bddab201a6de5882e70551e7da0cc55c:docs/07-planning/security-reviews/ident
 # Public reviewer-report filename in immutable #780 review publication; not a credential.
 # Exact finding only; authentic reports unchanged. Technical record: 2026-10-16.
 33f2ec22b161bc214d76b2e0e3dd264cf950bd5d:docs/07-planning/security-reviews/780-owner-conductor-decisions.md:generic-api-key:260
+
+# Public review-report basenames in immutable807 continuation-note headings.
+# Exact commit/file/rule/line only; all report bytes preserved, no path/rule exemption.
+# Technical disposition recorded2026-10-17; independent ordinary and full Sol review required.
+2c2e3e648cfdfc71170429a1479b80583cb68789:docs/07-planning/security-reviews/query-ownership-canned-responses-580.md:generic-api-key:2640
+2c2e3e648cfdfc71170429a1479b80583cb68789:docs/07-planning/security-reviews/query-ownership-canned-responses-580.md:generic-api-key:2704
