@@ -111,16 +111,38 @@ forged `X-Forwarded-For`, cross-origin WebSocket, CSRF on an elevated route.
 
 ### 5. Secrets never serialise; queries are never unscoped
 
-Response schemas are explicit; there is no `select *` to the wire. Every table read goes
-through a feature's `repository.ts` whose exports take an identity and return a
-phantom-typed `ScopedQuery` that **cannot execute without one** — a type error, not a lint
-warning; `check:queries` additionally fails the build on any `db.select()` outside a
-repository. RLS remains rejected as the *primary* control ([multi-tenancy.md](multi-tenancy.md)) — but
-as a **backstop** it is no longer deferred: a P0 prototype covers `work_item`, `comment` and
-`attachment`, and P0 closes with it either merged and measured or dropped with the reason in
-the decision log (decided 2026-09-06).
+Response schemas are explicit; there is no `select *` to the wire. A repository query that
+can return cross-organisation data takes the resolved identity and applies the caller's reach
+in the statement predicate. Any additional `workspaceId` or `projectId` narrows that scope and
+must be checked against the identity; an id alone does not establish reach. Keeping statements
+in named repositories is an ownership convention; it does not itself prove that a query is
+scoped. The planned `check:queries` gate (#580) is not currently wired, and its repository-
+location check will enforce query ownership rather than tenant predicate semantics. These
+explicit predicates remain required regardless of the gate. No universal `forIdentity`/
+`ScopedQuery` type guarantee is claimed. RLS remains rejected as the
+*primary* control ([multi-tenancy.md](multi-tenancy.md)) — but as a **backstop** it is no longer
+deferred: a P0 prototype covers `work_item`, `comment` and `attachment`, and P0 closes with it
+either merged and measured or dropped with the reason in the decision log (decided 2026-09-06).
 
 ---
+
+## Internal account-erasure safety summary
+
+For the authenticated account-deletion subject, the internal erasure planner may read a
+narrow summary of the subject's current persisted workspace memberships: own workspace IDs,
+own owner status, member/owner counts, and names of those currently joined workspaces used
+only in the existing conflict message. This lifecycle entitlement is bound to the actual
+authenticated deletion subject; it grants no general query exception or workspace access.
+It exposes no other members' identities or individual role rows.
+
+Safety counts must include every persisted membership relevant to the existing deletion
+checks, including when the subject has no usable canonical identity (for example, inactive
+or legacy memberships). Filtering through ordinary canonical reach must not omit a safety
+check or permit deletion of a workspace others still use. Preserve the existing ownership
+interpretation, transactional locks, two-pass recheck, refusal before invalidation/deletion,
+and existing conflict behavior. This does not authorize broader content reads, a new
+capability, or changes to account-deletion eligibility. Thomas approved this bounded summary
+on 2026-10-16; see the decision log.
 
 ## Reach, authority, and the 404 rule
 

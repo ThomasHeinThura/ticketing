@@ -57,6 +57,7 @@ import {
   withExplicitCredentialMutation,
   withTotpSessionEnrollment,
 } from "./pending-action/credential-invalidation";
+import { hasCanonicalCustomerMembership } from "./permissions/customer-membership";
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
@@ -259,7 +260,38 @@ const authSecret = authSecretResult.secret;
 
 export async function hasCustomerPortalIdentity(userId: string) {
   const rows = await getCustomerPortalIdentityRow(userId);
-  return rows.length === 1;
+  const person = rows[0];
+  return (
+    person !== undefined &&
+    person.side === "customer" &&
+    person.personActive &&
+    !person.isPlaceholder &&
+    person.organisationActive &&
+    person.organisationPortalAccess &&
+    person.organisationDeletedAt === null &&
+    rows.every(
+      (row) =>
+        row.personId === person.personId &&
+        row.organisationId === person.organisationId,
+    ) &&
+    hasCanonicalCustomerMembership(
+      person.organisationId,
+      rows.map((row) => ({
+        scope: row.scope,
+        scopeId: row.scopeId,
+        seesAll: row.seesAll,
+        roleId: row.roleId,
+        roleKey: row.roleKey,
+        roleScope: row.roleScope,
+        roleWorkspaceId: row.roleWorkspaceId,
+        roleIsSystem: row.roleIsSystem,
+        scopeExists:
+          row.scope === "organisation" && row.scopeId === person.organisationId,
+        rank: row.roleRank,
+        capabilities: row.roleCapabilities,
+      })),
+    )
+  );
 }
 
 /** Sign narrowly scoped CSRF tokens without exposing Better Auth's root secret. */

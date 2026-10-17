@@ -1,13 +1,15 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
+import type { BaseVariables } from "../openapi";
 import {
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
 } from "../openapi";
-import {
-  listReachOf,
-  requireReachFilteredList,
-} from "../utils/reach-filtered-list";
+import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
+import { requireReachFilteredList } from "../utils/reach-filtered-list";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import {
@@ -15,6 +17,20 @@ import {
   requireLabelRowTaskReach,
 } from "../utils/task-target-reach";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+
+async function requestIdentity(
+  c: Context<{ Variables: BaseVariables }>,
+): Promise<ResolvedIdentity> {
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  const identity = await resolveRequestIdentity({
+    userId: c.get("userId"),
+    apiKey: c.get("apiKey"),
+    impersonatedBy: session?.impersonatedBy,
+  });
+  if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+  return identity;
+}
+
 import assignLabelToTask from "./controllers/assign-label-to-task";
 import createLabel from "./controllers/create-label";
 import deleteLabel from "./controllers/delete-label";
@@ -234,15 +250,15 @@ const deleteLabelRoute = createRoute({
 const label = apiRouter()
   .openapi(getTaskLabelsRoute, async (c) => {
     const { taskId } = c.req.valid("param");
-    return c.json(await getLabelsByTaskId(taskId), 200);
+    return c.json(
+      await getLabelsByTaskId(await requestIdentity(c), taskId),
+      200,
+    );
   })
   .openapi(getWorkspaceLabelsRoute, async (c) => {
     const { workspaceId } = c.req.valid("param");
     return c.json(
-      await getLabelsByWorkspaceId(
-        workspaceId,
-        await listReachOf(c).reachableProjectIds([workspaceId]),
-      ),
+      await getLabelsByWorkspaceId(await requestIdentity(c), workspaceId),
       200,
     );
   })
@@ -250,34 +266,50 @@ const label = apiRouter()
     const { name, color, workspaceId, taskId } = c.req.valid("json");
     const userId = c.get("userId");
     return c.json(
-      await createLabel(name, color, taskId, workspaceId, userId),
+      await createLabel(
+        await requestIdentity(c),
+        name,
+        color,
+        taskId,
+        workspaceId,
+        userId,
+      ),
       200,
     );
   })
   .openapi(getLabelRoute, async (c) => {
     const { id } = c.req.valid("param");
-    return c.json(await getLabel(id), 200);
+    return c.json(await getLabel(await requestIdentity(c), id), 200);
   })
   .openapi(attachLabelToTaskRoute, async (c) => {
     const { id } = c.req.valid("param");
     const { taskId } = c.req.valid("json");
     const userId = c.get("userId");
-    return c.json(await assignLabelToTask(id, taskId, userId), 200);
+    return c.json(
+      await assignLabelToTask(await requestIdentity(c), id, taskId, userId),
+      200,
+    );
   })
   .openapi(detachLabelFromTaskRoute, async (c) => {
     const { id } = c.req.valid("param");
     const userId = c.get("userId");
-    return c.json(await unassignLabelFromTask(id, userId), 200);
+    return c.json(
+      await unassignLabelFromTask(await requestIdentity(c), id, userId),
+      200,
+    );
   })
   .openapi(updateLabelRoute, async (c) => {
     const { id } = c.req.valid("param");
     const { name, color } = c.req.valid("json");
-    return c.json(await updateLabel(id, name, color), 200);
+    return c.json(
+      await updateLabel(await requestIdentity(c), id, name, color),
+      200,
+    );
   })
   .openapi(deleteLabelRoute, async (c) => {
     const { id } = c.req.valid("param");
     const userId = c.get("userId");
-    return c.json(await deleteLabel(id, userId), 200);
+    return c.json(await deleteLabel(await requestIdentity(c), id, userId), 200);
   });
 
 export default label;

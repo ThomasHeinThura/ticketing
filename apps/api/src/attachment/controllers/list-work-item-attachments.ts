@@ -1,6 +1,6 @@
-import { and, eq, isNull, ne } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import db from "../../database";
-import { attachmentTable } from "../../database/schema";
+import { listWorkItemAttachments as listRows } from "../repository";
 
 /**
  * `GET /api/work-items/{key}/attachments`. Excludes soft-deleted rows -- a deleted
@@ -8,18 +8,11 @@ import { attachmentTable } from "../../database/schema";
  * work item's own list the instant it is deleted, not just once the object itself is
  * purged.
  */
-export async function listWorkItemAttachments(workItemId: string) {
-  return db
-    .select()
-    .from(attachmentTable)
-    .where(
-      and(
-        eq(attachmentTable.workItemId, workItemId),
-        ne(attachmentTable.state, "deleted"),
-        isNull(attachmentTable.deletedAt),
-      ),
-    )
-    .orderBy(attachmentTable.createdAt);
+export async function listWorkItemAttachments(
+  identity: ResolvedIdentity | null,
+  workItemId: string,
+) {
+  return listRows(db, identity, workItemId);
 }
 
 export default listWorkItemAttachments;

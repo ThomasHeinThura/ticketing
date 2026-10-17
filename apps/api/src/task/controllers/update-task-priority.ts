@@ -1,26 +1,28 @@
-import { eq, sql } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
+import { updateTaskRow } from "../repository";
 
 async function updateTaskPriority({
+  identity,
   id,
   priority,
   currentUserId,
 }: {
+  identity: ResolvedIdentity;
   id: string;
   priority: string;
   currentUserId: string;
 }) {
   const { existingTask, updatedTask } = await db.transaction(async (tx) => {
-    const existingTask = await lockTaskAndAssertProjectLive(tx, id);
-    const [updatedTask] = await tx
-      .update(taskTable)
-      .set({ priority, version: sql`${taskTable.version} + 1` })
-      .where(eq(taskTable.id, id))
-      .returning();
+    const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
+      tx,
+      id,
+      identity,
+    );
+    const updatedTask = await updateTaskRow(tx, identity, id, { priority });
     return { existingTask, updatedTask };
   });
 

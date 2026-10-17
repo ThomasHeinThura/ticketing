@@ -26,9 +26,9 @@ cosign uses its OIDC identity; v1's Azure Pipelines are not carried over).
 ## Pull request pipeline
 
 Two required stages, so the fast one stays fast enough that nobody routes around it. **This
-is the single list of CI checks**; [testing-strategy.md](testing-strategy.md) links here.
-`pnpm test:all` is the local alias that runs every check in this list; CI runs them as the
-stages below.
+is the canonical list of CI checks and planned additions**; [testing-strategy.md](testing-strategy.md)
+links here. Entries marked **planned — not wired** describe future checks, not active CI gates.
+`pnpm test:all` runs the enabled checks; CI runs its active checks as the stages below.
 
 **Fast — required on every push, target under 15 minutes:**
 
@@ -77,7 +77,7 @@ its source-binding limit are recorded in the
 │ pnpm check:overrides one override source only    │
 │ pnpm check:dockerfile-deps Dockerfile=workspace  │
 │ gitleaks             no secrets in the diff      │
-│ pnpm check:queries   no db.select() outside repo │
+│ pnpm check:queries   planned — not wired (#580) │
 │ pnpm check:inventory screen counts match rows    │
 │ pnpm check:reviews   review section empty        │
 │ pnpm check:env       no stray process.env        │
@@ -184,11 +184,14 @@ as a stale or typo'd entry. oasdiff's exit code is also checked: anything other 
 mechanism for an intentional pre-2.0 breaking change (decision log, 2026-09-25); see
 [api-design.md](../01-architecture/api-design.md#versioning). Each entry is added in the
 PR that makes the break, needs its own security review there, and from the first
-stable `v2.0.0` (or later) release tag on the file must be empty — a non-empty file fails
-the gate. "Stable" is looked up live from `git ls-remote --tags origin` (a tag matching
-`^v?(\d+)\.(\d+)\.(\d+)$` with major >= 2, no pre-release/build suffix), never from
-`package.json`'s `version` field, which tracks unrelated release history and is already
-past `2.0.0`.
+stable `v2.0.0` (or later) release on the file must be empty — a non-empty file fails
+the gate. Thomas clarified on 2026-10-16 that GitHub releases explicitly marked prerelease
+remain pre-stable even when their tags have stable version syntax. Stable-shaped tags
+alone no longer establish this boundary. Use live GitHub release metadata and fail closed
+if the stable-release classification cannot be established; `package.json` is not the
+release authority. The prior `git ls-remote` tag-syntax-only implementation needs correction
+under the normal independent review and CI gates. This clarification waives no gate and
+does not approve any finding without its exact reviewed fingerprint.
 
 `scripts/ci/redocly-approved-findings.json` is the same reviewed-exception shape, for a
 Redocly LINT finding rather than an oasdiff breaking change — a specific, deliberate design
@@ -275,6 +278,27 @@ pull-request time. The script fails if either run reports a skipped test, becaus
 run would otherwise read as green. Without `TASKDESK_REAL_DOCKER=1` the test file reports
 every test as skipped, so it is inert in the fast unit run.
 
+The same required browser job also builds the explicit pull-request head commit (or the
+workflow SHA for merge-queue/manual runs) from a clean commit archive after the deploy-helper
+test, then starts that image with the canonical Postgres 18 and Valkey Compose services.
+The PR head can differ from Actions' synthetic merge checkout SHA; the proof records both.
+The smoke verifies the source journal's migration count was applied, both the one-shot
+migrator and running application use the built image ID, the application runs under its
+non-root UID, the image healthcheck is healthy, and each started service (migrate, taskdesk,
+Postgres, and Valkey) has no host port bindings or automatic host-port publishing. The public
+live and ready endpoints must return exactly HTTP 200 without following redirects. Cleanup
+must complete and the final proof artifact must be complete before the step reports success.
+It records the candidate and checkout SHAs, local image ID/platform, and sanitized proof in a
+short-lived workflow artifact. It performs no registry login, push, deployment, or SIT
+acceptance. Its isolated Compose project and randomly named, ownership-labeled network have
+no published ports; cleanup removes only resources bearing this run's identity. The hosted
+runner platform is tested here; the Release workflow remains responsible for its separately
+published multi-architecture artifact. For each service the proof also records Docker's
+configured network mode and attached network IDs, and requires the mode and sole attachment to
+match the run-owned, ownership-labeled network. Host, container-shared, foreign, missing, or
+additional network attachments fail the smoke, including for the stopped one-shot migrator.
+The network itself must inspect as a local bridge network with this run's ownership label.
+
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
 The **security review** is a required section of `.github/pull_request_template.md`
@@ -294,7 +318,8 @@ process in [agent-workflow.md](agent-workflow.md#model-policy).
 ```
 apps/api/src/**/policy.ts            packages/permissions/**
 apps/api/src/plugins/**              apps/api/src/storage/**
-apps/api/src/auth*                   apps/api/src/index.ts
+apps/api/src/auth*                   apps/api/src/auth/**
+                                     apps/api/src/index.ts
 apps/api/src/utils/**                apps/api/src/capabilities/**
 apps/api/src/**/index.ts             any new route file (a new *.ts exporting a Hono router)
 apps/api/src/**/controllers/**       apps/api/drizzle/*.sql
@@ -710,8 +735,9 @@ probably the same. By digest, they are identical by construction.
 
 Explicitly, because the boundary matters:
 
-- **Does not run migrations.** The application applies them at start, under an advisory
-  lock.
+- **Does not run migrations against shared or persistent infrastructure.** The required
+  candidate-image smoke applies migrations only to its disposable Postgres 18 service;
+  integration tests and final SIT acceptance remain separate.
 - **Does not seed data.**
 - **Does not provision infrastructure.**
 - **Does not hold production credentials.**

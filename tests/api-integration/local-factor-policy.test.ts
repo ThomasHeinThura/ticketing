@@ -10,6 +10,10 @@ import {
 } from "../../apps/api/src/auth/local-factor-service";
 import {
   canonicalMfaResetBody,
+  createMfaResetChallenge,
+  createPendingActionChallenge,
+  issueMfaResetToken,
+  issuePendingActionToken,
   sha256,
 } from "../../apps/api/src/auth/step-up-service";
 import db, { schema } from "../../apps/api/src/database";
@@ -309,6 +313,126 @@ async function prepareTotpLifecycleRaceFixture(id: string) {
 }
 
 describe("instance local-factor policy API", () => {
+  it("PA-15: rejects step-up when the database session no longer matches the agent session", async () => {
+    const now = new Date();
+    const [admin] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "step-up-session-read-admin",
+        name: "Step-up Session Read Admin",
+        email: "step-up-session-read-admin@example.test",
+        role: "admin",
+      })
+      .returning();
+    if (!admin) throw new Error("step-up session read admin was not created");
+    await ensureStaffPersonForUser(admin.id);
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, admin.id));
+    if (!person)
+      throw new Error("step-up session read identity was not created");
+
+    const sessionId = `session-${admin.id}`;
+    const session = {
+      id: sessionId,
+      token: `token-${admin.id}`,
+      userId: admin.id,
+      portal: "agent" as const,
+      expiresAt: new Date(now.getTime() + 5 * 60_000),
+      createdAt: now,
+      updatedAt: now,
+    };
+    await db.insert(schema.sessionTable).values(session);
+    mockAuthenticatedSession(admin);
+    const { app } = createApp();
+
+    await db
+      .delete(schema.sessionTable)
+      .where(eq(schema.sessionTable.id, sessionId));
+    const preflight = await app.request("/api/me/step-up/challenges", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: "operation",
+        operation: "mfa_reset",
+        userId: "step-up-session-read-target",
+        verificationNote: "Verified the request with the account owner.",
+      }),
+    });
+    expect(preflight.status).toBe(401);
+
+    await db.insert(schema.sessionTable).values(session);
+    const operationChallenge = await createMfaResetChallenge({
+      personId: person.id,
+      sessionId,
+      userId: "step-up-session-read-target",
+      verificationNote: "Verified the request with the account owner.",
+    });
+    const pendingActionId = "step-up-session-read-pending-action";
+    await db.insert(schema.pendingActionTable).values({
+      id: pendingActionId,
+      requestedByPersonId: person.id,
+      credentialType: "session",
+      credentialId: sessionId,
+      origin: "web",
+      action: "delete",
+      targetType: "work_item",
+      targetIds: ["step-up-session-read-work-item"],
+      targetVersions: null,
+      payload: { action: "delete" },
+      routeKey: "DELETE /api/work-items/{key}",
+      payloadHash: "a".repeat(64),
+      payloadSummary: { key: "redacted" },
+      confirmationRequired: "typed_name_step_up",
+      state: "pending",
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + 5 * 60_000),
+      traceId: "step-up-session-read-trace",
+    });
+    const pendingActionChallenge = await createPendingActionChallenge({
+      personId: person.id,
+      sessionId,
+      pendingActionId,
+    });
+    if (!pendingActionChallenge) {
+      throw new Error("step-up pending-action challenge was not created");
+    }
+
+    await db
+      .update(schema.sessionTable)
+      .set({ portal: "customer" })
+      .where(eq(schema.sessionTable.id, sessionId));
+    const verifyAuthentication = vi.fn(async () => "password" as const);
+    const operationProof = await issueMfaResetToken(
+      {
+        id: operationChallenge.id,
+        nonce: operationChallenge.nonce,
+        personId: person.id,
+        sessionId,
+        userId: admin.id,
+        targetUserId: "step-up-session-read-target",
+        verificationNote: "Verified the request with the account owner.",
+      },
+      verifyAuthentication,
+    );
+    const pendingActionProof = await issuePendingActionToken(
+      {
+        id: pendingActionChallenge.id,
+        nonce: pendingActionChallenge.nonce,
+        personId: person.id,
+        sessionId,
+        userId: admin.id,
+        pendingActionId,
+      },
+      verifyAuthentication,
+    );
+
+    expect(operationProof).toBeNull();
+    expect(pendingActionProof).toBeNull();
+    expect(verifyAuthentication).not.toHaveBeenCalled();
+  });
+
   it("persists the realtime log-level module while accepting older module snapshots", async () => {
     const [admin] = await db
       .insert(schema.userTable)
@@ -1164,6 +1288,7 @@ describe("instance local-factor policy API", () => {
       .returning();
     if (!admin || !target) throw new Error("reset users were not created");
     await ensureStaffPersonForUser(admin.id);
+    await ensureStaffPersonForUser(target.id);
     mockAuthenticatedSession(admin);
     const sessionId = `session-${admin.id}`;
     await db.insert(schema.sessionTable).values({
