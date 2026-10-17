@@ -6,6 +6,7 @@ import {
   projectCapabilityRefused,
   resolveCallerIdentity,
 } from "../utils/has-project-reach";
+import { isCustomerPrincipal } from "../utils/is-customer-principal";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { cannedResponsePolicies } from "./policy";
@@ -61,6 +62,9 @@ export function requireCannedResponseListReach() {
     if (
       projectCapabilityRefused(decision, { isApiKey: Boolean(c.get("apiKey")) })
     ) {
+      throw new HTTPException(403, { message: "Insufficient permissions" });
+    }
+    if (await isCustomerPrincipal(userId, target.workspaceId)) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
     return next();

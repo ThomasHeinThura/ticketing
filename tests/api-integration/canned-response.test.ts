@@ -2,9 +2,10 @@
  * `docs/03-features/comments-and-activity.md` `CA-19`/`CA-20`: canned-response CRUD.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { can } from "@taskdesk/permissions";
+import { BUILT_IN_ROLES, can } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { cannedResponsePolicies } from "../../apps/api/src/canned-response/policy";
 import {
   deleteCannedResponseInWorkspace,
   findCannedResponseWorkspaceId,
@@ -15,6 +16,7 @@ import {
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import { evaluateProjectRead } from "../../apps/api/src/utils/has-project-reach";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -492,6 +494,227 @@ describe("API integration: canned responses (#27)", () => {
         })
       ).status,
     ).toBe(403);
+  });
+
+  it("refuses a reachable customer-side principal before exposing internal snippets", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const workItemKey = await createWorkItem(owner, app);
+    const [workItem] = await db
+      .select({
+        id: schema.workItemTable.id,
+        projectId: schema.workItemTable.projectId,
+      })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, workItemKey));
+    if (!workItem) throw new Error("Expected canned-response work item");
+
+    const [customerOrganisation] = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `canned-customer-${randomUUID()}`,
+        name: "Canned response customer",
+        isInternal: false,
+        active: true,
+        portalAccess: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    if (!customerOrganisation)
+      throw new Error("Expected canned-response customer organisation");
+    const customerRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: BUILT_IN_ROLES.customer.scope,
+          workspaceId: null,
+          key: BUILT_IN_ROLES.customer.key,
+          name: "Customer",
+          rank: BUILT_IN_ROLES.customer.rank,
+          capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+          isSystem: true,
+          isEditable: false,
+        })
+        .returning(),
+      "canned-response customer role",
+    );
+
+    const reachableCustomer = await createWorkspaceMember({ role: "member" });
+    const [customerPerson] = await db
+      .update(schema.personTable)
+      .set({
+        organisationId: customerOrganisation.id,
+        side: "customer",
+        active: true,
+        isPlaceholder: false,
+      })
+      .where(eq(schema.personTable.userId, reachableCustomer.user.id))
+      .returning({ id: schema.personTable.id });
+    if (!customerPerson) throw new Error("Expected linked customer person");
+    await db.insert(schema.membershipTable).values({
+      personId: customerPerson.id,
+      scope: "organisation",
+      scopeId: customerOrganisation.id,
+      roleId: customerRole.id,
+      seesAll: false,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: customerOrganisation.id })
+      .where(eq(schema.projectTable.id, workItem.projectId));
+
+    const internalBody = {
+      type: "doc",
+      content: [{ type: "text", text: "internal-only-canned-response-807" }],
+    };
+    const snippet = await insertCannedResponse(
+      await identityFor(owner.user.id),
+      {
+        workspaceId: owner.workspace.id,
+        name: "Internal support note",
+        body: internalBody,
+        visibilityDefault: "internal",
+        createdBy: owner.user.id,
+      },
+    );
+    if (!snippet) throw new Error("Expected internal canned-response insert");
+
+    const reachableIdentity = await identityFor(reachableCustomer.user.id);
+    expect(reachableIdentity.reach).toEqual({
+      kind: "organisation",
+      ids: [customerOrganisation.id],
+    });
+    const policy = cannedResponsePolicies["GET /api/canned-responses"];
+    const projectRead = evaluateProjectRead(
+      reachableIdentity,
+      policy.capability,
+      policy.scope,
+      {
+        projectId: workItem.projectId,
+        workspaceId: owner.workspace.id,
+        organisationId: customerOrganisation.id,
+        workItemId: workItem.id,
+      },
+    );
+    expect(projectRead).toMatchObject({ reachable: true, capable: false });
+    // Relative app requests use the configured agent host. Keep an agent session so
+    // authentication reaches this route; persisted person side and org membership make
+    // resolveIdentity classify this caller as a customer principal.
+    mockAuthenticatedSession(reachableCustomer.user);
+    const reachableResponse = await app.request(
+      `/api/canned-responses?workItemKey=${workItemKey}`,
+    );
+    const reachableText = await reachableResponse.text();
+    expect(reachableResponse.status).toBe(403);
+    expect(reachableText).not.toContain("internal-only-canned-response-807");
+    expect(reachableText).not.toContain(owner.user.id);
+
+    const otherOrganisation = requireRow(
+      await db
+        .insert(schema.organisationTable)
+        .values({
+          key: `canned-customer-${randomUUID()}`,
+          name: "Another canned response customer",
+          isInternal: false,
+          active: true,
+          portalAccess: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning(),
+      "unreachable canned-response customer organisation",
+    );
+    const unreachableCustomer = await createWorkspaceMember({ role: "member" });
+    const [unreachablePerson] = await db
+      .update(schema.personTable)
+      .set({
+        organisationId: otherOrganisation.id,
+        side: "customer",
+        active: true,
+        isPlaceholder: false,
+      })
+      .where(eq(schema.personTable.userId, unreachableCustomer.user.id))
+      .returning({ id: schema.personTable.id });
+    if (!unreachablePerson)
+      throw new Error("Expected unreachable customer person");
+    await db.insert(schema.membershipTable).values({
+      personId: unreachablePerson.id,
+      scope: "organisation",
+      scopeId: otherOrganisation.id,
+      roleId: customerRole.id,
+      seesAll: false,
+    });
+    mockAuthenticatedSession(unreachableCustomer.user);
+    const unreachableResponse = await app.request(
+      `/api/canned-responses?workItemKey=${workItemKey}`,
+    );
+    expect(unreachableResponse.status).toBe(404);
+    const unreachableText = await unreachableResponse.text();
+    expect(unreachableText).not.toContain("internal-only-canned-response-807");
+    expect(unreachableText).not.toContain(owner.user.id);
+  });
+
+  it("refuses a reachable workspace-customer principal on the agent snippet list", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const workItemKey = await createWorkItem(owner, app);
+    const [workItem] = await db
+      .select({
+        id: schema.workItemTable.id,
+        projectId: schema.workItemTable.projectId,
+      })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, workItemKey));
+    if (!workItem) throw new Error("Expected canned-response work item");
+
+    const snippet = await insertCannedResponse(
+      await identityFor(owner.user.id),
+      {
+        workspaceId: owner.workspace.id,
+        name: "Internal support note",
+        body: { type: "doc", content: [{ type: "text", text: "private 807" }] },
+        visibilityDefault: "internal",
+        createdBy: owner.user.id,
+      },
+    );
+    if (!snippet) throw new Error("Expected internal canned-response insert");
+
+    const customer = await createWorkspaceMember({ role: "customer" });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: customer.user.id,
+      role: "customer",
+      joinedAt: new Date(),
+    });
+    await grantProjectRole(customer.user.id, workItem.projectId, [
+      "work_item:read",
+    ]);
+    const customerIdentity = await identityFor(customer.user.id);
+    const policy = cannedResponsePolicies["GET /api/canned-responses"];
+    const projectRead = evaluateProjectRead(
+      customerIdentity,
+      policy.capability,
+      policy.scope,
+      {
+        projectId: workItem.projectId,
+        workspaceId: owner.workspace.id,
+        organisationId: null,
+        workItemId: workItem.id,
+      },
+    );
+    expect(projectRead).toMatchObject({ reachable: true, capable: true });
+
+    mockAuthenticatedSession(customer.user);
+    const response = await app.request(
+      `/api/canned-responses?workItemKey=${workItemKey}`,
+    );
+    const text = await response.text();
+    expect(response.status).toBe(403);
+    expect(text).not.toContain("private 807");
+    expect(text).not.toContain(owner.user.id);
   });
 
   it("list SQL enforces same-workspace project reach and live-item state at read time", async () => {
