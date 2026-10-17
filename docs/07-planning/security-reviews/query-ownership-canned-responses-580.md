@@ -2836,3 +2836,105 @@ Read-only live GitHub inspection showed #807 still published at `8d255947d83f00d
 **Reviewed head:** `616ce92498802576a6d6e03ddce5944cda5e5e09`
 
 Fresh ordinary A and B CLEAR plus further FULL independent Sol CLEAR WITH NON-BLOCKING FINDINGS apply at this source. Final fixture hash6f39ee5822331c6138c32b0f6658964b09968237249a469588bac6550ba7be44 matches the root's3file23test/5-configuration typecheck inputs. Required exact-publication CI is still pending at publication. Sol NB-1 (unbounded delivery gate-entry signal on unexpected delivery early exit) and the earlier observer-only shadow-denial-marker limitation remain explicit non-blocking residuals. No timeout, retry budget, test or quality gate is waived or weakened.
+
+
+## Fingerprint disposition report 1
+
+Source file `canned807-d7e0-heading-fingerprint-ordinary-luna.md`
+
+# TaskDesk #807 — ordinary review of exact heading fingerprints
+
+**Role:** Fresh independent strong ordinary reviewer (GPT-6 Luna tier; this context did not author, direct, or remediate the candidate).
+
+**Exact candidate:** `d7e01771545353b9da488ba6bf27fc4d185718e1`
+
+**Compared against:** immutable finding publication `2c2e3e648cfdfc71170429a1479b80583cb68789`, as assigned. Candidate commit's direct Git parent is `616ce92498802576a6d6e03ddce5944cda5e5e09`.
+
+**Scope checked:** only `.gitleaksignore` and the appended decision-log entry; original finding lines and supplied redacted Gitleaks diagnostic/classification record; exact diff, status and whitespace check; existing exact immutable-finding precedents and repository review policy.
+
+**Checks performed:** `git diff` between assigned base and exact head shows 15 additions, no deletions, in only the two assigned files. `git diff --check` is clean and the checkout is clean. Independently read the two cited lines from the immutable source commit: they are continuation headings naming the two public ordinary-review report files. The private redacted Gitleaks output binds both matches to those exact lines and fingerprints. The classification record identifies the same two basenames, exact fingerprints, and unchanged authentic reports. The added ignore entries are exact `commit:file:rule:line` fingerprints, matching the established `.gitleaksignore` form and the accepted #780 immutable-public-filename precedent. The appended record preserves the prior decision-log bytes and limits the disposition to those two findings; it explicitly retains the original red result, requires current CI and independent Sol review, and disclaims waiver/owner authorization.
+
+**Verdict: CLEAR.** The narrow fingerprints correctly suppress only the two verified non-secret findings in the immutable publication. I found no changed scanner authority, path/rule-wide exemption, report/history rewrite, or unsupported credential classification. Root's separately assigned original-range and fresh-commit/synthetic-secret controls remain necessary; I did not run them. I also did not run hosted CI or security review.
+
+**Non-blocking editorial note:** several newly added prose labels omit spaces around adjacent identifiers/numbers (for example, the publication SHA and line numbers in the decision-log entry; “recorded2026” in the ignore comment). This does not alter the fingerprints or their scope, but a copy edit would improve readability.
+
+
+## Fingerprint disposition report 2
+
+Source file `canned807-d7e0-heading-fingerprint-ordinary-luna-attribution-addendum.md`
+
+# Attribution correction — TaskDesk #807 ordinary review
+
+This addendum corrects one factual attribution in the original ordinary review report, which remains unchanged.
+
+I independently ran `git show -s --format=%P d7e01771545353b9da488ba6bf27fc4d185718e1` in the assigned worktree. It returns exactly `2c2e3e648cfdfc71170429a1479b80583cb68789`; therefore 2c2e3e is the direct parent of candidate d7e0. The original report's statement that the direct parent was `616ce92498802576a6d6e03ddce5944cda5e5e09` was incorrect; 616ce924 is the parent of 2c2e3e, not the parent of d7e0.
+
+I also independently inspected the actual direct-parent diff `2c2e3e648cfdfc71170429a1479b80583cb68789..d7e01771545353b9da488ba6bf27fc4d185718e1`. It contains exactly 15 additions and no deletions, in `.gitleaksignore` (six added lines) and `docs/07-planning/decision-log.md` (nine appended lines). This is the same delta reviewed in the original report, so the attribution correction does not alter the CLEAR verdict, scope, or non-blocking editorial note. No runtime or scanner controls were rerun.
+
+
+## Fingerprint disposition report 3
+
+Source file `canned807-d7e0-fingerprints-full-security-61-sol.md`
+
+# TaskDesk #807 — full security review of immutable heading fingerprints
+
+- **Reviewed head:** `d7e01771545353b9da488ba6bf27fc4d185718e1`
+- **Comparison base / direct parent:** `2c2e3e648cfdfc71170429a1479b80583cb68789`.
+- **Reviewer context:** `/root/canned807_d7e0_fingerprints_security_sol`; fresh independent security reviewer, with no authorship, material direction, remediation, or ordinary-review role on this candidate.
+- **Model provenance:** conductor confirms actual dispatch arguments `model:gpt-6.1-sol`, `reasoning_effort:high`, `fork_turns:none`. These are requested dispatch provenance. Platform instructions identify GPT-6; an independently verified serving version/fingerprint is not observable here and is not asserted.
+- **Scope:** full security assessment of the bounded direct-parent delta: two immutable Gitleaks fingerprints and their appended technical disposition. This is not lightweight confirmation and is not another whole-fixture or production audit.
+- **Verdict:** **CLEAR WITH RETAINED NON-BLOCKING FINDINGS**. No blocking finding in this delta. The scanner exclusion is limited to two independently verified non-secret historical heading findings.
+
+## Source and ordinary-review attribution
+
+Read accepted AGENTS.md, active mission, canonical agent workflow, CLAUDE.md provider adapter and relevant CI/CD security-gate requirements from `/Users/heinthura/.codex/worktrees/query765-current-luna`. Read the original `canned807-d7e0-heading-fingerprint-ordinary-luna.md` and its separately preserved `-attribution-addendum.md` in full. The original report incorrectly calls 616ce924 the candidate's direct parent. I independently ran `git show -s --format=%P` and confirmed the correction: 2c2e3e is d7e0's sole direct parent; 616ce924 is the earlier fixture candidate. I do not treat the original incorrect attribution as accurate or edit its bytes. The corrected ordinary CLEAR verdict covers the same direct-parent delta checked here.
+
+Independently confirmed clean candidate HEAD at d7e0. Direct-parent diff and raw commit inspection show exactly two mode-100644 modified files, 15 additions and zero deletions: `.gitleaksignore` +6 and `docs/07-planning/decision-log.md` +9. `git diff --check` passes. Python byte comparison confirms the decision log is a strict append; its prior bytes are preserved. No workflow, scanner rule/configuration, action pin, production code, fixture, historical report or other file changes in this delta.
+
+The two new executable ignore lines are exactly:
+
+```text
+2c2e3e648cfdfc71170429a1479b80583cb68789:docs/07-planning/security-reviews/query-ownership-canned-responses-580.md:generic-api-key:2640
+2c2e3e648cfdfc71170429a1479b80583cb68789:docs/07-planning/security-reviews/query-ownership-canned-responses-580.md:generic-api-key:2704
+```
+
+The other four new ignore lines are a blank and explanatory comments. Existing ignore entries are unchanged. The new decision entry is technical classification, explicitly preserves the original red result, requires independent ordinary/full security review and current hosted checks, and claims neither a waiver nor new owner authorization.
+
+## Non-secret classification and security semantics
+
+Read the original redacted diagnostic `807-2c2e-gitleaks-diagnostic-redacted.json`, classification record and actual source at immutable 2c2e3e. Both red findings identify `generic-api-key`, that exact commit/path, and lines 2640/2704. The actual complete source lines are continuation headings naming `canned807-616c-fixture-ordinary-a-luna.md` and `canned807-616c-fixture-ordinary-b-luna.md`. Surrounding text identifies retained public ordinary-review artifacts, their sizes/hashes and the authentic report bodies. These are descriptive public report basenames, with no authentication value or credential-bearing context. Classification is based on the immutable source and diagnostic binding, not merely the author's assertion that a match is harmless.
+
+The earlier 616ce924-to-2c2e3e diff is only 488 added lines in the designated review note. That complete note is byte-identical between 2c2e3e and d7e0 (SHA-256 `ccef5fcfd72f97e6f29ca4e339a0f2ec89057b338d8ad796dbe3d5eec09b1a51`). Thus this change does not rewrite a finding, reviewer verdict, report body or source history to escape scanning. The fixture bytes are also unchanged from reviewed 616ce924.
+
+This delta intentionally changes scanner pass/fail for two historical false positives, so it requires the bounded full security pass rather than being dismissed as review-record-only publication. Its exact commit/file/rule/line form matches the existing immutable-finding register. There is no secret-value, arbitrary-digest, path, directory, rule-wide or future-commit exemption. Although the fingerprint does not encode the match bytes separately, the fixed commit and file identify immutable content, and the actual lines contain only the verified headings. No second credential-shaped content is concealed on either line.
+
+Inspected the actual unchanged CI secret-scan job: full Git history checkout, pinned Gitleaks action `ff98106e4c7b2bc287b24eaf42907196329070c7` (v2.3.9), and its existing token environment. The delta changes neither whether the action runs nor its authority or exit handling. Local scanner evidence remains supplemental to that hosted action/version.
+
+## Retained executions independently inspected
+
+No scanner, test, Node/AST/compiler, PostgreSQL, Docker or browser execution was performed by this reviewer. I inspected other contexts' retained receipts, raw logs, redacted findings and preserved private Git control fixture under `807-2c2e-public-filename-disposition/`.
+
+- `root-verified-negative-and-positive-controls.json` binds the result to d7e0 and reports local Gitleaks 8.30.1. The historical-range native exit is recorded as 0. The actual negative log reports eight commits scanned and no leaks. Its 110 bytes independently hash to `a5ec3f5210515bb9e3bff7e2233f1364980e520adde7d8e65ee3d9cc5b605ca6`, exactly matching the receipt.
+- The positive control receipt records native exit 1 for fresh commit `be1702110c52ac4ccc1e2e69a5a1096c168abe91`. The actual 105-byte log reports one commit and three findings; SHA-256 `7a22e5deaa309a294141fe64cb263a9437af3da12ca31e12f25c8a049574db11`. The redacted findings independently bind all three hits to that commit: synthetic `positive-control.txt` line 1, plus the same review path at lines 2640 and 2704. Its JSON SHA-256 is `355e08c4c76e49684053b186bcad7af4c594233bb0cc8ce911293d35435cee72`.
+- Independently read the preserved control repository with Git: HEAD is the recorded fresh commit, it is clean, and its `.gitleaksignore` bytes equal the exact candidate's file. Compared both control heading lines with immutable 2c2e3e source: identical prose, same path, same line numbers. Therefore these are meaningful controls against accidental path/rule/future-commit suppression, and the synthetic credential is still detected. I did not publish its private test value.
+
+The raw logs corroborate the recorded outcomes; native exit codes and scanner version are attributed to the retained execution receipt, not falsely claimed as executions or version probes I performed. These records establish local scanner behavior for the stated specimens. They do not establish a hosted result or a full-suite runtime pass on d7e0.
+
+## Findings and retained limits
+
+**Blocking: none.**
+
+**Retained non-blocking editorial finding:** the ordinary reviewer notes missing spaces in explanatory prose such as “immutable807” and “recorded2026”. It does not alter fingerprint parsing, classification or scope. No editorial remediation is required for this security verdict.
+
+Read `canned807-616c-fixture-full-security-61-sol.md` in full. Its original source and review scope stay intact. This delta does not remediate its **NB-1**: the fixture's unbounded delivery-user-query gate-entry promise can remain unsignalled if delivery rejects/returns early, preventing finally cleanup until worker/process teardown. That source-derived diagnostic/cleanup limitation remains non-blocking; I did not rerun its reproduction or re-audit the unchanged fixture. The earlier shadow-denial-marker limitation also remains unremediated and non-blocking; no observer acceptance is claimed.
+
+The prior fixture review's focused local database/typecheck/mutation evidence keeps its original source bindings and limits. The historical hosted integration result remains 3300 passed / 1 failed / 223 files, with historical lock-holder/cause unknown; neither this ignore change nor this review clears it or proves a unique cause. Read-only live `gh pr view 807` still returned published head `8d255947d83f00dd047501044ce494534930aae1`, including its failed Postgres integration check, rather than reviewed local d7e0. Historical green checks cannot become current exact-head acceptance.
+
+## Final disposition
+
+**CLEAR WITH RETAINED NON-BLOCKING FINDINGS** for the full required security review of `2c2e3e648cfdfc71170429a1479b80583cb68789..d7e01771545353b9da488ba6bf27fc4d185718e1`. No new blocking or substantive non-blocking security defect was found in the fingerprint/disposition delta. The original ordinary report plus its authentic correction must remain together when relied on; the original prior full security review retains only its labelled scope.
+
+Only read-only Git/GitHub/text/Python inspection and this private report write were performed. No source/ref/PR mutation, runtime rerun, subagent, retired route, commit, push or merge was used. No screen was opened. Publication, authentic review transport, current required hosted checks on the published exact candidate, and protected merge remain conductor-owned. This verdict supplies no gate waiver, merge-ready declaration, image/SIT/recovery acceptance, stage closure, release or deployment claim.
+
+
+**Reviewed head:** `d7e01771545353b9da488ba6bf27fc4d185718e1`
