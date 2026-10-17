@@ -3,7 +3,6 @@ import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { recordTaskEventActivity } from "../../apps/api/src/activity/controllers/create-activity";
 import db, { schema } from "../../apps/api/src/database";
 import * as eventBus from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
@@ -1310,7 +1309,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     }
   });
 
-  it("keeps trusted task-event history when archive wins async delivery", async () => {
+  it("keeps committed task history after archive, grant revocation, and user inactivation", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
@@ -1319,35 +1318,51 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
 
+    mockAuthenticatedSession(member.user);
+    const statusResponse = await request(`/task/status/${task.id}`, "put", {
+      status: "done",
+    });
+    expect(statusResponse.status).toBe(200);
+
+    const [activity] = await db
+      .select()
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.taskId, task.id));
+    expect(activity).toMatchObject({
+      type: "status_changed",
+      userId: member.user.id,
+      eventData: { oldStatus: "to-do", newStatus: "done" },
+    });
+
     await db
       .update(schema.projectTable)
       .set({ archivedAt: new Date() })
       .where(eq(schema.projectTable.id, project.id));
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, member.user.id));
+    if (!person) throw new Error("expected actor person fixture");
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, person.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, project.id),
+        ),
+      );
+    await db
+      .update(schema.personTable)
+      .set({ active: false })
+      .where(eq(schema.personTable.id, person.id));
 
-    // This is the trusted internal subscriber path after the task write has
-    // committed. It must preserve the resulting activity even if archive wins
-    // before asynchronous event delivery; the public create endpoint remains
-    // covered by the refusal case above.
-    await recordTaskEventActivity(
-      task.id,
-      "title_changed",
-      member.user.id,
-      null,
-      { oldTitle: task.title, newTitle: "Changed before archive" },
-    );
-
-    const activities = await db
+    const history = await db
       .select()
       .from(schema.taskActivityTable)
       .where(eq(schema.taskActivityTable.taskId, task.id));
-    expect(activities).toHaveLength(1);
-    expect(activities[0]).toMatchObject({
-      type: "title_changed",
-      eventData: {
-        oldTitle: task.title,
-        newTitle: "Changed before archive",
-      },
-    });
+    expect(history).toHaveLength(1);
+    expect(history[0]?.id).toBe(activity?.id);
   });
 
   it("serializes task-label creation with a workspace-label cascade", async () => {

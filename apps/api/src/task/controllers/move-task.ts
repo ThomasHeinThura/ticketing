@@ -1,5 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import { insertRequiredTaskActivity } from "../../activity/repository";
 import db from "../../database";
 import type { Executor } from "../../database/executor";
 import { publishEvent } from "../../events";
@@ -231,6 +232,21 @@ async function moveTask({
         message: "Failed to move task",
       });
     }
+
+    await insertRequiredTaskActivity(tx, identity, {
+      taskId: updatedTask.id,
+      type: "moved",
+      userId: currentUserId,
+      content: null,
+      eventData: {
+        fromProjectId: sourceProject.id,
+        fromProjectName: sourceProject.name,
+        toProjectId: destinationProject.id,
+        toProjectName: destinationProject.name,
+        oldStatus: lockedTask.status,
+        newStatus: resolvedColumn.slug,
+      },
+    });
 
     return {
       movedTask: updatedTask,

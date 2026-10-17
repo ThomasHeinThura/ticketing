@@ -1,15 +1,17 @@
-import { subscribeToEvent } from "../events";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
+import type { BaseVariables } from "../openapi";
 import {
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
-import createActivity, {
-  recordTaskEventActivity,
-} from "./controllers/create-activity";
+import createActivity from "./controllers/create-activity";
 import createComment from "./controllers/create-comment";
 import deleteComment from "./controllers/delete-comment";
 import getActivities from "./controllers/get-activities";
@@ -22,6 +24,19 @@ import {
   taskIdParam,
   updateCommentBody,
 } from "./schema";
+
+async function requestIdentity(
+  c: Context<{ Variables: BaseVariables }>,
+): Promise<ResolvedIdentity> {
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  const identity = await resolveRequestIdentity({
+    userId: c.get("userId"),
+    apiKey: c.get("apiKey"),
+    impersonatedBy: session?.impersonatedBy,
+  });
+  if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+  return identity;
+}
 
 const getActivitiesRoute = createRoute({
   method: "get",
@@ -160,154 +175,61 @@ const deleteCommentRoute = createRoute({
 
 const activity = apiRouter()
   .openapi(getActivitiesRoute, async (c) =>
-    c.json(await getActivities(c.req.valid("param").taskId), 200),
+    c.json(
+      await getActivities(
+        await requestIdentity(c),
+        c.req.valid("param").taskId,
+      ),
+      200,
+    ),
   )
   .openapi(createActivityRoute, async (c) => {
     const { taskId, message, type, eventData } = c.req.valid("json");
     return c.json(
-      await createActivity(taskId, type, c.get("userId"), message, eventData),
+      await createActivity(
+        await requestIdentity(c),
+        taskId,
+        type,
+        c.get("userId"),
+        message,
+        eventData,
+      ),
       200,
     );
   })
   .openapi(createCommentRoute, async (c) => {
     const { taskId, comment } = c.req.valid("json");
-    return c.json(await createComment(taskId, c.get("userId"), comment), 200);
+    return c.json(
+      await createComment(
+        await requestIdentity(c),
+        taskId,
+        c.get("userId"),
+        comment,
+      ),
+      200,
+    );
   })
   .openapi(updateCommentRoute, async (c) => {
     const { activityId, comment } = c.req.valid("json");
     return c.json(
-      await updateComment(c.get("userId"), activityId, comment),
+      await updateComment(
+        await requestIdentity(c),
+        c.get("userId"),
+        activityId,
+        comment,
+      ),
       200,
     );
   })
   .openapi(deleteCommentRoute, async (c) =>
     c.json(
-      await deleteComment(c.get("userId"), c.req.valid("json").activityId),
+      await deleteComment(
+        await requestIdentity(c),
+        c.get("userId"),
+        c.req.valid("json").activityId,
+      ),
       200,
     ),
   );
-
-subscribeToEvent<{
-  taskId: string;
-  currentUserId: string;
-  type: string;
-  content: string | null;
-}>("task.created", async (data) => {
-  if (!data.currentUserId || !data.taskId || !data.type) {
-    return;
-  }
-  await recordTaskEventActivity(
-    data.taskId,
-    data.type,
-    data.currentUserId,
-    null,
-    {},
-  );
-});
-
-subscribeToEvent<{
-  taskId: string;
-  userId: string;
-  type: string;
-  content: string;
-  fromProjectId: string;
-  fromProjectName: string;
-  toProjectId: string;
-  toProjectName: string;
-  oldStatus: string;
-  newStatus: string;
-}>("task.moved", async (data) => {
-  const {
-    fromProjectId,
-    fromProjectName,
-    toProjectId,
-    toProjectName,
-    oldStatus,
-    newStatus,
-  } = data;
-
-  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {
-    fromProjectId,
-    fromProjectName,
-    toProjectId,
-    toProjectName,
-    oldStatus,
-    newStatus,
-  });
-});
-
-subscribeToEvent<{
-  taskId: string;
-  userId: string;
-  oldStatus: string;
-  newStatus: string;
-  title: string;
-  assigneeId?: string;
-  type: string;
-}>("task.status_changed", async (data) => {
-  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {
-    oldStatus: data.oldStatus,
-    newStatus: data.newStatus,
-  });
-});
-
-subscribeToEvent<{
-  taskId: string;
-  userId: string;
-  oldPriority: string;
-  newPriority: string;
-  title: string;
-  type: string;
-}>("task.priority_changed", async (data) => {
-  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {
-    oldPriority: data.oldPriority,
-    newPriority: data.newPriority,
-  });
-});
-
-subscribeToEvent<{
-  taskId: string;
-  userId: string;
-  title: string;
-  type: string;
-}>("task.unassigned", async (data) => {
-  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {});
-});
-
-subscribeToEvent<{
-  taskId: string;
-  userId: string;
-  oldAssignee: string | null;
-  newAssignee: string;
-  newAssigneeId: string;
-  title: string;
-  type: string;
-}>("task.assignee_changed", async (data) => {
-  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {
-    newAssigneeId: data.newAssigneeId,
-    newAssignee: data.newAssignee,
-    isSelfAssigned: data.userId === data.newAssigneeId,
-  });
-});
-
-subscribeToEvent<{
-  taskId: string;
-  userId: string;
-  oldDueDate: Date | null;
-  newDueDate: Date;
-  title: string;
-  type: string;
-}>("task.due_date_changed", async (data) => {
-  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {
-    oldDueDate:
-      data.oldDueDate instanceof Date
-        ? data.oldDueDate.toISOString()
-        : data.oldDueDate,
-    newDueDate:
-      data.newDueDate instanceof Date
-        ? data.newDueDate.toISOString()
-        : data.newDueDate,
-  });
-});
 
 export default activity;
