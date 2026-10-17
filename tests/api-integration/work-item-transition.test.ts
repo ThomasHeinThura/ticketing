@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { slaPauseTable } from "../../apps/api/src/database/migration-schema";
 import { createApp } from "../../apps/api/src/index";
+import { resolveRequestIdentity } from "../../apps/api/src/permissions/resolve-request-identity";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { transitionWorkItem } from "../../apps/api/src/work-item/controllers/transition-work-item";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -1593,11 +1594,20 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.key, key));
     const workItemId = requireRow([workItemRow], "workItemRow").id;
+    const identity = await resolveRequestIdentity({ userId: creator.id });
+    if (!identity) throw new Error("creator identity did not resolve");
 
     const race = await raceProjectSoftDelete(project.id, () =>
-      transitionWorkItem(workItemId, null, creator.id, "person", {
-        toStateTemplateId: done.stateTemplate.id,
-      }),
+      transitionWorkItem(
+        workItemId,
+        identity,
+        identity.personId,
+        creator.id,
+        "person",
+        {
+          toStateTemplateId: done.stateTemplate.id,
+        },
+      ),
     );
     expect(race.blockedOnRowLock).toBe(true);
     expect(race.operation.status).toBe("rejected");
