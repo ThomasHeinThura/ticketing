@@ -611,7 +611,7 @@ export async function loadApprovalTargetByKey(
   if (!row) throw new HTTPException(404, { message: "Work item not found" });
 
   const visibleToPersonIds =
-    row.customerVisibility === "private"
+    identity.side === "customer" && row.customerVisibility === "private"
       ? [
           ...new Set(
             [row.requesterId, ...row.participantIds].filter(
@@ -758,7 +758,7 @@ export async function loadApprovalTargetByApprovalId(
     .limit(1);
   if (!row) return null;
   const visibleToPersonIds =
-    row.customerVisibility === "private"
+    identity.side === "customer" && row.customerVisibility === "private"
       ? [
           ...new Set(
             [row.requesterId, ...row.participantIds].filter(

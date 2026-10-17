@@ -197,6 +197,9 @@ describe("approval repository current request scope", () => {
     const currentApprover = await resolveApprovalIdentity(
       tenant.approver.user.id,
     );
+    await expect(
+      loadApprovalTargetByKey(currentApprover, tenant.key),
+    ).rejects.toMatchObject({ status: 404 });
     const ownAfterParticipationLoss = await loadApprovalTargetByApprovalId(
       approval.id,
       currentApprover,
