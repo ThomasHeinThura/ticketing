@@ -1575,7 +1575,7 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
     ref: portalRow.ref,
     submission: {
       state: portalRow.submission.state,
-      formData: portalRow.submission.formData as Record<string, unknown>,
+      formData: row.submission.formData,
       customerVisibility: portalRow.submission.customerVisibility,
       createdAt: portalRow.submission.createdAt.toISOString(),
     },

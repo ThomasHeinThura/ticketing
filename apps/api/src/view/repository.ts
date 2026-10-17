@@ -225,9 +225,15 @@ export async function updateSavedView(
   return materializeSavedView(view);
 }
 
-export async function withSavedViewTransaction<T>(
-  work: (tx: SavedViewTransaction) => Promise<T>,
-): Promise<T> {
+type PinnedViewMutationResult = {
+  pinnedViewIds: string[];
+  wasPinned: boolean;
+  isPinned: boolean;
+};
+
+export async function withSavedViewTransaction(
+  work: (tx: SavedViewTransaction) => Promise<PinnedViewMutationResult>,
+): Promise<PinnedViewMutationResult> {
   return db.transaction(work);
 }
 

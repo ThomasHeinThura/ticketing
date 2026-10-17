@@ -5,8 +5,10 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { findPortalSubmission } from "../../apps/api/src/intake/repository";
 import {
   addCustomer,
   buildTenant,
@@ -159,5 +161,134 @@ describe("customer-facing intake responses expose only declared fields", () => {
       "workItemId",
     ]);
     expect(JSON.stringify(attachment)).not.toContain("workspace/");
+  });
+
+  it("preserves persisted JSON values through repository and portal detail output", async () => {
+    const { t, customer, requestType } = await seed();
+    const created = await portalRequest(
+      t,
+      customer,
+      "/api/portal/submissions",
+      {
+        method: "POST",
+        body: { key: requestType.key, formData: {} },
+      },
+    );
+    expect(created.status).toBe(200);
+    const createdSubmission = (await created.json()) as {
+      id: string;
+      ref: string;
+    };
+
+    const cases = [
+      {
+        name: "object",
+        stored: { answer: "yes" },
+        raw: { answer: "yes" },
+        typed: { answer: "yes" },
+      },
+      {
+        name: "array",
+        stored: ["one", 2],
+        raw: ["one", 2],
+        typed: ["one", 2],
+      },
+      { name: "number scalar", stored: 7, raw: 7, typed: 7 },
+      {
+        name: "ordinary string scalar",
+        stored: "plain text",
+        raw: "plain text",
+        typed: "plain text",
+      },
+      {
+        name: "JSON text string scalar",
+        stored: '{"answer":"yes"}',
+        raw: '{"answer":"yes"}',
+        typed: { answer: "yes" },
+      },
+      { name: "JSON null", stored: null, raw: null, typed: null },
+    ];
+
+    for (const value of cases) {
+      if (value.stored === null) {
+        await db
+          .update(schema.submissionTable)
+          .set({ formData: sql`'null'::jsonb` })
+          .where(eq(schema.submissionTable.id, createdSubmission.id));
+      } else {
+        await db
+          .update(schema.submissionTable)
+          .set({ formData: value.stored })
+          .where(eq(schema.submissionTable.id, createdSubmission.id));
+      }
+
+      const raw = await db.execute(sql`
+        select ${schema.submissionTable.formData} as form_data
+        from ${schema.submissionTable}
+        where ${schema.submissionTable.id} = ${createdSubmission.id}
+      `);
+      expect(raw.rows, `${value.name}: raw row`).toHaveLength(1);
+      expect(raw.rows[0]?.form_data, `${value.name}: raw JSON value`).toEqual(
+        value.raw,
+      );
+
+      const [typed] = await db
+        .select({ formData: schema.submissionTable.formData })
+        .from(schema.submissionTable)
+        .where(eq(schema.submissionTable.id, createdSubmission.id));
+      expect(typed?.formData, `${value.name}: typed JSON value`).toEqual(
+        value.typed,
+      );
+
+      const detail = await findPortalSubmission(
+        createdSubmission.ref,
+        customer.person.id,
+      );
+      expect(
+        detail.submission.formData,
+        `${value.name}: repository value`,
+      ).toEqual(value.typed);
+
+      const response = await portalRequest(
+        t,
+        customer,
+        `/api/portal/submissions/${createdSubmission.ref}`,
+      );
+      expect(response.status, `${value.name}: HTTP status`).toBe(200);
+      const body = (await response.json()) as {
+        ref: string;
+        submission: {
+          state: string;
+          formData: unknown;
+          customerVisibility: string;
+          createdAt: string;
+        };
+        canWithdraw: boolean;
+        requestType: unknown;
+        version: unknown;
+        workItem: unknown;
+        messages: unknown[];
+      };
+      expect(Object.keys(body).sort()).toEqual([
+        "canWithdraw",
+        "messages",
+        "ref",
+        "requestType",
+        "submission",
+        "version",
+        "workItem",
+      ]);
+      expect(Object.keys(body.submission).sort()).toEqual([
+        "createdAt",
+        "customerVisibility",
+        "formData",
+        "state",
+      ]);
+      expect(body.ref).toBe(createdSubmission.ref);
+      expect(
+        body.submission.formData,
+        `${value.name}: HTTP JSON value`,
+      ).toEqual(value.typed);
+    }
   });
 });
