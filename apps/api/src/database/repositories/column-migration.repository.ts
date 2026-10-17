@@ -1,4 +1,5 @@
 import { eq, sql } from "drizzle-orm";
+import type { Executor } from "../executor";
 import db from "../index";
 import { columnTable, projectTable, taskTable } from "../schema";
 
@@ -29,6 +30,58 @@ const DEFAULT_COLUMNS = [
  */
 export const COLUMN_SEED_LOCK_NAMESPACE = 4_004;
 
+async function seedColumnsForProject(
+  executor: Executor,
+  projectId: string,
+): Promise<Map<string, string>> {
+  // Held for the rest of this transaction (pg_advisory_xact_lock): serializes this
+  // project's check-then-insert against any other replica running the same startup
+  // seed concurrently, so only one of them ever observes "no columns yet" and inserts.
+  await executor.execute(
+    sql`SELECT pg_advisory_xact_lock(${COLUMN_SEED_LOCK_NAMESPACE}, hashtext(${projectId}))`,
+  );
+
+  const projectColumns = await executor
+    .select({
+      id: columnTable.id,
+      slug: columnTable.slug,
+    })
+    .from(columnTable)
+    .where(eq(columnTable.projectId, projectId));
+
+  const map = new Map<string, string>(
+    projectColumns.map((column) => [column.slug, column.id]),
+  );
+
+  // Only seed missing default slugs for legacy projects that have no columns yet.
+  // If the project already has columns, missing slugs are intentional (user removed them);
+  // re-inserting on every startup would undo deletions after each API restart.
+  if (projectColumns.length === 0) {
+    for (const defaultColumn of DEFAULT_COLUMNS) {
+      if (map.has(defaultColumn.slug)) {
+        continue;
+      }
+
+      const [inserted] = await executor
+        .insert(columnTable)
+        .values({
+          projectId,
+          name: defaultColumn.name,
+          slug: defaultColumn.slug,
+          position: defaultColumn.position,
+          isFinal: defaultColumn.isFinal,
+        })
+        .returning({ id: columnTable.id, slug: columnTable.slug });
+
+      if (inserted) {
+        map.set(inserted.slug, inserted.id);
+      }
+    }
+  }
+
+  return map;
+}
+
 export async function migrateColumns() {
   console.log("🔄 Starting column migration...");
 
@@ -41,51 +94,7 @@ export async function migrateColumns() {
 
   for (const project of projects) {
     const columnMap = await db.transaction(async (tx) => {
-      // Held for the rest of this transaction (pg_advisory_xact_lock): serializes this
-      // project's check-then-insert against any other replica running the same startup
-      // seed concurrently, so only one of them ever observes "no columns yet" and inserts.
-      await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(${COLUMN_SEED_LOCK_NAMESPACE}, hashtext(${project.id}))`,
-      );
-
-      const projectColumns = await tx
-        .select({
-          id: columnTable.id,
-          slug: columnTable.slug,
-        })
-        .from(columnTable)
-        .where(eq(columnTable.projectId, project.id));
-
-      const map = new Map<string, string>(
-        projectColumns.map((column) => [column.slug, column.id]),
-      );
-
-      // Only seed missing default slugs for legacy projects that have no columns yet.
-      // If the project already has columns, missing slugs are intentional (user removed them);
-      // re-inserting on every startup would undo deletions after each API restart.
-      if (projectColumns.length === 0) {
-        for (const defaultColumn of DEFAULT_COLUMNS) {
-          if (map.has(defaultColumn.slug)) {
-            continue;
-          }
-
-          const [inserted] = await tx
-            .insert(columnTable)
-            .values({
-              projectId: project.id,
-              name: defaultColumn.name,
-              slug: defaultColumn.slug,
-              position: defaultColumn.position,
-              isFinal: defaultColumn.isFinal,
-            })
-            .returning({ id: columnTable.id, slug: columnTable.slug });
-
-          if (inserted) {
-            map.set(inserted.slug, inserted.id);
-          }
-        }
-      }
-
+      const map = await seedColumnsForProject(tx, project.id);
       return map;
     });
 

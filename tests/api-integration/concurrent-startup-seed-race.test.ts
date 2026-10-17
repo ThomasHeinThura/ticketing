@@ -201,6 +201,21 @@ describe("issue #134 -- migrateColumns concurrent-boot race", () => {
         .returning(),
       "legacy project fixture",
     );
+    const legacyTask = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Legacy task without a column",
+          status: "to-do",
+          columnId: null,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "legacy task fixture",
+    );
 
     const results = await Promise.allSettled(
       Array.from({ length: CONCURRENCY }, () => migrateColumns()),
@@ -211,7 +226,7 @@ describe("issue #134 -- migrateColumns concurrent-boot race", () => {
     }
 
     const columns = await db
-      .select({ slug: schema.columnTable.slug })
+      .select({ id: schema.columnTable.id, slug: schema.columnTable.slug })
       .from(schema.columnTable)
       .where(eq(schema.columnTable.projectId, project.id));
 
@@ -219,6 +234,23 @@ describe("issue #134 -- migrateColumns concurrent-boot race", () => {
     expect(new Set(columns.map((c) => c.slug))).toEqual(
       new Set(["to-do", "in-progress", "in-review", "done"]),
     );
+
+    const todoColumn = requireRow(
+      columns.filter((column) => column.slug === "to-do"),
+      "seeded to-do column",
+    );
+    const mappedLegacyTask = requireRow(
+      await db
+        .select({
+          columnId: schema.taskTable.columnId,
+          version: schema.taskTable.version,
+        })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.id, legacyTask.id)),
+      "mapped legacy task",
+    );
+
+    expect(mappedLegacyTask).toEqual({ columnId: todoColumn.id, version: 2 });
   });
 
   it("a genuine later boot (not a race) still no-ops cleanly once columns exist", async () => {
