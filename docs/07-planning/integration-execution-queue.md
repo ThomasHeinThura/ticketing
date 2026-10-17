@@ -1,3 +1,16 @@
+## Protected #817 accepted; records recovery and current queue — 2026-10-17 07:59 UTC
+
+Accepted main is `7a99ae9e8696d6202f3a3b39472cc058cc0d61da` through protected #817 at 07:58:07Z. The dated status snapshot records the exact candidate, all 18 checks, test counts, image evidence and limitations. The 06:55 records checkpoint from rejected mixed commit `cf847f86` is preserved as historical content only; current records are in a separate records-only branch from accepted main.
+
+| Owner / unit | Actual state | Next action |
+| --- | --- | --- |
+| Conductor / records recovery | Historical three-file 06:55 diff recovered; current 07:59 status and queue are being recorded on a branch rooted at accepted #817. Rejected mixed `cf847` remains untouched and is not an ancestor. | Freeze this three-file candidate for one independent factual check and records-only CI; preserve all accepted-main blobs outside the three record files. |
+| Luna / Carrier791 G3 | Current `f7c5` checker is incomplete: native28 had17 pass/11 fail/62 not run. Existing Sol gap report identifies unresolved joins and proof gaps. | `carrier_f7_seven_gap_completion_luna` continues as sole checker/test owner, static implementation only; conductor reads the full diff before any further execution grant. Then obtain required independent reviews and actual acceptance evidence. |
+| Conductor / #810 | Existing 39-path source remains preserved; #817 is now accepted. | Normally compose accepted #817 into the existing #810 branch. The 07:59:26Z read-only preflight verified 22 embedded reports, 39 owned paths disjoint from 67 incoming paths, 3,412 reconstructed entries and clean merge-tree; it grants no review/runtime/CI approval. Repeat conservation after composition, then run current-source review and exact-head gates. Keep it separate from records. |
+| Conductor / #807 | Three documentation conflicts involving `auth/**` and normative prerelease policy remain unresolved; related implementation remains held. | Preserve exact conflicts for Thomas; do not infer policy or implementation authority. |
+| Conductor / #773 | Thirteen owning review findings and three time-and-cost owner questions remain open; no answer received. | Wait for Thomas's recorded dispositions; no assumptions or waiver. |
+| Conductor / final #589 | Final accounting, signed combined release, exact-digest SIT, consistent nonempty backup, usable isolated restore and fresh final Sol audit remain incomplete. | Complete selected dependencies or record actual owner deferrals, then perform required release/recovery/audit sequence and report before Hold. |
+
 ## Nested-auth accepted; auth reads and Carrier repair — 2026-10-17 06:55 UTC
 
 Accepted main is `2e6aa3dcf74ba5f2d6dc733ae54dc68be16c552b` through protected803; newest status gives actual source-bound counts and limits. Earlier snapshots remain unchanged.
