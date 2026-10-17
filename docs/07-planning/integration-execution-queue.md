@@ -1,3 +1,17 @@
+## Nested-auth accepted; auth reads and Carrier repair — 2026-10-17 06:55 UTC
+
+Accepted main is `2e6aa3dcf74ba5f2d6dc733ae54dc68be16c552b` through protected803; newest status gives actual source-bound counts and limits. Earlier snapshots remain unchanged.
+
+| Owner / unit | Actual state | Next action |
+| --- | --- | --- |
+| Conductor /803 and816 | Protected803 accepted3277; current full223/3292/5, finalunit12/API121872/web1861023, browser63/G1122/image125/all18. Old squash thread resolved with later authentic current reviews; issue816 absorbed and closed. | Preserve scope correction and approved normative policy; no promotion of #807 classifier or fingerprints. |
+| Conductor /auth read580 | Clean a43ce919 normally imports accepted803 into reviewed e52/445 read-materialization source; earlier typecheck and eight-file136-test proof preserved. | Current ordinary/lightweight Sol confirmation, own-note publication, normal push/PR and new exact-head CI/image/protected acceptance. |
+| Luna /Carrier791 G3 | Frozen6cad/6e40, manifest unchanged; bounded19 native1 with12pass7fail/64notrun, all five new controls pass. | Exact-leaf diagnosis for uncertain Storybook/LayoutOnly causes, coherent shared graph/paint repair, authentic fresh independent reviews/full Sol and actual current verification; no manifest workaround. |
+| Conductor /selected UI and erasure composition | UI9ac source/browser17/typecheck proofs; isolated cc5 preserves12 UI publication paths and all3497 tree entries. API typecheck and Postgres3files51 pass; current independent combined review pending. | Bring bounded preparation into SAME Carrier after current source freeze permits; conserve guard and query ownership, then actual combined gates. |
+| Conductor /811 recovered773 | Local09bc unpushed; owning review nonempty; three owner questions unanswered. | Await actual Thomas answers; no inference, gate waiver or P5 expansion. |
+| Conductor /810,807,798 and remaining580 | Old adverse performance/calibration states remain; reviewed sources preserved. | Genuine dependency-safe current-main compositions and current verification; finish actual conversions before enabling structural checker. |
+| Conductor /final589 | Signed combined release, exact-digest SIT, consistent nonempty backup/usable isolated restore/final audit pending;717 already done. | Finish all selected units or real owner deferrals, required runtime/recovery/audit, report then Hold. |
+
 ## Pending-action accepted; records/gate import next — 2026-10-17 05:51 UTC
 
 Accepted mainff5e16b677e2c72c8b14e0aaff38ea2df930a428 is protected815, exact publication/synthetic tree. The newest status snapshot contains actual counts and source limits; prior dated rows remain intact.
