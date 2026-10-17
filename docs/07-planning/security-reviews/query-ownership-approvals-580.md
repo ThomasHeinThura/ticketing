@@ -1041,3 +1041,713 @@ The B paragraph saying the original 15 entries are unchanged “except their des
 All reports retain their stated scopes. Only this candidate's own regular review note is added/appended after the independently reviewed source. Exact-publication full hosted/image gates remain outstanding.
 
 **Reviewed head:** `24711f617d5e1134e36d83e3afadd85e206f0afa`
+
+
+## Structural customer-audience repair and accepted814 composition — 2026-10-17
+
+This appendix supersedes readiness assertions only for current source5f21e468818d7d171eaf0cce50edb9bdb3354c5b on acceptedmaine848f3bd05bec95c8af657c29923a6413a11c63f. All earlier report bytes and adverse findings remain unchanged. Author reports are not independent reviews. The initial staff/private-customer restriction, three stale privacy-as-project-revocation fixtures and fullSol e829 cross-identity P1 all remain preserved below. Structural5548 retains persisted audience regardless of loader and checks the actual subject identity; two independent ordinary contexts and fullSol clear that application repair. Test-only8de corrects globaladmin403 assumptions and adds actual nonadmin session/key404/no-write. Separate current ordinary and fresh independent GPT-6.1 Sol bounded confirmation clear5f21, preserving prior full-source audit coverage and the admin403 isolation caveat. No new capability, route, schema or dependency.
+
+Root actual focused PostgreSQL:6c76/79native1;814b78/79native1;5548 94/95native1. Current5f21 eightfiles95/95/native0/40.872seconds, raw200496bytes SHA256b8314d5fc6600a164f4bb255a43f6601f5f6ce06c651b38a6224aca755e5f76a. Exactownedcleanup23containers109volumes7networksunchanged. Selected denial table snapshots are not database-wide audits. Current composition matches all3396mode/type/blobentries as acceptedmain+20ownpaths; three incoming814paths unchanged. Old78c full223/3291/5 and browser/image results do not accept this source. New publication requires full hosted, image, browser/performance and newest protected checks. No source/CI/SIT/stage/mission completion or waiver is claimed. Some earlier commits used configured Thomas author metadata; actualGPT6Luna authorship is disclosed, and history is preserved.
+
+
+### Preserved report `query812-5548-cross-identity-ordinary-a-luna.md`
+
+# PR812 5548 cross-identity audience repair — ordinary confirmation A
+
+**Requested model:** GPT-6 Luna. **Reviewer context:** reused independent context from prior bounded reviews; did not author, direct, or remediate the candidate.
+
+**Reviewed head:** `5548dfde601fdbaf6ac614316eb8a3c3b26220f2`
+**Parent:** `e829205e7c212e7fcaecceed0e0365816b14d847`
+**Verdict:** APPROVE the bounded structural repair by static inspection. Exact-head PostgreSQL verification remains pending the orchestrator run.
+
+## Checks performed
+
+Inspected the net two-path delta, including the structural change at `6ce634a60c2c38c962f9c897db0304787b1a9c74` and assertion follow-up in 5548; read the author report and the full e829 Sol finding. Traced both `ApprovalTarget` constructors, every `reachFacts`/`visibleToPersonIds` use and approval consumer, including `createApproval`, `formatApproval`, inbox/list paths, decide and withdraw checks. Read canonical identity resolution for side admission and checked AP-3, CP-16, and neighboring staff/customer reach patterns. No tests, analyzers, typecheck, install, build, database, Docker, browser, CI, Git refs, or source edits were performed in this reviewer context.
+
+The e829 blocker was real and exposed by a cross-identity call: staff loaded an `ApprovalTarget` with `visibleToPersonIds: null`, then `createApproval` reused it to test a different proposed customer approver; `formatApproval` similarly evaluated the named approver using the viewer-loaded target. The new invariant stores requester/participant audience facts on private targets independently of the loader. `hasWorkItemReach` then drops only those audience facts for the identity currently being evaluated when that identity is staff; customer evaluation keeps the persisted list. Thus a same-organisation nonparticipant customer fails AP-3 even when a staff requester loaded the target, while an actual customer participant can pass. On participant removal, staff list computation and the customer’s own addressed inbox evaluate that customer against the same actual private audience and report reach loss; the customer decision remains independently reach-checked.
+
+I verified by `rg` that these are the only two target constructors, `hasWorkItemReach` is the only direct reach-facts consumer, and all approval reach decisions route through it. The data flow is identity-stable at the evaluation boundary. This does not grant capability: route/service capability checks remain separate, including key capability-subset gates. The SQL staff visibility exception remains confined to the visibility component and ANDed with current project reach and item/project liveness; anchored workspace joins/filters remain. Side is admitted only from canonical `person.side` values `staff` or `customer`; unknown values cause identity resolution to return null. No request-controlled side or new authority source is introduced.
+
+The added end-to-end test statically preserves and asserts the key counterexamples: nonparticipant customer request returns 422 and leaves approval/outbox/audit/notification rows unchanged; participant request succeeds; after participant removal, staff list and customer portal inbox mark reach lost, customer decision returns 403 while pending state remains, and the AP-15 transition remains blocked.
+
+## Limits
+
+The prior exact-814 PostgreSQL evidence remains adverse at 78/79, and is not evidence for e829 or 5548. The orchestrator reported an exact-5548 focused PostgreSQL run running when this report was prepared; no result was available here, so I claim no runtime pass. This is a bounded ordinary confirmation of the new cross-identity invariant, not a fresh full-source audit, Sol review, or runtime/merge clearance.
+
+
+### Preserved report `query812-5548-cross-identity-ordinary-b-luna.md`
+
+# PR812 cross-identity audience repair — ordinary review B
+
+- **Candidate:** `5548dfde601fdbaf6ac614316eb8a3c3b26220f2`
+- **Previous review head:** `e829205e7c212e7fcaecceed0e0365816b14d847`
+- **Reviewer:** GPT-6 Luna, same independent ordinary B context; this is the first ordinary review of the new structural repair, not a repeat review of an unchanged candidate.
+- **Scope:** exact two-path delta plus every approval `reachFacts` construction/consumer/call site, cross-identity approval creation and formatting, customer approval lookup/decision path, SQL staff reach/liveness scope, and the added end-to-end test sequence.
+- **Verdict:** No blocking ordinary-review finding on source inspection. The e829 full Sol P1 is addressed structurally in the inspected code; exact-head runtime remains pending.
+
+## Finding disposition and invariant
+
+The e829 P1 is addressed by preserving requester/participant audience facts in both target loaders regardless of who loaded the target, then applying those facts according to the identity actually being checked in `hasWorkItemReach`: staff evaluation clears only `visibleToPersonIds` and checks canonical staff project reach; customer evaluation passes the persisted audience list into `reaches`. This fixes the cross-identity case in approval creation, where a staff-loaded target is checked against a different, proposed customer approver, and in staff formatting, where the named customer approver's current reach is evaluated against the staff viewer's target.
+
+I searched all approval references to `reachFacts`. Both target loaders are the only constructors; `hasWorkItemReach` is the only direct consumer. Its call sites include the create-time proposed-approver check in `service.ts`, current-user action checks, and `index.ts` formatting of a named approver against a target loaded for the viewer. The updated evaluator behavior addresses these distinct identity roles. No other approval code reads the private audience list directly, and the internal target facts are not serialized by the response formatter.
+
+The SQL staff visibility exception remains narrow to the private-visibility component and is still conjoined with `currentProjectReachPredicate`, item/project liveness, archive state, and workspace/project anchoring. The loader carries the current project organisation. Customer lookup still uses the requester/participant predicate, and `hasWorkItemReach` additionally checks the same persisted audience list for a customer. Staff reach revocation still relies on the real canonical project membership fix and its exact 404/403 tests from e829.
+
+## Regression coverage inspected
+
+The new request path builds actual same-organisation customer identities: a private requester, an actual participant approver, and a same-org colleague who is not a participant. A real authenticated staff request to address the colleague expects 422 and snapshots approval rows, `approval.requested` outbox events, audit events, and notifications before/after to ensure no request side effects. The subsequent request to the actual participant expects 200/pending.
+
+After deleting only the participant's row, the test checks both the staff work-item approval list and the named customer's portal inbox report `approverReachLost: true`; the named customer's portal decision returns 403 and the approval remains pending. The AP-15 transition remains blocked. Existing requester/participant lookup, customer colleague 404, staff private-item success, generic key 404 after staff project membership revocation, own-approval metadata, and workspace/project/organisation reach checks remain in the test file.
+
+The portal calls use `portalRequest`, which sets the customer portal host/session, and all the request/decision cases hit the real app handlers. The test fixtures create distinct customers and scope the participant deletion to this work item and the named approver.
+
+## Checks and limits
+
+- `git diff --check` passed for the e829-to-5548 delta.
+- Source/diff/search inspection only. No tests, compiler/analyzer, install, typecheck, build, PostgreSQL, container, Docker, browser, PR/CI, or ref mutation was performed.
+- Root's 8-file exact-head PostgreSQL run was reported running at assignment time; this review does not claim its result. Earlier adverse runtime receipts for 6c and 814 and the e829 Sol finding remain attached to their exact heads and are not reclassified as current-head evidence.
+- This is ordinary review B, not independent GPT-6 Sol security clearance, runtime acceptance, merge approval, or phase completion.
+
+
+### Preserved report `query812-5548-cross-identity-security-61-sol.md`
+
+# PR812 5548 — independent security recheck of the cross-identity audience repair
+
+**Reviewed head:** 5548dfde601fdbaf6ac614316eb8a3c3b26220f2
+
+**Delta base:** `e829205e7c212e7fcaecceed0e0365816b14d847`.
+**Full candidate comparison base:** accepted main `130508ef24f6442a59dbccaf305712891c8b3fbb`.
+**Prior report retained:** `query812-e829-full-customer-boundary-security-61-sol.md`, authentic BLOCKED verdict on e829. It is not edited, withdrawn, or relabelled as a pass.
+
+**Reviewer/context:** GPT-6.1 Sol requested, same independent security context `/root/query812_e829_full_customer_boundary_security_sol` reused for this changed candidate and disposition of my P1. Requested dispatch provenance remains `gpt-6.1-sol`, `fork_turns=none`, `reasoning_effort=high`; an independently verifiable serving model/version/build fingerprint is unavailable. I did not author, direct, or remediate the candidate, and did not spawn another agent. Source counterexamples and acceptance invariants in my earlier finding were review work, not a patch or implementation design.
+
+## Verdict
+
+**CLEAR for the current structural security delta; e829 P1 is closed on 5548 by source inspection. No new blocking or non-blocking product-security finding was identified.**
+
+**Runtime validation remains BLOCKED:** the conductor's actual exact-5548 PostgreSQL run failed: eight files, 95 tests, 94 passed and one failed, native exit1. The successful new cross-identity regression does not make that run green. This source verdict neither waives the failed test nor authorizes merge, feature/stage completion, release or SIT acceptance.
+
+## Scope and evidence continuity
+
+This is the complete current security delta recheck, retaining the actual full20-path e829-vs1305 source audit and its stated limits. I inspected every intervening commit, the exact current two-path diff and all connected current constructors/consumers:
+
+- `6ce634a60c2c38c962f9c897db0304787b1a9c74`: structural application repair and regression extension.
+- `5548dfde601fdbaf6ac614316eb8a3c3b26220f2`: one additional no-write assertion.
+- Changed paths: `apps/api/src/approval/repository.ts` and `tests/api-integration/approval-repository.test.ts`; net100 additions/six deletions.
+
+Actual Git history shows a linear e829→6ce→5548 chain and only those two changed paths. The other18 paths of the prior full audit remain unchanged. The combined source coverage remains the original eight application paths, eleven tests/helpers and historical note; I do not claim a new line-by-line full reread of all unchanged files. The original15-path historical source reviews, composition confirmations and19 authentic published reports retain their real sources and limits. My prior independent verification of their bytes/hashes and unedited note embedding remains historical preservation evidence, not runtime proof or newly manufactured reviewer independence.
+
+Read the current author report and both exact5548 ordinary CLEAR reports. I independently checked their core claims against the actual code. Neither those reports nor the conductor's packet sets product behavior.
+
+## P1 disposition — stable persisted audience, evaluation for the actual identity
+
+Both `loadApprovalTargetByKey` and `loadApprovalTargetByApprovalId` now retain the private requester/participant ID list without conditioning that stored fact on the loading identity. Private items with no requester retain an exact participant list or an empty list, never unrestricted null visibility. Organisation-visible items retain null, as before.
+
+`hasWorkItemReach(identity, target)` is the single direct approval consumer of `target.reachFacts`. It creates a new shallow fact object with `visibleToPersonIds: null` only when the identity actually being evaluated has `side === 'staff'`; otherwise it passes the persisted audience facts unchanged. It does not mutate the target or its stored audience. Consequently one staff evaluation cannot strip the facts needed by a later customer evaluation. The exact-staff condition also avoids an implicit unknown-side bypass. Canonical `resolveIdentity` admits only persisted `staff` or `customer` side values and returns null for an unknown side (`resolve-identity.ts:690-695`). No caller supplies side from the request body.
+
+I searched every approval `ApprovalTarget`, `reachFacts`, `visibleToPersonIds` and `hasWorkItemReach` reference. The two loaders are the only constructors and the helper is the only direct reach-facts consumer. In particular:
+
+- `createApproval` still loads for the staff requester, but evaluates the separately resolved proposed customer approver through the common helper. A same-org nonparticipant now fails the private-person test before the pure evaluator's organisation branch. An actual requester or participant retains the allowed customer path. Staff requesting/listing on a private request keep their own canonical project reach without needing customer participation.
+- `formatApproval` resolves the named approver and evaluates that person's identity against the preserved audience even when the viewer is staff. Removing a customer's participant row therefore produces `approverReachLost: true` in staff views and that customer's own addressed inbox.
+- Customer decision admission still checks actual current reach, then takes current scoped locks and a pending conditional update; the own-addressed metadata exception remains separate from permission to decide. Requester withdrawal likewise uses the actual acting identity and capability, while its dedicated admin exception stays session-only.
+- Existing SQL request visibility remains exact-staff-only and ANDed with current project reach plus item/project liveness; tenant/workspace joins, generic key lookup denial after staff reach revocation and the metadata-only approval exception remain unchanged. The repair does not weaken SQL resource scope.
+
+API-key and authority behavior is unchanged by this delta. The request adapter preserves key kind, owner and subset; `can` keeps project-role authority and stored-key-subset intersection with fail-closed missing subset. The staff-specific privacy projection affects reach only, not capabilities, requester/named-approver eligibility, CAB membership, or the session-only admin withdrawal restriction. No new route, grant, capability, schema, dependency or generic access exception appears.
+
+This closes the actual P1 mechanism rather than special-casing the original caller or fixture. The P1 closure is independent of the separate runtime discrepancy below.
+
+## Regression inspection
+
+The new case uses actual same-organisation customer requester, customer participant and nonparticipant colleague identities, authenticated staff requests and real handlers. It expects422 for the nonparticipant and compares complete selected approval rows plus `approval.requested` outbox, audit and notification rows before/after. It then expects200/pending for the participant, verifies reachable status in the staff view, deletes only that customer's participant row, and expects reach loss in both staff list and the customer's portal inbox. The portal decision expects403 and pending state; AP-15 remains blocked. `portalRequest` supplies the customer host and customer session, and `runTransition` restores the staff requester session.
+
+Existing direct requester/participant allowance, customer colleague404, null-requester private denial, project-organisation scoping, ordinary staff access and real staff membership-revocation checks remain. These are meaningful counterexamples for the cross-identity mechanism. The snapshots are selected approval/request-event tables, not a claim of a universal database-wide write audit.
+
+## Exact-head adverse runtime and diagnosis
+
+I read the conductor-produced `query812-runtime-5548df/candidate-check.txt`, invocation, result wrapper, inventory-diff receipt and raw log. Candidate check binds clean source5548 and the eight selected files. Invocation covers work-item project reach, approval repository, tenant checks, feature flag, both gate timezone wrappers, gate semantics and lifecycle. The wrapper reports start03:54:36.465234UTC/end03:55:17.906776UTC,41.441seconds, no timeout, native returncode1. Raw footer: seven files passed/one failed;94 tests passed/one failed. All source counterexamples in the updated repository test passed within the seven successful files.
+
+I independently hashed the raw log:188,880bytes, SHA-256 `9273ea7b63ad84397610e9eb1b3410b27fbb8d4310ec677e483a0b3211f05aae`, matching the conductor's supplied digest. The saved inventory comparison reports23containers/109volumes/seven networks unchanged; I did not independently query Docker.
+
+The failure is `tests/api-integration/approval-lifecycle.test.ts:649`: `adminKeyWithdrawal.status` was403, expected404. I inspected the setup, actual route, canonical identity, current SQL scope and withdrawal rules before classifying it:
+
+- Despite its variable name, this call addresses the ordinary requester route `/api/approvals/{id}/withdraw`, not the dedicated admin route.
+- The fixture explicitly changes its staff user's `user.role` to `admin`. Canonical identity resolution assigns a current instance admin `reach.kind = 'all'` (`resolve-identity.ts:543-570`), including a key credential. RBAC reach step1 is global instance-admin reach; lack of membership in the target workspace does not remove that reach. The current SQL instance-admin predicate checks the actual current staff/admin/active/not-banned facts. Thus the fixture comment saying this owner has no reach in that workspace is false for the identity it creates.
+- The staff identity's ordinary reach is no longer accidentally suppressed by CP-16 participation. Reach does not grant withdrawal authority: this key lacks `approval:request` and is not the approval requester, and the ordinary route does not opt into the session-only admin exception. A403 denial is consistent with the actual authority setup; I found no new product-security grant in this result.
+- The later ordinary-route404 assertions for a scoped admin key at672 and an admin session at709 use the same promoted-admin/no-target-workspace premise. They had not run after the first failure, so I do not report their actual results or count them as additional observed failures. They are related fixture assumptions for the owning lane to assess. The dedicated admin key call remains a separate session-only403 case.
+
+The current run remains adverse until the genuine fixture/contract mismatch is resolved and the required verification is rerun. This report does not change test expectations, supply a gate waiver, assert a universal status oracle, or call unexecuted later checks passed. Earlier6c and814 adverse results and the old78c223-file/3,291-test/five-task result remain bound to their actual sources; none accepts5548.
+
+## Actual reviewer actions and limits
+
+Read-only `git status`, `git rev-parse`, `git log`, `git show`, exact diffs/stat/name lists, `rg`, `cat`, `sed`, numbered source reads and Python byte/hash inspection only. Current head was5548 and short status empty at final source check. I inspected the unknown-side fail-closed branch, pure evaluator/key clamp, current SQL composition, all affected cross-identity consumers and the complete new test sequence. One exploratory identity-test filename did not exist and supplied no evidence.
+
+No tests/reproductions, analyzer/compiler, typecheck, install, build, PostgreSQL execution or DB mutation, Docker/container action, browser, CI/GitHub/ref action, source/shared-document edit, commit, push, merge or delegation was performed by me. This external report is the sole new file for this follow-up, created with `O_EXCL` and mode0600. Earlier report remains intact. Existing disclosed impersonation/per-request revocation/single-use residuals remain at their prior scope. This source security clearance is not a full passing test result, hosted-check approval, image acceptance, integrated SIT proof, phase finalizer or mission-completion claim.
+
+**Completed at:** 2026-10-17T03:57:46.369014+00:00
+
+
+### Preserved report `query812-5f21-admin-fixture-composition-ordinary-luna.md`
+
+# PR812 admin-reach fixture repair and accepted-main composition — ordinary review
+
+- **Candidate:** `5f21e468818d7d171eaf0cce50edb9bdb3354c5b`
+- **Relevant own-source parent:** `8de39e83e7bb9b3a1e3bb76946240866a0f6eedc`
+- **Accepted main parent (#814):** `e848f3bd05bec95c8af657c29923a6413a11c63f`
+- **Reviewer:** GPT-6 Luna, reused independent ordinary-review context; no authorship, direction, or remediation of the reviewed changes.
+- **Scope:** the 8de→candidate lifecycle fixture delta, exact admin/session/key/reach/write semantics, the accepted-main merge composition and retained exact-head runtime receipt.
+- **Verdict:** No blocking finding in this bounded review. The corrected 404 and 403 oracles match the actual global-reach versus authority contract, the dedicated admin route remains session-only, and the accepted #814 import is intact.
+
+## Admin and not-found oracle
+
+Canonical identity resolution derives `reach.kind = "all"` and `instance:admin` authority from the current persisted admin role for an active staff person; the API-key credential path retains that owner's global reach while its capability subset remains clamped. The RBAC contract explicitly says this global reach does not imply workspace/project capabilities. Accordingly, no target workspace membership does not make a current instance admin an out-of-reach caller.
+
+The ordinary requester withdrawal route has `approval:request` policy, requires row reach, and invokes `withdrawApprovalForIdentity(... allowInstanceAdmin: false)`. `canWithdrawApproval` opts into its admin exception only when that flag is true and the credential is a session. The domain relation is `requestedBy === actingPersonId || isInstanceAdmin`; the ordinary route passes false, so an admin who is not the actual requester is not authorized there. The dedicated route first checks current instance-admin session state, passes `allowInstanceAdmin: true`, and rejects API keys via its session-only route policy. These checks support the repaired behavior:
+
+- A real non-admin in another workspace, including a key scoped to `approval:request`, receives 404 through the ordinary route because neither session nor key has current target reach. The row remains pending and withdrawal event/audit counts do not change.
+- A global admin session or admin-owned API key on the ordinary requester route has global reach, so the target is not treated as missing; the route correctly answers 403. State and withdrawal event/audit counts remain unchanged.
+- An API key is still refused on the dedicated admin endpoint, even when its stored key scope names `approval:request`. The session admin succeeds on that endpoint and the later test checks its audit trail/withdrawal state.
+
+The earlier 404 expectations incorrectly treated workspace absence as no reach for a global admin. The added separate non-admin session and key cases retain the intended cross-workspace 404 oracle. The route and domain still separate reach from requester relation and capability.
+
+**Coverage note, not a product finding:** the instance-admin identity used in these 403 cases has no target project capability grant; `instance_admin` itself carries `instance:*`, and a key's `approval:request` scope cannot exceed the owner's authority. Thus the ordinary-route 403 for an admin does not independently isolate the requester-relation check from the route's `approval:request` capability denial. The code explicitly passes `allowInstanceAdmin: false`, `evaluateApprovalWithdrawalDecision` enforces the requester relation, and its domain tests cover a non-requester refusal. If a future API regression test needs to isolate the relation at the handler boundary, it can give the nonrequester admin a target-project `approval:request` role and a matching key scope, while retaining the expected 403 and separate dedicated-route session/key cases. I do not treat this limitation as blocking this test-oracle correction.
+
+## Accepted #814 composition verification
+
+The merge commit has parents `8de39e83…` and accepted main `e848f3bd…`. I independently parsed tracked Git trees (`git ls-tree -r`) for the own-source parent, accepted main, and candidate, then overlaid the proof's 20 own paths on accepted main. The result exactly matched the candidate for all mode/type/blob entries: accepted-main tree 3,394 entries; own-source tree 3,395; candidate 3,396; exact overlay `true`. The accepted #814 proof records 20 own paths, three incoming paths, 3,396 entries, no overlap/resolution, and the same exact-overlay result. The incoming auth repository, step-up service, and operation-proof security note equal accepted main. `git diff --name-status e848f3bd..5f21e468` contains only the 20 own approval paths; `git diff --name-status 8de39e83..5f21e468` contains only the three accepted #814 paths. No approval source was lost and the incoming #814 source is unchanged from accepted main. This confirms composition only; I did not conduct a new review of #814's auth implementation.
+
+## Exact-head runtime receipt inspected
+
+The retained `query812-runtime-5f21e4` evidence binds SHA `5f21e468…`, clean source and eight verified paths. Its PostgreSQL integration invocation completed without timeout at native return code 0: eight files passed, 95 tests passed, 40.872 seconds. The raw log SHA-256 is `b8314d5fc6600a164f4bb255a43f6601f5f6ce06c651b38a6224aca755e5f76a`, matching root's stated receipt; final inventory receipt reports no container/volume/network additions or removals. This is the selected eight-file PostgreSQL evidence only, not full CI, build, browser, image, or release acceptance. I inspected retained evidence; I did not run tests or inspect Docker independently.
+
+## Checks and limits
+
+- `git diff --check e848f3bd..5f21e468` passed; final `git status` was clean.
+- Read-only diff/source/report/receipt inspection and a read-only mode/type/blob-tree comparison only.
+- No tests, compiler/analyzer, install, typecheck, build, database, container, Docker, browser, CI/GitHub/ref mutation, source edit, or commit was performed by this reviewer.
+- This bounded ordinary confirmation does not replace the retained ordinary/Sol reviews for the cross-identity application repair, the accepted #814 gates, or broader CI and deployment acceptance.
+
+
+### Preserved report `query812-5f21-current-security-61-sol.md`
+
+# PR812 current-head security delta and accepted-main composition confirmation
+
+**Reviewed head:** 5f21e468818d7d171eaf0cce50edb9bdb3354c5b
+
+**Own-source delta base:** `5548dfde601fdbaf6ac614316eb8a3c3b26220f2`.
+**Own-source parent:** `8de39e83e7bb9b3a1e3bb76946240866a0f6eedc`.
+**Accepted-main merge parent:** `e848f3bd05bec95c8af657c29923a6413a11c63f` (#814, supplied accepted state).
+**Earlier full-audit comparison base:** `130508ef24f6442a59dbccaf305712891c8b3fbb`.
+
+**Reviewer/context:** fresh independent security context `/root/query812_5f21_current_security_sol`. I did not author, direct or remediate this candidate and spawned no agent. I am not the prior e829/5548 security reviewer. The conductor provided the invocation provenance `model=gpt-6.1-sol`, `reasoning_effort=high`, `fork_turns=none`; I cannot independently inspect the parent's invocation or a serving-model build fingerprint. This report records the requested GPT-6.1 Sol security role, without inventing additional model telemetry.
+
+## Verdict
+
+**CLEAR for this bounded current-head security delta and composition confirmation. No new blocking or non-blocking product-security finding identified.**
+
+The e829 P1 remains closed by the structural repair reviewed on 5548. Current approval source preserves immutable-in-use private audience facts and evaluates the actual identity. The subsequent own-source change is test-only, correcting global-admin reach assumptions while retaining real non-admin cross-workspace denials. Accepted #814 is composed unchanged, with no approval overlap or resolution.
+
+This is not a new full audit of every unchanged candidate line. I read the authentic earlier full source audit `query812-e829-full-customer-boundary-security-61-sol.md` (BLOCKED) and its follow-up `query812-5548-cross-identity-security-61-sol.md` (structural source CLEAR, then adverse runtime). Their actual eight application paths, eleven tests/helpers and historical note coverage, findings, original identities and limits remain retained at their original SHAs. I independently inspected the current connected security mechanisms described below. I do not relabel those reports as my own work or make their old runtime results current.
+
+## Inspected delta and current invariants
+
+`5548dfde..8de39e83` changes only `tests/api-integration/approval-lifecycle.test.ts` (52 additions, seven deletions). I read the entire actual diff and surrounding test setup, key helper, effect counter and member fixture. The three ordinary-route admin expectations change from404 to403; the additional separate ordinary non-admin session/key cases retain404 and check pending state plus unchanged selected withdrawal event/audit counts. The admin denial cases also check pending state and event/audit counts. These snapshots are selected effects, not a database-wide no-write audit.
+
+I inspected current `apps/api/src/approval/{repository,service,index,evidence,policy}.ts`, `apps/api/src/database/repositories/identity-scope.repository.ts`, relevant `apps/api/src/permissions/resolve-identity.ts`, `packages/permissions/src/evaluator.ts`, `apps/api/src/utils/require-session-only.ts`, `packages/domain/src/approvals/{approvals.ts,approvals.test.ts}`, the cross-identity regression in `tests/api-integration/approval-repository.test.ts`, `tests/api-integration/helpers/fixtures.ts`, and the AP-3/AP-6/AP-7, CP-16 and RBAC instance-admin contracts.
+
+- Both target loaders retain the persisted private requester/participant ID audience regardless of the loading identity; private items without a requester retain a participant list or empty list, not unrestricted null. `hasWorkItemReach` passes a new shallow projection with null audience only for the identity actually evaluated whose side is exactly staff. It never assigns into the target or strips facts required by a later customer check. Unknown persisted side fails identity resolution closed.
+- Creation resolves the proposed approver independently and checks that identity against the retained target facts. Staff formatting likewise evaluates the named approver, not the viewer. A same-org customer nonparticipant remains outside private reach; a removed participant becomes reach-lost even in staff views. The unchanged regression checks422 and selected no-write rows for the nonparticipant, participant success, staff/customer reach-loss flags, portal403/pending and an unsatisfied transition gate. I inspected these assertions; I did not execute them.
+- Staff privacy exemption remains local to the customer audience component. SQL scope still requires current canonical project reach and live item/project facts, with approval/work-item workspace anchoring. Current staff instance admins have global reach from persisted admin authority; staff without target reach do not gain it merely because customer participation is irrelevant to staff. Reach is separate from capability and actor relation.
+- The ordinary withdrawal route declares `approval:request`, publishes anchored evidence, and passes `allowInstanceAdmin:false`. The domain relation remains actual requester or an explicit admin exception; the ordinary path does not opt into that exception. API keys still need their owner's applicable authority intersected with their stored subset, and missing key-subset facts fail closed. An admin-owned key's scope cannot manufacture owner project authority.
+- The dedicated admin route retains both `sessionOnly:true` policy and executable `requireSessionOnly()` middleware, which refuses API keys and impersonation. It checks current instance-admin state, resolves the session identity and alone opts into the admin withdrawal path. Repository admin scope and helper opt-in remain session-only. Approval deciding is not granted by this withdrawal exception.
+
+The revised403 oracles agree with the actual global-reach identity setup: absence of target workspace membership does not make an instance admin globally out of reach. The new ordinary non-admin user is created in a distinct workspace without promotion and receives neither target project reach nor an own-approval metadata relation; its session and scoped-key404 checks retain that intended boundary.
+
+**Coverage residual, not a new product finding:** the admin403 calls lack a target project `approval:request` grant. Their denial alone does not isolate the requester-relation condition from capability denial. The current ordinary handler explicitly disables the exception and the domain tests cover nonrequester refusal. I agree with the ordinary report's limited conclusion and do not claim these integration assertions independently prove every denial layer.
+
+## Accepted-main composition
+
+I independently read the actual parent SHAs and compared Git tracked trees including mode/type/blob entries, using the20 own paths named in `812-accepted814-composition-proof.json`. Accepted main has3,394 entries, the own parent3,395 and candidate3,396. Overlaying those exact20 own-parent paths onto accepted main exactly equals the candidate. Every own path equals the own parent; each incoming path equals accepted main. The actual diffs contain only the20 own paths against accepted main and only the three incoming paths against the own parent:
+
+- `apps/api/src/auth/repository.ts`
+- `apps/api/src/auth/step-up-service.ts`
+- `docs/07-planning/security-reviews/query-ownership-operation-proof-580.md`
+
+I inspected the incoming diff's location and relevant purpose; this confirmation does not independently reaudit #814's operation-proof implementation or replace its accepted reviews. No approval source is changed by that merge. Current `git diff --check e848f3bd..HEAD` passed and final inspected head/status were the exact reviewed SHA and clean.
+
+## Retained exact-head runtime evidence
+
+I read `812-5f21e4-focused-pg-success-receipt.json` and `query812-runtime-5f21e4/{candidate-check.txt,vitest-invocation.txt,vitest-result.json,docker-inventory-final-diff.json}` plus the raw log footer. Candidate check binds clean5f21 source and eight verified paths. The selected PostgreSQL integration invocation covers project reach, approval repository, tenant checks, feature flag, both timezone wrappers, gate semantics and lifecycle. The wrapper reports start2026-10-17T04:02:22.960493UTC/end04:03:03.833175UTC,40.872seconds, no timeout and native returncode0. The raw footer reports eight files and95 tests passed.
+
+I independently hashed the200,496-byte raw `vitest.full.log`: SHA-256 `b8314d5fc6600a164f4bb255a43f6601f5f6ce06c651b38a6224aca755e5f76a`, matching the receipt. Saved inventory comparison reports23containers/109volumes/seven networks unchanged; I did not independently query Docker. The prior5548 adverse result stays adverse and source-bound; the new retained run supplies the passing evidence for these eight files on5f21 only.
+
+## Actions and limits
+
+Only read-only local Git, source/report/receipt reads, searches and a read-only Python tree/hash comparison were performed. Exploratory reads using incorrect identity/receipt paths and an unmatched policy glob failed and supplied no evidence; the correct paths were then inspected. No tests or reproduction, compiler/analyzer, install, typecheck, build, PostgreSQL execution or database mutation, Docker/container action, browser, CI/GitHub/ref action, source/shared-document edit, commit, push, merge or delegation was performed by me. This external report is the sole new file, created exclusively with `O_EXCL` and mode0600.
+
+Existing disclosed impersonation, per-request revocation and single-use residuals remain at their prior scope; none is newly claimed solved. This security confirmation is not whole-CI approval, image build/boot acceptance, browser or integrated SIT proof, merge authorization, phase finalization, stage completion or mission closure. Required hosted checks must be green on their actual exact candidate; no gate is waived.
+
+**Completed at:** 2026-10-17T04:09:19.424731+00:00
+
+
+### Preserved report `query812-6c-customer-boundary-ordinary-a-luna.md`
+
+# PR812 6c customer boundary — ordinary review A
+
+**Requested model:** GPT-6 Luna. **Context:** fresh independent reviewer; fork mode none. **Independence:** did not author, direct, or remediate the candidate.
+
+**Reviewed head:** `6c032badc5abcc911c9fd5dda6396b12aeac4330`
+**Base:** `78c3b49efa500022be04e337c0164b3128d0eb74`
+**Verdict:** APPROVE — no blocking or non-blocking findings in the reviewed delta.
+
+## Scope and checks performed
+
+Inspected the exact four-path diff and the complete approval-scope helper plus its relevant repository callers: `lockLiveWorkItem`, `lockApproval`, `insertApprovalForRequest`, decision/withdrawal updates, approval target lookups, `listApprovalRows`, and transition-gate approval reads. Read the author report, CP-16 in the customer portal spec, the RBAC private-item reach rule, and `currentProjectReachPredicate`. Static inspection only; no tests, analyzer, install, typecheck, build, Docker, browser, GitHub/CI actions, or edits were performed.
+
+The changed predicate returns SQL true for `side === "staff"` only at the requester/participant visibility component. Its parent `requestWorkItemScope` still conjuncts current project reach, deleted/archived item checks, and deleted-project check. Its callers retain workspace/id anchors where the row is approval-scoped; key lookup retains the unique item key and project join. The current project reach predicate admits staff by current canonical instance-admin, direct project membership, or workspace `sees_all` facts and does not grant customer reach. Route capability checks remain outside this helper. No changed code trusts request-supplied identity side or alters identity resolution.
+
+Customer coverage retains a real requester, explicitly added participant, and same-organisation colleague: requester and participant can read a private request; the colleague receives 404. The newly added positive staff API case has no staff participant and exercises listing plus creation, while asserting a pending approval continues to block the AP-15 transition. The reach fixture removes artificial staff participants; its denied-path valid body exercises out-of-reach 404, reachable-but-incapable 403, and no writes.
+
+## Limits
+
+This is a focused ordinary review of the new customer/staff boundary delta, not a fresh audit of all 18 paths or a substitute for the required independent GPT-6 Sol security review. Runtime behavior and test results were not independently verified in this reviewer context.
+
+
+### Preserved report `query812-6c-customer-boundary-ordinary-b-luna.md`
+
+# PR812 customer-boundary repair — independent ordinary review B
+
+- **Candidate:** `6c032badc5abcc911c9fd5dda6396b12aeac4330`
+- **Parent:** `78c3b49efa500022be04e337c0164b3128d0eb74`
+- **Reviewer:** GPT-6 Luna, fresh independent context; did not author, direct, or remediate the candidate.
+- **Scope checked:** exact four-path delta in `apps/api/src/approval/repository.ts`, `tests/api-integration/approval-repository.test.ts`, `tests/api-integration/helpers/reach-world.ts`, and `tests/api-integration/work-item-project-reach.test.ts`; read the approval and CP-16/RBAC contracts and author report as context.
+- **Verdict:** Changes requested. Root-owned focused PostgreSQL integration run on this exact SHA found three failures, including a production behavior defect in the candidate path. I inspected the relevant source and failure sites; I did not run tests.
+
+## Findings
+
+**P1 — staff private-item API reads and requests still fail the in-memory reach check.** The SQL predicate change allows a reachable staff identity to load a private work item, but both `loadApprovalTargetByKey` (`repository.ts:613-622`) and `loadApprovalTargetByApprovalId` (`:760-769`) still populate `reachFacts.visibleToPersonIds` from the customer requester and participants for every identity. `hasWorkItemReach` delegates to `reaches`, which rejects any identity not present in that list before checking its project reach (`packages/permissions/src/evaluator.ts:353-363`). For a staff member with valid current project reach who is neither the customer requester nor a participant, the route therefore still returns 404 after the target loads. This blocks the intended staff approval list/create behavior on private customer requests and also affects other approval paths that call `hasWorkItemReach` for that target. The candidate's exact-head PostgreSQL run reproduced it: new list case fails expected 200/actual 404, the staff reach expectation fails (`approval-repository.test.ts:177`), and the existing reader capability case receives 404 instead of 403 (`work-item-project-reach.test.ts:163`). Keep CP-16 private filtering for customer identities while constructing the target's reach facts, and preserve project reach for all identities.
+
+**P2 — restore the exact generic-lookup denial assertion after project reach is removed.** In the prior test at the parent SHA, after deleting the approver's request-participant row, the test asserted that `loadApprovalTargetByKey(currentApprover, tenant.key)` returns 404. The candidate removes that assertion. The replacement checks `hasWorkItemReach(...) === false` only after fetching the approval through `loadApprovalTargetByApprovalId`, whose query intentionally permits the named approver to load their own approval metadata after reach loss. It therefore does not prove that the ordinary work-item-key path still applies `currentProjectReachPredicate` after staff private-item filtering was bypassed.
+
+The new implementation is correctly structured on inspection: `requestWorkItemScope` still conjuncts `currentProjectReachPredicate`, visibility, and deleted/archive checks; only private visibility returns true for staff. Still, the removed test was a meaningful guard against moving the staff bypass outward and accidentally bypassing project reach too. Restore the 404 assertion after deleting membership (and before the own-approval metadata lookup) to retain this specific invariant.
+
+Evidence: prior assertion at parent `tests/api-integration/approval-repository.test.ts:135-137`; candidate sequence at `:194-208`; changed helper at `apps/api/src/approval/repository.ts:30-69`.
+
+## Other security checks by inspection
+
+- The SQL staff-only bypass is narrow to `identity.side === "staff"`; current project reach, tenant/workspace linkage, soft-delete/archive predicates, and capability checks remain conjunctive. Customer SQL visibility remains requester-or-participant-only.
+- The new integration case uses a real private customer request and no staff participant; it intends to check staff list/create and confirms the AP-15 transition remains blocked both before and after a pending request. It does not claim an approved transition.
+- Reach/capability no-write and customer colleague-denial cases remain represented in the changed tests. The reach-world adjustment supplies an actual transition identifier to make handler-level denial cases valid; its normal empty-body case remains for schema validation.
+
+## Verification limits
+
+- Read-only source and diff review only; `git diff --check` passed. Root ran the focused PostgreSQL suite; I inspected its reported three failing assertions and the source paths they exercise, without rerunning it.
+- No compiler/analyzer, install, typecheck, build, container, Docker, browser, PR, CI, or ref mutation performed.
+- This is an ordinary review of the bounded four-path delta. It is not the required independent GPT-6 Sol security review, exact-head runtime evidence, or final merge approval.
+
+
+### Preserved report `query812-814b-customer-boundary-ordinary-a-luna.md`
+
+# PR812 current-head customer boundary — ordinary confirmation A
+
+**Requested model:** GPT-6 Luna. **Reviewer context:** same fresh independent context as the earlier 6c review, reused for this bounded exact-head follow-up; no author/fixer role and no material authorship, direction, or remediation.
+
+**Reviewed head:** `814b2391b946662c46848918320a53cfcda34295`
+**Parent:** `6c032badc5abcc911c9fd5dda6396b12aeac4330`
+**Verdict:** APPROVE the bounded repair by static inspection; exact-head PostgreSQL result remains pending the orchestrator run.
+
+## Scope and checks actually performed
+
+Compared the exact two-path follow-up to 6c and the net repair to `78c3b49efa500022be04e337c0164b3128d0eb74`; read ordinary review B, the 6c author/fixer report, and the current author report. Traced both target constructors (`loadApprovalTargetByKey`, `loadApprovalTargetByApprovalId`) through `hasWorkItemReach` to `reaches`, inspected all current approval call sites, and rechecked the composing SQL scope and `currentProjectReachPredicate`. Inspected the staff-positive/private-customer test, customer requester/participant/colleague cases, lost-reach test, and the reach/capability/no-write case. No tests, analyzers, build, typecheck, database, CI, browser, or ref mutations were performed in this reviewer context.
+
+## Review of prior adverse result and fixes
+
+My prior 6c approval missed a real defect: although SQL let reachable staff load a private item, both target constructors still populated CP-16 `visibleToPersonIds` for staff. `reaches` applies that list before its staff project-reach branches, so a non-requester/non-participant staff member failed the in-memory check. The 814 diff conditions that private-person list on `identity.side === "customer"` in both constructors. Customer private visibility remains requester/participant constrained; staff reach now follows the project facts and current reach. The second prior finding is also closed: after deleting project membership, the test again asserts generic key lookup returns 404 before it separately checks own-approval metadata after reach loss.
+
+The staff SQL bypass is still local to `requestWorkItemVisibility` and remains conjuncted by `requestWorkItemScope` with `currentProjectReachPredicate`, deleted/archived item checks, and deleted-project check. Approval joins retain the `(work_item_id, workspace_id)` relationship and relevant queries constrain workspace IDs. The change does not alter `ResolvedIdentity`, accept a side from input, or change route capability checks. Staff positive coverage has no staff participant, calls list and create, and confirms AP-15 remains blocked with a pending approval. Customer denial and out-of-reach/insufficient-capability no-write cases remain represented.
+
+## Runtime evidence and limits
+
+The reported exact-6c focused PostgreSQL result was 6 files / 79 tests / 76 passed / 3 failed; ordinary review B inspected the three failure sites. The orchestrator reported a new focused PG run on 814 is running; no result was available to this reviewer while writing this report, so no exact-head pass is claimed. This is a bounded ordinary confirmation of the 814 customer-boundary repair, not a fresh audit of the full 18-path scope and not the required independent GPT-6 Sol review.
+
+
+### Preserved report `query812-814b-customer-boundary-ordinary-b-luna.md`
+
+# PR812 reach-facts repair — ordinary review B, exact head 814b
+
+- **Candidate:** `814b2391b946662c46848918320a53cfcda34295`
+- **Previous reviewed head:** `6c032badc5abcc911c9fd5dda6396b12aeac4330`
+- **Reviewer:** GPT-6 Luna, independent of author and fixer. This continues the same independent review context; it is not a newly spawned reviewer.
+- **Scope:** the exact two-path delta and its connected authorization flow in the four-path PR812 change; inspected `requestWorkItemVisibility`, both target builders, `hasWorkItemReach`/`reaches`, approval list/create and ID-based callers, and the restored membership-loss test.
+- **Verdict:** The prior P1 and P2 findings are closed by this delta. No new blocking finding from source review.
+
+## Findings disposition
+
+- **Prior P1 closed:** Both target builders now set `visibleToPersonIds` only when the identity is a customer and the work item is private. Consequently the shared `reaches()` check applies CP-16 requester/participant visibility to customers while staff reach continues through the project reach facts. The SQL `requestWorkItemVisibility` staff bypass is still confined to that predicate; `requestWorkItemScope` continues to conjunct it with `currentProjectReachPredicate` and the live/deleted/archive filters. Staff list/create handlers still call `hasWorkItemReach` before their capability and service operations, so the fix does not skip the shared reach check.
+- **Prior P2 closed:** The test again asserts generic key lookup returns 404 after deleting the staff approver's project membership, before it loads the approver's own approval metadata. It also verifies that the metadata lookup remains available while `hasWorkItemReach` is false.
+- **Customer boundary retained:** Customer identities still receive the requester/participant ID list from both target builders. The SQL target lookup retains the matching private requester/participant predicate, and current project/customer-organisation reach remains required. This preserves same-organisation colleague 404 behavior, including private items without a requester.
+- **Tenant and authority checks retained:** Staff current project reach remains in SQL and is rechecked through target reach facts. Route capability checks, key capability ceilings, and approval requester/approver-specific metadata branches are outside this delta and remain in their existing paths.
+
+## Checks and limits
+
+- `git diff --check` passed for the `6c032bad..814b239` delta.
+- No test, compiler/analyzer, install, typecheck, build, PostgreSQL, container, Docker, browser, PR/CI, or ref mutation was performed. Root's exact-head PostgreSQL run was reported as still running when this review was assigned; its result is not claimed here.
+- This review closes the prior ordinary B findings for the current two-path delta. It is not the required independent GPT-6 Sol review, runtime evidence, or merge approval.
+
+
+### Preserved report `query812-814b-existing-revocation-fixture-assessment-luna.md`
+
+# PR812 814b review follow-up — existing staff reach-loss fixtures
+
+- **Candidate assessed:** `814b2391b946662c46848918320a53cfcda34295`
+- **Reviewer:** GPT-6 Luna, the same independent ordinary B context; this is a bounded follow-up, not a new review clearance.
+- **Evidence:** Root reports the exact-head focused PostgreSQL run produced 78/79 passing assertions plus one native failure. The failed existing `approval-tenant-checks.test.ts` check 6 returned 200 where its assertion expects 403. I inspected that fixture and the connected approval fixture/search results; I did not run the suite.
+- **Disposition:** The failing assertion is a valid reach-revocation invariant, but its current fixture does not revoke staff project reach. Keep the 403/pending oracle and repair the fixture to remove the real project membership. Do not treat the current suite as green or clear this candidate based on the old assertion alone.
+
+## Assessment
+
+In `approval-tenant-checks.test.ts:261-272`, the comment says “Lost membership/reach,” but the fixture only changes `work_item.customer_visibility` from `organisation` to `private`, decides, then changes it back. The approver created by `buildTenant` is a staff member with a project-scoped `membershipTable` grant (`approval-fixtures.ts` around 235-251). Under CP-16, requester/participant visibility is the customer-side boundary. A staff member who keeps current project reach remains entitled to the private request, so the new 200 is consistent with the intended contract. The fixture must revoke and then restore the approver's actual project membership/role (or otherwise remove every current reach path), while preserving the existing expected 403 and pending approval state. Restore reach before the later expiry/concurrency assertions.
+
+The same mechanism appears in at least two further approval fixtures and needs a whole-approval audit before any substitute assertions are accepted:
+
+- `approval-gate-semantics.test.ts:171-186` makes the item private and says the CAB approver “cannot see this private item”; `buildTenant` gives that staff approver current project reach. If the test intends an out-of-reach approver, remove the actual project reach while preserving CAB membership and capabilities, then keep the expected request refusal/no-row result.
+- `approval-lifecycle.test.ts:433-466` removes the staff approver's request-participant row from a private item and expects `approverReachLost` plus a 403. That row removal no longer revokes staff project reach. Revoke actual project membership there too, keep the reach-lost/list/403 assertions, and restore membership before the test's later re-add/decision path as required by its scenario.
+
+A repository-wide search of approval integration tests found these as the other explicit private/reach cases, plus `approval-repository.test.ts` where private customer requester/participant access is intentional. That makes these the concrete known scope for the repair; the whole audit should search all `tests/api-integration/approval-*.test.ts`, `tests/api-integration/helpers/approval-fixtures.ts`, and approval-related repository tests for mutations of `customerVisibility`, request-participant changes, and comments describing staff reach loss. Keep customer-side CP-16 tests that are truly about customer requester/participant scope unchanged. For every staff reach denial or loss case, assert against the canonical project/workspace reach grant, not customer privacy or participant rows.
+
+The SQL staff bypass remains correctly conjoined with `currentProjectReachPredicate`, and the two post-query reach-facts sites correctly omit customer-private IDs for staff. This review follow-up does not identify a new production defect in 814b; it identifies stale tests whose oracle encoded customer privacy as staff reach. The exact-head runtime run remains red until the fixture set and focused suite are repaired and re-run.
+
+## Limits
+
+- Read-only inspection and `rg` across approval integration fixtures; no source or test edits and no tests rerun.
+- The previously delivered ordinary B report for 814b is preserved. This follow-up does not replace independent GPT-6 Sol security review, runtime evidence, or merge approval.
+
+
+### Preserved report `query812-admin-reach-fixture-repair-author-luna.md`
+
+# PR812 admin reach fixture repair — author report
+
+- Candidate commit: `8de39e83` (the exact SHA is the current branch HEAD recorded alongside this report).
+- Branch: `codex/query789-current-main-luna`; no push performed.
+- Changed file: `tests/api-integration/approval-lifecycle.test.ts` only. Application source is unchanged.
+
+## Repair
+
+The lifecycle test had treated a global instance admin as out of reach merely because the admin had no membership in the target workspace. Canonical identity resolution grants global reach to a current instance admin, while the ordinary requester withdrawal route still requires the requester's capability/relation. The test now expects 403 on those ordinary routes and checks that the request remains pending with unchanged withdrawal event and audit counts. The key without `approval:request` is also expected to fail 403. The scoped API key remains denied with 403 on the session-only `/api/admin` route; the session admin remains allowed on that dedicated route.
+
+The test now creates a non-instance-admin in a separate workspace and verifies that both their session and scoped API key receive 404 for a target approval outside their reach. It checks pending state and unchanged withdrawal event/audit counts after those denials.
+
+## Verification and limits
+
+- `git diff --check`: passed.
+- Commit pre-commit formatting hook: passed (`Checked 1 file; no fixes applied`). The first commit attempt identified formatting; it was corrected before the successful commit.
+- Tests, database integration, analyzers, typecheck, build, browser: not run, per delegated scope; root owns integration verification.
+- No claims of independent review or test-suite success.
+
+Exact candidate SHA: `8de39e83e7bb9b3a1e3bb76946240866a0f6eedc`.
+
+
+### Preserved report `query812-cross-identity-audience-structural-repair-author-luna.md`
+
+# PR812 cross-identity audience repair — author report
+
+**Role:** Author / fixer (not eligible to review or approve this change)
+**Branch:** `codex/query789-current-main-luna`
+**Starting head:** `e829205e7c212e7fcaecceed0e0365816b14d847`
+**Structural fix commit:** `6ce634a60c2c38c962f9c897db0304787b1a9c74`
+**Regression assertion follow-up:** `5548dfde601fdbaf6ac614316eb8a3c3b26220f2`
+**Final source head:** `5548dfde601fdbaf6ac614316eb8a3c3b26220f2`
+**Commit identity:** `Codex (GPT-6 Luna) <agent@taskdesk.local>` (task-local identity matching repository history)
+
+## Structural invariant and consumer audit
+
+The two `ApprovalTarget` loaders (`loadApprovalTargetByKey` and `loadApprovalTargetByApprovalId`) now always retain persisted `visibleToPersonIds` for private work items, independent of the identity that loaded the target. The common `hasWorkItemReach(identity, target)` boundary applies customer audience facts only when evaluating a customer identity; staff reach remains governed by the already-conjoined current project/workspace authority facts. No target facts are mutated or projected differently for the loader.
+
+Audited every approval `reachFacts` reference. The two loaders are the only constructors, and `hasWorkItemReach` is the only direct consumer. Its call sites are approval service create/decide/withdraw paths, approval index list/create/decide paths, and `formatApproval`'s named-approver status computation. Thus a staff-loaded target is evaluated against a proposed customer approver's actual customer identity and preserved requester/participant audience. The staff SQL exception remains in the private visibility component of the SQL scope, conjunctive with current project reach, workspace anchoring, and liveness predicates.
+
+## Regression coverage
+
+Extended `approval-repository.test.ts` to exercise the cross-identity vector end to end:
+
+- Staff requests an approval for a same-organisation customer who is neither requester nor participant: 422, with approval rows, request outbox events, audit events and notifications unchanged.
+- Staff requests approval for the actual customer participant: 200; staff sees the named approver as currently reachable.
+- After removing that customer's participant row, both the staff approval list and the customer's own portal inbox report `approverReachLost: true`; the customer's decision is denied with 403 and the approval stays pending.
+- Existing private requester and participant lookup, customer colleague denial, staff/private success, no-reach 404, AP-15 pending gate, and workspace/project/organisation-denial coverage remain in place.
+
+The named approver's own addressed metadata remains visible through the existing inbox exception while current reach is reported accurately; that exception does not make the customer eligible for a new approval request or to decide after reach loss.
+
+## Files
+
+- `apps/api/src/approval/repository.ts`
+- `tests/api-integration/approval-repository.test.ts`
+
+## Checks and limits
+
+- `git diff --check`: passed before commits.
+- Normal pre-commit Biome hooks passed on the changed files; no fixes applied on successful commits.
+- No tests, PostgreSQL, other analyzers, typecheck, install, build, container, database, or browser checks run, per assignment. Orchestrator owns exact-head verification.
+- No push, CI dispatch, PR, merge, or history rewrite.
+- The full independent Sol report on e829 remains unmodified and retained. The prior 814 run remains adverse (78/79); neither is evidence for this new head. This source requires fresh exact-head runtime verification and independent review.
+
+
+### Preserved report `query812-customer-audience-reach-facts-repair-author-luna.md`
+
+# PR812 customer-audience reach-facts repair — author report
+
+**Role:** Author / fixer (not eligible to review or approve this change)
+**Branch:** `codex/query789-current-main-luna`
+**Starting head:** `6c032badc5abcc911c9fd5dda6396b12aeac4330`
+**New commit:** `814b2391b946662c46848918320a53cfcda34295`
+**Commit identity:** `Codex (GPT-6 Luna) <agent@taskdesk.local>` (task-local Git identity, matching existing repository commit history). The preceding `6c032bad` commit retained its existing Thomas author metadata; it was not rewritten.
+
+## Change
+
+Both approval target builders now add `visibleToPersonIds` only for customer identities on private work items. The existing staff-only SQL visibility bypass remains inside the existing conjunctive project-reach/liveness/tenant scope. Customer visibility facts continue to enforce requester/participant-only reach. Restored the generic work-item-key 404 assertion after staff project membership removal, while preserving the own-approval metadata path.
+
+## Files
+
+- `apps/api/src/approval/repository.ts`
+- `tests/api-integration/approval-repository.test.ts`
+
+## Checks and limits
+
+- `git diff --check`: passed.
+- Normal commit pre-hook ran Biome on the two changed files: passed, no fixes applied.
+- No tests, PostgreSQL, other analyzers, typecheck, install, build, container, or browser checks run; orchestrator owns those.
+- No push, PR, CI dispatch, merge, or history rewrite.
+
+The orchestrator's focused PostgreSQL run on prior source `6c032bad` reported 6 files, 79 tests, 76 passed and 3 failed. This commit addresses the ordinary-review P1 reach-facts failure and P2 generic-lookup assertion gap; exact-head PostgreSQL verification and fresh independent ordinary/security reviews remain outstanding.
+
+
+### Preserved report `query812-customer-audience-repair-author-luna.md`
+
+# PR812 customer-audience repair — author report
+
+**Role:** Author / fixer (not eligible to review or approve this change)
+**Branch:** `codex/query789-current-main-luna`
+**Base:** `78c3b49efa500022be04e337c0164b3128d0eb74`
+**Committed source:** `6c032badc5abcc911c9fd5dda6396b12aeac4330`
+**Starting source snapshot:** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/query812-source.dK3UNd` (directory mode 0700; files mode 0600)
+
+## Change
+
+`requestWorkItemVisibility` now applies the exact requester/participant private visibility rule only to customer identities. Staff approval reads and requests still require the existing current project reach predicate and retain tenant, liveness, capability, and approval semantics.
+
+The integration fixture no longer adds staff as request participants to make the approval route pass. Its valid denied-path request now uses existing transition/person IDs and CAB-shaped data. Repository integration coverage uses actual customer-side requester, participant, and colleague fixtures; it verifies customer colleague 404, requester/participant access, reachable staff approval list/create on a private request without staff participation, and the existing AP-15 gated transition remains blocked before and after a pending request. Existing reach/capability/no-write and invalid-body cases are retained.
+
+## Files
+
+- `apps/api/src/approval/repository.ts`
+- `tests/api-integration/helpers/reach-world.ts`
+- `tests/api-integration/work-item-project-reach.test.ts`
+- `tests/api-integration/approval-repository.test.ts`
+
+## Checks and limits
+
+- `git diff --check`: passed before commit.
+- Normal commit pre-hook ran Biome on the four changed files; formatting passed on the successful attempt. It emitted three warnings for the existing `TASKDESK_STORAGE_FILESYSTEM_ROOT` / `TASKDESK_STORAGE_DRIVER` undeclared Turborepo environment entries in `work-item-project-reach.test.ts`.
+- Integration tests, other analyzers, typecheck, install, build, database/container/browser checks: not run, per assignment; orchestrator owns verification.
+- No push, PR, merge, or review claim.
+
+## Coverage limits
+
+The positive API case verifies staff list/read and approval creation and verifies AP-15 remains enforced with a pending approval. It does not exercise customer approval decision or an approved transition; existing approval lifecycle/gate suites own those behaviors. Exact-head real PostgreSQL verification and independent ordinary/security reviews remain outstanding.
+
+
+### Preserved report `query812-e829-full-customer-boundary-security-61-sol.md`
+
+# PR812 e829 — fresh full independent security review
+
+**Reviewed head:** e829205e7c212e7fcaecceed0e0365816b14d847
+
+**Comparison base:** `130508ef24f6442a59dbccaf305712891c8b3fbb` (accepted main supplied for this review).
+
+**Role/context:** Fresh independent FULL security reviewer, `/root/query812_e829_full_customer_boundary_security_sol`. I did not author, direct, or remediate this candidate, and spawned no child agent. The conductor supplied the review packet and ordinary reports; their claims were checked against source, not treated as authority for my verdict.
+
+**Requested model/dispatch provenance:** `gpt-6.1-sol`, `fork_turns=none`, `reasoning_effort=high`, as supplied by the conductor. These are requested routing attributes. An independently verifiable served-model/version/build fingerprint is unavailable in this context; I do not invent one or claim to have inspected the parent's actual spawn invocation.
+
+**Method:** Read-only full security source review across the actual 20-path base-to-head scope, including the new customer/staff boundary and fixture repair. I inspected every changed path's actual diff and the current relevant implementation, fixtures, contracts and callees. This is not a claim to have reread every unchanged line of the large work-item router. No tests or runtime reproduction were executed by this reviewer.
+
+## Verdict
+
+**BLOCKED — one P1 security finding on the exact e829 source.**
+
+The staff SQL visibility exception is correctly local to customer privacy and retains current project reach. However, the accompanying in-memory target projection is viewer-dependent and is subsequently reused to authorize a different person. That creates a private-customer audience bypass at approval creation and an incorrect reach-loss flag in staff views. This candidate must not be cleared on the basis of its ordinary fixture confirmations or older runtime results.
+
+## P1 — a staff-loaded target loses the customer audience constraint before another customer's reach is checked
+
+**Locations:** `apps/api/src/approval/repository.ts:613-627` and `:760-774`; cross-identity consumers `apps/api/src/approval/service.ts:113-118` and `apps/api/src/approval/index.ts:107-114`; pure reach evaluation `packages/permissions/src/evaluator.ts:353-378`.
+
+Both target loaders now construct `reachFacts.visibleToPersonIds` only when the identity used to load the target is a customer. A staff loader therefore returns `visibleToPersonIds: null` even for a private request with a persisted requester and exact participant audience. `hasWorkItemReach` simply calls `reaches(identity, target.reachFacts)`; it does not recover the omitted audience from `target.isPrivate`, nor reload it for the evaluated identity.
+
+Those facts are not used only for the loading identity:
+
+1. `createApproval` loads the target using the requesting staff identity, then resolves the proposed approver and checks `hasWorkItemReach(approverIdentity, target)`. For a customer approver in the project's customer organisation who is neither the private request's requester nor a participant, the target has no visibility constraint, so `reaches` takes its organisation branch and returns true. The insertion later rechecks the requesting staff's SQL resource scope, not that customer's private audience. With otherwise valid references, feature configuration and permissions, source tracing therefore predicts that the request persists instead of the AP-3 422/no-row refusal. I did not execute this vector.
+2. The resulting approval is addressed to that customer. The intentional own-addressed approval exception in `listApprovalsForPerson` and `loadApprovalTargetByApprovalId` preserves their approval metadata even without ordinary reach. `responseRow` includes the work-item key and title and approval context. Wrongly admitting that customer at creation can thus expose private request metadata to someone who never had CP-16 reach; the existing lost-reach metadata exception is not a grant to create such an approval in the first place.
+3. `formatApproval` checks the named approver's current identity using the target loaded for the viewer. When a staff viewer lists a pending customer approval after that customer's participant row was removed, the staff projection still has a null audience. The same-org customer still appears in reach, so the staff response incorrectly reports `approverReachLost: false`. The customer's own view/decision loads a customer-scoped target and refuses the decision, making the staff flag inconsistent with the actual current boundary.
+
+**Contract:** approvals AP-3 requires the proposed approver to have work-item reach and refuses an out-of-reach submission. CP-16 and RBAC's private-request rule constrain customers to the requester and explicit participants even inside their own organisation. The approvals edge-case table requires lost reach to be flagged from current canonical work-item reach. Staff may have their own normal project reach without being a customer participant; that fact cannot widen a different customer's audience.
+
+**Structural invariant exposed by the counterexamples:** persisted requester/participant audience facts must remain available independently of who loaded a target. A reach decision for a person must use that person's side and current reach together with those actual audience facts. A staff projection cannot serve as proof that a different customer has private-request reach. This is a finding and acceptance invariant, not implementation authorship or a remediation patch.
+
+**Coverage gap:** the added positive staff/private integration case explicitly adds its proposed customer approver as a participant, so it cannot catch the forbidden same-org nonparticipant case. The new direct customer colleague lookup test checks a target loaded by that same customer, which also misses cross-identity reuse. The e829 staff membership-revocation repairs exercise real staff reach but do not establish the customer audience invariant above.
+
+**Finding status:** open and blocking. No additional distinct blocking or non-blocking security finding was identified in the remaining reviewed scope.
+
+## Actual 20-path scope
+
+Application paths (8):
+
+- `apps/api/src/approval/evidence.ts`
+- `apps/api/src/approval/index.ts`
+- `apps/api/src/approval/reminder-scan.ts`
+- `apps/api/src/approval/repository.ts`
+- `apps/api/src/approval/service.ts`
+- `apps/api/src/work-item/controllers/list-work-item-transitions.ts`
+- `apps/api/src/work-item/controllers/transition-work-item.ts`
+- `apps/api/src/work-item/index.ts`
+
+Tests/helpers (11):
+
+- `tests/api-integration/approval-closure-and-clock.test.ts`
+- `tests/api-integration/approval-feature-flag.test.ts`
+- `tests/api-integration/approval-gate-semantics.test.ts`
+- `tests/api-integration/approval-lifecycle.test.ts`
+- `tests/api-integration/approval-repository.test.ts`
+- `tests/api-integration/approval-tenant-checks.test.ts`
+- `tests/api-integration/helpers/approval-fixtures.ts`
+- `tests/api-integration/helpers/approval-single-use-suite.ts`
+- `tests/api-integration/helpers/reach-world.ts`
+- `tests/api-integration/work-item-project-reach.test.ts`
+- `tests/api-integration/work-item-transition.test.ts`
+
+Historical publication path (1):
+
+- `docs/07-planning/security-reviews/query-ownership-approvals-580.md`
+
+The actual base-to-head stat was 20 files, 2,227 insertions and 296 deletions. The historical note does not exist in the accepted comparison base; it is an added path there, not an existing accepted-base note that I can claim has a preserved prefix. Its current bytes are exactly the earlier publication78c bytes, as checked below.
+
+## Other security checks and prior finding dispositions
+
+**Staff SQL and tenant/liveness boundaries.** `requestWorkItemVisibility` returns true for staff only inside the private-audience component. `requestWorkItemScope` still ANDs it with `currentProjectReachPredicate`, live/unarchived item and live project checks. Key lookup remains unique-key scoped; approval queries retain the work-item/workspace pair and project join. SQL resource predicates use current canonical memberships, workspace sees-all and current instance-admin evidence. Customer project organisation is read from the project, not the workspace attribution. Direct customer lookups still constrain private requester/participant scope, including null-requester items. Those correct checks do not repair the cross-identity finding.
+
+**Approval metadata and action separation.** Exact named-approver/requester relations remain the intentional own-approval metadata exception. Generic work-item-key lookup still requires ordinary current project/customer reach. Decision and requester-withdrawal mutations do not use that metadata exception as authority: they retain normal reach, applicable capabilities, named approver/requester, pending/finality, no self-approval and rejection-note rules. The dedicated admin withdrawal exception remains session-only, opt-in, current-instance-admin-backed and separate from deciding. API keys and impersonation cannot obtain that session-only exception.
+
+**Identity and capability flow.** Approval evidence/handlers and transition handlers pass authenticated key and impersonation facts to the shared canonical identity adapter. The adapter checks key owner/enabled facts and supplies the exact stored capability subset; `can` retains the owner authority intersection, project role override and missing-key-scope fail-closed behavior. No request body supplies identity side. No new route, policy kind, schema, capability, dependency or generalized grant appears in this diff.
+
+**Transactions and workflow gate.** Extracted inserts/updates keep the provided transaction executor. Parent work-item locks precede approval locks/writes; conditional decision/withdrawal updates remain scope- and pending-bound. Denial precedes activity/audit/event work. Transition reads and locked reads keep current resource scope and the single-use counting clause; matching transition ID, approved state, CAB kind and any/all policy remain domain gate inputs. Pending closure affects the same workspace/item/transition, removes inbox rows only for returned closed IDs and audits closure in the same transaction. No approval metadata exception supplies a workflow gate pass. AP-15 remains enforced with no approval and a merely pending approval in the added staff case.
+
+**Clocks and bounded scan.** The insert-select projection retains schema order, bound values, explicit null lifecycle fields, UTC database creation/default-expiry expressions and column-encoded explicit expiry. The scan retains lease, bounded batch/run size, pending selection, UTC wall-clock comparisons, approval-only SKIP LOCKED, and same-transaction state/outbox/audit work. The extracted helpers retain id/workspace/pending predicates and unchanged-row no-event behavior. I did not execute timezone, concurrency or reminder tests.
+
+**e829 fixture repair.** I inspected the exact membership capture/delete/restore helpers and all three replaced scenarios. Capture filters exact person, project scope and project id, fails if missing, deletes only the selected row id and restores the complete same row. Their tested staff approvers hold the relevant direct project membership; unrelated CAB membership and roles are retained. The tenant scenario retains 403/pending and restores reach before expiry/concurrent decisions. Gate semantics retains 422/no approval rows. Lifecycle retains reach-lost/403 and restores membership before later success. These are legitimate staff authority revocation repairs; making a private customer item does not itself revoke staff project reach. They do not close P1.
+
+## Retained evidence, actual checks and limits
+
+I read AGENTS, the active mission, agent workflow/model/evidence rules, CLAUDE provider adapter, latest status and decision context, approvals AP rules/edge cases, CP-16, RBAC reach/private/customer/key boundaries, security model and query-ownership contracts. I read the current author, ordinary A/B and fixture-assessment reports for 6c,814 and e829, the original full f7fb security report, the accepted-main composition evidence and relevant historical note sections. Earlier reports retain their actual scope; this report does not relabel an original 15-path review or a bounded composition review as a current full review.
+
+Read-only commands included `pwd`, `git status --short`, `git rev-parse HEAD`, actual base-to-head and78c-to-e829 diffs/stat, `rg`/`rg --files`, `cat`, `sed` and numbered source ranges. I read the canonical scope/identity/evaluator/executor/clock code and traced the affected route, service, target and workflow call sites. An exploratory schema-path lookup did not exist; it supplied no evidence. An initial attempted accepted-base note read failed because that note is absent there, then I correctly compared with its actual78c publication.
+
+A read-only Python byte/hash check independently verified all19 artifacts in `812-accepted813-publication-proof.json`: every byte count/hash matched and every authentic report body was embedded unedited in the current note. Current note bytes143,870 and SHA-256 `5d30194d922f8b2ca1415a901d28cc0411369109ba9431f23ce84769aa8ce732` matched the proof and the exact78c publication. Hashes/embedding verify preservation, not reviewer independence by themselves.
+
+I inspected the retained adverse receipts: exact6c reports6files/79tests,76passed/3failed, native exit1; exact814 reports6files/79tests,78passed/1failed, native exit1. The latter records the three earlier failures fixed and one stale staff-revocation fixture failure. Those are adverse results on their stated sources, not passes. The conductor confirmed that no exact-e829 PostgreSQL run had occurred when this report was completed. I therefore claim no e829 runtime result. In particular, the old78c full PostgreSQL223files/3,291tests/five tasks remains old78c evidence and is not current-e829 proof.
+
+**No tests/reproductions, analyzer/compiler, typecheck, install, build, PostgreSQL, DB mutation, Docker/container action, browser, CI/GitHub/ref action, source/shared-document edit, commit, push, merge or delegation was performed by this reviewer.** The only new file is this external report, exclusively created using `O_EXCL` with mode0600. Final source inspection showed exact head e829 and empty short status. This verdict is not runtime/image/browser acceptance, current CI clearance, a gate waiver, merge permission, feature/stage completion, release/SIT acceptance or mission closure. Existing disclosed impersonation and per-request revocation/single-use residuals retain their prior scope; none is newly claimed solved.
+
+**Completed at:** 2026-10-17T03:51:24.251454+00:00
+
+
+### Preserved report `query812-e829-staff-revocation-ordinary-a-luna.md`
+
+# PR812 e829 staff revocation fixture repair — ordinary confirmation A
+
+**Requested model:** GPT-6 Luna. **Reviewer context:** reused independent context from the prior bounded reviews; not the author/fixer and did not materially author, direct, or remediate the candidate.
+
+**Reviewed head:** `e829205e7c212e7fcaecceed0e0365816b14d847`
+**Parent:** `814b2391b946662c46848918320a53cfcda34295`
+**Verdict:** APPROVE the bounded fixture repair by static inspection. Exact-head runtime verification remains pending the orchestrator run.
+
+## Checks performed
+
+Read the e829 author report and prior 814b fixture assessment; inspected the exact four-path diff, the 814 adverse PG receipt, the membership fixture helper, and the three replaced approval test setups and their surrounding assertions. Confirmed the prior receipt reports 78/79 passed with one failure, and separately retains the three earlier 6c-specific failures as fixed on 814. No tests, analyzers, typecheck, build, DB, Docker, browser, CI, or source/ref changes were performed in this reviewer context.
+
+`revokeProjectMembership` selects a membership by the exact person, `scope = project`, and project scope ID, fails if absent, deletes by that row ID, and returns the complete persisted row. `restoreProjectMembership` reinserts that same complete row. It does not delete or rewrite other project/workspace memberships, role rows, CAB team membership, or capabilities. The inspected fixtures create one direct project membership for the affected approver and do not create a workspace `membershipTable` `seesAll` grant, so removing the captured row removes the tested current project reach while retaining CAB membership/capability data.
+
+All three scenarios preserve their intended denial or lifecycle checks: tenant check 6 keeps 403 and pending state, then restores reach before expiry and concurrent-decision checks; request-time reach keeps 422 and zero approval rows, restoring reach afterward; lifecycle reach-loss retains the private item/customer participant semantics and `approverReachLost`, 403, then restores the exact project row and participant before its later successful decision. No negative assertion was weakened or removed. The customer privacy fixtures are unchanged.
+
+## Limits
+
+The prior exact-814 receipt is adverse (one failure); it is not green evidence for 814, and no exact-e829 runtime result was available to this reviewer. This review covers only the four changed fixture/test paths, not a new full-source audit or the required GPT-6 Sol review.
+
+
+### Preserved report `query812-e829-staff-revocation-ordinary-b-luna.md`
+
+# PR812 staff revocation-fixture repair — ordinary review B
+
+- **Candidate:** `e829205e7c212e7fcaecceed0e0365816b14d847`
+- **Base for this bounded review:** `814b2391b946662c46848918320a53cfcda34295`
+- **Reviewer:** GPT-6 Luna, same independent ordinary B context. The author did not author, direct, or remediate this review.
+- **Scope:** exact four-file fixture delta; checked the helper's project-scope/person filters and exact-row deletion/restoration, plus each HTTP request/assertion sequence and the before/after project membership state.
+- **Verdict:** No blocking finding in this fixture repair. It correctly preserves the 403/422, pending/no-write, reach-lost, expiry/concurrency, and later-success oracles while using actual canonical staff project reach revocation.
+
+## Review notes
+
+`revokeProjectMembership(personId, projectId)` selects only the matching `membershipTable` row with `scope = 'project'` and the exact project id, fails loudly if the fixture is missing that grant, deletes by the selected row id, and returns the full row. `restoreProjectMembership` reinserts that exact row, retaining its role id, `seesAll`, and other stored values. The helpers therefore remove the actual reach grant that `currentProjectReachPredicate` uses and restore it for subsequent test phases. The approval fixture's approver is an ordinary staff identity with this project membership; it has no instance-admin or owning-team alternate reach path in these scenarios.
+
+The adjusted paths exercise real HTTP handlers with authenticated sessions:
+
+- `approval-tenant-checks.test.ts` revokes the named approver's project membership, expects 403 and a still-pending approval, restores the membership, then runs the existing expiry and concurrent-decision checks.
+- `approval-gate-semantics.test.ts` leaves the CAB role/team setup in place, revokes only the approver's project reach, and expects the existing 422 plus zero approval rows; it restores the membership afterward.
+- `approval-lifecycle.test.ts` retains the private customer request and participant removal, adds actual project membership revocation for the loss phase, and retains `approverReachLost`, 403, and pending-state checks. It restores the exact membership and re-adds participation before the intended successful decision.
+
+This resolves the stale-fixture concern identified in the previous follow-up. The exact-head runtime suite result was still pending at review time. The earlier 814b run (78/79 with one stale-fixture failure) remains adverse evidence for 814b; this report does not claim the new head passed runtime tests. The 814b application-code fixes remain unchanged.
+
+## Checks and limits
+
+- `git diff --check` passed on the four-file delta.
+- Read-only diff and caller/fixture inspection only. No tests, analyzer/compiler, typecheck, install, build, PostgreSQL, container, Docker, browser, CI/PR, or ref mutation was performed.
+- This is ordinary review B of the bounded fixture delta. It is not the required independent GPT-6 Sol security review, exact-head runtime evidence, or merge approval.
+
+
+### Preserved report `query812-staff-revocation-fixture-structural-repair-author-luna.md`
+
+# PR812 staff reach-loss fixture repair — author report
+
+**Role:** Author / fixer (not eligible to review or approve this change)
+**Branch:** `codex/query789-current-main-luna`
+**Starting head:** `814b2391b946662c46848918320a53cfcda34295`
+**New commit:** `e829205e7c212e7fcaecceed0e0365816b14d847`
+**Commit identity:** `Codex (GPT-6 Luna) <agent@taskdesk.local>` (task-local Git identity matching existing repository history)
+
+## Audit and mapped cases
+
+Audited approval integration files and `helpers/approval-fixtures.ts` for private visibility changes, request-participant changes, membership changes, and staff reach-loss claims.
+
+- `approval-tenant-checks.test.ts`, check 6: replaced the false “private visibility means lost membership” setup with actual revocation of the named approver's project membership. Kept 403 and pending-state assertions; restored the exact captured membership before expiry and concurrent-decision cases.
+- `approval-gate-semantics.test.ts`, request-time approver-reach case: removed customer-private/participant manipulation and revoked the CAB approver's actual project membership. Kept the 422 and no-approval-row assertions; restored the captured membership.
+- `approval-lifecycle.test.ts`, reach-lost approver flow: retained its private item, participant removal, `approverReachLost`, 403, and later successful-decision assertions; additionally revoked canonical project membership for the negative phase and restored that exact row before re-adding participation and deciding.
+- `approval-repository.test.ts`: confirmed its CP-16 denials use actual customer identities; its staff no-reach case already deletes the actual project membership and retains generic key 404 plus own-approval metadata behavior.
+- Remaining approval fixture search hits set visibility to `organisation` as setup/reset, or keep customer requester/participant behavior; no further stale staff-private-as-revocation case was identified.
+
+Added `revokeProjectMembership` / `restoreProjectMembership` helpers that capture and restore the exact existing project membership row. No permission model or product behavior changed in this batch.
+
+## Files
+
+- `tests/api-integration/helpers/approval-fixtures.ts`
+- `tests/api-integration/approval-tenant-checks.test.ts`
+- `tests/api-integration/approval-gate-semantics.test.ts`
+- `tests/api-integration/approval-lifecycle.test.ts`
+
+## Checks and limits
+
+- `git diff --check`: passed.
+- Normal commit pre-hook Biome check on all four changed files: passed, no fixes applied.
+- No tests, PostgreSQL, other analyzers, typecheck, install, build, container or browser checks run; the orchestrator owns runtime verification.
+- No push, CI dispatch, PR, merge, or history rewrite.
+
+Root's focused PostgreSQL evidence on prior `814b2391` was 6 files / 79 tests, 78 passed and one failed. The suite must be rerun on this exact new head. Existing customer privacy, approval pending, expiry, concurrent-winner, no-write and own-metadata oracles are retained; no assertion was weakened or removed.
+
+
+## Current exact source binding
+
+Each preserved report retains its actual source, provenance and scope. Current5f21 application source is frozen; this publication appends only its own regular100644 review note. Full hosted/image and final-body checks remain mandatory.
+
+**Reviewed head:** `5f21e468818d7d171eaf0cce50edb9bdb3354c5b`
