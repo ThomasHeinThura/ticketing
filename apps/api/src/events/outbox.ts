@@ -1,6 +1,6 @@
 import type db from "../database";
-import { outboxTable } from "../database/schema";
 import { EVENT_KEYS } from "./event-keys";
+import { insertOutboxEvent } from "./outbox.repository";
 
 export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -66,17 +66,5 @@ export async function enqueueOutboxEvent<
     }
   }
 
-  const workspaceId =
-    "workspaceId" in event.scope ? event.scope.workspaceId : null;
-  await tx.insert(outboxTable).values({
-    eventId: event.id,
-    kind: event.kind,
-    payload: event,
-    dedupeKey: null,
-    workspaceId,
-    organisationId: event.scope.organisationId ?? null,
-    state: "pending",
-    attempts: 0,
-    lastError: null,
-  });
+  await insertOutboxEvent(tx, event);
 }
