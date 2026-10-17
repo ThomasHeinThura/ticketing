@@ -1,7 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { splitI18nNamespaces } from "../../../vite/i18n-namespace-groups";
+import {
+  referencedNamespaces,
+  splitI18nNamespaces,
+} from "../../../vite/i18n-namespace-groups";
 import {
   WORK_LIST_PATH_PATTERN,
   WORK_ROUTE_I18N_NAMESPACES,
@@ -45,14 +48,22 @@ describe("work route namespace groups", () => {
       "components/app-sidebar.tsx",
       "components/nav-main.tsx",
       "components/nav-projects.tsx",
+      "components/notification/notification-dropdown.tsx",
+      "lib/i18n/domain.ts",
     ];
+    const catalog = JSON.parse(
+      readFileSync(path.resolve(i18nDir, "en-US.json"), "utf8"),
+    );
+    const known = Object.keys(catalog);
     const used = new Set<string>();
     for (const file of files) {
       const source = readFileSync(path.join(srcDir, file), "utf8");
-      for (const match of source.matchAll(/\bt\(\s*["'`]([A-Za-z]+):/g))
-        used.add(match[1]);
+      for (const namespace of referencedNamespaces(source, known))
+        used.add(namespace);
     }
     expect(used.has("workItems")).toBe(true);
+    expect(used.has("notifications")).toBe(true);
+    expect(used.has("tasks")).toBe(true);
     for (const namespace of used)
       expect(WORK_ROUTE_I18N_NAMESPACES as readonly string[]).toContain(
         namespace,

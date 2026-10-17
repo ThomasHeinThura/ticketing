@@ -10,6 +10,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@taskdesk/ui";
 import { ChevronRight } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
@@ -42,6 +43,7 @@ export function NavMain() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
   const navigate = useNavigate();
+  const { isMobile, setOpenMobile } = useSidebar();
   const { data: invitations = [] } = usePendingInvitations();
   const { user } = useAuth();
   // Reachable views and their counts are not needed to paint the shell (G11), so they are
@@ -99,6 +101,9 @@ export function NavMain() {
   if (!workspace) return null;
 
   const pendingCount = invitations.length;
+  const closeMobileSidebar = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   const navItems = [
     {
@@ -153,7 +158,10 @@ export function NavMain() {
                       isActive={item.isActive}
                       size="default"
                       className="h-8 ps-3.5 text-sm hover:bg-transparent hover:text-sidebar-accent-foreground active:bg-transparent"
-                      onClick={() => navigate({ to: item.url })}
+                      onClick={() => {
+                        navigate({ to: item.url });
+                        closeMobileSidebar();
+                      }}
                     >
                       <span>{item.title}</span>
                       {item.badge !== null && (
@@ -177,13 +185,14 @@ export function NavMain() {
                             }
                             size="default"
                             className="h-8 ps-6 text-sm hover:bg-transparent hover:text-sidebar-accent-foreground active:bg-transparent"
-                            onClick={() =>
+                            onClick={() => {
                               // The screen replaces a bare URL with the view's definition.
                               navigate({
                                 to: routes.savedView.path,
                                 params: { id: view.id },
-                              })
-                            }
+                              });
+                              closeMobileSidebar();
+                            }}
                           >
                             <span className="truncate">{view.name}</span>
                             {navigationCounts[index]?.data !== undefined && (

@@ -63,9 +63,12 @@ describe("i18n group mode on the work list", () => {
     expect(i18n.t("navigation:page.projectsTitle")).not.toBe(
       "navigation:page.projectsTitle",
     );
+    expect(i18n.hasLoadedNamespace("notifications")).toBe(true);
+    expect(i18n.t("notifications:title")).not.toBe("notifications:title");
+    expect(i18n.hasLoadedNamespace("tasks")).toBe(true);
+    expect(i18n.t("tasks:status.done")).not.toBe("tasks:status.done");
     expect(rest.requests).toBe(0);
     expect(i18n.hasLoadedNamespace("settings")).toBe(false);
-    expect(i18n.hasLoadedNamespace("tasks")).toBe(false);
 
     afterPaint.release();
     await vi.waitFor(() => expect(rest.requests).toBeGreaterThan(0));

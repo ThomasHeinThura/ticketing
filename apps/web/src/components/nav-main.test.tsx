@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   user: { id: "viewer-1" } as { id: string } | undefined,
   workspaceId: "ws-1",
+  isMobile: false,
+  closeMobile: vi.fn(),
   paint: { resolve: () => {} },
   getSavedViews: vi.fn(),
   countSavedView: vi.fn(),
@@ -25,6 +27,16 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
+vi.mock("@taskdesk/ui", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@taskdesk/ui")>();
+  return {
+    ...actual,
+    useSidebar: () => ({
+      isMobile: mocks.isMobile,
+      setOpenMobile: mocks.closeMobile,
+    }),
+  };
+});
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
@@ -92,6 +104,8 @@ beforeEach(() => {
   );
   mocks.user = { id: "viewer-1" };
   mocks.workspaceId = "ws-1";
+  mocks.isMobile = false;
+  mocks.closeMobile.mockReset();
   mocks.navigate.mockReset();
   mocks.getSavedViews.mockResolvedValue([
     view("v-pinned", "Escalations", true, "private"),
@@ -116,6 +130,28 @@ describe("NavMain saved views (SV-20, SV-22)", () => {
     renderNav();
     fireEvent.click(screen.getByRole("button", { name: "Saved views" }));
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent/views" });
+    expect(mocks.closeMobile).not.toHaveBeenCalled();
+  });
+
+  it("closes the mobile drawer after navigating from the index and a pinned view", async () => {
+    mocks.isMobile = true;
+    renderNav();
+    mocks.paint.resolve();
+
+    fireEvent.click(screen.getByRole("button", { name: "Saved views" }));
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent/views" });
+    expect(mocks.closeMobile).toHaveBeenCalledWith(false);
+
+    mocks.navigate.mockClear();
+    mocks.closeMobile.mockClear();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Escalations/u }),
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/agent/views/$id",
+      params: { id: "v-pinned" },
+    });
+    expect(mocks.closeMobile).toHaveBeenCalledWith(false);
   });
 
   it("reads nothing until the page has painted (G11)", async () => {

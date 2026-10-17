@@ -8,9 +8,24 @@ const mocks = vi.hoisted(() => ({ pathname: "/agent/projects/OPS/work" }));
 vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: mocks.pathname }),
 }));
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+vi.mock("@taskdesk/ui", () => ({
+  SidebarTrigger: ({ toggleLabel }: { toggleLabel: string }) => (
+    <button aria-label={toggleLabel} type="button" />
+  ),
+}));
 vi.mock("@/components/common/layout", () => ({
-  default: ({ children }: { children: ReactNode }) => (
-    <div data-testid="shared-agent-sidebar-shell">{children}</div>
+  default: Object.assign(
+    ({ children }: { children: ReactNode }) => (
+      <div data-testid="shared-agent-sidebar-shell">{children}</div>
+    ),
+    {
+      Header: ({ children }: { children: ReactNode }) => (
+        <header>{children}</header>
+      ),
+    },
   ),
 }));
 
@@ -32,6 +47,9 @@ describe("AuthenticatedRouteContent", () => {
       expect(
         screen.getByTestId("shared-agent-sidebar-shell"),
       ).toHaveTextContent("route content");
+      expect(
+        screen.getByRole("button", { name: "common:a11y.toggleSidebar" }),
+      ).toBeInTheDocument();
     },
   );
 
@@ -47,6 +65,9 @@ describe("AuthenticatedRouteContent", () => {
 
       expect(screen.queryByTestId("shared-agent-sidebar-shell")).toBeNull();
       expect(screen.getByText("route content")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "common:a11y.toggleSidebar" }),
+      ).toBeNull();
     },
   );
 });

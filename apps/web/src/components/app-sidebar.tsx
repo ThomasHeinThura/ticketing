@@ -5,6 +5,7 @@ import {
   SidebarGroup,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuItem,
   SidebarMenuSkeleton,
   useSidebar,
 } from "@taskdesk/ui";
@@ -62,8 +63,12 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
           fallback={
             <SidebarGroup className="group-data-[collapsible=icon]:hidden gap-1 p-2 pt-1">
               <SidebarMenu>
-                <SidebarMenuSkeleton />
-                <SidebarMenuSkeleton />
+                <SidebarMenuItem>
+                  <SidebarMenuSkeleton />
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuSkeleton />
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroup>
           }
