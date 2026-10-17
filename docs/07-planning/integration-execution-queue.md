@@ -1,3 +1,17 @@
+## Accepted step-up slice and repaired recovery owners — 2026-10-17 02:58 UTC
+
+Accepted main `130508ef24f6442a59dbccaf305712891c8b3fbb` is protected #813 acceptance. This dated snapshot supersedes task-state rows below; prior bytes and owner decisions are preserved.
+
+| Owner / unit | Actual current source/evidence | Next action |
+| --- | --- | --- |
+| Conductor / accepted813 | Source7d301/publication433, full222/3284/5, browser63/G1122, finalunit12/API121872/web1861023, image125/UID10001/health200/isolation/cleanup, all18 checks; actual main1305. | Preserve scoped acceptance; remaining proof persistence and whole580 unfinished. |
+| Conductor / #811 recovered773 | Localc3329e7d on accepted1305 includes narrow404 repair7671; unit1file2 and APItsc0; ordinary repair CLEAR. Olde30 runtime was green but final live finding blocked merge. | Current-composition ordinary/Sol, authentic own-note append, new exact-publication full/image/finalbody/FAST/strict18. Original773 stays open. |
+| Conductor / #812 recovered789 | Local24711f61 on accepted1305 includes fixture5fa; actualfocused6files78/native0; ordinary repair CLEAR. Oldd65 full failure and0d600 negative-body failure retained. | Current-composition ordinary/Sol, own-note append, new exact-publication full/image/finalbody/FAST/strict18. Original789 stays open. |
+| Conductor / operation-proof persistence580 | Localdcf4071f composes accepted1305, treeidentical to7f4 with two ordinary/fullSol and actual4files159/native0. | Bounded current-composition confirmations, own-note publication and focused protected acceptance; preserve coverage corrections. |
+| Luna / Carrier791 | Addendum6 checker59215dc2/test2b569a12, unchanged manifest; known linkage/state-frontier requirements incomplete. All earlier native failures retained. | Complete connected source repair before fresh critical readiness and one complete focused file diagnostic; no inventory or manifest workaround. |
+| Conductor / held810,807,798 | Existing exact-head calibration/budget refusals remain; no unchanged manual retry. | Genuine accepted-main composition/review/new checks when acceptance queue allows. |
+| Conductor / records803 and final589 | Latest record refresh on accepted1305 requires its own review/current checks. Combined signed release/SIT/nonempty restore/final audit not done. | Continue current queue; no record merge around product dependencies, no UAT/production. |
+
 ## Current recovered-source acceptance queue — 2026-10-17 02:01 UTC
 
 Accepted main remains `5a26ca75e60c7232ab8280a13e599fcbe4fd3518`. This snapshot supersedes task-state rows below; no scope/owner decision changes.
