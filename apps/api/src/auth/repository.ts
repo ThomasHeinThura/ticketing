@@ -153,12 +153,19 @@ export function getPasswordCredential(userId: string) {
 
 type StepUpExecutor = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export function lockPendingActionForChallenge(
+export async function createPendingActionChallengeRecord(
   executor: StepUpExecutor,
-  actionId: string,
-  personId: string,
-) {
-  return executor
+  input: {
+    id: string;
+    personId: string;
+    sessionId: string;
+    pendingActionId: string;
+    nonceHash: Buffer;
+    limit: number;
+    onLimit: () => never;
+  },
+): Promise<Date | null> {
+  const [action] = await executor
     .select({
       id: schema.pendingActionTable.id,
       confirmation: schema.pendingActionTable.confirmationRequired,
@@ -166,37 +173,93 @@ export function lockPendingActionForChallenge(
     .from(schema.pendingActionTable)
     .where(
       and(
-        eq(schema.pendingActionTable.id, actionId),
-        eq(schema.pendingActionTable.requestedByPersonId, personId),
+        eq(schema.pendingActionTable.id, input.pendingActionId),
+        eq(schema.pendingActionTable.requestedByPersonId, input.personId),
         eq(schema.pendingActionTable.state, "pending"),
         gt(schema.pendingActionTable.expiresAt, sql`now()`),
       ),
     )
     .for("update")
     .limit(1);
-}
+  if (!action?.confirmation.endsWith("_step_up")) return null;
 
-export function countRecentPendingActionChallenges(
-  executor: StepUpExecutor,
-  personId: string,
-  sessionId: string,
-  pendingActionId: string,
-) {
-  return executor
+  await executor.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.pendingActionId}))`,
+  );
+  const [recent] = await executor
     .select({ value: count() })
     .from(schema.stepUpConfirmationTable)
     .where(
       and(
-        eq(schema.stepUpConfirmationTable.personId, personId),
-        eq(schema.stepUpConfirmationTable.sessionId, sessionId),
+        eq(schema.stepUpConfirmationTable.personId, input.personId),
+        eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
         eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
-        eq(schema.stepUpConfirmationTable.pendingActionId, pendingActionId),
+        eq(
+          schema.stepUpConfirmationTable.pendingActionId,
+          input.pendingActionId,
+        ),
         gt(
           schema.stepUpConfirmationTable.createdAt,
           sql`now() - interval '15 minutes'`,
         ),
       ),
     );
+  if ((recent?.value ?? 0) >= input.limit) input.onLimit();
+
+  await executor
+    .update(schema.stepUpConfirmationTable)
+    .set({ challengeExpiresAt: sql`now()` })
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.personId, input.personId),
+        eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
+        eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
+        eq(
+          schema.stepUpConfirmationTable.pendingActionId,
+          input.pendingActionId,
+        ),
+        eq(schema.stepUpConfirmationTable.state, "challenge"),
+        gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
+      ),
+    );
+  await executor
+    .update(schema.stepUpConfirmationTable)
+    .set({ tokenExpiresAt: sql`now()` })
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.personId, input.personId),
+        eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
+        eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
+        eq(
+          schema.stepUpConfirmationTable.pendingActionId,
+          input.pendingActionId,
+        ),
+        eq(schema.stepUpConfirmationTable.state, "issued"),
+        gt(schema.stepUpConfirmationTable.tokenExpiresAt, sql`now()`),
+      ),
+    );
+
+  const clock = await executor.execute<{ challenge_expires_at: string }>(
+    sql`SELECT (now() + interval '5 minutes')::text AS challenge_expires_at`,
+  );
+  const clockRow = clock.rows[0];
+  if (!clockRow) throw new Error("Database time is unavailable");
+  const expiresAt = new Date(clockRow.challenge_expires_at);
+  await executor.insert(schema.stepUpConfirmationTable).values({
+    id: input.id,
+    personId: input.personId,
+    sessionId: input.sessionId,
+    bindingKind: "pending_action",
+    pendingActionId: input.pendingActionId,
+    operationKey: null,
+    routeKey: null,
+    expectedVersion: null,
+    bodyHash: null,
+    challengeNonceHash: input.nonceHash,
+    state: "challenge",
+    challengeExpiresAt: expiresAt,
+  });
+  return expiresAt;
 }
 
 export async function countRecentOperationChallenges(
