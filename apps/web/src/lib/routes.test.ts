@@ -6,18 +6,24 @@ import {
   DEFAULT_WORK_ITEM_LIST_SEARCH,
   parseGeneratedRouteUrl,
   parseGodModeUsersSearch,
+  parseIdentityConnectionEditorSearch,
+  parseIdentityConnectionEditorSearchFromQueryString,
   parseIntakeSearch,
   parsePendingActionsSearch,
   parsePendingActionsSearchFromQueryString,
   parsePortalCatalogueSearch,
   parsePortalSignInSearch,
   parseRequestTypeEditorSearch,
+  parseSavedViewsSearch,
+  parseSavedViewUrlSearch,
+  parseSavedViewUrlSearchFromQueryString,
   parseServiceCalendarListSearchFromQueryString,
   parseSlaPolicyListSearch,
   parseWorkItemDetailSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   routes,
+  type SavedViewUrlSearch,
   toggleWorkItemSortDirection,
   WORK_ITEM_SORT_DIRECTIONS,
   WORK_ITEM_SORT_FIELDS,
@@ -580,5 +586,175 @@ describe("routes.slaPolicies", () => {
     expect(routes.slaPolicyEditor.build({ id: "policy/one" })).toBe(
       "/agent/settings/sla-policies/policy%2Fone",
     );
+  });
+});
+
+describe("routes.identityConnections", () => {
+  it("builds the routes the screen inventory names", () => {
+    expect(routes.identityConnections.build()).toBe(
+      "/agent/god-mode/authentication",
+    );
+    expect(routes.identityConnectionEditor.build({ id: "new" })).toBe(
+      "/agent/god-mode/authentication/new",
+    );
+    expect(routes.identityConnectionEditor.build({ id: "conn/a" })).toBe(
+      "/agent/god-mode/authentication/conn%2Fa",
+    );
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.identityConnections.path,
+    );
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.identityConnectionEditor.path,
+    );
+  });
+
+  it("round-trips the open tab, events cursor and mapping selection through the URL", () => {
+    for (const search of [
+      { tab: "scim" as const },
+      { tab: "scim" as const, mapping: "new" },
+      { tab: "scim" as const, mapping: "map/1" },
+      { tab: "events" as const },
+      { tab: "events" as const, eventsCursor: "abc_DEF-123" },
+    ]) {
+      const url = routes.identityConnectionEditor.build(
+        { id: "conn-1" },
+        search,
+      );
+      expect(
+        parseIdentityConnectionEditorSearchFromQueryString(
+          url.split("?")[1] ?? "",
+        ),
+      ).toEqual(search);
+    }
+  });
+
+  it("only keeps state that belongs to the open tab and drops everything else", () => {
+    expect(
+      parseIdentityConnectionEditorSearch({ tab: "scim", eventsCursor: "abc" }),
+    ).toEqual({ tab: "scim" });
+    expect(
+      parseIdentityConnectionEditorSearch({ tab: "events", mapping: "new" }),
+    ).toEqual({ tab: "events" });
+    expect(
+      parseIdentityConnectionEditorSearch({
+        mapping: "new",
+        eventsCursor: "abc",
+      }),
+    ).toEqual({});
+    expect(parseIdentityConnectionEditorSearch({ tab: "connection" })).toEqual(
+      {},
+    );
+    expect(parseIdentityConnectionEditorSearch({ tab: "nope" })).toEqual({});
+  });
+
+  it("rejects a malformed or oversized events cursor and never carries secrets or form values", () => {
+    expect(
+      parseIdentityConnectionEditorSearch({
+        tab: "events",
+        eventsCursor: "has space",
+      }),
+    ).toEqual({ tab: "events" });
+    expect(
+      parseIdentityConnectionEditorSearch({
+        tab: "events",
+        eventsCursor: "x".repeat(513),
+      }),
+    ).toEqual({ tab: "events" });
+    expect(
+      parseIdentityConnectionEditorSearch({
+        tab: "scim",
+        password: "never-in-url",
+        token: "never-in-url",
+      }),
+    ).toEqual({ tab: "scim" });
+  });
+});
+
+describe("routes.savedView (SV-19: the URL fully encodes the view)", () => {
+  const search = {
+    workspaceId: "workspace/1",
+    scope: "project" as const,
+    scopeId: "project-1",
+    layout: "list",
+    filter: '(priority:high OR assignee:@me) AND project:"OPS, Platform"',
+    filterMode: "text" as const,
+    sort: "priority" as const,
+    dir: "desc" as const,
+    columns: ["key", "state", "priority"],
+  } satisfies SavedViewUrlSearch;
+
+  it("round-trips workspace, scope, layout, filter, mode, sort and columns", () => {
+    const url = routes.savedView.build({ id: "view/one" }, search);
+    expect(url.startsWith("/agent/views/view%2Fone?")).toBe(true);
+    const [, query] = url.split("?");
+    expect(parseSavedViewUrlSearchFromQueryString(query ?? "")).toEqual(search);
+  });
+
+  it("is idempotent: rebuilding from the parsed URL gives the same URL", () => {
+    const url = routes.savedView.build({ id: "v" }, search);
+    const [, query] = url.split("?");
+    expect(
+      routes.savedView.build(
+        { id: "v" },
+        parseSavedViewUrlSearchFromQueryString(query ?? ""),
+      ),
+    ).toBe(url);
+  });
+
+  it("builds a bare path when nothing is known and adds no defaults", () => {
+    expect(routes.savedView.build({ id: "v" })).toBe("/agent/views/v");
+    expect(parseSavedViewUrlSearch({})).toEqual({});
+    expect(parseSavedViewUrlSearch(undefined)).toEqual({});
+    expect(parseSavedViewUrlSearch({ sort: "title" })).toEqual({
+      sort: "title",
+    });
+  });
+
+  it("drops every invalid or hostile part without throwing and keeps the rest", () => {
+    expect(
+      parseSavedViewUrlSearch({
+        workspaceId: "w".repeat(201),
+        scope: "organisation",
+        scopeId: "",
+        layout: "kanban",
+        sort: "position",
+        dir: "sideways",
+        filter: "a\u0000b",
+        columns: ["nope"],
+        cursor: "ignored",
+      }),
+    ).toEqual({});
+    expect(
+      parseSavedViewUrlSearch({ workspaceId: "w1", layout: "board" }),
+    ).toEqual({ workspaceId: "w1", layout: "board" });
+  });
+
+  it("carries no cursor: a continuation is bound to one viewer and cannot be shared", () => {
+    expect(
+      routes.savedView.build({ id: "v" }, {
+        ...search,
+        cursor: "abc",
+      } as never),
+    ).not.toContain("cursor");
+  });
+
+  it("is a generated route", () => {
+    expect(generatedRouteMetadata.agent).toContain(routes.savedView.path);
+  });
+});
+
+describe("routes.savedViews", () => {
+  it("round-trips the name filter and bounds it", () => {
+    const url = routes.savedViews.build({ query: "  my / view  " });
+    expect(url).toBe("/agent/views?query=my+%2F+view");
+    expect(
+      parseSavedViewsSearch({ query: "x".repeat(201) }).query,
+    ).toHaveLength(200);
+    expect(parseSavedViewsSearch({ query: "   " })).toEqual({});
+    expect(routes.savedViews.build()).toBe("/agent/views");
+  });
+
+  it("is a generated route", () => {
+    expect(generatedRouteMetadata.agent).toContain(routes.savedViews.path);
   });
 });

@@ -1,5 +1,16 @@
-import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
+import {
+  MutationCache,
+  notifyManager,
+  QueryCache,
+  QueryClient,
+} from "@tanstack/react-query";
 import { handleUnauthorized, isUnauthorizedError } from "@/lib/http-error";
+
+// TanStack defaults to setTimeout(0) for observer notifications. That hop
+// queues behind the next frame under CPU pressure, delaying optimistic updates
+// (for example task assignment) by one or two frames. A microtask keeps the
+// batching but commits the update before the browser renders the next frame.
+notifyManager.setScheduler(queueMicrotask);
 
 // TanStack raises these before any fetcher-level message exists; CORS rejections
 // from the browser also surface here. Used both to skip auto-retry and to tag

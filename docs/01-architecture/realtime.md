@@ -254,7 +254,7 @@ for cross-replica delivery. This is control traffic, not a domain event or durab
 | Missed messages | On reconnect the client refetches active queries. No replay buffer — the REST API is always the source of truth |
 | Keepalive | Client sends a ping every 30 s; the server replies with `pong` |
 | Backpressure | Native sockets close when buffered output exceeds 64 KiB; the client reconnects and refetches |
-| Limits | 5 concurrent sockets per person; 50 topic subscriptions per socket |
+| Limits | 5 concurrent sockets per person **per API replica and per socket kind** (the native and the legacy project sockets are counted separately, each in its own process, so N replicas allow up to 5N of each kind); 50 topic subscriptions per socket |
 | Session revoked | The socket re-authenticates at least every 60 s and closes when the session is no longer valid |
 | Permission revoked | Affected topics are dropped on the invalidation message; the client is told which and refetches |
 | Subscribe flood | Per-socket rate limit on inbound frames; a client exceeding it is closed |
@@ -291,6 +291,14 @@ polling active through reconnect until all requested topics are acknowledged aga
 If the WebSocket cannot connect — a proxy that strips upgrades, a hostile corporate
 network — the client falls back to polling active queries every 30 seconds and shows a
 small "live updates unavailable" indicator. The application remains fully usable.
+
+The legacy project socket follows the same rule. A close that the client did not cause shows the
+indicator until the socket opens again, so a terminal stop keeps it showing: the per-person
+connection limit (`1008`, "connection limit", which the client does not retry because the server
+would accept the upgrade and close it again) and the retries used up. A remount, or a change of
+project or session, starts the socket over and clears the indicator. The client does not retry
+the limit close on its own after a route change that keeps the same project mounted; that retry
+is not specified here, and the pages poll every 30 seconds meanwhile.
 
 ## Testing
 
