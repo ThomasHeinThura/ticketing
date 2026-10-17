@@ -240,3 +240,10 @@ Conductor-run evidence read, not independently reproduced:
 **Retained residuals:** Pending-action N1 remains unresolved and unwaived. Twelve unresolved type-boundary modules and the broader query inventory remain open. The structural ownership checker cannot prove tenant-predicate correctness. Exact-publication required hosted checks and the normal protected flow remain conductor responsibilities; no current publication result, image/runtime/SIT/release/recovery proof, stage closure, whole-#580 completion or merge-readiness claim is made here.
 
 **Final verdict:** CLEAR for full independent Sol security delta review of `c54d265092e682c7ca1bbad6984965f363a00ffd`, carrying forward the original full security review at `19c7e9f661f48815d38219ea416db76163221d93` and independently assessing the imported accepted-main `d924594290cf0317150c5c9cdd0a746bc0595202` delta and interactions described above.
+
+
+## Current source attestation
+
+**Reviewed head:** `c54d265092e682c7ca1bbad6984965f363a00ffd`
+
+This machine-readable field records the exact current composition already reviewed by both delta reports above. Their original bytes and verdicts remain unchanged. The first local template check recognized only the older backtick-delimited head; its native failure is retained. No source or clearance scope changes.
