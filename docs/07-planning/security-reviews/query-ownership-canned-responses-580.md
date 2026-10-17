@@ -2341,3 +2341,10 @@ A first Python metadata read assumed `vitest-result.json` was a Vitest reporter 
 Live read-only GitHub inspection still shows OPEN #807 published at ec64, not 304d. Its old checks, including the then-running PostgreSQL job, are not current-candidate CI. Required exact-head CI and all applicable image/browser/runtime/merge gates remain conductor-owned and must be satisfied after publication. BROWSER VERIFICATION: BLOCKED by this review's no-runtime assignment. This report grants no merge authorization, current image/SIT/backup/restore acceptance, G11 remediation, phase/stage completion, release or deployment claim.
 
 ~~~
+
+
+### Current-head attestation syntax correction
+
+**Reviewed head:** `304d36e9cb4717be88e8879d37ddb19ce08f3ed7`
+
+The local template check requires the full SHA in inline code. Earlier bare-SHA header and verbatim security report remain authentic; this adds the machine-readable spelling for the same independently reviewed source. Both ordinary clearances, the full Sol clearance and all source bytes remain unchanged. All intervening commits modify only this designated note. No gate semantics or source approval is changed.
