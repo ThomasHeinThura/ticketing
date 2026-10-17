@@ -1,3 +1,22 @@
+## Conductor checkpoint — 2026-10-17 12:05 UTC
+
+Main is protected #820 merge `fe063765774b73587488b753c91c6477653662cc` (11:56:59Z), exact publication treebf1c605e. The dated status snapshot records its full tests/image/review evidence. This records checkpoint neither accepts remaining product candidates nor enables #580.
+
+| Unit | State | Exact source/publication | Owner and next action |
+| --- | --- | --- | --- |
+| Pending-action invalidation #820 | DONE | reviewedb4a49 / publication3e292 / mainfe063 | Conductor; bounded extraction merged through all18 gates, N1 remains unresolved |
+| SAME Carrier C #791 | RUNNING | local31fc00b9 / checkerf16494ed / test0e2b5fe0 | Conductor; current public source census running, then actual manifest/current verification and three ordinary/full Sol reviews; remote PR remains older head |
+| Canned responses #807 | WAITING_CI | a1218b91, reviewed d7e0177 | Conductor; current PG pending, preserve NB1 and historic failures, then strict current-main integration/reviews/exact checks |
+| Boot/outbox #798 | WAITING_CI | c4556ec6, reviewedfc094 | Conductor; current PG pending, then strict current-main integration/reviews/exact checks; no causal G11 fix claim |
+| Query checker preparation #797 | WAITING_CI | 82224710, reviewed6fc8ce0 | Conductor; required exact-publication CI pending; no production wiring/whole580 acceptance |
+| Identity/users confirmed builders #580 | WAITING_REVIEW | localde4e3433 / authorbee98bc4 | Conductor; two ordinary source clearances and API5config pass recorded, full Sol pending; then serialized focused PG/unit and normal publication/current gates |
+| Leaf/intake #810 | WAITING_CI | 3f5e8dab | Conductor; actual G11 second-set223.2ms remains failed/unwaived, require diagnosis or genuine changed integration inputs; no unchanged retry |
+| Time/cost #811 and predecessor #773 | WAITING_DECISION | remote73ce0912 / local09bcfa38 | Thomas; three existing valuation/midnight/timezone questions plus owning review findings remain; preserve source |
+| Remaining #580 and #589 accounting | RUNNING | acceptedmainfe063 and existing selected-unit ledger | Conductor; finish actual conversions/structural activation and all selected unit dispositions; no overlapping progress totals |
+| Combined signed image/SIT/recovery/final audit | BLOCKED | no new combined accepted digest | Conductor; complete selected integration first, then canonical signed prerelease/exact digest workflows/NONEMPTY backup and usable isolated restore/fresh independent Sol audit |
+
+Primary dirty files, #626 deferrals, identity/outbound/MCP/unsupported-action and other owner holds remain preserved. #717 is DONE; do not repeat it. One local heavy window belongs to Carrier census at this cutoff. At most two active child tasks are scheduled; no automatic continuation has been verified.
+
 ## Acceptance failures and bounded repair queue — 2026-10-17 10:41 UTC
 
 Accepted main at this snapshot is23fb0fe through protected818; exact source-bound results and limits are in the matching status snapshot. Earlier dated snapshots remain historical.
