@@ -12,7 +12,9 @@ import {
   addCustomer,
   buildTenant,
   createApproval,
+  runTransition,
 } from "./helpers/approval-fixtures";
+import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 
 describe("approval repository current request scope", () => {
@@ -22,35 +24,95 @@ describe("approval repository current request scope", () => {
 
   it("requires current project reach and exact private requester/participant reach in the target statement", async () => {
     const tenant = await buildTenant("repo-current-scope");
-    const requester = await resolveApprovalIdentity(tenant.requester.user.id);
-    const approver = await resolveApprovalIdentity(tenant.approver.user.id);
+    const requesterPerson = await addCustomer(tenant);
+    const participantPerson = await addCustomer(tenant);
+    const colleague = await addCustomer(tenant);
+    const requester = await resolveApprovalIdentity(requesterPerson.user.id);
+    const participantIdentity = await resolveApprovalIdentity(
+      participantPerson.user.id,
+    );
+    const colleagueIdentity = await resolveApprovalIdentity(colleague.user.id);
 
     await db
       .update(schema.workItemTable)
       .set({
         customerVisibility: "private",
-        requesterId: tenant.requesterPerson.id,
+        requesterId: requesterPerson.person.id,
       })
       .where(eq(schema.workItemTable.id, tenant.workItem.id));
 
     await expect(
-      loadApprovalTargetByKey(approver, tenant.key),
+      loadApprovalTargetByKey(colleagueIdentity, tenant.key),
     ).rejects.toMatchObject({ status: 404 });
     const [participant] = await db
       .insert(schema.requestParticipantTable)
       .values({
         workItemId: tenant.workItem.id,
-        personId: tenant.approverPerson.id,
-        addedBy: tenant.requesterPerson.id,
+        personId: participantPerson.person.id,
+        addedBy: requesterPerson.person.id,
       })
       .returning();
     expect(participant).toBeDefined();
     expect(
-      (await loadApprovalTargetByKey(approver, tenant.key)).workItemId,
+      (await loadApprovalTargetByKey(participantIdentity, tenant.key))
+        .workItemId,
     ).toBe(tenant.workItem.id);
     expect(
       (await loadApprovalTargetByKey(requester, tenant.key)).workItemId,
     ).toBe(tenant.workItem.id);
+  });
+
+  it("lets reachable staff read and request approval on a private customer request without staff participation", async () => {
+    const tenant = await buildTenant("repo-private-staff-approval", {
+      executable: true,
+    });
+    const customerRequester = await addCustomer(tenant);
+    const customerApprover = await addCustomer(tenant);
+    await db
+      .update(schema.workItemTable)
+      .set({
+        customerVisibility: "private",
+        requesterId: customerRequester.person.id,
+      })
+      .where(eq(schema.workItemTable.id, tenant.workItem.id));
+    await db.insert(schema.requestParticipantTable).values({
+      workItemId: tenant.workItem.id,
+      personId: customerApprover.person.id,
+      addedBy: customerRequester.person.id,
+    });
+    await db.insert(schema.projectFeatureFlagTable).values({
+      projectId: tenant.project.id,
+      featureKey: "feature.approvals",
+      enabled: true,
+    });
+
+    mockAuthenticatedSession(tenant.requester.user);
+    const listed = await tenant.app.request(tenant.url);
+    expect(listed.status, await listed.clone().text()).toBe(200);
+    const blockedBeforeRequest = await runTransition(tenant, tenant.done.id);
+    expect(blockedBeforeRequest.status).toBe(422);
+    expect(
+      (
+        (await blockedBeforeRequest.json()) as {
+          blockedBy: { kind: string }[];
+        }
+      ).blockedBy.map(({ kind }) => kind),
+    ).toContain("approval");
+    const created = await tenant.app.request(tenant.url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        transitionId: tenant.gated.id,
+        kind: "customer",
+        approverId: customerApprover.person.id,
+      }),
+    });
+    expect(created.status, await created.clone().text()).toBe(200);
+    expect(await created.json()).toEqual(
+      expect.objectContaining({ state: "pending" }),
+    );
+    const stillBlocked = await runTransition(tenant, tenant.done.id);
+    expect(stillBlocked.status).toBe(422);
   });
 
   it("keeps only the caller's own approval metadata after reach loss and refuses generic target access", async () => {
@@ -83,21 +145,26 @@ describe("approval repository current request scope", () => {
     expect(ownRows.map(({ id }) => id)).toEqual([approval.id]);
   });
 
-  it("keeps private items with no requester closed except to exact participants, including own-approval metadata", async () => {
+  it("keeps staff approval metadata after project-reach loss and customer private items closed without a requester", async () => {
     const tenant = await buildTenant("repo-private-null-requester");
     const approval = await createApproval(tenant);
     await db
       .update(schema.workItemTable)
       .set({ customerVisibility: "private", requesterId: null })
       .where(eq(schema.workItemTable.id, tenant.workItem.id));
-    const requester = await resolveApprovalIdentity(tenant.requester.user.id);
     const approver = await resolveApprovalIdentity(tenant.approver.user.id);
+    const participantPerson = await addCustomer(tenant);
+    const colleague = await addCustomer(tenant);
+    const participantIdentity = await resolveApprovalIdentity(
+      participantPerson.user.id,
+    );
+    const colleagueIdentity = await resolveApprovalIdentity(colleague.user.id);
 
+    expect(
+      (await loadApprovalTargetByKey(approver, tenant.key)).workItemId,
+    ).toBe(tenant.workItem.id);
     await expect(
-      loadApprovalTargetByKey(requester, tenant.key),
-    ).rejects.toMatchObject({ status: 404 });
-    await expect(
-      loadApprovalTargetByKey(approver, tenant.key),
+      loadApprovalTargetByKey(colleagueIdentity, tenant.key),
     ).rejects.toMatchObject({ status: 404 });
     const ownWithoutParticipation = await loadApprovalTargetByApprovalId(
       approval.id,
@@ -107,34 +174,29 @@ describe("approval repository current request scope", () => {
     expect(
       ownWithoutParticipation &&
         (await hasWorkItemReach(approver, ownWithoutParticipation)),
-    ).toBe(false);
+    ).toBe(true);
 
     await db.insert(schema.requestParticipantTable).values({
       workItemId: tenant.workItem.id,
-      personId: tenant.approverPerson.id,
+      personId: participantPerson.person.id,
       addedBy: tenant.requesterPerson.id,
     });
     expect(
-      (await loadApprovalTargetByKey(approver, tenant.key)).workItemId,
+      (await loadApprovalTargetByKey(participantIdentity, tenant.key))
+        .workItemId,
     ).toBe(tenant.workItem.id);
-    const ownWithParticipation = await loadApprovalTargetByApprovalId(
-      approval.id,
-      approver,
-    );
-    expect(
-      ownWithParticipation &&
-        (await hasWorkItemReach(approver, ownWithParticipation)),
-    ).toBe(true);
-
     await db
       .delete(schema.requestParticipantTable)
       .where(eq(schema.requestParticipantTable.workItemId, tenant.workItem.id));
+    await expect(
+      loadApprovalTargetByKey(colleagueIdentity, tenant.key),
+    ).rejects.toMatchObject({ status: 404 });
+    await db
+      .delete(schema.membershipTable)
+      .where(eq(schema.membershipTable.personId, tenant.approverPerson.id));
     const currentApprover = await resolveApprovalIdentity(
       tenant.approver.user.id,
     );
-    await expect(
-      loadApprovalTargetByKey(currentApprover, tenant.key),
-    ).rejects.toMatchObject({ status: 404 });
     const ownAfterParticipationLoss = await loadApprovalTargetByApprovalId(
       approval.id,
       currentApprover,

@@ -136,12 +136,11 @@ describe("API integration: project reach on item-scoped work-item routes", () =>
         it("private-item participation does not replace project reach or the route capability", async () => {
           const { world, app, item } = await arrange();
           const before = await snapshot();
-          // Pass route validation so these cases reach the handler's reach/capability
-          // checks. The ordinary route call stays empty to preserve its 400 validation case.
+          // Valid references ensure these cases reach the handler's reach/capability checks.
           const validBody = {
-            transitionId: "transition-probe",
-            kind: "customer" as const,
-            approverId: "approver-probe",
+            transitionId: world.transition.id,
+            kind: "cab" as const,
+            approverId: world.projectMember.personId,
           };
 
           mockAuthenticatedSession(world.outsiderLead.user);

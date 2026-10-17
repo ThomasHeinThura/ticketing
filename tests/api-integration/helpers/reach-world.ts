@@ -145,14 +145,20 @@ export async function setupWorld() {
       .returning(),
     "workflow version",
   );
-  await db.insert(schema.workflowTransitionTable).values({
-    versionId: version.id,
-    fromStateTemplateId: backlog.stateTemplate.id,
-    toStateTemplateId: started.stateTemplate.id,
-    roleId: null,
-    guards: [],
-    effects: [],
-  });
+  const transition = requireRow(
+    await db
+      .insert(schema.workflowTransitionTable)
+      .values({
+        versionId: version.id,
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: started.stateTemplate.id,
+        roleId: null,
+        guards: [],
+        effects: [],
+      })
+      .returning(),
+    "workflow transition",
+  );
   await db
     .update(schema.workflowTable)
     .set({ activeVersionId: version.id })
@@ -205,6 +211,7 @@ export async function setupWorld() {
     workspaceId,
     project,
     type,
+    transition,
     started,
     projectMember,
     readerLead,
@@ -451,26 +458,6 @@ ROUTES.push(
     matrixKey: "POST /api/work-items/{key}/approvals",
     successStatus: 400,
     capability: "handler",
-    prepare: async (world, item) => {
-      const [workItem] = await db
-        .select({ id: schema.workItemTable.id })
-        .from(schema.workItemTable)
-        .where(eq(schema.workItemTable.key, item.key));
-      if (!workItem) throw new Error("approval reach fixture item missing");
-      const participants = [
-        world.projectMember,
-        world.readerLead,
-        world.outsiderLead,
-      ];
-      await db.insert(schema.requestParticipantTable).values(
-        participants.map((participant) => ({
-          workItemId: workItem.id,
-          personId: participant.personId,
-          addedBy: participant.personId,
-          createdAt: new Date(),
-        })),
-      );
-    },
     call: (app, _w, i) =>
       json(app, "POST", `/api/work-items/${i.key}/approvals`, {}),
   },

@@ -31,6 +31,8 @@ function requestWorkItemVisibility(
   identity: ResolvedIdentity,
   executor: Executor,
 ) {
+  if (identity.side === "staff") return sql`true`;
+
   return or(
     sql`${schema.workItemTable.customerVisibility} <> 'private'`,
     eq(schema.workItemTable.requesterId, identity.personId),
