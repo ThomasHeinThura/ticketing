@@ -845,6 +845,8 @@ async function convertSubmissionInTransaction(
     workspaceId: string;
     organisationId: string | null;
   }) => Promise<boolean> = async () => true,
+  /** Runs after validation and before the accepted audit row (acceptance's claim audit). */
+  beforeAcceptedAudit: () => Promise<void> = async () => {},
 ) {
   const actorId = actor.id;
   const actorName =
@@ -1118,6 +1120,7 @@ async function convertSubmissionInTransaction(
     throw new HTTPException(409, {
       message: "Submission changed before it could be accepted",
     });
+  await beforeAcceptedAudit();
   await appendAuditLog(tx, {
     actorId,
     actorType: actor.type,
@@ -1167,39 +1170,22 @@ export async function acceptSubmission(
   const number = parseSubmissionReference(ref);
   if (number === null)
     throw new HTTPException(404, { message: "Submission not found" });
-  // Claim is deliberately committed before destination validation. IQ-16a defines starting
-  // acceptance as triage action even if stale configuration later makes conversion fail.
-  await claimSubmission(ref, workspaceId, actorId);
+  // #743: the claim (IQ-16a) is taken inside the conversion transaction, so a failed accept
+  // (missing or unreachable destination, stale configuration) rolls it back and leaves the
+  // submission unclaimed for any triager.
   return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        submission: schema.submissionTable,
-        workspaceId: schema.requestTypeTable.workspaceId,
-      })
-      .from(schema.submissionTable)
-      .innerJoin(
-        schema.requestTypeTable,
-        eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
-      )
-      .where(
-        and(
-          eq(schema.submissionTable.number, number),
-          eq(schema.requestTypeTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("update", { of: schema.submissionTable })
-      .limit(1);
-    if (!row) throw new HTTPException(404, { message: "Submission not found" });
-    if (row.submission.state !== "new" && row.submission.state !== "clarifying")
-      throw new HTTPException(409, { message: "Submission is no longer open" });
+    const { submission, appendAudit } = await claimSubmissionInTransaction(
+      tx,
+      number,
+      ref,
+      workspaceId,
+      actorId,
+    );
     const [snapshot] = await tx
       .select()
       .from(schema.requestTypeVersionTable)
       .where(
-        eq(
-          schema.requestTypeVersionTable.id,
-          row.submission.requestTypeVersionId,
-        ),
+        eq(schema.requestTypeVersionTable.id, submission.requestTypeVersionId),
       )
       .limit(1);
     if (!snapshot)
@@ -1208,7 +1194,7 @@ export async function acceptSubmission(
       });
     const item = await convertSubmissionInTransaction(
       tx,
-      row.submission,
+      submission,
       workspaceId,
       { id: actorId, type: "person", name: "Staff" },
       projectId,
@@ -1216,6 +1202,7 @@ export async function acceptSubmission(
       snapshot.slaPolicyId,
       snapshot.defaultAssigneeId,
       canReachProject,
+      appendAudit,
     );
     return { ref, state: "accepted" as const, workItem: item };
   });
@@ -1849,6 +1836,86 @@ export async function suggestDuplicateWorkItems(
     .limit(10);
 }
 
+/**
+ * Claims the submission inside the caller's transaction. #743: acceptance runs this in the
+ * same transaction as conversion, so a failed accept rolls the claim (and its audit row)
+ * back instead of leaving the submission claimed. The claim audit row is returned as a thunk
+ * so acceptance can append it after its own validation: audit appends take the audit-chain
+ * advisory lock, which must not be held while waiting on the destination project lock.
+ */
+async function claimSubmissionInTransaction(
+  tx: DbTransaction,
+  number: number,
+  ref: string,
+  workspaceId: string,
+  actorId: string,
+) {
+  const [row] = await tx
+    .select({
+      submission: schema.submissionTable,
+      workspaceId: schema.requestTypeTable.workspaceId,
+    })
+    .from(schema.submissionTable)
+    .innerJoin(
+      schema.requestTypeTable,
+      eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+    )
+    .where(
+      and(
+        eq(schema.submissionTable.number, number),
+        eq(schema.requestTypeTable.workspaceId, workspaceId),
+      ),
+    )
+    .for("update", { of: schema.submissionTable })
+    .limit(1);
+  if (!row) throw new HTTPException(404, { message: "Submission not found" });
+  if (row.submission.state !== "new" && row.submission.state !== "clarifying")
+    throw new HTTPException(409, { message: "Submission is no longer open" });
+  if (row.submission.claimedBy && row.submission.claimedBy !== actorId)
+    throw new HTTPException(409, {
+      message: "Submission is claimed by another triager",
+    });
+  if (row.submission.claimedBy === actorId && row.submission.claimedAt)
+    return { submission: row.submission, appendAudit: async () => {} };
+  const [updated] = await tx
+    .update(schema.submissionTable)
+    .set({
+      claimedBy: actorId,
+      claimedAt: row.submission.claimedAt ?? new Date(),
+      version: row.submission.version + 1,
+    })
+    .where(
+      and(
+        eq(schema.submissionTable.id, row.submission.id),
+        eq(schema.submissionTable.version, row.submission.version),
+      ),
+    )
+    .returning();
+  if (!updated)
+    throw new HTTPException(409, {
+      message: "Submission changed; reload before acting",
+    });
+  return {
+    submission: updated,
+    appendAudit: async () => {
+      await appendAuditLog(tx, {
+        actorId,
+        actorType: "person",
+        workspaceId,
+        organisationId: row.submission.organisationId,
+        action: "submission.claimed",
+        entityType: "submission",
+        entityId: row.submission.id,
+        after: {
+          ref,
+          claimedBy: actorId,
+          claimedAt: updated.claimedAt?.toISOString() ?? null,
+        },
+      });
+    },
+  };
+}
+
 export async function claimSubmission(
   ref: string,
   workspaceId: string,
@@ -1858,77 +1925,20 @@ export async function claimSubmission(
   if (number === null)
     throw new HTTPException(404, { message: "Submission not found" });
   return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        submission: schema.submissionTable,
-        workspaceId: schema.requestTypeTable.workspaceId,
-      })
-      .from(schema.submissionTable)
-      .innerJoin(
-        schema.requestTypeTable,
-        eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
-      )
-      .where(
-        and(
-          eq(schema.submissionTable.number, number),
-          eq(schema.requestTypeTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("update", { of: schema.submissionTable })
-      .limit(1);
-    if (!row) throw new HTTPException(404, { message: "Submission not found" });
-    if (row.submission.state !== "new" && row.submission.state !== "clarifying")
-      throw new HTTPException(409, { message: "Submission is no longer open" });
-    if (row.submission.claimedBy && row.submission.claimedBy !== actorId)
-      throw new HTTPException(409, {
-        message: "Submission is claimed by another triager",
-      });
-    if (row.submission.claimedBy === actorId && row.submission.claimedAt)
-      return {
-        id: row.submission.id,
-        ref,
-        state: row.submission.state,
-        claimedBy: row.submission.claimedBy,
-        claimedAt: row.submission.claimedAt,
-      };
-    const [updated] = await tx
-      .update(schema.submissionTable)
-      .set({
-        claimedBy: actorId,
-        claimedAt: row.submission.claimedAt ?? new Date(),
-        version: row.submission.version + 1,
-      })
-      .where(
-        and(
-          eq(schema.submissionTable.id, row.submission.id),
-          eq(schema.submissionTable.version, row.submission.version),
-        ),
-      )
-      .returning();
-    if (!updated)
-      throw new HTTPException(409, {
-        message: "Submission changed; reload before acting",
-      });
-    await appendAuditLog(tx, {
-      actorId,
-      actorType: "person",
-      workspaceId,
-      organisationId: row.submission.organisationId,
-      action: "submission.claimed",
-      entityType: "submission",
-      entityId: row.submission.id,
-      after: {
-        ref,
-        claimedBy: actorId,
-        claimedAt: updated.claimedAt?.toISOString() ?? null,
-      },
-    });
-    return {
-      id: updated.id,
+    const { submission, appendAudit } = await claimSubmissionInTransaction(
+      tx,
+      number,
       ref,
-      state: updated.state,
-      claimedBy: updated.claimedBy,
-      claimedAt: updated.claimedAt,
+      workspaceId,
+      actorId,
+    );
+    await appendAudit();
+    return {
+      id: submission.id,
+      ref,
+      state: submission.state,
+      claimedBy: submission.claimedBy,
+      claimedAt: submission.claimedAt,
     };
   });
 }
