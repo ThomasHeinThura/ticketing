@@ -10,6 +10,7 @@ import {
 import db, { schema } from "../../apps/api/src/database";
 import {
   addCustomer,
+  approvalRows,
   buildTenant,
   createApproval,
   portalRequest,
