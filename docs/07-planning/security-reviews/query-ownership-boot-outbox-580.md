@@ -984,3 +984,95 @@ Retained evidence file — 798-root-fcf-conservation.json
     }
   }
 }
+
+
+## Report — Ordinary composition review
+
+Source file: 798-fc094-composition-ordinary-luna.md
+
+# #798/#580 current-main boot/outbox composition — independent ordinary review
+
+**Model dispatch:** GPT-6 Luna, `fork_turns=none` (fresh context). Runtime model fingerprint is unavailable in this context; this records the assigned tier/model, not independent runtime identity verification.
+**Role / independence:** Fresh ordinary reviewer. I did not author, direct, or remediate the source or composition.
+**Candidate:** `fc094d9e6f9b2035b0cf806edd64253a0b37fc71`
+**Parents / comparison:** retained source `9620eda2b5cb7867436eaffb808ae0b519d83785`; accepted main `555879db9e4841c1460346c115111881d3cd3387`.
+**Verdict:** **CLEAR for the current-main composition and retained boot/outbox integration seams.** No blocking or non-blocking findings in this review scope. This is not merge, runtime, #580 completion, or phase acceptance.
+
+## Scope and risk classification
+
+I read the accepted `AGENTS.md`, active mission, agent workflow, error-fix loop, query ownership decision, coding standards, migration contract, root conservation receipt, and the prior authentic #580/#798 review record. I inspected the exact merge parents, candidate tree, startup/seed callers and repositories, migration/backfill wrappers, outbox implementation, and the SCIM lifecycle caller that joins with the outbox.
+
+The import/composition delta is a **bounded source-conservation operation**: the exact accepted-main commit is the second parent; the candidate worktree is clean; and the private root receipt records all 21 owned paths equal by mode/type/blob to reviewed source `9620eda…`, with every other accepted-main entry exact (3,412 entries) and a normal conflict-free merge. The candidate's net change against accepted main is those same 21 paths only. I verified the source diff stat and names: five startup migration/backfill repository modules, the outbox insert extraction, startup/seed wrappers and helper, the retained review record and two integration-test files. No authority, policy, route, CI gate, or shared contract is changed by this merge delta.
+
+The retained source itself touches security-relevant persistence and SCIM/outbox lifecycle code. Its three original ordinary clearances and full Sol review, plus the later `a74de826…` current-main ordinary review and lightweight Sol confirmation, remain authentic for their own exact scopes. They are not reissued here. The remaining import changes no owned source blob and introduces no overlap with accepted-main changes, so **one fresh ordinary composition review plus the required lightweight Sol confirmation is adequate** under the bounded-import classification. A new full-source panel would duplicate the existing three ordinary/full-Sol evidence absent a source discrepancy. The lightweight Sol confirmation remains required because the retained code is security-scope.
+
+## Composition checks and behavior seams
+
+- `git status --short`, `git rev-parse HEAD`, and `git show -s --format='%H%n%P' HEAD`: exact candidate, clean worktree, and the two parents listed above.
+- Read-only diff inspection against accepted main: exactly 21 net paths; all align with the receipt's owned source/test/note list.
+- Read-only verification of root receipt fields: `allOwnedModeTypeBlobExact=true`, `allOtherAcceptedMainEntriesExact=true`, `treeEntries=3412`, `normalMergeNoConflict=true`, and `clean=true`.
+- Read current `index.ts` boot call sites and seed modules. Migration fixups/backfill remain invoked through their existing startup wrappers; seed orchestration still supplies executor/transaction handles to extracted statements where its prior contract requires them. Workspace/project seed operations retain their existing caller transaction boundaries and idempotence/conflict handling.
+- Read current outbox service and repository. The service validates the event key and scope, then awaits `insertOutboxEvent(tx, event)` on the caller-provided executor; the repository only inserts the constructed envelope and opens no replacement transaction.
+- Re-traced `setScimIdentityActiveInTransaction`: identity resolution, person lifecycle transition, identity mutation and deprovision event enqueue share `tx`; the enclosing transaction resolves before socket invalidation. No composition delta alters this join or broadens actor/content reads.
+- Read accepted Executor/transaction ownership and migration-role contracts. This review found no new widening of the migration credential into serving startup and no newly introduced SQL ownership exception.
+
+No tests, compiler/typecheck, AST/query census, PostgreSQL, performance, Docker, or runtime commands were run, per assignment. Historical results stay bound to their recorded heads; this review does not transfer them.
+
+## Findings and limits
+
+**Blocking:** none.
+
+**Non-blocking:** none.
+
+The previously recorded G11 task-state measurement of 270.8 ms remains red and unwaived; this composition is not a causal performance fix and no new performance claim follows. `check:queries` and broader #580 acceptance remain separate gates. This report does not establish current hosted CI, PostgreSQL acceptance, image build/boot/health, browser verification, merge eligibility, or stage completion. No source, ref, PR, or repository note was edited. Only this private evidence file was written.
+
+
+## Report — Security composition confirmation
+
+Source file: 798-fc094-composition-security-61-sol.md
+
+# #798/#580 current-main boot/outbox composition — independent security confirmation
+
+**Model dispatch:** `gpt-6.1-sol`, `reasoning_effort=high`, `fork_turns=none`, as supplied by the conductor. The serving runtime exposes no independent model fingerprint; this is dispatch provenance, not measured identity.
+**Role/context:** Fresh independent lightweight security reviewer, `/root/boot798_fc094_composition_security_sol`. I did not author, direct, materially advise on, or remediate this candidate.
+**Reviewed head:** `fc094d9e6f9b2035b0cf806edd64253a0b37fc71`
+**Comparison parents:** retained source `9620eda2b5cb7867436eaffb808ae0b519d83785`; accepted main `555879db9e4841c1460346c115111881d3cd3387`.
+**Original source base:** `1a34e5792ee9c42b15004b032e3c5410e5def44e`.
+**Verdict:** **CLEAR for the exact-head bounded current-main composition security confirmation.** No new blocking or non-blocking security findings. No substantive join requiring escalation to a new full-source pass was found. This is not merge approval, runtime acceptance, a renewed full-source panel, #580 completion or phase acceptance.
+
+The private ordinary review `798-fc094-composition-ordinary-luna.md` and root conservation JSON were read in full before this security pass. Ordinary verdict is CLEAR. Its assertions will be checked against exact Git objects and source; neither document substitutes for independent inspection. No runtime, compiler, Node/AST/census, PostgreSQL, Docker or tests are authorized in this context. Only this private evidence file will be written; no source/ref/PR/repository-note changes.
+
+## Classification and retained review scope
+
+The current merge is a bounded source-conservation import. I independently verified the exact Git objects rather than relying on the receipt. All 21 owned paths match retained source `9620eda2b5cb7867436eaffb808ae0b519d83785` by mode, type and blob. Every path outside those 21 matches accepted main `555879db9e4841c1460346c115111881d3cd3387` by the same fields, including absence/presence. The candidate has 3,412 entries and its net changed-path set against accepted main is exactly the 21 owned paths. Its worktree is clean, the two parents are exact, and the live GitHub main ref returned `555879db9e4841c1460346c115111881d3cd3387` during this pass.
+
+`git merge-base --all` reports two bases: `1a34e5792ee9c42b15004b032e3c5410e5def44e` and `629cb54f8f68293de58bc7b98a5e408a9f679427`. Changed paths are disjoint relative to the original accepted source base `1a34e579…`; they are not universally disjoint relative to the alternate base. The latter has previously composed shared history. I do not infer a universal no-overlap claim from the merge graph. The complete final tree partition above independently establishes the import's actual source result. The supplied receipt records a normal conflict-free merge; its parentage/tree claims match the inspected objects. I did not execute a new merge.
+
+The source difference from the previously cleared `a74de826333d8cd24487f38386bbe12992253b3f` to retained `9620eda…` is only this candidate's own review note. The authentic original three ordinary reviews and full Sol review, subsequent helper-boundary ordinary/lightweight Sol review, and `a74de826…` ordinary/lightweight Sol composition confirmation were inspected in `docs/07-planning/security-reviews/query-ownership-boot-outbox-580.md`. They retain their original source identities and limits. This pass does not rewrite or reissue them. Given the conserved owned source and inspected current seams, one fresh ordinary composition review followed by this lightweight security confirmation is proportionate under the accepted no-authority-change tier. No new capability, permission, role, schema/migration, gate semantics or source-code resolution was introduced by this merge delta.
+
+## Security seams actually inspected
+
+- **Current auth and identity consumers:** `auth.ts` calls `ensureStaffPersonForUser` only on the existing local `/sign-up/email` path; it does not infer staff status for OAuth callbacks. In `identity/oidc-login.ts`, the configured portal/role checks precede `ensureInternalOrganisation(tx)`, and that helper is used for the agent portal while the customer portal retains the connection's organisation. The helper reads/inserts through its supplied handle, and its existing nested insertion transaction preserves the savepoint needed for concurrent internal-organisation creation. The imported seed repository adds no identity-provider-to-admin/sees_all grant path.
+- **Project/workspace creation:** current `project/controllers/create-project.ts` opens its transaction, retains organisation validation and its project-ordering lock, and passes `tx` to `seedProjectStates`. `workspace/controllers/create-workspace.ts` passes its transaction to `ensureInternalOrganisation` and `seedWorkspaceDefaults`. Seed reads and inserts use the supplied executor; project existence and template adoption remain project/workspace scoped with archived templates excluded. No seed helper substitutes the global connection for a supplied transaction.
+- **Notification/outbox:** current `notification/fanout.ts` awaits `enqueueOutboxEvent(tx, event)` before materializing notification fanout on that same `tx`; recipient resolution and notification writes retain their caller transaction. `service-calendar/repository.ts` likewise supplies its existing mutation transaction. The extraction moves only the insert: registered event-kind and permitted empty instance-scope validation remain in `events/outbox.ts`; `events/outbox.repository.ts` awaits insertion through the supplied first-argument `Executor`, maps the complete unchanged envelope and tenant/state/retry columns, opens no new transaction and performs no actor/content lookup. The import from the envelope module is type-only.
+- **SCIM lifecycle:** `identity/scim-lifecycle.ts` resolves identity, applies person lifecycle mutation, writes identity/provisioning state and enqueues `identity.deprovisioned` on the same `tx`. Its payload remains the existing person ID and revocation counts. The surrounding current SCIM writer takes the pending-action lifecycle gate and validates its configured lifecycle policy within the transaction; socket invalidation is announced only after the outer transaction resolves. The nested audit savepoint/failure reporting is preserved. No new tenant/content read or atomicity change was found at this join.
+- **Boot/fixups:** current `index.ts` passes the owner/migration database explicitly to the four migrated fixup wrappers in the pre/post-Drizzle order, then creates the application role and closes the migration pool in the separate one-shot process. Serving boot rejects an owner URL and checks the nonprivileged application role before seeds/backfill. The wrappers forward their supplied database unchanged to named repository modules. Per-workspace backfill checks and inserts share `tx`; per-project backfill takes its workspace advisory lock through the repository before `seedProjectStates(..., tx)`. Global scans remain explicit maintenance reads of identifiers rather than new actor-facing content queries. No blanket bootstrap exemption from the accepted SQL/Executor or tenancy contract is inferred.
+
+## Commands and evidence
+
+Read current accepted AGENTS, active mission, agent workflow, provider adapter, error-fix loop, security path list, query ownership/Executor, migration-role split and relevant event contract. Read the private ordinary report and root JSON in full, plus the retained review coverage listed above. Used read-only `git status`, `rev-parse`, `show`, `diff`, `merge-base`, `ls-tree`, source `cat`/`sed`/`rg`, and Python subprocess comparisons of complete mode/type/blob tree maps. Ancestry checks passed for accepted main, retained source, original accepted base and repaired source `9f58e3279adbbb0f9c0444eb48ee1f197eab030d`. Queried live open PRs, #798 metadata and the accepted main ref. At inspection the remote #798 head was still `9620eda…`, so its checks were not checks for unpublished `fc094…`.
+
+No Node, AST/compiler/query census, tests, PostgreSQL, Docker/image/boot/health, browser, performance run or runtime acceptance command was executed. Historical PostgreSQL 212 files/3,159 tests, API 120 files/859 tests and image proofs remain bound to their original sources; this review transfers none of those results. It is source/security review only.
+
+## Findings, residuals and limits
+
+**New blocking findings:** none.
+
+**New non-blocking findings:** none.
+
+The previously disclosed structural `Selector`/`Inserter` seed signature convention divergence is unchanged inherited residual evidence, not newly cleared or concealed. `check:queries` and broader #580 acceptance remain separate work. The previous G11 task-state normalized median 270.8 ms failure remains red, unwaived and undiagnosed. This genuine accepted-main integration needs current CI, but it is not a causal performance fix and does not erase that measurement or authorize retry-until-green.
+
+Current exact-publication hosted CI, local integration tests, image build/boot/health, browser/runtime acceptance, merge readiness and stage/finalizer acceptance are not established here. Only the private mode-0600 evidence file was written. No source, repository note, Git ref, PR or merge was changed.
+
+
+**Reviewed head:** `fc094d9e6f9b2035b0cf806edd64253a0b37fc71`
