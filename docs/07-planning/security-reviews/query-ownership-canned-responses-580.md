@@ -2938,3 +2938,85 @@ Only read-only Git/GitHub/text/Python inspection and this private report write w
 
 
 **Reviewed head:** `d7e01771545353b9da488ba6bf27fc4d185718e1`
+
+
+---
+
+Authentic current-main composition report: canned807-6576-mainf0b7-composition-luna.md
+
+# Independent composition review — canned response #807 / accepted main #820
+
+**Reviewed head:** `6576184037a654221b7046db20e0e9608db1cd1a`
+
+**Comparison base:** `555879db9e4841c1460346c115111881d3cd3387`
+
+**Direct parents:** old publication `a1218b91b298a005313447bcf3183d7db3f7324e`; accepted main `f0b7e903e45eabbad84ac4285e92e5d1af11a2ca`.
+
+**Reviewer/model:** GPT-6 Luna, as the platform reports this context. Fresh independent context dispatched with `fork_turns=none`; I did not author, direct, or remediate either parent change. Role: ordinary composition review only. Read-only; no source edits.
+
+## Scope and checks
+
+I read the accepted repository `AGENTS.md`, `CLAUDE.md`, active mission, agent workflow, current status and decision log, and the designated #807 composition record `docs/07-planning/security-reviews/query-ownership-canned-responses-580.md`. I inspected the exact merge parents, commit metadata, and the full tree/path composition at the reviewed head.
+
+I independently reconstructed the expected complete tree by overlaying the old publication's 34 owned paths on accepted main and compared it with the candidate's recursive `git ls-tree` entries (mode, object type, and blob). All 3,408 entries match exactly. The 34 owned paths and 8 incoming paths are disjoint; the incoming paths equal accepted main, and every owned path equals the old publication. Candidate parents are in the stated order. The worktree was clean. This independently confirms the supplied conservation receipt's key composition claim.
+
+The only product-source changes relative to the old publication are the four pending-action extraction paths from accepted main: `lifecycle-invalidation.repository.ts`, `lifecycle-invalidation.ts`, `workspace-access-invalidation.repository.ts`, and `workspace-access-invalidation.ts`. I read the complete four-path diff. It moves the existing advisory lock, requester pending-row selection/update, and workspace deletion-action selection into two repositories accepting canonical `Executor`; the services keep their caller transaction, lock call position, row iteration, access evaluation, outbox/audit behavior, and error accounting. The extracted SQL predicates, ordering, row locks, update values/conditional `RETURNING`, and target set are preserved in the diff. The modules and imports have no path or symbol overlap with canned-response authorization, persistence, route, policy, tests, or shared test lifecycle. This is a disjoint query-ownership extraction, with no interaction that changes #807 semantics apparent at this join.
+
+The four incoming records paths are also byte-for-byte accepted-main content: `docs/07-planning/integration-execution-queue.md`, `docs/07-planning/status.md`, `docs/07-planning/security-reviews/query-ownership-pending-action-invalidation-580.md`, and `docs/07-planning/security-reviews/records-after820-20261017.md`. I checked the new #580 composition note and #821 records note and their bounded claims. They preserve the earlier exact-source review evidence and its limits; N1 remains explicitly unresolved and unwaived. The #821 note is cutoff-bound, keeps its supplemental queue/provenance findings scoped, and does not claim current product runtime acceptance. These records add no authority or product behavior. The inherited #807 review note, including its prior ordinary/Sol clearances, adverse history, and non-blocking unbounded diagnostic-gate finding, is one of the unchanged owned blobs; I did not repeat its source review.
+
+Commands/checks: `git show -s --format='%H%n%P%n%s' HEAD`; recursive tree reconstruction/comparison with `git ls-tree -r`; `git diff --name-status` / `--stat` against each parent; targeted full diff of the four incoming source paths; `git diff --quiet` for incoming paths against accepted main; targeted reads/searches of the referenced records. No tests, builds, browser, database, Docker, runtime or GitHub operations were run.
+
+## Findings and verdict
+
+**CLEAR — composition only.** I found no blocking or non-blocking compositional defect. The exact source is a disjoint, lossless overlay of the old publication and accepted main at the stated base. Existing source review evidence can be retained for unchanged owned source; this verdict covers only the merge composition and incoming records/product extraction described above.
+
+No current-head PostgreSQL, CI, browser, image, boot/health, publication, SIT, whole-#580, or merge acceptance is established by this review. Historical exact-source runtime/check evidence remains historical. The inherited N1 and unbounded diagnostic-gate finding remain open and unwaived. A fresh independent Sol pass is still required by the assignment's stated review sequence before any candidate acceptance.
+
+
+---
+
+Authentic current-main composition report: canned807-6576-mainf0b7-security-sol.md
+
+# #807 accepted-main composition — independent security confirmation
+
+**Reviewed head:** `6576184037a654221b7046db20e0e9608db1cd1a`
+
+**Verdict:** **CLEAR — lightweight security confirmation of this composition, with inherited non-blocking residuals retained.** No new blocking or non-blocking composition defect found.
+
+**Comparison:** common base `555879db9e4841c1460346c115111881d3cd3387`; actual ordered parents `a1218b91b298a005313447bcf3183d7db3f7324e` (prior #807 publication) and `f0b7e903e45eabbad84ac4285e92e5d1af11a2ca` (accepted main). Worktree: `/Users/heinthura/.codex/worktrees/canned-response-ca19-reach/Ticketing.v2`.
+
+**Reviewer/model:** `/root/owner807_identity_mainf0b7_security_sol`, fresh independent security context, session `01a149e1-664b-7e11-bda8-e29a42c89cd7`, parent `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`. The platform's original session metadata and turn_context (lines 1 and 8) report `gpt-6.1-sol`, effort `high`, provider `openai`, CLI `0.162.0-alpha.17.2`. Parent dispatch metadata at line 59995 independently records explicit `model=gpt-6.1-sol`, `reasoning_effort=high`, `fork_turns=none`. No distinct serving build/version or hidden fingerprint is exposed or claimed. I did not author, direct, remediate or ordinarily review either candidate parent. No inherited author conversation was supplied.
+
+## Scope and policy
+
+I read the canonical AGENTS, active mission, workflow review/model/evidence rules, CLAUDE provider adapter, relevant CI/CD security scope, current dated Blocked/status and decision context, and the designated ordinary composition report `canned807-6576-mainf0b7-composition-luna.md` (CLEAR on this exact source). I inspected the original full-security sections and residual bindings in `docs/07-planning/security-reviews/query-ownership-canned-responses-580.md`, and the incoming pending-action extraction/composition records and #821 records/provenance supplements. These earlier reports retain their original scope; this is not another audit of all unchanged #807 source.
+
+This join changes no authority or gate pass/fail semantics. The workflow's one ordinary review plus lightweight independent Sol confirmation row therefore applies to the new composition. The earlier full 304d customer-denial, full 616c fixture/composition and full d7e0 immutable-fingerprint reviews remain full reviews at their own stated sources, rather than being relabelled as this confirmation.
+
+## Independent checks and security assessment
+
+Using Git objects and Python standard-library maps, I independently recomputed the merge base, changed path sets and complete expected candidate tree. The old publication owns 34 paths and accepted main contributes eight incoming paths; their intersection is empty. Overlaying the 34 old-publication entries on accepted main exactly equals all 3,408 candidate entries, including path, mode, object type and blob. Ordered parents and HEAD match the assigned full SHAs, and the candidate checkout is clean. This corroborates the supplied conservation receipt without treating it as the proof itself. `git diff --check` against the old publication passes.
+
+The only incoming product paths are:
+
+- `apps/api/src/pending-action/lifecycle-invalidation.repository.ts`
+- `apps/api/src/pending-action/lifecycle-invalidation.ts`
+- `apps/api/src/pending-action/workspace-access-invalidation.repository.ts`
+- `apps/api/src/pending-action/workspace-access-invalidation.ts`
+
+I read their entire old-publication-to-candidate diff, both new repository modules, the resulting services and canonical `database/executor.ts`. The moved lifecycle lock remains the same two-key transaction advisory lock and is awaited at the same service call site. Requester selection retains requester-id/pending predicates, id ordering and FOR UPDATE; the update retains id/pending conditionality, invalidation fields, original occurredAt and conditional returned id. Workspace selection retains the exact supplied workspace set, pending filter, calendar/view targets and id ordering. Sorted unique workspace normalization and its empty guard stay in the service. Each repository receives the caller transaction as first-parameter Executor, awaits its statement and returns materialized data; no new connection, transaction, commit or implicit database fallback is introduced. Access evaluation, before/mutation/after sequencing, outbox/event scope, nested audit savepoint, failure accounting and after-commit notification remain unchanged. No new tenant reach, grant, credential, policy or lock-order semantics appears at this join.
+
+The four incoming records paths are `docs/07-planning/integration-execution-queue.md`, `docs/07-planning/status.md`, `docs/07-planning/security-reviews/query-ownership-pending-action-invalidation-580.md` and `docs/07-planning/security-reviews/records-after820-20261017.md`. All equal accepted-main entries exactly. They are dated evidence/queue/review records, confer no new authority, and preserve their source/cutoff/provenance limits. The #807 source, workflow/gate files, fingerprints, regression fixture, controllers, routes, policies, UI and designated prior review note are unchanged old-publication entries. There is no shared changed path or newly altered import into #807 authorization or test lifecycle.
+
+## Findings and preserved evidence limits
+
+**Blocking findings: none in this composition. New non-blocking findings: none.**
+
+Inherited pending-action **N1** (action-row/advisory lock-order inversion) remains unresolved and unwaived. This extraction does not repair it or establish the full pending-action concurrency contract. The #807 **NB-1** unbounded delivery-user-query gate-entry promise remains a non-blocking diagnostic/cleanup limitation; unexpected early delivery exit can leave it unsignalled and defer cleanup until teardown. The earlier observer-only shadow-denial-marker limitation and minor fingerprint-prose editorial finding also remain as originally classified. None is silently cleared by tree conservation or this report.
+
+Checks actually performed: read-only Git HEAD/parent/merge-base/status/tree/diff/check, independent complete tree reconstruction, targeted source/policy/record reads, and allowlisted original session/dispatch metadata inspection. I did not inspect or reproduce private transcript analysis/messages. I ran no tests, compiler/AST checks, scanner, PostgreSQL, browser, Docker, image/boot/health or other runtime verification, and no live GitHub operation. No source/ref/PR edit, subagent, retired route, commit, push, merge or waiver occurred. This exclusively created private report is the sole write.
+
+Prior a1218b91 publication results (including PostgreSQL 223 files/3,302 tests, browser64, G11 22/22 and its 125-migration nonroot healthy/no-host-port image) remain bound to that prior publication and its actual executions; they are not current 65761840 coverage. Historical adverse runs likewise retain their original bindings. Current publication, required exact-head checks, browser/image/runtime acceptance and protected merge remain conductor responsibilities. BROWSER VERIFICATION: BLOCKED by the read-only/no-runtime assignment; no screen opened. This verdict establishes composition security only, not whole-#580, phase, release, SIT, recovery, deployment or merge acceptance.
+
+
+**Reviewed head:** `6576184037a654221b7046db20e0e9608db1cd1a`
