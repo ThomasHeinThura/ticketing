@@ -71,6 +71,9 @@ const MUST_REQUIRE_REVIEW = [
   ".pnpmfile.cjs",
   // and every application surface that was already covered
   "apps/api/src/auth.ts",
+  "apps/api/src/auth/repository.ts",
+  "apps/api/src/auth/step-up-service.ts",
+  "apps/api/src/auth/nested/probe.ts",
   "apps/api/src/middleware/require-session.ts",
   "apps/api/src/storage/s3.ts",
   "apps/api/src/scim/users.ts",
@@ -127,6 +130,7 @@ describe("security-review paths — F15 scope", () => {
       "apps/api/src/middleware/**",
       "apps/api/src/plugins/**",
       "apps/api/src/auth*",
+      "apps/api/src/auth/**",
       "apps/api/src/webhooks/**",
       "apps/api/src/scim/**",
       "apps/api/src/storage/**",
