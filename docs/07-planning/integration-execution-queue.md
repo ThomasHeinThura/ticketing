@@ -1,3 +1,19 @@
+## Acceptance failures and bounded repair queue — 2026-10-17 10:41 UTC
+
+Accepted main at this snapshot is23fb0fe through protected818; exact source-bound results and limits are in the matching status snapshot. Earlier dated snapshots remain historical.
+
+| Owner / unit | State | Actual state / named gate | Next action |
+| --- | --- | --- | --- |
+| Conductor /818 | DONE | Protected accepted23fb at08:34:05Z; all18contexts green, gate1373PASS20existing opt-inSKIP. | Preserve authentic scopes and scoped817 product proof; records do not close580. |
+| Conductor /807 | RUNNING | Reviewed304d/publication8d25, two ordinary plus full SolCLEAR; P1resolved. ActualPG3300PASS1FAIL/223files in resetbeforeA2P5; other current gates/image passed. | Diagnose actual lock/work lifecycle before repair; no unchanged retry. Allrequired gates must genuinely pass before protected acceptance and759 disposition. |
+| Luna /Carrier791 | RUNNING | Last full114957/51af:91tests85PASS6FAIL/native1, no cancellation; one later observer proved40 distinct guarded memo subjects. Sole author has bounded whole-path repair authorization; no newer native result. | Complete source/guard/resume/normalizer/slot batch, root inspect then meaningful native checks, census and fresh independent ordinary/full security review on final exact source. Integrate preparedUI9ac/erasurecc5 into SAME Carrier only. |
+| Conductor /810 | WAITING_CI | Current3f5e has fullPG227files3323tests/5tasks and reviews/image clear, but G11 assignment223.2ms fails200. | Preserve adverse result; genuine accepted-main integration or evidence-backed cause repair, current review/gates. No unchanged retry or component disposal before acceptance. |
+| Conductor /798 | READY | Existing9620 has21 owned paths including the two already-materialized utils helpers; oldG11task-state270.8ms failed. | Normal current-main composition/conservation/current reviews and genuine gates; do not duplicate the utils unit or claim performance causation. |
+| Conductor /invalidatione67 | READY | Four owned paths/source reviews/3file43testPG preserved; currentmain object preflight only. | Normal composition, bound review publication and exact-head required gates. N1 remains separate and unresolved. |
+| Conductor /580 inventory | RUNNING | Main23fb diagnostic3198 overlapping instances/173paths/1812locations;797unwired. | Complete existing owner units and actual remaining conversions; resolve12 unknown shapes before checker activation. No baseline subtraction or green placeholder. |
+| Conductor /811 and773 | WAITING_DECISION | Thirteen owning findings and three unanswered owner questions remain; local09bc preserved/unpushed. | Await actual Thomas dispositions for valuation, midnight splitting and timezone; no behaviour invention or waiver. |
+| Conductor /final589 | BLOCKED | Carrier/580 and signedcombinedrelease/SIT/nonemptybackup/usableapprestore/finalaudit incomplete;717done. | Finish authorized selected units or actual owner deferrals, then the existing release/recovery/audit sequence and truthful report/Hold. |
+
 ## PR #818 queue correction; protected #817 baseline — 2026-10-17 08:16 UTC
 
 Accepted main is `7a99ae9e8696d6202f3a3b39472cc058cc0d61da` through protected #817 at 07:58:07Z. The dated status snapshot records its exact evidence and limitations. The 06:55 records checkpoint from rejected mixed commit `cf847f86` is preserved as historical content only; current records are in the separate records-only PR.
