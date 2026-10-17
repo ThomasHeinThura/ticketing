@@ -146,6 +146,38 @@ describe("security-review paths — F15 scope", () => {
     }
   });
 
+  it("shows nested auth coverage depends on the canonical auth-directory glob", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { ciCdPath } = await import("./security-paths.mjs");
+    const canonical = await readFile(ciCdPath, "utf8");
+    const withoutAuthDirectory = canonical.replace(
+      /apps\/api\/src\/auth\*\s+apps\/api\/src\/auth\/\*\*/,
+      "apps/api/src/auth*",
+    );
+
+    assert.notEqual(
+      withoutAuthDirectory,
+      canonical,
+      "the canonical scope no longer declares apps/api/src/auth/**",
+    );
+    const { matches } = await readSecurityReviewPaths();
+    const counterfactual = parseSecurityReviewPaths(withoutAuthDirectory);
+    const counterfactualPatterns = counterfactual.map(globToRegExp);
+
+    for (const file of [
+      "apps/api/src/auth/repository.ts",
+      "apps/api/src/auth/step-up-service.ts",
+    ]) {
+      assert.equal(matches(file), true, `${file} must be covered by canonical scope`);
+      assert.equal(
+        counterfactualPatterns.some((pattern) => pattern.test(file)),
+        false,
+        `${file} must lose coverage when the canonical auth-directory glob is removed`,
+      );
+    }
+    assert.equal(matches("apps/api/src/auth.ts"), true);
+  });
+
   it("matches nested package.json files, not only the root one", async () => {
     const { matches } = await readSecurityReviewPaths();
     assert.equal(matches("package.json"), true);

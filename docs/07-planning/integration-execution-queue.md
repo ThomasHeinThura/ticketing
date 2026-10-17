@@ -1,3 +1,18 @@
+## Approval accepted; pending-action and gate composition — 2026-10-17 05:34 UTC
+
+Accepted mainb78fd6853a890c6e2b10d17be18885e3b1612b2d is protected812. The newest status snapshot gives source-bound counts and residuals; dated rows below remain historical.
+
+| Owner / unit | Actual current state | Next action |
+| --- | --- | --- |
+| Conductor /812 approval580 | Accepted0044/source5f21; full223/3292/5, finalunit12/API121872/web1861023, browser63/G1122/image125/health200/all18. Original789 conserved and closed. | Preserve bounded acceptance and all adverse history; continue real remaining580. |
+| Conductor /815 pending-action580 | Publication693d/sourceaea9 onb78, 11authenticreports; unit/browser/G11/image passed, PostgreSQL117316070868 still running. | Actual fullPG, truthful finalbody/newFAST/finalunit/strict18/currentthreads and protected merge only if eligible. N1 lock-order residual remains. |
+| Conductor + bounded Luna /803 and816 | Stronger reviewed2f86 gate regressions/publication4bd86 composing normally into existing803; one test conflict resolution retains old and stronger assertions. | Finish source conservation/current status, current ordinary/fullSol review, own-note publication/new exact-head CI. No duplicate repair PR or old-head pass promotion. |
+| Luna /Carrier791 | Checkerfd9b/test599e/unchangedmanifest; independent memo source clears; local240cap incomplete29pass7fail1cancel. Same unfiltered78 with900cap active becausefour complete-source scans. | Collect actual complete verdict, finite failure-reason diagnosis and structural repair; no inventory/G3/runtime acceptance from source reviews. |
+| Luna /remaining auth reads580 | One-file14async/await wrapper patch f45bf7c5 on693d; fresh ordinary/lightweight Sol CLEAR source only; uncommitted/no runtime. | Normal dependency setup/commit and exact-SHA binding, accepted-main composition and applicable real checks; preserve all query/executor behavior. |
+| Conductor /811 recovered773 | Local09bc spec alignment unpushed, older full224/3302/5; owning review still nonempty. | Await actual Thomas valuation/midnight/timezone answers, independent disposition and current gates; no P5 scope or gate bypass. |
+| Conductor /810,807,798 | Old calibration/budget refusals retained; authentic reviewed source preserved. | Necessary genuine current-main compositions and current reviews/CI when queue allows; no unchanged manual retries or claimed causal performance savings. |
+| Conductor /selected589 finish | 631/632 scoped acceptance,717 completed and M9 selected work retained; Carrier/remaining580 and final release/SIT/recovery/audit incomplete. | Finish every selected unit or obtain actual Thomas deferral, then one canonical signed image, exact-digest laptop workflows, consistent nonempty backup/usable restore and fresh Sol final audit before Hold. |
+
 ## Protected814 and remaining selected acceptance queue — 2026-10-17 03:59 UTC
 
 Acceptedmain e848f3bd05bec95c8af657c29923a6413a11c63f; protected814 actual source/tree/gates proof is recorded in status. Historical queue snapshots remain unchanged.
