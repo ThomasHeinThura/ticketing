@@ -1,24 +1,34 @@
-import { eq, sql } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { projectTable, taskTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { assertAssignableUserAndLockMembership } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
+import {
+  findProjectWorkspaceContext,
+  findUserName,
+  updateTaskRow,
+} from "../repository";
 
 async function updateTaskAssignee({
+  identity,
   id,
   userId,
   currentUserId,
 }: {
+  identity: ResolvedIdentity;
   id: string;
   userId: string | null;
   currentUserId: string;
 }) {
   const nextAssigneeId = userId?.trim() || null;
   const { existingTask, updatedTask } = await db.transaction(async (tx) => {
-    const existingTask = await lockTaskAndAssertProjectLive(tx, id);
+    const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
+      tx,
+      id,
+      identity,
+    );
     // Validate body identifiers after the frozen-task check, before they reach raw
     // database filters. `null` (unassign) is left alone.
     if (userId) {
@@ -28,10 +38,11 @@ async function updateTaskAssignee({
       return { existingTask, updatedTask: existingTask };
     }
     if (nextAssigneeId) {
-      const [project] = await tx
-        .select({ workspaceId: projectTable.workspaceId })
-        .from(projectTable)
-        .where(eq(projectTable.id, existingTask.projectId));
+      const project = await findProjectWorkspaceContext(
+        tx,
+        identity,
+        existingTask.projectId,
+      );
       if (!project) throw new HTTPException(404, { message: "Task not found" });
       await assertAssignableUserAndLockMembership(
         nextAssigneeId,
@@ -39,11 +50,9 @@ async function updateTaskAssignee({
         tx,
       );
     }
-    const [updatedTask] = await tx
-      .update(taskTable)
-      .set({ userId: nextAssigneeId, version: sql`${taskTable.version} + 1` })
-      .where(eq(taskTable.id, id))
-      .returning();
+    const updatedTask = await updateTaskRow(tx, identity, id, {
+      userId: nextAssigneeId,
+    });
     return { existingTask, updatedTask };
   });
   if (existingTask.userId === nextAssigneeId) return updatedTask;
@@ -55,13 +64,8 @@ async function updateTaskAssignee({
   }
 
   const newAssigneeName = nextAssigneeId
-    ? (
-        await db
-          .select({ name: userTable.name })
-          .from(userTable)
-          .where(eq(userTable.id, nextAssigneeId))
-          .limit(1)
-      )[0]?.name
+    ? (await findUserName(identity, nextAssigneeId, existingTask.projectId))
+        ?.name
     : undefined;
 
   if (!nextAssigneeId) {
