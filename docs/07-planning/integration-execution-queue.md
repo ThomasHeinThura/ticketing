@@ -1,3 +1,22 @@
+## Conductor checkpoint — 2026-10-17 14:05 UTC
+
+Accepted main4efe0905 is protected #822 at14:03:24Z, exactaf078 publication/synthetic tree. Latest status binds its actual checks/review/image limits. Historical rows below remain dated evidence.
+
+| Unit | State | Exact source/publication | Owner and next action |
+| --- | --- | --- | --- |
+| Identity/users #822 | DONE | sourcefd061392 / publication8b7c23 / main4efe0905 | Conductor; protected acceptance recorded,86 materializations only; optional CPU diagnostic adverse retained |
+| Canned responses #807 | DONE | source657618 / publication1ed689 / main295183 | Conductor; retain source-bound tests/reviews, inherited N1/NB1 and historical failures |
+| Partial canned predecessor #759 | SUPERSEDED | originald83f240e branch preserved | Conductor; accepted807 fully absorbs selected seven paths/five query responsibilities; no whole580 claim |
+| SAME Carrier C #791 | RUNNING | committed31fc; last tested774160/4cd145; new repair not frozen | Sole Luna author; complete approved shared request/domain/placement join and actual combined negative test, then root static/native/full/census and required independent reviews |
+| Boot/outbox #798 | READY | publicationc4556ec6 / reviewedfc094 | Conductor; normally compose latest accepted main, verify21 owned/restmain conservation, current ordinary/Sol, publish and obtain exact checks; old225/3303 proof stays source-bound |
+| Query checker preparation #797 | READY | publication82224710 / reviewed6fc8ce0 | Conductor; current-main composition/review/exact gates; diagnostic-only checker remains unwired until real remaining580 work is complete |
+| Leaf/intake #810 | BLOCKED | publication3f5e8dab | Conductor; actual223.2ms G11 failure/unwaived. Prerequisite accepted Carrier#772 scheduler/integration inputs or evidence-backed cause repair; no unchanged retry |
+| Time/cost #811 and predecessor773 | WAITING_DECISION | remote73ce0912 / local09bcfa38 | Thomas; three existing valuation/midnight/timezone questions and13 findings, preserve source and held scope |
+| Remaining580 / selected589 accounting | RUNNING | accepted4efe and existing unit ledger | Conductor; complete actual source conversion and structural activation, conserve all selected units, avoid duplicateM4/overlapping totals |
+| Signed combined release/SIT/recovery/final audit | BLOCKED | no final combined accepted signed digest | Conductor; finish selected integration first, then canonical signed prerelease/exact digest workflows/NONEMPTY backup/usable isolated application restore/fresh independent Sol audit |
+
+#717 remains DONE. #715's #768 source is conserved through #769 in Carrier, not accepted and not absent. Keep owner holds, inherited N1 and626 deferrals. At most two children and one local heavy window. No verified post-turn conductor continuation, UAT/production action or phase closure.
+
 ## Conductor checkpoint — 2026-10-17 13:29 UTC
 
 Main is protected #807 merge2951838a at13:19:58Z, exact publication/synthetic tree2f65124d. The matching status snapshot and public acceptance comment bind all actual tests/reviews/image results; historical dated rows below retain their earlier scopes.
