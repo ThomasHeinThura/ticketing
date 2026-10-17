@@ -59,8 +59,8 @@ export const connectionProjection = {
   healthCheckedAt: schema.identityConnectionTable.healthCheckedAt,
 } as const;
 
-export function listIdentityConnections() {
-  return db
+export async function listIdentityConnections() {
+  return await db
     .select(connectionProjection)
     .from(schema.identityConnectionTable)
     .orderBy(
@@ -69,16 +69,19 @@ export function listIdentityConnections() {
     );
 }
 
-export function getIdentityConnection(id: string) {
-  return db
+export async function getIdentityConnection(id: string) {
+  return await db
     .select(connectionProjection)
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.id, id))
     .limit(1);
 }
 
-export function lockIdentityConnection(tx: IdentityTransaction, id: string) {
-  return tx
+export async function lockIdentityConnection(
+  tx: IdentityTransaction,
+  id: string,
+) {
+  return await tx
     .select(connectionProjection)
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.id, id))
@@ -86,8 +89,8 @@ export function lockIdentityConnection(tx: IdentityTransaction, id: string) {
     .limit(1);
 }
 
-export function listIdentityDomainBindings(tx: IdentityTransaction) {
-  return tx
+export async function listIdentityDomainBindings(tx: IdentityTransaction) {
+  return await tx
     .select({
       id: schema.identityConnectionTable.id,
       domains: schema.identityConnectionTable.domainBindings,
@@ -95,8 +98,11 @@ export function listIdentityDomainBindings(tx: IdentityTransaction) {
     .from(schema.identityConnectionTable);
 }
 
-export function lockCustomerOrganisation(tx: IdentityTransaction, id: string) {
-  return tx
+export async function lockCustomerOrganisation(
+  tx: IdentityTransaction,
+  id: string,
+) {
+  return await tx
     .select({ id: schema.organisationTable.id })
     .from(schema.organisationTable)
     .where(
@@ -111,11 +117,11 @@ export function lockCustomerOrganisation(tx: IdentityTransaction, id: string) {
     .limit(1);
 }
 
-export function lockActiveInternalWorkspace(
+export async function lockActiveInternalWorkspace(
   tx: IdentityTransaction,
   workspaceId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.workspaceTable.id })
     .from(schema.workspaceTable)
     .innerJoin(
@@ -135,11 +141,11 @@ export function lockActiveInternalWorkspace(
     .limit(1);
 }
 
-export function lockIdentityDefaultRole(
+export async function lockIdentityDefaultRole(
   tx: IdentityTransaction,
   roleId: string,
 ) {
-  return tx
+  return await tx
     .select({
       id: schema.roleTable.id,
       scope: schema.roleTable.scope,
@@ -154,23 +160,23 @@ export function lockIdentityDefaultRole(
     .limit(1);
 }
 
-export function getIdentityConnectionIdForOrganisation(id: string) {
-  return db
+export async function getIdentityConnectionIdForOrganisation(id: string) {
+  return await db
     .select(connectionProjection)
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.organisationId, id))
     .limit(1);
 }
 
-export function getIdentityConnectionPresence(id: string) {
-  return db
+export async function getIdentityConnectionPresence(id: string) {
+  return await db
     .select({ id: schema.identityConnectionTable.id })
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.id, id))
     .limit(1);
 }
 
-export function listIdentityConnectionEvents(
+export async function listIdentityConnectionEvents(
   connectionId: string,
   after: ReturnType<typeof and> | undefined,
   limit: number,
@@ -179,7 +185,7 @@ export function listIdentityConnectionEvents(
     eq(schema.provisioningEventTable.identityConnectionId, connectionId),
   ];
   if (after) conditions.push(after);
-  return db
+  return await db
     .select({
       id: schema.provisioningEventTable.id,
       cursorCreatedAt: sql<string>`to_char(
@@ -200,38 +206,38 @@ export function listIdentityConnectionEvents(
     .limit(limit + 1);
 }
 
-export function getOrganisationPresence(id: string) {
-  return db
+export async function getOrganisationPresence(id: string) {
+  return await db
     .select({ id: schema.organisationTable.id })
     .from(schema.organisationTable)
     .where(eq(schema.organisationTable.id, id))
     .limit(1);
 }
 
-export function getIdentityPersonForUser(userId: string) {
-  return db
+export async function getIdentityPersonForUser(userId: string) {
+  return await db
     .select({ id: schema.personTable.id })
     .from(schema.personTable)
     .where(eq(schema.personTable.userId, userId))
     .limit(1);
 }
 
-export function getIdentityPersonForUserInTransaction(
+export async function getIdentityPersonForUserInTransaction(
   tx: IdentityTransaction,
   userId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.personTable.id })
     .from(schema.personTable)
     .where(eq(schema.personTable.userId, userId))
     .limit(1);
 }
 
-export function getCurrentInstanceAdminPersonInTransaction(
+export async function getCurrentInstanceAdminPersonInTransaction(
   tx: IdentityTransaction,
   userId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.personTable.id })
     .from(schema.userTable)
     .innerJoin(
@@ -248,11 +254,11 @@ export function getCurrentInstanceAdminPersonInTransaction(
     .limit(1);
 }
 
-export function lockFullIdentityConnection(
+export async function lockFullIdentityConnection(
   tx: IdentityTransaction,
   id: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.id, id))
@@ -260,8 +266,11 @@ export function lockFullIdentityConnection(
     .limit(1);
 }
 
-export function lockFullScimConnection(tx: IdentityTransaction, id: string) {
-  return tx
+export async function lockFullScimConnection(
+  tx: IdentityTransaction,
+  id: string,
+) {
+  return await tx
     .select()
     .from(schema.scimConnectionTable)
     .where(eq(schema.scimConnectionTable.identityConnectionId, id))
@@ -269,12 +278,12 @@ export function lockFullScimConnection(tx: IdentityTransaction, id: string) {
     .limit(1);
 }
 
-export function findScimGroupMapping(
+export async function findScimGroupMapping(
   tx: IdentityTransaction,
   connectionId: string,
   externalGroupId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.scimGroupMappingTable.id })
     .from(schema.scimGroupMappingTable)
     .where(
@@ -286,12 +295,12 @@ export function findScimGroupMapping(
     .limit(1);
 }
 
-export function lockScimGroupMappingById(
+export async function lockScimGroupMappingById(
   tx: IdentityTransaction,
   connectionId: string,
   mappingId: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.scimGroupMappingTable)
     .where(
@@ -304,38 +313,41 @@ export function lockScimGroupMappingById(
     .limit(1);
 }
 
-export function getScimConnectionVersion(tx: IdentityTransaction, id: string) {
-  return tx
+export async function getScimConnectionVersion(
+  tx: IdentityTransaction,
+  id: string,
+) {
+  return await tx
     .select({ version: schema.identityConnectionTable.configVersion })
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.id, id))
     .limit(1);
 }
 
-export function findIdentityConnectionForOrganisation(
+export async function findIdentityConnectionForOrganisation(
   tx: IdentityTransaction,
   organisationId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.identityConnectionTable.id })
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.organisationId, organisationId))
     .limit(1);
 }
 
-export function getWorkspaceOrganisation(
+export async function getWorkspaceOrganisation(
   tx: IdentityTransaction,
   workspaceId: string,
 ) {
-  return tx
+  return await tx
     .select({ organisationId: schema.workspaceTable.organisationId })
     .from(schema.workspaceTable)
     .where(eq(schema.workspaceTable.id, workspaceId))
     .limit(1);
 }
 
-export function getIdentityConnectionConfiguration(id: string) {
-  return db
+export async function getIdentityConnectionConfiguration(id: string) {
+  return await db
     .select({
       tenantId: schema.identityConnectionTable.tenantId,
       portalScope: schema.identityConnectionTable.portalScope,
@@ -349,8 +361,8 @@ export function getIdentityConnectionConfiguration(id: string) {
     .limit(1);
 }
 
-export function getScimSettingsRow(connectionId: string) {
-  return db
+export async function getScimSettingsRow(connectionId: string) {
+  return await db
     .select({
       id: schema.identityConnectionTable.id,
       portalScope: schema.identityConnectionTable.portalScope,
@@ -374,57 +386,60 @@ export function getScimSettingsRow(connectionId: string) {
     .limit(1);
 }
 
-export function getScimMatchAttributes(connectionId: string) {
-  return db
+export async function getScimMatchAttributes(connectionId: string) {
+  return await db
     .select({ matchAttributes: schema.scimConnectionTable.matchAttributes })
     .from(schema.scimConnectionTable)
     .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
     .limit(1);
 }
 
-export function getScimLifecyclePolicy(connectionId: string) {
-  return db
+export async function getScimLifecyclePolicy(connectionId: string) {
+  return await db
     .select({ lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy })
     .from(schema.scimConnectionTable)
     .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
     .limit(1);
 }
 
-export function getScimLifecyclePolicyInTransaction(
+export async function getScimLifecyclePolicyInTransaction(
   tx: IdentityTransaction,
   connectionId: string,
 ) {
-  return tx
+  return await tx
     .select({ lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy })
     .from(schema.scimConnectionTable)
     .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
     .limit(1);
 }
 
-export function lockScimProfileOrganisation(
+export async function lockScimProfileOrganisation(
   tx: IdentityTransaction,
   organisationId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.organisationTable.id })
     .from(schema.organisationTable)
     .where(eq(schema.organisationTable.id, organisationId))
     .for("update");
 }
 
-export function lockScimProfilePerson(
+export async function lockScimProfilePerson(
   tx: IdentityTransaction,
   personId: string,
 ) {
-  return tx
+  return await tx
     .select({ organisationId: schema.personTable.organisationId })
     .from(schema.personTable)
     .where(eq(schema.personTable.id, personId))
     .for("update");
 }
 
-export function getScimGroupForProtocol(connectionId: string, groupId: string) {
-  return db
+export async function getScimGroupForProtocol(
+  connectionId: string,
+  groupId: string,
+) {
+  return await db
     .select({
       id: schema.scimGroupTable.id,
       externalId: schema.scimGroupTable.externalId,
@@ -443,11 +458,11 @@ export function getScimGroupForProtocol(connectionId: string, groupId: string) {
     .limit(1);
 }
 
-export function listActiveScimGroupMembers(
+export async function listActiveScimGroupMembers(
   connectionId: string,
   groupId: string,
 ) {
-  return db
+  return await db
     .select({
       value: schema.externalIdentityTable.id,
       display: schema.personTable.displayName,
@@ -486,8 +501,8 @@ export const scimUserProjection = {
   updatedAt: schema.personTable.updatedAt,
 } as const;
 
-export function countScimUsers(where: SQL | undefined) {
-  return db
+export async function countScimUsers(where: SQL | undefined) {
+  return await db
     .select({ totalResults: sql<number>`count(*)::int` })
     .from(schema.externalIdentityTable)
     .innerJoin(
@@ -497,12 +512,12 @@ export function countScimUsers(where: SQL | undefined) {
     .where(where);
 }
 
-export function listScimUsers(
+export async function listScimUsers(
   where: SQL | undefined,
   pageCount: number,
   offset: number,
 ) {
-  return db
+  return await db
     .select(scimUserProjection)
     .from(schema.externalIdentityTable)
     .innerJoin(
@@ -515,8 +530,8 @@ export function listScimUsers(
     .offset(offset);
 }
 
-export function getScimUser(where: SQL | undefined) {
-  return db
+export async function getScimUser(where: SQL | undefined) {
+  return await db
     .select(scimUserProjection)
     .from(schema.externalIdentityTable)
     .innerJoin(
@@ -527,13 +542,13 @@ export function getScimUser(where: SQL | undefined) {
     .limit(1);
 }
 
-export function findScimCreateIdentityConflict(
+export async function findScimCreateIdentityConflict(
   tx: IdentityTransaction,
   connectionId: string,
   externalId: string,
   userName: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.externalIdentityTable.id })
     .from(schema.externalIdentityTable)
     .where(
@@ -545,11 +560,11 @@ export function findScimCreateIdentityConflict(
     .limit(1);
 }
 
-export function findScimCreateEmailConflict(
+export async function findScimCreateEmailConflict(
   tx: IdentityTransaction,
   email: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.externalIdentityTable.id })
     .from(schema.externalIdentityTable)
     .innerJoin(
@@ -566,12 +581,12 @@ export function findScimCreateEmailConflict(
     .limit(1);
 }
 
-export function findScimReplaceEmailConflict(
+export async function findScimReplaceEmailConflict(
   email: string,
   identityId: string,
   personId: string,
 ) {
-  return db
+  return await db
     .select({ id: schema.externalIdentityTable.id })
     .from(schema.externalIdentityTable)
     .innerJoin(
@@ -590,8 +605,8 @@ export function findScimReplaceEmailConflict(
     .limit(1);
 }
 
-export function findActiveInternalOrganisation(tx: IdentityTransaction) {
-  return tx
+export async function findActiveInternalOrganisation(tx: IdentityTransaction) {
+  return await tx
     .select({ id: schema.organisationTable.id })
     .from(schema.organisationTable)
     .where(
@@ -604,19 +619,19 @@ export function findActiveInternalOrganisation(tx: IdentityTransaction) {
     .limit(1);
 }
 
-export function countScimGroups(connectionId: string) {
-  return db
+export async function countScimGroups(connectionId: string) {
+  return await db
     .select({ totalResults: sql<number>`count(*)::int` })
     .from(schema.scimGroupTable)
     .where(eq(schema.scimGroupTable.scimConnectionId, connectionId));
 }
 
-export function listScimGroupIds(
+export async function listScimGroupIds(
   connectionId: string,
   pageCount: number,
   offset: number,
 ) {
-  return db
+  return await db
     .select({ id: schema.scimGroupTable.id })
     .from(schema.scimGroupTable)
     .where(eq(schema.scimGroupTable.scimConnectionId, connectionId))
@@ -625,16 +640,16 @@ export function listScimGroupIds(
     .offset(offset);
 }
 
-export function getScimProfileMapping(connectionId: string) {
-  return db
+export async function getScimProfileMapping(connectionId: string) {
+  return await db
     .select({ mapping: schema.scimConnectionTable.attributeMapping })
     .from(schema.scimConnectionTable)
     .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
     .limit(1);
 }
 
-export function getScimCurrentUserForReplace(where: SQL | undefined) {
-  return db
+export async function getScimCurrentUserForReplace(where: SQL | undefined) {
+  return await db
     .select({
       id: schema.externalIdentityTable.id,
       externalId: schema.externalIdentityTable.scimExternalId,
@@ -656,8 +671,8 @@ export function getScimCurrentUserForReplace(where: SQL | undefined) {
     .limit(1);
 }
 
-export function getScimCurrentUserForPatch(where: SQL | undefined) {
-  return db
+export async function getScimCurrentUserForPatch(where: SQL | undefined) {
+  return await db
     .select({
       id: schema.externalIdentityTable.id,
       personId: schema.externalIdentityTable.personId,
@@ -678,8 +693,8 @@ export function getScimCurrentUserForPatch(where: SQL | undefined) {
     .limit(1);
 }
 
-export function listScimGroupMappings(connectionId: string) {
-  return db
+export async function listScimGroupMappings(connectionId: string) {
+  return await db
     .select({
       id: schema.scimGroupMappingTable.id,
       externalGroupId: schema.scimGroupMappingTable.externalGroupId,
@@ -698,8 +713,8 @@ export function listScimGroupMappings(connectionId: string) {
     );
 }
 
-export function listOidcGroupMappings(connectionId: string) {
-  return db
+export async function listOidcGroupMappings(connectionId: string) {
+  return await db
     .select({
       id: schema.oidcGroupMappingTable.id,
       externalGroupId: schema.oidcGroupMappingTable.externalGroupId,
@@ -720,8 +735,8 @@ export function listOidcGroupMappings(connectionId: string) {
     );
 }
 
-export function getOidcMappingAdminConnection(connectionId: string) {
-  return db
+export async function getOidcMappingAdminConnection(connectionId: string) {
+  return await db
     .select({
       id: schema.identityConnectionTable.id,
       providerType: schema.identityConnectionTable.providerType,
@@ -735,11 +750,11 @@ export function getOidcMappingAdminConnection(connectionId: string) {
     .limit(1);
 }
 
-export function getOidcGroupMappingById(
+export async function getOidcGroupMappingById(
   connectionId: string,
   mappingId: string,
 ) {
-  return db
+  return await db
     .select()
     .from(schema.oidcGroupMappingTable)
     .where(
@@ -751,11 +766,11 @@ export function getOidcGroupMappingById(
     .limit(1);
 }
 
-export function getOidcGroupMappingSnapshot(
+export async function getOidcGroupMappingSnapshot(
   connectionId: string,
   mappingId: string,
 ) {
-  return db
+  return await db
     .select()
     .from(schema.oidcGroupMappingTable)
     .where(
@@ -767,22 +782,22 @@ export function getOidcGroupMappingSnapshot(
     .limit(1);
 }
 
-export function listOidcMappingAffectedUserIds(
+export async function listOidcMappingAffectedUserIds(
   tx: IdentityTransaction,
   personIds: readonly string[],
 ) {
-  return tx
+  return await tx
     .select({ userId: schema.personTable.userId })
     .from(schema.personTable)
     .where(inArray(schema.personTable.id, [...personIds]));
 }
 
-export function findOidcGroupMapping(
+export async function findOidcGroupMapping(
   tx: IdentityTransaction,
   connectionId: string,
   externalGroupId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.oidcGroupMappingTable.id })
     .from(schema.oidcGroupMappingTable)
     .where(
@@ -794,12 +809,12 @@ export function findOidcGroupMapping(
     .limit(1);
 }
 
-export function lockOidcGroupMappingById(
+export async function lockOidcGroupMappingById(
   tx: IdentityTransaction,
   connectionId: string,
   mappingId: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.oidcGroupMappingTable)
     .where(
@@ -1529,8 +1544,8 @@ export async function lockScimGrantClosure(
   );
 }
 
-export function getScimIdentityByTokenDigest(digest: Buffer) {
-  return db
+export async function getScimIdentityByTokenDigest(digest: Buffer) {
+  return await db
     .select({
       connectionId: schema.scimConnectionTable.identityConnectionId,
       enabled: schema.scimConnectionTable.enabled,
@@ -1557,11 +1572,11 @@ export function getScimIdentityByTokenDigest(digest: Buffer) {
     .limit(1);
 }
 
-export function lockScimIdentityConnection(
+export async function lockScimIdentityConnection(
   executor: IdentityTransaction,
   connectionId: string,
 ) {
-  return executor
+  return await executor
     .select({
       issuer: schema.identityConnectionTable.issuer,
       enabled: schema.identityConnectionTable.enabled,
@@ -1573,11 +1588,11 @@ export function lockScimIdentityConnection(
     .for("update");
 }
 
-export function lockScimConnection(
+export async function lockScimConnection(
   executor: IdentityTransaction,
   connectionId: string,
 ) {
-  return executor
+  return await executor
     .select({
       enabled: schema.scimConnectionTable.enabled,
       tokenHash: schema.scimConnectionTable.tokenHash,
@@ -1590,12 +1605,12 @@ export function lockScimConnection(
     .for("update");
 }
 
-export function getScimExternalIdentity(
+export async function getScimExternalIdentity(
   executor: IdentityTransaction,
   identityId: string,
   connectionId: string,
 ) {
-  return executor
+  return await executor
     .select({
       personId: schema.externalIdentityTable.personId,
       active: schema.externalIdentityTable.active,
@@ -1611,11 +1626,11 @@ export function getScimExternalIdentity(
     .limit(1);
 }
 
-export function lockOidcConnection(
+export async function lockOidcConnection(
   tx: IdentityTransaction,
   connectionId: string,
 ) {
-  return tx
+  return await tx
     .select({
       id: schema.identityConnectionTable.id,
       enabled: schema.identityConnectionTable.enabled,
@@ -1627,12 +1642,12 @@ export function lockOidcConnection(
     .limit(1);
 }
 
-export function lockOidcExternalIdentity(
+export async function lockOidcExternalIdentity(
   tx: IdentityTransaction,
   connectionId: string,
   userId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.externalIdentityTable.id })
     .from(schema.externalIdentityTable)
     .where(
@@ -1646,11 +1661,11 @@ export function lockOidcExternalIdentity(
     .limit(1);
 }
 
-export function lockOidcVerification(
+export async function lockOidcVerification(
   tx: IdentityTransaction,
   identifier: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.verificationTable)
     .where(eq(schema.verificationTable.identifier, identifier))
@@ -1658,8 +1673,8 @@ export function lockOidcVerification(
     .limit(1);
 }
 
-export function getOidcConnectionForStart(connectionId: string) {
-  return db
+export async function getOidcConnectionForStart(connectionId: string) {
+  return await db
     .select({
       id: schema.identityConnectionTable.id,
       portalScope: schema.identityConnectionTable.portalScope,
@@ -1678,8 +1693,8 @@ export function getOidcConnectionForStart(connectionId: string) {
     .limit(1);
 }
 
-export function getOidcConnectionForCallback(connectionId: string) {
-  return db
+export async function getOidcConnectionForCallback(connectionId: string) {
+  return await db
     .select()
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.id, connectionId))
@@ -1720,11 +1735,11 @@ export function getOidcIdentityForSignIn(
     .limit(1);
 }
 
-export function getOidcConnectionSnapshot(
+export async function getOidcConnectionSnapshot(
   tx: IdentityTransaction,
   connectionId: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.id, connectionId))
@@ -1824,49 +1839,55 @@ export function listAdmissionFailedOidcGrants(
     .for("update");
 }
 
-export function getOidcPersonForSignIn(
+export async function getOidcPersonForSignIn(
   tx: IdentityTransaction,
   personId: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.personTable)
     .where(eq(schema.personTable.id, personId))
     .limit(1);
 }
 
-export function listOidcMappingsForReconciliation(
+export async function listOidcMappingsForReconciliation(
   tx: IdentityTransaction,
   connectionId: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.oidcGroupMappingTable)
     .where(eq(schema.oidcGroupMappingTable.identityConnectionId, connectionId))
     .orderBy(schema.oidcGroupMappingTable.id);
 }
 
-export function getOidcRoleForReconciliation(
+export async function getOidcRoleForReconciliation(
   tx: IdentityTransaction,
   roleId: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.roleTable)
     .where(eq(schema.roleTable.id, roleId))
     .limit(1);
 }
 
-export function findOidcEmailOwner(tx: IdentityTransaction, email: string) {
-  return tx
+export async function findOidcEmailOwner(
+  tx: IdentityTransaction,
+  email: string,
+) {
+  return await tx
     .select({ id: schema.userTable.id })
     .from(schema.userTable)
     .where(eq(schema.userTable.email, email))
     .limit(1);
 }
 
-export function lockOidcDefaultRole(tx: IdentityTransaction, roleId: string) {
-  return tx
+export async function lockOidcDefaultRole(
+  tx: IdentityTransaction,
+  roleId: string,
+) {
+  return await tx
     .select({
       id: schema.roleTable.id,
       scope: schema.roleTable.scope,
@@ -1881,11 +1902,11 @@ export function lockOidcDefaultRole(tx: IdentityTransaction, roleId: string) {
     .limit(1);
 }
 
-export function lockOidcDefaultWorkspace(
+export async function lockOidcDefaultWorkspace(
   tx: IdentityTransaction,
   workspaceId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.workspaceTable.id })
     .from(schema.workspaceTable)
     .innerJoin(
@@ -1904,8 +1925,11 @@ export function lockOidcDefaultWorkspace(
     .limit(1);
 }
 
-export function lockOidcPerson(tx: IdentityTransaction, personId: string) {
-  return tx
+export async function lockOidcPerson(
+  tx: IdentityTransaction,
+  personId: string,
+) {
+  return await tx
     .select({ id: schema.personTable.id, userId: schema.personTable.userId })
     .from(schema.personTable)
     .where(eq(schema.personTable.id, personId))
@@ -1913,8 +1937,8 @@ export function lockOidcPerson(tx: IdentityTransaction, personId: string) {
     .limit(1);
 }
 
-export function listEnabledOidcDomainOwners() {
-  return db
+export async function listEnabledOidcDomainOwners() {
+  return await db
     .select({
       domain: sql<string>`unnest(${schema.identityConnectionTable.domainBindings})`,
       identityConnectionId: schema.identityConnectionTable.id,
@@ -1923,8 +1947,8 @@ export function listEnabledOidcDomainOwners() {
     .where(eq(schema.identityConnectionTable.enabled, true));
 }
 
-export function getOidcUserFactorState(userId: string) {
-  return db
+export async function getOidcUserFactorState(userId: string) {
+  return await db
     .select({ enabled: schema.userTable.twoFactorEnabled })
     .from(schema.userTable)
     .where(eq(schema.userTable.id, userId))
