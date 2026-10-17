@@ -5,6 +5,7 @@ import db, { schema } from "../../../apps/api/src/database";
 import {
   buildTenant,
   createApproval,
+  request,
   runTransition,
   setApproval,
 } from "./approval-fixtures";
@@ -25,6 +26,22 @@ export function defineApprovalGateTimeZoneSuite(label: string) {
       expect((await runTransition(t, t.done.id)).status).toBe(422);
       await setApproval(t, (await createApproval(t)).id);
       expect((await runTransition(t, t.done.id)).status).toBe(200);
+    });
+
+    it("preserves an explicit expiry instant through the timestamp-without-zone insert", async () => {
+      const t = await buildTenant(`tz-expiry-${label}`);
+      const expectedExpiry = new Date(Date.now() + 42 * 86_400_000 + 234);
+      const response = await request(t, t.requester, {
+        expiresAt: expectedExpiry.toISOString(),
+      });
+      expect(response.status, await response.clone().text()).toBe(200);
+      const body = (await response.json()) as { id: string; expiresAt: string };
+      expect(body.expiresAt).toBe(expectedExpiry.toISOString());
+      const [row] = await db
+        .select()
+        .from(schema.approvalTable)
+        .where(eq(schema.approvalTable.id, body.id));
+      expect(row?.expiresAt.getTime()).toBe(expectedExpiry.getTime());
     });
 
     it("a run closes the other pending approvals of its transition", async () => {
