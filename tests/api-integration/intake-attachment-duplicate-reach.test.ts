@@ -543,6 +543,56 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
     expect(await names(ok)).toEqual(["owner-private.pdf"]);
   });
 
+  it("keeps linked attachment reads on archived projects and closes them on reach revocation", async () => {
+    const s = await seed();
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, s.t.project.id));
+
+    mockAuthenticatedSession(s.t.requester.user);
+    const path = `/api/submissions/SUB-${s.accepted.number}/attachments`;
+    const listed = await s.t.app.request(path);
+    expect(listed.status, await listed.clone().text()).toBe(200);
+    expect(await names(listed)).toEqual(["owner-private.pdf"]);
+
+    const identity = await resolveIdentity({
+      userId: s.t.requester.user.id,
+      credential: "session",
+    });
+    if (!identity) throw new Error("staff caller identity did not resolve");
+    const contentInput = {
+      id: s.privateAttachment.id,
+      workspaceId: s.t.workspaceId,
+      submissionId: s.accepted.id,
+      linkedWorkItemId: s.t.workItem.id,
+      portal: false,
+    };
+    expect(
+      await findSubmissionAttachmentContent(db, identity, contentInput),
+    ).toHaveLength(1);
+
+    const staffPerson = await personOf(s.t.requester.user.id);
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, staffPerson.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, s.t.project.id),
+        ),
+      );
+
+    expect(
+      await findSubmissionAttachmentContent(db, identity, contentInput),
+    ).toEqual([]);
+    const afterRevocation = await s.t.app.request(path);
+    expect(afterRevocation.status, await afterRevocation.clone().text()).toBe(
+      200,
+    );
+    expect(await names(afterRevocation)).toEqual([]);
+  });
+
   it("staff attachment download and request-type writes audit the staff person, not the user", async () => {
     const s = await seed();
     const staff = await personOf(s.t.requester.user.id);
