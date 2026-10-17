@@ -959,3 +959,91 @@ Read `query-inventory-main5558-provenance/source-bound-provenance-comparison.jso
 **Non-blocking:** no additional security finding. The ordinary review's longer-message compatibility observation remains: full diagnostic strings change, although the legacy prefix and unsafe category remain. No new full-string consumer or authority use was identified in this delta.
 
 This confirms the narrow provenance delta at the exact reviewed head. It does not establish current required GitHub checks, authorize merge, activate the checker, complete #580, claim stage closure, or supply production/SIT acceptance. No repository, ref, PR, runtime or shared-resource mutation occurred; this private report is the only file written by this reviewer.
+
+## Accepted-main composition confirmation — 2026-10-17
+
+**Reviewed head:** `ab98d574df429588d7930b270fc74e81976e86fa`
+
+The conductor normally composed retained publication 822247101b2ecdda2481cf68a789d846d898e5da with protected accepted main c8e1e2c5d5315c0e3bbce5b6b6bf27462a9e1ca4. Independent current composition confirmations below retain their bounded scopes. Earlier whole-source/provenance reviews and adverse reports remain unchanged; no checker activation, current runtime result, whole #580 or stage acceptance follows.
+
+Dispatch provenance: both contexts were spawned with fork_turns=none. Ordinary requested gpt-6-luna; actual native turn_context is gpt-6-luna/medium, session 01a14a7e-b87d-71f3-93b6-4f95dd233056. Further security requested gpt-6.1-sol/high; actual native turn_context is gpt-6.1-sol/high, session 01a14a81-18a9-74e3-bf4b-12e8a1904216. Allowlisted session metadata independently corroborates provider openai, parent conductor 01a14000-d9e0-7bb1-b3fd-2c0204a4834c and each exact agent path. session_meta has no model field. These are platform context records, not a hidden serving fingerprint.
+
+### Authentic report: 797-ab98-mainc8e1-ordinary-luna.md
+
+# #797 checker preparation — current-main composition ordinary review
+
+**Verdict:** CLEAR for the bounded composition join; no blocking findings.
+
+**Reviewed head:** `ab98d574df429588d7930b270fc74e81976e86fa` (tree `27b2dc40225ede5f0e56570f97f882c16197bb2d`)
+
+**Comparison base:** accepted main `c8e1e2c5d5315c0e3bbce5b6b6bf27462a9e1ca4` (tree `60777c097978022fd35046e7cf115c718d2ed659`). Merge parents are `822247101b2ecdda2481cf68a789d846d898e5da` and the exact accepted-main SHA above.
+
+**Role and independence:** Fresh independent GPT-6 Luna ordinary-review context, dispatched with no inherited author conversation. I did not author, direct, or remediate the checker or its composition. This report covers the accepted-main join only; it does not renew the historical whole-checker panel or the prior #797 diagnostic-provenance reviews.
+
+## Scope and checks performed
+
+Read `AGENTS.md`, `CLAUDE.md`, the active mission, agent workflow, current status and decision-log context, `docs/04-engineering/ci-cd.md`, the query-ownership section of coding standards, and the canonical D1–D4 contract material. Read the complete current checker and fixture test, the checker review note including its exact-head 6fc ordinary and lightweight Sol reports, and current-main query-ownership source review records relevant to identity/users materialization, canned responses, boot/outbox, and pending-action invalidation.
+
+The worktree is clean. The merge commit is a descendant of accepted main. I independently reconstructed the current main and candidate trees with `git ls-tree -r -z`: accepted main has 3,420 entries and the candidate has 3,423. Every accepted-main path preserves its exact mode/type/blob in the candidate; the only three additional regular files are the checker review note, checker, and fixture test. Their SHA-256 values are respectively `a18fe82f89d9f86c6f02c2aaffbe22ad38b6454f3a14300889737390752304ab`, `99e34e3f1edd34ca0abd5f516c88dc1be13a73e92fbd1050cdf420a29ade0fe3`, and `36f5d63bb7ce5c0c33b60922bfbb028e101f08ed0e60a449070847739b9376cf`. The current-main diff is exactly those three additions; no accepted-main file is overwritten. The incoming 67-path accepted-main change set is preserved as a whole.
+
+I checked the join against the exact location/result contract. The checker’s explicit 14-file infrastructure set and repository-name predicate are unchanged. Newly present repository modules in accepted main use recognized names (`repository.ts`, `*.repository.ts`, or `repository/**`), including canned-response, event outbox, pending-action invalidation, database repository helpers, and seed defaults. The accepted identity and instance-user materialization changes make the inspected select helpers async and await the existing query chains; they do not change those statements or create caller-side builder composition. This is a source-join observation, not proof of tenant predicates or all executor propagation.
+
+The compiler, source configuration, package scripts, and checker test harness are unchanged by this composition. Root `package.json` has no `check:queries` command. `scripts/ci/test-all.mjs` retains the `pnpm check:queries` entry with `run: null` and the reason the location gate is not ready; CI has no production checker invocation. The fixture file is discovered by the existing CI-script test glob, which is distinct from activating the ownership gate. The accepted-main workflow delta I inspected adds `GH_TOKEN` only to the existing contract-test step and does not invoke this checker.
+
+The prior 6fc focused native receipt (3/3) and normalized 3,198 diagnostic multiset are historical, source-bound evidence supplied in the review note; I did not rerun them or treat them as current-head results. The 12 unresolved modules remain unresolved in that historical comparison. No current production census was run. The current production result is not accepted by this review and remains expected red while conversions are outstanding. Diagnostic-site totals such as 3,189/3,198 are not unique-query totals or progress measures; the 86 identity/user materializations do not establish completion.
+
+## Findings and limits
+
+**Blocking:** None found in the bounded composition join.
+
+**Non-blocking:** `git diff --check c8e1e2c5..HEAD` reports three trailing-space lines (the reviewed-head, comparison-base, and branch/worktree metadata lines) in the newly composed review note, apparently used as Markdown hard breaks. This has no checker behavior impact but means that whitespace check is not clean for this publication.
+
+I ran no Node command, test, AST/compiler/typecheck, database, Docker, browser, production census, or runtime. The source files and refs were not modified. Since `scripts/ci/**` is a security-scope path, this ordinary verdict does not replace the required lightweight independent GPT-6 Sol confirmation on the current composed head. It also does not activate `check:queries`, accept #580, or establish production/query-conversion completion.
+
+### Authentic report: 797-ab98-mainc8e1-security-sol.md
+
+# #797 current-main composition — independent lightweight security confirmation
+
+**Verdict: CLEAR — bounded current-main composition only.** No new blocking security finding. The join introduces no additional authority or checker pass/fail semantics requiring a fresh full-source review. The historical whole-checker reviews retain their actual original scope.
+
+**Reviewed head:** `ab98d574df429588d7930b270fc74e81976e86fa`
+
+**Reviewed tree:** `27b2dc40225ede5f0e56570f97f882c16197bb2d`
+
+**Comparison base:** accepted main `c8e1e2c5d5315c0e3bbce5b6b6bf27462a9e1ca4`. Normal merge parents are old publication `822247101b2ecdda2481cf68a789d846d898e5da` and that exact accepted-main SHA. Their common base is `555879db9e4841c1460346c115111881d3cd3387`.
+
+**Independence and sequence:** Fresh context `/root/query797_ab98_mainc8e1_security_sol`; I did not author, direct or remediate the candidate or perform its ordinary review. I read the complete current ordinary report `797-ab98-mainc8e1-ordinary-luna.md` before reaching this security verdict. It records CLEAR for this exact composition, with the historical Markdown whitespace observation retained below. Its SHA-256 is `0892b090c2fbdadb47f72bc715e974d9e0c653cc3599cfbdb5dee3ce9c799a1a`.
+
+**Actual context metadata:** Explicit dispatch was `gpt-6.1-sol`, reasoning `high`, `fork_turns=none`. I independently read only the allowlisted native metadata in `/Users/heinthura/.codex/sessions/2026/10/17/rollout-2026-10-17T22-05-36-01a14a81-18a9-74e3-bf4b-12e8a1904216.jsonl`. `session_meta` identifies session `01a14a81-18a9-74e3-bf4b-12e8a1904216`, timestamp `2026-10-17T15:35:36.902Z`, provider `openai`, parent `01a14000-d9e0-7bb1-b3fd-2c0204a4834c` and this exact agent path. It has no model field. The first `turn_context` reports model `gpt-6.1-sol`, effort `high`. This states the platform-reported context metadata, not a hidden serving-model fingerprint.
+
+## Risk classification and source-bound evidence
+
+Read the accepted-equivalent AGENTS, active mission, workflow/model/review requirements, provider adapter, query-ownership coding standard, security-scope CI/CD list, current status/decision context, canonical D1–D4 material and relevant retained review reports. `scripts/ci/**` is security-scope. The actual delta being confirmed is a normal composition of unchanged owned checker preparation with already accepted source. The workflow row for a security-scope change provably adding no authority or gate pass/fail semantics calls for one ordinary review followed by lightweight security confirmation; that depth is appropriate here.
+
+Read the current checker implementation, fixture harness and relevant fixtures/assertions, original SQLWrapper repair ordinary/full Sol reviews at `7b5c54279095f0384e71964adc5bf31f979d8829`, and the later diagnostic-provenance ordinary/lightweight Sol reports at `6fc8ce03eed560d92cde357a3295b4516ff8aaaf`. Those historical reports are not relabelled as current whole-source or runtime approvals. Read the supplied current conservation and preflight-v2 receipts; I independently reconstructed the Git trees rather than treating the receipts as proof.
+
+## Independent composition and join checks
+
+- Reconstructed recursive trees using `git ls-tree -r -z`, comparing path, mode, object type and object ID. Accepted main has 3,420 entries; candidate has 3,423. Every accepted-main entry is exact in the candidate. The only additions are this PR's three owned files, each exact old-publication mode/type/blob. Every candidate entry satisfies that partition. There are no removed accepted-main entries or unrelated overlays. The worktree was clean at both checks and HEAD/parents/tree match the assignment.
+- Derived changed paths from the common base separately for old publication and accepted main: exactly 3 owned paths and 67 incoming accepted-main paths, with zero overlap. Candidate-versus-accepted-main is exactly those three additions. An initial direct old-publication-versus-main symmetric comparison naturally included the three absent checker files; the subsequent common-base partition separately verified the actual 67 incoming paths and zero overlap. This was a comparison-definition correction, with no source/ref change.
+- Independently hashed the three files: `scripts/ci/check-queries.mjs` SHA-256 `99e34e3f1edd34ca0abd5f516c88dc1be13a73e92fbd1050cdf420a29ade0fe3`; `scripts/ci/check-queries.test.mjs` SHA-256 `36f5d63bb7ce5c0c33b60922bfbb028e101f08ed0e60a449070847739b9376cf`; own note `docs/07-planning/security-reviews/query-ownership-checker-580.md`, 118,976 bytes, SHA-256 `a18fe82f89d9f86c6f02c2aaffbe22ad38b6454f3a14300889737390752304ab`. All match the previous publication exactly.
+- Checked the actual location/export boundary: exactly 14 explicit persistence-infrastructure paths, each named by the coding-standard contract, plus `repository.ts`, `*.repository.ts`, and `repository/**`. No database-directory wildcard, site baseline, new exclusion, or environment override appears. Production discovery remains under `apps/api/src`, excluding declarations and tests; D4 dev tooling under `apps/api/scripts/**` stays outside. Transaction opening is allowed as orchestration while statements remain independently inspected. This structural check cannot prove tenant predicates or arbitrary executor propagation.
+- Traced the current type/export graph and reporting boundary: executable builders are classified before Drizzle SQL fragment leaves; the actual Drizzle SQL class provenance/payload check remains; custom SQLWrapper carriers continue through public graphs. Missing/error/any/unknown/generic-unproven shapes and depth/node limits remain unsafe. Constituents, generic and awaited types, callable/construct returns, members, index values and runtime aliases/namespaces are followed. Provenance reason/path rendering and unresolved aggregation retain their source-bound classification; composition changes none of this implementation.
+- Checked the newly accepted API-input seams against those unchanged rules. Canned-response, outbox, pending-action invalidation, migration/backfill and seed repository files have recognized repository names; utility orchestration wrappers do not gain a database wildcard exception. Inspected outbox's supplied-Executor insertion and pending-action materialized/void results, and the canned-response repository's internal SQL-fragment composition/materialized async output. Their exact current blobs are accepted-main blobs, not newly authored changes in this PR. Prior source reviews, including inherited N1 and seed-signature residuals, remain scoped evidence; I do not issue a fresh full security approval of those slices.
+- Independently checked identity/user incoming diff text: 73 identity plus 13 instance-user exported helpers add async/return-await. Reversing those added tokens in the changed lines and normalizing formatting/trailing parameter commas reproduces the original changed lines. This supports unchanged query expressions and the materialized-result join. It does not prove all 12 previously unresolved modules are safe or establish a current scan result.
+- Confirmed compiler/dependency/harness inputs `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `apps/api/package.json`, `apps/api/tsconfig.json`, `scripts/ci/test-all.mjs`, and `scripts/ci/lib/repo.mjs` are unchanged across the incoming main join. An initial probe also named nonexistent root `tsconfig.json` and failed; the corrected comparison used actual inputs and all seven matched. No compiler executed.
+- Confirmed no root `check:queries` package command or production workflow invocation. `test-all.mjs` retains `run: null` for the placeholder gate. Existing `test:ci-scripts` glob discovers the checker fixture file, which is distinct from production gate activation. The accepted workflow delta adds `GH_TOKEN` only to its existing contract-test step; it does not invoke this checker. No new dependency or wiring enters through the three owned files.
+
+## Findings and residuals
+
+**Blocking:** None found in the bounded current-main composition.
+
+**Non-blocking:** Independently confirmed the ordinary whitespace finding. `git diff --check c8e1e2c5d5315c0e3bbce5b6b6bf27462a9e1ca4 HEAD` reports exactly own-note lines 548–550. Each ends with two ASCII spaces, six trailing space bytes across three Markdown hard-break lines. The note is byte-identical to the authentic old publication. These are historical review metadata lines, not checker/product source, and have no authority or gate behavior effect. Preserve the authentic report bytes. The whitespace check is not clean; this adjudication neither conceals its result nor waives any required check. A required check rejecting them would still block merge and require its normal authorized resolution.
+
+The retained 6fc fixture result of 3/3 with 4.702 seconds elapsed, normalized 3,198 diagnostic multiset and 12 unresolved modules are historical source-bound evidence. I ran none of them and make no current-head test or inventory claim. Diagnostic-site totals are not unique-query counts or progress measurements. The 86 materializations do not establish that the historical unknowns are safe. Production ownership remains unaccepted and the final checker remains unwired. Inherited pending-action N1 stays unresolved/unwaived; this review supplies no full PA-15 acceptance.
+
+## Actual execution and limits
+
+Used only read-only Git, text reads/searches, and Python static tree/hash/text comparisons, plus the allowlisted native context-metadata read. No Node, TypeScript/AST execution, test, typecheck, production scan/census, inventory, package install, database, Docker/image/build/boot/health, browser, runtime or CI dispatch was run. No source, ref, PR, workflow or shared-runtime mutation; no fetch, push, commit, merge or subagent. This private report is the only file written by me. BROWSER VERIFICATION: BLOCKED by the static-only review assignment; no screen opened.
+
+Current required GitHub checks and applicable image/runtime evidence remain separate, exact-candidate obligations for the conductor. This source confirmation is not merge authorization, checker activation, #580 acceptance, Carrier completion, stage/phase closure, signed release, SIT/recovery acceptance or final audit.
