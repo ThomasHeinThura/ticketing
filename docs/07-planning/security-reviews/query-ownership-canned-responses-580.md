@@ -2348,3 +2348,491 @@ Live read-only GitHub inspection still shows OPEN #807 published at ec64, not 30
 **Reviewed head:** `304d36e9cb4717be88e8879d37ddb19ce08f3ed7`
 
 The local template check requires the full SHA in inline code. Earlier bare-SHA header and verbatim security report remain authentic; this adds the machine-readable spelling for the same independently reviewed source. Both ordinary clearances, the full Sol clearance and all source bytes remain unchanged. All intervening commits modify only this designated note. No gate semantics or source approval is changed.
+
+
+## Workspace-create fixture lifetime repair and accepted-main composition
+
+**Reviewed head:** `616ce92498802576a6d6e03ddce5944cda5e5e09`
+
+Comparison base accepted main555879db9e4841c1460346c115111881d3cd3387. Root transported the following retained dispatched outputs unedited; root, the material diagnostic advisers and the author are ineligible as independent approvers. The old8d25 hosted PostgreSQL failure remains historical and uncleared by its other passing checks. Natural nonreproduction and controlled actual notification insertion prove only a cause class; historical blocking PID remains unknown. Two fresh ordinary contexts and a further fresh full Sol context clear this new test-only repair and the accepted records composition.
+
+The original acceptance audit below waited for PostgreSQL and is historical, not new approval. Its artifact attribution is corrected additively here: root-verified actual8d25 shipping artifact is12097995776; the report's alternate artifact reference is not relied upon. The original diagnosis's source/base wording is corrected by its separate authentic addendum. The two new ordinary reports' Git-range wording is corrected by their separate authentic addenda. No report bytes or verdicts were rewritten.
+
+Requested profiles: diagnostic/ordinary GPT-6 Luna; critical material adviser and final security reviewer GPT-6.1 Sol/high; independent final reviewers were fresh fork_turns=none. Each report retains its own model/role/independence disclosure; no served-model fingerprint is invented. Critical advice is not approval.
+
+
+### Continuation authentic artifact 1: `canned807-8d25-final-acceptance-audit-luna.md`
+
+Origin: retained private dispatched context output; 7228 bytes; SHA256 `fa48d43365e5df483ec3abdd914947937fc807af2bbf1c4e99dd530bebf36794`. Complete authentic body follows, with its original exact-source scope and verdict.
+
+# PR #807 8d25594 final acceptance preparation audit
+
+**Result: WAITING on one current required check.** This is a bounded acceptance-evidence audit, not an independent source/security review or merge authorization. Current live publication is `8d255947d83f00dd047501044ce494534930aae1`; reviewed source is `304d36e9cb4717be88e8879d37ddb19ce08f3ed7`; accepted `main` is `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`.
+
+## Live PR, ruleset and review state
+
+GitHub currently reports PR #807 OPEN, non-draft, mergeable, head 8d25594, base `main` at accepted 23fb0fe. Active ruleset `22365005` requires 18 status contexts. A fresh exact-head check-runs query shows 17 required contexts green and only `integration - Postgres 18` pending: run `39023575105`, job `117370038116`, status `in_progress` at audit time. Earlier canceled duplicate check runs are excluded. The current live PR body exactly matches `807-current-customer-pr-body-v5.md` (SHA-256 `fc28cad707fe78a0ba05c84d861daa4accee83bd9a9178491d7eb4c497cf090e`) and still states current gates are pending. That body's acceptance table needs the one planned factual refresh after PostgreSQL completes, followed by the planned normal Fast CI run.
+
+I queried the full GraphQL review-thread connection (`first:100`, `hasNextPage=false`), including outdated threads. It contains one thread, `PRRT_kwDOT5LdOc6tT4rJ`, on the historical P1 finding `4297533554`; GitHub reports `isResolved=true`, `isOutdated=false`, `resolvedBy=ThomasHeinThura`. The linked current disposition receipt records fresh ordinary A/B CLEAR, then full Sol CLEAR, the workspace-customer project-read `200→403` repair, corrected exploit wording, and the current focused runtime. The thread's resolution mutation is present in that receipt and matches live GitHub. No unresolved thread remains. The live PR's formal GitHub review objects still show the earlier Codex connector COMMENTED review on `fb4b49a`; the independent 304d review reports are published in the PR's designated note and checked below. I do not treat the old connector review as current approval.
+
+## Source-to-publication conservation and review evidence
+
+I independently compared Git objects from reviewed source 304d36e through publication 8d25594. The entire delta is one regular `100644` modification to `docs/07-planning/security-reviews/query-ownership-canned-responses-580.md`, with 585 insertions and zero deletions. The two intervening commits (`cedbbdbb...` and `8d255947...`) each modify only that note. No product/source change was introduced after the 304d review head. The published note is 260,442 bytes, SHA-256 `81c8fef31f0930111d1ee78ef88843116bdabeeb12a51284deab34c89e9030ae`, and begins byte-for-byte with the 205,740-byte source note (SHA-256 `6554c9df72ac9d987a35c39d54ceba7b78a1cf1a29982621c864bf2d2c428299`). The current publication proof and prepublication manifest reconcile to 58 authentic entries and 57 unique bodies, retaining the original 45 entries/44 unique bodies. Manifest hashes for ordinary A, ordinary B and full Sol reports match their evidence files; all three identify exact reviewed source 304d36e. Ordinary A and B are CLEAR; the subsequent independent GPT-6.1 Sol report is a full security CLEAR for the customer-principal authorization repair, with a non-blocking shadow-evidence limitation recorded. These reports do not claim review of newer source code; source code is unchanged at this note-only publication.
+
+Evidence reviewed: `807-current-customer-publication-proof.json`, `807-304d-prepublication-artifact-manifest.json`, `807-8d25-p1-independent-disposition-and-resolution.json`, and `canned807-304d-customer-ordinary-a-luna.md`, `canned807-304d-customer-ordinary-b-luna.md`, `canned807-304d-customer-full-security-61-sol.md`. Requested GPT tier/dispatch details are recorded by those reports; served model fingerprints were unavailable and were not invented.
+
+## Current exact-head test, browser, performance and image evidence
+
+The conductor receipt `807-8d25-conductor-verified-fast-browser-performance.json` says raw hashes were verified. I independently hashed the four retained raw logs against their receipts: unit/component 335,174 bytes (`6cd0f540051b1a62d52f8916546a890f812932e608c6506723f8f7e1c531f62c`), gate checkers 296,730 bytes (`f0c21ba46b5a5b818928f0d68540b700beed59a22398b98e1f8441fcde035318`), E2E 483,240 bytes (`eb800a0386e4f54b3dd1ab72985aa68ec570b165f7add34591cf1b63e5dc9799`), and G11 327,714 bytes (`a27ce7e85320d7b4e8f7ad9568e0cf99e69a7bead38ce89c5776ee82be4043eb`). The records show unit/component 121 API files / 872 tests, 186 web files / 1,023 tests, 12 successful tasks; gate checkers 1,392 tests, 1,372 passed, zero failed/cancelled and 20 existing opt-in skips; E2E 64 passed; G11 22 passed with one assignment sample set, normalized median 193.5 ms against the strict `<200 ms` budget, and no manual rerun. Current a11y and visual-regression contexts also pass on this SHA.
+
+I read the live artifact listing for run `39023575105`. GitHub reports `shipping-image-proof` artifact ID `12097995776`, 1,029 bytes, digest `sha256:a84112c362b09f33793a810ee008c4ff0b771f3faf7a3d3d1639c3905a96b7d8`. I downloaded that artifact read-only and inspected its JSON payload; it matches `807-8d25-hosted-synthetic-image-validation.json` for candidate 8d25594, synthetic checkout `82544c02836860850217a7e4db2e1a0026eb0994`, parent pair `23fb0fe` + candidate, exact tree `c62f789e18c99a589b2ccd453f4f08a785e9132c`, image ID `sha256:1c8db5cd…dd80561`, configured UID 10001, no published ports, 125/125 migrations, healthy status, live/ready HTTP 200, and completed cleanup. The GitHub-listed ID is `12097995776`; the alternate artifact ID in the dispatch message did not match the live API listing. The actual artifact digest and payload agree with the evidence receipt. This is hosted image evidence, not signed combined-release or laptop SIT/backup-restore acceptance.
+
+Expected PostgreSQL count is 223 files / 3,301 tests / 5 tasks, as supplied for this acceptance run. It remains prediction only until job `117370038116` completes and its actual raw output is inspected; no such result is claimed here. Focused local PostgreSQL evidence on exact source 304d is separate and does not satisfy the current full hosted gate.
+
+## Immediate readiness gaps
+
+- [ ] Hosted PostgreSQL 18 job `117370038116` completes successfully; inspect its raw log and reconcile actual counts against expected 223 / 3,301 / 5.
+- [ ] Conductor refreshes the now-stale PR body from the actual PostgreSQL outcome and runs the planned normal Fast CI; then verify the final required contexts against the resulting exact head.
+- [ ] Re-query live PR head, complete review-thread connection, reviews and ruleset immediately before any merge decision.
+
+No current review-thread, source-conservation, browser/performance, or hosted-image blocker was found in this bounded audit. No source, branch, PR body, review thread, or GitHub state was changed. No tests, CI, local runtime, browser, database, or Docker were run or triggered. Only Git object/text inspection, read-only GitHub queries, local hash comparison, and read-only download/inspection of the existing image proof artifact were used.
+
+
+### Continuation authentic artifact 2: `807-8d25-reset-lock-wholepath-diagnosis-luna.md`
+
+Origin: retained private dispatched context output; 5977 bytes; SHA256 `f051b791d90c1c90cf475fa74b7b5e001eded45d72847f1c9231c53791d94de6`. Complete authentic body follows, with its original exact-source scope and verdict.
+
+# #807 reset-lock whole-path diagnosis (read-only)
+
+- Assigned role: bounded diagnosis only; no approval or merge authority.
+- Exact inspected checkout HEAD: `8d255947d83f00dd047501044ce494534930aae1` (reported candidate source SHA is `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`; this diagnosis was read at its designated base).
+- Retained failed full run: `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/807-8d25-pg-full.log`, SHA-256 `77bcd62b4b9044e694cf68ea0391a0f24e251b0193b839c7fa442801474aea47`.
+- Model label: GPT-6 Luna (requested platform model; no served-fingerprint evidence available).
+
+## Observation
+
+The retained run is GitHub Actions `integration - Postgres 18`, run at 10:05:52–10:34:36Z on 2026-10-17. It reports 223 files (222 pass, one fail), 3301 tests (3300 pass, one fail), and this is a test-execution failure, not a runner/pre-test transient. The sole failing case is `tests/api-integration/workspace-write-create-contract.test.ts` → “S4 native create …” → A2-P5. The test body did not start: its `beforeEach` at line 43 called `resetTestDatabase`, which exhausted five attempts acquiring the all-public-table `ACCESS EXCLUSIVE MODE NOWAIT` lock list. The nested PostgreSQL code is `55P03`; stack lands in `helpers/database.ts` lines 144–176. The selected reset delays total 185ms. The result itself is preserved; unchanged rerun is not justified.
+
+Vitest config explicitly serializes integration files (`fileParallelism: false`, one worker). Therefore simultaneous test files within this Vitest process are not a supported explanation. This does not rule out overlapping async work spawned by an earlier test, another process/connection, or a long-lived request/transaction.
+
+## Whole-path evidence and limits
+
+- Reset path: `resetTestDatabase` ensures the test DB, reads public base tables from `information_schema`, enters a Drizzle transaction, sets `session_replication_role=replica`, attempts a single multi-table `LOCK ... ACCESS EXCLUSIVE NOWAIT`, then truncates and restarts identities. On 55P03 the transaction rejects (releasing any partial locks), then retries. The retained stack is consistent with this designed fail-fast behavior.
+- Failing suite lifecycle: every test begins with this reset; the current event subscriber is initialized only after reset. It subscribes to in-process `workspace.created` and appends to an array. A2-P5 therefore cannot itself have issued the failing reset's lock conflict; it had not started.
+- The previous native-contract tests include ordinary creates and an A2-P4b concurrent-create race. That race's `Promise.all` is scoped to two requests and the log marks it completed before the later test. It is a candidate source for detached/unfinished DB work, but no evidence shows requests or transactions remain after its completion.
+- Event-bus implementation emits asynchronously registered handlers via `EventEmitter`; the `workspace.created` test subscriber itself performs no DB access. The native notification flow uses transactional fanout/outbox writes; that makes the documented five-second eventual notification poll a weak candidate for an uncommitted lock surviving into the next `beforeEach`, but the full create route and all callbacks were not fully traced here. Auth setup includes timers/pollers elsewhere in API modules, but no correlation to this conflict is established.
+- The raw failure reports only that *some table in the lock list* could not be locked. PostgreSQL's recorded error has no table name/detail. The raw CI output does not include `pg_stat_activity`, `pg_locks`, backend PID-to-request lifecycle, connection checkout/return, or outstanding handles at the failed attempts. It therefore cannot identify lock holder, relation, transaction age, or whether the lock is on the same test DB from this artifact alone.
+- BetterAuth provider warnings and other injected failures appearing elsewhere in the run are not causal evidence for this table-lock failure.
+
+## Diagnosis
+
+Established cause: `resetTestDatabase` observed a conflicting PostgreSQL relation lock on at least one table in its all-table lock statement for all five immediate attempts. Not established: which table, owning backend, code path, or whether the holder was an intentionally concurrent request, leaked/unfinished async work, another test process sharing `taskdesk_test`, or external runner activity. No product defect is established, and no suitable repair can responsibly be selected from the preserved log alone. Increasing retry delays or suppressing the failure would only mask contention and is not supported.
+
+## Bounded next step
+
+Request one concrete, read-only native diagnostic proposal before executing any further runtime attempt. It should preserve the same failing test sequence and capture, at each failed `NOWAIT` attempt, PostgreSQL lock wait/conflict metadata mapped to relation OID/name, blocking and blocked backend PID, transaction/query start times, application name, and current/last query; also tag the test process's DB connections with a stable application name and record request/transaction completion around the preceding concurrent-create case. Keep artifacts private. The diagnostic must avoid querying/mutating the shared app DB in a way that changes the lock schedule; agree the exact instrumentation and one bounded authorized invocation first. If this shows a same-process unfinished transaction, fix its owning lifecycle and add a regression that waits for/observes request completion before reset. If it shows cross-process DB sharing, repair test-database isolation/ownership. If it identifies a specific legitimate long transaction, trace its full owner and correct that lifecycle. Do not select among these branches without captured evidence.
+
+No source, test, issue, PR, or repository file was modified. No runtime command, test, probe, database query, CI rerun, or browser action was run. Report file is intended private (`0600`).
+
+
+### Continuation authentic artifact 3: `807-8d25-reset-lock-wholepath-diagnosis-luna-addendum.md`
+
+Origin: retained private dispatched context output; 11121 bytes; SHA256 `0b5b4f22ea39eb262f8ddb54a55cddf6c093d216716270a9aef5ed30d40cf93a`. Complete authentic body follows, with its original exact-source scope and verdict.
+
+# #807 reset-lock whole-path diagnosis addendum (static trace)
+
+- Assigned role: READONLY continuation; no approval or merge authority.
+- Exact public PR head: `8d255947d83f00dd047501044ce494534930aae1`.
+- Accepted source commit reviewed: `304d36e9cb4717be88e8879d37ddb19ce08f3ed7`.
+- Accepted base: `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`.
+- Correction to the first report: `23fb...` is the accepted **base**, not candidate source. The inspected checkout HEAD is `8d2559...`; no candidate/source-role assignment should be inferred from the base.
+- Model label: GPT-6 Luna (requested platform model; no served-fingerprint evidence available).
+- The earlier report remains at `807-8d25-reset-lock-wholepath-diagnosis-luna.md`; this is a separate additive report.
+
+## Invocation and database ownership
+
+`.github/workflows/ci-full.yml` runs `pnpm test:integration` in one `integration - Postgres 18` GitHub-hosted job. `apps/api/package.json` invokes `vitest run --config vitest.integration.config.ts`; root `pnpm test:integration` delegates through Turbo. Turbo's `@taskdesk/api#test:integration` task is cache-disabled (test task is actually run). Vitest `globalSetup` runs before workers and, only under `CI`, starts one fresh `postgres:18-alpine` Testcontainer named `taskdesk_test`, sets `TASKDESK_DATABASE_URL` to its connection URI and stops it after Vitest. It does not configure container reuse or a fixed host port. Vitest sets `fileParallelism:false`, one worker. Thus other integration files are not concurrent, and cross-runner/repository processes cannot normally share this ephemeral job-local container. The static CI path makes cross-process sharing substantially less plausible than the first report suggested, though the log itself does not give a container ID or backend PID and cannot prove there was no process spawned by this test invocation.
+
+Within the worker, `tests/api-integration/setup.ts` resolves the already-set CI DB URL and enforces `_test`. `helpers/database.ts` uses the app's module-singleton `db` pool for table discovery and reset; it separately opens/closes an admin `pg.Client` to `/postgres` only for existence checks, and a lazily cached migration promise invokes the membership-provenance migration through the migration helper. Those admin/migration paths run in each reset's ensure calls, but the failing SQL is specifically the app-pool reset transaction's all-table `LOCK ... NOWAIT`. The raw log calls the database `taskdesk_test` and does not show a competing explicit migration process. There is no CI `services:` Postgres instance alongside Testcontainers.
+
+`tests/api-integration/database-reset-locks.test.ts` deliberately uses separate `pg.Client`s for its workspace `ACCESS SHARE` lock and one lock probe, but its two scenarios are in a different file and have completed long before the failing suite in the full-run log. It verifies five attempts, 55P03, rollback of partial locks, and row preservation. This is a proof of expected reset conflict semantics, not evidence those clients remained open at the failure.
+
+## Workspace creation and event path
+
+The route handler calls `createWorkspaceCtrl` from `apps/api/src/workspace/controllers/create-workspace.ts`. Its `db.transaction` awaits internal organisation ensure, workspace insert, owner membership and reach grant, all three default workspace roles, team and team-member creation, workspace default work-item types/state templates, project-lead role, and active session update. Drizzle's transaction callback returns only after those awaited writes; the transaction then commits before `publishEvent("workspace.created", ...)`. On non-slug errors it propagates; slug conflicts are handled by the awaited retry/409 path. No write in this controller is detached with `void`.
+
+`publishEvent` in `apps/api/src/events/index.ts` does `EVENTS.emit(...)` and returns. `subscribeToEvent` registered an async EventEmitter listener that calls `await handler(...)`, but `EventEmitter.emit` ignores the returned promise. Consequently `publishEvent` does not await completion of async subscribers. The only production `workspace.created` subscriber found is registered as a module-level side effect by `apps/api/src/notification/index.ts`. It awaits `createNotification` for the owner. The test file separately installs one module-level subscriber that synchronously pushes into `recordedEvents` and resolves; it does no DB work. No activity or plugin registry subscriber matches this event. Plugin event subscriptions are installed only by `initializePlugins()` during `runApiBootTasks`, not by `createApp` itself.
+
+`createNotification` inserts the notification row, publishes `notification.created`, and, if a row was inserted, launches `void deliverNotification(id).catch(...)`. The workspace-created notification subscriber is not awaited by the route's publish call. The delivery task performs sequential reads (`findDeliveryNotification`, workspace context, user, preferences, workspace rule) and may return early; it can also proceed to configured external delivery. It has no shared drain/stop await seam. In this test setup, the eventual A2-P1 assertion polls notification existence, which waits for the insert but not completion of the subscriber or delivery task. A2-P4b asserts responses and DB workspace/role/team state, likewise does not await these async callbacks.
+
+A2-P4b sends twelve requests with `Promise.all` and awaits each HTTP response. Each successful request commits, then emits `workspace.created`, whose production listener begins independent notification work. After all responses it queries the 12 workspace rows and sequentially queries role/team rows, then returns. The following A2-P5 `beforeEach` begins reset. This is a concrete path by which previous-case async database work can overlap the next reset despite serialized Vitest files: the request promises cover route completion but the event bus does not join async listener promises, and notification delivery is explicitly detached. It is a leading, source-supported hypothesis, not proven cause: the current log contains no callback completion/pending state or backend lock metadata.
+
+## App startup, subscriptions, timers, and other candidate work
+
+Importing `apps/api/src/index.ts` for `createApp` imports the notification module, so its workspace event subscriber is installed at module load. But `createApp()` itself builds the Hono app and registers middleware/routes only; it does not run API boot. `runApiBootTasks()` (not invoked by these tests) starts the auth config poller, initializes plugins, initializes the scheduler, initializes WebSockets, and starts observability refresh. Therefore scheduler cron jobs (due-date reminder, cleanup, pending-action expiry, reminder scan), auth 10-second poller, observability 5-second refresh timer, and plugin event subscriptions are not expected to be active merely from `createApp()` in this integration test. The CI integration setup does not call `runApiBootTasks` or `startServer`.
+
+Policy shadow mode defaults to off; `runNextWithPolicyShadow` directly awaits `next()` and returns without shadow queries when disabled. If CI env unexpectedly enabled it, shadow work is deliberately fire-and-forget in a bounded slot, with a 5-second drop-flush timer only after drops. Neither raw log nor inspected static config provides an effective `TASKDESK_POLICY_SHADOW` value for that run, so this is a lower-ranked conditional candidate pending exact environment evidence. The workspace route's normal business writes are awaited regardless.
+
+The test helper's explicit admin client closes in `finally`; the reset transaction rejects and rolls back its partial locks before retry; the test's explicit reset-lock clients close in their own finally blocks. The source has no suite-wide afterEach that drains app pool queries or event listeners. The database pool is a module singleton; no test-specific shutdown is called between cases. No shared `drainAllAsyncWork` mechanism was found.
+
+## Candidate cause ranking and gaps
+
+1. **Leading, supported candidate:** async `workspace.created` → notification insert and detached delivery from A2-P4b continued into the next reset. Twelve such creates are directly awaited only through response and subsequent assertions; the subscriber is not awaited by `publishEvent`; delivery is explicitly `void`. This aligns with the previous suite case and can touch tables in the reset's list. It does not prove the 55P03 holder was this callback, which particular relation was involved, or that work was still in progress at every 10/25/50/100ms retry.
+2. **Lower-ranked conditional candidate:** bounded policy-shadow evaluation/flush work if its runtime flag was on. It is fire-and-forget by design, but default-off and no recorded CI value/evidence of a drop is available.
+3. **Lower-ranked external candidate:** an unexpected same-job process/client or another shared-container actor. CI Testcontainers isolation and single sequential worker argue against ordinary cross-file/cross-job contention; no backend/process telemetry exists to exclude an unusual spawned actor.
+4. **Not supported by this path:** regular scheduler, auth poller, observability timer, and plugin subscribers; those boot only through `runApiBootTasks` and test invokes just `createApp`.
+
+The PostgreSQL 55P03 gives no conflicting relation name, PID, query, transaction age, or `application_name`. The run does not record `CI`-derived DB URI/container ID, effective env relevant to shadow mode, event listener promise completion, outbox state, or pool `totalCount/idleCount/waitingCount`. This prevents assigning causation to candidate 1 even though the code path is specific and temporally adjacent.
+
+## Next bounded step
+
+A source-only fix is premature. If root authorizes the next diagnostic, make it one single failing-suite-sequence run only after an explicit proposal is agreed: at reset's existing `onLockUnavailable` callback, collect lock holder/waiter data from `pg_locks`/`pg_stat_activity` with relation names, blocker PIDs, current/last query, application name, transaction/query age; also instrument test-local pending counts and completion points for workspace-created notification subscriber and delivery promises, and record completion of the twelve requests. Keep instrumentation limited to this suite/helper and preserve the original assertion, attempt budget, NOWAIT lock order, and sequence; do not add delay or swallow errors. This distinguishes an event callback from other same-process or external actors and identifies the relation before selecting a cause-specific repair. A useful eventual regression should specifically ensure the real path implicated by captured evidence is drained/awaited before reset; do not introduce a global event-drain framework absent evidence it is needed.
+
+No source/test/issue/PR file was edited. No runtime, probe, test, database query, CI rerun, or browser action was performed. The parent reports a separate current canned run with 13 checks all passing; that does not alter the preserved #807 failure evidence.
+
+
+### Continuation authentic artifact 4: `807-8d25-reset-lock-bounded-diagnostic-proposal-luna.md`
+
+Origin: retained private dispatched context output; 8699 bytes; SHA256 `b04a436005be0fafb6cf41de8e7d5ad2c8672155bf865cde4b42dacf5735db52`. Complete authentic body follows, with its original exact-source scope and verdict.
+
+# #807 bounded reset-lock diagnostic proposal (plan only)
+
+- Public PR head: `8d255947d83f00dd047501044ce494534930aae1`.
+- Accepted source: `304d36e9cb4717be88e8879d37ddb19ce08f3ed7`; accepted base: `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`.
+- Model label: GPT-6 Luna (requested platform model; no served-fingerprint evidence).
+- Scope: prepare exactly one bounded natural-sequence capture plan and one separate deterministic lifecycle-class regression proposal. Neither has been implemented or executed. No source edits, tests, PG probes, Docker actions, or CI reruns were made.
+
+## Private evidence and preimages
+
+The source tree remains clean at inspected HEAD `8d255947d83f00dd047501044ce494534930aae1`. SHA-256 preimages at that tree:
+
+| File | SHA-256 |
+| --- | --- |
+| `tests/api-integration/workspace-write-create-contract.test.ts` | `3b3682584b6a19ea548cc03352cf075a72e42646034507967251cb914d7a5273` |
+| `tests/api-integration/helpers/database.ts` | `b3c85a95b7cffa0fcd5ada9767d18dc3bbf9ae4cb914d810f54b99efba24044e` |
+| `tests/api-integration/database-reset-locks.test.ts` | `3e3c633c1e13e76a296b097c1065d6a80eb403845099d2614ad5427e365e0d16` |
+| `apps/api/src/workspace/controllers/create-workspace.ts` | `9004475df701dcc78a816c61b159c4266b276f7506e0ad3fbc1e6acbf14cb872` |
+| `apps/api/src/events/index.ts` | `95c9a0cc6fa04f2ca699276c2522442b4ba7424f59149773d3a59333e4a4f907` |
+| `apps/api/src/notification/index.ts` | `bfa3f11acb1abe2edbfe77398775263813f80a39df6f1bc77d7aa37af4ab7f14` |
+| `apps/api/src/notification/controllers/create-notification.ts` | `5dfa5d070166cab840b6bc2aa8e43d7ddf5456e9109676d604730e684a929c8a` |
+
+The pre-existing private native PostgreSQL capture pattern is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/canned807-304d-current-pg/`: its runner creates one uniquely labeled `postgres:18-alpine` container with `/var/lib/postgresql` tmpfs and ephemeral loopback-only port, no CI flag, private mode-0600 env/logs, exact-ID cleanup, and before/after Docker inventory. Its container was already removed; this proposal calls for a fresh uniquely owned container following that pattern, not reuse. The earlier focused canned-response run is unrelated to the workspace lock observation and does not establish causality.
+
+## Proposal A: one natural-sequence capture, 6 original cases
+
+Create one temporary diagnostic spec, owned and removed by the conductor, at `tests/api-integration/workspace-write-create-lock-diagnostic.test.ts`. Its preimage is the exact six-test `workspace-write-create-contract.test.ts` content above. Preserve all six tests, names, assertions and order, especially A2-P4b followed immediately by A2-P5. Apply only these diagnostic transformations:
+
+1. In the copied `beforeEach`, replace `await resetTestDatabase()` with `await resetTestDatabase({ onLockUnavailable: ... })`. On each existing failed NOWAIT attempt, use one separately connected `pg.Client` pointed only at `current_database()` to capture timestamped rows from `pg_stat_activity` joined to relation-level `pg_locks`/`pg_class`/`pg_namespace`: PID, application name, state, transaction/query age, wait event, relation name and lock mode/granted state, `pg_blocking_pids(pid)`, and `left(query, 2000)`. Store query text only (no bind values or connection URI). Include all sessions for this current database, with explicit `datname = current_database()` scope; do not query cluster-wide database sessions. End that client in `finally`. Do not edit the existing reset helper, lock list/order, NOWAIT mode, five-attempt budget, backoff delays, or error behavior.
+2. At the end of A2-P4b, after its existing response and row assertions and before it returns, record `getDatabasePool().totalCount`, `idleCount`, and `waitingCount` synchronously, plus one current-database activity/lock snapshot using the diagnostic client. Do not wait for async subscribers/delivery and do not drain, yield, add timers or sleeps before A2-P5. This is intended to catch work still present at the natural boundary without masking it.
+3. Add no assertions to the original cases and no blanket mock. A capture output goes only to the run's private log/artifact directory. A natural failure stays a failure and is reported as unproven if the captured metadata cannot identify its holder.
+
+The existing copied suite contains exactly six tests. Proposed one-call native invocation after the conductor has prepared the temporary spec and a fresh owned loopback/tmpfs PG capture is:
+
+```text
+pnpm --filter @taskdesk/api exec vitest run --config vitest.integration.config.ts ../../tests/api-integration/workspace-write-create-lock-diagnostic.test.ts
+```
+
+Run with `CI` absent, as in the existing private focused-capture pattern. Expected count is 6 tests. If the original A2-P5 contention does not recur, record a non-reproduction, not a clean bill or proof against async notification work. If it recurs, preserve the raw exception and lock/activity snapshot and stop; no unchanged repeat.
+
+## Proposal B: one deterministic real-notification-path barrier test
+
+Prepare a separate temporary one-test spec, e.g. `tests/api-integration/workspace-created-notification-lock-diagnostic.test.ts`, only in the same uniquely owned temporary PG run. It must use the real `createApp` + signup + native workspace create route and the existing production `workspace.created` subscriber. Do not mock `publishEvent`, the subscriber, notification insertion, or the reset helper.
+
+Test sequence:
+
+1. Run normal `resetTestDatabase()` before installing diagnostic objects. Open one separate `pg.Client` for the test and acquire a fixed test-only two-key session advisory lock.
+2. Install a uniquely named, test-only trigger and trigger function on the existing `notification` table. Its `BEFORE INSERT` body requests the matching transaction advisory lock and returns `NEW`. Use a diagnostic-specific identifier prefix; do not add product schema/vocabulary or any permanent migration. This makes the real `createNotification` insert wait inside a statement while holding the notification table's ordinary `RowExclusive` relation lock.
+3. Make one real workspace create request and require its HTTP response to finish while the event-subscriber insert is blocked. Observe from a separate diagnostic client that the active backend's query is the notification insert, it is waiting on the advisory lock, and it holds the notification relation lock. This establishes the lifecycle class in this controlled fixture, not the CI run's actual holder.
+4. While the barrier remains held, call the existing `resetTestDatabase({ onLockUnavailable })` and expect the unchanged five-attempt exhaustion/55P03 behavior. Capture relation/backend/query metadata through the same private logger. This is intentional expected contention inside the diagnostic test; it must not suppress or alter reset behavior.
+5. In `finally`, release the advisory lock, wait until the real notification insert has completed, drop only the exact uniquely named trigger/function created by this test, close its client, and verify cleanup. Keep all DDL test-local and in the owned ephemeral database. Let the capture runner stop/remove the exact labeled container and verify inventory restoration even on test failure.
+
+This is one proposed test, expected count 1. It proves that the already-traced async notification path can outlive the HTTP response and block a reset under a controlled DB barrier. It does not prove that this path held the lock in the historical GitHub run, nor does it authorize a source fix or global event-drain mechanism.
+
+## Bounded capture, cleanup, and decision point
+
+The conductor owns any ephemeral spec creation, single native capture invocation, raw evidence preservation, and cleanup. Use the established private capture pattern rather than a new dependency or environment variable: fresh unique container name/labels bound to source `304d36e9cb4717be88e8879d37ddb19ce08f3ed7`, Postgres 18, tmpfs data directory, loopback ephemeral port, `CI` absent, sanitized private receipts, exact container ID stop/remove, private env deletion, inventory diff. Never print the connection URI or password. The historical raw #807 CI artifact remains immutable.
+
+Proposal A answers whether the exact adjacent real suite path naturally presents a lock holder and what relation/session is visible. Proposal B characterizes the identified async lifecycle mechanism deterministically. Neither outcome alone attributes the historical event; actual #807 causation requires matching evidence that was not retained. Do not proceed from these plans to a code repair without the captured evidence and conductor's next bounded instruction.
+
+
+### Continuation authentic artifact 5: `807-8d25-notification-lifecycle-critical-advice-sol.md`
+
+Origin: retained private dispatched context output; 19887 bytes; SHA256 `b438f90402f116854bb7a49e0e1874c2d2d56200eb90bbe7971f08923e7dd9ae`. Complete authentic body follows, with its original exact-source scope and verdict.
+
+# #807 notification lifecycle — bounded critical advice
+
+Status: COMPLETE; advice only, not approval.
+
+Requested model: `gpt-6.1-sol`, high reasoning, fresh fork-none context. Platform context identifies this agent as GPT-6; no served model/version fingerprint is exposed, so none is asserted. Role: material technical adviser, ineligible for later independent approval of an implementation materially based on this advice.
+
+Inspected checkout: `/Users/heinthura/.codex/worktrees/canned-response-ca19-reach/Ticketing.v2`, HEAD `8d255947d83f00dd047501044ce494534930aae1`; parent identifies source `304d36e9cb4717be88e8879d37ddb19ce08f3ed7`, base `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`.
+
+Read AGENTS.md, active-mission.md, agent-workflow.md, error-fix-loop.md and retained Luna whole-path diagnosis/addendum plus root-verified controlled-barrier receipt. No source/test/ref/PR/issue modification or runtime execution is authorized. Commands so far are read-only Git/text/shell inspection and this private report creation.
+
+Evidence boundary: the hosted full-run failure remains real and uncleared. The natural six-case sequence did not reproduce it. The controlled actual notification insert demonstrates the lifecycle class (post-response real database activity can defeat all five unchanged NOWAIT reset attempts), not the historical PID/relation attribution.
+
+## Static trace completed
+
+1. **Invocation and scope.** `apps/api/vitest.integration.config.ts` selects sequential files, one worker, 60-second existing hook/test limits. `setup.ts` supplies an actual-index `createApp` delegation wrapper for request authority and a global `vi.restoreAllMocks()` after each case. It does not call boot. The setup's index reference outside its deferred mock factory is a type reference; that factory calls `importOriginal` only when the index is requested. A test-file hoisted module wrapper is therefore a plausible available seam, but implementation must prove it intercepts the real import graph before relying on it. No execution was performed here.
+2. **Case and business lifetime.** `workspace-write-create-contract.test.ts:42` resets before every case and never joins callback work. A2-P4b awaits all twelve real `createWorkspaceNative` HTTP responses and the workspace/role/team reads. Those reads do not constitute a join for notification or delivery. The helper calls CSRF-wrapped real Hono `POST /api/workspace`. `workspace/controllers/create-workspace.ts:95-239` awaits its transaction, including all inserts, reach/role/default seeds and session update; commit precedes `await publishEvent("workspace.created", ...)`. No business write in this controller is detached.
+3. **First detached edge.** `events/index.ts:21-59`: `publishEvent` creates its payload and synchronously calls `EventEmitter.emit`. `subscribeToEvent` installs an async listener which awaits the supplied handler and catches/logs its failure, but emit ignores that returned promise. Awaiting publish is not awaiting the listener. `shutdownEventBus` removes listeners; it neither joins in-flight listeners nor offers a scoped unsubscribe/drain. Calling it is not fixture quiescence.
+4. **Real subscriber and insertion.** `notification/index.ts:192-209` registers the workspace listener at module evaluation and awaits the real `createNotification` when ownerId exists. For `workspace_created`, resourceType workspace bypasses task reach and maps to no preference key. `create-notification.ts:51-80` awaits `insertNotificationRow`, which performs the actual `notification` insert/returning (`inbox.repository.ts:786-795`); then awaits publish of `notification.created`. That second publish also does not join async listeners.
+5. **Second detached edge.** `create-notification.ts:69` starts `void deliverNotification(id).catch(...)` before returning the notification. Thus even joining the workspace subscriber or observing the row is insufficient to join delivery. `notification-preferences/delivery.ts:389-592` awaits the notification lookup, workspace context/reach lookup, user lookup, preference lookup and (if a preference exists) workspace rule/selected-project lookup. With no preference/rule it returns; otherwise it may proceed to guarded provider operations and awaits the provider promise collection. These are sequential database reads separated by continuations. Pool inactivity between reads is not completion of this promise.
+6. **Relations touched after response.** Insert touches notification and its FK-related relations according to actual PostgreSQL execution. Delivery reads notification, workspace plus the reach predicate's identity/membership inputs, user and notification preference/rule/project rows as its branches require. Its DB work uses the same module-singleton pool as fixture reset. `database/index.ts:331-360` creates that application pool lazily with max 10; it exposes no scoped idle-work join. Migration pool is separate. Closing either pool is not the appropriate per-case repair.
+7. **Nested WebSocket subscriber correction.** The addendum's boot discussion must not be interpreted as saying no WebSocket event listeners exist: `ws/index.ts:517-524` registers `notification.created` at module evaluation. Its handler calls `broadcastToUser` without awaiting. `broadcastToUser:85-107` can detach connection authorization and adapter publication, but this suite opens no sockets and does not boot an adapter (`adapter` starts null at line 131), so both relevant branches are empty here. Tracking this callback is harmless; claiming boot is required to register it would be inaccurate. Regular scheduler, configuration polling, plugin listener installation and observability runtime remain boot-only and are not started by these tests.
+8. **Reset lifetime.** `helpers/database.ts:124-192` ensures the test DB, discovers every public table, acquires the all-table ACCESS EXCLUSIVE NOWAIT lock inside a transaction, then truncates. A 55P03 aborts/rolls back partial locks before the callback/retry. The unchanged four delays are 10/25/50/100ms, five total attempts. `database-reset-locks.test.ts` deliberately asserts real conflict, partial-lock rollback, exact five-attempt exhaustion, row preservation and sequence reset. It must remain intact.
+
+The relevant contract explicitly permits this production timing: retrofit spec `docs/07-planning/retrofits/organization-plugin-retrofit.md:620-644` says effect 9 is eventual, and excludes notification.created and delivery internals from the nine-effect equivalence contract. Fixture cleanup joining work does not make those extra product effects. Moving any join into HTTP, publishEvent, or createNotification would change production timing and is unsupported here.
+
+## Advice: a bounded test-fixture repair is justified
+
+**Recommend a file-scoped transparent promise tracker at the two existing module seams, followed by a join before reset and on case teardown.** This repairs a demonstrably incomplete fixture ownership boundary. It is not a finding that this subscriber held the historical CI lock, and it is not a product change. The controlled proof plus exact source path support fixing this cause class without recovering an unavailable historical backend PID. Further historical metadata would improve attribution, but is not a prerequisite to correcting this fixture invariant.
+
+Keep ownership in `workspace-write-create-contract.test.ts` (a narrowly factored test helper only if the deterministic regression needs to reuse precisely the same reset boundary). Do not install this in global setup or modify all reset users.
+
+- Install a hoisted, file-local `vi.mock` delegation of the events module. Use `importOriginal`, keep the actual publish/eventContext/shutdown exports, and delegate the actual subscribeToEvent. For the relevant workspace.created and notification.created keys, pass a handler wrapper which **invokes the supplied real handler immediately**, registers its exact returned promise, and returns that promise. Other keys pass through. Do not replace publishEvent, listeners, payloads or notification persistence. An alternative default-createNotification wrapper would cover today's insert path, but tracking the real workspace subscriber better owns its full lifetime if that callback later gains a tail.
+- Independently delegate the actual exported `deliverNotification` through an `importOriginal` wrapper and register its exact promise. This is mandatory: subscriber-only tracking misses the second detached edge. No false completed/no-op delivery result.
+- Track work synchronously at invocation. Do not defer real invocation with `Promise.resolve().then(...)`, and do not await either tracker from a request, production listener, or publish path. Normal assertion and request timing remains as before; only fixture teardown/reset waits.
+- Join until the pending set is genuinely empty, repeating after each settled snapshot. A subscriber can spawn tracked delivery after joining begins. A one-shot `Promise.all([...pending])`, row-count poll, idle-count test or fixed timeout sleep is not quiescence. The finite relevant graph has no timer-generated work once its parents settle in this suite.
+- Attach non-throwing success/rejection bookkeeping to tracked promises and retain original outcomes; do not leave an ignored rejecting `.finally()` derivative. Return the original promise to the real production catch. Keep rejected outcomes visible to the fixture rather than silently swallowing them. Unexpected workspace subscriber/delivery rejection should fail cleanup with its original cause, not permit destructive reset or disappear when the pending set empties.
+- First action in the existing beforeEach is join, then unchanged reset, then recordedEvents clearing/initialization. Add file-local afterEach join so failures and the final case have an ownership boundary too. An already-empty join has no timer or extra DB query. Do not clear pending entries manually to get to reset. Preserve existing test/hook limits; a hung or failed join must fail the hook and prevent reset. The next beforeEach must also refuse reset while earlier work remains, including after a timed-out teardown.
+- Hoisting/import order is part of correctness: wrappers must exist before index/notification evaluation registers callbacks and before create-notification imports delivery. Use plain delegation functions rather than per-case spies susceptible to setup.ts's restoreAllMocks; do not reset modules/event bus between cases. The regression must positively demonstrate both real wrappers intercepted actual calls. Type preservation and compatibility with Vitest's module loader remain implementation verification requirements, not claims established by this text review.
+
+This is a small, cause-appropriate fixture change, not a new global drain framework. If a real regression proves these hoisted seams cannot intercept the graph under the actual setup, stop that implementation choice; do not secretly add a product-level await or broaden the framework. A module-default createNotification delegation plus the same delivery delegation is an available narrower fallback for the present callback, subject to that same actual-path proof.
+
+## Meaningful deterministic regression proposal
+
+The current private specimen is characterization evidence, not yet a repair regression. Retain it and its raw receipts. The committed regression should drive the **same fixture quiesce-then-reset function used by the contract cases**, not duplicate that function's logic or merely test a synthetic pending-promise set.
+
+Use a fresh owned migrated PostgreSQL test DB and the actual index/createApp, real sign-up/CSRF helper, native workspace route, event bus, production workspace-created subscriber, createNotification insert, and real deliverNotification. Two explicitly controlled phases can fit one bounded scenario:
+
+1. Reuse the proven test-owned BEFORE INSERT/advisory barrier technique on public.notification. This actually holds the real insert's granted RowExclusiveLock; it does not mock away insertion. Scope all trigger/function ownership and cleanup to this test; neither is an application schema/migration identifier. Obtain the real HTTP 200 **before releasing that barrier**, capture its workspace/owner identity, and positively observe the blocked insert and tracked workspace-subscriber promise. This pins the allowed post-response timing and ensures actual wrappers are live.
+2. Start the actual fixture reset boundary while that work is held. Record the instant the boundary delegates to the real reset, plus tracked subscriber/delivery completions. That instant must occur only after both lifetimes finish. Assert that reset has not been delegated while the barrier is held. A harness observer around the reset boundary may record entry, but must always delegate the unchanged reset. Do not substitute a fake successful reset. Release the insert barrier in a guaranteed finally path.
+3. Separately hold the real delivery continuation at an existing delivery-repository seam, e.g. a regression-only `findDeliveryUser` delegation that first performs its actual DB query, signals entry, then awaits a controlled promise before returning the actual result. This proves the actual deliverNotification body has begun and has further DB work to do. It intentionally creates a between-queries interval that a pool-idle heuristic would misclassify. The normal test fixture delegation does not include this gate. Positively observe workspace subscriber settlement while this delivery remains tracked/pending, and verify reset still has not been delegated. Do not infer delivery completion from notification row visibility. Release this second gate in finally as well.
+4. On release, allow the real delivery to execute its remaining preference/rule reads and legitimate early return under the unchanged fixture; then join the real fixture boundary. Assert the recorded order is HTTP completed < insert release/completion < delivery completion < actual reset delegated/completed, with subscriber completion preceding reset too. For the concurrent drain scenario subscriber completion and delivery-gate entry need not have a forced relative order; both must precede reset. Verify no reset lock-unavailable callback fired for this joined reset and the actual reset removed this workspace/notification state. Positive observation of subscriber pending, then delivery-only pending, prevents an empty/inoperative tracker from passing.
+5. The same scenario must fail if the fixture join is removed, and must fail if delivery tracking is removed. With no join, reset is delegated while the real notification insert is held and the existing five-attempt guard rejects. With only subscriber tracking, reset is delegated while real delivery is still held, which the ordering assertion catches even if that between-queries pause currently holds no relation lock. These are meaningful mutation checks of the two detached edges, not extra production timing requirements. Preserve the failure outputs if such checks are authorized; do not commit a disabled/focused variant.
+
+A journal of synchronous boundary entry and promise lifecycle events gives deterministic ordering without an arbitrary 'wait N ms and hope nothing happened' assertion. Existing finite test/hook timeouts remain failure bounds, not settling delays. If an observer is needed to know the real SQL insert is held, the already-proven PostgreSQL metadata query is appropriate in this regression; pool counts are evidence only, never its completion oracle.
+
+Cleanup must release barriers before awaiting pending work; otherwise the regression deadlocks its own join. Then settle real request/subscriber/delivery work, drop only owned trigger/function, close only owned clients, and preserve primary plus cleanup errors. Never hold DDL cleanup waiting behind an insert whose barrier cleanup has not run. Keep explicit barriers' timeout/failure paths bounded under existing suite limits. The diagnostic specimen's private hardcoded evidence paths/logging should not enter the committed regression.
+
+Keep all six existing contract cases, the 12-request race and its role/team assertions, the nine-effect assertions and existing 5-second effect-9 poll unchanged. Add the new scenario; do not lower expected test/file counts. Run the existing real database-reset-locks regression unchanged to demonstrate that unrelated contention still exhausts the same five attempts and partial locks are still rolled back. A join should prevent **owned** work overlap; it must never make unknown conflicting clients invisible or convert lock exhaustion into success.
+
+## Evidence interpretation and next action
+
+- Established: hosted run 39023575105 / job 117370038116 has 3300 passing + 1 failing tests, 223 files; A2-P5's beforeEach failed before the case body on all five NOWAIT attempts with 55P03. Raw SHA-256 `77bcd62b4b9044e694cf68ea0391a0f24e251b0193b839c7fa442801474aea47` is recorded in the root-verified failure receipt. The historical lock-holder metadata is absent.
+- Established independently by root's controlled native specimen and observer: real HTTP200 preceded a real notification insert completing; backend 89 held notification RowExclusiveLock while waiting on controlled advisory holder 92, and unchanged reset exhausted attempts 1–5 before release. The real notification subsequently persisted; owned resources were cleaned. Receipt `807-8d25-root-verified-notification-barrier-characterization.json` binds the 4.967-second native run and raw/observer hashes.
+- Natural six-case run: nonreproduction, not falsification of this lifecycle possibility and not clearance of hosted CI. It cannot be relabelled as an unchanged CI pass.
+- Supported change claim: "The native workspace-create contract fixture now joins its real event-subscriber and detached delivery work before database reset, preventing that proven overlap class while preserving product timing and reset safeguards."
+- Unsupported claims: "We identified the hosted blocking backend," "notifications definitely caused the historical CI failure," "all possible reset contention is solved," "CI is clear," or "product acceptance is established."
+
+Next action belongs to the conductor: agree/assign this bounded fixture repair and actual-pipeline regression, then verify a genuinely changed candidate through required checks and fresh independent review. No unchanged CI retry is advised or authorized by this report. No product redesign, longer waits/backoff, dropped NOWAIT, unknown-lock suppression, pool shutdown/idle heuristic, notification/delivery stub, or global drain API is justified.
+
+## Final status and execution disclosure
+
+COMPLETE — bounded critical advice, **not an approval**. This adviser materially proposed the repair and regression and is **ineligible** to approve their implementation. Platform model disclosure remains as stated above; requested `gpt-6.1-sol`/high/fork-none is not a claimed served fingerprint.
+
+Performed only read-only Git/text inspection (including retained evidence) and Python writes to this private report. No source/test/ref/PR/issue edits; no Node, AST, compiler, tests, browser, PostgreSQL, Docker, probe or CI execution. No carrier worktree accessed. Private report mode remains 0600.
+
+Final source-binding check: `git diff --stat 304d36e9cb4717be88e8879d37ddb19ce08f3ed7 8d255947d83f00dd047501044ce494534930aae1` lists only the 585-line review record `docs/07-planning/security-reviews/query-ownership-canned-responses-580.md`. The four required policy files read here have no diff against the local accepted `origin/main` ref. Checkout `git status --short` is empty. No network refresh was performed; live CI state in this report is bound to retained receipts and parent-provided state, not an independently refreshed GitHub assertion.
+
+
+### Continuation authentic artifact 6: `canned807-616c-fixture-ordinary-a-luna.md`
+
+Origin: retained private dispatched context output; 4166 bytes; SHA256 `5d01c4c5cd7b21deb6cc07ea4a8c0e91f9097fde2366c50391efc851e0ea0a40`. Complete authentic body follows, with its original exact-source scope and verdict.
+
+# Independent ordinary review — #807 fixture repair and accepted-main composition
+
+- Candidate: `616ce92498802576a6d6e03ddce5944cda5e5e09`
+- Comparison base: accepted main `555879db9e4841c1460346c115111881d3cd3387`
+- Candidate product parent: `1a4a6866ebc49c26f0db9b7e4207d6a13ccda70f`; fixture-repair source `8d255947d83f00dd047501044ce494534930aae1`
+- Scope: causal correctness and cleanup of the fixture lifetime regression in `tests/api-integration/workspace-write-create-contract.test.ts`; composition/conservation of accepted-main records into the merge candidate.
+- Independence: fresh reviewer context; did not author, direct, or remediate the candidate.
+- Model provenance: GPT-6 Luna requested; served model identity/fingerprint is unavailable and is not asserted.
+- Verdict: **CLEAR**
+
+## Review performed
+
+Confirmed exact `HEAD` and clean worktree. The diff from source `8d255947d83f00dd047501044ce494534930aae1` contains only `tests/api-integration/workspace-write-create-contract.test.ts` (439 additions, two deletions). The merge composition from product parent `1a4a6866ebc49c26f0db9b7e4207d6a13ccda70f` contains only the three accepted-main planning records: queue (16 added lines), designated records review note (103 added lines), and status (22 added lines). `git diff --check` is clean. No product, schema, policy, or test-control code is introduced by the merge composition.
+
+Inspected the active mission, agent workflow, error-fix loop, organization-plugin retrofit ledger, inherited-features register, and the actual event/notification/delivery/reset implementations. The test retains `importOriginal` behavior for the real event bus and delivery implementation. The instrumentation observes actual `workspace.created` and `notification.created` subscriber promises and actual `deliverNotification` promises; it does not replace the notification path with a fake implementation. The delivery gate is after the real `findDeliveryUser` query resolves.
+
+The regression creates an owned advisory lock and a trigger on the actual `notification` table. The notification insert blocks inside the real PostgreSQL statement, while the HTTP create completes. The test then initiates the same `quiesceThenReset` boundary used by hooks and requires reset not to delegate while tracked work is pending. After releasing the insert barrier, it waits for the real notification subscriber and for delivery to reach the post-query gate, proves reset still has not been delegated while delivery remains active, releases delivery, and awaits reset. Timeline assertions require both real work paths to finish before reset delegation and reset completion. It also verifies the reset removed the created workspace and notification.
+
+Cleanup releases the delivery gate and any owned advisory lock, awaits outstanding request/reset work and tracked handlers, removes its trigger/function, closes both PostgreSQL clients, and surfaces cleanup errors (aggregated with the primary error when both occur). The unique identifier is generated from hex UUID material; the two advisory-lock keys are bounded parsed integers. The non-owned contention signal is asserted as zero lock-unavailable reset attempts. The existing nine-effect assertions, twelve-request slug race, and other cases remain present; no assertion is weakened or timing acceptance widened.
+
+The accepted-main record additions preserve their dated framing and explicitly retain the failed PostgreSQL gate as a blocker. They do not claim the fixture diagnosis or repair was already proven, and do not promote the candidate to merge-ready. This report does not independently verify the live GitHub facts or private evidence artifacts cited by those records.
+
+## Findings
+
+- Blocking: none.
+- Non-blocking: none.
+
+## Limits
+
+This was a read-only source review. Per the shared runtime window instruction, I did not execute Node, tests, PostgreSQL, Docker, AST/compiler checks, or a census. I therefore make no new runtime-pass claim. Prior test and mutation evidence described in the task handoff remains attributed to its exact earlier source and is not represented here as having been rerun on `616ce924`.
+
+
+### Continuation authentic artifact 7: `canned807-616c-ordinary-a-source-attribution-addendum-luna.md`
+
+Origin: retained private dispatched context output; 2078 bytes; SHA256 `47ee9e73ab793c547766015c65c9f77e65d0022364c84d0c19b5ed048c391eff`. Complete authentic body follows, with its original exact-source scope and verdict.
+
+# Addendum — correction to source-range attribution
+
+- Candidate: `616ce92498802576a6d6e03ddce5944cda5e5e09`
+- Scope: verify the exact changed-file ranges and correct one inaccurate sentence in the original independent ordinary review report.
+- Independence/model provenance: same fresh reviewer context as the original report; GPT-6 Luna requested, served model identity/fingerprint unavailable and not asserted.
+- Verdict for this bounded factual correction: **CLEAR — the three ranges below support the corrected attribution.** The original candidate verdict is unchanged; this addendum is not a new substantive review.
+
+## Correction
+
+The original report incorrectly said the `8d255947d83f00dd047501044ce494534930aae1` to `616ce92498802576a6d6e03ddce5944cda5e5e09` diff contained only the fixture test. That statement omitted the accepted-main records composed by the merge.
+
+I have now run `git diff --name-status` and `git diff --numstat` for each range:
+
+- `8d255947d83f00dd047501044ce494534930aae1` → `1a4a6866ebc49c26f0db9b7e4207d6a13ccda70f`: only `tests/api-integration/workspace-write-create-contract.test.ts`, 439 additions and 2 deletions.
+- `1a4a6866ebc49c26f0db9b7e4207d6a13ccda70f` → `616ce92498802576a6d6e03ddce5944cda5e5e09`: `docs/07-planning/integration-execution-queue.md` (16 additions), `docs/07-planning/security-reviews/records-acceptance-20261017-1042.md` (103 additions), and `docs/07-planning/status.md` (22 additions).
+- `8d255947d83f00dd047501044ce494534930aae1` → `616ce92498802576a6d6e03ddce5944cda5e5e09`: the same three records files plus the fixture test (439 additions, 2 deletions).
+
+The second-range statement in the original report was accurate. The first-range wording should refer to `8d255947...` → `1a4a686...`; the candidate-total range includes four paths.
+
+## Limits
+
+This addendum records only the newly performed range check and this correction. It does not revisit fixture behavior, accepted-record contents, GitHub facts, or runtime/test evidence. No repository source was changed and no runtime or tests were run.
+
+
+### Continuation authentic artifact 8: `canned807-616c-fixture-ordinary-b-luna.md`
+
+Origin: retained private dispatched context output; 4014 bytes; SHA256 `7f87ef79051204434b7ac9403deee803f82a9f9cf4444e32b86cd3bb95dca65d`. Complete authentic body follows, with its original exact-source scope and verdict.
+
+# TaskDesk #807 — independent ordinary review B
+
+- **Reviewer/model:** GPT-6 (platform reports GPT-6; requested GPT-6 Luna was not exposed as a selectable/observable identity in this context).
+- **Role:** fresh independent ordinary reviewer B; this context did not author, direct, or remediate the change and is separate from reviewer A and the author/advisers.
+- **Reviewed head:** `616ce92498802576a6d6e03ddce5944cda5e5e09`
+- **Comparison base:** accepted main `555879db9e4841c1460346c115111881d3cd3387`; fixture composition inspected from source parent `1a4a6866ebc49c26f0db9b7e4207d6a13ccda70f`.
+- **Scope:** the fixture-only additions in `tests/api-integration/workspace-write-create-contract.test.ts`, its composition with the preserved nine-effect contract and slug-race cases, plus candidate delta/conservation.
+- **Verdict:** CLEAR. No blocking or non-blocking findings.
+
+## What I checked
+
+Read the repository workflow, active mission, error-fix loop, status checkpoint, retrofit contract, test fixture, event bus, actual workspace-created notification subscriber, delivery implementation, and reset helper. Reviewed the full fixture addition and the test diff from the fixture source parent. `git diff --check` was clean. The exact candidate composition adds only three conductor-record files relative to accepted main; the new test fixture is present in the source parent and conserved by the merge. The candidate is clean in the supplied worktree.
+
+The mocks wrap `importOriginal` exports and delegate to the actual event bus, delivery function and delivery repository, tracking real returned promises. The join loop rechecks the pending set after each settlement, so it can observe downstream notification work added while the workspace subscriber is in flight. The integration test holds a uniquely keyed transaction advisory lock from another PostgreSQL connection and verifies the actual notification insert is active/blocked; then it uses a delivery-user query gate to show the reset is still waiting after the HTTP response and after the workspace subscriber settles. It releases both controlled barriers, verifies handler/delivery completion precedes reset delegation/completion, and checks reset removed the workspace and notification rows. This tests the intended detached-work lifetime at the real application entrypoint without replacing the event or delivery behavior with canned results.
+
+Cleanup is carefully owned: unique generated SQL identifiers and lock keys; flags track connection, lock, function and trigger acquisition; finally releases the delivery gate, unlocks (closing the blocker as fallback), awaits request/reset and tracked work, drops trigger/function, closes clients, and surfaces both primary and cleanup errors. Reset failures propagate. The existing create contract assertions and concurrent twelve-request slug race are preserved. The five-attempt NOWAIT reset policy and its lock-unavailable callback are exercised as expected by the regression.
+
+No production/runtime code, canned-response security test inputs, or current mock implementation was changed by the candidate composition. The new fixture mocks are file-scoped Vitest mocks for this test module. No shared runtime, PostgreSQL, Docker, compiler or test suite was run, per assignment; this is static review, not an independent execution result. The provided retained root PostgreSQL run is evidence supplied by the author, not a run performed by this reviewer.
+
+## Findings and limits
+
+- **Blocking:** none.
+- **Non-blocking:** none.
+- **Residual limit:** the observer query establishes that the INSERT holds the table lock while active, while the advisory lock deliberately prevents its trigger from finishing; this controlled setup demonstrates the fixture’s race window and reset ordering. It does not attribute the earlier hosted failure to a historical backend PID or establish historical causation.
+- **Tests/reproductions run:** none. Read-only source inspection and `git diff --check` only.
+
+
+### Continuation authentic artifact 9: `canned807-616c-fixture-ordinary-b-source-attribution-addendum-luna.md`
+
+Origin: retained private dispatched context output; 2199 bytes; SHA256 `a86bdd7e577fc7d441d6b2b6c6216446849059bb98362430b73a10088b063bc2`. Complete authentic body follows, with its original exact-source scope and verdict.
+
+# TaskDesk #807 — ordinary review B source-attribution addendum
+
+**Additive correction to:** `canned807-616c-fixture-ordinary-b-luna.md`
+**Reviewed candidate:** `616ce92498802576a6d6e03ddce5944cda5e5e09`
+
+The original report’s sentence “exact candidate composition adds only three conductor-record files relative to accepted main” was incorrect. I have now checked the full name-status and numstat ranges directly:
+
+- `555879db9e4841c1460346c115111881d3cd3387` → `616ce92498802576a6d6e03ddce5944cda5e5e09` (accepted main to candidate): **32 paths**, including product, test, documentation, and CI changes.
+- `1a4a6866ebc49c26f0db9b7e4207d6a13ccda70f` → `616ce92498802576a6d6e03ddce5944cda5e5e09` (fixture source parent to candidate): **3 paths**, exactly the accepted records additions: `docs/07-planning/integration-execution-queue.md` (+16), `docs/07-planning/security-reviews/records-acceptance-20261017-1042.md` (+103), and `docs/07-planning/status.md` (+22).
+- `8d255947d83f00dd047501044ce494534930aae1` → `616ce92498802576a6d6e03ddce5944cda5e5e09` (published product source to candidate): **4 paths**: those three records files plus `tests/api-integration/workspace-write-create-contract.test.ts` (+439/−2).
+- `8d255947d83f00dd047501044ce494534930aae1` → `1a4a6866ebc49c26f0db9b7e4207d6a13ccda70f` (published source to fixture source parent): only `tests/api-integration/workspace-write-create-contract.test.ts` (+439/−2).
+
+Corrected attribution: the fixture-specific addition is 439 insertions and two deletions to that integration test relative to the published source; the source-parent-to-candidate merge adds only the three accepted records files. The earlier sentence confused the latter bounded merge delta with the complete accepted-main-to-candidate composition.
+
+This addendum records a newly performed, bounded source-range check; it is not evidence that the original review already performed that check. This correction does not change the fixture review’s CLEAR verdict: the original review assessed the fixture delta from its source parent and its composition with the existing contract. No product or test files were changed; no runtime or tests were run.
+
+
+### Continuation authentic artifact 10: `canned807-616c-fixture-full-security-61-sol.md`
+
+Origin: retained private dispatched context output; 14669 bytes; SHA256 `a2aca11723c606ad46c01bae58cee63ec1fb0d85922f4e76bdcf6747f23773b5`. Complete authentic body follows, with its original exact-source scope and verdict.
+
+# TaskDesk #807 — independent full security review
+
+- **Reviewed head:** `616ce92498802576a6d6e03ddce5944cda5e5e09`
+- **Comparison base:** accepted main `555879db9e4841c1460346c115111881d3cd3387`.
+- **Reviewer context:** `/root/canned807_616c_fixture_full_security_sol`; fresh independent security reviewer, no authorship, material direction, remediation, or ordinary-review role on this change.
+- **Model provenance:** requested `gpt-6.1-sol`, reasoning `high`, `fork_turns=none`; platform instructions identify GPT-6, but a serving version/fingerprint is not observable here. No stronger serving-identity claim is made.
+- **Verdict:** **CLEAR WITH NON-BLOCKING FINDINGS** — full independent security pass for the new fixture/interception/lifetime regression and its current accepted-main composition. No blocking finding in this reviewed scope. Earlier reviews retain only their originally labelled scopes; this is not a new whole-candidate or whole-repository audit of unchanged code.
+
+## Work performed so far
+
+Read current worktree AGENTS.md, active mission, canonical agent workflow, provider adapter and error-fix-loop. Read both original ordinary review reports in full and both authentic source-attribution addenda in full. Both ordinary fixture verdicts remain CLEAR, with their corrected range claims retained separately from the original bytes. Confirmed worktree HEAD is the requested exact candidate and initial `git status --short` is empty. The accepted-main-to-candidate net diff is 32 paths, including authorization/API and CI controls; this is not a docs-only candidate.
+
+## Execution constraints
+
+Read-only Git/GitHub/text/Python review only. No source/ref/PR/document changes, runtime Node, AST/compiler, tests, PostgreSQL, Docker, or census will be performed by this reviewer. This report is private and is the only output file written. Required current-head CI and runtime acceptance remain separate gates.
+
+## Exact source, composition and retained review scopes
+
+Independently checked Git name/numstat ranges:
+
+- `8d255947d83f00dd047501044ce494534930aae1` → `1a4a6866ebc49c26f0db9b7e4207d6a13ccda70f`: only `tests/api-integration/workspace-write-create-contract.test.ts`, +439/−2.
+- `1a4a6866ebc49c26f0db9b7e4207d6a13ccda70f` → reviewed `616ce92498802576a6d6e03ddce5944cda5e5e09`: exactly the accepted #819 records, queue +16, designated records note +103, status +22, zero deletions.
+- `8d255947...` → reviewed `616ce924...`: four paths, the fixture plus those three records.
+- Accepted main `555879db...` → reviewed `616ce924...`: **32 paths**, retaining the existing #807 API/auth, web/browser, CI classifier/registration and prior review evidence. Neither this range nor the net candidate is docs-only.
+
+Read the intervening commit graph and inspected every parent edge. The new product-parent edge is the one fixture change; the merge's edge from that parent is the three accepted records. The merge's edge from accepted main is the full 32-path candidate. The accepted-main side commits change only the recorded queue/status/records note; the merge did not silently bring new production or gate implementation. `git diff --check 555879db... 616ce924...` passed. Current authority files AGENTS, CLAUDE, workflow and active mission are byte-identical to accepted main.
+
+Confirmed no differences between published `8d255947...` and current head under `apps`, `.github`, `scripts`, `packages`, or the old `query-ownership-canned-responses-580.md` note. Thus production, existing security tests outside the one fixture file, classifier/allowlist controls and the original published security evidence are conserved. I read the retained 304d customer ordinary/security sections and the full 304d security report, including its references to earlier full-source and accepted-main-composition scopes. Their original SHA/base labels remain; this report does not retroactively broaden them. The real legacy workspace-customer denial repair and the classifier's fixed GitHub origin/all-pages/prerelease/exact-break controls are not reopened for comfort review. Targeted current-source inspection confirmed their relevant guard/exception seams remain present.
+
+Both ordinary fixture reviews were read in full, followed by both separately preserved attribution addenda. The corrections accurately distinguish the three ranges above. Their CLEAR verdicts are unchanged; I do not claim their original range wording was already correct. The new fixture SHA-256 independently computed from the current file is `6f39ee5822331c6138c32b0f6658964b09968237249a469588bac6550ba7be44`.
+
+## Full security assessment of the new fixture
+
+Read the complete fixture and its complete published-source delta, actual event bus, actual `workspace.created` notification handler, `createNotification`, delivery implementation/repository, test database reset helper, reset-lock tests, and integration configuration. Read authoritative retrofit §2.5, including the nine effects, eventual timing and stopping rule, and the authoritative security-review path block.
+
+The three Vitest mocks are file-local wrappers around `importOriginal`. They delegate to the real event bus subscription, actual event handler, actual `deliverNotification`, and actual user lookup. They do not fabricate a notification, replace access decisions, stub the database, return invented handler outcomes, or globally change the reset helper. Only workspace/notification event work is tracked by the event wrapper; the separate delivery wrapper is necessary because production deliberately detaches delivery with `void ...catch(...)`. The post-user-query gate pauses only after the real database lookup has completed. The delivery still continues through the actual implementation after release.
+
+`track` adds the actual returned promise before asynchronous settlement, records rejection rather than converting it to success, and returns the original promise to the real caller. Its settlement observer has both success and rejection branches. `join` repeatedly snapshots and awaits the pending set until it is empty, so delivery added while the workspace handler settles is included. Failures remain recorded and cause join to reject; they are not reset away between tests. The beforeEach boundary uses that join before delegating to the unchanged database reset, and afterEach joins again. HTTP/event publication and the nine-effect assertion timing are not made synchronously contractual.
+
+The regression exercises native HTTP creation and an actual PostgreSQL notification INSERT. A UUID-hex-derived function/trigger and two bounded integer advisory keys create an owned server-side barrier; interpolated SQL identifiers contain only a fixed prefix and hex digits, and other lock calls are parameterized. Its actual INSERT/table-lock observation plus in-flight real workspace handler establishes the controlled window after HTTP completion. This is not a historical backend-PID attribution. The same `quiesceThenReset` boundary used by hooks is started while that work is pending and must not delegate. Releasing INSERT then waiting for the actual post-query delivery gate demonstrates that the workspace/notification handlers may be complete while delivery is still pending. Reset must still not delegate. After delivery release, ordering assertions require both workspace work and detached delivery to complete before reset delegation and completion, and actual database reads require the created workspace and notification to be gone. Missing timeline events fail explicitly.
+
+Cleanup releases the delivery gate and owned lock, attempts to close the blocker if unlocking fails, waits for request/reset/tracked work, drops only its uniquely owned trigger/function, closes both clients and reports incomplete owned state. Primary and cleanup failures are thrown after finally, with aggregation when both occur; the earlier unsafe-finally diagnostic is not suppressed. The early `resetPromise.catch` only attaches an immediate rejection handler while barriers are held; the original promise is subsequently awaited and failures are retained. The diagnostic limitation NB-1 below qualifies cleanup under a never-signalled gate; this review does not claim unconditional cleanup after every possible asynchronous hang.
+
+The six original cases remain, with the original exact database assertions and no removed effect, widened notification deadline, retry count or race count. A2-P1 still checks all nine effects, with its original five-second/25ms eventual notification poll. A2-P4b still issues twelve concurrent native requests and checks twelve complete, distinct-slug workspaces. The unchanged reset helper still performs NOWAIT locking, rolls back partial acquisition, retries only lock-unavailable errors, and fails after exactly five attempts. The new wrapper neither labels unknown/non-owned contention harmless nor bypasses the database-name guard. The unchanged lock regression file still asserts partial-lock release, unrelated guard failure, and five-attempt exhaustion preserving rows.
+
+Composition adds accepted dated records, not new authority or a waiver. Their #807 entry continues to report the historical hosted PostgreSQL failure and requires diagnosis/current gates; it does not claim this fixture repair was already accepted. The current auth customer denial, SQL reach boundaries, API-key ceiling and exact pair of #807 breaking registrations remain unchanged. Prior shadow-marker limitation remains explicitly non-blocking and unremediated.
+
+## Retained runtime evidence inspected (other contexts' executions)
+
+No runtime execution was performed by me. I checked retained receipt text, source bytes/hashes and native-log summaries:
+
+- Final root focused PostgreSQL evidence: `807-notification-fixture-final-root-pg`, actual native exit 0, **3 files / 23 tests passed**, wrapper PID 55779, 11.943 seconds; native Vitest internal duration 11.15 seconds is a different metric. Raw log is 24,611 bytes, SHA-256 `915d4c4a5d54e9f4dc837461946acce6f259579db427f1ebaf84a5ae1bc257fe`. Saved fixture bytes hash exactly to current `6f39ee...`. This run is correctly labelled published base `8d255947...` plus the pinned one dirty fixture, not falsely labelled a clean execution of future `616ce924...`. Git conservation establishes the reviewed fixture's matching bytes and unchanged relevant product/test inputs. It is still not full hosted CI.
+- API typecheck receipt: PID 55247, exit 0, 18.223619916 seconds, final fixture hash unchanged. Raw log is 334 bytes, SHA-256 `ae5d832a3f05e0e2113d67bcad37dbda07a78a0074df02af15a416b9f36ae682`; the command invokes five TypeScript configurations. The earlier formatter receipt actually records exit 1 and the unsafe-finally issue; that adverse diagnostic remains retained. Source now propagates errors after finally. I do not relabel that earlier receipt as a formatter pass.
+- Both retained mutation logs genuinely fail at their intended assertion: no reset join yields resetDelegated=true; missing delivery tracking yields active delivery count 0. Each selected one regression and filter-skipped the six unrelated cases. Raw logs independently hash to `3e96d3121a1355f5f58e577bfffbdf1007b8d1c0d4d2a32047b6324e5c0dbc74` (4,523 bytes) and `641f5df49a771e431bf03f4b7e196d904ce7887c9800e366ba28826d03f0cd9e` (4,588 bytes). These are deliberately negative checks, not weakened/disabled acceptance cases.
+- Those mutations belong to earlier pre-format fixture SHA `269aef3dd8312f6fccd8a349dbda0c8670c4612fe1cdf7e46dc56cc0363679ac`, not final bytes. I independently compared that saved baseline with final bytes: changes are formatting plus relocating error propagation out of finally. The mutation claim stays scoped to the earlier bytes; no exact-final mutation execution is claimed.
+- The final retained cleanup receipt records successful removal of its exact owned PostgreSQL container. This is evidence inspection, not a live resource census by me.
+
+The historical hosted `8d255947...` run remains **3300 passed / 1 failed / 223 files**, with historical blocking PID/cause unknown. The controlled real-notification race establishes a fixture lifetime defect class and an effective local repair. It does not prove that class was the historical hosted run's unique cause, clear the adverse historical run, or establish a current hosted pass.
+
+## Findings
+
+**Blocking: none.**
+
+**NB-1 — new, non-blocking diagnostic/cleanup limitation.** `waitForDeliveryUserQuery()` returns an unbounded gate-entry promise, awaited by the regression after releasing INSERT. If actual delivery rejects or legitimately returns before reaching the user-query hook, that promise is never signalled; the body can remain suspended and cannot enter its finally cleanup merely because the outer 30-second test deadline is reported. Worker/process teardown may be required. A locally bounded signal wait would produce a direct failure and allow finally to run. This is a source-derived failure-path observation, not an executed reproduction. It cannot make the regression pass, does not change application authorization, and is not a reason to widen/waive any test or CI threshold. Optional follow-up, not a blocking repair request.
+
+**Existing retained non-blocking limitation — shadow denial markers.** The prior full 304d review noted canned reach/capability/customer refusals do not explicitly mark shadow legacy authorization denied. HTTP denial is still enforced before the handler; observer-only shadow evidence can remain unknown. This candidate does not alter that path or remediate that limitation. No shadow acceptance is claimed.
+
+## Verdict limits and next gate
+
+**CLEAR WITH NON-BLOCKING FINDINGS** for exact `616ce92498802576a6d6e03ddce5944cda5e5e09`, at full required security depth for the new fixture and current composition, with unchanged earlier scopes retained as described. This is not lightweight confirmation. No child reviewer or retired route was used. No source/ref/PR mutation, commit, push, merge or runtime action was performed.
+
+Read-only live GitHub inspection showed #807 still published at `8d255947d83f00dd047501044ce494534930aae1`, not reviewed local `616ce924...`. No old status, image or browser evidence is promoted to current-head CI. Publication, authentic review transport, and **fresh required checks on the exact published candidate** remain conductor-owned. BROWSER VERIFICATION: BLOCKED by the no-runtime review assignment; no screen was opened by this reviewer. This report grants no merge authorization, current full-suite/hosted/image/SIT/recovery acceptance, stage closure, release or deployment claim.
+
+
+## Current publication and residual binding
+
+**Reviewed head:** `616ce92498802576a6d6e03ddce5944cda5e5e09`
+
+Fresh ordinary A and B CLEAR plus further FULL independent Sol CLEAR WITH NON-BLOCKING FINDINGS apply at this source. Final fixture hash6f39ee5822331c6138c32b0f6658964b09968237249a469588bac6550ba7be44 matches the root's3file23test/5-configuration typecheck inputs. Required exact-publication CI is still pending at publication. Sol NB-1 (unbounded delivery gate-entry signal on unexpected delivery early exit) and the earlier observer-only shadow-denial-marker limitation remain explicit non-blocking residuals. No timeout, retry budget, test or quality gate is waived or weakened.
