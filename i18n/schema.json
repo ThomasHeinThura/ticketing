@@ -3435,6 +3435,147 @@
 								"iconRequired"
 							]
 						},
+						"engagement": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"kind": {
+									"type": "string"
+								},
+								"project": {
+									"type": "string"
+								},
+								"managedService": {
+									"type": "string"
+								},
+								"health": {
+									"type": "string"
+								},
+								"unset": {
+									"type": "string"
+								},
+								"red": {
+									"type": "string"
+								},
+								"amber": {
+									"type": "string"
+								},
+								"green": {
+									"type": "string"
+								},
+								"supportLevel": {
+									"type": "string"
+								},
+								"serviceCalendar": {
+									"type": "string"
+								},
+								"none": {
+									"type": "string"
+								},
+								"supportLevelRequired": {
+									"type": "string"
+								},
+								"calendarRequired": {
+									"type": "string"
+								},
+								"calendarUnlisted": {
+									"type": "string"
+								},
+								"noCalendars": {
+									"type": "string"
+								},
+								"calendarsError": {
+									"type": "string"
+								},
+								"saved": {
+									"type": "string"
+								},
+								"saving": {
+									"type": "string"
+								},
+								"save": {
+									"type": "string"
+								},
+								"discard": {
+									"type": "string"
+								},
+								"retry": {
+									"type": "string"
+								},
+								"loadError": {
+									"type": "string"
+								},
+								"readOnly": {
+									"type": "string"
+								},
+								"manageSettingsRequired": {
+									"type": "string"
+								},
+								"failure": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"forbidden": {
+											"type": "string"
+										},
+										"managedServiceIncomplete": {
+											"type": "string"
+										},
+										"calendarInvalid": {
+											"type": "string"
+										},
+										"notFound": {
+											"type": "string"
+										},
+										"generic": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"forbidden",
+										"managedServiceIncomplete",
+										"calendarInvalid",
+										"notFound",
+										"generic"
+									]
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"kind",
+								"project",
+								"managedService",
+								"health",
+								"unset",
+								"red",
+								"amber",
+								"green",
+								"supportLevel",
+								"serviceCalendar",
+								"none",
+								"supportLevelRequired",
+								"calendarRequired",
+								"calendarUnlisted",
+								"noCalendars",
+								"calendarsError",
+								"saved",
+								"saving",
+								"save",
+								"discard",
+								"retry",
+								"loadError",
+								"readOnly",
+								"manageSettingsRequired",
+								"failure"
+							]
+						},
 						"importExportTasks": {
 							"type": "string"
 						},
@@ -3475,6 +3616,7 @@
 						"toastDeleted",
 						"toastDeleteError",
 						"validation",
+						"engagement",
 						"importExportTasks",
 						"importExportTasksDescription"
 					]
