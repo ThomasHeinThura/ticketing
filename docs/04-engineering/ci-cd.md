@@ -315,7 +315,8 @@ process in [agent-workflow.md](agent-workflow.md#model-policy).
 ```
 apps/api/src/**/policy.ts            packages/permissions/**
 apps/api/src/plugins/**              apps/api/src/storage/**
-apps/api/src/auth*                   apps/api/src/index.ts
+apps/api/src/auth*                   apps/api/src/auth/**
+                                     apps/api/src/index.ts
 apps/api/src/utils/**                apps/api/src/capabilities/**
 apps/api/src/**/index.ts             any new route file (a new *.ts exporting a Hono router)
 apps/api/src/**/controllers/**       apps/api/drizzle/*.sql
