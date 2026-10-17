@@ -112,6 +112,82 @@ export async function getUserFactorEnabled(userId: string) {
     .limit(1);
 }
 
+export async function getActiveLocalFactorIdentity(
+  userId: string,
+  executor: typeof db | StepUpExecutor = db,
+) {
+  return await executor
+    .select({
+      id: schema.personTable.id,
+      side: schema.personTable.side,
+      active: schema.personTable.active,
+      enabled: schema.userTable.twoFactorEnabled,
+    })
+    .from(schema.personTable)
+    .innerJoin(
+      schema.userTable,
+      eq(schema.personTable.userId, schema.userTable.id),
+    )
+    .where(
+      and(
+        eq(schema.personTable.userId, userId),
+        eq(schema.personTable.active, true),
+      ),
+    )
+    .limit(1);
+}
+
+export async function getInactiveLocalFactorIdentity(
+  userId: string,
+  executor: typeof db | StepUpExecutor = db,
+) {
+  return await executor
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(
+      and(
+        eq(schema.personTable.userId, userId),
+        eq(schema.personTable.active, false),
+      ),
+    )
+    .limit(1);
+}
+
+export async function getLocalFactorPolicySetting(
+  executor: typeof db | StepUpExecutor = db,
+) {
+  return await executor
+    .select({ policy: schema.instanceSettingTable.localFactorPolicy })
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
+    .limit(1);
+}
+
+export async function getLocalFactorMembershipRoles(
+  personId: string,
+  executor: typeof db | StepUpExecutor = db,
+) {
+  return await executor
+    .select({ roleId: schema.membershipTable.roleId })
+    .from(schema.membershipTable)
+    .innerJoin(
+      schema.roleTable,
+      eq(schema.membershipTable.roleId, schema.roleTable.id),
+    )
+    .where(eq(schema.membershipTable.personId, personId));
+}
+
+export async function getConfiguredLocalFactorRole(
+  roleId: string,
+  executor: typeof db | StepUpExecutor = db,
+) {
+  return await executor
+    .select({ id: schema.roleTable.id })
+    .from(schema.roleTable)
+    .where(eq(schema.roleTable.id, roleId))
+    .limit(1);
+}
+
 export async function isCurrentInstanceAdminForStepUp(
   userId: string,
   executor: typeof db | StepUpExecutor = db,
