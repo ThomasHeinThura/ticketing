@@ -1,3 +1,18 @@
+## Pending-action accepted; records/gate import next — 2026-10-17 05:51 UTC
+
+Accepted mainff5e16b677e2c72c8b14e0aaff38ea2df930a428 is protected815, exact publication/synthetic tree. The newest status snapshot contains actual counts and source limits; prior dated rows remain intact.
+
+| Owner / unit | Actual current state | Next action |
+| --- | --- | --- |
+| Conductor /815 pending-action580 | Accepted693d/sourceaea9; full223/3292/5, finalunit12/API121872/web1861023, browser63/G1122/image125/health200/all18. | Preserve bounded acceptance and inheritedN1; continue real580 conversion. |
+| Conductor /803 and816 | cf724 nine-path composition ordinary/fullSol CLEAR,14/14 focused gate tests; normal accepted815 import prepared with only3 disjoint incoming paths. | Verify exact mode/blob conservation/current records, bounded import confirmations, own-note publication, normal push and new current CI; no duplicate816 PR. |
+| Conductor /auth read580 | Pushede52/445 five authentic reports; APItsc0 afterworkspacebuild, real8files136tests/native0/38.107s and exactownedcleanup. | Compose actual accepted records/gate source, source-bound current confirmation, current hosted/image gates and protected acceptance. |
+| Luna /Carrier791 | fd9b complete78:62pass16fail0skip; private7case ledger diagnosis retained. Current7b961 source-only exact-invocation/split-proof batch, unchanged599tests/manifest. | Independent delta scrutiny, actual finite semantic/negative checks and eventual complete78; unresolved property/story/guard/route classes stay open. |
+| Conductor /811 recovered773 | Local09bc spec alignment unpushed, owning review nonempty, three Thomas questions pending. | Obtain actual owner answers/disposition/current exact-head verification; no P5 or gate bypass. |
+| Conductor /810,807,798 | Old refusals and full source reviews retained; no unchanged manual retry. | Genuine current-main composition and current ordinary/Sol/requiredCI when the small queue allows. |
+| Luna /selectedUI source/evidence | Recovered713–716 source remains in unaccepted Carrier; scope/navigation precision and realAPI journey mapping underway. | Honor owner-limited713 and held surfaces; resolve actual SV-18 reach and verify included workflows on the final signed digest. |
+| Conductor /final589 | Remaining580/Carrier and signedrelease/SIT/nonemptyrestore/finalaudit unfinished;717 already done. | Finish every selected unit or actual Thomas deferral, final artifact/workflows/recovery/audit, then Hold. |
+
 ## Approval accepted; pending-action and gate composition — 2026-10-17 05:34 UTC
 
 Accepted mainb78fd6853a890c6e2b10d17be18885e3b1612b2d is protected812. The newest status snapshot gives source-bound counts and residuals; dated rows below remain historical.
