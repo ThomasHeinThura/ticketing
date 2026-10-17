@@ -1701,11 +1701,11 @@ export async function getOidcConnectionForCallback(connectionId: string) {
     .limit(1);
 }
 
-export function getOidcIdentityForSignIn(
+export async function getOidcIdentityForSignIn(
   tx: IdentityTransaction,
   input: { connectionId: string; issuer: string; subject: string },
 ) {
-  return tx
+  return await tx
     .select({
       id: schema.externalIdentityTable.id,
       personId: schema.externalIdentityTable.personId,
@@ -1746,11 +1746,11 @@ export async function getOidcConnectionSnapshot(
     .limit(1);
 }
 
-export function findOidcIdentityForClosure(
+export async function findOidcIdentityForClosure(
   tx: IdentityTransaction,
   input: { connectionId: string; issuer: string; subject: string },
 ) {
-  return tx
+  return await tx
     .select({
       id: schema.externalIdentityTable.id,
       personId: schema.externalIdentityTable.personId,
@@ -1769,11 +1769,11 @@ export function findOidcIdentityForClosure(
     .limit(1);
 }
 
-export function listActiveOidcGrantsForSignIn(
+export async function listActiveOidcGrantsForSignIn(
   tx: IdentityTransaction,
   input: { personId: string; connectionId: string; externalIdentityId: string },
 ) {
-  return tx
+  return await tx
     .select({
       id: schema.membershipGrantTable.id,
       roleId: schema.membershipGrantTable.roleId,
@@ -1805,11 +1805,11 @@ export function listActiveOidcGrantsForSignIn(
     .for("update");
 }
 
-export function listAdmissionFailedOidcGrants(
+export async function listAdmissionFailedOidcGrants(
   tx: IdentityTransaction,
   input: { personId: string; externalIdentityId: string; connectionId: string },
 ) {
-  return tx
+  return await tx
     .select({
       id: schema.membershipGrantTable.id,
       scope: schema.membershipGrantTable.scope,
