@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
 import type { ScimAdminRequest } from "@taskdesk/domain";
 import { canonicalScimAdminRequest } from "@taskdesk/domain";
-import db from "../database";
+import type db from "../database";
 import {
   canonicalOidcGroupMappingBody,
   OIDC_GROUP_MAPPING_CREATE_OPERATION,
@@ -12,6 +12,7 @@ import {
   type OidcGroupMappingCreateRequest,
   type OidcGroupMappingUpdateRequest,
 } from "../identity/oidc-group-mapping-contract";
+import { withTotpSessionEnrollment } from "../pending-action/credential-invalidation";
 import {
   consumeOperationProofRecord,
   consumePendingActionProofRecord,
@@ -19,6 +20,9 @@ import {
   createPendingActionChallengeRecord,
   issueOperationTokenRecord,
   issuePendingActionTokenRecord,
+  type PendingActionStepUpAdmission,
+  type StepUpExecutor,
+  type VerifiedStepUpAuthentication,
 } from "./repository";
 
 export const STEP_UP_OPERATION = "metrics_token_rotate" as const;
@@ -303,7 +307,7 @@ export async function createPendingActionChallenge(input: {
 }) {
   const id = createId();
   const nonce = randomBytes(32);
-  const challengeExpiresAt = await db.transaction(async (tx) => {
+  const challengeExpiresAt = await withStepUpLifecycle(async (tx) => {
     return createPendingActionChallengeRecord(tx, {
       id,
       personId: input.personId,
@@ -336,7 +340,7 @@ async function createOperationChallenge(input: {
   const id = createId();
   const nonce = randomBytes(32);
   const bodyHash = sha256(input.body);
-  const challengeExpiresAt = await db.transaction(async (tx) => {
+  const challengeExpiresAt = await withStepUpLifecycle(async (tx) => {
     const expiresAt = await createOperationChallengeRecord(tx, {
       id,
       personId: input.personId,
@@ -359,7 +363,39 @@ async function createOperationChallenge(input: {
   };
 }
 
-type StepUpTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type StepUpTransaction = StepUpExecutor;
+
+type StepUpFinalizer = <T>(
+  callback: (executor: StepUpTransaction) => Promise<T>,
+) => Promise<T | null>;
+
+/** Admit every step-up producer through the existing PA lifecycle transaction. */
+async function withStepUpLifecycle<T>(
+  callback: (
+    executor: StepUpTransaction,
+    finalize: StepUpFinalizer,
+  ) => Promise<T>,
+): Promise<T> {
+  let finalizationError: unknown;
+  let hasFinalizationError = false;
+  const result = await withTotpSessionEnrollment(
+    async (executor) => {
+      const finalize: StepUpFinalizer = async (work) => {
+        try {
+          return await executor.transaction((nested) => work(nested));
+        } catch (error) {
+          finalizationError = error;
+          hasFinalizationError = true;
+          return null;
+        }
+      };
+      return callback(executor, finalize);
+    },
+    { markExplicitSessionMutation: false },
+  );
+  if (hasFinalizationError) throw finalizationError;
+  return result;
+}
 
 export async function consumeRotationProof(
   tx: StepUpTransaction,
@@ -587,9 +623,9 @@ export async function issueRotationToken(
     userId: string;
     version: number;
   },
-  verifyAuthentication: () => Promise<
-    "password" | "totp" | "backup_code" | null
-  >,
+  verifyAuthentication: (
+    executor: StepUpTransaction,
+  ) => Promise<VerifiedStepUpAuthentication | null>,
 ) {
   return issueOperationToken(
     {
@@ -614,9 +650,9 @@ export async function issueMfaResetToken(
     targetUserId: string;
     verificationNote: string;
   },
-  verifyAuthentication: () => Promise<
-    "password" | "totp" | "backup_code" | null
-  >,
+  verifyAuthentication: (
+    executor: StepUpTransaction,
+  ) => Promise<VerifiedStepUpAuthentication | null>,
 ) {
   return issueOperationToken(
     {
@@ -639,9 +675,9 @@ export async function issueInstanceAdminGrantToken(
     userId: string;
     targetUserId: string;
   },
-  verifyAuthentication: () => Promise<
-    "password" | "totp" | "backup_code" | null
-  >,
+  verifyAuthentication: (
+    executor: StepUpTransaction,
+  ) => Promise<VerifiedStepUpAuthentication | null>,
 ) {
   return issueOperationToken(
     {
@@ -665,9 +701,9 @@ export async function issueInstanceAdminSuspendToken(
     targetUserId: string;
     request: { reason?: string; expiresAt?: string | null };
   },
-  verifyAuthentication: () => Promise<
-    "password" | "totp" | "backup_code" | null
-  >,
+  verifyAuthentication: (
+    executor: StepUpTransaction,
+  ) => Promise<VerifiedStepUpAuthentication | null>,
 ) {
   return issueOperationToken(
     {
@@ -692,26 +728,29 @@ export async function issuePendingActionToken(
     sessionId: string;
     userId: string;
     pendingActionId: string;
+    expectedPendingAction?: PendingActionStepUpAdmission;
   },
-  verifyAuthentication: () => Promise<
-    "password" | "totp" | "backup_code" | null
-  >,
+  verifyAuthentication: (
+    executor: StepUpTransaction,
+  ) => Promise<VerifiedStepUpAuthentication | null>,
 ) {
   if (!/^[A-Za-z0-9_-]{43}$/u.test(input.nonce)) return null;
   const nonce = Buffer.from(input.nonce, "base64url");
   if (nonce.length !== 32 || nonce.toString("base64url") !== input.nonce)
     return null;
   const token = randomBytes(32);
-  const result = await db.transaction((tx) =>
+  const result = await withStepUpLifecycle((tx, finalize) =>
     issuePendingActionTokenRecord(tx, {
       id: input.id,
       personId: input.personId,
       sessionId: input.sessionId,
       userId: input.userId,
       pendingActionId: input.pendingActionId,
+      expectedPendingAction: input.expectedPendingAction,
       nonceHash: sha256(nonce),
       tokenHash: sha256(token),
       verifyAuthentication,
+      finalize,
     }),
   );
   return result
@@ -733,9 +772,9 @@ export async function issueScimAdminToken(
     connectionId: string;
     request: ScimAdminRequest;
   },
-  verifyAuthentication: () => Promise<
-    "password" | "totp" | "backup_code" | null
-  >,
+  verifyAuthentication: (
+    executor: StepUpTransaction,
+  ) => Promise<VerifiedStepUpAuthentication | null>,
 ) {
   return issueOperationToken(
     {
@@ -763,9 +802,9 @@ export async function issueOidcGroupMappingToken(
       | typeof OIDC_GROUP_MAPPING_CREATE_OPERATION
       | typeof OIDC_GROUP_MAPPING_UPDATE_OPERATION;
   },
-  verifyAuthentication: () => Promise<
-    "password" | "totp" | "backup_code" | null
-  >,
+  verifyAuthentication: (
+    executor: StepUpTransaction,
+  ) => Promise<VerifiedStepUpAuthentication | null>,
 ) {
   const creating = input.operation === OIDC_GROUP_MAPPING_CREATE_OPERATION;
   return issueOperationToken(
@@ -794,9 +833,9 @@ export async function issueIdentityConnectionToken(
       | typeof IDENTITY_CONNECTION_CREATE_OPERATION
       | typeof IDENTITY_CONNECTION_CONFIGURE_OPERATION;
   },
-  verifyAuthentication: () => Promise<
-    "password" | "totp" | "backup_code" | null
-  >,
+  verifyAuthentication: (
+    executor: StepUpTransaction,
+  ) => Promise<VerifiedStepUpAuthentication | null>,
 ) {
   const creating = input.operation === IDENTITY_CONNECTION_CREATE_OPERATION;
   return issueOperationToken(
@@ -830,9 +869,9 @@ export async function issueScimTokenToken(
       | typeof SCIM_TOKEN_ROTATE_OPERATION
       | typeof SCIM_TOKEN_REVOKE_OPERATION;
   },
-  verifyAuthentication: () => Promise<
-    "password" | "totp" | "backup_code" | null
-  >,
+  verifyAuthentication: (
+    executor: StepUpTransaction,
+  ) => Promise<VerifiedStepUpAuthentication | null>,
 ) {
   const route =
     input.operation === SCIM_TOKEN_ROTATE_OPERATION
@@ -860,9 +899,9 @@ async function issueOperationToken(
     route: string;
     body: Buffer;
   },
-  verifyAuthentication: () => Promise<
-    "password" | "totp" | "backup_code" | null
-  >,
+  verifyAuthentication: (
+    executor: StepUpTransaction,
+  ) => Promise<VerifiedStepUpAuthentication | null>,
 ) {
   if (!/^[A-Za-z0-9_-]{43}$/u.test(input.nonce)) return null;
   const nonce = Buffer.from(input.nonce, "base64url");
@@ -871,7 +910,7 @@ async function issueOperationToken(
   }
   const bodyHash = sha256(input.body);
   const token = randomBytes(32);
-  const result = await db.transaction((tx) =>
+  const result = await withStepUpLifecycle((tx, finalize) =>
     issueOperationTokenRecord(tx, {
       id: input.id,
       personId: input.personId,
@@ -884,6 +923,7 @@ async function issueOperationToken(
       nonceHash: sha256(nonce),
       tokenHash: sha256(token),
       verifyAuthentication,
+      finalize,
     }),
   );
 

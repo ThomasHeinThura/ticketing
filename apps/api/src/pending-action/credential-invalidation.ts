@@ -143,10 +143,15 @@ class TotpResponseRollback extends Error {
 
 /** Run the installed TOTP API operation and all adapter/hook writes atomically. */
 export async function withTotpSessionEnrollment<T>(
-  callback: () => Promise<T>,
+  callback: (executor: PendingActionTransaction) => Promise<T>,
+  options: { markExplicitSessionMutation?: boolean } = {},
 ): Promise<T> {
   const current = totpEnrollmentStorage.getStore();
-  if (current) return callback();
+  if (current) {
+    const tx = transactionStorage.getStore();
+    if (!tx) throw new Error("TOTP enrollment transaction is unavailable");
+    return callback(tx);
+  }
 
   let outcome: {
     result: T;
@@ -164,12 +169,18 @@ export async function withTotpSessionEnrollment<T>(
       };
       return totpEnrollmentStorage.run(context, () =>
         transactionStorage.run(tx, async () => {
-          const { result, state } = await withExplicitCredentialMutation(
-            { kind: "session", route: "/two-factor/verify-totp" },
-            callback,
-          );
-          if (state.deleteFailure) {
-            throw new CredentialRevocationFailure(state.deleteFailure);
+          let result: T;
+          if (options.markExplicitSessionMutation === false) {
+            result = await callback(tx);
+          } else {
+            const marked = await withExplicitCredentialMutation(
+              { kind: "session", route: "/two-factor/verify-totp" },
+              () => callback(tx),
+            );
+            result = marked.result;
+            if (marked.state.deleteFailure) {
+              throw new CredentialRevocationFailure(marked.state.deleteFailure);
+            }
           }
           if (result instanceof Response && result.status >= 500) {
             throw new TotpResponseRollback(result);
@@ -197,6 +208,49 @@ export async function withTotpSessionEnrollment<T>(
   return outcome.result;
 }
 
+/**
+ * Run one local-factor provider call as an enlisted savepoint while a step-up
+ * entrypoint owns the lifecycle transaction. Child hook effects and audit
+ * counters become visible to the outer commit only after the savepoint succeeds.
+ */
+export async function withEnlistedLocalFactorVerification<T>(
+  callback: (executor: PendingActionTransaction) => Promise<T>,
+): Promise<T> {
+  const tx = transactionStorage.getStore();
+  const parent = totpEnrollmentStorage.getStore();
+  if (!tx || !parent) {
+    throw new Error("Local-factor verification requires lifecycle admission");
+  }
+
+  const child: TotpEnrollmentContext = {
+    pendingActionAuditFailures: 0,
+    mutationAuditFailures: 0,
+    afterCommit: [],
+  };
+  const result = await tx.transaction(async (nested) => {
+    const marked = await totpEnrollmentStorage.run(child, () =>
+      transactionStorage.run(nested, () =>
+        withExplicitCredentialMutation(
+          { kind: "session", route: "/two-factor/verify-totp" },
+          () => callback(nested),
+        ),
+      ),
+    );
+    if (marked.state.deleteFailure) {
+      throw new CredentialRevocationFailure(marked.state.deleteFailure);
+    }
+    if (marked.result instanceof Response && marked.result.status >= 500) {
+      throw new TotpResponseRollback(marked.result);
+    }
+    return marked.result;
+  });
+
+  parent.pendingActionAuditFailures += child.pendingActionAuditFailures;
+  parent.mutationAuditFailures += child.mutationAuditFailures;
+  parent.afterCommit.push(...child.afterCommit);
+  return result;
+}
+
 export function isCredentialRevocationFailure(error: unknown): error is Error {
   return error instanceof CredentialRevocationFailure;
 }
@@ -208,6 +262,18 @@ export function afterTotpEnrollmentCommit(callback: () => Promise<void>) {
     throw new Error("TOTP enrollment requires its outer transaction");
   }
   context.afterCommit.push(callback);
+}
+
+/** Queue a provider side effect in the current child/root transaction when present. */
+export function runOrAfterTotpEnrollmentCommit(
+  callback: () => Promise<void>,
+): Promise<void> {
+  const context = totpEnrollmentStorage.getStore();
+  if (context) {
+    context.afterCommit.push(callback);
+    return Promise.resolve();
+  }
+  return callback();
 }
 
 export function currentTotpEnrollmentTransaction() {
@@ -598,8 +664,11 @@ async function runCredentialAdapterTransaction<R>(
     throw error;
   }
   const accountDeletion = accountDeletionStorage.getStore();
+  const totpContext = totpEnrollmentStorage.getStore();
   if (accountDeletion) {
     accountDeletion.auditFailures += outcome.auditFailures ?? 0;
+  } else if (totpContext) {
+    totpContext.pendingActionAuditFailures += outcome.auditFailures ?? 0;
   } else {
     await reportPendingActionAuditFailures(outcome.auditFailures ?? 0);
   }
