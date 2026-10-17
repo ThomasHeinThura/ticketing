@@ -37,12 +37,12 @@ export function getFirstUserWorkspaceMembership(userId: string) {
     .limit(1);
 }
 
-export function getActiveSessionForStepUp(
+export async function getActiveSessionForStepUp(
   sessionId: string,
   userId: string,
   now: Date,
 ) {
-  return db
+  return await db
     .select({ id: schema.sessionTable.id })
     .from(schema.sessionTable)
     .where(
@@ -282,12 +282,12 @@ export function lockOperationProof(
     .limit(1);
 }
 
-export function lockActiveStepUpSession(
+export async function lockActiveStepUpSession(
   executor: StepUpExecutor,
   sessionId: string,
   userId: string,
 ) {
-  return executor
+  return await executor
     .select({ id: schema.sessionTable.id })
     .from(schema.sessionTable)
     .where(
