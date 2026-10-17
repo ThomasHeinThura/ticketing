@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 import { dbNowUtc } from "../utils/db-time";
@@ -198,13 +199,13 @@ export function countRecentPendingActionChallenges(
     );
 }
 
-export function countRecentOperationChallenges(
+export async function countRecentOperationChallenges(
   executor: StepUpExecutor,
   personId: string,
   sessionId: string,
   operation: string,
 ) {
-  return executor
+  return await executor
     .select({ value: count() })
     .from(schema.stepUpConfirmationTable)
     .where(
@@ -251,7 +252,7 @@ export function lockPendingActionProof(
     .limit(1);
 }
 
-export function lockOperationProof(
+export async function lockOperationProof(
   executor: StepUpExecutor,
   input: {
     tokenHash: Buffer;
@@ -262,7 +263,7 @@ export function lockOperationProof(
     version: number;
   },
 ) {
-  return executor
+  return await executor
     .select()
     .from(schema.stepUpConfirmationTable)
     .where(
@@ -354,7 +355,7 @@ export function lockPendingActionChallenge(
     .limit(1);
 }
 
-export function lockOperationChallenge(
+export async function lockOperationChallenge(
   executor: StepUpExecutor,
   input: {
     id: string;
@@ -365,7 +366,7 @@ export function lockOperationChallenge(
     version: number;
   },
 ) {
-  return executor
+  return await executor
     .select()
     .from(schema.stepUpConfirmationTable)
     .where(
@@ -383,6 +384,208 @@ export function lockOperationChallenge(
     )
     .for("update")
     .limit(1);
+}
+
+export async function createOperationChallengeRecord(
+  executor: StepUpExecutor,
+  input: {
+    id: string;
+    personId: string;
+    sessionId: string;
+    operation: string;
+    route: string;
+    version: number;
+    bodyHash: Buffer;
+    nonceHash: Buffer;
+    limit: number;
+  },
+): Promise<Date | null> {
+  const clock = await executor.execute<{
+    challenge_expires_at: string;
+  }>(sql`SELECT (now() + interval '5 minutes')::text AS challenge_expires_at`);
+  const clockRow = clock.rows[0];
+  if (!clockRow) throw new Error("Unable to read database challenge time");
+  const expiresAt = new Date(clockRow.challenge_expires_at);
+
+  await executor.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.operation}))`,
+  );
+  const [recent] = await countRecentOperationChallenges(
+    executor,
+    input.personId,
+    input.sessionId,
+    input.operation,
+  );
+  if ((recent?.value ?? 0) >= input.limit) return null;
+
+  await executor
+    .update(schema.stepUpConfirmationTable)
+    .set({ challengeExpiresAt: sql`now()` })
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.personId, input.personId),
+        eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
+        eq(schema.stepUpConfirmationTable.bindingKind, "operation"),
+        eq(schema.stepUpConfirmationTable.operationKey, input.operation),
+        eq(schema.stepUpConfirmationTable.state, "challenge"),
+        gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
+      ),
+    );
+  await executor
+    .update(schema.stepUpConfirmationTable)
+    .set({ state: "consumed", consumedAt: new Date() })
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.personId, input.personId),
+        eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
+        eq(schema.stepUpConfirmationTable.bindingKind, "operation"),
+        eq(schema.stepUpConfirmationTable.operationKey, input.operation),
+        eq(schema.stepUpConfirmationTable.state, "issued"),
+      ),
+    );
+  await executor.insert(schema.stepUpConfirmationTable).values({
+    id: input.id,
+    personId: input.personId,
+    sessionId: input.sessionId,
+    bindingKind: "operation",
+    pendingActionId: null,
+    operationKey: input.operation,
+    routeKey: input.route,
+    expectedVersion: input.version,
+    bodyHash: input.bodyHash,
+    challengeNonceHash: input.nonceHash,
+    state: "challenge",
+    challengeExpiresAt: expiresAt,
+  });
+  return expiresAt;
+}
+
+export async function issueOperationTokenRecord(
+  executor: StepUpExecutor,
+  input: {
+    id: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    operation: string;
+    route: string;
+    version: number;
+    bodyHash: Buffer;
+    nonceHash: Buffer;
+    tokenHash: Buffer;
+    verifyAuthentication: () => Promise<
+      "password" | "totp" | "backup_code" | null
+    >;
+  },
+): Promise<{
+  authMethod: "password" | "totp" | "backup_code";
+  issuedAt: Date;
+  tokenExpiresAt: Date;
+} | null> {
+  await executor.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.operation}))`,
+  );
+  const [activeSession] = await lockActiveStepUpSession(
+    executor,
+    input.sessionId,
+    input.userId,
+  );
+  if (!activeSession) return null;
+  const [challenge] = await lockOperationChallenge(executor, input);
+  if (!challenge?.bodyHash || !challenge.challengeNonceHash) return null;
+  if (!timingSafeEqual(challenge.bodyHash, input.bodyHash)) return null;
+  if (!timingSafeEqual(challenge.challengeNonceHash, input.nonceHash)) {
+    // A challenge authorizes one verifier attempt; unrelated ids remain untouched.
+    await executor
+      .update(schema.stepUpConfirmationTable)
+      .set({ challengeExpiresAt: sql`now()` })
+      .where(
+        and(
+          eq(schema.stepUpConfirmationTable.id, input.id),
+          eq(schema.stepUpConfirmationTable.state, "challenge"),
+        ),
+      );
+    return null;
+  }
+  const authMethod = await input.verifyAuthentication();
+  if (!authMethod) {
+    await executor
+      .update(schema.stepUpConfirmationTable)
+      .set({ challengeExpiresAt: sql`now()` })
+      .where(
+        and(
+          eq(schema.stepUpConfirmationTable.id, input.id),
+          eq(schema.stepUpConfirmationTable.state, "challenge"),
+        ),
+      );
+    return null;
+  }
+  const clock = await executor.execute<{
+    issued_at: string;
+    token_expires_at: string;
+  }>(
+    sql`SELECT now()::text AS issued_at, (now() + interval '5 minutes')::text AS token_expires_at`,
+  );
+  const clockRow = clock.rows[0];
+  if (!clockRow) throw new Error("Unable to read database token time");
+  const issuedAt = new Date(clockRow.issued_at);
+  const tokenExpiresAt = new Date(clockRow.token_expires_at);
+  const updated = await executor
+    .update(schema.stepUpConfirmationTable)
+    .set({
+      state: "issued",
+      tokenHash: input.tokenHash,
+      authMethod,
+      authenticatedAt: issuedAt,
+      issuedAt,
+      tokenExpiresAt,
+    })
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.id, input.id),
+        eq(schema.stepUpConfirmationTable.state, "challenge"),
+        gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
+      ),
+    )
+    .returning({ id: schema.stepUpConfirmationTable.id });
+  return updated.length === 1 ? { authMethod, issuedAt, tokenExpiresAt } : null;
+}
+
+export async function consumeOperationProofRecord(
+  executor: StepUpExecutor,
+  input: {
+    tokenHash: Buffer;
+    personId: string;
+    sessionId: string;
+    operation: string;
+    route: string;
+    version: number;
+    bodyHash: Buffer;
+  },
+): Promise<{ authMethod: "password" | "totp" | "backup_code" } | null> {
+  const [proof] = await lockOperationProof(executor, input);
+  if (!proof?.bodyHash || !proof.authMethod) return null;
+  if (!timingSafeEqual(proof.bodyHash, input.bodyHash)) return null;
+  const consumed = await executor
+    .update(schema.stepUpConfirmationTable)
+    .set({ state: "consumed", consumedAt: sql`now()` })
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.id, proof.id),
+        eq(schema.stepUpConfirmationTable.state, "issued"),
+        gt(schema.stepUpConfirmationTable.tokenExpiresAt, sql`now()`),
+      ),
+    )
+    .returning({ id: schema.stepUpConfirmationTable.id });
+  if (consumed.length !== 1) return null;
+  if (
+    proof.authMethod !== "password" &&
+    proof.authMethod !== "totp" &&
+    proof.authMethod !== "backup_code"
+  ) {
+    return null;
+  }
+  return { authMethod: proof.authMethod };
 }
 
 export async function getCustomerPortalIdentityRow(userId: string) {

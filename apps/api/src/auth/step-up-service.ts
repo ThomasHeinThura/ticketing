@@ -14,11 +14,11 @@ import {
   type OidcGroupMappingUpdateRequest,
 } from "../identity/oidc-group-mapping-contract";
 import {
-  countRecentOperationChallenges,
+  consumeOperationProofRecord,
   countRecentPendingActionChallenges,
+  createOperationChallengeRecord,
+  issueOperationTokenRecord,
   lockActiveStepUpSession,
-  lockOperationChallenge,
-  lockOperationProof,
   lockPendingActionById,
   lockPendingActionChallenge,
   lockPendingActionForChallenge,
@@ -400,62 +400,18 @@ async function createOperationChallenge(input: {
   const nonce = randomBytes(32);
   const bodyHash = sha256(input.body);
   const challengeExpiresAt = await db.transaction(async (tx) => {
-    const clock = await tx.execute<{ challenge_expires_at: string }>(
-      sql`SELECT (now() + interval '5 minutes')::text AS challenge_expires_at`,
-    );
-    const clockRow = clock.rows[0];
-    if (!clockRow) throw new Error("Unable to read database challenge time");
-    const expiresAt = new Date(clockRow.challenge_expires_at);
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.operation}))`,
-    );
-    const [recent] = await countRecentOperationChallenges(
-      tx,
-      input.personId,
-      input.sessionId,
-      input.operation,
-    );
-    if ((recent?.value ?? 0) >= STEP_UP_CHALLENGE_LIMIT)
-      throw new StepUpAttemptLimitError();
-    await tx
-      .update(schema.stepUpConfirmationTable)
-      .set({ challengeExpiresAt: sql`now()` })
-      .where(
-        and(
-          eq(schema.stepUpConfirmationTable.personId, input.personId),
-          eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
-          eq(schema.stepUpConfirmationTable.bindingKind, "operation"),
-          eq(schema.stepUpConfirmationTable.operationKey, input.operation),
-          eq(schema.stepUpConfirmationTable.state, "challenge"),
-          gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
-        ),
-      );
-    await tx
-      .update(schema.stepUpConfirmationTable)
-      .set({ state: "consumed", consumedAt: new Date() })
-      .where(
-        and(
-          eq(schema.stepUpConfirmationTable.personId, input.personId),
-          eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
-          eq(schema.stepUpConfirmationTable.bindingKind, "operation"),
-          eq(schema.stepUpConfirmationTable.operationKey, input.operation),
-          eq(schema.stepUpConfirmationTable.state, "issued"),
-        ),
-      );
-    await tx.insert(schema.stepUpConfirmationTable).values({
+    const expiresAt = await createOperationChallengeRecord(tx, {
       id,
       personId: input.personId,
       sessionId: input.sessionId,
-      bindingKind: "operation",
-      pendingActionId: null,
-      operationKey: input.operation,
-      routeKey: input.route,
-      expectedVersion: input.version,
+      operation: input.operation,
+      route: input.route,
+      version: input.version,
       bodyHash,
-      challengeNonceHash: sha256(nonce),
-      state: "challenge",
-      challengeExpiresAt: expiresAt,
+      nonceHash: sha256(nonce),
+      limit: STEP_UP_CHALLENGE_LIMIT,
     });
+    if (!expiresAt) throw new StepUpAttemptLimitError();
     return expiresAt;
   });
 
@@ -687,36 +643,15 @@ async function consumeOperationProof(
     return null;
   const tokenHash = sha256(raw);
   const bodyHash = sha256(input.body);
-  const [proof] = await lockOperationProof(tx, {
+  return consumeOperationProofRecord(tx, {
     tokenHash,
     personId: input.personId,
     sessionId: input.sessionId,
     operation: input.operation,
     route: input.route,
     version: input.version,
+    bodyHash,
   });
-  if (!proof?.bodyHash || !proof.authMethod) return null;
-  if (!timingSafeEqual(proof.bodyHash, bodyHash)) return null;
-  const consumed = await tx
-    .update(schema.stepUpConfirmationTable)
-    .set({ state: "consumed", consumedAt: sql`now()` })
-    .where(
-      and(
-        eq(schema.stepUpConfirmationTable.id, proof.id),
-        eq(schema.stepUpConfirmationTable.state, "issued"),
-        gt(schema.stepUpConfirmationTable.tokenExpiresAt, sql`now()`),
-      ),
-    )
-    .returning({ id: schema.stepUpConfirmationTable.id });
-  if (consumed.length !== 1) return null;
-  if (
-    proof.authMethod !== "password" &&
-    proof.authMethod !== "totp" &&
-    proof.authMethod !== "backup_code"
-  ) {
-    return null;
-  }
-  return { authMethod: proof.authMethod };
 }
 
 export async function issueRotationToken(
@@ -1074,81 +1009,21 @@ async function issueOperationToken(
   }
   const bodyHash = sha256(input.body);
   const token = randomBytes(32);
-  const result = await db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.operation}))`,
-    );
-    const [activeSession] = await lockActiveStepUpSession(
-      tx,
-      input.sessionId,
-      input.userId,
-    );
-    if (!activeSession) return null;
-    const [challenge] = await lockOperationChallenge(tx, input);
-    if (!challenge?.bodyHash || !challenge.challengeNonceHash) return null;
-    if (!timingSafeEqual(challenge.bodyHash, bodyHash)) return null;
-    const nonceHash = sha256(nonce);
-    if (!timingSafeEqual(challenge.challengeNonceHash, nonceHash)) {
-      // A challenge authorizes exactly one verifier attempt. Burning it on a nonce
-      // mismatch keeps custom credential checks bounded independently of Better Auth's
-      // HTTP limiter while leaving unrelated/missing challenge ids untouched.
-      await tx
-        .update(schema.stepUpConfirmationTable)
-        .set({ challengeExpiresAt: sql`now()` })
-        .where(
-          and(
-            eq(schema.stepUpConfirmationTable.id, input.id),
-            eq(schema.stepUpConfirmationTable.state, "challenge"),
-          ),
-        );
-      return null;
-    }
-    const authMethod = await verifyAuthentication();
-    if (!authMethod) {
-      await tx
-        .update(schema.stepUpConfirmationTable)
-        .set({ challengeExpiresAt: sql`now()` })
-        .where(
-          and(
-            eq(schema.stepUpConfirmationTable.id, input.id),
-            eq(schema.stepUpConfirmationTable.state, "challenge"),
-          ),
-        );
-      return null;
-    }
-    const clock = await tx.execute<{
-      issued_at: string;
-      token_expires_at: string;
-    }>(
-      sql`SELECT now()::text AS issued_at, (now() + interval '5 minutes')::text AS token_expires_at`,
-    );
-    const clockRow = clock.rows[0];
-    if (!clockRow) throw new Error("Unable to read database token time");
-    const issuedAt = new Date(clockRow.issued_at);
-    const tokenExpiresAt = new Date(clockRow.token_expires_at);
-
-    const updated = await tx
-      .update(schema.stepUpConfirmationTable)
-      .set({
-        state: "issued",
-        tokenHash: sha256(token),
-        authMethod,
-        authenticatedAt: issuedAt,
-        issuedAt,
-        tokenExpiresAt,
-      })
-      .where(
-        and(
-          eq(schema.stepUpConfirmationTable.id, input.id),
-          eq(schema.stepUpConfirmationTable.state, "challenge"),
-          gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
-        ),
-      )
-      .returning({ id: schema.stepUpConfirmationTable.id });
-    return updated.length === 1
-      ? { authMethod, issuedAt, tokenExpiresAt }
-      : null;
-  });
+  const result = await db.transaction((tx) =>
+    issueOperationTokenRecord(tx, {
+      id: input.id,
+      personId: input.personId,
+      sessionId: input.sessionId,
+      userId: input.userId,
+      operation: input.operation,
+      route: input.route,
+      version: input.version,
+      bodyHash,
+      nonceHash: sha256(nonce),
+      tokenHash: sha256(token),
+      verifyAuthentication,
+    }),
+  );
 
   return result
     ? {
