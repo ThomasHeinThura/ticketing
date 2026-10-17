@@ -1,3 +1,16 @@
+## Protected814 and remaining selected acceptance queue — 2026-10-17 03:59 UTC
+
+Acceptedmain e848f3bd05bec95c8af657c29923a6413a11c63f; protected814 actual source/tree/gates proof is recorded in status. Historical queue snapshots remain unchanged.
+
+| Owner / unit | Actual current state | Next action |
+| --- | --- | --- |
+| Conductor /814 operation-proof580 | Accepted518f/dcf, full222/3284/5, browser63/G1122, finalunit12/API121872/web1861023, actual125migration nonroot healthy isolated image/all18green. | Preserve scoped acceptance; next existing pending-action persistence families remain unconverted. |
+| Conductor /811 recovered773 | Current73ce full224/3302/5 passes; required owning-review gate red. Independent13finding map+precision done. | Await three actual Thomas answers, align owning spec to existing canonical contracts, independent disposition and exact-head gates; no citation bypass. |
+| Luna /812 recovered789 | Current5548 structural customer-audience P1 source CLEAR;8filePG94/95 red on false instance-admin no-reach fixture. All prior failures retained. | Finish bounded fixture repair with genuine foreign non-admin404/no-write cases; root compose actuale848, scopedPG/currentordinary+Sol/own-note/newhosted gates. |
+| Luna /Carrier791 | Checker4d22/test2b569 unchangedmanifest; full240s timeout/no suite verdict; profiler launch attempts unsuccessful. | Private bounded phase diagnostic to isolate full-source work, then structural compiler/guard proof repair without dropping obligations or widening limits. |
+| Conductor /records803 | Normal accepted814 composition conserves seven own/three incoming paths; current operational snapshot not yet reviewed/published. | Bounded ordinary/Sol confirmation, additive own-note, normal push/currentCI; old9d7 not accepted. |
+| Conductor /held lanes and final589 | 810/807/798 require genuine compositions and new gates; release/SIT/nonempty restore/final audit not done. | Continue dependency-safe authorized work, preserve owner holds and selected-unit accounting; no stage claim. |
+
 ## Current publications and required blocker dispositions — 2026-10-17 03:33 UTC
 
 Accepted main remains130508ef24f6442a59dbccaf305712891c8b3fbb. Detailed raw receipts and adverse history are recorded in the newest status snapshot; historical queue bytes remain intact.
