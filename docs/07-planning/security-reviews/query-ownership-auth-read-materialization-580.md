@@ -231,3 +231,128 @@ Every command used the explicit worktree above. Commands were `git status --shor
 No runtime, Node, tests, typecheck, lint, PostgreSQL/database, dependencies, build, image, Docker, browser or CI execution was performed. I did not edit source, commit or push. I make no claim about commit-hook or test execution from the normal-commit receipt; the actual committed content is what I verified.
 
 **Inherited N1 remains unresolved:** pending-action creation takes action-row then advisory lock, while issuance takes advisory then session/action-row locks. The possible deadlock remains the prior source-derived availability residual, not a reproduced result, fix, waiver or new issue in this delta. Original scope limits remain: this is not whole #580 closure, checker enforcement, whole PA-15 correctness, concurrency proof, merge readiness, stage closure, image/health or SIT acceptance. Applicable exact-head gates and runtime acceptance remain separate obligations. The primary checkout was never accessed or modified.
+
+
+## Clean accepted-main product composition and current reviews
+
+**Reviewed head:** `a43ce9191d643a2fc5719009efdc478037fb1902`
+
+Only the original fourteen-read repository source and this own note differ from accepted main2e6. All 3,400 path/mode/type/blob entries were independently checked; 3,398 unchanged entries are conserved. The ordinary report's 3,397 arithmetic typo is corrected in the authentic independent Sol report below; no report bytes are edited. The rejected mixed checkpoint commit cf847 is preserved on its original branch, is not an ancestor of this clean product source, and remains blocked. Its author/ordinary/adverse security artifacts stay preserved for the separate conductor records workflow; none is promoted to approval here. Status, queue and decision-log bytes equal accepted main. These are source-bound author/ordinary/lightweight Sol reports, not current hosted/image or whole580 acceptance.
+
+## Preserved report: auth-read-a43-clean-product-author-conductor.md
+
+SHA-256 `197de61434eea9f39ad9ffe96e1871494ff651379cd9722b616ecf4f3bf03f2c`
+
+# Clean auth-read product source — conductor author handoff
+
+Source `a43ce9191d643a2fc5719009efdc478037fb1902`, tree `fdfec78551e160fbdefeadd7a352596d9717bee8`, accepted base `2e6aa3dcf74ba5f2d6dc733ae54dc68be16c552b`; prepared 2026-10-17T07:03:41.416297+00:00 by the OpenAI GPT conductor. This is an author/conservation record, not independent approval.
+
+The original Luna-authored e52/445 materialization changes exactly 14 existing simple auth reads to async/return-await. SQL/query expressions, selections, joins, predicates, limits, supplied clocks, executors, transaction handles and awaited callers remain unchanged. The repository SHA256 is `f45bf7c5912fa5d571004d9608731edb07f53b8cd9d4d2bc788132a0a2a35b1e`. The current clean product diff contains only that repository and its own existing review note. The original five authentic artifacts in the note remain untouched.
+
+Normal merges preserved the reviewed read source through 2fad (accepted815) and a43 (accepted803). The complete 3,400-entry source tree independently equals accepted main plus the exact original445 repository and own note, including every mode/type/blob. The three conductor status/queue/decision documents are byte-identical to accepted main. Proof: `auth-read-a43-clean-product-conservation-proof.json`.
+
+An earlier conductor mistake bundled three operational-record changes in descendant `cf847f86c89641f32f900b124f2ddef84ec2bd13`. Its ordinary assessment is historical; the independent Sol correctly blocked that exact mixed candidate under the existing records-separation rule. No exception or waiver is claimed. The original commit and branch remain preserved. This clean product branch was created from the already-existing parent a43; rejected cf847 is not an ancestor. No reset, force-push, amend or history rewrite occurred. The operational records belong in a separate conductor records PR. The rejected candidate's author/ordinary/adverse Sol evidence is retained unedited for traceability and is not current approval. Current source-specific independent ordinary confirmation is a separate authentic report; a fresh exact-source Sol confirmation is mandatory before publication.
+
+The small exception-scheduling distinction remains disclosed: a synchronous first-query-construction throw now rejects a Promise and can allow the second read-only reload query to start. Configuration publication still follows successful awaited Promise.all. This is not an authority or concurrency redesign. Inherited pending-action lock-order N1 remains unchanged and unresolved.
+
+Actual checks: normal accepted803 merge and entire-tree conservation passed; clean current worktree and exact accepted record bytes verified. Earlier API typecheck and real eight-file/136-test proof are tied to their original e52/445 source. No new current-publication tests, CI, browser or shipping image are claimed. After required source reviews, publication may append only authentic evidence to its regular own note; new exact-publication CI/image and protected acceptance remain mandatory. No whole580/589, PA-15, release/SIT/recovery, final audit or phase completion is implied.
+
+
+## Preserved report: auth-read-a43-clean-product-ordinary-luna.md
+
+SHA-256 `a21e829d2aee08b0daa6266751dee67215580673a0df33740a92ae33c44b73e9`
+
+# Independent ordinary review — clean auth-read product candidate a43
+
+**Verdict: CLEAR for the exact clean product candidate below.** No blocking source, caller, ownership, or composition finding. This is a new source-bound confirmation after the prior mixed candidate was rejected for combining product work with conductor status/queue records. It does not relabel or extend the earlier `cf847` verdict. It is not current CI, publication, or runtime acceptance.
+
+## Independence and exact source
+
+Reviewer: fresh GPT-6 Luna ordinary-review context, independent of the auth implementation and remediation. I did not author, direct, or remediate the auth patch and made no repository edits.
+
+- Candidate: `a43ce9191d643a2fc5719009efdc478037fb1902`
+- Comparison base: accepted `main` `2e6aa3dcf74ba5f2d6dc733ae54dc68be16c552b`
+- Candidate tree: `fdfec78551e160fbdefeadd7a352596d9717bee8`
+- Worktree: `/Users/heinthura/.codex/worktrees/remaining580-auth-read-current-main-luna`
+- Branch: `codex/remaining580-auth-read-current-main-luna`
+- Worktree status was clean.
+
+The complete candidate diff contains exactly two paths: `apps/api/src/auth/repository.ts` and its own `docs/07-planning/security-reviews/query-ownership-auth-read-materialization-580.md`. The three conductor record paths (`status.md`, `integration-execution-queue.md`, and `decision-log.md`) are byte-identical to accepted main. The prior rejected mixed commit `cf847f86c89641f32f900b124f2ddef84ec2bd13` exists in the repository but is not an ancestor of this candidate; I did not amend or rewrite it.
+
+## Independent conservation and source checks
+
+I independently flattened `git ls-tree -r` for the base and candidate and compared every path, mode, type, and object ID. The base has 3,399 entries and the candidate has 3,400. The 3,397 entries outside the two candidate-owned paths match exactly. The only new entry is the review note; the sole modified existing entry is the auth repository at mode `100644`. I separately read each status/queue/decision-log blob at both revisions and confirmed byte equality. These results agree with, but do not merely repeat, `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/auth-read-a43-clean-product-conservation-proof.json`.
+
+The auth repository content SHA-256 is `f45bf7c5912fa5d571004d9608731edb07f53b8cd9d4d2bc788132a0a2a35b1e`, the same source hash recorded in the original publication and the rejected `cf847` composition proof. The complete source diff against accepted main consists of 14 existing simple reads changed to `async` with `return await`. Selections, joins, predicates, limits, supplied clock values, transaction handles, and all other source lines remain unchanged.
+
+I searched all changed helper names under `apps`, `tests`, and `packages`. Every production call consumes an awaited result, including the existing `Promise.all` of both auth-configuration reads. The user-count and setup-marker reads continue to receive the existing transaction handle and remain sequential in their transaction. No caller chains a builder, inspects it synchronously, or relies on builder-specific methods. The pending-action preflight keeps its explicit `now` and owner, state, and expiry predicates. The conversion adds no authority or gate pass/fail behavior.
+
+The documented non-blocking scheduling distinction remains: an exceptional synchronous throw during construction of the first Promise.all read is now converted by `async` into a rejection, so construction/start of the second read can proceed before the combined promise rejects. Both reads are read-only, and configuration changes only after both resolve. This is not an authorization change. The inherited N1 pending-action creation/issuance lock-order inversion remains unresolved and is not changed by this work.
+
+## Review classification and preserved history
+
+This touches `apps/api/src/auth/**`, a security-review path, but changes no authority or gate semantics. The applicable tier is one fresh ordinary review plus a new lightweight independent Sol confirmation on this exact clean candidate. The older ordinary review and Sol confirmation, and their bindings to the older publication, are preserved as historical reports. Neither their source-only verdicts nor the rejected mixed candidate’s records are promoted to approval of `a43`; this report is the ordinary confirmation for `a43`. A new exact-source Sol confirmation remains required.
+
+The review note is an authentic report collection and does not assert that `a43` itself was previously reviewed. This candidate makes no status/queue checkpoint, no whole-#580 claim, no checker activation claim, and no CI/current-main acceptance claim. Prior API typecheck and PostgreSQL evidence remain bound to their stated earlier source; they were not run or promoted here.
+
+## Commands and limits
+
+Read-only checks performed in the explicit worktree: `pwd`, `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse HEAD^{tree}`, `git rev-parse HEAD^`, `git diff --stat`, `git diff --name-status`, complete auth repository and review-note diffs against accepted main, a Python comparison of all recursive tree entries including path/mode/type/blob, direct byte comparisons of the three conductor records, `git merge-base --is-ancestor` for the rejected mixed candidate, `rg` caller searches, and SHA-256 calculation of the source and review note.
+
+No tests, typecheck, lint, build, Node execution, database, Docker, browser, install, GitHub operation, or CI run was performed. The review does not establish hosted checks, image acceptance, merge readiness, whole #580 completion, PA-15 correctness, concurrency behavior, or stage completion. Exact-publication checks and the separate current Sol review remain required.
+
+
+## Preserved report: auth-read-a43-clean-product-security-61-sol.md
+
+SHA-256 `58edb242b79d595ceabe7311ec537cd38b2e7d6bb8518981a4461e2e9e1a7ead`
+
+# Independent security confirmation — clean auth-read product candidate a43
+
+**Verdict: CLEAR for the exact clean product candidate below.** No blocking source, caller, security, or records-separation finding. This is a fresh source-bound security confirmation after the fresh ordinary review of this actual candidate. It does not approve the rejected mixed candidate, publication, current hosted checks, merge readiness, whole #580, or runtime acceptance.
+
+**Model:** GPT-6.1 Sol (`gpt-6.1-sol`), requested dispatch model. Dispatch provenance supplied to this fresh context: `gpt-6.1-sol`, reasoning effort `high`, `fork_turns=none`. No independent served-model fingerprint is exposed to this reviewer; the requested dispatch identity is not a served-fingerprint claim.
+**Role/context:** Fresh independent security-tier reviewer, `/root/auth_read_a43_clean_security_sol`, dispatched by `/root` after ordinary CLEAR. I did not author, direct or remediate this source, inherited no author conversation, and made no repository edits.
+**Reviewed head:** a43ce9191d643a2fc5719009efdc478037fb1902
+**Reviewed tree:** `fdfec78551e160fbdefeadd7a352596d9717bee8`.
+**Comparison base:** accepted `main` `2e6aa3dcf74ba5f2d6dc733ae54dc68be16c552b`.
+**Worktree:** `/Users/heinthura/.codex/worktrees/remaining580-auth-read-current-main-luna`.
+**Branch:** `codex/remaining580-auth-read-current-main-luna`.
+
+## Tier and security assessment
+
+The accepted CI security-path list includes `apps/api/src/auth/**`, so the independent security confirmation is mandatory. Inspection establishes that this delta changes no authority, security predicate or gate pass/fail semantics. The applicable tier is one fresh ordinary review plus this separate lightweight Sol confirmation. The path name alone does not turn this statement-preserving conversion into an auth authority redesign. No gate or reviewer tier is waived.
+
+The entire executable delta changes 14 existing functions to `async` and their first `return` to `return await`. I independently reconstructed exactly those transformations from the accepted-base blob and matched the complete candidate file byte-for-byte. Content SHA-256 is `f45bf7c5912fa5d571004d9608731edb07f53b8cd9d4d2bc788132a0a2a35b1e`, also byte-identical to original source `e52aa65d796121cbced07205f15db6db8e774642` and publication `445cb15ad1f26043b9ce62c5cfffff71cd0bf0fe`. Every selection, table, join, predicate, limit, supplied clock, executor and unchanged lifecycle function is conserved. Awaiting inside the repository satisfies the accepted results rule without exposing a builder for callers to compose.
+
+I searched all changed helper references under `apps`, `tests` and `packages`, inspected the changed bodies and production caller contexts in `auth.ts` and `auth/step-up-api.ts`, and found only direct awaited consumption or the existing awaited configuration `Promise.all`. No synchronous builder inspection, builder-only method or caller composition was found.
+
+- User-count and setup-marker reads still execute sequentially through the same transaction handle after the existing bootstrap advisory lock and before the existing promotion decisions. No authority source or transaction boundary changes.
+- Pending-action preflight preserves exact action id, requesting person, pending state and strict expiry against the supplied Date. Both call sites await it before existing action/target/confirmation/route checks. Current-agent-session validation, factor loading and instance-admin gates are unchanged. Preflight is not converted into issuance authority.
+- Factor and target-user reads retain existing missing/disabled handling. SCIM reads retain the inner join to the exact connection's child and the same version checks; identity-version reads retain the exact connection predicate. Password proof still loads current factor policy, refuses password when enabled/required factor policy disallows it, awaits the credential for the exact user/provider, and fails closed when missing. No IdP data gains administrator authority.
+- Locale and workspace reads retain existing predicates and row-array consumption; the workspace read still completes before the existing session update.
+
+**Error-scheduling observation, not a security finding:** async converts a synchronous query-construction throw into rejection. During reload, if construction of the first configuration read throws, array evaluation can now still construct/start the second read before `Promise.all` rejects. Both queries are read-only. The awaited aggregation still precedes version/fingerprint processing, construction of both auth instances and every configuration publication. Failure still propagates through existing telemetry/catch/finally and cannot publish partial configuration. I do not claim identical stack traces, microtask timing or simultaneous-error ordering.
+
+**Inherited N1 remains unresolved:** challenge creation locks the action row before its session/action advisory lock; issuance takes that advisory lock, then session/action-row locks. I inspected those current bodies and verified they are unchanged by the whole-file reconstruction. The possible deadlock remains source-derived, unreproduced here, unresolved and unwaived. This confirmation does not establish whole PA-15 or concurrency correctness.
+
+## Independent composition and rejected-candidate disposition
+
+I independently compared the complete recursive path/mode/type/blob maps from Git. Accepted base has 3,399 entries; candidate has 3,400. Exactly two paths differ: modified mode-100644 `apps/api/src/auth/repository.ts` and new designated own review note `docs/07-planning/security-reviews/query-ownership-auth-read-materialization-580.md`. All 3,398 remaining entries are identical. Direct blob-byte comparisons additionally confirm `status.md`, `integration-execution-queue.md` and `decision-log.md` equal the accepted base. These independent checks agree with the conservation proof's substantive claims.
+
+The rejected mixed commit `cf847f86c89641f32f900b124f2ddef84ec2bd13` remains present on the original `codex/remaining580-pending-action-preflight` branch. Its sole parent is this reviewed `a43` commit. It is not an ancestor of `a43`. The clean selection therefore uses a preexisting parent, rather than a descendant revert or a rewrite of the rejected commit. Candidate `a43` itself is the normal merge with parents `2fadcd03bec839f3bc925c734bbabf925031d2dd` and accepted base `2e6aa3dcf74ba5f2d6dc733ae54dc68be16c552b`.
+
+I read the authentic adverse report `auth-read-cf847-current-security-61-sol.md`. Its B1 correctly blocks that mixed candidate under workflow lines 121–123, and remains intact. On this different exact candidate, the offending conductor records are absent from the diff and equal accepted main. My independent disposition is that the records-separation defect does not apply to this clean candidate. This does not reverse cf847's verdict, authorize a records exception, or approve any separate records candidate.
+
+The own note is byte-identical to original publication445. I independently compared each of its five embedded reports against its actual private evidence file and confirmed complete authentic report bytes are present unchanged. Their dirty-source versus later committed-source bindings, reviewer identities, findings and limits remain intact. Their older verdicts are historical coverage, not new-head approval. The fresh actual-a43 ordinary report has SHA-256 `a21e829d2aee08b0daa6266751dee67215580673a0df33740a92ae33c44b73e9`; I verified its bytes/hash and read its scope and CLEAR verdict before this security confirmation.
+
+**Non-blocking factual correction:** the fresh ordinary report says 3,397 entries outside the two owned paths match. The correct number is 3,398: 3,400 candidate entries minus two owned paths (or 3,399 base entries minus the one modified existing path). Its two-path inventory and conservation conclusion are correct. This is an arithmetic typo in evidence prose, not a source defect, scope expansion, fabricated approval or gate change. Preserve the authentic report; this separately authored correction supplies the accurate count. No extra review round is warranted for that typo.
+
+## Actual checks and limits
+
+Read-only checks included explicit-worktree `git status --short`, HEAD/tree/parent inspection, complete base-to-source `git diff --stat`, `--name-status`, auth-source diff, review-note contents, `git log` lineage, rejected-commit ancestry/containing-branch inspection, `git ls-tree -rz`, direct `git show` blob reads, symbol/caller `rg`, and source/document `cat`/`sed` reads. Python used Git objects and private files only to compare tree entries and bytes, reconstruct the 14 wrappers, calculate SHA-256 values and authenticate all five embedded reports. Candidate status was clean. `git diff --check <base> <source>` passed.
+
+I read the candidate worktree's accepted AGENTS, active mission, canonical workflow/review/evidence rules, provider adapter, CI security scope, query ownership/results standard, relevant current decision-log/status context, monorepo repository convention, auth/identity runtime-reconfiguration contract and connected source. An exploratory read referenced a nonexistent `docs/03-features/pending-actions.md`; that file was not assumed to exist or used as authority. The applicable pending-action owner/route/factor semantics were checked against the actual source and existing review records.
+
+No tests, typecheck, lint, dependency installation, hook, Node execution, application runtime, database/PostgreSQL, Docker, build, image, browser, GitHub operation or CI execution was performed. The only write is this new private report, created with O_EXCL and mode 0600. Historical 8-file/136-test PostgreSQL and API typecheck evidence remains bound to its original source; it is not a new pass on a43. No live GitHub state was independently authenticated in this bounded read-only assignment.
+
+Normal authentic own-note publication, per-intervening-commit review-record-only verification, exact-publication required checks, shipping image/boot/health and applicable acceptance remain obligations. This is not whole #580/checker activation, Carrier acceptance, phase-finalizer, signed release, final audit or SIT acceptance.
