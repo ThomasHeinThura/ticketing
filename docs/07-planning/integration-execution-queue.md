@@ -1,3 +1,18 @@
+## Accepted #831; N1 runtime proof and Carrier role separation — 2026-10-17 21:28 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor / #830 and #831 | DONE for bounded records/pure-ownership units; main dd7f384e, protected #831 at21:15:55Z after authentic ordinary/full Sol reviews, eighteen exact-head checks and candidate image proof. | Preserve reports and source-bound limits; no whole580 or SIT claim. |
+| Conductor / pending-action N1 | RUNNING verification, unaccepted and uncommitted; patch9068e5c6, types9 and four complete PG files78/78 pass. Three old admission schedules fail; meaningful old-hook counterfactual fails on actual publication. | Finish scoped checks and accepted-main composition; three fresh ordinary reviewers, further full fresh Sol, exact hosted/image gates. Never commit the detached fault-injection worktree. |
+| Critical Sol material adviser / SAME Carrier #791 | BLOCKED on structural identity-role mismatch; frozen7c0d/c1b8 unexecuted. Last focused df8e6PASS12FAIL78NOTRUN; old full96 adverse66/30 preserved. | Separate authentic observation identity from required-leaf diagnostic placeholders; preserve all controls, then root verification, conservation and full combined review/gates. Adviser cannot approve. |
+| Conductor / #580 column startup | FROZEN source-only on dd7f, exactly three paths; no runtime result or commit. | Verify byte-preserved relocation and meaningful mapping/idempotence regression; root checks, two fresh ordinary reviews and full fresh Sol, then current hosted/image gates. |
+| Conductor / remaining #580 | RUNNING; prior combined diagnostic2,782 overlapping instances/142 paths/1,537 locations, no unresolved export modules/builders/TS rows. | Finish actual source conversion and reviewed fail-closed activation; no baseline, exclusion or progress arithmetic. |
+| Conductor / #810 | BLOCKED; actual223.2ms fails strict200 assignment budget. | Genuine Carrier/#772 integration or demonstrated cause repair; no unchanged retry or premature predecessor closure. |
+| Thomas / #811 and #773 | WAITING_DECISION plus thirteen owning-review findings; existing-contract alignment09bc preserved clean/unpushed. | Await three valuation/midnight/timezone answers; do not guess or reopen settled decisions. |
+| Conductor / final #589 | BLOCKED on selected units and final acceptance; #717 DONE. | Signed combined prerelease → exact-digest laptop workflows → consistent NONEMPTY backup and usable isolated restore → fresh final audit → report/Hold. |
+
+The dated status snapshot carries source-bound evidence and limitations. Root owns the queue, merge order and sole local heavy runtime. Primary dirty work and histories remain preserved; no policy change, stage/UAT/production, waiver or functioning after-turn scheduler is claimed.
+
 ## Finite contracts accepted; pure ownership and Carrier verification — 2026-10-17 20:13 UTC
 
 | Owner / unit | Actual state | Next action / boundary |
