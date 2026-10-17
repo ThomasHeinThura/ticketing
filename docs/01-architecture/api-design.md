@@ -961,10 +961,13 @@ matches no finding fails too, as a stale or typo'd entry. From the first stable 
 later) release on, this allowlist must be empty — a breaking change is versioned with a
 new path segment as above, never allowlisted. For this boundary, a GitHub release explicitly
 marked as a prerelease remains pre-stable even if its tag has stable version syntax.
-Stable tag syntax alone does not establish a stable release. The live release lookup must
-fail closed when its result cannot be established. Thomas clarified this policy on
-2026-10-16, superseding the previous tag-syntax-only classification; correcting the gate
-and adding exact break fingerprints still require independent review and required CI.
+Stable tag syntax alone does not establish a stable release. The contract gate reads all
+paginated GitHub release metadata for the repository identified by the checkout's `origin`;
+only a published, non-draft, non-prerelease `v2.0.0`-or-later release closes the allowlist.
+Lookup failures and malformed metadata fail closed, and `package.json` is not the release
+authority. Thomas clarified this policy on 2026-10-16, superseding the previous tag-syntax-only
+classification. Exact operation, rule and fingerprint entries remain subject to the normal
+independent security review and required CI.
 
 ## Typed client
 
