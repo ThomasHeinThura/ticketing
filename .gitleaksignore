@@ -45,3 +45,8 @@ aea7da52bddab201a6de5882e70551e7da0cc55c:docs/07-planning/security-reviews/ident
 # Technical disposition recorded2026-10-17; independent ordinary and full Sol review required.
 2c2e3e648cfdfc71170429a1479b80583cb68789:docs/07-planning/security-reviews/query-ownership-canned-responses-580.md:generic-api-key:2640
 2c2e3e648cfdfc71170429a1479b80583cb68789:docs/07-planning/security-reviews/query-ownership-canned-responses-580.md:generic-api-key:2704
+
+# Public report basename in immutable #797 continuation wrapper, not a credential.
+# Exact commit/file/rule/line only; report bodies and wrapper remain unchanged.
+# Technical disposition: 2026-10-17; independent ordinary and full Sol review required.
+78c976c8198c6ed1702cfa3192ba6e98a0770b61:docs/07-planning/security-reviews/query-ownership-checker-580.md:generic-api-key:971
