@@ -1,3 +1,18 @@
+## Finite contracts accepted; pure ownership and Carrier verification — 2026-10-17 20:13 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor / #827, #828 and #829 | DONE for bounded records/JSON/finite units. Main `a472c4d5047eb7c71afc37cf9dfe462ea2a5832a`; protected #829 at20:00:22Z after eighteen exact-head checks, authentic ordinary/full Sol reviews and candidate image proof. | Preserve branches/reports and source-bound limits. No whole580, domain-validation or SIT claim. |
+| Conductor / pure ownership batch | WAITING_REVIEW at `beb1c5eff2b1168b1e3ed01ec54d21454c22bf5d`, clean/pushed on a472. Current types and checker tests pass; fresh ordinary CLEAR, further full independent Sol pending. | Preserve all21 paths and exact class/retry identity; complete current review, publication and hosted/image gates. Earlier13-file/280-test PG result belongs to484d plus frozen patch. |
+| Conductor and material adviser / SAME Carrier #791 | BLOCKED on static interface defects; committed31fc, frozen d180/18fc unexecuted, manifest unchanged. | Resolve producer/receiver/dispatch contracts and non-vacuous tests in the same two scripts, then root verification/full96/census/G3/main conservation and required combined reviews. Material advisers cannot approve. |
+| Conductor / remaining #580 | RUNNING. Combined diagnostic on a472 plus pure21: 2,782 overlapping findings /142 paths /1,537 locations, zero unknown export modules/builders/TS diagnostics. | Finish actual source conversion and reviewed fail-closed activation; no progress arithmetic or baseline/exclusion. |
+| Conductor / pending-action N1 and adjacent cycles | BLOCKED on technical implementation/verification. Two static plans complete; no source repair or runtime reproduction. | Reuse existing admission/executor boundary only through a separately authorized bounded fix, controlled regression schedules and independent review; all three source cycles remain unresolved/unwaived. |
+| Conductor / #810 | BLOCKED on genuine Carrier/#772 integration or demonstrated cause repair; actual223.2ms fails strict200. | Preserve failure/predecessors; no unchanged retry. |
+| Thomas / #811 and #773 | WAITING_DECISION plus thirteen owning-review findings; existing-contract alignment09bc is clean/unpushed. | Retain three valuation/midnight/timezone questions. No guessed behavior, re-asked settled thresholds/screens or false review clearance. |
+| Conductor / final #589 | BLOCKED on selected units and final verification; #717 DONE. | Signed combined prerelease → exact-digest laptop workflows → consistent NONEMPTY backup and usable isolated app restore → fresh final independent audit → report/Hold. |
+
+The dated snapshot carries exact evidence and boundaries. Root owns the queue, merge order and sole local heavy runtime. Source histories and primary dirty work remain preserved; no stage/UAT/production, waiver or working after-turn scheduler is claimed.
+
 ## Protected #826 acceptance and whole Carrier diagnosis — 2026-10-17 18:06 UTC
 
 | Owner / unit | Actual state | Next action / boundary |
