@@ -1052,3 +1052,230 @@ The only new artifact is this authentic external report, exclusively created wit
 Only this candidate own regular100644 review note is appended after this independently reviewed source. All report provenance and scopes remain authentic; current publication CI remains required.
 
 **Reviewed head:** `1538cf5ffaa40169314ac9eb9d923f085a2e30d1`
+
+
+## Nested-auth gate consolidation and accepted #815 import
+
+**Reviewed head:** `f044a40250083249642f99ad0497f69975743d44`
+
+Existing #803 absorbs the stronger #816 canonical nested-auth regression coverage through a normal composition, retaining the older nested/probe assertion and every prior report. The complete bounded cf724 composition received one fresh strong ordinary GPT-6 Luna review and a fresh full independent GPT-6.1 Sol security pass. Both independent reviewer contexts then confirmed the exact accepted-#815 import and dated records at f044. The five new authentic reports below are preserved verbatim; original source, verdicts and limitations remain intact. The previous 136423-byte note is an exact prefix. Requested model selections are dispatch provenance; no served-backend fingerprint is exposed or claimed.
+
+The source includes only the nine owned records/normative/gate paths over accepted ff5. It does not import the separate e52/445 fourteen-read auth source. The 14/14 focused gate result remains bound to cf724; current publication CI is pending. Old #803 CI and old image results do not transfer to this publication. No gate is waived. Carrier, whole #580/#589, N1, final signed release, laptop SIT, consistent nonempty restore, independent audit and existing owner holds remain unfinished.
+
+## Preserved report: 803-816-security-path-test-resolution-author-luna.md
+
+# #803/#816 security-path test conflict resolution — author report
+
+## Result and exact parents
+
+Resolved and staged the sole merge conflict at `scripts/ci/lib/security-paths.test.mjs` in the root-owned merge worktree. The resolution is the exact incoming #816 test blob with the single #803 `apps/api/src/auth/nested/probe.ts` representative assertion restored in `MUST_REQUIRE_REVIEW`. This is a source-integration result only; no review, CI, or merge completion is claimed.
+
+- Worktree: `/Users/heinthura/.codex/worktrees/takeover-status-20261016`
+- Branch: `codex/takeover-status-20261016`
+- Pre-merge HEAD / #803: `2e06dcb0e196c6e78a4597eb08c8262c814ddbce`
+- MERGE_HEAD / incoming #816: `4bd86d2172042d9f52d2f9d1da54a11daa4ad4f0`
+- Merge base: `e848f3bd05bec95c8af657c29923a6413a11c63f`
+- The merge was already in progress when assigned. I made no commit or push.
+
+## Parent test versions and conservation
+
+- Conflict base blob (stage 1) for `scripts/ci/lib/security-paths.test.mjs`: Git blob `48dced10ee12657ce648b257a1a7d281305f61b8`.
+- #803 parent blob (stage 2): Git blob `4937fc3bfe16ad1e4d2c038f46ff4768be19d144`; content SHA-256 `51394144f0ce5b5da768e71adc9887e89d7238a79351b6465dabc0f054f884f6`.
+- #816 incoming blob (stage 3): Git blob `f184534b6787bc0537f0ef5cb750b176cef7134d`; content SHA-256 `40bb808e9b532a55ba03e6fcbce69087d19b5f6d21d640e29264a0399efcd465`.
+- Resolved worktree file SHA-256: `221c2034473a2d074f095bcf4fccc2f0f6ebcf466e8c63a7aa92805a15aff9ab`.
+- `git diff HEAD MERGE_HEAD -- scripts/ci/lib/security-paths.test.mjs` showed exactly two semantic changes between parents: #816 removed the #803 `apps/api/src/auth/nested/probe.ts` entry, and #816 added the 32-line canonical nested-auth counterfactual test. The final file is the incoming file plus exactly the removed representative path entry; all other incoming content is unchanged.
+- The seven pre-existing test cases and their assertions are retained. The incoming eighth case, `shows nested auth coverage depends on the canonical auth-directory glob`, is retained unchanged. The old required path assertions remain, including `apps/api/src/auth.ts`, `apps/api/src/auth/repository.ts`, `apps/api/src/auth/step-up-service.ts`, and `apps/api/src/auth/nested/probe.ts`.
+- The existing `apps/api/src/auth*` required-glob assertion is retained; #816's stronger `apps/api/src/auth/**` assertion and its two real nested-auth paths (`auth/repository.ts`, `auth/step-up-service.ts`) are retained. `auth.ts` remains asserted in the incoming counterfactual test.
+
+## Related incoming files preserved
+
+- `scripts/ci/probes/security-scope-shrink.test.mjs` is byte-identical to MERGE_HEAD, content SHA-256 `86dd937f684dea40617d6d7b9498779323a46be7f8f77935ba108e48e97eb61b`. Its added canonical and same-diff auth-directory shrink scenarios remain untouched.
+- The automatically merged `docs/04-engineering/ci-cd.md` contains both `apps/api/src/auth*` and `apps/api/src/auth/**` at line 321. I did not edit it.
+- The authentic #816 review records and other merge paths remain untouched by my resolution.
+
+## Resolution diff and staging
+
+`git diff MERGE_HEAD -- scripts/ci/lib/security-paths.test.mjs` contains only:
+
+```diff
++  "apps/api/src/auth/nested/probe.ts",
+```
+
+I ran `git add -- scripts/ci/lib/security-paths.test.mjs` only, resolving/staging this path. Other merge paths were already staged by the root-owned merge before this assignment; I did not stage or edit them. `git ls-files -u -- scripts/ci/lib/security-paths.test.mjs` is empty, and the resolved file has no conflict markers.
+
+## Commands and checks
+
+In the explicit merge worktree I ran `pwd`, `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse MERGE_HEAD`, `git merge-base HEAD MERGE_HEAD`, `git ls-files -u -- scripts/ci/lib/security-paths.test.mjs`, `git diff --cc`, `git show HEAD:<test>`, `git show MERGE_HEAD:<test>`, `git diff HEAD MERGE_HEAD -- <test>`, `git show`/`shasum` for the two probe versions, `git diff MERGE_HEAD -- scripts/ci/probes/security-scope-shrink.test.mjs`, `rg` over test case names and auth path/glob assertions, `rg` over the canonical auth globs in `ci-cd.md`, `git diff --check`, `git diff --cached --check`, `git diff --cached -- <test>`, and final status/hash inspection.
+
+Both diff checks passed. No tests, Node/runtime commands, database, Docker, browser, installation, build, CI, commit, or push were run. No test pass is implied.
+
+## Status and residuals
+
+The conflict is resolved; the sole path assigned to me is staged. The root-owned merge remains in progress with other #816 paths staged. No commit or push was made. This resolution does not change security-path runtime code, the probe, the canonical scope document, review requirements, or any gate behavior. Independent ordinary review, GPT-6 Sol review, current checks, and root-owned merge completion remain outstanding.
+
+## Preserved report: records803-cf724-composition-ordinary-luna.md
+
+# Independent strong ordinary review — #803/#816 composition
+
+**Review assignment:** fresh independent strong ordinary review, requested for the bounded #803/#816 current composition.
+**Model / role:** GPT-6 Luna, ordinary reviewer. The conductor dispatched this fresh context with `model="gpt-6-luna"`, `fork_turns="none"`; the system identity is GPT-6. No served-backend fingerprint is exposed, and I make no backend-fingerprint claim.
+**Independence:** I did not author, direct, or remediate the source or records. I received the exact-head review task from the conductor and performed this read-only review in a fresh context.
+**Reviewed SHA:** `cf724b252ad90944408d35aed4a11393b54862d1`
+**Parents:** `2e06dcb0e196c6e78a4597eb08c8262c814ddbce` (#803) and `4bd86d2172042d9f52d2f9d1da54a11daa4ad4f0` (#816 publication).
+**Accepted-main comparison:** `b78fd6853a890c6e2b10d17be18885e3b1612b2d`.
+**Worktree:** `/Users/heinthura/.codex/worktrees/takeover-status-20261016`.
+
+## Verdict
+
+**CLEAR — no blocking or non-blocking findings in the bounded composition and operational snapshot at its 2026-10-17 05:34 UTC cutoff.** This is a source and records review only. It does not attest current GitHub state, publish/merge eligibility, or post-cutoff acceptance. The current composition still requires its full independent Sol security review and new exact-head required checks.
+
+## Scope and evidence
+
+I read the accepted-main repository guidance, active mission, agent workflow and provider adapter, plus the exact candidate and both parents. The tree was clean at the reviewed SHA. I inspected the candidate's complete nine-path diff against accepted main, the sole test conflict resolution, the canonical security-path declaration, both regression files, the #816 author report and ordinary/full-Sol reports, the prior #803 nested-auth ordinary/full-Sol reports, the composition/conservation proof, and the exact-head focused-test receipt and raw log.
+
+The independently reconstructed tree from accepted main plus the candidate's nine changed paths matches the candidate byte-for-byte at the mode/type/blob level: 3,396 base entries, 3,398 candidate entries, nine changed paths, and the expected tree `2bb4bd638b972abe042002e0fb691b520915920c`. This agrees with the saved 803–816 composition proof. The candidate's only executable/delivery-control changes against accepted main are the additive `apps/api/src/auth/**` declaration and the two existing gate-regression files. No product runtime source, matcher, checker, workflow, accepted model list, review-note binding, or gate pass/fail implementation is changed by this composition. Existing `apps/api/src/auth*` coverage remains.
+
+The unit counterfactual reads the canonical `ci-cd.md`, verifies its expected adjacent `auth*`/`auth/**` declaration exists, reparses a copy with only the directory glob removed, and proves the two actual nested-auth paths lose coverage while `auth.ts` remains covered. The scratch-repository case installs the canonical document and real checker, changes only nested auth sources, and requires the checker to reject missing security-review evidence without taking the “no security-review path touched” branch. The separate same-diff narrowing scenario remains, retaining the historical merge-base/HEAD union regression. The conflict resolution retains the #803 `auth/nested/probe.ts` representative assertion alongside all #816 canonical and isolated-path assertions; I found no assertion loss or misleading check-count change.
+
+I independently parsed the composition proof's tree claim by reconstructing the full mode/type/blob tree. The saved exact-head test log's SHA-256 is `a842dd8089536ed9a6a9ca8195030671559a345b10c379c65777551a3c35d174`, matching the receipt. The log records 14 tests, 14 passed, zero failed, zero cancelled, zero skipped and zero todo. This is an inspected author/conductor execution receipt, not a test run by me.
+
+The new 05:34 UTC status and queue prefix say the accepted #812 slice is complete, #815's exact PostgreSQL run is still pending, and the #803/#816 composition itself still needs current review, own-note publication and new exact-head CI. They make no claim that later composition proof, tests, checks, publication, or acceptance already happened. The 05:34 decision-log entry describes the additive test composition and explicitly keeps acceptance, owner holds and release/SIT work open. The release-policy clarification and API-design wording are inherited from the already-reviewed #803 records source; this composition does not alter their contents beyond carrying them onto the accepted-main tree. Historical reports remain source-bound and are not promoted to this SHA.
+
+## Commands and limits
+
+Read-only commands used: `pwd`, `git status`, `git rev-parse`, `git show`, `git diff --name-status`, `git diff --stat`, focused `git diff` for the gate/tests/records, `git diff --check`, `git ls-tree`, `git merge-base`, `rg`, `sed`, `cat`, `sha256sum`, and a Python read-only comparison of all Git tree entries. I read the full focused test log and its receipt. I ran no tests, Node/probe/runtime command, build, compiler, database, Docker, browser, install, live GitHub query, CI dispatch, source/control-plane edit, commit, push, or merge. Worktree remained clean.
+
+No product/runtime or unrelated historical record is re-cleared here. The saved #816 full Sol report covers its earlier three-file head, not this composition; a fresh full Sol review remains required at `cf724b...`. New required CI must bind this exact source/publication. No merge, release, SIT, phase-closure or whole-#580 acceptance is implied.
+
+**Completed:** 2026-10-17 05:39 UTC.
+
+## Preserved report: records803-cf724-composition-security-61-sol.md
+
+# Independent full security review — #803/#816 composition
+
+**Model:** GPT-6.1 Sol
+**Role:** fresh independent full Sol-tier security reviewer.
+**Context:** `/root/records803_cf724_security_sol`.
+**Dispatch provenance:** The conductor supplied explicit requested selection `model=gpt-6.1-sol`, `reasoning_effort=high`, `fork_turns=none`. No served provider/model/version/build fingerprint is exposed to this context; the requested selection is provenance, not an independently measured serving attestation.
+**Reviewed head:** cf724b252ad90944408d35aed4a11393b54862d1
+**Parents:** `2e06dcb0e196c6e78a4597eb08c8262c814ddbce` and `4bd86d2172042d9f52d2f9d1da54a11daa4ad4f0`.
+**Comparison base:** b78fd6853a890c6e2b10d17be18885e3b1612b2d
+**Worktree:** `/Users/heinthura/.codex/worktrees/takeover-status-20261016`.
+**Independence:** I did not author, direct, plan or remediate the candidate, its conflict resolution, source repair or records. I was dispatched into this fresh context for security review after reading the authentic exact-head strong ordinary CLEAR. No child was spawned and no material source-fix direction was supplied.
+
+## Verdict
+
+**CLEAR — full independent security pass for the bounded complete nine-path composition at this exact SHA.** No blocking or new non-blocking security findings.
+
+The actual risk is the bounded CI/gate tier: a narrow, well-understood missing nested-auth trigger plus meaningful regression coverage, with source-bound records and an inherited separately reviewed release-policy clarification. It does not redesign security-control core semantics, application authentication, permission authority, evidence binding or review policy. One strong independent ordinary review and one full independent security pass are appropriate. This report supplies the latter; it does not claim merge eligibility, required CI, product/runtime acceptance or a phase finalizer.
+
+## Reviewed surfaces and invariants
+
+I read AGENTS.md, active mission, canonical workflow and provider adapter, relevant CI/CD security scope and release contracts, the API-versioning contract, the strong ordinary report, both parent changes and the complete nine-path inventory against accepted main. I inspected the authoritative declaration, both regression files, production parser/matcher/union reader, actual checker enforcement branch and scratch-repository harness/body fixture. I also inspected the authentic #816 author/adverse ordinary/delta ordinary/full security reports, earlier #803 full normative and nested-auth security coverage, current composition/conservation proof and focused-test receipt/log. Initial broad reads exceeded output limits; the relevant policy, code, new record prefixes and decision entries were then read separately. No conclusion relies on unseen truncated text.
+
+1. **The scope expansion closes the actual hole and preserves existing protection.** Independent static token comparison yields 43 old tokens and 44 candidate tokens: only `apps/api/src/auth/**` is added; none are removed. Root `auth*` and `apps/api/src/index.ts` remain. The unchanged matcher anchors the full path, translates single `*` to `[^/]*` and terminal `**` to `.*`. Thus root auth files remain protected while actual nested `auth/repository.ts`, `auth/step-up-service.ts` and deeper descendants enter scope. Production checker filtering still uses the merge-base/current union, including removed-glob detection and fail-closed history/parser behavior. Exact Git blobs prove the scope implementation, PR checker, security-note binding, accepted-model reader and scratch harness are unchanged from accepted main.
+
+2. **The regressions are canonical and non-vacuous.** The unit file requires the recursive token and actual nested paths, and retains the older `auth/nested/probe.ts` assertion. Its counterfactual reads the actual canonical document, removes only the adjacent directory token, requires that removal to change the text and proves the real nested paths lose matching coverage. Root-auth coverage remains asserted. The separate scratch case installs the real canonical document and checker before recording its base, changes exactly the two nested auth source paths, asserts that changed-path set and runs a complete PR body without review-note evidence. The simple export strings cannot trigger the Hono-router fallback. Exit 1, a Security review diagnostic and absence of the no-security-path warning establish meaningful missing-review refusal. The distinct same-diff narrowing scenario retains explicit current=false, previous=true and union=true nested predicates and exact removed-token assertions; historical union/narrowing tests remain.
+
+3. **The composition conserves both owners' work.** Independent raw Git tree inventory finds 3,396 accepted-main entries and 3,398 candidate entries, with exactly the nine expected changed paths. Every other mode/type/blob entry is conserved. The resolved unit file is byte-for-byte the incoming #816 file plus exactly one retained #803 nested/probe representative. The complete probe and #816 own note are byte-identical to incoming `4bd86...`. API-design, CI/CD and the historical takeover own note are byte-identical to #803 parent `2e06...`. The newly prefixed status and queue preserve all parent bytes as exact suffixes; the decision log preserves all parent bytes as an exact prefix. The candidate tree is `2bb4bd638b972abe042002e0fb691b520915920c`, matching the retained composition proof.
+
+4. **No policy, provenance or acceptance inflation.** The 05:34 UTC prefixes and appended decision keep #815 PostgreSQL, this composition's review/publication/current CI, owner holds and final release/SIT/recovery/audit unfinished at their cutoff. They do not promote later events, source reviews, old calibration results or a necessary composition into acceptance/performance repair. I checked selected #812 readiness/final-unit and #815 composition/shipping receipts: #812's 18 saved required contexts are successful, its accepted commit has the named parents/tree, and #815's image receipt remains bound to `693d...`/its synthetic checkout. This is static receipt inspection, not a fresh runtime or live-state attestation. The narrow read-materialization author report remains explicitly uncommitted/source-only at its own cutoff.
+
+5. **Release clarification retains the enforced gate and exact approvals.** I reread the inherited API/CI changes, direct-owner-answer receipt `owner-erasure-summary-release-classification-decisions-20261016.json` and appended 17:08 decision. The recorded answer treats explicit GitHub prereleases as pre-stable, requires correcting and reviewing the gate, then exact reviewed break fingerprints. The first stable v2-or-later release still closes the allowlist, live metadata uncertainty fails closed, and no finding/waiver/unreviewed exception is approved. The actual classifier implementation is absent from this composition and remains separately gated; this review does not clear held #807. The retained receipt establishes the recorded trace and scope; I do not independently attest the human conversation beyond that saved direct-answer provenance. Earlier authentic full #803 coverage remains attributed to its actual a92/400 sources and checks, with the byte-conservation checks above establishing what was retained.
+
+All five authentic #816 Markdown artifacts, including the adverse `65c8...` ordinary finding and its later independent disposition, occur byte-for-byte in the incoming/current own note and match the private originals. Their old SHAs and limits remain unchanged. The prior full Sol report on `2f86...` does not automatically approve this composition; this is the new independent exact-head full pass.
+
+## Actual commands, evidence and limits
+
+Read-only commands actually used: `pwd`, `git status --short` / `--porcelain=v1`, `git rev-parse`, `git show`, `git diff` (stat/name-status/focused/check forms), `git ls-tree` through Python subprocess, `cat`, `sed`, `head`, `tail`, `rg`, top-level `ls`, and static Python `pathlib/json/hashlib/re/subprocess` comparisons of Git objects, tokens, preserved record bytes and receipts. The broad initial evidence filename search recursively enumerated pnpm-store filenames and was truncated; it read no store contents and was replaced by bounded top-level names and explicit paths. No source mutation followed.
+
+The exact-head focused receipt `803-cf724b2-focused-security-scope-tests-receipt.json` records native exit 0 in 3.3057 seconds. Its complete 1,610-byte log hashes to `a842dd8089536ed9a6a9ca8195030671559a345b10c379c65777551a3c35d174`, independently matching the receipt, and reports **14 tests, two suites, 14 passed, zero failed/cancelled/skipped/todo**. I read the log; I did not execute those tests or the JS parser/checker. `git diff --check` against the comparison base passed.
+
+Per the root-owned finite Carrier diagnostic restriction, no tests, probes, Node/runtime, product build/compiler, database, Docker, browser, install, CI action or live GitHub query was performed. The sole new artifact from this context is this exclusively created mode-0600 external report. No source/control-plane edit, commit, push, merge, cleanup of others' resources or change to the primary dirty checkout occurred. The review worktree remained clean at the exact head.
+
+Current required checks must still be obtained for the exact eligible publication/composition; #815 accepted-main composition and any later source change retain their normal current review/CI requirements. No source verdict here certifies signed publication, exact-digest SIT, usable nonempty restore, whole-#580/#589 acceptance, stage completion, mission completion or a gate waiver.
+
+**Completed at:** 2026-10-17T05:42:58.042869+00:00
+
+## Preserved report: records803-f044-accepted815-ordinary-luna.md
+
+# Independent ordinary import and records confirmation — #803 on accepted #815
+
+**Model / role:** GPT-6 Luna, bounded ordinary import/records reviewer. This is the same independent context that reviewed `cf724b252ad90944408d35aed4a11393b54862d1`; the conductor confirmed the original dispatch used `model="gpt-6-luna"`, `fork_turns="none"`. No served-backend fingerprint is exposed, and none is claimed.
+**Independence:** I did not author, direct, or remediate the imported source or records. This is a bounded follow-up in the same reviewer context, not a new independent context and not a renewal of the prior source review.
+**Reviewed SHA:** `f044a40250083249642f99ad0497f69975743d44`
+**Parents:** prior #803/#816 composition `cf724b252ad90944408d35aed4a11393b54862d1`; accepted protected #815 main `ff5e16b677e2c72c8b14e0aaff38ea2df930a428`.
+**Accepted main evidence:** protected merge at `2026-10-17T05:50:13Z`, publication `693d1ec7c3d49906d318c5f6f3da1752d0e72481`.
+**Worktree:** `/Users/heinthura/.codex/worktrees/takeover-status-20261016`.
+
+## Verdict
+
+**CLEAR — no blocking or non-blocking finding in the bounded accepted-#815 import and 05:51 UTC records.** The imported bytes and record changes are correctly bounded and source-attributed. This report does not clear the separate e52 auth-read work, the Carrier source, or whole #580; does not repeat the prior cf724 source review; and is not merge authorization. Fresh full Sol review and new exact-head CI remain required for f044.
+
+## Composition and prior review coverage
+
+The checkout was clean at the exact two-parent candidate. I independently reconstructed the candidate tree from accepted `ff5e16b…` plus the nine retained #803-owned paths listed in `803-accepted815-composition-proof.json`. All **3,399** mode/type/blob entries match. The proof's three incoming paths are disjoint from the owned set and byte-identical to accepted main: `apps/api/src/auth/repository.ts`, `apps/api/src/auth/step-up-service.ts`, and `docs/07-planning/security-reviews/query-ownership-pending-action-challenge-580.md`. There is no conflict resolution in these imported paths. This matches the proof's expected tree `5a84ee647554baca2e1d21180f08bf27c7cc1dfe`.
+
+The nine prior owned paths are unchanged from the exact reviewed `cf724` source: normative API-design/CI text, canonical nested-auth scope and both regressions, and the two authentic review records. Thus my prior exact-`cf724` verdict remains limited to that previously reviewed scope. It is not a new review of imported auth implementation or pending-action behavior. The new records add a status and queue prefix and a decision-log append; every previous status and queue byte remains an exact suffix, and the previous decision-log bytes remain an exact prefix. `git diff --check cf724..f044` is clean.
+
+## 05:51 UTC facts checked against receipts
+
+- The status says protected #815 accepted `693d…` at 05:50:13Z through normal protected merge, with the exact publication/synthetic tree, all 18 required contexts, PostgreSQL 223 files / 3,292 tests / five tasks, final unit 12 tasks (API 121/872; web 186/1,023), browser 63, G11 22, and a 125-migration non-root healthy shipping image with live/ready 200 and owned cleanup. I checked `815-693d-protected-acceptance.json`, `815-693d-premerge-protected-readiness.json`, the final unit receipt, final body checks/receipt, and the image proof. The merge receipt names the expected head, both parents, matching tree and `normalProtectedFlow: true` / `bypassUsed: false`; all 18 readiness entries are completed successfully with none pending. The residual N1 lock-order concern remains explicitly unresolved, and acceptance is bounded rather than whole-580/589.
+- The separate e52 auth-read item is accurately kept as a prior, published source and evidence set that still needs current accepted-main composition and its own current gates. The proof records five reports, publication `445cb15…`, source `e52aa65…`, and retained first-runner workspace-build/typecheck and focused PostgreSQL results. The typecheck receipt binds exit 0 to `445cb15…` after a successful workspace dependency build, while retaining the earlier unbuilt-workspace TS2307 attempt. The focused PostgreSQL receipt binds 8 files / 136 tests / native exit 0 / 38.107 seconds to `445cb15…`, with cleanup and no concurrency-failure-injection claim; the raw log hash matches. **These results do not transfer to f044.** In particular, f044 imports the accepted-ff5 auth files; `auth/repository.ts` in ff5/f044 differs from e52's repository blob, while `step-up-service.ts` matches. The e52 note is absent from accepted ff5 and f044. The 05:51 status/queue do not call e52 accepted and explicitly leave current composition, confirmation and gates as the next action. No review of the 14 helper changes or approval of that source scope is made here.
+- The Carrier paragraph accurately reports the complete unfiltered fd9b run as 78 tests, 62 passed, 16 failed, zero cancelled/skipped, 543.848 seconds; raw bytes/hash match the receipt, and the separate disposition says no owned fixture/process remains. The private seven-case diagnostic has native exit 0 and seven case records, but it is diagnostic JSON, not a test pass. The status explicitly says it proves no test pass, leaves the 16 failures open, and describes 7b961 as source-only with syntax/diff checks and ordinary review pending at the 05:51 cutoff. This confirmation does not inspect or approve the 7b961 source and does not infer that it repairs the fd9b failures or clears Carrier.
+
+The 05:51 status, queue and appended decision-log entry make no claim that the newly composed f044 candidate has been reviewed, published, passed exact-head CI or accepted. They retain the selected-work, N1, owner-question and release/SIT/restore/audit limits. No future event was used to revise that dated snapshot.
+
+## Commands and limits
+
+Read-only commands: `pwd`, `git status`, `git show`, `git rev-parse`, `git diff --name-status`/`--stat`/`--check`, `git ls-tree`, `git cat-file`, `rg`, `sed`, `cat`, `jq`, `shasum`, plus a read-only Python mode/type/blob overlay comparison. The inspected receipt hashes matched the raw focused auth-read, typecheck and fd9b logs. I ran no tests, Node/probe/runtime command, typecheck, build, database, Docker, browser, install, live GitHub query, CI dispatch, source/control-plane edit, commit, push, or merge. Worktree remains clean.
+
+The report is a bounded records/import confirmation. It does not transfer any historical review or test to the exact f044 head, certify pending-action lifecycle correctness, endorse the e52 14-read change, resolve N1, approve Carrier, or close #580/#589. The prior cf724 report remains the exact source review for its original scope.
+
+**Completed:** 2026-10-17 05:56 UTC.
+
+## Preserved report: records803-f044-accepted815-security-61-sol.md
+
+# Independent bounded security confirmation — #803 on accepted #815
+
+**Model:** GPT-6.1 Sol
+**Role:** independent Sol-tier security reviewer, bounded accepted-main import and records confirmation.
+**Context:** `/root/records803_cf724_security_sol`; same independent reviewer context that performed the complete bounded full security pass at `cf724b252ad90944408d35aed4a11393b54862d1`. This is not another fresh reviewer context or a repeated full application-authentication audit.
+**Dispatch provenance:** Original explicit requested selection `model=gpt-6.1-sol`, `reasoning_effort=high`, `fork_turns=none`; this follow-up reuses that context. No served provider/model/version/build fingerprint is exposed or invented.
+**Reviewed head:** f044a40250083249642f99ad0497f69975743d44
+**Comparison base / prior full coverage:** cf724b252ad90944408d35aed4a11393b54862d1
+**Accepted-main parent:** ff5e16b677e2c72c8b14e0aaff38ea2df930a428
+**Worktree:** `/Users/heinthura/.codex/worktrees/takeover-status-20261016`.
+**Independence:** I did not author, direct, plan or remediate this composition, imported source or records. I read the authentic exact-head ordinary CLEAR before this security confirmation. No child was spawned and no source-fix direction was supplied.
+
+## Verdict
+
+**CLEAR — bounded security confirmation of the exact accepted-#815 import and 05:51 UTC records at f044.** No blocking or new non-blocking security finding.
+
+The prior complete nine-path full security verdict remains at its actual cf724 source and evidence in `records803-cf724-composition-security-61-sol.md`. This confirmation establishes conservation and integration of that previously reviewed scope with exact accepted-main bytes, plus review of the new records. It does not independently re-audit accepted pending-action implementation, promote the separate e52 auth-read source or certify Carrier. Current required CI and protected-flow eligibility remain separate requirements.
+
+## Exact source conservation
+
+I independently verified clean HEAD, parents `[cf724..., ff5e...]` and tree `5a84ee647554baca2e1d21180f08bf27c7cc1dfe`. Raw Git mode/type/blob reconstruction proves all **3,399 entries** equal accepted main plus the exact nine owned paths. The three incoming paths are disjoint from that set and byte-identical to accepted ff5e: `apps/api/src/auth/repository.ts`, `apps/api/src/auth/step-up-service.ts`, and `docs/07-planning/security-reviews/query-ownership-pending-action-challenge-580.md`. There is no conflict-resolution delta in the import.
+
+Six owned paths are exact cf724 blobs: API-design, CI/CD, both existing own review notes, security-path unit tests and scope-shrink probes. Thus the canonical `auth/**` expansion, retained `auth*`/all prior scope tokens, canonical-removal counterfactual, isolated missing-review refusal and historical narrowing assertions remain exactly as fully reviewed. Production matcher/checker and review authority are unchanged. No new overlap with accepted product auth files changes those controls' semantics. The three other owned paths add only the new dated status/queue prefixes and decision-log append. Every old status/queue byte remains an exact suffix and every old decision-log byte an exact prefix; additions are respectively 5,712, 2,504 and 1,801 bytes. No historical report or adverse verdict is rewritten. `git diff --check cf724..f044` passes.
+
+## Records and source boundaries checked
+
+The new 05:51 UTC records accurately distinguish protected #815 acceptance from current #803 publication/CI still pending. I inspected the protected acceptance receipt: normal `gh pr merge --merge --match-head-commit 693d...`, exit 0, no bypass, merge time 05:50:13Z and exact named accepted-main parents/tree. The saved strict readiness has all 18 required contexts completed successfully and none pending. I checked the PostgreSQL, final-unit, browser and G11 receipts against their raw byte counts/hashes. They bind to publication `693d1ec7c3d49906d318c5f6f3da1752d0e72481`, with PostgreSQL **223 files / 3,292 tests / five tasks** at 05:41:44Z, final unit **12 tasks / API121/872 / web186/1,023** at 05:49:08Z, browser63 and G1122. The final body bytes/hash match its receipt, published before final FAST. The shipping proof and synthetic validation retain image `bc179cf3...`, 125 migrations, UID10001, healthy/live-ready200, no host ports and exact owned bridge/cleanup. These are inspected source-bound receipts, not my execution or a new live GitHub attestation.
+
+The acceptance remains bounded pending-action creation/issuance/consumption ownership; inherited N1 lock-order risk is explicitly unresolved and is not silently dispositioned as repaired. PA-15, whole580/589, release/SIT/restore/audit and stage completion remain unclaimed. Owner holds, unanswered time-and-cost questions and old calibration/budget refusals remain intact, with no unchanged retry authority or performance repair inferred from composition.
+
+The separate **e52/445 fourteen-read materialization** paragraph remains a report of another source. I inspected its publication proof, five-report inventory, API typecheck receipt and focused PostgreSQL receipt; raw typecheck and 8-file/136-test logs match their recorded bytes/hashes. The typecheck success follows the workspace dependency build and retains the initial TS2307 attempt. Its PG receipt explicitly denies current-main/hosted acceptance and concurrency failure-injection proof. Independent Git checks establish that f044's auth repository differs from e52 and that the e52 own note is absent from f044. The accepted ff5 auth files are what this composition imports. None of those separate source reviews, 8/136 results or 14-helper changes is promoted to f044.
+
+The Carrier baseline paragraph retains actual **fd9b unfiltered78: 62 passed, 16 failed, zero cancelled/skipped**, native exit1 and 543.848 seconds. Its raw 18,385-byte log hash matches the receipt, and the disposition preserves the absence of owned processes/fixtures. The separate seven-case private diagnostic is explicitly described as diagnostic evidence proving no test pass; 7b961 is source-only with syntax/diff checks and ordinary review pending at this cutoff. The records do not declare the 16 failures fixed or claim inventory/G3/performance/Carrier acceptance. I did not inspect or approve the 7b961 implementation or reinterpret the private diagnostic as a test run.
+
+The dated records make no claim that f044 itself is already published, current-CI green, protected-merged or accepted. A later event does not retroactively alter their cutoff.
+
+## Actual checks and limits
+
+Read-only commands actually used: `pwd`, `git status --porcelain=v1`, `git show`, `git diff --stat`/`--check`, `git ls-tree` and `git cat-file` through Python/subprocess, `sed`, `tail`, `cat`, bounded top-level `ls`/`rg`, plus static Python `pathlib/json/hashlib/subprocess` comparisons of tree entries, record preservation, artifact hashes and separate-source exclusion. I read the complete new prefixes/append, ordinary report, composition proof, acceptance/readiness and selected runtime/publication receipts. I executed no test, Node/probe/parser/runtime command, typecheck, install, build, database, Docker, browser, live GitHub query or CI action.
+
+No source/control-plane edit, commit, push, merge, resource cleanup or primary-checkout operation occurred. The sole new artifact is this exclusive mode-0600 external report. The review worktree remains clean at f044. The original full report remains unchanged. New exact-publication required checks, own-note publication discipline and normal protected eligibility still apply; no gate waiver or runtime/mission acceptance is granted.
+
+**Completed at:** 2026-10-17T05:58:00.878744+00:00
