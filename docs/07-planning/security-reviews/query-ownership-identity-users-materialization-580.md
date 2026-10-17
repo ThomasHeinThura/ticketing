@@ -269,3 +269,101 @@ This confirmation clears the bounded records/provenance composition security con
 
 
 **Reviewed head:** `8c1764b7321cf828e999ec2bd5a368d176e88330`
+
+
+## Accepted #807 / main295183 composition — reviewed source fd061392
+
+Conductor transport: both authentic independent reports below are reproduced unchanged. Original platform metadata corroborates ordinary context /root/accepted809_dual_composition_ordinary_luna (session01a146ba-5984-79a0-b6e0-a9d10a0f540a), provider openai, turn_context gpt-6-luna/medium; current security context independently corroborated gpt-6.1-sol/high as stated in its report. These are model/linkage fields as the platform reports them, not hidden fingerprints or cryptographic attestations. Root performed composition/transport and is not an independent reviewer.
+
+
+### Independent ordinary composition delta
+
+# Ordinary composition delta review: identity-users #822 after accepted #807
+
+Date: 2026-10-17
+
+## Exact source and scope
+
+- Reviewed candidate: `fd061392df12ac4fde2f37d65af039507813c864` in `/Users/heinthura/.codex/worktrees/remaining580-identity-users-materialization-luna`.
+- Candidate parents: `987e7e9b698ab701f42365a1730b0e237f444f2d` (published #822 source) and `2951838a608d43085aff55b3f50b7ab9ece16f84` (normal protected acceptance of #807).
+- Accepted #807 proof: `/Users/heinthura/.codex/taskdesk-evidence/2026-10-17/takeover/807-1ed689-protected-acceptance.json`, records publication `1ed6894775725c0092acbebf81d22cd01414bf03`, normal protected merge at 2026-10-17 13:19:58Z, and main `2951838a…` with the reviewed publication tree.
+- Reviewed delta is only the accepted #807 import plus interaction with the unchanged #822 identity materialization source. This is not a fresh review of all #807 or the original #822 implementation.
+- Reviewer independence: this context did not author or remediate either candidate and is separate from the earlier #822 ordinary A/B and Sol reviews. Requested route: GPT-6 Luna ordinary. The served model fingerprint/variant is not exposed in this subagent context; I do not claim a verifiable fingerprint.
+
+## Git and conservation checks
+
+- Worktree was clean at the frozen candidate head; branch reported `ahead 35` of its remote-tracking ref.
+- `git rev-parse HEAD HEAD^1 HEAD^2 HEAD^{tree}` returned `fd061392…`, `987e7e9b…`, `2951838a…`, and `1ca43c9b3594b59d9ae785fa1b960d0cf22a2ec3`.
+- `git merge-base 987e7e9… 2951838…` returned `f0b7e903e45eabbad84ac4285e92e5d1af11a2ca`.
+- `git merge-tree --write-tree 987e7e9… 2951838…` returned `1ca43c9b…`, identical to the candidate tree. The resulting tree has 3,409 entries.
+- Independently checked all 34 `incomingPaths` enumerated in `identity-users-main295183-conservation.json`: every candidate blob ID matches accepted-main `2951838a…`. No incoming path overlaps the three #822-owned paths. All three owned paths retain their exact prior-publication blob IDs: `apps/api/src/identity/repository.ts` (`f2a8f587…`), `apps/api/src/instance/users/repository.ts` (`f19b51db…`), and `docs/07-planning/security-reviews/query-ownership-identity-users-materialization-580.md` (`5c2b4ef1…`). This confirms preservation of the reviewed #822 implementation and note while importing the accepted main tree.
+- `git diff --check 987e7e9… HEAD` exited 0. `git diff --name-status` reports exactly the 34 accepted #807 incoming paths. The conservation proof `/Users/heinthura/.codex/taskdesk-evidence/2026-10-17/takeover/identity-users-main295183-conservation.json` agrees on ancestry, disjointness, entry count, exact owned/non-owned blobs, and correctly states that new publication CI is pending.
+
+## Seam and gate inspection
+
+Inspected the relevant accepted #807 diff in the API mount/boot seams, canned-response route/policy/repository/reach middleware, metrics listener and fixture, contract classifier/workflow, OpenAPI allowlist, permissions tests, and #807's retained security review note.
+
+The actual identity materialization files are unchanged. `apps/api/src/index.ts` changes only the optional hostname argument passed from `startServer` through boot to the metrics listener, alongside the existing API listener bind check. With no hostname supplied, production metrics binding remains `0.0.0.0:9464`; the changed call path neither modifies identity repository callers nor adds an identity/admin grant. The other service addition mounts the independently row-scoped canned-response router. Its new GET resolves a caller identity, resolves an item, checks current project reach and `work_item:read`, and constrains the list query by item/workspace/live-state/reach. I found no changed identity repository call, customer identity admission, identity-provider authority, user materialization, or cross-tenant rule at this composition seam.
+
+The CI contract change replaces tag-only release inference with paginated GitHub release metadata tied to the checkout's GitHub origin; origin/lookup/metadata failures fail closed. The workflow only supplies `GH_TOKEN` to that contract command. It does not remove or soften a required job/check. The OpenAPI exception entries are the two exact reviewed `GET /canned-responses` findings, not a wildcard. The protected acceptance proof and retained #807 reports place the classifier, fixture, and fingerprint repairs inside the already accepted #807 change; these are not new #822 source edits. This inspection does not claim to re-review all #807 behavior.
+
+## Commands and limits
+
+Read-only commands actually run: `git status --short --branch`; `git rev-parse`; `git merge-base`; `git merge-tree --write-tree`; `git ls-tree -r --name-only`; per-path `git rev-parse <commit>:<path>` comparisons for all 34 incoming and all three owned paths; `git diff --name-status`; `git diff --stat`; targeted `git diff` of workflow/classifier/gate docs/API boot and service seams; `git diff --check`; targeted `rg` of identity, route and seam callers. No tests, database, Docker, build, browser, CI retry, remote mutation, or source edit was run.
+
+Earlier 987e7e publication tests/image evidence remains bound to that earlier source. New CI on `fd061392…` is pending; current composition is not runtime-validated here. No claim is made about whole #580, identity feature/runtime, stage completion, or merge readiness.
+
+## Verdict
+
+**CLEAR for this bounded ordinary composition delta.** Git proves the normal two-parent composition imports exactly the accepted #807 blobs and preserves every prior #822-owned blob. The checked integration seams show no new cross-boundary interaction with identity materialization and no required-gate weakening. No blocking finding in the requested delta. This is an ordinary review verdict only; it does not replace current-head CI, required Sol review if applicable to the exact candidate, or the conductor's merge decision.
+
+
+
+### Further independent lightweight Sol confirmation
+
+# #822 identity/users current-main composition — independent security confirmation
+
+**Reviewed head:** `fd061392df12ac4fde2f37d65af039507813c864`
+
+**Verdict:** **CLEAR — lightweight security confirmation of this bounded composition.** No new blocking or non-blocking composition/security finding. Existing non-blocking findings and acceptance limits remain as recorded below.
+
+**Comparison:** ordered direct parents are prior #822 publication `987e7e9b698ab701f42365a1730b0e237f444f2d` and accepted main `2951838a608d43085aff55b3f50b7ab9ece16f84`. Common base: `f0b7e903e45eabbad84ac4285e92e5d1af11a2ca`. Worktree: `/Users/heinthura/.codex/worktrees/remaining580-identity-users-materialization-luna`.
+
+**Reviewer/model:** GPT-6.1 Sol; original platform turn_context reports `gpt-6.1-sol`, effort `high`, provider `openai`. Context `/root/identity822_fd0613_composition_security_sol`, session `01a14a07-2de6-7bc1-8a6e-53596a5fc808`, parent `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`, depth 1. I independently read only allowlisted session_meta linkage and turn_context model/effort fields from this context's original platform session file. The conductor supplies actual dispatch `model=gpt-6.1-sol`, `reasoning_effort=high`, `fork_turns=none`, consistent with that metadata. No hidden serving fingerprint, build identity or cryptographic attestation is exposed or claimed. This fresh independent context did not author, direct, remediate or ordinarily review #822, #807, or their records; it received no inherited author conversation. The conductor is not this reviewer.
+
+## Scope and sequence
+
+I read accepted AGENTS.md, active mission, canonical agent workflow including model/review/evidence rules, CLAUDE.md, relevant CI/CD security scope, dated Blocked/status and queue/decision context. I read the complete current `identity-users-fd0613-main295183-ordinary-luna.md`: its exact-head bounded ordinary verdict is CLEAR. I read the identity/users designated note, including both original ordinary reviews, full original security review, provenance supplement, earlier composition review, separately retained factual correction and its security disposition. The correction and its three-path count disposition remain part of the retained record.
+
+This confirmation addresses the genuine composition/provenance delta and its interactions, not another full audit of the 86 original identity/users materializations or all #807 source. Original #822 source `de4e3433fc6822b126da06d1e3821b381a964016` retains its two ordinary and full independent Sol source clearances and original limits. Newly imported #807 already has protected acceptance and retained scoped security reviews; those are reused only for what they actually covered. The join adds no new authority or gate semantics beyond the exact accepted source, so the lightweight composition-confirmation row applies.
+
+## Independent conservation and provenance checks
+
+I independently reconstructed recursive Git path/mode/type/object maps, rather than relying on the supplied receipt. The common-base-to-old-publication owned set is exactly three paths: `apps/api/src/identity/repository.ts`, `apps/api/src/instance/users/repository.ts`, and `docs/07-planning/security-reviews/query-ownership-identity-users-materialization-580.md`. The accepted-main incoming set contains exactly 34 paths. Intersection is empty. Overlaying those three old-publication entries onto accepted main exactly reproduces all **3,409 candidate entries**, with no missing, additional, mode, type or blob difference. Candidate tree is `1ca43c9b3594b59d9ae785fa1b960d0cf22a2ec3`.
+
+Both product repository blobs also exactly equal the original de4e source. The entire identity/users note exactly equals its prior-publication blob. I additionally compared all six original private report artifacts with the note: ordinary A, ordinary B, full security, earlier composition, its correction and its security confirmation all occur as exact byte sequences. The three original report SHA-256 values match their retained note declarations. Thus this composition rewrites no finding, verdict, source attribution, correction, provenance limit or historical security authority.
+
+AGENTS.md, CLAUDE.md, active mission, agent-workflow.md, `scripts/ci/lib/security-paths.mjs`, and `scripts/ci/lib/review-models.mjs` are exact in both parents and candidate. All other candidate entries outside the three owned paths equal accepted main. The candidate therefore cannot introduce its own review model, mission, security-path exclusion or workflow authority through this join. The incoming CI/CD text and decision-log disposition are exact accepted-main bytes.
+
+`git diff --check` against the prior publication passes; the checkout is clean at the frozen head. The supplied `identity-users-main295183-conservation.json` agrees with my full reconstruction. Live read-only GitHub confirms #807 merged at `2026-10-17T13:19:58Z`, publication `1ed6894775725c0092acbebf81d22cd01414bf03`, merge `2951838a...`. Independently comparing Git objects confirms accepted merge/publication tree equality at `2f65124daa19ef085703b9d945eca30d2e8f3fa8`. The actual retained proof is `807-1ed689-protected-acceptance.json`; the assignment's `actualacceptance807-...` filename was a reference typo, not an absent acceptance. Live #822 was still published at 987e7e during inspection; fd0613 is the frozen local candidate, not a claimed hosted publication.
+
+## Security interactions assessed
+
+The canned-response route still uses the existing caller-identity resolver and mounted service. Its accepted GET change resolves a live work item, requires current project reach and `work_item:read`, refuses customer principals, and correlates returned snippets to the same work-item/project workspace with live-state and current-reach predicates. Mutations retain workspace capability checks and repository workspace/reach constraints. The web fetch/cache key now carries workItemKey. No changed import/caller, transaction/executor ownership, identity-provider admission, SCIM/OIDC trust rule, instance-admin/sees_all grant, or user-directory exposure connects this delta to the two conserved identity/users repositories. Shared identity-resolution and reach machinery remains accepted-main source; no new authority is inferred from IdP data.
+
+The API boot seam forwards an optional explicit hostname into API and metrics listener startup and validates the actual address. Without it, the existing production metrics bind remains `0.0.0.0:9464`. The disposable fixture supplies `127.0.0.1`, and its PostgreSQL binding/inspection and supervisor lease are likewise loopback-scoped. These accepted listener/fixture changes do not alter authentication or the materialized repository contract. They are not a new runtime proof by this reviewer.
+
+The accepted contract classifier resolves the GitHub repository from checkout origin, uses paginated release metadata with typed draft/prerelease fields, and refuses origin/lookup/malformed-data failures. The workflow supplies its existing GitHub token to the contract command; this delta adds no write permission or signing identity. The allowlist contains only the two exact reviewed `GET /canned-responses` operation/rule/fingerprint entries. The two Gitleaks exclusions retain exact immutable commit/file/rule/line fingerprints for public report headings, not path/rule/future-commit exemptions. I inspected the retained full fingerprint security assessment and later #807 composition confirmation; their original scopes and controls remain labelled. The current join changes none of those accepted bytes and creates no additional exception or required-check bypass.
+
+## Findings, residuals and actual verification limits
+
+**New blocking findings: none. New non-blocking findings: none.**
+
+Retained #807 residuals remain: NB-1 unbounded diagnostic delivery-gate-entry wait/cleanup limitation, the earlier observer-only shadow-denial-marker limitation, and the minor fingerprint-prose editorial finding. The inherited pending-action N1 lock-order inversion is unresolved and unwaived outside this slice. The historical identity/users ordinary attribution correction and its independently dispositioned three-versus-four count typo remain together, unchanged. This report clears none of these by implication.
+
+Actual operations: read-only Git HEAD/parents/merge-base/status/log/diff/check and recursive tree/object comparison; Python standard-library reconstruction, hashing and report-byte comparison; targeted policy/source/review-record reads; live read-only `gh pr list` and `gh pr view`; allowlisted own platform metadata inspection. No tests, compiler/AST tooling, package installation, database, scanner, Docker/image/health, browser, CI retry, source/ref/PR edit, child agent, retired route, commit, push, merge or waiver was performed. The exclusively created mode-0600 private report is the sole write. **BROWSER VERIFICATION: BLOCKED** by the no-runtime review assignment; no screen opened.
+
+Prior 987e7e hosted PostgreSQL/G11/image evidence remains attached to that earlier source and was not revalidated here. Source conservation and accepted #807 clearance do not establish fresh fd0613 tests, current required GitHub checks, browser/image/runtime acceptance or protected merge readiness. Current publication, authentic report transport and exact-head required gates remain conductor responsibilities. This confirmation supplies no whole-#580, stage, release, SIT/recovery, deployment or mission-completion claim.
+
+**Reviewed head:** `fd061392df12ac4fde2f37d65af039507813c864`
+
