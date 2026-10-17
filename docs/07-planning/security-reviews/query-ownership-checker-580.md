@@ -1047,3 +1047,96 @@ The retained 6fc fixture result of 3/3 with 4.702 seconds elapsed, normalized 3,
 Used only read-only Git, text reads/searches, and Python static tree/hash/text comparisons, plus the allowlisted native context-metadata read. No Node, TypeScript/AST execution, test, typecheck, production scan/census, inventory, package install, database, Docker/image/build/boot/health, browser, runtime or CI dispatch was run. No source, ref, PR, workflow or shared-runtime mutation; no fetch, push, commit, merge or subagent. This private report is the only file written by me. BROWSER VERIFICATION: BLOCKED by the static-only review assignment; no screen opened.
 
 Current required GitHub checks and applicable image/runtime evidence remain separate, exact-candidate obligations for the conductor. This source confirmation is not merge authorization, checker activation, #580 acceptance, Carrier completion, stage/phase closure, signed release, SIT/recovery acceptance or final audit.
+
+## Bounded immutable-finding correction reviews — 2026-10-17
+
+**Reviewed head:** `d4a4c4fba7c0dc86c2318ceae43d3fb4b411cb6c`
+
+The following strong ordinary and further full bounded Sol reviews cover only the exact scanner-finding correction and its technical record after publication78c976c. Earlier checker and composition reports retain their actual scopes. No production activation or current hosted/runtime result is supplied.
+
+Dispatch for each context used fork_turns=none. Actual native turn metadata corroborates ordinary gpt-6-luna/medium in session01a14a8a-b71c-7af0-9d32-f7dc5aa388aa and full security gpt-6.1-sol/high in session01a14a8c-1a1f-7ed0-a568-2a8b47863c89. Provider, parent conductor and exact agent paths were checked from allowlisted session fields; session_meta has no model field. No hidden serving fingerprint is claimed.
+
+### Strong ordinary review
+
+# #797 exact Gitleaks fingerprint ordinary review
+
+**Verdict: CLEAR for the bounded exact-fingerprint disposition.** I found no blocking issue in this 78c976c-to-d4a4c4f delta. The required independent full GPT-6 Sol security review and hosted exact-head checks remain pending; this is not merge clearance.
+
+**Reviewed head:** `d4a4c4fba7c0dc86c2318ceae43d3fb4b411cb6c` (tree `1b4d17773630324302f05ef114291d6a0ad4e8c0`)
+
+**Comparison base:** `78c976c8198c6ed1702cfa3192ba6e98a0770b61`.
+
+**Role and independence:** Fresh ordinary reviewer context, assigned independently and without inherited author conversation. I did not author, direct, or remediate this change. The task dispatch requested GPT-6 Luna (`fork_turns=none`); exact platform model metadata is not exposed in this reviewer context and should be attached by the conductor from the allowlisted native turn metadata before publication.
+
+## Scope and checks performed
+
+Read the repository's review and CI policy, including `AGENTS.md`, `CLAUDE.md`, `docs/04-engineering/agent-workflow.md`, and the security-scope list in `docs/04-engineering/ci-cd.md`. Reviewed only the narrow 78c976c-to-d4a4c4f delta: five appended `.gitleaksignore` lines and ten prepended decision-log lines, with no deletions. `git diff --check` is clean. The current fingerprint occurs exactly once in `.gitleaksignore`; it has the repository's established `commit:file:rule:line` form. Its exact scope is one immutable commit, one note, one rule, and line 971. It does not exclude a file, directory, rule, value pattern, or future commit.
+
+Independently inspected the raw original Gitleaks JSON without disclosing the match. It contains one finding at line 971, bound to commit `78c976c8198c6ed1702cfa3192ba6e98a0770b61`. The raw `Secret` equals the basename of the retained ordinary composition report, and that same string is present on committed line 971. The retained report exists and is 5,018 bytes (SHA-256 `0892b090c2fbdadb47f72bc715e974d9e0c653cc3599cfbdb5dee3ce9c799a1a`), matching the hash recorded by the prior composition review. The committed line is report-identifying prose and contains no credential assignment marker. This supports the stated non-secret classification without reproducing the matched text in this report.
+
+Reviewed the private native-controls receipt and the root-run evidence metadata. The receipt records zero findings for proposed record text and for the exact original history with the fingerprint, then two findings for a fresh private commit containing the same trigger at line 971 and a synthetic credential at line 972. Both findings are attributed to that fresh commit. The receipt says all expected controls passed. These are root-run results, not tests I ran. The full-range local scan is also root-run evidence, recorded as zero findings; the required hosted scanner remains outstanding.
+
+The decision entry clearly labels the disposition as a conductor technical classification subject to independent review, bounds the exact fingerprint, disclaims a quality-gate waiver, and states reversal behavior. Its assertions align with the examined raw finding, committed line, exact fingerprint, and control receipt. Existing historical exact-finding entries provide consistent repository precedent.
+
+## Findings and limits
+
+**Blocking:** None found in the bounded change.
+
+**Non-blocking:** None.
+
+I performed read-only Git diffs and metadata/text/hash inspection. I did not run Gitleaks, tests, Node, AST/compiler checks, CI, builds, runtime probes, or mutate the repository. The root-run native controls and full-range scan were inspected as evidence, not represented as my own executions. This ordinary review does not replace the required independent full GPT-6 Sol pass. Hosted scanner and all required status checks must still pass on the exact candidate SHA. No checker activation, #580 acceptance, or merge readiness is claimed.
+
+### Full bounded security review
+
+# #797 exact immutable fingerprint — full bounded security review
+
+**Verdict: CLEAR for the bounded fingerprint correction.** No blocking or new non-blocking security finding in the exact delta below. This is a full security pass over that correction, after the strong ordinary review, rather than a lightweight confirmation. It is not merge clearance or a renewed whole-checker review.
+
+**Reviewed head:** `d4a4c4fba7c0dc86c2318ceae43d3fb4b411cb6c`
+
+**Reviewed tree:** `1b4d17773630324302f05ef114291d6a0ad4e8c0`
+
+**Comparison base:** parent publication `78c976c8198c6ed1702cfa3192ba6e98a0770b61`. Accepted-main reference is `c8e1e2c5d5315c0e3bbce5b6b6bf27462a9e1ca4`.
+
+**Role, independence and sequence:** Fresh independent security reviewer, context `/root/query797_d4a4_fingerprint_full_security_sol`. I did not author, direct or remediate this candidate and did not perform its ordinary review. I read the complete strong ordinary CLEAR before reaching this verdict: retained report `797-d4a4-fingerprint-ordinary-luna.md`, 3,913 bytes, SHA-256 `1052f0a38dbaea1542ffad3d72a5ee0eba088ed3fb65d87fb63f9324044da00b`. I independently corroborated its native session and turn metadata: separate session `01a14a8a-b71c-7af0-9d32-f7dc5aa388aa`, agent path `/root/query797_d4a4_fingerprint_ordinary_luna`, model `gpt-6-luna`, effort `medium`.
+
+**Model and provenance:** Explicit dispatch requested `gpt-6.1-sol`, reasoning `high`, `fork_turns=none`. I independently read only allowlisted native metadata from `/Users/heinthura/.codex/sessions/2026/10/17/rollout-2026-10-17T22-17-38-01a14a8c-1a1f-7ed0-a568-2a8b47863c89.jsonl`. `session_meta` identifies session `01a14a8c-1a1f-7ed0-a568-2a8b47863c89`, timestamp `2026-10-17T15:47:38.172Z`, provider `openai`, parent `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`, and this exact reviewer agent path. It contains no model field. Actual `turn_context` reports `gpt-6.1-sol`, effort `high`. This is platform-reported metadata, not a hidden serving-model fingerprint.
+
+## Scope and risk
+
+Read the accepted-equivalent AGENTS, active mission, canonical workflow/review and evidence-reuse rules, provider adapter, CI/CD security-scope and secret-scan configuration, relevant technical exact-fingerprint precedents in the decision log, and the supplied original composition/publication records. The change modifies one narrow scanner pass/fail case: it adds five lines to `.gitleaksignore` and prepends ten lines to `docs/07-planning/decision-log.md`, with no deletions or mode changes. The workflow's bounded CI/gate-fix row applies: one strong independent ordinary review followed by one full independent security pass. The earlier lightweight composition confirmation alone would not cover this scanner change.
+
+## Independent checks
+
+- Verified immutable commit, parent, tree and raw changed-file metadata. `git diff --check` is clean for the parent-to-reviewed-head delta. The worktree was clean at the checked reviewed head. No product, checker, fixture, workflow, dependency, scanner configuration or review-report bytes change in this delta.
+- Inspected the original raw Gitleaks JSON and native log. It contains exactly one `generic-api-key` finding, in `docs/07-planning/security-reviews/query-ownership-checker-580.md` at line 971, commit `78c976c8198c6ed1702cfa3192ba6e98a0770b61`. The raw matched value is exactly the basename of the retained original ordinary composition report. That actual file exists, is 5,018 bytes, and has SHA-256 `0892b090c2fbdadb47f72bc715e974d9e0c653cc3599cfbdb5dee3ce9c799a1a`. Committed line 971 is a Markdown report heading containing this basename, rather than a credential assignment. Its surrounding publication contains the exact report bytes at the recorded offsets. This supports the non-secret classification; I have not gratuitously repeated the triggering heading here.
+- Parsed the newly added ignore text independently. Exactly one non-comment entry is added, and it occurs once: `78c976c8198c6ed1702cfa3192ba6e98a0770b61:docs/07-planning/security-reviews/query-ownership-checker-580.md:generic-api-key:971`. It equals the original raw finding fingerprint. It binds one immutable commit/file/rule/line; it adds no path, rule, directory, value-pattern or future-commit exemption. The raw original contains only that one finding at that immutable location. An alternative payload cannot be added to the same Git commit without changing its object ID.
+- Verified the complete 4,004-byte prior ignore prefix and 678,879-byte prior decision-log suffix are preserved exactly and each equals the corresponding accepted-main blob. The additions are respectively 378 and 1,570 bytes. Existing ignores and historical decisions are neither rewritten nor reclassified. The new decision expressly records conductor technical reasoning, pending independent review, no gate waiver, mandatory full-range/hosted checks and a direct reversal. It does not claim Thomas authorized a new waiver or any actual secret exemption.
+- Reconstructed the source tree independently: 3,423 entries; all entries outside the original three owned files plus the two deliberate control/record changes are exact accepted-main entries. This final source is not described as the earlier composition's separate 3-owned/67-incoming/0-overlap scope. Both checker and fixture remain byte-identical to the original composition. The original composition note is an exact prefix of the publication; the two original composition reports are present unedited with matching lengths, hashes and manifest offsets. The complete publication note is unchanged from parent to reviewed head.
+- Inspected source and private-probe scanner setup. The repository's only Gitleaks-named tracked file is `.gitleaksignore`. The pinned existing secret-scan action and full-history checkout are unchanged. The fresh private repository contains only the copied exact current ignore file and the fixture at the same note path, with no custom scanner configuration. Its Git-local config is ordinary repository metadata. The fixture has exactly 970 empty lines, the exact original heading at line 971, and the synthetic credential control at line 972; its SHA-256 matches the receipt. Its sole commit is `d2e51ff1a04e563ad292c0ad0276e7f5bec6d67c`, distinct from the ignored commit. Raw control matches correspond to the actual fixture lines.
+
+## Root-run execution evidence inspected
+
+These are executions performed by the conductor, not by this reviewer. I read the raw JSON/log bytes, independently checked their hashes against the control receipt, and inspected the retained private Git fixture. The command/setup transcription was written by the conductor after execution from its inline tool calls; it is transparently labelled as a transcription, not a pre-existing executable capture. Its exact argv arrays use no custom scanner configuration or broad exemption flag. The reported subprocess setup has no environment override. Its later presence-only environment observation is not treated as a contemporaneous environment capture.
+
+| Root-run scope | Native exit | Raw findings | Assessment |
+| --- | ---: | ---: | --- |
+| Original project range, accepted main through parent publication, before the new fingerprint | 1 | 1 | Retained original failure identifies the exact immutable non-secret finding |
+| New 1,948-byte decision/ignore addition through stdin | 0 | 0 | New record text introduces no detected match in the local scanner |
+| Same original project range with current exact ignore | 0 | 0 | Disposes the intended original finding |
+| Fresh private commit, same path/rule/line 971 plus synthetic credential at 972 | 1 | 2 | Both are detected under the fresh commit; neither the path nor rule nor same future location is exempted |
+| Full current project candidate range, accepted main through reviewed head | 0 | 0 | Raw result is empty and native log records 14 scanned commits |
+
+The raw positive-control fingerprints both name the fresh private commit and their expected lines 971/972. This is substantive evidence against a broad ignore or a disabled scanner. Receipt, actual fixture and raw logs are mutually consistent. The local scanner is recorded as Gitleaks 8.30.1; the required hosted 8.24.3 result is a separate outstanding obligation. The transcription's retrospective nature and absence of a contemporaneous environment snapshot limit execution provenance; neither changes the inspected exact fingerprint or substitutes for hosted CI.
+
+## Findings, residuals and limits
+
+**Blocking:** None found in this bounded correction.
+
+**New non-blocking:** None.
+
+The three historical Markdown hard-break lines 548–550 remain byte-authentic, as both earlier composition reviews observed. The full old-note whitespace observation is not erased by the clean new delta and no required gate is waived. Their retention is outside this correction's behavior change.
+
+I used only read-only Git, text, JSON and Python byte/tree/hash inspection, plus allowlisted native context-metadata reads. I did not run Gitleaks, controls, Node, AST/compiler checks, tests, a production census, builds, Docker, boot/health, database operations, browser operations or CI; I made no source/ref/PR mutation, fetch or subagent dispatch. This private report is my only written artifact. BROWSER VERIFICATION: BLOCKED by the static-only reviewer assignment; no screen was opened.
+
+The original checker reviews and original composition reports retain their original source scopes. This review adds security coverage only for the parent-publication-to-reviewed-head fingerprint/decision delta. The ownership checker remains unwired; this verdict does not activate it, accept #580 or Carrier, close inherited N1, claim stage completion, or establish release/SIT/restore acceptance. All 18 required hosted exact-head checks, the hosted scanner, applicable tests and image/runtime evidence remain mandatory and are not supplied by this review. Later review-record-only publication must preserve authentic reports and satisfy the normal intervening-commit evidence rules; current required checks cannot be reused from another SHA.
