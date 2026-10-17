@@ -1,3 +1,16 @@
+## Current recovered-source acceptance queue — 2026-10-17 02:01 UTC
+
+Accepted main remains `5a26ca75e60c7232ab8280a13e599fcbe4fd3518`. This snapshot supersedes task-state rows below; no scope/owner decision changes.
+
+| Owner / unit | Current evidence | Next action |
+| --- | --- | --- |
+| Conductor / #811 recovered773 | Publicatione30eb752/source8a89525c;21 authentic artifacts, note1198+/0, current independent ordinary/Sol composition CLEAR. Full38993047305/fast38993047413 running. | Actual current PG/browser/G11/image proof, then one final evidence body/new fast/strict18 and normal protected merge only if green. Preserve old773 unique source. |
+| Conductor / #812 recovered789 | Publicationd65c498c/source88b78073;13 public authentic artifacts, note703+/0, current ordinary corrected composition and separate Sol CLEAR. Full38993052679/fast38993052534 queued/running. | Actual current runtime/image evidence; final body/new fast/strict18 only after success. Preserve old789 and private exact internal planning artifact. |
+| Luna / Carrier791 | Current finite pipeline attempt71tests44pass27fail; no inventory or metadata update. Full raw and prior attempts retained. | Preserve source and diagnose every failure class; critical reassessment before another test/inventory, then actual ordinary/security review at finished exact source. |
+| Luna / remaining580 bounded recovery | Read-only historical source map complete; next existing seam is step-up session/preflight repository read materialization on5a26. | Implement only scoped reads/callers with exact current UTC, row-lock and executor predicates; scoped static checks, authentic handoff; no local heavy run or shared edits. |
+| Conductor / held810,807,798 | Existing exact-head G11 calibration/budget refusals remain. | Genuine accepted-main compositions and applicable fresh delta review/checks; never unchanged retries or inherited statuses. |
+| Conductor / records803 and final589 | Records local pending own normative-policy reviews. Final combined artifact/SIT/nonempty restore/audit unfinished. | Keep required review and source acceptance separate; continue dependency-safe existing work. No UAT/production. |
+
 ## Sole-conductor active queue — 2026-10-16 22:00 UTC
 
 **Accepted main:** `5a26ca75e60c7232ab8280a13e599fcbe4fd3518` (#809). Newest detailed verification belongs in [status.md](status.md); historical snapshots below retain their original dates. The existing #589 mission, selected units, owner holds and #626 deferrals remain unchanged. Thomas's direct takeover designates the root Codex session as sole conductor. Both outgoing automations remain paused; there is no verified automatic post-turn continuation. At most two active child contexts and one local heavy verification window.

@@ -1,3 +1,19 @@
+## Recovered source publications — 2026-10-17 02:01 UTC
+
+**Accepted main:** unchanged `5a26ca75e60c7232ab8280a13e599fcbe4fd3518`. Thomas resumed the conductor; both implementation/review routes are available. Normal pushes and focused replacement PRs [#811](https://github.com/ThomasHeinThura/ticketing/pull/811) and [#812](https://github.com/ThomasHeinThura/ticketing/pull/812) preserve the original #773/#789 drafts and source. No original draft is closed or force-pushed.
+
+**#811:** reviewed source `8a89525cb2a55f6a50b1b793e1e82ee5d367a5fe`, publication `e30eb752eedf09bc8fcfa9a54c856a7771ff3cf4`;21 authentic artifacts, own regular review note1198additions/0deletions. **#812:** reviewed source `88b7807378447cc74e584a37a48f277ddc1c34c8`, publication `d65c498cc9983cc89d11a670f90ee062ae99c310`;13 authentic public artifacts, own regular review note703additions/0deletions. The internal caller-planning addendum remains private in its exact restored form; all dispatched independent reports, adverse findings and corrections remain public verbatim. Four intentional Markdown hard-break lines in the private planning artifact caused the original prepublication diff diagnostic; no report text, test, CI gate or configuration was changed. Original14-artifact assembly and selection proof are retained privately.
+
+Fresh independent ordinary and separate Sol composition confirmations CLEAR cover the actual8a/88 heads, with earlier full-source reviews retaining their actual scopes. The ordinary composition report's erroneous whole-tree-equivalence statement for789 is explicitly withdrawn by its authentic correction, both retained. Per-commit source-to-publication own-note checks, all report hashes and stdin/full-range secret scans pass. No runtime acceptance follows from these source reviews.
+
+Current full runs38993047305 (#811) and38993052679 (#812) and fast runs38993047413/38993052534 are running/queued. Initial PR bodies deliberately record current runtime/image/checklist gates pending. No final evidence body, inherited required checks or merge readiness is claimed.
+
+**Carrier:** the next finite render-pipeline attempt failed natively71tests44pass27fail; full raw36375bytes retained. Import-owner AST crashes coexist with guarded paint/caller completion failures. No subsequent test or source inventory is authorized before whole-path diagnosis and critical reassessment; no manifest/product or acceptance change. The author is preserving source and diagnosing all distinct classes. Earlier failures remain intact.
+
+**Remaining #580:** the read-only preserved-source map selects bounded step-up session/preflight read materialization as the next dependency-safe source recovery. A separate Luna author owns a new5a26-based isolated checkout; exact SQL/session/user/portal/UTC/lock/executor semantics must remain, with no challenge/proof/route authority redesign. No runtime result or independent approval is claimed.
+
+At most two active children and one local heavy verification window; currently no local heavy runtime. #810/#807/#798 performance holds remain unwaived. Signed combined prerelease, exact-digest laptop SIT, consistent nonempty-attachment backup/usable isolated application restore and fresh final independent audit remain unfinished. Primary dirty checkout, owner holds and remote UAT/production are preserved. Continue the selected #589 mission.
+
 ## Protected task-query recovery accepted — 2026-10-16 22:00 UTC
 
 **Accepted main:** `5a26ca75e60c7232ab8280a13e599fcbe4fd3518`, normal protected #809 merge at21:57:59Z. Parentsc022915a/894d7775 and treee735a3f595c97603cadc384a7185e923107a53c9 exactly match the reviewed publication and actual hosted synthetic. All18 newest required contexts passed; source435a4895, own-note-only publication152+/0, all45authenticreports and final source binding verified per commit. No bypass, waiver or inherited required check.
