@@ -1568,3 +1568,198 @@ Read-only PR metadata reported remote #807 still at `fb4b49af59a05e631328316b6e4
 
 
 **Reviewed head:** `a49a63cf901fd7b01e81b08d7f0e188b97356ba0`
+
+
+## 2026-10-17 · #807 accepted-main composition review packet — `ef80b4e`
+
+This is an append-only current-source packet. The existing 40 authentic report entries and the complete original note prefix remain byte-for-byte unchanged; this addition carries five more authentic report bodies, for 45 report entries total. There are 39 distinct byte bodies in the original 40 entries because two preserved author-report paths contain the same authentic bytes; the five new bodies are distinct. The 2026-10-16 17:20 candidate release-decision duplicate is not replayed: accepted main's 17:08 decision preserves the same owner question/answer, prerelease classification and published-tag scope; the candidate copy remains in the original source history and private preimage.
+
+**Reviewed head:** `ef80b4ed004c42d618af41a14d3031523566646b` (tree `f54f22d10d6bf98f311102f210f552735ee94192`). **Source publication:** `198a5abde93a899199af2d37eca86c5467317d17`. **Accepted main:** `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`. **Normal composition:** `9f6d5b65220f3195af217dbc5c40d1e564e9cc14`, with ordered parents source publication then accepted main. **Follow-up:** `ef80b4e` changes only the API-design and CI/CD classifier contract paragraphs.
+
+The three shared paths are the two named contract documents and the append-only decision log. All 29 candidate non-overlap entries and 85 accepted-main non-overlap entries were verified by exact mode/blob identity. Both `apps/api/src/auth*` and `apps/api/src/auth/**` remain in the accepted security scope. The decision log remains byte-identical to accepted main; the candidate's duplicate release-policy entry is preserved in source history and preimage. No feature implementation, permission or authority rule was changed.
+
+The two-document follow-up restores the classifier contract already implemented in the source publication: read all paginated GitHub release metadata for the repository named by the checkout's `origin`; only a published, non-draft, non-prerelease `v2.0.0`-or-later release closes the allowlist; lookup failures and malformed metadata fail closed; `package.json` is not release authority. Exact operation/rule/fingerprint registration, independent review and required CI remain. No new owner decision or gate exception was added.
+
+**Review scope and limits:** the fresh ordinary report APPROVEs the bounded composition and classifier-documentation delta; the fresh requested GPT-6.1 Sol report gives a lightweight CLEAR for that bounded composition. Served model fingerprints are not exposed in those contexts. These reports do not replace the full source coverage recorded for `2826ac1` and the prior `a49a63c` accepted-main composition, and they make no new full review claim. Current required CI, PostgreSQL, image/runtime and G11 results are not established on `ef80`; no test, checker, runtime or CI invocation was made during this static note preparation. No merge-readiness or acceptance claim follows.
+
+**G11 record:** the preserved #807 evidence remains a valid calibration (factors `1.392` and `1.480`) followed by a task-assignment result of `218.0 ms` and built-in retry `200.43141014024977 ms`, failing the strict `<200 ms` budget: 21 pass, 1 fail. Cause remains undiagnosed. This is not the separate #810 factor-`1.752` calibration refusal, is not waived, and no #807 source-performance change or unchanged retry is claimed.
+
+**Publication state:** at preparation, GitHub #807 remained open on remote head `198a5abde93a899199af2d37eca86c5467317d17`; `ef80` and this note append are local and unpublished. Root owns the next exact-head readiness decision, verification and any authorized publication.
+
+## Evidence file
+
+`author-handoff.md`
+
+SHA-256: `1eab1402b06256593274c8ae86b09057fb4aa61bd402ef44531d101ee82566bc`; 4068 bytes.
+
+**Source:** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/canned807-accepted-main-23fb-composition/author-handoff.md`
+
+**Scope:** historical author preparation snapshot; its all-main documentation resolution and failed merge:type attempt were superseded; preserve verbatim.
+
+Original bytes follow unchanged.
+
+# #807 accepted-main composition author handoff
+
+Date: 2026-10-17. Mode: Integration Freeze. Scope: normal local composition of existing #807 with accepted `main`; no new feature or performance patch.
+
+## Exact sources and current result
+
+- Existing branch: `codex/canned-response-ca19-reach-20261016`, source publication `198a5abde93a899199af2d37eca86c5467317d17`.
+- Accepted main at live verification: `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`.
+- Merge base: `33995c2af23da197f2fd9d5690717f7aeb4e9f67`.
+- Current branch HEAD remains the source publication above. Normal merge is staged, with `MERGE_HEAD` at accepted main. Staged tree object: `e93547cc3c3ab99d63d118c961d9eaa153e6e3d1`. No commit, push, PR mutation, review publication, CI, or acceptance claim.
+- GitHub read confirmed #807 open on head `198a5ab…`; #810 remained unaccepted with hosted checks in progress. #810 was not included.
+
+## Conflict resolution and conservation
+
+Object preflight and the actual merge had exactly three expected content conflicts: `docs/01-architecture/api-design.md`, `docs/04-engineering/ci-cd.md`, `docs/07-planning/decision-log.md`. Each was resolved byte-for-byte to accepted main, preserving `auth*` and `auth/**`, the accepted GitHub-release prerelease classifier, and the complete accepted append-only decision log. Candidate exact findings and classifier implementation remain in its non-overlapping code/config entries.
+
+From the common base, candidate owned 32 paths, accepted main changed 88, and their only intersections were those three documents. All 29 candidate non-overlap entries and all 85 accepted-main non-overlap entries match exact Git mode/blob identities in the staged tree. No additional path was edited. The candidate comment-history note matches its recorded SHA-256; all 40 authentic reports match their persisted byte lengths and SHA-256 proofs.
+
+The candidate decision log's 17:20 release-policy entry (blob `8656b779782d26cc3ce405ecd6c351b2384fe53c`, section SHA-256 `a4347641a4f7b83c963d64171b2d92612faeceb1ac14d47f745c05a8b18108c4`) repeats the accepted main 17:08 owner entry (section SHA-256 `cbd1f1b61751ce4f9cee246e20889daccda3fee9b0a659a0b44a7972acb33833`). Accepted entry states prereleases remain pre-stable, published tags/releases remain preserved, exact operation/rule/fingerprint entries require ordinary/security review and CI, with no waiver. The accepted log blob is retained byte-for-byte; the duplicate candidate entry remains in the source publication's git history and the private full preimage. No unique owner choice or condition was omitted.
+
+## Verification limits and commit-hook interruption
+
+Only Git object/history/status and standard-library byte/hash comparisons were used for composition verification. `git diff --check` reported inherited whitespace in accepted-main security-review records; accepted bytes were left unchanged. Separate candidate-source whitespace comparison was clean. Full outputs are in `whitespace-checks.json`.
+
+A local `git commit -m "merge: compose canned responses with accepted main 23fb"` was attempted to finish the normal merge. The repository hook automatically ran lint-staged over 72 files, reported eight warnings, and made no fixes; then commit-msg rejected `merge:` because it is not an allowed conventional type. No commit was created. I did not retry or bypass the hooks. The merge remains staged and uncommitted for conductor direction.
+
+No Node/compiler/checker/AST/probe/install/database/Docker/browser/benchmark/test/CI command was otherwise invoked. No product source fix, review, publication, push, or PR metadata change was made.
+
+## Evidence files
+
+- Pre-merge and full conflict preimages: sibling `preimage-manifest.json` and `merge-tree-full.txt` plus three source versions/diffs.
+- Conservation hashes and staged tree: sibling `composition-proof.json`.
+- Separated whitespace outputs: sibling `whitespace-checks.json`.
+- Original 40 authentic report artifacts and publication proofs remain at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/`.
+
+## Evidence file
+
+`postcommit-author-handoff.md`
+
+SHA-256: `e2733f14efa64e08683f44e34670268c073bb728bac1d068398530a6ff5fc56b`; 2098 bytes.
+
+**Source:** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/canned807-accepted-main-23fb-composition/postcommit-author-handoff.md`
+
+**Scope:** historical first successful normal merge receipt; superseded only by the following two-document classifier correction.
+
+Original bytes follow unchanged.
+
+# #807 postcommit composition receipt
+
+This additive receipt updates the earlier `author-handoff.md` staged/uncommitted state. It does not modify that report or any authentic review evidence.
+
+The corrected normal commit succeeded on the existing branch: `9f6d5b65220f3195af217dbc5c40d1e564e9cc14` (`chore(integration): compose canned responses with accepted main`). Its ordered parents are `198a5abde93a899199af2d37eca86c5467317d17` (the original #807 publication) and `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c` (accepted main verified live at commit time). Its tree is `e93547cc3c3ab99d63d118c961d9eaa153e6e3d1`, exactly the pre-hook staged tree; the worktree is clean. The tree therefore includes only the previously documented normal composition and its three accepted-main documentation resolutions.
+
+The standard commit hooks ran as part of this authorized commit. Complete stdout and stderr, native exit code, byte lengths and SHA-256 values are captured in read-only mode 0400 files `commit-hook.stdout`, `commit-hook.stderr`, and `commit-hook-result.json`. Hook output says `Checked 72 files in 60ms. No fixes applied.` and reports eight warnings. No source changed during the hook: pre- and post-commit tree IDs are identical.
+
+Postcommit GitHub read confirms accepted `main` remains `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c` and #807 remains open at its prior published head `198a5abde93a899199af2d37eca86c5467317d17`. #810 remains unaccepted and has checks in progress. Nothing was pushed; no PR metadata, review, CI, or main state was changed. Fresh current-head review and CI are still required after the conductor’s later composition with then-current accepted main, including #810 only after its protected acceptance.
+
+The earlier `author-handoff.md`, `composition-proof.json`, all three preimage files, `merge-tree-full.txt`, and the original 40 reports remain unchanged. The initial duplicate-decision explanation remains as recorded: accepted-main 17:08 entry is exact and complete; redundant candidate 17:20 entry is preserved in original candidate history and the preimage.
+
+## Evidence file
+
+`followup-author-handoff.md`
+
+SHA-256: `36ba40c51d9337320fa5b7b8993cfffaace99281e9d149af9914ba676846b6f5`; 2540 bytes.
+
+**Source:** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/canned807-accepted-main-23fb-composition/followup-author-handoff.md`
+
+**Scope:** author receipt for the current two-document classifier correction.
+
+Original bytes follow unchanged.
+
+# #807 classifier-contract follow-up handoff
+
+This is a bounded normal documentation follow-up to the local accepted-main composition. It does not alter the original composition proof, its handoff, the decision log, code, or review evidence.
+
+The source review showed that the accepted-main conflict resolution had retained its prerelease policy but omitted the candidate's precise classifier contract. The two-doc correction restores that contract: all paginated GitHub release metadata from the checkout's `origin`; a published, non-draft, non-prerelease `v2.0.0`-or-later release is required to close the allowlist; lookup failures and malformed metadata fail closed; `package.json` is not the authority. It retains the accepted independent-review/CI requirements and removes the stale statement that the prior `git ls-remote` implementation still needs correction. No new policy decision was added. The source classifier implementation and tests were read as text only; no checker or tests were run.
+
+The follow-up is committed as `ef80b4ed004c42d618af41a14d3031523566646b` (`docs(integration): restore prerelease classifier contract`), parent `9f6d5b65220f3195af217dbc5c40d1e564e9cc14`, tree `f54f22d10d6bf98f311102f210f552735ee94192`. Exactly two paths changed: `docs/01-architecture/api-design.md` and `docs/04-engineering/ci-cd.md`. The full two-document diff is `followup-two-doc-diff.patch` (SHA-256 `252ee85988a906f4bae8dbeea8c687da02381a1ba78bfd1bdd2bafd66b69da53`); source and accepted-main blob provenance is in `followup-precommit-proof.json`.
+
+The commit hook ran normally. Its full stdout/stderr, native exit code 0, sizes and hashes are captured in read-only mode 0400 files: `followup-commit-hook.stdout` (SHA-256 `78d8e5ef4a5f73924ac75efcdff549d1f974938523f1791fc08ddd44d9f3acad`) and `followup-commit-hook.stderr` (SHA-256 `8d2b15f525d053116a7806a3bc920f314d17d9ddd94a95a0826d15028038c13d`). Hook output: `Checked 0 files in 925µs. No fixes applied.` The committed tree equals the pre-hook staged tree, so no source was altered by the hook.
+
+Postcommit verification confirms a clean worktree and accepted `main` remains `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`. #807 remains open at its prior published head `198a5abde93a899199af2d37eca86c5467317d17`. #810 remains unaccepted. No push, PR update, review publication, CI or other standalone check occurred. Fresh reviews and current required CI remain necessary after the conductor's later accepted-main composition; this local candidate is not approved or accepted.
+
+## Evidence file
+
+`canned807-ef80-composition-ordinary-luna.md`
+
+SHA-256: `872e054d877907938d3ba010db07e54869f933d26d4e2ff1f487a06c47791632`; 3007 bytes.
+
+**Source:** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/canned807-ef80-composition-ordinary-luna.md`
+
+**Scope:** fresh independent bounded ordinary composition review; APPROVE.
+
+Original bytes follow unchanged.
+
+# #807 accepted-main composition review — ef80b4e
+
+- **Verdict:** APPROVE — bounded composition and classifier-contract documentation delta; no blocking or non-blocking findings.
+- **Exact candidate:** `ef80b4ed004c42d618af41a14d3031523566646b` (tree `f54f22d10d6bf98f311102f210f552735ee94192`).
+- **Bases:** reviewed source publication `198a5abde93a899199af2d37eca86c5467317d17`; accepted main `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`. Normal composition `9f6d5b65220f3195af217dbc5c40d1e564e9cc14`; follow-up `ef80b4e` changes only `docs/01-architecture/api-design.md` and `docs/04-engineering/ci-cd.md`.
+- **Independence:** fresh context; did not author, direct, or remediate this candidate. Requested model tier: GPT-6 Luna. The served model fingerprint is not exposed here, so I cannot attest a more specific runtime identity.
+- **Scope checked:** source and composition conservation; all three overlapping documentation conflict resolutions; restoration of the precise existing prerelease classifier contract against current gate implementation; accepted auth security-path scope and decision-log treatment. This does not re-review unchanged implementation paths or extend any older review's scope.
+
+I independently recomputed the merge-base path sets. The three overlaps are `api-design.md`, `ci-cd.md`, and `decision-log.md`; all 29 candidate non-overlap paths retain exact mode/blob identity, and all 85 accepted-main non-overlap paths do too. The decision log is byte-identical to accepted main. Its 17:08 direct answer records the same owner question/answer as the candidate-only 17:20 duplicate; the 17:20 entry remains in source history/private preimage, while removing it from the composed tree preserves the append-only accepted-main log without losing a distinct owner choice. Both `apps/api/src/auth*` and `apps/api/src/auth/**` remain in the accepted security path list. The two API/CI documentation edits accurately state that every paginated release page is classified using GitHub metadata for the origin repository, and only a published, non-draft, non-prerelease v2+ release closes the allowlist; unavailable or malformed lookup fails closed. The inspected implementation pins `gh api` to `github.com`, uses `--paginate`, validates metadata, and rejects command/origin/parse failures. The wording does not restore tag-syntax-only classification or weaken exact-fingerprint review/CI requirements.
+
+I also verified the 40 retained report files against their recorded byte counts and SHA-256 hashes, and verified the source review note hash. The author-provided conservation receipt agrees with these checks.
+
+**Limits:** read-only Git/text and Python hash/path comparisons only. No tests, checkers, compiler, database, browser, Docker, or CI were run, as prohibited by the assignment. This verdict is limited to the accepted-main composition and its two-document classifier-contract correction; required current reviews/CI and any separate security review remain their own gates.
+
+## Evidence file
+
+`canned807-ef80-composition-security-61-sol.md`
+
+SHA-256: `b868e1e5c4105e692f9097511bcdcac880727a4a957dd789e9dc16bb8d8061e4`; 9358 bytes.
+
+**Source:** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/canned807-ef80-composition-security-61-sol.md`
+
+**Scope:** fresh independent lightweight Sol security confirmation; CLEAR.
+
+Original bytes follow unchanged.
+
+# PR #807 — accepted-main composition security confirmation
+
+**Requested role/model tier:** Fresh independent Sol-tier security confirmation; assignment and report destination identify the GPT-6.1 Sol review role. This context exposes no served-model fingerprint, so this report does not independently attest a platform-verified model/version.
+**Role/context:** `/root/canned807_ef80_composition_security_sol`.
+**Reviewed head:** ef80b4ed004c42d618af41a14d3031523566646b
+**Tree:** f54f22d10d6bf98f311102f210f552735ee94192
+**Source publication:** 198a5abde93a899199af2d37eca86c5467317d17
+**Accepted-main comparison:** 23fb0fe8b78d09249d77957a9a0000b8a9f45d2c
+**Common merge base:** 33995c2af23da197f2fd9d5690717f7aeb4e9f67
+**Normal composition:** 9f6d5b65220f3195af217dbc5c40d1e564e9cc14, parents 198a5abde93a899199af2d37eca86c5467317d17 and 23fb0fe8b78d09249d77957a9a0000b8a9f45d2c. ef80 follows that merge and changes only the API-design and CI/CD classifier paragraphs.
+**Checkout:** `/Users/heinthura/.codex/worktrees/canned-response-ca19-reach/Ticketing.v2`; exact head and clean worktree independently checked at start and finish.
+
+## Verdict and independence
+
+**CLEAR — lightweight current exact-head composition security confirmation.** No blocking or non-blocking finding identified within this bounded scope. Inspection establishes preservation of accepted-main security authority and previously reviewed #807 implementation, with a documentation restoration describing the existing reviewed classifier. This delta introduces no new authority, trust boundary, gate exception, or pass/fail behavior. The lightweight classification applies to this composition/restoration; the original classifier and product changes retain their full-review requirement and their original full-review evidence.
+
+I did not author, direct, remediate, or perform ordinary review of this candidate. No child agent was used. I read accepted AGENTS, active mission, workflow, provider adapter, relevant CI/CD and API contracts, CA-19/20, current queue/status and decision records. The accepted instruction files were independently verified byte-identical to this checkout. I read the fresh ef80 ordinary composition APPROVE report before reaching this security verdict.
+
+## Independent composition and report conservation
+
+Using read-only Git objects and Python comparisons of recursive tree entries (mode/type/object identity, including absent entries), I independently recomputed the actual path sets rather than treating the supplied proof as authority:
+
+- 32 source-publication paths and 88 accepted-main paths changed from their common base. Their exact three overlaps are `docs/01-architecture/api-design.md`, `docs/04-engineering/ci-cd.md`, and `docs/07-planning/decision-log.md`.
+- All 29 source-owned nonoverlap entries match the publication exactly; all 85 main-owned nonoverlap entries match accepted main exactly. Every entry outside the source-owned set matches main; the full candidate has 3,403 entries and the tree above. No migration delta from accepted main exists.
+- The normal merge has the declared two parents. The ef80 follow-up changes only the two documented paragraphs. The final decision log is byte-identical to accepted main; the security-review path block is also byte-identical to accepted main, including both `apps/api/src/auth*` and `apps/api/src/auth/**`. No accepted nested-auth scope or regression source is lost.
+- All 40 original report files listed in the author's composition proof have the recorded byte lengths and SHA-256 hashes, and all 40 complete byte sequences occur unchanged in the designated committed note. The entire note is unchanged from publication, SHA-256 `50575804a56112834268f8bee00bccd89b6b4485cd14e625d2b68c53635a0b33`. This authenticates byte conservation, not independence by hash alone; supplied dispatch provenance remains separately attributable to the conductor.
+
+I read the retained full ordinary A report on 897, its 2826 fixed-host disposition, full ordinary B/C reports, the full 2826 security report, and the A49 ordinary/security composition confirmations. The full security report covers exact `2826ac1e8b5f7e21a7d132dcc06fc35c36ea22a8`, not ef80; its 9,514 original bytes and SHA-256 `3ba45ac84119a56f5c8f5323ffe5068340866d064a5882f59b6b93128d8e9bf3` are conserved. A's adverse GH_HOST report and later disposition, and the earlier missing-fingerprint adverse report, remain historical reports with their original verdicts. The A49 confirmations cover their stated accepted-#806 composition only. This report neither relabels those sources nor claims a new full review of all accepted-main implementation.
+
+## Security seams and classifier contract
+
+Read the actual canned route, reach middleware, repository and policy. Work-item-derived facts, live item/project and matching workspace predicates, current SQL project reach, and work_item:read evaluation remain conserved. CRUD is still constrained by row/workspace and current reach. The exact source of the shared identity resolver/request adapter, API-key capability projection, project evaluator, workspace capability middleware, SQL identity-scope helpers, schema, and policy registry matches the previously fully reviewed 2826 source. These helpers are not redirected through the imported step-up repository. The accepted auth repository/step-up and work-item transition changes are accepted-main entries, conserved without conflict edits; no changed shared identity/reach interface was identified at this composition seam. I inspected the relevant imports, current request adapters, and the work-item transition identity delta; this is not a fresh full security review of those accepted units.
+
+The gate source, regression source, exact break register and workflow are also byte-identical to the full-reviewed 2826 source. Read the current classifier and its application: it obtains the checkout's origin, admits bounded github.com origin forms, invokes `gh api --hostname github.com --paginate` on the derived repository, validates array/record metadata and strict flags, and classifies only stable-shaped v2+ non-draft/non-prerelease releases as stable. Failures and malformed metadata fail closed. The query uses draft=false as the published-state indicator; ef80 introduces no new timestamp-based condition. It does not use package.json or tags alone as release authority. Output bounding and the exact/new-relative-to-main allowlist mechanism remain unchanged.
+
+The restored paragraphs precisely describe that existing classifier, while retaining independent security review, exact operation/rule/fingerprint registration, required CI and no-waiver wording. The two registrations remain GET /canned-responses / new-required-request-parameter / `37225a236da8` and GET /canned-responses / request-parameter-removed / `c23172869ba9`; no wildcard or additional exception appears. Workflow GH_TOKEN remains scoped to the existing contract step under contents:read. Neither the restoration nor composition changes executable gate behavior or fingerprints.
+
+Read the private direct-owner answer receipt `owner-erasure-summary-release-classification-decisions-20261016.json`: its timestamp is 2026-10-16T17:08:21.415187+00:00 and it records the original erasure and release question IDs and exact selected answers. The accepted 17:08 decision records both choices. The candidate-only 17:20 release entry records the same release question/answer, not a distinct approval. It remains in the source-publication history and the private full preimage. Retaining accepted main's append-only log does not remove a distinct decision, weaken erasure restrictions, waive a gate, or automatically approve #807. Raw private answers were not published by this review.
+
+## Actual operations and limits
+
+Performed only read-only Git/text inspection, Python object/hash comparisons, read-only GitHub metadata queries, and exclusive creation of this private report. No tests, checkers, Node/AST/runtime/compiler, database, browser, Docker, image build/boot, CI trigger, source edit, commit, push, PR mutation, release or deployment was performed. Two broad reads were truncated; follow-up bounded reads covered the classifier, full security and ordinary reports, exact registration/workflow and policy details relied on here. An initially overbroad home-directory file search produced unrelated permission/time-out diagnostics; the evidence root was then supplied and used directly. An initial main lookup at a guessed TaskDesk repository returned 404 and proved nothing; after reading origin, the correct explicit-host ticketing query resolved main to the exact accepted-main SHA above.
+
+Read-only live PR metadata still reports #807 OPEN and nondraft at source publication `198a5abde93a899199af2d37eca86c5467317d17`; it does not report ef80 as the remote candidate. No hosted checks were evaluated as ef80 evidence. Current required CI, product/runtime/image evidence and merge readiness remain separate conductor-owned gates. Historical assignment readings 218.0 ms and 200.43141014024977 ms remain adverse to the strict <200 ms budget; this review establishes no G11 remediation or pass. BROWSER VERIFICATION: BLOCKED by the no-runtime review assignment. No signed release, exact-digest SIT, recovery, phase completion or final acceptance is claimed.
