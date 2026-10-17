@@ -132,3 +132,17 @@ The exact source is CLEAR at full security-review depth within these stated limi
 
 <!-- END VERBATIM SOURCE REPORT: identity-users-de4e-full-security-61-sol.md -->
 
+
+
+## Conductor supplement: platform-reported context provenance
+
+This supplement records platform metadata; it does not change any authentic report body, verdict or reviewed source. The conductor inspected only session linkage and model configuration fields from the original local platform session records, together with the dispatched context identities. No hidden serving build/version or cryptographic backend attestation is exposed or claimed. The reports retain their original self-description and fingerprint limits.
+
+- `/root/remaining580_identity_users_builder_plan_luna` — session `01a149b5-80ae-7830-af27-c0f2c53067d2`, parent `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`, provider `openai`; all recorded turn configurations report `gpt-6-luna`, effort `medium`.
+- `/root/identity_users_de4e_ordinary_a_luna` — session `01a149bc-1ce3-7311-8950-6ee01f4b2a22`, parent `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`, provider `openai`; all recorded turn configurations report `gpt-6-luna`, effort `medium`.
+- `/root/identity_users_de4e_full_security_sol` — session `01a149bf-197d-75c0-ad46-c128e65040ef`, parent `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`, provider `openai`; all recorded turn configurations report `gpt-6.1-sol`, effort `high`.
+- `/root/identity_users_de4e_ordinary_b_luna` — session `01a149bd-f7e3-7bc3-afc8-ccd396ea55e9`, parent `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`, provider `openai`; all recorded turn configurations report `gpt-6-luna`, effort `medium`.
+
+The two ordinary contexts and full-security context are distinct from the author and conductor. These configuration records corroborate the explicit model selection and context linkage; they do not extend source review to later changes. Private allowlisted extraction is retained in `identity-users-platform-review-models-root.json`.
+
+**Reviewed head:** `de4e3433fc6822b126da06d1e3821b381a964016`
