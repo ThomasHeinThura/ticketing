@@ -20,6 +20,8 @@ export interface MetricsListenerOptions {
   renderMetrics: () => Promise<string> | string;
   /** Explicit test-only port injection; production always binds 9464. */
   testPort?: number;
+  /** Optional explicit listener host; omitted production behavior remains unchanged. */
+  hostname?: string;
 }
 
 export interface MetricsListener {
@@ -154,6 +156,21 @@ export function createMetricsListener(
       starting = new Promise<void>((resolve, reject) => {
         const onListening = () => {
           candidate.off("error", onError);
+          const address = candidate.address();
+          if (
+            options.hostname &&
+            (!address ||
+              typeof address === "string" ||
+              address.address !== options.hostname)
+          ) {
+            candidate.close(() => {
+              server = undefined;
+              reject(
+                new Error("Metrics listener bound to an unexpected address"),
+              );
+            });
+            return;
+          }
           resolve();
         };
         const onError = (error: Error) => {
@@ -165,7 +182,7 @@ export function createMetricsListener(
         };
         candidate.once("error", onError);
         candidate.once("listening", onListening);
-        candidate.listen(port, "0.0.0.0");
+        candidate.listen(port, options.hostname ?? "0.0.0.0");
       }).finally(() => {
         starting = undefined;
       });

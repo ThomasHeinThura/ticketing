@@ -119,7 +119,9 @@ export function recordAuditWriteFailure(
   }
 }
 
-export async function startObservabilityRuntime(): Promise<void> {
+export async function startObservabilityRuntime(
+  options: { hostname?: string } = {},
+): Promise<void> {
   const [row] = await db
     .select({
       version: schema.instanceSettingTable.observabilityConfigVersion,
@@ -141,6 +143,7 @@ export async function startObservabilityRuntime(): Promise<void> {
       return current?.digest ?? null;
     },
     renderMetrics: () => metrics.metrics(),
+    ...(options.hostname ? { hostname: options.hostname } : {}),
   });
   try {
     await listener.start();

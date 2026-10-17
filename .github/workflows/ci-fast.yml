@@ -304,6 +304,8 @@ jobs:
       - name: pnpm test:contract
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:contract
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   build:
     name: build

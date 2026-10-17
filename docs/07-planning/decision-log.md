@@ -8431,3 +8431,12 @@ The phrase about the earlier `fdc` false closure is clarified: the authentic fin
 The records-only candidate is frozen on its isolated branch from accepted #817 main. It waits on two fresh independent ordinary factual reviews, followed by records-only CI; no push or PR has been made.
 
 The preceding additive correction described #807's strict <200 ms result as “failed at 21/22,” which could be read as 21 failures. The actual result is 21 passes and one failed test, with cause undiagnosed. #807's 1.392/1.480 calibration remains valid; #810 owns the separate 1.752 host refusal.
+
+
+### 2026-10-17 · Exact two immutable807 publication-heading findings
+
+**Technical disposition (conductor; independent ordinary and full Sol review required):** local Gitleaks8.30.1 reports two generic-api-key matches in the immutable807 continuation-note publication2c2e3e648cfdfc71170429a1479b80583cb68789, `docs/07-planning/security-reviews/query-ownership-canned-responses-580.md`, lines2640 and2704. Both lines are conductor-authored report headings; the matched strings are the already-retained public A/B report basenames, not credentials. No report body or Git history is rewritten.
+
+**Bound:** add only those two exact commit/file/rule/line fingerprints to the existing immutable-finding register. No file, path, directory, rule, arbitrary digest, future commit or actual credential is exempted. Preserve the original red result. Verify the original range becomes clean and identical heading prose in a fresh commit plus a synthetic credential still triggers scanning. Local results supplement the required hosted scanner/version; current exact-head CI and the normal protected flow remain mandatory. This is a non-secret classification correction under the existing reviewed mechanism, not a gate waiver or a new owner authorization.
+
+**Supersedes:** nothing. **Reversal:** remove those two lines; the same immutable public-heading findings block again.

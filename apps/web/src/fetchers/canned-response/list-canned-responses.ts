@@ -9,10 +9,10 @@ export type CannedResponse = {
 };
 
 async function listCannedResponses(
-  workspaceId: string,
+  workItemKey: string,
 ): Promise<CannedResponse[]> {
   const response = await client["canned-responses"].$get({
-    query: { workspaceId },
+    query: { workItemKey },
   });
   if (!response.ok) {
     throw new HttpError(response.status, "Failed to fetch canned responses");
