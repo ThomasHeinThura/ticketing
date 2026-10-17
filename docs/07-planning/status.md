@@ -1,4 +1,4 @@
-## Current runtime proofs and newly surfaced blockers — 2026-10-17 03:36 UTC
+## Current runtime proofs and newly surfaced blockers — 2026-10-17 03:33 UTC
 
 **Blocked first:** #811 initial registers job117293975112 fails the still-open time-and-cost review section (27lines). Its actual query-ownership scope versus the P5 spec reference is under independent assessment; no findings are cleared or gate waived. #812 live P1 comment4300828072 identifies staff being filtered by private customer requester/participant SQL contrary to the existing customer-only boundary; this credible finding blocks acceptance despite prior source clearance. The prior reports remain authentic and do not dispose this new finding. #810/#807/#798/Carrier required performance holds remain unwaived.
 
