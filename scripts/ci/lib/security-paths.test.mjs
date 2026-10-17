@@ -71,6 +71,8 @@ const MUST_REQUIRE_REVIEW = [
   ".pnpmfile.cjs",
   // and every application surface that was already covered
   "apps/api/src/auth.ts",
+  "apps/api/src/auth/repository.ts",
+  "apps/api/src/auth/step-up-service.ts",
   "apps/api/src/middleware/require-session.ts",
   "apps/api/src/storage/s3.ts",
   "apps/api/src/scim/users.ts",
@@ -127,6 +129,7 @@ describe("security-review paths — F15 scope", () => {
       "apps/api/src/middleware/**",
       "apps/api/src/plugins/**",
       "apps/api/src/auth*",
+      "apps/api/src/auth/**",
       "apps/api/src/webhooks/**",
       "apps/api/src/scim/**",
       "apps/api/src/storage/**",
@@ -140,6 +143,38 @@ describe("security-review paths — F15 scope", () => {
         `${glob} was dropped from ci-cd.md. F15 EXPANDED the list; it removed nothing.`,
       );
     }
+  });
+
+  it("shows nested auth coverage depends on the canonical auth-directory glob", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { ciCdPath } = await import("./security-paths.mjs");
+    const canonical = await readFile(ciCdPath, "utf8");
+    const withoutAuthDirectory = canonical.replace(
+      /apps\/api\/src\/auth\*\s+apps\/api\/src\/auth\/\*\*/,
+      "apps/api/src/auth*",
+    );
+
+    assert.notEqual(
+      withoutAuthDirectory,
+      canonical,
+      "the canonical scope no longer declares apps/api/src/auth/**",
+    );
+    const { matches } = await readSecurityReviewPaths();
+    const counterfactual = parseSecurityReviewPaths(withoutAuthDirectory);
+    const counterfactualPatterns = counterfactual.map(globToRegExp);
+
+    for (const file of [
+      "apps/api/src/auth/repository.ts",
+      "apps/api/src/auth/step-up-service.ts",
+    ]) {
+      assert.equal(matches(file), true, `${file} must be covered by canonical scope`);
+      assert.equal(
+        counterfactualPatterns.some((pattern) => pattern.test(file)),
+        false,
+        `${file} must lose coverage when the canonical auth-directory glob is removed`,
+      );
+    }
+    assert.equal(matches("apps/api/src/auth.ts"), true);
   });
 
   it("matches nested package.json files, not only the root one", async () => {
