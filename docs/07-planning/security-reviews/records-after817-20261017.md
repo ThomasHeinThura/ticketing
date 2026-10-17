@@ -204,3 +204,286 @@ This verdict is limited to ordinary factual review of candidate `7772f75a3c91236
 **Reviewed head:** `7772f75a3c91236bf159493efcada91e25c186c6`
 
 This final marker binds the two current ordinary reviews, not the preceding historical rejected review. Current publication/CI/protected acceptance remain separate.
+
+
+## P2 finding, intermediate disagreement and final factual correction
+
+The initial publication6767 passed all18 required checks, but automated P2 comment4301997809 and the independent disposition found stale queue state. No merge occurred. The actual status/queue correction2039 received A CLEAR and B CHANGES REQUESTED for recurrence; both authentic verdicts are retained below. The structural correction520d uses the existing designated-note/per-commit binding and exact-head checks to determine only genuinely missing work. It neither caches its own review as pending nor reopens review after authentic report publication.
+
+The eligible current independent factual reviewers are A and the fresh C, both CLEAR exact520d. B's technical assessment of520d is preserved but explicitly INELIGIBLE: that reviewer disclosed material direction of the remediation. It is not counted toward the required review tier. The conductor dispatched a fresh independent context to satisfy the second required review. No Sol review is triggered by this planning-record delta; the historical Sol BLOCK remains bound to rejected cf847, never current approval.
+
+Every report below is transported unchanged. The two author intermediate reports remain bound to their own source and observations. All reports and source commits survive; no verdict has been rewritten. New required GitHub checks are mandatory on the final publication. Product runtime jobs use the accepted merge-base classifier's applicability; no new product, browser, image, SIT or phase acceptance is claimed.
+
+## Evidence file
+
+`records818-p2-queue-state-independent-disposition-luna.md`
+
+# Independent disposition — PR 818 automated P2 queue-state finding
+
+**Model:** GPT-6 (platform-reported family; requested Luna-tier route, exact served variant/fingerprint unavailable)
+**Role:** fresh independent factual disposition; independent from PR author/conductor and did not author or remediate the candidate.
+**PR/head:** #818, `6767f443e133d3cffe6b46766a641503ee303240`
+**Reviewed source:** `7772f75a3c91236bf159493efcada91e25c186c6`
+**Base:** `7a99ae9e8696d6202f3a3b39472cc058cc0d61da`
+**Finding:** automated P2 comment `4301997809` on `docs/07-planning/integration-execution-queue.md`
+**Verdict:** **BLOCKING — valid stale-current-queue finding.** The dated 08:01 snapshot was accurate when written; once both reviews completed and were published, the newest task-state record no longer described the current state. The finding does not justify redispatching either review.
+
+## Evidence and policy
+
+I read the exact PR 818 review comment and body, the candidate’s complete three-record diff and authored review note, current PR checks, and the applicable workflow sections. PR 818’s head is exactly `6767f443…`, its base is the protected #817 main `7a99ae9…`, and the only delta from reviewed source `7772f75…` is an addition of the designated note `docs/07-planning/security-reviews/records-after817-20261017.md` (206 insertions, zero deletions). The note publishes two unedited independent ordinary CLEAR reports, both bound to exact source `7772f75…`; my own CLEAR report is among them. The PR body carries the same exact-source reviewer identity/binding. The source SHA and status/queue blobs did not change in the publication commit.
+
+`docs/04-engineering/agent-workflow.md` § Conductor loop says GitHub is newer than any file and directs the conductor to correct `status.md` or the queue if they disagree with GitHub (lines 106–107). Its exact-head/evidence-reuse section expressly treats authentic report additions to the PR’s designated review note and reviewer identity/link fields in the PR body as review records; a delta made only of those records needs no new review (lines 232–255). The same section requires every dispatched review to be recorded and forbids redispatch on the same SHA/scope absent a reason such as a crash or wrong SHA (lines 261–265). Status and queue are task-state inputs, not immutable snapshots that remain authoritative after newer GitHub evidence exists.
+
+The newest `status.md` snapshot and queue header are dated 08:01 UTC. At that time the candidate was frozen and the two ordinary reviews were pending. The current review note and PR publication record both reviews completed on the exact frozen source. But the latest queue entry still says `WAITING_REVIEW` and directs obtaining the same two reviews; the status summary likewise says they are pending. Since PR 818 is the newest source of truth, this is now stale operational state. The P2’s predicted redispatch/block is credible if the queue is consumed without correction. This is a records-state defect, not a defect in either review verdict or in the frozen source facts as of 08:01.
+
+`gh pr checks 818` currently shows the required contexts green on publication `6767f443…` (including all named required CI contexts); required checks are exact-head-only and cannot be carried to a later source SHA. The clean next queue state is the records candidate’s review gate completed and records-only CI completed on `6767f443…` (or `READY`/next-action wording consistent with the actual remaining gate), followed by normal protected acceptance. Do not reopen the two source reviews merely because their authentic publication added a new review-record-only commit.
+
+## Disposition and follow-up boundary
+
+**Disposition:** keep this automated P2 open until `status.md` and the queue state are corrected to reflect both completed CLEAR reviews and the actual remaining CI/acceptance state. Do not change or relabel the reviewers’ findings. No waiver is claimed.
+
+That correction touches status/queue source inputs, so it is not review-record-only. The prior exact-source reviews remain valid for the unchanged `7772f75…` content, but the new status/queue delta needs independent review at its applicable factual-record tier. Required GitHub checks must also be green on the resulting exact head; current checks on `6767f443…` do not transfer. No Sol review is triggered by this bounded status/queue correction absent a change to security or gate semantics. This is a finding disposition only, not final merge approval.
+
+## Scope and limitations
+
+Read-only checks: `gh pr view 818`, `gh api` for the exact PR review comment/thread, `gh pr checks 818`, Git HEAD/status and diff inspection, and targeted reads of workflow/status/queue/review note. No source edit, commit, push, PR/GitHub mutation, test, install, Node, runtime, Docker or browser work was performed. The current checks were observed green at inspection time; this report does not attest to later check state.
+
+
+## Evidence file
+
+`records818-p2-author-luna/author-report.md`
+
+# PR #818 stale-queue correction author report
+
+**Candidate:** `8ef91ae42b7ec01fc8cf6118b282ee9bf9a466d1`
+**Published base:** `6767f443e133d3cffe6b46766a641503ee303240` (open PR #818, protected #817 base)
+**Branch:** `codex/taskdesk-records-after817-20261017`
+**Source worktree:** `/Users/heinthura/.codex/worktrees/taskdesk-records-after817-20261017`
+**Evidence directory:** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-17/EVID/records818-p2-author-luna`
+
+This bounded factual repair changes only `docs/07-planning/status.md` and `docs/07-planning/integration-execution-queue.md`. It records that both independent ordinary factual reports are CLEAR for exact source `7772f75a3c91236bf159493efcada91e25c186c6`, and that publication `6767f443e133d3cffe6b46766a641503ee303240` added only the designated authentic review note. The current snapshot records 18 required contexts green on the publication as sampled at 08:13 UTC. The records gate summary is 1,393 tests / 121 suites: 1,373 passed, 20 skipped, 0 failed. Skip reasons were not verified and are not inferred. Full product test steps were not run for this policy-only records PR.
+
+The correction preserves the P2 as valid for the stale task state and says the new status/queue delta still needs an independent factual review and exact-head checks. The existing `7772f75a…` reviews are not invalidated and must not be redispatched. On green completion, the conductor checks the latest reviewed-head/per-commit binding in the designated note and live checks, then advances protected acceptance. No acceptance is claimed here.
+
+The exact independent disposition is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-17/EVID/records818-p2-queue-state-independent-disposition-luna.md`; the automated finding is comment `4301997809` on PR #818. I read the current PR body, exact bot comment and `gh pr checks 818`. The check query showed all 18 required named contexts and four additional contexts in SUCCESS at the time sampled. The 1,393/1,373/20/0 gate summary is retained from the conductor's task handoff; I did not rerun the gate, and skip reasons remain unverified.
+
+## Conservation
+
+The base and candidate trees each contain 3401 entries. Only the two authorized records paths differ. The designated review note and append-only decision log have identical mode/type/blob IDs at base and candidate; all product, workflow, dependency and other record blobs are conserved. `incremental-diff.diff` is the full binary diff from 6767 to this candidate (7598 bytes, SHA-256 `05d68d99a3b0e2cbe6012766e5427b78f5732d25b6b5e64e6d3d28576d7dfc95`). `preservation-receipt.json` records exact path blobs and commit IDs. The worktree is clean and `git diff --check 6767f443e133d3cffe6b46766a641503ee303240 8ef91ae42b7ec01fc8cf6118b282ee9bf9a466d1` passed.
+
+## Actions and limits
+
+Observed commits: `9f666942` (`docs: advance records queue after completed reviews`) and `8ef91ae4` (`docs: avoid inferring records gate skip reasons`). Each was created with `git add` for only the two named files, staged `git diff --cached --check`/`--stat`, then `git commit`; both commands returned success. The commit outputs contained no hook-specific output. No native PIDs or raw shell transcripts were captured, so this report does not claim a specific hook ran.
+
+No tests, installs, runtime checks, push, PR mutation, or CI on the new candidate were performed. The current factual delta awaits independent review and exact-head checks.
+
+
+## Evidence file
+
+`records818-final-author-luna/author-report.md`
+
+# Private author report — PR #818 final factual correction
+
+Candidate: `2039ea7a091120f350943e3e46e556d1778d9f8e`
+Parent: `8ef91ae42b7ec01fc8cf6118b282ee9bf9a466d1`
+Branch: `codex/taskdesk-records-after817-20261017`
+
+This bounded correction updates only `docs/07-planning/status.md` and `docs/07-planning/integration-execution-queue.md`. It records the latest available Carrier791 f468 bounded-run and diagnostic evidence, clarifies the verified reason for the 20 existing test skips, and retains the open acceptance limits. It does not alter product, tests, instructions, gates, or dependencies.
+
+`git diff --check` from `8ef91ae42b7ec01fc8cf6118b282ee9bf9a466d1` passed. The normal commit command was `git add docs/07-planning/status.md docs/07-planning/integration-execution-queue.md && git commit -m \"docs: refresh current records and carrier evidence\"`; observed output: `2039ea7a docs: refresh current records and carrier evidence`. No hook-specific output is claimed. No tests, installs, runtime, CI, push, or PR mutation were run.
+
+The prior commit chain, including `12e34`, `95db`, and `8ef91ae`, remains intact. The candidate has exactly two changed paths, and its worktree is clean. This report and its companion diff/receipt are author evidence only, not independent review or acceptance.
+
+
+## Evidence file
+
+`records818-2039-factual-delta-a-luna.md`
+
+# Independent factual delta review A — PR #818 P2 correction
+
+**Model:** GPT-6 (platform-reported family; requested Luna-tier route, exact served variant/fingerprint unavailable)
+**Role:** independent factual review of the bounded status/queue delta; not a rerun of the complete `7772…` review.
+**Exact head reviewed:** `2039ea7a091120f350943e3e46e556d1778d9f8e`
+**Prior publication / comparison:** `6767f443e133d3cffe6b46766a641503ee303240`
+**PR base:** `7a99ae9e8696d6202f3a3b39472cc058cc0d61da`
+**Verdict:** **CLEAR — the 4301997809 stale-queue finding is corrected in this bounded delta.** No factual discrepancy found in the changed status or queue entries.
+
+## Scope and independence
+
+I read the full `6767…`→`2039…` two-file diff, both complete changed documents, the private author report and preservation receipt, the prior P2 thread and disposition, the applicable workflow sections, and the cited gate/Carrier receipts. I independently checked the source and evidence bindings named below. This review covers only the new factual delta; the two `7772…` CLEAR reviews retain their original source scope and were not repeated here.
+
+I previously dispositioned the generic stale-queue finding and stated that status/queue should reflect completed reviews and remaining gates. I did not author, edit, or supply the specific `2039…` wording or the new Carrier evidence. That high-level finding disposition does not make me the author or fixer of this factual correction; I therefore consider myself independent for this bounded factual review.
+
+## Checks and findings
+
+- The exact diff from `6767…` to `2039…` changes only `docs/07-planning/status.md` and `docs/07-planning/integration-execution-queue.md`. `git diff --check` passes. The two documents correctly identify the previous #818 publication, preserve the accepted #817 main baseline, and state that the current `2039…` factual delta still needs its own review and exact-head checks. The designated review note and append-only decision log have identical blob IDs at the two heads. The complete diff SHA-256 is `21847f27980552079004536b4a30cefbbd292174a7ca808ed0bb447597c7a96b`.
+- Verified the author preservation receipt’s parent `8ef91ae42b7ec01fc8cf6118b282ee9bf9a466d1`, head, two changed paths, clean-worktree claim and incremental-diff digest. I also read the full prior-publication-to-head diff directly; I did not treat the shorter `8ef91…`-to-`2039…` author diff as the full P2 delta.
+- The queue/status correctly record that the two CLEAR reviews cover exact source `7772f75a3c91236bf159493efcada91e25c186c6`; publication `6767…` adds only the designated authentic note. The independently authenticated gate-checker precision receipt binds the stated `1,393` total / `1,373` passed / `20` skipped / `0` failed result to `6767…`, and identifies the skips as existing real-engine/registry tests gated on `TASKDESK_REAL_DOCKER=1`. The update neither treats skips as passes nor claims Docker/registry runtime coverage.
+- The current PR remained open with remote head `6767…` when checked; local `2039…` is not yet published. Thus the note’s 08:13 green-context record is explicitly historical evidence for `6767…`; it is not evidence that the 18 required contexts pass on `2039…`. The new exact-head checks remain a genuine outstanding gate.
+- The current Carrier receipt binds HEAD `10236d0…`, checker `f4685b…`, test `fbc71e…`, unchanged manifest `e250b…`, and the actual bounded 28-case run to 19 pass / 9 fail / 62 not run, native exit 1. The separate six-call receipt plus root’s independent capture verification bind PID 48562, native exit 0, 1.788960 seconds, 185,274-byte output (`e6014c…`), six results and cleanup/source-integrity checks. The advice packet describes five remaining first-loss joins and explicitly is not a test, approval or acceptance. The records accurately call these six calls diagnostics, retain the adverse 19/9 result, and keep full90, census, G3 and end-to-end remediation unclaimed.
+
+## P2 recurrence assessment
+
+The 08:16 queue snapshot says the **new `2039…` delta** still awaits independent factual review and exact-head checks; that was true at this source’s freeze. It does not say the completed `7772…` reviews are pending: it names their exact source, confirms their publication, explicitly says not to redispatch them, and directs the conductor after the checks to inspect the designated note’s latest reviewed-head/per-commit binding and live rollup. The status repeats that no review is automatically redispatched.
+
+This is sufficient to avoid recurrence of the original P2 when the workflow is followed. Once authentic reports for `2039…` are appended as a note-only review-record delta, the conductor must use the current note binding and live exact-head checks as instructed. The repository policy says a review-record-only publication does not require another review, and the global exact-head rule forbids redispatching the same SHA/scope except for a documented unrelated reason. Updating the queue again solely to replace the truthful 08:16 pending snapshot after each report would add no new acceptance evidence and create a repeated checkpoint/review cycle. Required checks do need to be green on the then-current exact head; the prior `6767…` checks do not transfer.
+
+No security or authority semantics changed, no new waiver is claimed, and the wording creates no new owner decision. **No blocking or non-blocking finding.** This verdict is limited to the factual status/queue delta; it is not review B, publication approval, current CI clearance, or merge approval.
+
+## Checks not performed
+
+Read-only Git/file/evidence inspection and read-only PR-head lookup only. No source edits, tests, Node, runtime, Docker, browser, install, push, commit, or GitHub mutation. No current required checks were available on local unpublished head `2039…`; the conductor must verify them after normal publication.
+
+
+## Evidence file
+
+`records818-2039-factual-delta-b-luna.md`
+
+# Independent factual delta review B — PR #818 records queue correction
+
+**Verdict: CHANGES REQUESTED — one blocking workflow-state finding.** The reported operational facts are accurate. The queue correction does not fully prevent the same stale-review P2 from recurring after this delta's authentic review reports are appended.
+
+- **Exact candidate:** `2039ea7a091120f350943e3e46e556d1778d9f8e`
+- **Previous publication:** `6767f443e133d3cffe6b46766a641503ee303240`
+- **Accepted base:** `7a99ae9e8696d6202f3a3b39472cc058cc0d61da`
+- **Reviewer:** fresh independent context, assigned GPT-6 Luna ordinary factual-delta role; served variant/fingerprint is not exposed in session metadata.
+- **Independence:** same fresh context as ordinary review B on source `7772f75…`; the changed SHA justifies this bounded delta review. Independent from author/conductor. I did not inspect ordinary reviewer A's new-delta verdict or the prior B verdict.
+- **Scope:** complete `6767f443…` to `2039ea7…` diff (12,557-byte supplied full-diff artifact, SHA-256 `21847f27980552079004536b4a30cefbbd292174a7ca808ed0bb447597c7a96b`), two changed planning records, author report, P2 comment/disposition, CI and skip receipts, Carrier f468 receipts, and applicable agent-workflow queue/review-record rules. No source edits, GitHub mutation, tests, runtime, install, commit or push.
+
+## Factual checks
+
+The delta changes only `status.md` and `integration-execution-queue.md`; the earlier designated review note and append-only decision log are unchanged. The author report accurately says no tests, CI, install, runtime, push or PR mutation were run for this correction.
+
+The previous P2 disposition at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-17/EVID/records818-p2-queue-state-independent-disposition-luna.md` correctly found the prior 08:01 queue stale after both reviews for exact source `7772f75…` had been published at `6767f443…`. The new 08:16 snapshot accurately records those two CLEAR reviews and the 18 green required contexts on `6767f443…`. The skip-precision receipt records 1,393 tests / 121 suites, 1,373 passed, 20 skipped and none failed; the 20 skips are the existing real-engine/registry cases gated by `TASKDESK_REAL_DOCKER=1`. It correctly makes no real Docker/registry coverage claim and says no product test steps were run.
+
+The Carrier facts are supported by the supplied native receipts: f468 bounded28 was 19 pass / 9 fail / 62 not run, native exit 1; the six calls were diagnostics, native exit 0, not tests, with source hashes unchanged and owned cleanup verified. The first-loss advice was materially directed and is correctly described as ineligible approval. The records preserve prior f7c5/fdc adverse evidence and keep end-to-end remediation and acceptance open. The #810 preflight, #807 calibration/budget facts, e67 focused PostgreSQL result, and the unfinished #580/release/SIT/restore/audit/#589 limits also remain correctly bounded in the unchanged surrounding record. I found no new owner-authority, gate-policy or security-scope change.
+
+## Blocking finding — next review completion can recreate the stale queue state
+
+The current row fixes the *old* P2: it recognizes the two reviews of `7772f75…` as complete and says not to redispatch them. It correctly treats `2039ea7…` as a new factual delta requiring its own review and exact-head checks. However, the row's next action still says to independently review this delta; the status also says that the delta's independent review and checks “remain pending.” When this review is completed and its authentic report is appended to the designated review note, the report-only publication changes the PR head. By `agent-workflow.md`, that note-only change requires no new review, but required checks are never reused. At that resulting head, the queue/status will still say this delta's review is pending and direct that review again. The existing P2's failure mode—newest task-state record directing completed review work—can therefore recur before protected acceptance.
+
+The sentence “When green, conductor checks the designated note’s latest reviewed-head/per-commit binding and live checks, then advances protected acceptance” describes the eventual check, but does not provide a queue/status transition for the intervening report-publication commit. It also does not change the stale `review pending` wording after the delta review is published. As currently written, this is not a structural escape from repeated P2 findings.
+
+**Required disposition:** define a truthful, finite transition for review-report publication and exact-head CI. The latest queue state must not continue to instruct a review that has already completed; after a review-note-only commit it should state that the review is recorded/bound to its reviewed source and only the new head's required checks remain, with no redispatch. Keep the rule that those checks must be green on the final exact head. This report does not prescribe an unreviewed gate exception or waive current checks.
+
+The current candidate facts as of 08:16 are otherwise accurate. This finding concerns the next transition and the stated prevention of P2 recurrence, not the validity of the two source reviews or of the prior P2.
+
+
+## Evidence file
+
+`records818-final-transition-author-luna/author-report.md`
+
+# Private author report — PR #818 evidence-driven queue transition
+
+Candidate: `520d3004dada2b74c29f1d304f169b21304fec08`
+Parent / prior candidate: `2039ea7a091120f350943e3e46e556d1778d9f8e`
+Published baseline: `6767f443e133d3cffe6b46766a641503ee303240`
+Branch: `codex/taskdesk-records-after817-20261017`
+
+This bounded change updates only the current status paragraph and records queue row. It removes the static “review pending / review this delta” instruction and makes the next action depend on the actual designated review note, its per-commit bindings, and live required checks on the exact current head. Existing workflow behavior is described: authentic note-only publication records clearance for its declared reviewed source without reopening that review, while required checks must run green on the resulting exact head. The text does not predeclare any unrecorded review verdict.
+
+`git diff --check` from `2039ea7a091120f350943e3e46e556d1778d9f8e` passed. The normal commit command was `git add docs/07-planning/status.md docs/07-planning/integration-execution-queue.md && git commit -m "docs: make records queue transition evidence-driven"`; observed commit output: `520d3004 docs: make records queue transition evidence-driven`. No hook-specific output is claimed. No tests, installs, runtime, CI, push, or PR mutation were run.
+
+Compared with both `2039ea7a091120f350943e3e46e556d1778d9f8e` and published baseline `6767f443e133d3cffe6b46766a641503ee303240`, only `docs/07-planning/status.md` and `docs/07-planning/integration-execution-queue.md` differ. All 3401 tracked tree entries at publication are conserved by path; all mode/type/blob entries outside those two files are unchanged. Prior history and artifacts remain untouched. This report and companion diffs/receipt are author evidence, not independent review or acceptance.
+
+
+## Evidence file
+
+`records818-520d-factual-delta-a-luna.md`
+
+# Independent factual delta review A — PR #818 evidence-driven queue transition
+
+**Model:** GPT-6 (platform-reported family; requested Luna-tier route, exact served variant/fingerprint unavailable)
+**Role:** bounded independent factual review of the transition delta; not a repeat of the complete `7772…` candidate review.
+**Exact head:** `520d3004dada2b74c29f1d304f169b21304fec08`
+**Parent / prior candidate:** `2039ea7a091120f350943e3e46e556d1778d9f8e`
+**Published baseline:** `6767f443e133d3cffe6b46766a641503ee303240`
+**PR base:** `7a99ae9e8696d6202f3a3b39472cc058cc0d61da`
+**Verdict:** **CLEAR — the queue/status transition addresses the recurrence finding.** No blocking or non-blocking findings in this delta.
+
+## Scope and independence
+
+I inspected the complete `2039…`→`520d…` diff, the complete `6767…`→`520d…` records diff, surrounding current status/queue text, the transition author report and conservation receipt, the prior P2 comment, and the independent B report that requested a finite transition. I independently checked exact paths, unchanged note/decision-log blobs, and current PR head. I did not rerun the original full review of `7772…`; reviewers A/B remain bound to that exact source and their actual verdicts remain unchanged.
+
+I previously reported the generic P2 that the queue must reflect completed `7772…` reviews. That report did not author or edit this delta and did not specify the conditional note-coverage transition now written. The source author made the wording and transition implementation. I consider myself independent for this bounded factual check; this report is transparent about the prior issue disposition.
+
+## Checks and result
+
+- The delta from `2039…` to `520d…` changes two lines total across only `status.md` and `integration-execution-queue.md`; `git diff --check` passes. The full diff from `6767…` changes only those same two documents and matches the supplied 13,066-byte artifact (SHA-256 `1ba8cb5e2147f5470e5cd4c38548d6e5ba6403705985632bedbf741f6149372c`). The designated review note and append-only decision log have identical blob IDs to `6767…`; all 3,401 tree entries are conserved outside the two planning records.
+- The revised queue no longer states “independently review this factual delta” as an unconditional next action. It first directs the conductor to inspect the designated note’s actual reviewed-source/per-commit binding and live required-check rollup, then complete only factual-review coverage genuinely absent from those records. It explicitly says authentic note-only publication records coverage for its declared source, does not reopen that review, does not redispatch review already covered, and still requires new green checks on the resulting exact head.
+- The status repeats the same evidence-driven rule: determine coverage from the note and per-commit bindings; do only missing coverage; check live exact-head CI; do not redispatch a covered review. It preserves the known completed facts for `7772…` and `6767…` with their exact source bindings and does not claim checks on `520d…`.
+- This closes the B counterexample without a stale transition. A review-note-only commit is recognized as evidence publication for the source named by the report. The next action after publication is to verify the report’s source/commit binding and live checks; the workflow’s no-repeat rule prevents rerunning a completed review absent a documented unrelated reason. Since status/queue source did not change in the note-only commit, no new review of those source facts is implied. Required CI remains exact-head-only and must run green on the final head.
+- The original P2’s requested behavior is preserved: the two `7772…` reviews remain completed and are not redispatched. The current factual delta has no hard-coded self-review pending claim that would survive after report publication; it records the stable selection rule and makes review work conditional on absent evidence.
+- Read-only `gh pr view` showed PR 818 still open at remote head `6767…`, base `7a99ae9…`. Therefore no live required checks exist yet for unpublished `520d…`; all 18 checks previously reported remain bound to `6767…`. The status and queue do not promote them to the new head, and exact-head checks are an outstanding requirement.
+
+No authority, review policy, gate semantics, security scope, owner decision, or waiver changes. The text describes the existing workflow rules for report-only publication and exact-head checks. No further same-class recurrence finding remains in the source.
+
+## Limits
+
+No source edit, test, Node, install, runtime, Docker, browser, commit, push, or GitHub mutation was performed. Current CI for `520d…` is not available because the remote PR still points to `6767…`. This is delta A only; it is not a repeat of the `7772…` full review, delta B, CI clearance, or merge approval.
+
+
+## Evidence file
+
+`records818-520d-factual-delta-b-luna.md`
+
+# PR #818 final queue-transition delta — factual review B
+
+**Substantive assessment: CLEAR. Independence limitation: this report must not count as the required independent review.** The revised transition closes the recurrence path identified in my prior B report, and the checked claims are accurate. However, the author made this correction in response to my specific blocking finding and recommendation. Under the repository rule excluding reviewers who materially direct a candidate, my context is not sufficiently independent for this remediation.
+
+- **Candidate:** `520d3004dada2b74c29f1d304f169b21304fec08`
+- **Previous candidate:** `2039ea7a091120f350943e3e46e556d1778d9f8e`
+- **Published baseline:** `6767f443e133d3cffe6b46766a641503ee303240`
+- **Accepted base:** `7a99ae9e8696d6202f3a3b39472cc058cc0d61da`
+- **Role/model:** assigned GPT-6 Luna factual-delta B; exact served variant/fingerprint is not exposed in session metadata.
+- **Scope:** complete baseline-to-candidate diff, incremental diff from 2039, author report/conservation receipt, current queue/status paragraphs, prior P2 and my own prior B finding, plus the applicable workflow rules. Only `status.md` and `integration-execution-queue.md` changed since the baseline; all 3,401 tree entries are conserved except those two paths. The designated note and decision log are unchanged. `git diff --check` passes according to the author receipt; I did not run tests, installs, runtime, GitHub mutation, commit or push.
+
+## Transition assessment
+
+The previous P2 is accurately retained as a valid finding about the stale 08:01 queue after the two source-7772 reviews had completed. The new transition replaces static “review pending / review this delta” language with a conditional state derived from the designated review note, actual reviewed-source and per-commit bindings, and the live check rollup on the exact current head. It says to complete only review coverage genuinely absent, that authentic note-only publication covers its declared reviewed source without reopening that review, and that required checks must be green on the resulting exact head before protected acceptance.
+
+This provides a finite path under `agent-workflow.md`: a review report for source 520d may be appended as a note-only commit; that commit does not cause review redispatch because it is review-record-only, while its new SHA still requires fresh exact-head checks. The queue now advances from verifying existing review coverage to checking those live results, and then to protected acceptance. It does not assert the 520d review is already clear or that its required checks passed. I found no new owner-authority, security-scope or gate-semantic change, and no waiver.
+
+The surrounding facts remain bounded to the prior known source and publication: both ordinary CLEAR reviews are for `7772f75…`; the 18 green checks and the 1,393/1,373/20/0 test counts apply to publication `6767f443…`, with the skips correctly limited to existing opt-in real-engine/registry tests. The Carrier diagnostics remain explicitly non-acceptance; the remaining #580, Carrier, release/SIT/recovery/audit and #589 work remains open. Nothing in the delta promotes those facts to current acceptance.
+
+## Independence disclosure
+
+My earlier report on exact candidate `2039ea7…` identified the specific recurrence risk and recommended an evidence-driven transition distinguishing already-recorded review coverage from checks that must rerun on a new head. This candidate implements that recommendation. Although I did not edit or author its source, I materially directed this fix through the finding and cannot serve as its independent reviewer under the repository's fresh-review rule. Treat this as a technical assessment only; obtain and record a fresh independent review before relying on the required review tier.
+
+
+## Evidence file
+
+`records818-520d-fresh-ordinary-c-luna.md`
+
+# Independent ordinary factual review C — PR #818 evidence-driven queue transition
+
+**Verdict: CLEAR for the exact records delta.** I found no blocking or non-blocking factual or workflow-state finding in the 6767-to-520d change. This review supplies the second eligible fresh ordinary factual review of the candidate delta; reviewer B’s own disclosure says that B materially directed the fix and must not count toward the required review tier.
+
+- **Exact candidate:** `520d3004dada2b74c29f1d304f169b21304fec08`
+- **Prior candidate:** `2039ea7a091120f350943e3e46e556d1778d9f8e`
+- **Published baseline:** `6767f443e133d3cffe6b46766a641503ee303240`
+- **Accepted base:** `7a99ae9e8696d6202f3a3b39472cc058cc0d61da`
+- **Model/route:** GPT-6, requested Luna-tier factual-review route; exact served variant/fingerprint is not exposed in session metadata.
+- **Independence:** fresh review context, not the author, conductor, prior reviewers A/B, or anyone who directed/remediated this transition. I did not participate in the 2039 remediation or prescribe the 520d wording.
+- **Scope:** full `6767…`→`520d…` records diff and incremental `2039…`→`520d…` diff; complete changed status and queue entries; author report and tree receipt; existing designated review note and decision-log identity; prior P2 automated finding and independent disposition; 7772 A/B reports and their exact-source binding; 2039 A/B reports, including B’s independence disclosure; applicable `agent-workflow.md` exact-head/review-record and conductor-loop rules; read-only current PR head/check rollup.
+
+## Checks and assessment
+
+The supplied full diff is 13,066 bytes with SHA-256 `1ba8cb5e2147f5470e5cd4c38548d6e5ba6403705985632bedbf741f6149372c`. Git confirms the candidate changes only `docs/07-planning/status.md` and `docs/07-planning/integration-execution-queue.md` from 6767; the designated security-review note and append-only decision log retain their 6767 blobs. The author’s tree receipt reports 3,401 tracked entries at both ends, with only those two planning records changed. The diff itself contains only the queue/status state update and a small formatting correction in the e67 row. No source, authority, permission, security-scope, or gate pass/fail semantics changed. No waiver or owner decision is introduced.
+
+The factual records correctly distinguish the earlier source reviews from the later publication: both ordinary CLEAR reports cover exact source `7772f75a3c91236bf159493efcada91e25c186c6`; the 6767 publication adds only their authentic designated note. The status and queue state that all 18 required contexts were green on 6767 and bind the described test counts to that run. They preserve the 20 existing Docker/registry opt-in skips as skips, do not claim Docker/registry runtime, and do not claim the full product test procedure was run for this records-only change. The status preserves the accepted-main baseline and the carried limitations for Carrier, #810, #807, e67, #580, release/SIT/recovery/audit, and #589 without converting historical evidence into current acceptance.
+
+I independently assessed the P2 counterexample. The prior automated P2 and its independent disposition correctly identified stale state after the 7772 reviews were published. The 2039 B report found that its proposed transition could recreate the same stale-review instruction after authentic review publication, and disclosed that its author materially directed this remedy; I therefore do not count B. The current wording now directs the conductor to inspect the designated note’s actual reviewed-source/per-commit bindings and live exact-head check rollup, complete only genuinely absent factual-review coverage, and avoid redispatching review coverage already recorded. It explicitly recognizes authentic note-only publication as recording coverage for its declared source while requiring fresh required checks on the resulting exact head. This is a finite transition through review-note publication and exact-head checks: note-only publication does not restart an already covered review, and the new SHA cannot inherit prior CI.
+
+Read-only `gh pr view 818` confirms PR #818 remains OPEN at remote head `6767f443e133d3cffe6b46766a641503ee303240`, base `7a99ae9e8696d6202f3a3b39472cc058cc0d61da`; its 18 required contexts are SUCCESS on 6767. The 520d candidate is not the remote PR head, so no required-check result is available for 520d. These observations support the record’s historical binding and do not approve current CI or protected acceptance.
+
+## Limits
+
+Read-only Git, file/evidence, and GitHub inspection only. No tests, installs, Node, runtime, Docker, browser, commits, pushes, or GitHub mutations were performed. The earlier two CLEAR reports on 7772 were not rerun; they retain their exact scope. This report reviews only the current 6767-to-520d factual delta, not CI, publication, merge readiness, or acceptance.
+
+
+## Current corrected source binding
+
+**Reviewed head:** `520d3004dada2b74c29f1d304f169b21304fec08`
+
+Eligible required current reviews: independent factual A and fresh C. Technical assessor B is not counted. Review-record-only publication transport and exact-head required CI remain conductor acceptance checks.
