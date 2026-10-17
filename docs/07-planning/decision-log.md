@@ -8424,3 +8424,10 @@ The prior checkpoint incorrectly described #807 documentation conflicts as waiti
 The 07:59 checkpoint omitted bounded invalidation source `e67c3e8b5d7cc539898196bd89efc7d7dd625c2f`: four invalidation statements, fresh ordinary and mandatory lightweight Sol source clearances, and actual PostgreSQL3 files/43 tests/native0. Current-main composition, publication, review bindings and current gates remain pending. Author raw install/build/typecheck logs were not persisted, so root raw-log verification is not claimed.
 
 The phrase about the earlier `fdc` false closure is clarified: the authentic finding is preserved, while current `f7c5` end-to-end remediation is unknown and the candidate remains unaccepted. UI9ac and erasure cc5 remain prepared but unintegrated; signed combined release, exact-digest SIT, consistent nonempty backup, usable isolated restore, fresh final Sol audit, #589 accounting and phase completion remain unfinished.
+
+
+### 2026-10-17 08:01 UTC · Records candidate frozen; #807 calibration count clarified
+
+The records-only candidate is frozen on its isolated branch from accepted #817 main. It waits on two fresh independent ordinary factual reviews, followed by records-only CI; no push or PR has been made.
+
+The preceding additive correction described #807's strict <200 ms result as “failed at 21/22,” which could be read as 21 failures. The actual result is 21 passes and one failed test, with cause undiagnosed. #807's 1.392/1.480 calibration remains valid; #810 owns the separate 1.752 host refusal.
