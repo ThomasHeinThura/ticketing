@@ -1,9 +1,8 @@
-import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { timeEntryTable } from "../../database/schema";
 import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { resolveDuration } from "../duration";
+import { findTimeEntryById, updateTimeEntryById } from "../repository";
 
 type UpdateTimeEntryParams = {
   timeEntryId: string;
@@ -15,10 +14,7 @@ type UpdateTimeEntryParams = {
 async function updateTimeEntry(params: UpdateTimeEntryParams) {
   const { timeEntryId, startTime, endTime, description } = params;
 
-  const [existingTimeEntry] = await db
-    .select()
-    .from(timeEntryTable)
-    .where(eq(timeEntryTable.id, timeEntryId));
+  const existingTimeEntry = await findTimeEntryById(timeEntryId);
 
   if (!existingTimeEntry) {
     throw new HTTPException(404, {
@@ -31,16 +27,12 @@ async function updateTimeEntry(params: UpdateTimeEntryParams) {
   return db.transaction(async (tx) => {
     await lockTaskAndAssertProjectLive(tx, existingTimeEntry.taskId);
     const duration = resolveDuration(startTime, effectiveEndTime ?? undefined);
-    const [updatedTimeEntry] = await tx
-      .update(timeEntryTable)
-      .set({
-        startTime,
-        endTime: effectiveEndTime,
-        duration,
-        ...(description !== undefined && { description }),
-      })
-      .where(eq(timeEntryTable.id, timeEntryId))
-      .returning();
+    const updatedTimeEntry = await updateTimeEntryById(tx, timeEntryId, {
+      startTime,
+      endTime: effectiveEndTime,
+      duration,
+      ...(description !== undefined && { description }),
+    });
     return updatedTimeEntry;
   });
 }

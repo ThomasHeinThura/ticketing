@@ -1,11 +1,5 @@
-import { and, eq, inArray, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  projectTable,
-  taskRelationTable,
-  taskTable,
-} from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   lockLegacyTaskRow,
@@ -13,6 +7,12 @@ import {
   lockTaskAndAssertProjectLive,
 } from "../../task/assert-task-project-live";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import {
+  findRelationBetween,
+  findTaskInWorkspace,
+  insertTaskRelation,
+  listProjectWorkspaces,
+} from "../repository";
 
 async function createTaskRelation({
   sourceTaskId,
@@ -49,21 +49,7 @@ async function createTaskRelation({
     });
   }
 
-  const [sourceTask] = await db
-    .select({
-      id: taskTable.id,
-      projectId: taskTable.projectId,
-      workspaceId: projectTable.workspaceId,
-    })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(
-      and(
-        eq(taskTable.id, sourceTaskId),
-        eq(projectTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
+  const sourceTask = await findTaskInWorkspace(sourceTaskId, workspaceId);
 
   if (!sourceTask) {
     throw new HTTPException(404, { message: "Source task not found" });
@@ -71,21 +57,7 @@ async function createTaskRelation({
 
   // Keep target existence as a preflight only. The response must wait until the
   // source project's freeze check so a frozen source cannot reveal target existence.
-  const [foundTargetTask] = await db
-    .select({
-      id: taskTable.id,
-      projectId: taskTable.projectId,
-      workspaceId: projectTable.workspaceId,
-    })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(
-      and(
-        eq(taskTable.id, targetTaskId),
-        eq(projectTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
+  const foundTargetTask = await findTaskInWorkspace(targetTaskId, workspaceId);
   const targetTask =
     foundTargetTask && (await canReachTarget(foundTargetTask))
       ? foundTargetTask
@@ -119,15 +91,10 @@ async function createTaskRelation({
       lockedSourceTask.projectId,
       lockedTargetTask.projectId,
     ]);
-    const lockedProjects = await tx
-      .select({ id: projectTable.id, workspaceId: projectTable.workspaceId })
-      .from(projectTable)
-      .where(
-        inArray(projectTable.id, [
-          lockedSourceTask.projectId,
-          lockedTargetTask.projectId,
-        ]),
-      );
+    const lockedProjects = await listProjectWorkspaces(tx, [
+      lockedSourceTask.projectId,
+      lockedTargetTask.projectId,
+    ]);
     const sourceProject = lockedProjects.find(
       (project) => project.id === lockedSourceTask.projectId,
     );
@@ -142,34 +109,22 @@ async function createTaskRelation({
     ) {
       throw new HTTPException(404, { message: "Task not found" });
     }
-    const existing = await tx
-      .select({ id: taskRelationTable.id })
-      .from(taskRelationTable)
-      .where(
-        and(
-          eq(taskRelationTable.relationType, relationType),
-          or(
-            and(
-              eq(taskRelationTable.sourceTaskId, sourceTaskId),
-              eq(taskRelationTable.targetTaskId, targetTaskId),
-            ),
-            and(
-              eq(taskRelationTable.sourceTaskId, targetTaskId),
-              eq(taskRelationTable.targetTaskId, sourceTaskId),
-            ),
-          ),
-        ),
-      )
-      .limit(1);
+    const existing = await findRelationBetween(
+      tx,
+      sourceTaskId,
+      targetTaskId,
+      relationType,
+    );
     if (existing.length > 0) {
       throw new HTTPException(409, {
         message: "This relation already exists",
       });
     }
-    const [relation] = await tx
-      .insert(taskRelationTable)
-      .values({ sourceTaskId, targetTaskId, relationType })
-      .returning();
+    const relation = await insertTaskRelation(tx, {
+      sourceTaskId,
+      targetTaskId,
+      relationType,
+    });
     return { relation, sourceProjectId: lockedSourceTask.projectId };
   });
 

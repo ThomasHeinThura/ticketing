@@ -1,11 +1,7 @@
-import { and, eq, inArray, or } from "drizzle-orm";
-import db from "../../database";
 import {
-  projectTable,
-  taskRelationTable,
-  taskTable,
-  userTable,
-} from "../../database/schema";
+  listRelationsOfTask,
+  listTaskSummariesInWorkspace,
+} from "../repository";
 
 async function getTaskRelations(
   taskId: string,
@@ -17,21 +13,7 @@ async function getTaskRelations(
     workspaceId: string;
   }) => Promise<boolean>,
 ) {
-  const relations = await db
-    .select({
-      id: taskRelationTable.id,
-      sourceTaskId: taskRelationTable.sourceTaskId,
-      targetTaskId: taskRelationTable.targetTaskId,
-      relationType: taskRelationTable.relationType,
-      createdAt: taskRelationTable.createdAt,
-    })
-    .from(taskRelationTable)
-    .where(
-      or(
-        eq(taskRelationTable.sourceTaskId, taskId),
-        eq(taskRelationTable.targetTaskId, taskId),
-      ),
-    );
+  const relations = await listRelationsOfTask(taskId);
 
   const taskIds = new Set<string>();
   for (const rel of relations) {
@@ -55,27 +37,10 @@ async function getTaskRelations(
   >();
 
   if (taskIds.size > 0) {
-    const taskRows = await db
-      .select({
-        id: taskTable.id,
-        version: taskTable.version,
-        title: taskTable.title,
-        status: taskTable.status,
-        priority: taskTable.priority,
-        number: taskTable.number,
-        projectId: taskTable.projectId,
-        userId: taskTable.userId,
-        assigneeName: userTable.name,
-      })
-      .from(taskTable)
-      .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .leftJoin(userTable, eq(taskTable.userId, userTable.id))
-      .where(
-        and(
-          inArray(taskTable.id, [...taskIds]),
-          eq(projectTable.workspaceId, workspaceId),
-        ),
-      );
+    const taskRows = await listTaskSummariesInWorkspace(
+      [...taskIds],
+      workspaceId,
+    );
 
     for (const task of taskRows) {
       // A related task outside the caller's project reach is omitted entirely, with its

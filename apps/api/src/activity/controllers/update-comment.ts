@@ -1,27 +1,12 @@
-import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskActivityTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
 import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
+import { findOwnComment, updateOwnCommentContent } from "../repository";
 
 async function updateComment(userId: string, id: string, content: string) {
-  const [existing] = await db
-    .select({
-      id: taskActivityTable.id,
-      content: taskActivityTable.content,
-      taskId: taskActivityTable.taskId,
-    })
-    .from(taskActivityTable)
-    .where(
-      and(
-        eq(taskActivityTable.id, id),
-        eq(taskActivityTable.userId, userId),
-        eq(taskActivityTable.type, "comment"),
-      ),
-    )
-    .limit(1);
+  const existing = await findOwnComment(userId, id);
 
   if (!existing) {
     throw new HTTPException(404, {
@@ -31,17 +16,7 @@ async function updateComment(userId: string, id: string, content: string) {
 
   const { updated, projectId } = await db.transaction(async (tx) => {
     const task = await lockTaskAndAssertProjectLive(tx, existing.taskId);
-    const [updated] = await tx
-      .update(taskActivityTable)
-      .set({ content })
-      .where(
-        and(
-          eq(taskActivityTable.id, id),
-          eq(taskActivityTable.userId, userId),
-          eq(taskActivityTable.type, "comment"),
-        ),
-      )
-      .returning();
+    const updated = await updateOwnCommentContent(tx, userId, id, content);
     return { updated, projectId: task.projectId };
   });
 

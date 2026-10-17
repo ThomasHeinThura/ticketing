@@ -1,14 +1,14 @@
-import { and, eq, inArray, like } from "drizzle-orm";
-import db from "../database";
-import {
-  assetTable,
-  taskActivityTable,
-  taskCommentTable,
-  taskTable,
-} from "../database/schema";
+import type { Executor } from "../database/executor";
 import { deleteStorageObject } from "./index";
+import {
+  deleteAssetsByIds,
+  findTaskDescriptionLike,
+  listTaskActivityContentsLike,
+  listTaskAssetObjectKeys,
+  listTaskAssetsByIds,
+  listTaskCommentContentsLike,
+} from "./repository";
 
-type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 const ASSET_URL_PATTERN = /\/api\/asset\/([a-z0-9]+)/gi;
 
 export function extractAssetIds(
@@ -50,37 +50,17 @@ async function isAssetReferencedElsewhere(
 ): Promise<boolean> {
   const pattern = `%/api/asset/${assetId}%`;
 
-  const [taskRef] = await db
-    .select({ description: taskTable.description })
-    .from(taskTable)
-    .where(and(eq(taskTable.id, taskId), like(taskTable.description, pattern)))
-    .limit(1);
+  const taskRef = await findTaskDescriptionLike(taskId, pattern);
 
   if (contentReferencesAsset(taskRef?.description, assetId)) return true;
 
-  const commentRefs = await db
-    .select({ content: taskCommentTable.content })
-    .from(taskCommentTable)
-    .where(
-      and(
-        eq(taskCommentTable.taskId, taskId),
-        like(taskCommentTable.content, pattern),
-      ),
-    );
+  const commentRefs = await listTaskCommentContentsLike(taskId, pattern);
 
   if (commentRefs.some((ref) => contentReferencesAsset(ref.content, assetId))) {
     return true;
   }
 
-  const activityRefs = await db
-    .select({ content: taskActivityTable.content })
-    .from(taskActivityTable)
-    .where(
-      and(
-        eq(taskActivityTable.taskId, taskId),
-        like(taskActivityTable.content, pattern),
-      ),
-    );
+  const activityRefs = await listTaskActivityContentsLike(taskId, pattern);
 
   if (
     activityRefs.some((ref) => contentReferencesAsset(ref.content, assetId))
@@ -102,15 +82,7 @@ export async function deleteOrphanedAssets(
   const removedIds = [...oldIds].filter((id) => !newIds.has(id));
   if (removedIds.length === 0) return;
 
-  const assets = await db
-    .select({ id: assetTable.id, objectKey: assetTable.objectKey })
-    .from(assetTable)
-    .where(
-      and(
-        inArray(assetTable.id, removedIds),
-        eq(assetTable.taskId, scope.taskId),
-      ),
-    );
+  const assets = await listTaskAssetsByIds(removedIds, scope.taskId);
 
   const assetsToDelete: typeof assets = [];
   for (const asset of assets) {
@@ -135,17 +107,14 @@ export async function deleteOrphanedAssets(
 
   if (deletedAssetIds.length === 0) return;
 
-  await db.delete(assetTable).where(inArray(assetTable.id, deletedAssetIds));
+  await deleteAssetsByIds(deletedAssetIds);
 }
 
 export async function getTaskAssetKeys(
   taskId: string,
-  executor: DbOrTx = db,
+  executor?: Executor,
 ): Promise<string[]> {
-  const assets = await executor
-    .select({ objectKey: assetTable.objectKey })
-    .from(assetTable)
-    .where(eq(assetTable.taskId, taskId));
+  const assets = await listTaskAssetObjectKeys(taskId, executor);
 
   return assets.map((a) => a.objectKey);
 }

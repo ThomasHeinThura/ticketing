@@ -1,12 +1,7 @@
-import { desc, eq } from "drizzle-orm";
-import db from "../../database";
-import { taskActivityTable } from "../../database/schema";
+import { listTaskActivitiesNewestFirst } from "../repository";
 
 async function getActivitiesFromTaskId(taskId: string) {
-  const activities = await db.query.taskActivityTable.findMany({
-    where: eq(taskActivityTable.taskId, taskId),
-    orderBy: [desc(taskActivityTable.createdAt)],
-  });
+  const activities = await listTaskActivitiesNewestFirst(taskId);
 
   activities.forEach((x) => {
     if (x.content) {
