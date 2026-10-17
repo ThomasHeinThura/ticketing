@@ -1,13 +1,21 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { labelTable, projectTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
-import { lockWorkspaceLabelNames } from "../label-name-lock";
+import {
+  findProjectWorkspaceId,
+  findTaskLabelByName,
+  findTaskWithWorkspace,
+  findWorkspaceLabelByName,
+  insertTaskLabelOnConflictDoNothing,
+  insertWorkspaceLabelOnConflictDoNothing,
+  lockWorkspaceLabelNames,
+} from "../repository";
 
 async function createLabel(
+  identity: ResolvedIdentity,
   name: string,
   color: string,
   taskId: string | undefined,
@@ -20,16 +28,7 @@ async function createLabel(
     // `taskId`) -- a NUL byte here reached `eq(taskTable.id, taskId)` unvalidated and
     // 500'd, the same class #281 fixed for path/query ids.
     rejectNulByte(taskId, "Task id");
-    const [task] = await db
-      .select({
-        id: taskTable.id,
-        projectId: taskTable.projectId,
-        workspaceId: projectTable.workspaceId,
-      })
-      .from(taskTable)
-      .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .where(eq(taskTable.id, taskId))
-      .limit(1);
+    const task = await findTaskWithWorkspace(identity, taskId);
 
     if (!task) {
       throw new HTTPException(404, {
@@ -49,23 +48,18 @@ async function createLabel(
       // then re-read and lock every copy created before it acquired this key.
       await lockWorkspaceLabelNames(tx, workspaceId, [name]);
       const lockedTask = await lockTaskAndAssertProjectLive(tx, taskId);
-      const [project] = await tx
-        .select({ workspaceId: projectTable.workspaceId })
-        .from(projectTable)
-        .where(eq(projectTable.id, lockedTask.projectId));
+      const project = await findProjectWorkspaceId(tx, lockedTask.projectId);
       if (!project || project.workspaceId !== workspaceId) {
         throw new HTTPException(404, { message: "Task not found" });
       }
-      const [inserted] = await tx
-        .insert(labelTable)
-        .values({ name, color, taskId, workspaceId: project.workspaceId })
-        .onConflictDoNothing({ target: [labelTable.taskId, labelTable.name] })
-        .returning();
+      const inserted = await insertTaskLabelOnConflictDoNothing(tx, identity, {
+        name,
+        color,
+        taskId,
+        workspaceId: project.workspaceId,
+      });
       const label =
-        inserted ??
-        (await tx.query.labelTable.findFirst({
-          where: and(eq(labelTable.taskId, taskId), eq(labelTable.name, name)),
-        }));
+        inserted ?? (await findTaskLabelByName(tx, identity, taskId, name));
       return { label, inserted, projectId: lockedTask.projectId };
     });
 
@@ -86,24 +80,18 @@ async function createLabel(
 
   const label = await db.transaction(async (tx) => {
     await lockWorkspaceLabelNames(tx, workspaceId, [name]);
-    const [inserted] = await tx
-      .insert(labelTable)
-      .values({ name, color, taskId: null, workspaceId })
-      .onConflictDoNothing({
-        target: [labelTable.workspaceId, labelTable.name],
-        where: sql`${labelTable.taskId} is null`,
-      })
-      .returning();
+    const inserted = await insertWorkspaceLabelOnConflictDoNothing(
+      tx,
+      identity,
+      {
+        name,
+        color,
+        workspaceId,
+      },
+    );
 
     return (
-      inserted ??
-      (await tx.query.labelTable.findFirst({
-        where: and(
-          eq(labelTable.workspaceId, workspaceId),
-          eq(labelTable.name, name),
-          isNull(labelTable.taskId),
-        ),
-      }))
+      inserted ?? findWorkspaceLabelByName(tx, identity, workspaceId, name)
     );
   });
 

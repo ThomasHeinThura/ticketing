@@ -2044,6 +2044,7 @@ export function resolvePort(rawPort: string | undefined): {
 }
 
 type NodeServerShutdownOptions = {
+  hostname?: string;
   shutdownTimeoutMs?: number;
   shutdownAdapter?: () => Promise<void>;
   forceAdapter?: () => void;
@@ -2060,6 +2061,7 @@ export function createNodeServer(
   const server = serve({
     fetch: app.fetch,
     port,
+    ...(options.hostname ? { hostname: options.hostname } : {}),
     websocket: { server: websocketServer },
   });
   const httpServer = server as HttpServer;

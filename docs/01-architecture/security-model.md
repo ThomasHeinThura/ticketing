@@ -126,6 +126,24 @@ either merged and measured or dropped with the reason in the decision log (decid
 
 ---
 
+## Internal account-erasure safety summary
+
+For the authenticated account-deletion subject, the internal erasure planner may read a
+narrow summary of the subject's current persisted workspace memberships: own workspace IDs,
+own owner status, member/owner counts, and names of those currently joined workspaces used
+only in the existing conflict message. This lifecycle entitlement is bound to the actual
+authenticated deletion subject; it grants no general query exception or workspace access.
+It exposes no other members' identities or individual role rows.
+
+Safety counts must include every persisted membership relevant to the existing deletion
+checks, including when the subject has no usable canonical identity (for example, inactive
+or legacy memberships). Filtering through ordinary canonical reach must not omit a safety
+check or permit deletion of a workspace others still use. Preserve the existing ownership
+interpretation, transactional locks, two-pass recheck, refusal before invalidation/deletion,
+and existing conflict behavior. This does not authorize broader content reads, a new
+capability, or changes to account-deletion eligibility. Thomas approved this bounded summary
+on 2026-10-16; see the decision log.
+
 ## Reach, authority, and the 404 rule
 
 Covered fully in [RBAC](rbac.md). The security-relevant summary:

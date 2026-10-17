@@ -958,8 +958,13 @@ entry is on `origin/main` and stops approving anything; a later PR making a simi
 the same route needs its own new entry and its own GPT-6 Sol review, never a leftover one. Any
 finding that no NEW entry in the current PR matches still fails CI, and a new entry that
 matches no finding fails too, as a stale or typo'd entry. From the first stable `v2.0.0` (or
-later) release tag on, this allowlist must be empty — a breaking change is versioned with a
-new path segment as above, never allowlisted.
+later) release on, this allowlist must be empty — a breaking change is versioned with a
+new path segment as above, never allowlisted. For this boundary, a GitHub release explicitly
+marked as a prerelease remains pre-stable even if its tag has stable version syntax.
+Stable tag syntax alone does not establish a stable release. The live release lookup must
+fail closed when its result cannot be established. Thomas clarified this policy on
+2026-10-16, superseding the previous tag-syntax-only classification; correcting the gate
+and adding exact break fingerprints still require independent review and required CI.
 
 ## Typed client
 

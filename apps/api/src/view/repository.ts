@@ -2,6 +2,11 @@ import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
+  type Executor,
+  executorOrDefault,
+  type Transaction,
+} from "../database/executor";
+import {
   personTable,
   projectTable,
   savedViewTable,
@@ -10,9 +15,7 @@ import {
   userPreferenceTable,
 } from "../database/schema";
 
-export type SavedViewTransaction = Parameters<
-  Parameters<typeof db.transaction>[0]
->[0];
+export type SavedViewTransaction = Transaction;
 
 /** The live project's reach facts when it belongs to the workspace, else null. */
 export async function findProjectInWorkspace(
@@ -40,29 +43,9 @@ export async function teamMemberInWorkspace(
   teamId: string,
   userId: string,
   workspaceId: string,
+  executor?: Executor,
 ): Promise<boolean> {
-  const [membership] = await db
-    .select({ id: teamMemberTable.id })
-    .from(teamMemberTable)
-    .innerJoin(teamTable, eq(teamMemberTable.teamId, teamTable.id))
-    .where(
-      and(
-        eq(teamMemberTable.teamId, teamId),
-        eq(teamMemberTable.userId, userId),
-        eq(teamTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
-  return Boolean(membership);
-}
-
-export async function teamMemberInWorkspaceTransaction(
-  tx: SavedViewTransaction,
-  teamId: string,
-  userId: string,
-  workspaceId: string,
-): Promise<boolean> {
-  const [membership] = await tx
+  const [membership] = await executorOrDefault(executor)
     .select({ id: teamMemberTable.id })
     .from(teamMemberTable)
     .innerJoin(teamTable, eq(teamMemberTable.teamId, teamTable.id))

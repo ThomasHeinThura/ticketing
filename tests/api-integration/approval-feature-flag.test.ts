@@ -2,10 +2,12 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveApprovalFeatureFlag } from "../../apps/api/src/approval/repository";
 import db, { schema } from "../../apps/api/src/database";
+import { resolveRequestIdentity } from "../../apps/api/src/permissions/resolve-request-identity";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
 } from "./helpers/fixtures";
 
 describe("approval feature-flag repository resolution", () => {
@@ -27,11 +29,19 @@ describe("approval feature-flag repository resolution", () => {
   });
 
   it("applies project, workspace, instance, lock, then built-in default precedence", async () => {
-    const { workspace } = await createWorkspaceMember({ role: "owner" });
+    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
     });
-    const target = { workspaceId: workspace.id, projectId: project.id };
+    await grantProjectRole(user.id, project.id, ["project:read"]);
+    const identity = await resolveRequestIdentity({ userId: user.id });
+    if (!identity)
+      throw new Error("Fixture user did not resolve to an identity");
+    const target = {
+      identity,
+      workspaceId: workspace.id,
+      projectId: project.id,
+    };
 
     expect(await resolveApprovalFeatureFlag(target)).toEqual({
       enabled: false,

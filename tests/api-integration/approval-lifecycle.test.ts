@@ -6,6 +6,10 @@ import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { isCurrentInstanceAdmin } from "../../apps/api/src/instance/observability/audit-failure-notifier";
+import {
+  restoreProjectMembership,
+  revokeProjectMembership,
+} from "./helpers/approval-fixtures";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -430,6 +434,10 @@ describe("API integration: approval lifecycle", () => {
       expect.objectContaining({ id: approval.id, canWithdraw: true }),
     ]);
 
+    const approverMembership = await revokeProjectMembership(
+      approverPerson.id,
+      project.id,
+    );
     await db
       .delete(schema.requestParticipantTable)
       .where(
@@ -465,6 +473,7 @@ describe("API integration: approval lifecycle", () => {
     );
     expect(lostReachDecision.status).toBe(403);
 
+    await restoreProjectMembership(approverMembership);
     await db.insert(schema.requestParticipantTable).values({
       workItemId: workItemRow?.id ?? "",
       personId: approverPerson.id,
@@ -616,6 +625,33 @@ describe("API integration: approval lifecycle", () => {
     );
     expect((await scopedWithdrawal.json()).state).toBe("withdrawn");
 
+    const outOfReachMember = await createWorkspaceMember({ role: "owner" });
+    const outOfReachApproval = await createAdditionalApprovalAsRequester();
+    const outOfReachKey = await createApprovalApiKey(outOfReachMember.user.id, {
+      approval: ["request"],
+    });
+    const outOfReachEffectsBeforeDenial =
+      await approvalEffectCounts("approval.withdrawn");
+    mockAuthenticatedSession(outOfReachMember.user);
+    const outOfReachSessionWithdrawal = await app.request(
+      `/api/approvals/${outOfReachApproval.id}/withdraw`,
+      { method: "POST" },
+    );
+    expect(outOfReachSessionWithdrawal.status).toBe(404);
+    const outOfReachKeyWithdrawal = await app.request(
+      `/api/approvals/${outOfReachApproval.id}/withdraw`,
+      { method: "POST", headers: { "x-api-key": outOfReachKey } },
+    );
+    expect(outOfReachKeyWithdrawal.status).toBe(404);
+    const [stillPendingAfterOutOfReach] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, outOfReachApproval.id));
+    expect(stillPendingAfterOutOfReach?.state).toBe("pending");
+    expect(await approvalEffectCounts("approval.withdrawn")).toEqual(
+      outOfReachEffectsBeforeDenial,
+    );
+
     const instanceAdmin = await createWorkspaceMember({ role: "owner" });
     await db
       .update(schema.userTable)
@@ -635,9 +671,9 @@ describe("API integration: approval lifecycle", () => {
         headers: { "x-api-key": adminKeyWithoutRequestScope },
       },
     );
-    // The key's owner has no reach in the approval's workspace, so the approval is not
-    // disclosed at all (0120 check 1: cross-workspace is 404, never 403).
-    expect(adminKeyWithdrawal.status).toBe(404);
+    // Global reach is separate from requester capability: this ordinary route does
+    // not let a global admin withdraw another user's request.
+    expect(adminKeyWithdrawal.status).toBe(403);
     const [stillPendingAfterAdminKey] = await db
       .select({ state: schema.approvalTable.state })
       .from(schema.approvalTable)
@@ -653,6 +689,8 @@ describe("API integration: approval lifecycle", () => {
       instanceAdmin.user.id,
       { approval: ["request"] },
     );
+    const scopedAdminEffectsBeforeDenial =
+      await approvalEffectCounts("approval.withdrawn");
     const adminKeyOnRequesterRoute = await app.request(
       `/api/approvals/${scopedAdminWithdrawalApproval.id}/withdraw`,
       {
@@ -660,9 +698,15 @@ describe("API integration: approval lifecycle", () => {
         headers: { "x-api-key": adminKeyWithRequestScope },
       },
     );
-    expect(adminKeyOnRequesterRoute.status).toBe(404);
-    const scopedAdminEffectsBeforeDenial =
-      await approvalEffectCounts("approval.withdrawn");
+    expect(adminKeyOnRequesterRoute.status).toBe(403);
+    const [stillPendingAfterAdminRequesterRoute] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, scopedAdminWithdrawalApproval.id));
+    expect(stillPendingAfterAdminRequesterRoute?.state).toBe("pending");
+    expect(await approvalEffectCounts("approval.withdrawn")).toEqual(
+      scopedAdminEffectsBeforeDenial,
+    );
     const scopedAdminKeyWithdrawal = await app.request(
       `/api/admin/approvals/${scopedAdminWithdrawalApproval.id}/withdraw`,
       {
@@ -693,11 +737,21 @@ describe("API integration: approval lifecycle", () => {
         ),
       );
     expect(targetWorkspaceAdminMembership).toHaveLength(0);
+    const adminSessionEffectsBeforeDenial =
+      await approvalEffectCounts("approval.withdrawn");
     const adminOnRequesterRoute = await app.request(
       `/api/approvals/${sessionAdminWithdrawalApproval.id}/withdraw`,
       { method: "POST" },
     );
-    expect(adminOnRequesterRoute.status).toBe(404);
+    expect(adminOnRequesterRoute.status).toBe(403);
+    const [stillPendingAfterAdminSessionRoute] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, sessionAdminWithdrawalApproval.id));
+    expect(stillPendingAfterAdminSessionRoute?.state).toBe("pending");
+    expect(await approvalEffectCounts("approval.withdrawn")).toEqual(
+      adminSessionEffectsBeforeDenial,
+    );
     const adminSessionWithdrawal = await app.request(
       `/api/admin/approvals/${sessionAdminWithdrawalApproval.id}/withdraw`,
       { method: "POST" },

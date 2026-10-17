@@ -1,31 +1,22 @@
-import { eq, or } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskRelationTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteS3Keys, getTaskAssetKeys } from "../../storage/cleanup-assets";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
+import { deleteTaskById, listTaskRelations } from "../repository";
 
-async function deleteTask(taskId: string, currentUserId: string) {
+async function deleteTask(
+  identity: ResolvedIdentity,
+  taskId: string,
+  currentUserId: string,
+) {
   const { relations, assetKeys, deletedTask } = await db.transaction(
     async (tx) => {
-      await lockTaskAndAssertProjectLive(tx, taskId);
-      const relations = await tx
-        .select()
-        .from(taskRelationTable)
-        .where(
-          or(
-            eq(taskRelationTable.sourceTaskId, taskId),
-            eq(taskRelationTable.targetTaskId, taskId),
-          ),
-        )
-        .execute();
+      await lockTaskAndAssertProjectLiveForIdentity(tx, taskId, identity);
+      const relations = await listTaskRelations(tx, identity, taskId);
       const assetKeys = await getTaskAssetKeys(taskId, tx);
-      const [deletedTask] = await tx
-        .delete(taskTable)
-        .where(eq(taskTable.id, taskId))
-        .returning()
-        .execute();
+      const deletedTask = await deleteTaskById(tx, identity, taskId);
       return { relations, assetKeys, deletedTask };
     },
   );
