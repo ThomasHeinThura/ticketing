@@ -163,6 +163,42 @@ test("query ownership checker kills syntactic/type-resolved escapes and keeps va
       `import { eq } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; export default async function () { return db.select().from(userTable).where(eq(userTable.id, "id")).limit(1); }`,
     ],
     [
+      "database/shorthand-materialized.repository.ts",
+      `import db from "../../database"; import { userTable } from "../../database/schema";
+type ReachFacts = { id: string };
+type Materialized = { id: string; reachFacts: ReachFacts } & { source: "selected-id-row" };
+export async function listMaterializedIdRows() {
+  const [[row]] = await Promise.all([
+    db.select({ id: userTable.id }).from(userTable).limit(1),
+  ]);
+  if (!row) return null;
+  const reachFacts = { id: row.id };
+  const source = "selected-id-row";
+  return { id: row.id, reachFacts, source } satisfies Materialized;
+}`,
+    ],
+    [
+      "database/shorthand-object-builder.repository.ts",
+      `import db from "../../database"; import { userTable } from "../../database/schema";
+const pending = db.select().from(userTable);
+const detail = { pending };
+export const nestedBuilder = { detail };`,
+    ],
+    [
+      "database/shorthand-array-builder.repository.ts",
+      `import db from "../../database"; import { userTable } from "../../database/schema";
+const pending = db.select().from(userTable);
+const entries = [pending];
+export const nestedBuilderArray = { entries };`,
+    ],
+    [
+      "database/shorthand-unresolved.repository.ts",
+      `const unknownValue: unknown = "value";
+const anyValue: any = "value";
+export const unknownShorthand = { unknownValue };
+export const anyShorthand = { anyValue };`,
+    ],
+    [
       "database/full-select-escape.repository.ts",
       `import { eq } from "drizzle-orm"; import db from "../../database"; import { userTable } from "../../database/schema"; export function buildRows() { return db.select().from(userTable).where(eq(userTable.id, "id")).limit(1); }`,
     ],
@@ -382,6 +418,11 @@ export const nestedResult = { payload: "value" as unknown };`,
     }
     const key = (relative) =>
       path.relative(dir, path.join(dir, relative)).replaceAll("\\", "/");
+    assert.equal(
+      byFile.has(key("database/shorthand-materialized.repository.ts")),
+      false,
+      "an awaited id-row DTO with shorthand members and an intersection contract remains materialized",
+    );
     const expectedViolations = new Map([
       [
         "controllers/direct.ts",
@@ -526,6 +567,14 @@ export const nestedResult = { payload: "value" as unknown };`,
         "database/namespace-drizzle.repository.ts",
         /exposes a query builder|query-builder escape cannot be excluded/,
       ],
+      [
+        "database/shorthand-object-builder.repository.ts",
+        /exposes a query builder/,
+      ],
+      [
+        "database/shorthand-array-builder.repository.ts",
+        /exposes a query builder/,
+      ],
     ]);
     for (const [relative, expected] of expectedViolations) {
       assert.match(
@@ -562,6 +611,18 @@ export const nestedResult = { payload: "value" as unknown };`,
       unresolvedShapes,
       /nestedResult \[unknown-type; export:nestedResult → member:payload\]/,
       "object member output reports the exact unresolved member path",
+    );
+    const unresolvedShorthand =
+      byFile.get(key("database/shorthand-unresolved.repository.ts")) ?? "";
+    assert.match(
+      unresolvedShorthand,
+      /unknownShorthand \[unknown-type; export:unknownShorthand → member:unknownValue\]/,
+      "a shorthand unknown member remains unresolved at its member path",
+    );
+    assert.match(
+      unresolvedShorthand,
+      /anyShorthand \[any-type; export:anyShorthand → member:anyValue\]/,
+      "a shorthand any member remains unresolved at its member path",
     );
     for (const relative of [
       "database/generic-identity.repository.ts",
