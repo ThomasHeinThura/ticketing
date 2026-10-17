@@ -28,13 +28,18 @@ system that models time as money cannot express unbilled effort.
   eventually appear on an invoice.
 - `TC-2` An activity type — Development, Support, Meeting, Travel — is required, so time
   can be analysed by kind.
-- `TC-3` A `billable` flag, defaulting from the project.
-- `TC-4` Entries may be logged for a past date, up to a configurable limit (default 30
-  days). Beyond that requires `time_entry:read_any`.
-- `TC-5` A person edits their own entries. Editing anyone else's requires
-  `time_entry:read_any`.
-- `TC-6` A timer is offered — start, stop, and it survives a page reload — but manual entry
-  is always available, because most people log time at the end of the day.
+- `TC-3` A `billable` flag defaults from the project's `default_billable` value (default
+  `true`; see [project data](../01-architecture/data-model.md#3-projects-and-states)).
+- `TC-4` Entries may be logged for a past date up to the workspace's
+  `time_entry_backdate_limit_days` setting (default 30 days). Logging beyond that limit
+  requires `time_entry:log_backdated`.
+- `TC-5` A person edits their own entries with `time_entry:update_own`; editing anyone else's
+  requires `time_entry:update_any`. Deleting own and others' entries requires
+  `time_entry:delete_own` and `time_entry:delete_any`, respectively.
+- `TC-6` A timer is offered — start and stop — and its persisted running state survives a
+  page reload. There is at most one running timer per person; the server caps it at 12 hours
+  through the stop handler and a sweeper. Manual entry is always available, because most
+  people log time at the end of the day.
 - `TC-7` Entries roll up to the work item, its parent chain, its cycle, its module and its
   project.
 
@@ -47,7 +52,8 @@ system that models time as money cannot express unbilled effort.
 - `TC-10` A default rate per person applies where no project-specific rate exists.
 - `TC-11` Rates are visible only with `time_entry:manage_rates`. Salary information leaking
   through a report is a serious incident, so rate visibility is a distinct capability, not
-  bundled with anything else.
+  bundled with anything else. [Reports](reports-and-dashboards.md#permissions) use the same
+  capability for cost and rate data, including exports.
 
 ## Cost entries
 
@@ -55,7 +61,8 @@ system that models time as money cannot express unbilled effort.
   per kilometre.
 - `TC-13` A cost entry records units, and the rate at entry time is captured on the row so
   later rate changes do not rewrite it.
-- `TC-14` Cost entries attach to a work item or directly to a project.
+- `TC-14` Cost entries attach to a work item or directly to a project, with exactly one of
+  `work_item_id` and `project_id` set (see [Data](#data)).
 
 ## Budgets
 
@@ -64,8 +71,14 @@ system that models time as money cannot express unbilled effort.
   entries.
 - `TC-17` A project shows planned versus actual versus committed, where committed includes
   estimated remaining work valued at current rates.
-- `TC-18` Thresholds — 75% and 90% — raise notifications to the project manager.
-- `TC-19` Multi-currency is supported by storing the currency per row. Cross-currency
+- `TC-18` When actual plus committed crosses 75% or 90% of planned, emit
+  `budget.threshold_reached` with `budgetId`, `threshold`, and `currency` as defined in the
+  [event catalogue](../01-architecture/events.md#projects-prerequisites-budgets). Notify only
+  the project's `manager_id`; require current `project:read` reach and send no notification
+  if the budget, project, manager, or reach cannot be resolved
+  ([notification rules](notifications.md#data)).
+- `TC-19` Multi-currency is supported by storing the currency per row. A cost type's currency
+  is its default; the cost entry captures its currency with its rate. Cross-currency
   aggregation requires an exchange rate table, which is **out of scope for v2**; reports
   group by currency instead of converting.
 
@@ -82,7 +95,11 @@ system that models time as money cannot express unbilled effort.
 | Log own time | `time_entry:create` |
 | See own entries | `time_entry:create` |
 | See anyone's entries | `time_entry:read_any` |
-| Edit anyone's entries | `time_entry:read_any` |
+| Edit own entries | `time_entry:update_own` |
+| Edit anyone's entries | `time_entry:update_any` |
+| Delete own entries | `time_entry:delete_own` |
+| Delete anyone's entries | `time_entry:delete_any` |
+| Log beyond workspace backdating limit | `time_entry:log_backdated` |
 | See and manage rates | `time_entry:manage_rates` |
 | See budgets | `budget:read` |
 | Manage budgets | `budget:manage` |
@@ -99,6 +116,10 @@ fill in. A form-per-entry design guarantees nobody logs time.
 breakdown by activity and by person.
 
 **Rates** — under workspace settings, gated by capability.
+
+The [screen inventory](../02-design/screen-inventory.md) also registers the project budget,
+workspace rates, time activities and cost types screens; their workspace ownership is listed
+in [settings hierarchy](settings-hierarchy.md#workspace).
 
 ## API
 
@@ -128,12 +149,28 @@ GET    /api/projects/{key}/costs                budget:read
 | Two currencies in one project | Reported separately, never summed |
 | Budget period changed | Actuals recompute for the new period |
 
+## Data
+
+The canonical data model defines `time_entry`, `running_timer`, `time_activity`,
+`hourly_rate`, `cost_type`, `cost_entry`, `budget`, and `available_hours` in
+[§9 Time and cost](../01-architecture/data-model.md#9-time-and-cost). This feature spec
+does not introduce additional tables or columns.
+
 ## Out of scope
 
 - Currency conversion
 - Invoice generation
 - Payroll integration
 - Automatic time capture from calendars or commits
+
+## Open questions
+
+- **Committed budget valuation (TC-17):** what value should be shown when remaining work has
+  point/category estimates or is unassigned, and which existing rate determines its value?
+- **Cross-midnight entries:** what server-side behavior should replace the current
+  client-split rule: reject the spanning entry or split it into dated entries?
+- **Timer timezone:** should timer dates use the person's timezone with the instance timezone
+  as fallback, or use the instance timezone captured at timer start?
 
 ## Testing
 
