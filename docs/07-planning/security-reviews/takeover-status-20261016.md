@@ -1279,3 +1279,98 @@ Read-only commands actually used: `pwd`, `git status --porcelain=v1`, `git show`
 No source/control-plane edit, commit, push, merge, resource cleanup or primary-checkout operation occurred. The sole new artifact is this exclusive mode-0600 external report. The review worktree remains clean at f044. The original full report remains unchanged. New exact-publication required checks, own-note publication discipline and normal protected eligibility still apply; no gate waiver or runtime/mission acceptance is granted.
 
 **Completed at:** 2026-10-17T05:58:00.878744+00:00
+
+
+## Format-only follow-up after the current static check
+
+**Reviewed head:** `9b5182f65d4dea9d39cbc70acf1c8f4633932132`
+
+The initial 08de hosted static check exposed exactly two Biome formatting errors in the already reviewed gate regression files. The narrow repair wraps one existing assertion and three fixture-write calls, adding ordinary trailing argument commas. It changes no assertion, argument, fixture string, test selection, authority or gate pass/fail semantics. The fresh bounded ordinary confirmation and mandatory lightweight Sol confirmation below retain the prior full cf724 and current f044 source-review scopes. All three new reports are preserved verbatim; the complete prior 173067-byte note remains an exact prefix.
+
+The author actually reran Biome successfully and the two focused files passed14/14 with no skips. The initial shell logger error and all hosted adverse evidence remain retained. Current exact-publication CI is still pending; no older result, calibration retry, waiver or acceptance is transferred. This note does not certify Carrier, the separate e52 auth reads, whole580/589 or final release/SIT/nonempty restore/audit.
+
+## Preserved report: EVID/records803-format-only-author-luna.md
+
+# #803 format-only author record
+
+- Worktree: `/Users/heinthura/.codex/worktrees/takeover-status-20261016`
+- Branch: `codex/takeover-status-20261016`
+- Starting committed HEAD: `08de2d8aa39aedc8179fabce9cc84224e759bf08`
+- Resulting commit: `9b5182f65d4dea9d39cbc70acf1c8f4633932132` (`style(ci): format security scope tests`)
+- Final worktree status: clean.
+- Exact changed paths (only):
+  - `scripts/ci/lib/security-paths.test.mjs` — SHA-256 `552885d1b826b7e3dba69f1f74113e001cb84dc497a492dfb71ac32f6d8c4a68`
+  - `scripts/ci/probes/security-scope-shrink.test.mjs` — SHA-256 `987b90fb999dbc88959d0e63b1a941f1a1abec13147dd8e9ae31ccf96df676b5`
+- Preserved pre-format snapshots: `EVID/803-08de-pre-format/` (mode 0700 directory; source snapshots mode 0600). Their hashes were `221c2034473a2d074f095bcf4fccc2f0f6ebcf466e8c63a7aa92805a15aff9ab` and `86dd937f684dea40617d6d7b9498779323a46be7f8f77935ba108e48e97eb61b`, respectively.
+
+Only Biome formatting was applied to the two authorized files. The diff consists of line wrapping and formatter-added trailing commas; assertion expressions, message/template string contents, test inputs, comments, and test behavior were preserved. `git diff --check` passed. Biome format write exited 0 (`EVID/803-08de-format/01-format.log`); Biome check on the two files exited 0 (`02-biome-check.log`). Focused `node --test` on exactly these two files exited 0: 14 passed, 0 failed, 0 skipped (`05-node-tests-clean-exit.log`). The initial test invocation also produced the complete passing test output but its enclosing zsh logger then hit a reserved variable name; the clean rerun above is the authoritative exit result.
+
+The original pre-format failure record and hosted CI evidence were preserved. No dependency, runtime, browser, database, Docker, build, or unrelated source operation was performed. No push or PR was made. This is an author repair record only, not independent review, acceptance, or gate clearance.
+
+## Preserved report: EVID/records803-9b518-format-ordinary-luna.md
+
+# Independent bounded ordinary review — 9b518 formatting follow-up
+
+**Model / role:** GPT-6 Luna ordinary reviewer. The conductor explicitly dispatched this context as `gpt-6-luna`, `fork_turns=none`; no served-backend fingerprint is available or claimed.
+**Independence:** I did not author, direct, or remediate the formatting change. This is an independent review context for the delta only.
+**Reviewed HEAD:** `9b5182f65d4dea9d39cbc70acf1c8f4633932132`
+**Exact parent:** `08de2d8aa39aedc8179fabce9cc84224e759bf08`
+**Worktree:** `/Users/heinthura/.codex/worktrees/takeover-status-20261016`
+
+## Verdict
+
+**CLEAR — no blocking or non-blocking finding in the bounded formatting delta.** This review verifies the two-file format-only follow-up and preservation of the prior review scope. It does not renew the previous full source review, attest current hosted CI, or establish candidate acceptance.
+
+## What I checked
+
+The exact parent is 08de. `git diff --stat` reports two modified files, 20 insertions and four deletions; `git diff --name-status` names only `scripts/ci/lib/security-paths.test.mjs` and `scripts/ci/probes/security-scope-shrink.test.mjs`. The complete diff in both files consists of wrapping existing `write(...)` calls across lines and adding formatter trailing commas. I inspected every changed hunk: no assertion, input value, argument, string/template literal, test name, comment, or expected result changes. The author record reports matching Biome format/check success and a clean focused 14/14 run; I did not execute those commands.
+
+`git diff --check 08de..9b518` exits successfully. The two candidate blobs have SHA-256 `552885d1b826b7e3dba69f1f74113e001cb84dc497a492dfb71ac32f6d8c4a68` and `987b90fb999dbc88959d0e63b1a941f1a1abec13147dd8e9ae31ccf96df676b5`, matching the format author record. The candidate worktree is clean and HEAD is the exact reviewed SHA.
+
+All other paths from the prior nine-path source composition are unchanged by this follow-up: the delta is exactly the two test files above, so the seven remaining paths are byte-preserved from 08de. The two changed test files retain the same assertion and string contents under formatting. The previous cf724 full ordinary and independent full Sol verdicts, and the bounded f044 import confirmations, retain their original exact-head scope; this is not a new whole-source panel review or transfer of runtime/CI results.
+
+## Actual commands and limits
+
+Read-only commands used in the explicit worktree: `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse <candidate>^`, `git diff --stat`, `git diff --name-status`, full focused `git diff --no-ext-diff --unified=80` for both changed files, `git diff --check`, `git show` for candidate blobs, `shasum -a 256`, `cat` of the author and prior review records, and a bounded `find` for the format author artifact. No tests, Node/probe/runtime, compiler, build, browser, database, Docker, install, CI, live GitHub query, or source/control-plane changes were made. The only write was this exclusive mode-0600 external review record; the Git worktree remains clean.
+
+This ordinary delta verdict does not claim current required CI is green, does not create a new Sol review, and does not authorize publication, merge, acceptance, or any gate waiver. Current exact-head checks and applicable existing security review gates remain separate requirements.
+
+**Completed:** 2026-10-17 UTC.
+
+## Preserved report: records803-9b518-format-security-61-sol.md
+
+# Independent lightweight security confirmation — #803 formatting follow-up
+
+**Model:** GPT-6.1 Sol
+**Role:** independent Sol-tier lightweight security confirmation of the format-only delta.
+**Context:** `/root/records803_cf724_security_sol`; same independent context that performed the full cf724 security review and bounded f044 accepted-#815 import confirmation. This is not another fresh context or a new full-source audit.
+**Dispatch provenance:** Original explicit requested route `model=gpt-6.1-sol`, `reasoning_effort=high`, `fork_turns=none`; this follow-up reuses that context. No served provider/model/version/build fingerprint is exposed or claimed.
+**Reviewed head:** 9b5182f65d4dea9d39cbc70acf1c8f4633932132
+**Exact parent:** 08de2d8aa39aedc8179fabce9cc84224e759bf08
+**Prior reviewed composition:** f044a40250083249642f99ad0497f69975743d44
+**Worktree:** `/Users/heinthura/.codex/worktrees/takeover-status-20261016`.
+**Independence:** I did not author, direct or remediate the formatting change or its source. I read the fresh independent exact-head ordinary CLEAR and the author report before this confirmation. No child was spawned or material fix direction supplied.
+
+## Verdict
+
+**CLEAR — lightweight security confirmation of the exact two-file formatting delta.** No blocking or new non-blocking security findings.
+
+The applicable workflow row is a security-scope path with provably no authority or gate pass/fail change: one independent ordinary review plus lightweight security confirmation. This report supplies the mandatory security confirmation without waiving it. The prior full bounded cf724 source coverage and f044 import confirmation retain their actual SHAs and scope; this delta does not renew application/runtime acceptance or required CI.
+
+## Exact checks and conservation
+
+I verified clean exact HEAD, parent and tree `490e84ce53d0a4f59bbf43fa77fd1c71dd400909`. Full parent-to-head Git diff and independent tree comparison show only `scripts/ci/lib/security-paths.test.mjs` and `scripts/ci/probes/security-scope-shrink.test.mjs`, 20 insertions/four deletions. I inspected every changed hunk. One assertion call and three existing fixture-write calls are wrapped across lines and receive ordinary trailing argument commas. Existing arguments, assertion expressions, template/string contents, source fixture values, expected outcomes, test names and comments are unchanged. No test is skipped, focused, weakened or removed.
+
+An independent static byte reconstruction applies exactly those four reviewed formatting transformations to the parent blobs and obtains both candidate blobs with complete equality. Candidate SHA-256 values match the author and ordinary records: unit `552885d1b826b7e3dba69f1f74113e001cb84dc497a492dfb71ac32f6d8c4a68`; probe `987b90fb999dbc88959d0e63b1a941f1a1abec13147dd8e9ae31ccf96df676b5`. This check does not strip whitespace inside strings or rely on a broad normalization that could conceal semantic edits. All other mode/type/blob entries are exact parent entries. Scope declarations, matcher/union implementation, actual checker, reviewer/model requirements, note binding, waiver rules and release-policy text therefore remain unchanged. `git diff --check 08de..9b518` passes.
+
+I separately checked the intervening f044-to-08de publication history with per-commit raw Git and numstat: exactly one regular mode100644 own-note modification, 227 additions/zero deletions. Its original 136,423-byte note remains an exact prefix of the 173,067-byte publication, whose hash matches `records803-f044-publication-proof.json`. Each of its five newly published authentic artifacts matches the private original length/hash and occurs verbatim, including both original reports produced by this context. No prior finding, verdict or provenance was rewritten. Publishing those reports did not silently approve this later formatting source.
+
+## Evidence and limits
+
+I read the full ordinary report `EVID/records803-9b518-format-ordinary-luna.md`, author record `EVID/records803-format-only-author-luna.md`, publication proof and actual retained logs under `EVID/803-08de-format/`. The Biome log reports two files checked with no fixes; the clean-exit focused test log reports **14 tests in two suites, 14 passed, zero failed/cancelled/skipped/todo**. These are author execution records, not commands run by me. The author's initial enclosing logger error remains disclosed and is not relabelled as a failed product test or silently removed.
+
+Read-only commands actually used: `pwd`, `git status`, `git show`, complete `git diff`/stat/check, per-commit `git log -m --raw`/numstat, `git ls-tree` through Python, `cat`, bounded `ls`/`rg`, and static Python pathlib/json/hashlib/subprocess comparisons. I executed no tests, Node/parser/probe/runtime, browser, PostgreSQL, Docker, install, build, CI action or live GitHub query. No source/control-plane edit, commit, push, merge or primary-checkout operation occurred. The sole write is this exclusively created external mode0600 report.
+
+Worktree remains clean. Required checks must be newly green on the eligible exact publication. This confirmation grants no CI bypass, merge authorization, runtime/SIT/release/restore acceptance, phase completion or gate waiver.
+
+**Completed at:** 2026-10-17T06:08:43.099469+00:00
