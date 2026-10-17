@@ -30,6 +30,11 @@ import {
   invalidateWorkspaceDeletionAccessLosses,
 } from "../pending-action/workspace-access-invalidation";
 import {
+  IdentityGrantClosureChangedError,
+  ScimGroupWriteError,
+} from "./errors";
+import { retryIdentityGrantClosure } from "./grant-closure-retry";
+import {
   lockAndVerifyScimMutation,
   type ScimRequestAuthority,
 } from "./scim-authentication";
@@ -133,7 +138,7 @@ function materializeFullScimRows<
   );
 }
 
-export const connectionProjection = {
+const connectionProjection = {
   id: schema.identityConnectionTable.id,
   providerType: schema.identityConnectionTable.providerType,
   portalScope: schema.identityConnectionTable.portalScope,
@@ -604,7 +609,7 @@ export async function listActiveScimGroupMembers(
     );
 }
 
-export const scimUserProjection = {
+const scimUserProjection = {
   id: schema.externalIdentityTable.id,
   externalId: schema.externalIdentityTable.scimExternalId,
   userName: schema.externalIdentityTable.userNameSnapshot,
@@ -1126,49 +1131,6 @@ export async function retireOidcGroupGrants(
     })),
   );
   return active;
-}
-
-export class IdentityGrantClosureChangedError extends Error {
-  constructor() {
-    super("IP-22 closure changed while locking; retry from a fresh snapshot");
-  }
-}
-
-/**
- * Drizzle wraps driver failures in a `DrizzleQueryError`; the Postgres SQLSTATE lives on
- * the innermost `cause`. Walk the chain so a wrapped 40P01/40001/23503/23505 is retried.
- */
-export function databaseErrorCode(error: unknown): string | undefined {
-  let current: unknown = error;
-  for (let depth = 0; depth < 5; depth += 1) {
-    if (typeof current !== "object" || current === null) return undefined;
-    const code = (current as { code?: unknown }).code;
-    if (typeof code === "string" && /^[0-9A-Z]{5}$/u.test(code)) return code;
-    current = (current as { cause?: unknown }).cause;
-  }
-  return undefined;
-}
-
-export async function retryIdentityGrantClosure<T>(work: () => Promise<T>) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      return await work();
-    } catch (error) {
-      const code = databaseErrorCode(error);
-      const retryableDatabaseConflict =
-        code === "40P01" ||
-        code === "40001" ||
-        code === "23503" ||
-        code === "23505";
-      if (
-        (!(error instanceof IdentityGrantClosureChangedError) &&
-          !retryableDatabaseConflict) ||
-        attempt === 2
-      )
-        throw error;
-    }
-  }
-  throw new IdentityGrantClosureChangedError();
 }
 
 export type MembershipProjectionKey = {
@@ -2883,15 +2845,6 @@ type GroupWrite = {
   active: boolean;
   memberIds: readonly string[];
 };
-
-export class ScimGroupWriteError extends Error {
-  constructor(
-    readonly status: 400 | 404 | 409 | 503,
-    readonly code: "invalidValue" | "notFound" | "uniqueness" | "configuration",
-  ) {
-    super("SCIM group write rejected");
-  }
-}
 
 /** Store directory state and apply only currently valid mapped-role grants. */
 export async function writeScimGroup(input: GroupWrite) {

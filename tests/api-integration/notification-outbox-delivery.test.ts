@@ -139,6 +139,9 @@ vi.mock(
       await importOriginal<
         typeof import("../../apps/api/src/database/repositories/notification-delivery.repository")
       >();
+    const { NotificationReservationContentionError } = await import(
+      "../../apps/api/src/notification/delivery-errors"
+    );
     const faults = () =>
       (
         globalThis as {
@@ -157,7 +160,7 @@ vi.mock(
         ...args: Parameters<typeof actual.acquireNotificationReservation>
       ) => {
         if (faults()?.contention)
-          throw new actual.NotificationReservationContentionError();
+          throw new NotificationReservationContentionError();
         return actual.acquireNotificationReservation(...args);
       },
     };
