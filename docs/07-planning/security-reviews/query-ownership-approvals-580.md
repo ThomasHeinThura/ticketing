@@ -701,3 +701,343 @@ These separate security confirmations complete only the assigned bounded composi
 The reports above retain their stated full/delta scopes and unchanged verdicts. Current composition source is bound here; only publication in this candidate's own new regular review note follows. All required exact-head hosted/runtime/image gates remain outstanding.
 
 **Reviewed head:** `88b7807378447cc74e584a37a48f277ddc1c34c8`
+
+
+## Bounded repair and accepted #813 composition — 2026-10-17T03:07:41.382530+00:00
+
+Prior reports retain their original source, scope and verdict. All dispatched review reports, adverse findings and authentic corrections are preserved below. New current security verdict is CLEAR at `24711f617d5e1134e36d83e3afadd85e206f0afa`; this is source review, not hosted/runtime/image or merge acceptance. No gate waiver.
+
+Old d65 full run failed222/223files3288/3289tests; intermediate0d600 then failed one of78 focused tests because invalid body preempted the capability denial. Its original ordinary CLEAR report incorrectly assumed validation order and is retained as superseded adverse history. Final5fa supplies schema-valid bodies only to new404/403 denial probes, retaining original400 positive validation case. Actual5fa focused6files78/native0/29.931s, raw153217bytes SHA2568555382dec678d2b16641d2e1d4813d956834a568c0c85fac9debe0c3f159ebe, exact owned cleanup23/109/7 unchanged/private environment removed. This is selected-table snapshot coverage, not all-database no-write or current full runtime acceptance. Accepted813 composition conserves all18own and exact3incoming entries.
+
+
+### Authentic report — query812-project-reach-failure-repair-author-luna.md
+
+# TaskDesk #812 project-reach failure diagnosis and fixture repair — author report
+
+Date: 2026-10-17
+
+## Candidate and scope
+
+- Worktree: `/Users/heinthura/.codex/worktrees/query789-current-luna`
+- Branch: `codex/query789-current-main-luna`
+- Accepted baseline: `5a26ca75e60c7232ab8280a13e599fcbe4fd3518`
+- Repair base / exact pre-repair head: `d65c498cc9983cc89d11a670f90ee062ae99c310`
+- Repair commit / exact candidate head: `0d6003df5a6f805bb3a5ccea85bc950e2ea187e7`
+- Diff: two existing integration-fixture paths, 39 insertions; no application source, permissions, schema, routes, dependencies, control-plane records, or reports changed.
+
+## Diagnosis
+
+The sole #812 full-PostgreSQL failure was the existing generic project-reach fixture's expected success for `POST /api/work-items/{key}/approvals`. The recorded request returned 404 `Work item not found` where the generic route case expected 400 from the intentionally empty request payload. This was a fixture defect, not a product SQL reach defect.
+
+`tests/api-integration/helpers/reach-world.ts:createItem()` creates the item through the staff project route with only type and title. The native create INSERT does not set `requester_id`; the persisted column is therefore null. `customer_visibility` has the schema's safe default `private`. The approval request target scope composes current project reach with private visibility. For private rows, `requestWorkItemVisibility()` permits only the persisted requester or an exact `request_participant` row. The projectMember used by the generic positive case had project membership and capabilities, but neither privacy fact, so the target lookup correctly returned 404 before request/business validation. Changing the predicate, loosening null requester behavior, changing private defaults, or replacing expected 404/400 would violate the retained privacy contract.
+
+## Bounded repair
+
+The approval case's fixture preparation now persists explicit participant facts for three actors on the private item: (1) the capable project member, (2) a project reader without `approval:request`, and (3) an outsider without project membership. The existing positive project-member case still reaches the handler's later empty-payload 400. An approval-specific regression asserts that participation alone leaves the outsider at 404 and the reachable reader without request capability at 403, with no tracked writes after either refusal. The shared snapshot now counts approval rows so denial-side-effect checks cover the relevant mutation table.
+
+This preserves the conjunction: project reach AND private requester/participant visibility AND the required approval capability. The fixture does not make the item organisation-visible and no SQL predicate changed.
+
+## Whole-class/caller audit
+
+I inspected all current `loadApprovalTargetByKey()` call sites and the approval request service path. The other approval integration tenant fixture explicitly changes its generated item to `customer_visibility = organisation`; repository tests that exercise private reach set requester/participant facts directly, including null-requester and exact-participant cases. Within `tests/api-integration/helpers/reach-world.ts`, the approval route was the only route invoking the approval target loader's private visibility predicate; the remaining item write routes use their own reach handlers. The fault class is therefore confined to this generic project-reach approval route setup, not a repeated product caller defect.
+
+Review context read: `docs/07-planning/security-reviews/query-ownership-approvals-580.md`; retained evidence `query789-b27e-repair-author-luna.md`, `query789-f7fb-full-security-61-sol.md`, and `accepted809-dual-composition-security-61-sol.md`. The accepted contract explicitly preserves current SQL project/private requester-or-participant reach and the existing null-requester rule. The report and source-review records were not edited.
+
+## Checks and limits
+
+- `pnpm exec biome check tests/api-integration/helpers/reach-world.ts tests/api-integration/work-item-project-reach.test.ts` — passed; Biome emitted three pre-existing `noUndeclaredEnvVars` warnings on the test's existing storage environment-variable setup.
+- `git diff --check d65c498cc9983cc89d11a670f90ee062ae99c310..HEAD` — passed.
+- `pnpm --filter @taskdesk/api typecheck` — passed (API source, permissions, API tests, RLS prototype and approval E2E TypeScript projects).
+- No test, PostgreSQL, Docker, browser, build, or full-suite command was run. The #812 full run remains adverse evidence on the prior candidate. Focused runtime verification of this candidate is pending with the parent verification lane.
+- No push, PR, source composition, or merge was performed. The worktree is clean after the commit.
+
+
+### Authentic report — query812-0d600-fixture-ordinary-luna.md
+
+# TaskDesk #812 exact-head ordinary review — approval reach fixture repair
+
+Date: 2026-10-17
+
+## Identity, independence, and scope
+
+- Role/model: GPT-6 Luna, independent ordinary reviewer.
+- Worktree: `/Users/heinthura/.codex/worktrees/query789-current-luna`.
+- Comparison base: `d65c498cc9983cc89d11a670f90ee062ae99c310`.
+- Exact candidate HEAD: `0d6003df5a6f805bb3a5ccea85bc950e2ea187e7`.
+- Independence: I did not author, direct, or remediate this delta. I inspected its complete two-file diff and rechecked the author diagnosis against the existing SQL, permission evaluator, fixtures, specifications, prior review record, and recorded full-PostgreSQL failure.
+- Changed paths: `tests/api-integration/helpers/reach-world.ts`; `tests/api-integration/work-item-project-reach.test.ts`. The exact diff is 39 insertions and no application source, permissions, schema, route, dependency, or policy changes.
+
+## Verdict
+
+**CLEAR for the ordinary source review of this exact delta.** The fixture repair accurately supplies private-item participant facts while preserving the independent project-reach and capability checks. No blocking or non-blocking source finding identified. The focused PostgreSQL rerun remains pending and is not covered by this verdict.
+
+## Evidence and findings
+
+The recorded prior full run fails once in `work-item-project-reach.test.ts`: the approval route's positive project-member case expected 400 from its empty body but got 404 `Work item not found`. The supplied log has SHA-256 `045ebc99f89e0363f12a69f4febb158fcf5134f8c2e85d0812f0fef509c1cbfa`; its tail records 222/223 files and 3288/3289 tests passing, with the failure at the expected-status assertion. The diagnosis is consistent with the source: the generic `createItem` path does not set `requester_id`; the database default is private; and `requestWorkItemScope` composes `currentProjectReachPredicate` with `requestWorkItemVisibility`. For private items, the SQL visibility clause allows the requester or an exact `request_participant` row. The loaded participant IDs then also populate `visibleToPersonIds`, and `reaches()` enforces that private-person set.
+
+The fixture now inserts participant rows for the positive project member, a project reader with only `project:read` and `work_item:read`, and a lead without project membership. This lets the original positive case reach request-body validation (expected 400) while exercising the other two axes: the participating outsider remains 404 because current project reach fails, and the participating reader remains 403 because `approval:request` is absent. This matches `CP-16`, the RBAC separation of reach and authority, and the route handler's order: target lookup/reach, then `approval:request`, then body processing. No assertion status or product predicate was changed.
+
+The new denial case compares the before/after fixture snapshot after each refusal. The snapshot's added approval-row count makes approval inserts observable alongside existing work-item, comment, watcher, attachment, and activity observations. These fixture additions are isolated to the approval route's `prepare` callback; other route fixture setup is untouched. Existing approval repository and tenant tests already exercise private requester/participant rules, including the null-requester case. I found no parallel generic fixture caller of this private-scoped approval target path needing the same setup.
+
+The exact diff contains no SQL, predicate, permission, status-code, or feature-flag change. It does not make the item organisation-visible or use project membership as a substitute for private visibility. The three identities are explicitly participants, so the denial assertions test that participant status alone grants neither project reach nor approval authority.
+
+## Commands and limits
+
+Read-only commands run: `pwd`, `git status --short`, `git rev-parse HEAD`, `git rev-parse HEAD^`, `git diff --stat HEAD^ HEAD`, `git diff --name-status HEAD^ HEAD`, scoped `git diff HEAD^ HEAD -- <two changed paths>`, `rg` over approval SQL callers, permission definitions and tests, `sed` reads of the relevant source/contracts/review notes, and `shasum -a 256` plus bounded `tail -n 90` of the recorded failure log. The worktree was clean at inspection. I did not run tests, PostgreSQL, Docker, browser, build, install, or a heavy inventory command; did not mutate the source worktree or GitHub; and did not commit, push, or open a PR.
+
+Residual: runtime behavior on `0d6003df5a6f805bb3a5ccea85bc950e2ea187e7` still needs the parent's focused real-PostgreSQL verification. This ordinary review does not replace any required Sol security review or exact-head CI evidence.
+
+
+### Authentic report — query812-fixture-runtime-repair-luna.md
+
+# TaskDesk #812 approval denial fixture repair — author report
+
+Date: 2026-10-17
+
+## Candidate and scope
+
+- Worktree: `/Users/heinthura/.codex/worktrees/query789-current-luna`
+- Branch: `codex/query789-current-main-luna`
+- Pre-repair head: `0d6003df5a6f805bb3a5ccea85bc950e2ea187e7`
+- Exact candidate head: `5fa659555d237ef29e24b6872676bc4ba7355a02`
+- Commit: `5fa65955 test(api): reach approval authorization checks`
+- Changed path: `tests/api-integration/work-item-project-reach.test.ts` only.
+- No production source, permissions, schema, route, dependencies, control-plane files, or prior evidence records changed. No push or PR was made.
+
+## Diagnosis and repair
+
+The inherited test supplied `{}` to `POST /api/work-items/{key}/approvals` for every actor. OpenAPI/Zod request validation requires a nonempty `transitionId`, `kind` of `customer` or `cab`, and a nonempty `approverId`; therefore the expected reader 403 was preempted by 400 validation, before route handler authorization. The handler order is target load/project reach, then `approval:request`, then body processing. The reader fixture has project reach but only `project:read` and `work_item:read`, so a schema-valid request reaches the expected capability denial. A participating outsider with the same body reaches the 404 project-reach denial.
+
+The approval-specific regression now uses a schema-valid body for the outsider and reader requests. The generic route call remains `{}`, preserving the project-member validation expectation of 400. The prior assertions remain 404 for the participating outsider and 403 for the participating reader; snapshot equality remains checked after both denials. No expected status was relaxed and no authority behavior changed.
+
+## Checks and limits
+
+- `pnpm exec biome check tests/api-integration/work-item-project-reach.test.ts` — passed; three existing `noUndeclaredEnvVars` warnings refer to the test's pre-existing storage environment-variable setup.
+- `git diff --check` — passed before commit.
+- `git status --short --branch` after commit — clean worktree; branch is two commits ahead of its origin tracking ref (the earlier `0d6003d` commit plus this repair).
+- No test, PostgreSQL, runtime, install, Docker, browser, build, or heavy command was run. Focused real-PostgreSQL verification remains with the parent lane.
+- The original full-runner failure log and prior author/reviewer reports were read and left unchanged.
+
+
+### Authentic report — query811812-runtime-repairs-ordinary-luna.md
+
+# Independent ordinary review — #811 and #812 bounded runtime repairs
+
+Reviewer: GPT-6 Luna, fresh independent review context; did not author, direct, or remediate either candidate. Review was read-only and scoped to the two exact source heads, relevant feature/policy material, cited author/prior-review reports, and the existing #812 focused runtime receipt.
+
+## #811 — time-entry post-admission disappearance
+
+- **Exact candidate head:** `7671c1c700b31ae4d7c821d61d5791362d8d29cf`
+- **Comparison base:** `e30eb752eedf09bc8fcfa9a54c856a7771ff3cf4`
+- **Worktree:** `/Users/heinthura/.codex/worktrees/query773-current-luna`
+- **Scope:** `apps/api/src/time-entry/controllers/get-time-entry.ts`; `tests/api/time-entry/get-time-entry.test.ts`.
+- **Verdict: CLEAR for this bounded repair.**
+
+The route in `apps/api/src/time-entry/index.ts` applies `workspaceAccess.fromTimeEntry` before calling the controller, and declares 404 for the concealed missing/unreachable case. The controller then performs another reach-scoped `findTimeEntryById` call. If that second read returns no row after middleware admission, the new `HTTPException(404)` keeps the route in its declared concealed response class instead of allowing an undefined result to become an empty success response. The regression directly covers the controller's absent-second-read behavior and the ordinary present-row behavior. The mock does not reproduce database concurrency itself; it does assert the exact post-admission observation whose response behavior is being repaired.
+
+No blocking or non-blocking source findings. No tests or commands were run by this reviewer. I read the author report's statement that formatting/checks passed; that is author evidence, not independently reproduced here. No integration/runtime, PostgreSQL, Docker, build, or browser verification was performed in this review.
+
+## #812 — approval project-reach fixture repair
+
+- **Exact candidate head:** `5fa659555d237ef29e24b6872676bc4ba7355a02`
+- **Comparison base for the accumulated bounded repair:** `d65c498cc9983cc89d11a670f90ee062ae99c310`
+- **Worktree:** `/Users/heinthura/.codex/worktrees/query789-current-luna`
+- **Cumulative changed paths:** `tests/api-integration/helpers/reach-world.ts`; `tests/api-integration/work-item-project-reach.test.ts`.
+- **Verdict: CLEAR for this bounded fixture repair.**
+
+The #812 reports and diff show the fixture now gives the private item explicit requester/participant visibility facts for the capable project member, reachable reader, and outsider. The approval-specific requests use nonempty `transitionId`, `kind`, and `approverId`, satisfying the request schema so the checks can reach the handler. The assertions preserve outsider 404 and reachable-reader 403, while the generic empty-body case still covers validation 400. This is consistent with `docs/03-features/approvals.md`'s requirement that a request be on an in-reach work item and with the existing private-item visibility contract described in the author diagnosis. Counting approval rows in the snapshot strengthens the no-approval-write assertion.
+
+I inspected the retained focused runtime evidence at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/query812-runtime-5fa659/`: its receipt binds to this exact SHA; Vitest reports 6 files and 78 tests passed, and the run status says `test-complete`, with final container inventory showing no container/volume/network count delta. This confirms the focused evidence exists and is bound to the candidate; I did not execute or independently reproduce the run. The fixture snapshot is a selected-table snapshot, so its equality supports the asserted tracked-table side-effect check and should not be read as a complete database-wide write audit.
+
+No blocking or non-blocking source findings. No tests or commands were run by this reviewer. No new runtime, PostgreSQL, Docker, build, or browser verification was performed. Prior full-run findings on earlier heads and prior ordinary/Sol reviews are not replaced by this bounded repair review.
+
+## Review limits and independence
+
+These are separate verdicts on the exact heads above. I inspected the diffs against their stated bases, relevant route wiring and feature contracts, and the supplied reports/receipt. I did not inspect live GitHub state, run tests, evaluate CI, review unrelated candidate changes, or grant merge/security/phase-finalizer approval. Any required GPT-6 Sol security review remains a separate gate where applicable.
+
+
+### Authentic report — accepted813-three-compositions-ordinary-luna.md
+
+# Independent ordinary review — accepted #813 composition confirmations
+
+Reviewer: GPT-6 Luna, fresh independent context. I did not author, direct, or remediate the candidates. This is a read-only composition review of three exact current heads. It is not a replacement for the earlier full source reviews, security reviews, CI, image verification, or acceptance gates.
+
+## #811 time-entry candidate composed with accepted #813
+
+- **Exact current head:** `c3329e7d195c63a6e46caebdd2f306b4dc9ba1a4`
+- **First parent / previously reviewed source:** `7671c1c700b31ae4d7c821d61d5791362d8d29cf`
+- **Second parent / accepted #813 main:** `130508ef24f6442a59dbccaf305712891c8b3fbb`
+- **Verdict: CLEAR for this bounded composition.**
+
+I verified the worktree HEAD and both parents. The first-parent diff contains exactly three accepted-main paths: `apps/api/src/auth/repository.ts`, `tests/api-integration/local-factor-policy.test.ts`, and the step-up query-ownership review note. Each candidate-owned path from the supplied composition proof (42 paths) remains blob-identical to the reviewed source parent; each of the three incoming blobs is identical to accepted #813 main. The accepted and own path sets do not overlap. The proof records successful normal `--no-ff` merge and no conflict resolution; I independently confirmed the resulting tree relationships and exact three-path diff. The added source/test concerns existing step-up active-session read behavior, disjoint from the time-entry controller and regression. The accepted test covers deleted-session preflight denial and non-agent session denial during operation and pending-action issuance; the incoming repository changes materialize session query results while retaining callers' first-row semantics, as recorded in the accepted review note.
+
+No composition finding. This verdict confirms source conservation and lack of a cross-path composition conflict; it does not redo the #811 concealment review or evaluate exact-head hosted/runtime gates. I ran no tests or other commands beyond read-only Git/source/evidence inspection.
+
+## #812 approval candidate composed with accepted #813
+
+- **Exact current head:** `24711f617d5e1134e36d83e3afadd85e206f0afa`
+- **First parent / previously reviewed source:** `5fa659555d237ef29e24b6872676bc4ba7355a02`
+- **Second parent / accepted #813 main:** `130508ef24f6442a59dbccaf305712891c8b3fbb`
+- **Verdict: CLEAR for this bounded composition.**
+
+I verified the worktree HEAD and both parents. The first-parent diff contains exactly the same three accepted-main paths listed above. All 18 candidate-owned paths from the proof remain blob-identical to the reviewed source parent; all three incoming blobs match accepted #813 main. The accepted and own path sets do not overlap. The merge proof records a normal merge with no conflict resolution, and the exact resulting diff confirms only those three incoming paths. The existing #812 approval request fixture repair and its reader/outsider assertions remain unchanged; the incoming session-query source and tests are disjoint from approval reach fixtures. No contract or source interaction was found in this bounded composition check.
+
+No composition finding. This does not redo the #812 fixture/runtime review or replace any required security/exact-head gate. I ran no tests or runtime checks.
+
+## #580 operation-proof persistence candidate composed with accepted #813
+
+- **Exact current head:** `dcf4071f79c7046cab343e51acadc2e9983b9e09`
+- **First parent / fully reviewed source:** `7f4f0a2865e9ff1006f88edab264f4c9d3031324`
+- **Second parent / accepted #813 main:** `130508ef24f6442a59dbccaf305712891c8b3fbb`
+- **Tree at both first parent and current head:** `d15260509b29f187945946c64a8ebf785db622e3`
+- **Verdict: CLEAR for metadata-only composition; prior source review verdicts remain applicable.**
+
+I verified the exact parents and tree ids. The merge commit's tree is identical to its first parent's tree, and `git diff`/`diff-tree` show no path or blob changes. Thus the accepted-main merge adds parent metadata only; there is no new source delta to re-review. The operation-proof source review remains the prior two ordinary CLEAR reviews and full GPT-6.1 Sol CLEAR at exact source `7f4f0a28…`, with their stated comparison base `433ea7769d1b8440046cfe7ba39acc23e029489c`.
+
+I read the original reports and both authentic wording corrections, plus the full Sol report. The retained precision is: the attempt-limit error is thrown inside the transaction callback, so the original ordinary-A “transaction completed” statement is withdrawn; the audit-failure test exercises savepoint/failure handling followed by successful mutation and does not prove outer proof-plus-mutation rollback; and `local-factor-policy-concurrency.test.ts` covers policy-write/role-deletion serialization, not operation-proof races. Those coverage limits remain. The ordinary-B image wording correction also remains controlling: this `apps/api` source requires the separate image build, boot, migration, and health checks; the focused PostgreSQL run does not satisfy them. This metadata review claims none of those gates.
+
+No new source finding or changed-source review round is indicated by this metadata-only merge. No tests, image, container, browser, or hosted checks were run here; no GitHub/ref mutation, commit, or push was performed.
+
+## Independence and limits
+
+I independently read the two composition proof receipts, inspected the actual worktrees/HEADs/parents/trees and first-parent diffs, verified source/incoming blob conservation for #811 and #812, checked their path-set intersections, and read the cited #580 ordinary/security reports and authentic corrections. No source or evidence reports were modified. These verdicts are limited to current-head composition and metadata confirmation. They do not claim exact-head CI, deployment/image acceptance, merge readiness beyond the already completed normal composition, #580 completion, or a phase finalizer.
+
+
+### Authentic report — accepted813-four-candidates-security-61-sol.md
+
+# Accepted #813 — four independent exact-head security verdicts
+
+**Model / role:** GPT-6.1 Sol, fresh independent security reviewer context `/root/accepted813_four_candidates_security_sol`.
+**Dispatch provenance:** The conductor supplied the actual tool-request arguments `model="gpt-6.1-sol"`, `reasoning_effort="high"`, `fork_turns="none"`. This is requested/accepted route provenance, not an independently measured serving attestation. The served provider/model/build fingerprint is unavailable to this context and is not invented.
+**Independence:** I did not author, direct, plan, or remediate any of the four candidates. No child agent was spawned. I reviewed after reading the applicable current ordinary CLEAR reports and their authentic corrections. Their conclusions were claims to verify, not substitutes for source inspection.
+**Method:** Four separate bounded source/composition security reviews. Earlier full-source review coverage remains attributed to its original reviewer, exact source and limits; this report neither restarts those full scopes nor silently claims to have re-audited them.
+**Evidence root (E):** `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover`.
+
+## Separate verdicts
+
+| Candidate | Exact reviewed head | Verdict and depth |
+| --- | --- | --- |
+| A — #811, activity/relations/time-entry recovery | `c3329e7d195c63a6e46caebdd2f306b4dc9ba1a4` | **CLEAR** — full security inspection of the bounded post-admission 404 repair, plus bounded accepted-#813 composition confirmation |
+| B — #812, approval recovery | `24711f617d5e1134e36d83e3afadd85e206f0afa` | **CLEAR** — bounded fixture-security and accepted-#813 composition confirmation |
+| C — #580 operation-proof persistence | `dcf4071f79c7046cab343e51acadc2e9983b9e09` | **CLEAR** — lightweight metadata-only confirmation retaining the prior full two-path security review |
+| D — #803 records | `6f990aae91590ef79db60c6433fa425b2390424e` | **CLEAR** — bounded new dated-fact, preservation and composition security confirmation retaining the prior full normative review |
+
+**Blocking findings:** none in any of these four assigned deltas.
+**New non-blocking security findings:** none in any of these four assigned deltas.
+These are source security verdicts only. They are not current required-CI passes, image acceptance, permission to merge, whole-#580 acceptance, a phase finalizer, or release/SIT/mission completion.
+
+## A — #811 at c3329e7d
+
+**Reviewed head:** c3329e7d195c63a6e46caebdd2f306b4dc9ba1a4
+
+- Worktree: `/Users/heinthura/.codex/worktrees/query773-current-luna`.
+- Bounded repair base/publication: `e30eb752eedf09bc8fcfa9a54c856a7771ff3cf4`.
+- Repair/source parent: `7671c1c700b31ae4d7c821d61d5791362d8d29cf`.
+- Other exact parent: accepted #813 `130508ef24f6442a59dbccaf305712891c8b3fbb`.
+- Current tree: `713a5c84844c0beda52b18d25054ea3d0acbf826`.
+- Retained full-source baseline: `d7f628fa89cedc25d610f93c5bd49ce6ae9c2df9`, full 40-path review `query773-d7f6-full-security-61-sol.md`, followed by accepted-#809 composition confirmation at `8a89525cb2a55f6a50b1b793e1e82ee5d367a5fe` in `accepted809-dual-composition-security-61-sol.md`.
+
+I inspected the complete two-path repair: `apps/api/src/time-entry/controllers/get-time-entry.ts` and the new `tests/api/time-entry/get-time-entry.test.ts`. The controller still uses the authenticated resolved identity and exact id in the same reach-scoped repository read. It now awaits that read, throws `HTTPException(404, { message: "Time entry not found" })` for no row, and returns the unchanged row otherwise. There is no unscoped retry, stale middleware-row fallback, new disclosure, or widened authority.
+
+The mounted GET route already declares concealed 404 and applies `workspaceAccess.fromTimeEntry` with project reach plus `time_entry:read_any` enforcement. The second repository lookup composes the entry id, its task/project relationship, deleted-project exclusion and current canonical project-reach predicate. A missing row or a current reach refusal observed at that read therefore takes the declared 404 path, instead of being serialized as an empty success. Query exceptions still propagate; the new guard does not turn an execution error into a row or retry through weaker scope. This is closure of the reported post-admission undefined-result defect, not a claim of serializable instantaneous revocation throughout a request.
+
+The two controller tests directly cover undefined second-read rejection and returning the present row, with exact identity/id forwarding. They model the post-admission observation; they do not reproduce real database concurrency or constitute a complete HTTP denial journey. `query811-7671-static-unit-receipt.json` records root's exact-7671 one-file/two-test run and API typecheck, both exit 0. I inspected that receipt, did not run them, and do not transfer old e30 full-suite passes to c332.
+
+Direct Git comparison independently confirms all 42 owned mode/blob entries remain identical to 7671, all three incoming entries match accepted 1305, the owned/incoming sets are disjoint, and the first-parent diff contains exactly those three incoming paths. Relative to the prior full 40-path baseline, only the reviewed time-entry controller, authentic own-note publication, and new regression differ among the current owned paths; the unchanged full-source coverage is retained. The incoming auth source/test seam is assessed below.
+
+**Separate A verdict: CLEAR.** The reported undefined-result concealment defect is closed in source at this exact head. Prior storage cross-system atomicity and legacy/native-feature coverage limits remain as disclosed in the full review; this repair adds no new recovery guarantee.
+
+## B — #812 at 24711f61
+
+**Reviewed head:** 24711f617d5e1134e36d83e3afadd85e206f0afa
+
+- Worktree: `/Users/heinthura/.codex/worktrees/query789-current-luna`.
+- Accumulated fixture-repair base/publication: `d65c498cc9983cc89d11a670f90ee062ae99c310`.
+- Repair/source parent: `5fa659555d237ef29e24b6872676bc4ba7355a02`, following `0d6003df5a6f805bb3a5ccea85bc950e2ea187e7`.
+- Other exact parent: accepted #813 `130508ef24f6442a59dbccaf305712891c8b3fbb`.
+- Current tree: `7c04eb0f21b20464517df20e5fbf817eed5498fc`.
+- Retained full-source baseline: `f7fb4cb6f8038deeb257709f776553023456c3d8`, full 15-path review `query789-f7fb-full-security-61-sol.md`, followed by the real disjoint accepted-#809 import confirmation at `88b7807378447cc74e584a37a48f277ddc1c34c8` in `accepted809-dual-composition-security-61-sol.md`.
+
+I inspected the complete accumulated two-fixture-path delta in `tests/api-integration/helpers/reach-world.ts` and `tests/api-integration/work-item-project-reach.test.ts`. It changes no application source, schema, policy, capability, product status behavior or feature flag. The approval route's preparation adds exact private-item participant facts for the capable project member, reachable reader and project outsider. It does not change the item to a broader visibility class or grant either negative actor additional project authority.
+
+Source inspection confirms the preserved conjunction: approval SQL applies current project reach AND private requester/exact-participant visibility, while route/handler checks separately require `approval:request`. The staff middleware does project reach before body validation; the handler then resolves the scoped target and enforces the capability. The new negative body contains nonempty `transitionId`, customer `kind`, and nonempty `approverId`, satisfying the actual strict request schema. Its dummy downstream identifiers do not mask the tested denials because the outsider fails project reach and the reachable reader fails capability before approval creation/transition eligibility. Participation therefore cannot replace project reach or authority: the tests retain outsider 404 and reachable-reader 403. The original empty-body positive/validation case still expects 400.
+
+The earlier `query812-0d600-fixture-ordinary-luna.md` incorrectly treated the empty negative body as reaching the handler. Its authentic report remains intact and is not authoritative for the final repair. I read the final `query811812-runtime-repairs-ordinary-luna.md` and independently checked the schema/order above. The added approval count strengthens the existing snapshot against approval insertion. Snapshot equality remains a selected set of work-item rows and table counts, not a complete database-wide write audit or proof against every possible equal-count mutation.
+
+I inspected root's `query812-runtime-5fa659` result/invocation, runtime and exact-id cleanup receipts, final inventory comparison, and raw-log summary. It binds to 5fa, native exit 0/no timeout, 29.931 seconds, six files/78 tests passed. The independently recomputed raw-log size/hash are 153,217 bytes / `8555382dec678d2b16641d2e1d4813d956834a568c0c85fac9debe0c3f159ebe`. Saved cleanup records 23 containers/109 volumes/seven networks unchanged; the private environment file is absent. These are inspected root-owned receipts, not a new runtime execution or live Docker-state observation. They are focused evidence on 5fa, not a full runtime result at 247.
+
+Direct Git checks independently preserve all 18 owned entries from 5fa and all three incoming entries from accepted 1305, with no same-path overlap and exactly the three-path first-parent import. All 15 original full-review-owned source/test entries are unchanged except their designated own review note; the two fixture paths are the newly inspected repair. The prior #789 whole-tree-equivalence error was already explicitly withdrawn in its authentic composition correction; I do not revive it.
+
+**Separate B verdict: CLEAR.** No authority regression or weakened permission oracle appears in this fixture repair or composition. Existing GM-9 impersonation-decision/double-audit, per-request authority/revocation, durable-activity single-use and notification limitations retain their original disclosed scope; this verdict does not certify them closed.
+
+## Shared accepted-#813 import in A, B and D
+
+The exact incoming paths are `apps/api/src/auth/repository.ts`, `tests/api-integration/local-factor-policy.test.ts`, and `docs/07-planning/security-reviews/query-ownership-step-up-session-580.md`. I read the actual production/test diff, the retained full security report in that note, and surrounding consumers. The production change only makes the two existing session selects async/materialized. All three consumers retain first-row destructuring and no-row rejection. Exact session/user/agent-portal/expiry predicates, the supplied transaction executor, UTC-wall-clock expiry expression, row lock and limit remain. No array-truthiness bypass or global-connection fallback is introduced. The accepted regression covers deleted-session HTTP preflight plus non-agent-session denial during operation and pending-action issuance, with the authentication verifier uncalled.
+
+These imports are blob-identical to accepted 1305; A's time-entry controller and B's approval fixtures do not alter the auth callers or session query contract. I examined the intervening commit graph as well as endpoint trees; the authentic intermediate 455 defect and later 7d301 repair remain in the accepted history and review record. They are not hidden by a net-tree comparison. Accepted-#813 clearance remains source-bound to its prior reviewers and acceptance evidence, not a new full auth audit performed here.
+
+## C — operation-proof persistence at dcf4071f
+
+**Reviewed head:** dcf4071f79c7046cab343e51acadc2e9983b9e09
+
+- Worktree: `/Users/heinthura/.codex/worktrees/remaining580-operation-proof-persistence-author-luna`.
+- First parent / fully reviewed source: `7f4f0a2865e9ff1006f88edab264f4c9d3031324`.
+- Other exact parent: accepted #813 `130508ef24f6442a59dbccaf305712891c8b3fbb`.
+- Both first-parent and current tree: `d15260509b29f187945946c64a8ebf785db622e3`.
+- Prior full-source comparison base: `433ea7769d1b8440046cfe7ba39acc23e029489c`; full two-path security report `operation7f4-full-security-61-sol.md`.
+
+I verified the exact parents, complete tree equality, empty first-parent path diff and both owned mode/blob entries. The source already contains accepted #813's publication; this normal merge adds accepted-parent metadata without changing source. The intervening graph introduces accepted merge1305 and the final metadata composition, not an unreviewed reverted source experiment. There is no new lifecycle source delta requiring another full two-file audit.
+
+I read the two original ordinary reports, both authentic wording corrections, the full independent security report and the current ordinary composition confirmation. The retained full review covers the three awaited repository lifecycle batches using the exact caller transaction and materialized rows, with existing operation/session/person/route/version/hash/state/expiry bindings and rollback seams. Its analysis stays attributed to source7f4 and its original reviewer. The earlier dependent-base caveat is resolved only as to the accepted-parent composition established here, not as to current candidate CI/image acceptance.
+
+I independently inspected the exact-7f4 result/invocation/runtime records and raw footer: four files/159 tests, native exit 0/no timeout, 67.76 seconds. Raw log is 362,634 bytes / SHA-256 `4cf595ead210ed81d84984d0046fec479c3a0f175e6794b10d66543ac7e32cd2`; saved cleanup comparison is unchanged 23/109/7, private environment absent. The run's four files are local-factor policy, policy concurrency, and the two identity non-UTC wrappers. Role/policy concurrency is not an operation-proof race test. The audit-savepoint-failure case followed by a successful protected mutation is not an outer proof-plus-mutation rollback test. Canonicalization unit coverage was inspected previously but was not one of those executed files. The attempt-limit throw is inside its transaction callback. Those precise coverage corrections remain controlling.
+
+**Separate C verdict: CLEAR for lightweight metadata-only composition.** Prior full source clearance remains valid for what it actually covered; no duplicate full-audit claim or new runtime claim is made. Shipping image build, boot, migration and health proof remain mandatory for the candidate and are not supplied by this focused PostgreSQL evidence.
+
+## D — records #803 at 6f990aae
+
+**Reviewed head:** 6f990aae91590ef79db60c6433fa425b2390424e
+
+- Worktree: `/Users/heinthura/.codex/worktrees/takeover-status-20261016`.
+- Previously published records base: `9d7d01eb6434122bd257e5b268b111a4fd20b9f8`.
+- Normal accepted-#813 merge: `24893ab7662b13d9c9d7b0ba868528cd97dfc0ff`, parents 9d7 and `130508ef24f6442a59dbccaf305712891c8b3fbb`.
+- Dated-record commit: `402558cc003a3a36b2c9f5c2e4ca94851056bb99`, single parent24893ab7.
+- Current one-line correction: 6f990aae, single parent402558cc; current tree `2236c04f1e65f4256f451431cf7b9ea98c2b328e`.
+- Retained full normative review: source `a92e2798d6eb28f6f1ee58821473b8a65dc7fec0` against accepted `5a26ca75e60c7232ab8280a13e599fcbe4fd3518`, `records803-a92-full-ordinary-luna.md` and `records803-a92-full-security-61-sol.md`.
+
+I read the full new status/queue/decision-log diff, preservation and timestamp proofs, current ordinary blocked report and authentic CLEAR correction, and prior full normative reviews. I independently compared raw Git objects: all 1,326,849 old status bytes and 225,676 old queue bytes remain exact suffixes; all 662,278 old decision-log bytes remain an exact prefix, with the proof's original hashes matching. The normal merge imports exactly the same three accepted paths assessed above, whose current blobs match1305. The API-design and CI/CD normative files are exactly blob-identical to reviewed a92 (respectively `73e4a93c4b3d6aa757cc20b58bf5cdc540c15364` and `4a54d988498bf4bdfdc16c20a576fba146fd93f5`). No new release classification, erasure entitlement, reviewer authority, retry policy, exception or waiver is introduced by the dated records.
+
+The retained normative scope still requires live GitHub prerelease classification, fail-closed uncertainty and exact independently reviewed finding fingerprints. The erasure summary stays bound to the authenticated deletion subject's current persisted memberships and member/owner safety counts, with joined workspace names only for the existing conflict message. No other-member identity disclosure or general reach exemption follows. Those are conserved prior contracts, not product implementation approved here.
+
+The new accepted-#813 facts match the supplied protected-acceptance/readiness and run receipts: normal merge02:55:50Z, accepted1305/publication433, exact publication/synthetic tree, 18 completed successful contexts, PostgreSQL222files/3284tests/five tasks, browser63/G1122 and the stated medians, final unit12/API121files872tests/web186files1023tests, and the candidate shipping-image record125migrations/UID10001/health200/nohostports/owned isolation/cleanup. I independently matched raw PG and final-unit log byte counts/hashes and their suite footers. I did not reauthenticate hosted jobs or rerun image verification. These remain accepted-813 facts at the snapshot cutoff, not current passes for records6f990 or the other three candidates.
+
+The sole 402 ordinary blocker is closed: the current snapshot uses job117282971158 completion02:42:53Z, matching `813-pg-success-receipt.json`. Raw Vitest summary02:42:50.559Z is a distinct timestamp. The ordinary report's mistaken second-parent description for402 is explicitly corrected by its authentic addendum; actual Git metadata agrees with that correction.
+
+The new A/B/C paragraphs retain adverse runs and required new gates honestly. Carrier addendum6/frozen5 and earlier main5a references are historical source-bound observations, not claims of present Carrier readiness or current accepted main. Old dated text remains immutable. The remaining held performance, owner decisions/deferrals, final signed artifact, exact-digest SIT, nonempty-attachment backup/usable isolated restore, final audit and phase obligations remain open. I did not audit every old snapshot or current Carrier implementation.
+
+**Separate D verdict: CLEAR.** No dated-fact, authority inflation, provenance-erasure or composition security blocker remains in the assigned current records delta.
+
+## Actual checks, preserved coverage and limits
+
+I read the supplied user instructions, then reloaded the actual accepted guide/mission/workflow/provider-adapter versions from candidate worktrees and verified their blobs equal accepted1305 in all four worktrees. Relevant specialist reads covered the current CI security-path list and review/evidence-reuse rules, query-ownership/results/executor and UTC rules, approval reach/authority/private visibility, legacy time-entry routing/repository scope, PA-15 and session step-up contracts, and the conserved release/erasure standards. Read the newest dated record and decision context. No open product question was invented.
+
+Read-only checks actually performed: `pwd`; bounded `cat`, `sed`, `rg`, `head`, `tail`, `ls`; exact `git status`, `log`, `show`, `rev-parse`, `diff`, `ls-tree`; read-only Python subprocess/pathlib/json/hashlib for parent/tree/path/mode/blob conservation, old-byte preservation and saved-log verification. `git diff --check` exits0 for A:e30..c332, B:d65..247, C:7f4..dcf, D:9d7..6f990. Final pre-report assertions confirm all four exact heads and clean candidate worktrees.
+
+Some initial combined reads exceeded tool output limits; relevant guide, source and prior-report ranges were subsequently read separately or verified directly against Git objects. Two initially guessed specialist-document paths were absent and corrected to `docs/01-architecture/pending-actions.md` and `docs/01-architecture/api-design.md`. No conclusion relies on unseen truncated text or absent-file output.
+
+**No tests/reproductions, typecheck, install, build, PostgreSQL, Docker, browser, live inventory, CI action, GitHub/ref mutation, source/shared-document edit, commit, push, merge or delegation was performed by this reviewer.** No live GitHub state was queried; the assignment froze exact local heads and authorized source/actual saved-receipt inspection. Current remote readiness must still be established by the conductor. The only new file is this authentic external report, exclusively created with mode0600.
+
+Earlier full reviews remain at their real scope: A40 paths, B15 paths and its real earlier import, C2 paths, and D's full normative/records candidate. The 21 A and13 B authentic-publication report sets and their earlier publication proofs are preserved, not claimed newly re-verified byte-for-byte by this bounded review. `accepted813-next-hosted-count-expectations.json` is explicitly expectations only, not an executed result or pass. Old811 green CI never accepts the repaired source. No required GitHub check is reused. No existing source-review report becomes runtime/SIT evidence or supplies a gate waiver.
+
+**Completed at:** 2026-10-17T03:06:39.911519+00:00
+
+## Reviewer precision addendum before delivery
+
+The B paragraph saying the original 15 entries are unchanged “except their designated own review note” should read precisely: **all 15 original full-review-owned source/test paths are unchanged; the designated own review note is an additional publication path outside those original 15, and the two fixture paths are the newly reviewed repair.** This clarifies the original inventory and changes no finding, source comparison or verdict. The full text above is retained.
+
+
+## Current exact source binding
+
+All reports retain their stated scopes. Only this candidate's own regular review note is added/appended after the independently reviewed source. Exact-publication full hosted/image gates remain outstanding.
+
+**Reviewed head:** `24711f617d5e1134e36d83e3afadd85e206f0afa`
