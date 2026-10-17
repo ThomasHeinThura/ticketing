@@ -183,3 +183,208 @@ No tests, PostgreSQL connection, Docker operation, build, browser, full-suite ru
 Only this candidate own regular100644 review note is added after the source. Required CI/image and current-main compatibility remain pending. No gate waiver or merge readiness is implied.
 
 **Reviewed head:** `1198edb6b36171dadd75a8d280fd5fb28a869771`
+
+
+## Completed pending-action lifecycle extraction — current source f220
+
+This appendix supersedes current source/readiness only, preserving every historical byte and report. Current exactsourcef220a9d659394e4a9dad2e856b24b80f867cb141 includes creation plus the remaining issuance and consumption statement families, in the same two auth files. It does not include preflight getPendingActionForStepUp, which remains explicitly unconverted. Source1198 and ownnoteb65 were normally pushed and preserved; the conductor chose one coherent eventual three-lifecycle PR before full CI, avoiding separate near-identical hosted runs. No scope/quality gate or evidence requirement is waived.
+
+Current ordinaryA/B contexts are the same two independent-from-author contexts reused for the changed-source delta; they were not newly spawned for f220. Both inspect the complete new delta and connected callers and return CLEAR. The same independent GPT-6.1 Sol security context then performs a FULL current combined two-file audit against acceptedmaine848 and the new delta againstb65, CLEAR with inheritedN1 unchanged. Earlier source clearance does not transfer to current head; the new reports supply actual coverage.
+
+Root actual current API TypeScript check passes. Exactcurrent PostgreSQL7files218tests/native0/83.792seconds (04:33:03.132291–04:34:26.924822UTC), raw398269bytes SHA2564ecba17236bd5acb045b885453a63cc0c86caa51bf974625f212969a49072d60. Files are the prior5 plus pending-action-service and pending-actions-decisions. Exactownedcleanup23containers109volumes7networksunchanged/privateenvremoved; sourcecleanunchanged. Selected integration coverage is not direct limit/deadlock/insert-failure/verifier-exception/concurrent-single-use/outer protected-mutation rollback proof. The full Sol review explicitly checks these boundaries by source and retains the runtime gaps. No claim that the pending-action-service test itself invokes the changed proof service.
+
+N1 remains exactly the inherited action/advisory lock-order inversion, non-blocking for statement-preserving extraction and not reproduced or fixed. Invalid nonce or verifier-null expires the exact challenge and returns normally inside issuance TX, preserving expiry commit intent; a thrown verifier still rejects the TX. Proof consumption remains within the supplied protected-action TX. All statements use that executor and materialize results. No new authority, schema, route, dependency, event or process-clock expiry.
+
+Publication precision correction: the earlier root introduction's phrase four metadata hardbreaks each was inaccurate. Byte inspection finds THREE trailing two-space markers in each original1198A/B report and the currentf220B report. Reviewer-authored derivatives remove those three formatting markers only, preserving semantic text and naming original hashes. Current B provenance also corrects its earlier handoff claim of no hardbreaks and clarifies actual reused independence. Original private artifacts and historical public wording are retained unchanged.
+
+Full hosted/static/unit/browser/G11/shipping image125-migration/UID/health/isolation/cleanup and all newest exact-publication protected checks remain pending, as does current-main compatibility before the eventual PR acceptance. No whole580, PA-15 compliance, stage, signed release, SIT or mission completion is claimed.
+
+
+### Preserved report `pending-action-proof-lifecycle-persistence-author-luna.md`
+
+# Pending-action proof lifecycle persistence author handoff
+
+**Role:** GPT-6 Luna implementation author. This context authored the candidate and is not eligible to independently review or approve it.
+**Branch:** `codex/remaining580-pending-action-challenge-luna`
+**Base:** `b65e9bb5898ac6d8cf837197ce6a89311b621492` (clean pushed creation candidate; includes `1198edb6b36171dadd75a8d280fd5fb28a869771` and its authentic review note publication)
+**Candidate:** `f220a9d659394e4a9dad2e856b24b80f867cb141`
+**Commit:** `refactor(api): own pending action proof persistence in repository`
+**Worktree:** `/Users/heinthura/.codex/worktrees/remaining580-operation-proof-persistence-author-luna`
+
+## Result
+
+Completed the remaining pending-action proof issuance and consumption persistence moves in the two authorized auth files. With the earlier creation commit preserved, the branch now covers the pending-action challenge/issue/consume lifecycle family for one eventual focused PR. This commit changes only `apps/api/src/auth/repository.ts` and `apps/api/src/auth/step-up-service.ts`.
+
+The service retains the transaction opening for issuance, incoming canonical nonce/token validation, random token creation, SHA-256 hashing and response encoding. Its authentication verifier remains a service-supplied callback and is invoked by the repository once, only after the session, requester-owned action and exact bound challenge have been locked and the nonce matches. Failed nonce and failed verification still expire only that challenge and return null from inside the transaction callback, preserving the existing commit of that expiry intent. Unsupported verification remains fail-closed. Issuance returns the same authentication method and database-derived expiry, with the token returned only after transaction success.
+
+Consumption retains canonical 32-byte base64url token validation and digest construction at the service boundary. The repository receives the caller-supplied protected-action transaction first, locks only an issued/unexpired confirmation matching token digest, person, session, pending-action binding and action id, then marks that exact proof consumed with `now()` and requires one returned row. It opens no transaction and commits nothing independently; the proof remains composed with the protected action.
+
+The old builder-returning `lockPendingActionById` and `lockPendingActionChallenge` helpers had only the issuance caller; `lockPendingActionProof` had only the consumption caller. They were absorbed into awaited repository methods. Existing `lockActiveStepUpSession` remains materialized and is reused. The preflight `getPendingActionForStepUp` and its callers remain outside scope and are still unconverted. No broad auth repository cleanup was made.
+
+## Statement mapping and preserved order
+
+- **Issuance:** the service transaction calls `issuePendingActionTokenRecord(executor, input)`. Within it the existing session/action advisory lock runs first, followed by active agent session row lock (`dbNowUtc()` for the UTC-wall-clock expiry), requester-owned pending-action row lock, exact person/session/action/challenge-expiry challenge row lock, nonce comparison, one verifier callback, the original PostgreSQL issued/expiry clock query, and the same conditional challenge-to-issued update with `RETURNING` cardinality check.
+- **Consume:** `consumePendingActionProofRecord(executor, input)` performs the exact proof `FOR UPDATE` selection and consumed-state update through the supplied executor, preserving the state and unexpired token predicates and one-row return requirement.
+- **Pre-existing N1 retained unchanged:** creation locks the requester-owned action row before its advisory lock, while issuance takes the advisory lock before the same action row. The full Sol review of creation identified this inversion as a pre-existing availability/deadlock risk, non-blocking for the reviewed creation extraction. The task explicitly kept lock order unchanged; this patch does not mitigate it or claim a race/deadlock result.
+
+## Checks and limits
+
+- `pnpm exec biome check apps/api/src/auth/repository.ts apps/api/src/auth/step-up-service.ts` — passed, no fixes.
+- `git diff --check` — passed.
+- Commit pre-hook Biome check — passed.
+- No tests, TypeScript check, PostgreSQL, Docker, browser, build, analyzer, probe or broad suite was run under the conductor's shared execution-window restriction. Existing creation-candidate evidence (five PostgreSQL files / 177 tests and its three review verdicts) applies only to the `1198edb6` creation candidate and does not cover this new delta.
+- No new test was added: inspection did not identify a guard/assertion requiring a regression for this query-ownership-only change that would not mirror the implementation. Existing five-file PostgreSQL coverage and pending-action service cases still require the conductor's appropriate exact-head validation. No new-source runtime, verifier rollback, consume-with-protected-mutation rollback, or concurrent single-use guarantee is claimed.
+- Existing `getPendingActionForStepUp` preflight query ownership remains an explicit unconverted seam outside this task's assigned lifecycle family.
+
+## Next action
+
+Obtain fresh ordinary reviews and a full independent GPT-6 Sol security review for the new exact head, then run the conductor-owned applicable acceptance window before any PR/merge decision. This author handoff is not review or acceptance evidence. This branch commit was not pushed; the preceding creation candidate and review-note publication remain preserved remotely.
+
+
+### Preserved report `pending-action-proof-f220-ordinary-a-luna.md`
+
+# Independent ordinary A review — pending-action proof lifecycle persistence
+
+**Reviewed head:** f220a9d659394e4a9dad2e856b24b80f867cb141
+**Delta base:** b65e9bb5898ac6d8cf837197ce6a89311b621492
+**Accepted lineage base:** e848f3bd05bec95c8af657c29923a6413a11c63f
+**Reviewer:** GPT-6 Luna, independent ordinary reviewer (fresh context; did not author, direct, or remediate the candidate)
+**Scope:** Full b65e9bb..f220a9d delta in apps/api/src/auth/repository.ts and apps/api/src/auth/step-up-service.ts, connected step-up API and pending-action service callers, relevant contracts and repository-query rules. The earlier 1198edb6 challenge-creation review is not evidence for this new issue/consume delta.
+
+## Verdict
+
+**CLEAR — no blocking findings.** The new issue and consume repository operations preserve their former predicates, statement ordering, service transaction boundaries, and return behavior by source inspection. This is not runtime acceptance or the required independent Sol security review.
+
+## Review work
+
+- Verified the clean worktree is at the exact reviewed head and resolved the delta and accepted lineage bases.
+- Read the author handoff, complete two-file delta, and connected challenge issuance API, step-up service, and pending-action execution service. Confirmed the former issuance/consume helper call sites were removed and the new materializing operations are called only through the intended services.
+- Checked issuance order and bindings: session/action transaction advisory lock; active agent-session row lock using the shared UTC wall-clock helper; requester-owned pending, unexpired action row lock; exact challenge id/person/session/action/state/expiry row lock; nonce comparison; verifier callback awaited once; database issuance/expiry time; conditional challenge-to-issued update with one-row RETURNING requirement. The service still owns transaction opening, canonical nonce validation, token generation/hash and one-time response encoding. Failure nonce/authentication expires only the selected challenge and returns null within the transaction callback, preserving the existing commit-intent behavior by code structure.
+- Checked consumption: canonical 32-byte base64url validation and digest creation remain in the service; the repository locks only an issued, unexpired proof bound to digest/person/session/pending-action id, then conditionally marks that same row consumed and requires exactly one returned row. The supplied protected-action transaction remains the executor, so this operation opens or commits no transaction of its own.
+- Confirmed later challenge creation from 1198edb6 is preserved in the new branch lineage. The existing creation-review and five-file/177-test evidence remains limited to that creation candidate and is not counted as coverage of this delta.
+- Noted the pre-existing N1 lock-order inversion remains: creation locks the requester-owned action before taking the advisory lock; issuance takes the advisory lock before locking that action. This delta does not introduce or resolve it, and I make no concurrency/deadlock claim.
+- Confirmed the preflight getPendingActionForStepUp remains outside this lifecycle move and is still a builder-returning seam.
+- Ran git diff --check b65e9bb5898ac6d8cf837197ce6a89311b621492 f220a9d659394e4a9dad2e856b24b80f867cb141 — passed. No tests, TypeScript checks, PostgreSQL, Docker, browser, build, analyzer, probe or broad suite were run.
+
+## Findings
+
+None blocking for this delta. The changes are confined to the two authorized auth files and do not change the existing lock order or the preflight seam.
+
+## Limits
+
+This verdict is based on source inspection and diff hygiene. It does not establish actual verifier callback count under runtime conditions, challenge-expiry commit behavior, outer rollback behavior, protected-action rollback coupling, concurrent single-use behavior, or deadlock outcomes. Those runtime checks remain with the conductor; the full independent Sol security review is still required after ordinary review clears.
+
+
+### Preserved report `pending-action-proof-f220-ordinary-b-publication-luna.md`
+
+# Independent ordinary review B — pending-action proof lifecycle persistence
+
+**Reviewed head:** `f220a9d659394e4a9dad2e856b24b80f867cb141`
+**Comparison base:** `b65e9bb5898ac6d8cf837197ce6a89311b621492` (creation candidate plus its published review record); accepted lineage base: `e848f3bd05bec95c8af657c29923a6413a11c63f`
+**Reviewer:** GPT-6 Luna, independent ordinary reviewer in a fresh context; did not author, direct, or remediate the candidate.
+**Scope:** New b65→f220 source delta in `apps/api/src/auth/repository.ts` and `apps/api/src/auth/step-up-service.ts`; connected pending-action proof issue/consume callers; PA-15/security model and repository query ownership/executor rules. The 1198 creation extraction is included only as preserved context, not newly reviewed by this delta report.
+
+## Verdict
+
+**CLEAR — no blocking source-level finding.** The issue and consume persistence paths are moved into awaited materializing repository operations. Transaction ownership, nonce/token validation and generation, authentication callback, response construction, and protected-action composition remain at the service boundary. This is source inspection only; it establishes no runtime, race, or rollback result.
+
+## Checks performed
+
+- Confirmed the worktree HEAD is the exact reviewed SHA and the base resolves to `b65e9bb5898ac6d8cf837197ce6a89311b621492`.
+- Read the actual author handoff at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/pending-action-proof-lifecycle-persistence-author-luna.md`, the full b65→f220 diff, connected repository/service functions, callers in `step-up-api.ts` and `pending-action/service.ts`, the PA-15 contract, security-model step-up rule, and query ownership/executor contract.
+- Confirmed this delta touches only the two assigned auth files. New operation names are `issuePendingActionTokenRecord` and `consumePendingActionProofRecord`; the service has one call site for each and the absorbed builder helpers have no remaining references.
+- Issuance source sequence is preserved: `(sessionId, pendingActionId)` transaction advisory lock; active agent session lock using `dbNowUtc()` for the UTC-wall-clock session expiry; requester-owned pending/unexpired action lock; exact challenge id/person/session/pending-action/binding/state/unexpired challenge lock; nonce digest comparison; one authentication callback; database clock read for five-minute issue/token-expiry timestamps; conditional challenge→issued update and one-row `RETURNING` result. Wrong nonce or failed verification expires only the matching locked challenge and returns null from the transaction callback. Service still owns the transaction, canonical nonce parsing, random token generation and digest, callback, and response encoding after commit.
+- Consumption retains service-side canonical 43-character base64url/32-byte token validation and SHA-256 digest. Repository receives the caller’s executor first, locks only a matching issued/unexpired proof bound to token digest, person, session, and pending-action id, then conditionally consumes that row with database time and returns success only for one returned row. The caller invokes it with the existing protected-action transaction; the repository opens no transaction.
+- `git diff --check b65e9bb5898ac6d8cf837197ce6a89311b621492 f220a9d659394e4a9dad2e856b24b80f867cb141 -- apps/api/src/auth/repository.ts apps/api/src/auth/step-up-service.ts` passed.
+
+## Findings and limits
+
+No blocking or non-blocking new-delta finding. The known N1 lock-order inversion remains: challenge creation locks the requester-owned action before the advisory lock, while issuance takes the advisory lock before the action. This is pre-existing creation behavior and is explicitly preserved; this review does not claim that a deadlock or race was reproduced or resolved. Preflight `getPendingActionForStepUp` remains unchanged and outside this lifecycle persistence delta.
+
+No tests, TypeScript check, PostgreSQL, transaction/rollback probe, concurrency probe, build, Docker, browser, analyzer, full suite, or GitHub mutation was run, under the shared execution-window restriction. Earlier exact-head evidence for 1198 covers creation only and supplies no coverage for this new source delta. In particular, this review does not claim observed verifier rollback, proof consumption composed with protected mutation rollback, or concurrent single-use behavior.
+
+Publication provenance: faithful publication of the authentic report at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-17/pending-action-proof-f220-ordinary-b-luna.md` (SHA-256 `e772efd84412da0a37323fd10070bee7c4dc07f3012e5b662b7a16cec59a7825`). Transformation: removed only the three trailing two-space Markdown hard-break markers, on original lines 3, 4, and 5, replacing them with ordinary newlines for diff-check compatibility. No report wording, verdict, source, scope, findings, or coverage was changed or removed. The report author's earlier handoff said it had no trailing hard-breaks; byte inspection found three, so that handoff statement was inaccurate.
+
+Reviewer-context clarification: this is the same independent reviewer context that reviewed the 1198 creation candidate, now reviewing the f220 delta. It is independent of the f220 author and did not author, direct, or remediate this delta. “Fresh context” in the report's reviewer field describes independence from the author, not a newly spawned context for f220.
+
+
+### Preserved report `pending-action-proof-f220-full-security-61-sol.md`
+
+# Independent full security review — pending-action lifecycle persistence
+
+**Model:** GPT-6.1 Sol
+**Role:** Full independent security reviewer
+**Context:** `/root/pending_action_challenge_1198_security_sol`
+**Reviewed head:** f220a9d659394e4a9dad2e856b24b80f867cb141
+**Delta base:** b65e9bb5898ac6d8cf837197ce6a89311b621492
+**Accepted lineage base:** e848f3bd05bec95c8af657c29923a6413a11c63f
+**Worktree:** `/Users/heinthura/.codex/worktrees/remaining580-operation-proof-persistence-author-luna`
+**Invocation provenance:** The conductor supplied requested model `gpt-6.1-sol`, reasoning `high`, and `fork_turns=none` for this context's initial independent spawn. A served-model fingerprint is not exposed to this context; this records requested invocation provenance only.
+**Independence:** This is the same independent reviewer context that reviewed creation at 1198, reused for the new source and full combined scope. It was not newly spawned for f220. I did not author, direct or remediate either source change. I checked the current source and reached the verdict independently; the earlier verdict and test results do not transfer approval to this head.
+
+## Verdict
+
+**CLEAR — no blocking finding for the complete current-source creation, issuance and consumption persistence extraction.** Both the new b65-to-f220 issue/consume delta and the combined e848-to-f220 product diff preserve the prior predicates, lock sequence, transaction ownership, verifier ordering, failure behavior and response contract by inspection. One inherited availability finding remains non-blocking, unchanged and explicitly retained below. This is not whole PA-15 compliance, a lock-order fix, runtime acceptance or merge readiness.
+
+## Scope and evidence inspected
+
+I verified clean HEAD at the exact reviewed SHA. I read the complete two-file new delta and the complete combined product diff, and read both current `apps/api/src/auth/repository.ts` and `apps/api/src/auth/step-up-service.ts` in full. The new delta changes only those two files. The combined accepted-lineage diff also adds the historical creation review note, `docs/07-planning/security-reviews/query-ownership-pending-action-challenge-580.md`; it does not add another product path. I verified mechanically that the authentic creation security report, both ordinary publication derivatives and B's precision addendum are present verbatim in that note. Their original 1198 source bindings and limitations remain historical evidence.
+
+I read the new author handoff at `pending-action-proof-lifecycle-persistence-author-luna.md` in the takeover evidence directory and both authentic exact-f220 ordinary reports at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-17/pending-action-proof-f220-ordinary-{a,b}-luna.md`. Both are CLEAR for their stated delta/source scope. I do not represent their reused independent contexts as newly spawned sessions or treat their earlier creation verdicts as proof of this delta.
+
+Connected source checked includes the current-agent-session resolver, creation route, proof route and real authentication callback in `auth/step-up-api.ts`; active-person factor resolution in `auth/local-factor-service.ts`; the full relevant approval transaction from validation through proof consumption and protected mutation in `pending-action/service.ts`; the pending-action lifecycle lock/invalidation context inspected in the initial pass; the table definitions and time types; repository executor conventions; and the shared UTC clock helper. Searches covered all create/issue/consume service and repository names and all removed helper names in API source and tests.
+
+The existing repository instructions, mission, workflow, provider adapter and security review requirements were read in the initial pass. Their relevant files and contracts are unchanged on this lineage, verified by diff. For this pass I re-read the PA-15 challenge/proof contract and repository-query rules, with the earlier security-model/session/UTC and schema review as connected context. I checked the applicable test sources rather than claiming that source inspection executes them.
+
+## Full current-source security analysis
+
+### Challenge creation
+
+The current creation function still locks the exact requester-owned pending/unexpired action, requires a step-up confirmation kind, takes the same session/action transaction advisory lock, counts the same person/session/action binding over the database's last 15 minutes, applies the service-selected limit of five, expires the same live unused material, reads database time plus five minutes, and inserts the same challenge fields and nonce digest. The `onLimit` callback still throws `StepUpAttemptLimitError` inside the service transaction before invalidation/insertion. Its rejection reaches `db.transaction`, while the API retains its 429 mapping. Null eligibility, random id/nonce generation and response encoding are unchanged. Creation from 1198 is preserved in f220; I checked it as part of the current combined scope rather than silently carrying its old clearance.
+
+### Proof issuance
+
+The service still validates a canonical 43-character unpadded base64url nonce that decodes to exactly 32 bytes and round-trips identically. Malformed input returns null before a transaction/verifier call. It generates the 32-byte random token, computes hashes, opens the transaction and returns the token only after successful transaction completion. Moving hash computation to the repository-input construction changes neither hash bytes nor trust boundary. Cleartext nonce/token bytes are not supplied to persistence or newly logged.
+
+`issuePendingActionTokenRecord` receives the existing transaction executor first. It takes the identical `(sessionId, pendingActionId)` transaction advisory lock; locks the active agent session by exact session id and user id with the UTC wall-clock expiry predicate; locks the exact requester-owned pending and unexpired action; and then locks the challenge by exact challenge id, person, session, pending-action binding, action id, challenge state and database-clock expiry. Missing or unrelated challenge identifiers return null before any challenge mutation or verifier invocation. This is the same statement order and reach as the old helpers plus service SQL.
+
+The nonce digest comparison remains timing-safe. A wrong nonce expires only the selected locked challenge by its id and challenge state, then returns null from the transaction callback. A successful nonce reaches one awaited invocation of the service-supplied authentication callback per repository invocation, with no new loop, retry or fallback. Earlier denial paths invoke it zero times. A callback returning null similarly expires that challenge and returns null. Because these paths return normally inside `db.transaction`, the challenge-expiry write retains its previous commit intent even though no token is issued. A verifier exception still rejects the transaction; the extraction does not convert it to a successful null result or claim that such an exception commits an expiry. The callback's own external effects are not newly made transactional by this move.
+
+The API callback still re-loads current active-person factor policy for the authenticated user. Password verification is refused when a factor is required/enabled; TOTP/backup-code verification still checks current factor state and the returned authenticated user. No client assertion replaces authentication. Unsupported/failed verification remains fail-closed along the existing null/error path. The API still derives person/session/user from authenticated context and returns the same generic failure and audit behavior.
+
+On successful authentication, the repository reads the identical PostgreSQL issued-at and five-minute token-expiry query and conditionally changes that exact challenge from `challenge` to `issued`, retaining the challenge-expiry predicate. The update writes only token digest, method and timestamps and requires exactly one returned row before reporting success. The service keeps the same response shape and one-time token encoding. The all-statements-awaited repository returns a materialized method/date DTO or null; it neither opens a transaction nor leaks a builder.
+
+### Proof consumption and protected-action composition
+
+The service still requires canonical 43-character base64url encoding of exactly 32 token bytes, computes SHA-256, and passes the existing caller transaction to `consumePendingActionProofRecord`. The repository locks only an issued, unexpired confirmation matching digest, person, session, pending-action binding and action id. It then marks that exact locked id consumed with database time, retaining issued-state and token-expiry predicates and requiring one returned row. The unique token-digest index and primary-key update remain unchanged. A mismatch returns null without consuming another proof.
+
+The sole production consumer remains `approveUserDeactivation`, which awaits consumption on its protected-action `tx`. I checked its existing preceding action/requester lock, pending/kind/payload-hash validation, current active staff/admin and agent-session checks, target/name checks, and subsequent same-transaction lifecycle mutation, pending-action transition and effects. No global connection replaces that executor, and no inner commit is introduced by the new repository. A thrown downstream mutation failure still rejects the enclosing transaction by code structure, so the move does not create a committed consumption before the protected action. This is not an observed rollback or race result.
+
+### Time, query ownership and conserved seams
+
+Action, challenge and token expiry/count columns here are `timestamptz`; bare PostgreSQL `now()` remains appropriate. The active-session lock retains `dbNowUtc()` for the existing UTC-wall-clock `timestamp without time zone` expiry. The database clock strings are parsed and written through the same column encoders, with no new process-clock expiry or raw-Date SQL interpolation.
+
+Each new repository lifecycle operation awaits every statement and returns only a scalar/DTO/null. Service transaction orchestration remains in the service; protected-action transaction ownership remains with its caller. The absorbed proof/action/challenge lock helpers have no remaining references. Each new repository operation has its one intended service caller. Operation-bound proofs, route bindings and unrelated authorization paths are unchanged. The builder-returning preflight `getPendingActionForStepUp` remains an explicitly unconverted seam outside this lifecycle scope; this review does not claim all auth queries satisfy query ownership.
+
+## Non-blocking inherited finding
+
+**N1 — creation/issuance lock-order inversion remains an availability risk.** In current `repository.ts:168-188`, creation takes the action row `FOR UPDATE` before the session/action advisory lock. Current `issuePendingActionTokenRecord` at `repository.ts:350-372` takes that advisory lock, then the active-session lock, then the action row `FOR UPDATE`. The accepted-lineage base has this exact order across the old creation service/helper and issuance service/helper. b65 retains it, and f220 moves issuance without changing it.
+
+For the same session/action with an existing challenge, issuance can hold the advisory lock and pause before taking the action row. Concurrent creation can hold the action row and wait for that advisory lock. Issuance then waits for the action row: the transactions form a wait cycle, and PostgreSQL may abort one as a deadlock victim. This is a source-derived counterexample, not an executed reproduction. It demonstrates a possible failed request rather than unauthorized issuance or committed partial mutation. The extraction neither introduces nor fixes it. I retain it as non-blocking for this bounded persistence relocation and do not propose or author a redesign here. Moving the issuance SQL in this delta does not disposition N1 as fixed; it remains a recorded residual for the conductor's owning work.
+
+## Actual commands and verification limits
+
+Read-only commands run for this pass were `git rev-parse HEAD`, `git status --short`, both full scoped `git diff` comparisons, `git diff --stat`, `git diff --name-only`, `git log`, source/contract searches and reads using `rg`, `sed`, `cat` and `nl`, and `git diff --check` against both bases. Both diff-checks passed. A small Python read-only inspection compared preserved review-report text with the note. One attempted shell search used a nonexistent wildcard path; I corrected it to the actual `auth/local-factor-service.ts` and read the function. No product edit was made.
+
+No tests, TypeScript check, PostgreSQL connection, Docker operation, verifier/rollback/race probe, browser, image build/boot, analyzer, broad suite, GitHub mutation, commit, push or merge was performed by this reviewer. Current source validation remains with the conductor. The previously inspected five-file/177-test PostgreSQL pass belongs to 1198 only; it is not an f220 result and is not used as runtime coverage for this new source.
+
+Relevant inspected test sources include the prior direct pending-action issuance/session-denial and SCIM lifecycle approval cases, the operation-only five-challenge limit test, local-factor concurrency and clock-wrapper sources, and the current pending-action-service test's scope. That service test does not itself invoke the changed proof service. These inspections do not establish pending-action limit races, the N1 schedule, exact-once verifier behavior at runtime, committed challenge expiry on failed proof, concurrent single-use consumption, or consumption rollback with a later protected-mutation failure. No such result is claimed.
+
+There are no new blocking findings. The unchanged N1 availability risk, unconverted preflight seam and absence of direct focused race/failure-injection evidence remain visible limitations. Separate required current-head CI, appropriate tests, image/health evidence and acceptance are not waived by this source review.
+
+
+## Current exact source binding
+
+This publication appends only its own regular100644 review note after the current independently reviewed source. Every report retains its own coverage and limitations; no old check is reused.
+
+**Reviewed head:** `f220a9d659394e4a9dad2e856b24b80f867cb141`
