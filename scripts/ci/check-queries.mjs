@@ -429,6 +429,7 @@ function exportedQueryBoundary(
         ts.SyntaxKind.MethodDeclaration,
         ts.SyntaxKind.MethodSignature,
         ts.SyntaxKind.PropertyAssignment,
+        ts.SyntaxKind.ShorthandPropertyAssignment,
         ts.SyntaxKind.PropertyDeclaration,
         ts.SyntaxKind.PropertySignature,
         ts.SyntaxKind.GetAccessor,
