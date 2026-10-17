@@ -182,3 +182,6 @@ The eleven existing retry call sites are not newly made compliant with D1. Direc
 
 Root-supplied typecheck/checker and diagnostic evidence belongs to its recorded inputs and execution provenance, not this review. The supplied earlier 13 PostgreSQL files/280 tests ran on an earlier source with the frozen patch, not as direct current combined-head PostgreSQL execution. Earlier lint, permissions and OpenAPI results likewise retain their old inputs. I have not treated any supplied counts as reviewer execution or as current hosted/image proof. Required hosted checks and candidate image/build/boot/health evidence on the eventual exact publication remain separate conductor gates. This report authorizes no merge, gate waiver, release, stage closure, #580 completion or SIT acceptance.
 
+
+**Reviewed head:** `3ed3c79eb7c48b8ed97f0dfa3cfc2186c74740e6`
+
