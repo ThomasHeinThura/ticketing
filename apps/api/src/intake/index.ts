@@ -154,6 +154,7 @@ const portalSubmissionResponseSchema = z.object({
     }),
   ),
 });
+type PortalSubmissionResponse = z.infer<typeof portalSubmissionResponseSchema>;
 const portalSubmissionListResponseSchema = z.object({
   submissions: z.array(
     z.object({
@@ -1186,10 +1187,18 @@ const portalDetailRouter = apiRouter<IntakeVariables>().openapi(
   portalDetailRoute,
   async (c) => {
     const identity = await portalIdentity(c.get("userId"));
-    return c.json(
-      await findPortalSubmission(c.req.valid("param").ref, identity.personId),
-      200,
+    const detail = await findPortalSubmission(
+      c.req.valid("param").ref,
+      identity.personId,
     );
+    const response: PortalSubmissionResponse = {
+      ...detail,
+      submission: {
+        ...detail.submission,
+        formData: detail.submission.formData as Record<string, unknown>,
+      },
+    };
+    return c.json(response, 200);
   },
 );
 

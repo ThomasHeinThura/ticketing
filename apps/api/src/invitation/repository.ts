@@ -1,5 +1,5 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq, exists, sql } from "drizzle-orm";
+import { and, eq, exists, type SQL, sql } from "drizzle-orm";
 import { schema } from "../database";
 import { type Executor, executorOrDefault } from "../database/executor";
 import { currentWorkspaceReachPredicate } from "../database/repositories/identity-scope.repository";
@@ -12,7 +12,7 @@ import { currentWorkspaceReachPredicate } from "../database/repositories/identit
 function recipientMatchesCurrentUser(
   identity: ResolvedIdentity,
   executor: Executor,
-) {
+): SQL<boolean> {
   return exists(
     executor
       .select({ one: sql`1` })
@@ -23,7 +23,7 @@ function recipientMatchesCurrentUser(
           sql`lower(${schema.userTable.email}) = lower(${schema.invitationTable.email})`,
         ),
       ),
-  );
+  ) as SQL<boolean>;
 }
 
 function managerHasCurrentWorkspaceReach(
