@@ -1,3 +1,17 @@
+## Protected #826 acceptance and whole Carrier diagnosis — 2026-10-17 18:06 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor / #825 and #826 | DONE for bounded units. Main `fa26aaee985e2b7eda49ac77281c0b0ff831c9c5`; #826 protected at 18:03:14Z after all eighteen exact-head checks, authentic ordinary/full Sol review coverage and candidate image proof. | Preserve branches and source-bound reports. Advisory-lock materialization and shorthand inspection do not close N1 or whole #580. |
+| Critical Sol adviser / SAME Carrier #791 | BLOCKED on actual full96: 66 pass / 30 fail / native 1; source frozen at checker7655/testc546, committed31fc, manifest unchanged. | Diagnose the complete shared proof/placement/binding path; obtain bounded public-ledger evidence before a connected repair. Preserve all real unknown/drop/Portal controls and adverse attempts. Material adviser cannot provide final approval. |
+| Luna / JSONB output batch | RUNNING verification preparation; nine repository sources plus existing notification delivery test, frozen, uncommitted and untested. | Verify the frozen valid-workspace fixture correction after independent full-entrypoint diagnosis, then root types/checker/PG verification and required fresh ordinary/full Sol reviews. Preserve decoder values and all excluded residuals. |
+| Conductor / remaining #580 | RUNNING; accepted diagnostic is red and checker unwired. | Complete source conversion and safe output boundaries; no baseline, query-progress arithmetic or activation claim. |
+| Conductor / #810 | WAITING_CI on genuine Carrier/#772 integration or demonstrated cause repair; actual assignment223.2ms fails strict200. | Preserve failure; no unchanged retry, and no predecessor closure before accepted composition. |
+| Thomas / #811 and #773 | WAITING_DECISION plus thirteen owning-review findings. | Existing valuation, midnight and timezone answers remain pending; do not invent behavior or reopen settled decisions. |
+| Conductor / final #589 acceptance | BLOCKED on selected units and final verification; #717 DONE, N1 unresolved/unwaived. | Canonical signed combined prerelease → exact-digest laptop SIT → consistent NONEMPTY backup and usable isolated application restore → fresh final independent audit → report and Hold. No UAT/production or stage claim. |
+
+The dated status snapshot carries exact evidence and limits. The primary dirty checkout and all source histories remain preserved. Root owns the sole local heavy runtime; maximum two active children. No verified post-turn scheduler is claimed.
+
 ## Protected #797 acceptance and bounded remaining repairs — 2026-10-17 16:23 UTC
 
 | Owner / unit | Actual state | Next action / boundary |
