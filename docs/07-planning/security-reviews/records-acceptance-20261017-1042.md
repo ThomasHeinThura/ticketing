@@ -33,3 +33,35 @@ Provenance: conductor dispatched `/root/records1042_factual_review_luna` with `f
 ## Limits
 
 This was a records-only factual review. I did not rerun tests, builds, browsers, PostgreSQL, or inspect product behavior. The review supports only these two record additions at the exact candidate SHA; it is not independent product review or acceptance of any underlying work. GitHub and private evidence were checked read-only. No repository files were changed.
+
+
+## Additive inventory evidence-path correction
+
+Same independent reviewer, bounded one-fact check after root detected the wrong parent-summary attribution. Original report is retained unchanged. Source `5d9464b7b836c74ce7e3751bbbe1073840bc3a01` is unchanged. Authentic addendum follows unedited; 3461 bytes, SHA256 `5d2a1d688cb6e454af12da4cf0b0656051651fe54a6ae160a19d38cb920fa8a2`.
+
+# Addendum — correction to inventory evidence binding
+
+This addendum supplements the original independent factual review without modifying or replacing it. It corrects one evidence-path attribution in that report.
+
+- Candidate reviewed: `5d9464b7b836c74ce7e3751bbbe1073840bc3a01`
+- Accepted base: `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`
+- Scope of this addendum: the newly added status statement reporting the remaining-580 canonical diagnostic inventory as 3,198 overlapping instances across 173 paths / 1,812 file-line locations (3,023 outside repositories, 160 raw SQL, 12 unresolved, 3 builder-boundary findings).
+- Independence and model provenance: same fresh reviewer context as the original report. GPT-6 Luna was requested; runtime served identity/fingerprint is unavailable and is not asserted.
+
+## Correction and check
+
+The original report named `query-inventory-main23fb/summary.json` as the supporting artifact for those figures. That path attribution was wrong. I have now directly read the canonical corrected artifact at `query-inventory-main23fb/resolved-declarations/inventory.json` and its paired summary. I did not read the corrected inventory during the original review, so this is a new check, not a retrospective claim.
+
+The corrected `resolved-declarations/summary.json` reports 3,198 finding instances, 173 files with findings, and 1,812 distinct file-line locations. Its finding kinds total 3,023 repository-boundary diagnostics, 160 raw-SQL diagnostics, 12 unresolved exported repository shapes, and 3 builder-exposure diagnostics. The raw artifact is 568,821 bytes with SHA-256 `521bc0f45f8592373f8d165d0a134d4751bd2a1022a76803d9230c2cacdd56ee`, matching the summary's raw-byte and hash fields.
+
+The similarly named parent `query-inventory-main23fb/summary.json` is an earlier environment-incomplete run: 2,073 instances, 292 files, and 1,212 locations, including 216 unavailable-type diagnostics. It does not support the newer reported figures. The corrected summary states that existing API workspace declaration dependencies were built from cached outputs, while the original 216 diagnostics were retained in the parent run; it did not modify source, checker, or gate wiring. The paired `production-input-equivalence.json` binds the corrected scan to accepted main `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`, records all non-documentation tracked inputs byte-exact, and confirms checker source and gate wiring unchanged. Its purpose is explicitly planning inventory, not acceptance.
+
+I also reconfirmed the candidate diff against the stated base: only the two planning-record files are changed, with 38 added lines and zero deletions (`git diff --stat` and `git diff --numstat` for those paths). The original content is preserved. No product runtime, test, CI, or source edit was performed.
+
+## Verdict for this corrected evidence binding
+
+**CLEAR.** The new status claim is supported by the corrected canonical artifact and production-input equivalence receipt. The wrong parent-summary path in my original report was a non-blocking evidence-citation defect; this addendum records and corrects it. The inventory remains a diagnostic/planning result only and makes no gate or completion claim.
+
+## Limits
+
+This addendum addresses only the inventory fact and its artifact binding. It does not revise the original review’s other checks or claim a new full-snapshot pass. The original report remains unchanged for provenance.
