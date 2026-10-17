@@ -875,3 +875,87 @@ I traced that ordinary graph through union/intersection constituents, generic ar
 ## Limits and disposition
 
 This is security clearance for the two-file checker-preparation delta only. `check:queries` is still unwired, complete production conversion and final scope reconciliation are unaccepted, and the checker does not prove tenant predicates or arbitrary executor propagation. I did not run a full production scan, PostgreSQL, Docker, browser or source acceptance, and make no production finding-count or completion claim. No source edits, commit, push, PR or merge action occurred in this review.
+
+
+---
+
+## Report: ordinary review, provenance delta
+
+# Independent ordinary review — query checker provenance
+
+**Verdict:** CLEAR — no blocking findings.
+
+**Reviewed head:** `6fc8ce03eed560d92cde357a3295b4516ff8aaaf`
+
+**Comparison base:** accepted `main` `555879db9e4841c1460346c115111881d3cd3387`.
+
+**Change under review:** source commit `a5d2810b28b149068a8c2046b17abf0f128cf480` (parent `4e8e6bc911410948dd414f77da5b50e92b7be0c3`), composed with accepted main. This review addresses the provenance delta in `scripts/ci/check-queries.mjs` and `scripts/ci/check-queries.test.mjs`, not the full historical checker implementation or activation/acceptance of #580.
+
+**Independence and model provenance:** Fresh reviewer context; did not author, direct, or remediate this change. Requested tier/model: GPT-6 Luna ordinary review. The serving-model fingerprint was not available to this reviewer, so the actual model is not independently attested here.
+
+## Checks performed
+
+- Read accepted-main `AGENTS.md`, `docs/07-planning/active-mission.md`, `docs/04-engineering/agent-workflow.md`, `docs/04-engineering/ci-cd.md`, and `CLAUDE.md` from `query765-current-luna`, and inspected the exact source and test delta at the reviewed head.
+- Confirmed the source delta is diagnostic metadata and rendering: the existing boundary kinds remain `safe`, `fragment`, `builder`, `unresolved`, and `limit`; existing builder reports remain immediate; unresolved results are accumulated in traversal order and sent to `reportNode` once after runtime-export traversal. The prior unresolved diagnostic prefix and fail-closed unresolved/limit classification are retained. No execution branch turns an unresolved or limit result into safe.
+- Traced path labels through type-parameter constraints, SQL payload arguments, union/intersection constituents, generic arguments, awaited results, call/construct returns, members and index-signature values. The root export path is preserved through nested namespace traversal. The actual installed TypeScript 7 test receipt exercises the generic parameter name path, providing runtime evidence for `type.getSymbol?.()?.name` without rerunning Node.
+- Confirmed traversal order is retained: indexed loops iterate the same arrays in the same sequence; additional path construction does not reorder types, exports, namespace members, aliases, or member traversal. Existing `depth >= 20`, `seen.size >= 512`, and export graph caps are unchanged. The `INFRA` set and repository path predicate are untouched. No package/workflow wiring, dependency, allowlist, product source, or gate activation was added.
+- Confirmed the new fixture combines unknown, any, unconstrained generic and nested unknown-member exports, then asserts exactly one unresolved finding for that module and checks each reason/path. It uses the existing test file and does not add another test harness or scope fixture that would affect actual scanning.
+- Read root's conservation receipt: for source `6fc8ce0`, selected author-owned paths match the source commit and all other accepted-main entries remain exact (3 selected paths; 3,405 entries checked; old review note unchanged). Also read its attribution correction, which clarifies that the selected-path partition—not all historically absent author paths—was the verified comparison. No source change resulted from that correction.
+
+## Test evidence
+
+I did not execute commands or rerun inventory. The supplied native receipt is bound to exact head `6fc8ce03eed560d92cde357a3295b4516ff8aaaf` and unchanged source/test hashes (`99e34e3f…` / `36f5d63b…`): `node --test scripts/ci/check-queries.test.mjs`, **3 tests passed, 0 failed**, 4.702 seconds. This validates the focused checker fixture suite only. The source-bound comparison reports a 3,198 legacy diagnostic multiset identical to its canonical baseline after stripping added provenance metadata; I treated that as supplied evidence and did not rerun the full inventory.
+
+## Review-depth classification
+
+`scripts/ci/**` is security-scope under accepted `ci-cd.md`. Inspection shows this narrow change does not alter authority or gate pass/fail semantics, so accepted `agent-workflow.md` calls for **one ordinary review plus lightweight GPT-6 Sol confirmation**. This verdict supplies the ordinary review only; it does not satisfy the Sol confirmation.
+
+## Findings and residuals
+
+**Blocking:** none.
+
+**Non-blocking:** diagnostic strings intentionally become longer, so consumers that compare the complete unresolved message byte-for-byte would observe a text change. The preserved prefix and stable result category support the existing checker/test behavior; no such consumer was identified in the reviewed diff. The checker remains unwired and the 3,198 scan equality is diagnostic-conservation evidence, not checker activation, query ownership acceptance, or proof that repository predicates are tenant-safe.
+
+**Review limits:** read-only source/evidence inspection; no Node, AST/compiler, database, Docker, runtime, or inventory command was run. No browser or product UI is in scope.
+
+---
+
+## Report: lightweight security confirmation, provenance delta
+
+# #797 diagnostic provenance — independent lightweight security confirmation
+
+**Verdict:** CLEAR — no blocking findings in the reviewed diagnostic-provenance delta.
+
+**Reviewed head:** `6fc8ce03eed560d92cde357a3295b4516ff8aaaf`
+
+**Comparison base:** accepted main `555879db9e4841c1460346c115111881d3cd3387` for composition; prior checker publication `4e8e6bc911410948dd414f77da5b50e92b7be0c3` for the diagnostic change authored as `a5d2810b28b149068a8c2046b17abf0f128cf480`.
+
+**Role and independence:** Fresh independent security reviewer context `/root/query797_6fc_provenance_security_sol`; did not author, direct, or remediate this candidate. Requested dispatch, as supplied by the conductor: `gpt-6.1-sol`, reasoning `high`, `fork_turns=none`. Those are dispatch provenance, not an independently verified serving-model identity; this context has no serving-model fingerprint available to attest. This confirmation follows the exact-head ordinary CLEAR report `query797-6fc-provenance-ordinary-luna.md`, which I read in full.
+
+## Scope and classification
+
+Read the accepted-policy copies of AGENTS.md, active mission, agent-workflow.md, CLAUDE.md and applicable CI/CD requirements in `query765-current-luna`. `scripts/ci/**` is security scope. The inspected delta adds diagnostic reason/path metadata and rendering without changing authority or gate pass/fail classification, so the workflow's one ordinary review plus lightweight security confirmation row applies. I found no semantic change requiring escalation to a full new control redesign review. The historical checker and its prior review reports remain source-bound; this is a delta confirmation, not a replacement full-panel review.
+
+## Checks actually performed
+
+- Used read-only Git and text inspection of the entire two-file author delta, candidate implementation context, fixture additions, reporting/de-duplication, and unchanged path/scan predicates. Ran `git diff --check` on the author delta: passed. The worktree was clean at verification.
+- Independently reconstructed all three Git trees with Python and `git ls-tree -r -z`. All **3,405** candidate entries match the explicit partition: the checker, its test, and `docs/07-planning/security-reviews/query-ownership-checker-580.md` match the author tree; every other entry matches accepted main exactly. There are no other added or removed entries. The old review note is byte-identical to its prior publication. Read the root conservation receipt together with its attribution correction: the corrected explanation concerns the selected-owned-path comparison, not any defect in `-rz` syntax or any source alteration.
+- Confirmed candidate checker/test SHA-256 values `99e34e3f1edd34ca0abd5f516c88dc1be13a73e92fbd1050cdf420a29ade0fe3` / `36f5d63bb7ce5c0c33b60922bfbb028e101f08ed0e60a449070847739b9376cf`. They match both sides of the native-test receipt; independently verified its raw log hash.
+- Traced the unchanged classification and early-return order: builders still fail before fragment handling; missing/error/any/unknown and unproven generic results remain unresolved; depth 20 / 512 visited-node limits remain unsafe. Splitting the old any/error predicate preserves its tests and short-circuit order. Added path labels do not turn any result safe.
+- Traced SQL payload, constituent, generic, awaited-result, call/construct-return, member and index-value edges. Indexed loops retain array order; runtime export/alias/namespace traversal and its 512-node / depth limits are unchanged. Export paths and reason strings are diagnostic only. Scope exclusions, exact INFRA paths, repository predicate and producer/consumer policies are unchanged.
+- Confirmed unresolved boundary results are accumulated and emitted once after export traversal. Previously their identical source-line/message keys de-duplicated them to one module finding; the new aggregation preserves that behavior while listing the individual failures. Builder reports and export-resolution failure reports still fail separately. The fixture explicitly requires one unresolved finding and verifies unknown, any, generic and nested-member details.
+- Confirmed composition adds no package/workflow wiring, dependency or production source change. The checker remains unwired; existing CI-script fixture discovery is distinct from production gate activation.
+
+## Supplied execution evidence and limits
+
+I ran no Node, AST/compiler, database, Docker, browser, production inventory or runtime command. The verified native receipt for this exact head reports **3 tests passed, 0 failed, 0 skipped**, 4.702 seconds elapsed (native test runner reports 4.560 seconds). This is supplied execution evidence, not a test I performed.
+
+Read `query-inventory-main5558-provenance/source-bound-provenance-comparison.json`: its pre-format source binding reports **3,198** legacy diagnostic entries with the same normalized multiset as the canonical scan, and 12 unresolved modules. I did not rerun that census or extend its pre-format binding to an independently executed current-head inventory. It supports diagnostic conservation only, not tenant safety, conversion completion or gate activation.
+
+## Findings and residuals
+
+**Blocking:** none.
+
+**Non-blocking:** no additional security finding. The ordinary review's longer-message compatibility observation remains: full diagnostic strings change, although the legacy prefix and unsafe category remain. No new full-string consumer or authority use was identified in this delta.
+
+This confirms the narrow provenance delta at the exact reviewed head. It does not establish current required GitHub checks, authorize merge, activate the checker, complete #580, claim stage closure, or supply production/SIT acceptance. No repository, ref, PR, runtime or shared-resource mutation occurred; this private report is the only file written by this reviewer.
