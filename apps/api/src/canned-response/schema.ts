@@ -22,7 +22,7 @@ const idField = z
   .min(1)
   .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE);
 
-export const workspaceIdQuery = z.object({ workspaceId: idField });
+export const cannedResponseListQuery = z.object({ workItemKey: idField });
 
 export const cannedResponseIdParam = z.object({ id: idField });
 

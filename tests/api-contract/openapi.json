@@ -10254,7 +10254,7 @@
           "Canned responses"
         ],
         "summary": "List canned responses",
-        "description": "A workspace's reusable composer snippets (`CA-19`).",
+        "description": "Reusable composer snippets available on this work item (`CA-19`).",
         "parameters": [
           {
             "schema": {
@@ -10262,13 +10262,13 @@
               "minLength": 1
             },
             "required": true,
-            "name": "workspaceId",
+            "name": "workItemKey",
             "in": "query"
           }
         ],
         "responses": {
           "200": {
-            "description": "The workspace's canned responses",
+            "description": "Canned responses available on the work item",
             "content": {
               "application/json": {
                 "schema": {
@@ -10281,7 +10281,7 @@
             }
           },
           "400": {
-            "description": "Workspace ID could not be determined",
+            "description": "Work item key is required",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10295,6 +10295,16 @@
           },
           "403": {
             "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found or not reachable",
             "content": {
               "text/plain": {
                 "schema": {
