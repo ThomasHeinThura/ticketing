@@ -240,12 +240,14 @@ export async function snapshot() {
   const comments = await db.select().from(schema.commentTable);
   const watchers = await db.select().from(schema.watcherTable);
   const attachments = await db.select().from(schema.attachmentTable);
+  const approvals = await db.select().from(schema.approvalTable);
   const activity = await db.select().from(schema.activityTable);
   return JSON.stringify({
     items,
     comments: comments.length,
     watchers: watchers.length,
     attachments: attachments.length,
+    approvals: approvals.length,
     activity: activity.length,
   });
 }
@@ -449,6 +451,26 @@ ROUTES.push(
     matrixKey: "POST /api/work-items/{key}/approvals",
     successStatus: 400,
     capability: "handler",
+    prepare: async (world, item) => {
+      const [workItem] = await db
+        .select({ id: schema.workItemTable.id })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.key, item.key));
+      if (!workItem) throw new Error("approval reach fixture item missing");
+      const participants = [
+        world.projectMember,
+        world.readerLead,
+        world.outsiderLead,
+      ];
+      await db.insert(schema.requestParticipantTable).values(
+        participants.map((participant) => ({
+          workItemId: workItem.id,
+          personId: participant.personId,
+          addedBy: participant.personId,
+          createdAt: new Date(),
+        })),
+      );
+    },
     call: (app, _w, i) =>
       json(app, "POST", `/api/work-items/${i.key}/approvals`, {}),
   },
