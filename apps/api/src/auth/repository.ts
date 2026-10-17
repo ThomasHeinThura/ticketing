@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import type { JsonValue } from "@taskdesk/domain";
 import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 import { dbNowUtc } from "../utils/db-time";
@@ -738,7 +739,7 @@ export async function consumeOperationProofRecord(
 }
 
 export async function getCustomerPortalIdentityRow(userId: string) {
-  return await db
+  const rows = await db
     .select({
       personId: schema.personTable.id,
       organisationId: schema.personTable.organisationId,
@@ -783,6 +784,16 @@ export async function getCustomerPortalIdentityRow(userId: string) {
         isNull(schema.organisationTable.deletedAt),
       ),
     );
+  type CustomerPortalIdentityRow = Omit<
+    (typeof rows)[number],
+    "roleCapabilities"
+  > & { roleCapabilities: JsonValue };
+  return rows.map(
+    (row): CustomerPortalIdentityRow => ({
+      ...row,
+      roleCapabilities: row.roleCapabilities as JsonValue,
+    }),
+  );
 }
 
 export async function getStoredAuthPluginConfigRows() {

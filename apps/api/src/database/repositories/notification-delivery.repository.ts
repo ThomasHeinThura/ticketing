@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { JsonValue } from "@taskdesk/domain";
 import { sql } from "drizzle-orm";
 import type { DbTransaction } from "../../events/outbox";
 import {
@@ -20,7 +21,7 @@ export type ClaimedNotificationDelivery = {
   dedupeKey: string;
   attempts: number;
   eventKind: string;
-  payload: unknown;
+  payload: JsonValue;
   title: string | null;
   body: string | null;
   resourceType: string | null;
@@ -59,6 +60,11 @@ const MAX_RESERVATION_ACQUIRE_RETRIES = 6;
 function rows<T>(result: { rows: unknown[] }): T[] {
   return result.rows as T[];
 }
+
+type RawClaimedNotificationDelivery = Omit<
+  ClaimedNotificationDelivery,
+  "payload"
+> & { payload: unknown };
 
 function utcDate(value: Date | string | null | undefined): Date | null {
   if (!value) return null;
@@ -117,7 +123,8 @@ export async function claimNextNotificationDelivery(
      LIMIT 1
      FOR UPDATE OF d SKIP LOCKED
   `);
-  return rows<ClaimedNotificationDelivery>(result)[0] ?? null;
+  const row = rows<RawClaimedNotificationDelivery>(result)[0];
+  return row ? { ...row, payload: row.payload as JsonValue } : null;
 }
 
 /**
