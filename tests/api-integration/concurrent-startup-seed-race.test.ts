@@ -248,4 +248,206 @@ describe("issue #134 -- migrateColumns concurrent-boot race", () => {
 
     expect(columns).toHaveLength(4);
   });
+
+  it("maps only matching legacy tasks once and preserves intentionally incomplete columns", async () => {
+    const { workspace } = await createWorkspaceMember();
+    const createProject = async (slug: string) =>
+      requireRow(
+        await db
+          .insert(schema.projectTable)
+          .values({
+            workspaceId: workspace.id,
+            name: slug,
+            slug,
+          })
+          .returning(),
+        `legacy project ${slug}`,
+      );
+    const createTask = async (
+      projectId: string,
+      title: string,
+      status: string,
+      columnId: string | null,
+      number: number,
+    ) =>
+      requireRow(
+        await db
+          .insert(schema.taskTable)
+          .values({
+            projectId,
+            title,
+            status,
+            columnId,
+            priority: "medium",
+            number,
+            position: number,
+          })
+          .returning(),
+        `legacy task ${title}`,
+      );
+
+    const projectA = await createProject("legacy-column-map-a");
+    const projectB = await createProject("legacy-column-map-b");
+    const projectC = await createProject("legacy-column-map-c");
+    const projectAColumns = await db
+      .insert(schema.columnTable)
+      .values([
+        {
+          projectId: projectA.id,
+          name: "In Progress A",
+          slug: "in-progress",
+          position: 0,
+        },
+        {
+          projectId: projectA.id,
+          name: "Custom A",
+          slug: "custom-only",
+          position: 1,
+        },
+      ])
+      .returning();
+    const projectAProgress = requireRow(
+      projectAColumns.filter((column) => column.slug === "in-progress"),
+      "project A in-progress column",
+    );
+    const projectACustom = requireRow(
+      projectAColumns.filter((column) => column.slug === "custom-only"),
+      "project A custom column",
+    );
+    const projectCProgress = requireRow(
+      await db
+        .insert(schema.columnTable)
+        .values({
+          projectId: projectC.id,
+          name: "In Progress C",
+          slug: "in-progress",
+          position: 0,
+        })
+        .returning(),
+      "project C in-progress column",
+    );
+
+    const legacyNull = await createTask(
+      projectA.id,
+      "legacy null column",
+      "in-progress",
+      null,
+      1,
+    );
+    const legacyWrong = await createTask(
+      projectA.id,
+      "legacy wrong column",
+      "in-progress",
+      projectACustom.id,
+      2,
+    );
+    const alreadyCorrect = await createTask(
+      projectA.id,
+      "already correct column",
+      "in-progress",
+      projectAProgress.id,
+      3,
+    );
+    const unknownStatus = await createTask(
+      projectA.id,
+      "unknown status",
+      "legacy-unknown",
+      null,
+      4,
+    );
+    const projectBTask = await createTask(
+      projectB.id,
+      "second project task",
+      "in-progress",
+      null,
+      1,
+    );
+    const projectCTask = await createTask(
+      projectC.id,
+      "third project task",
+      "in-progress",
+      null,
+      1,
+    );
+
+    await migrateColumns();
+
+    const mappedProjectBColumn = requireRow(
+      await db
+        .select()
+        .from(schema.columnTable)
+        .where(
+          and(
+            eq(schema.columnTable.projectId, projectB.id),
+            eq(schema.columnTable.slug, "in-progress"),
+          ),
+        ),
+      "project B in-progress column",
+    );
+    const taskIds = [
+      legacyNull.id,
+      legacyWrong.id,
+      alreadyCorrect.id,
+      unknownStatus.id,
+      projectBTask.id,
+      projectCTask.id,
+    ];
+    const readTasks = async () =>
+      db
+        .select({
+          id: schema.taskTable.id,
+          columnId: schema.taskTable.columnId,
+          version: schema.taskTable.version,
+        })
+        .from(schema.taskTable)
+        .where(inArray(schema.taskTable.id, taskIds))
+        .orderBy(schema.taskTable.id);
+    const firstBootTasks = await readTasks();
+    const firstBootById = new Map(
+      firstBootTasks.map((task) => [task.id, task]),
+    );
+
+    expect(firstBootById.get(legacyNull.id)).toEqual({
+      id: legacyNull.id,
+      columnId: projectAProgress.id,
+      version: 2,
+    });
+    expect(firstBootById.get(legacyWrong.id)).toEqual({
+      id: legacyWrong.id,
+      columnId: projectAProgress.id,
+      version: 2,
+    });
+    expect(firstBootById.get(alreadyCorrect.id)).toEqual({
+      id: alreadyCorrect.id,
+      columnId: projectAProgress.id,
+      version: 1,
+    });
+    expect(firstBootById.get(unknownStatus.id)).toEqual({
+      id: unknownStatus.id,
+      columnId: null,
+      version: 1,
+    });
+    expect(firstBootById.get(projectBTask.id)).toEqual({
+      id: projectBTask.id,
+      columnId: mappedProjectBColumn.id,
+      version: 2,
+    });
+    expect(firstBootById.get(projectCTask.id)).toEqual({
+      id: projectCTask.id,
+      columnId: projectCProgress.id,
+      version: 2,
+    });
+
+    const projectAColumnSlugs = await db
+      .select({ slug: schema.columnTable.slug })
+      .from(schema.columnTable)
+      .where(eq(schema.columnTable.projectId, projectA.id));
+    expect(new Set(projectAColumnSlugs.map((column) => column.slug))).toEqual(
+      new Set(["in-progress", "custom-only"]),
+    );
+
+    await migrateColumns();
+
+    expect(await readTasks()).toEqual(firstBootTasks);
+  });
 });
