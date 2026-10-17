@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   hasWorkItemReach,
@@ -12,6 +12,7 @@ import {
   addCustomer,
   buildTenant,
   createApproval,
+  portalRequest,
   runTransition,
 } from "./helpers/approval-fixtures";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -68,6 +69,7 @@ describe("approval repository current request scope", () => {
     });
     const customerRequester = await addCustomer(tenant);
     const customerApprover = await addCustomer(tenant);
+    const customerColleague = await addCustomer(tenant);
     await db
       .update(schema.workItemTable)
       .set({
@@ -98,6 +100,37 @@ describe("approval repository current request scope", () => {
         }
       ).blockedBy.map(({ kind }) => kind),
     ).toContain("approval");
+    const requestEffects = async () => ({
+      approvals: await approvalRows(tenant.workItem.id),
+      events: await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "approval.requested")),
+      audits: await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "approval.requested")),
+      notifications: await db
+        .select()
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.kind, "approval.requested")),
+    });
+    const beforeIneligibleRequest = await requestEffects();
+    const ineligibleRequest = await tenant.app.request(tenant.url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        transitionId: tenant.gated.id,
+        kind: "customer",
+        approverId: customerColleague.person.id,
+      }),
+    });
+    expect(
+      ineligibleRequest.status,
+      await ineligibleRequest.clone().text(),
+    ).toBe(422);
+    expect(await requestEffects()).toEqual(beforeIneligibleRequest);
+
     const created = await tenant.app.request(tenant.url, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -108,9 +141,65 @@ describe("approval repository current request scope", () => {
       }),
     });
     expect(created.status, await created.clone().text()).toBe(200);
-    expect(await created.json()).toEqual(
-      expect.objectContaining({ state: "pending" }),
+    const createdApproval = (await created.json()) as {
+      id: string;
+      state: string;
+    };
+    expect(createdApproval.state).toBe("pending");
+    const staffViewWithCustomerReach = await tenant.app.request(tenant.url);
+    expect(staffViewWithCustomerReach.status).toBe(200);
+    expect(
+      (
+        (await staffViewWithCustomerReach.json()) as {
+          approvals: { approverReachLost: boolean }[];
+        }
+      ).approvals,
+    ).toEqual([expect.objectContaining({ approverReachLost: false })]);
+
+    await db
+      .delete(schema.requestParticipantTable)
+      .where(
+        and(
+          eq(schema.requestParticipantTable.workItemId, tenant.workItem.id),
+          eq(
+            schema.requestParticipantTable.personId,
+            customerApprover.person.id,
+          ),
+        ),
+      );
+    const staffViewAfterCustomerReachLoss = await tenant.app.request(
+      tenant.url,
     );
+    expect(staffViewAfterCustomerReachLoss.status).toBe(200);
+    expect(
+      (
+        (await staffViewAfterCustomerReachLoss.json()) as {
+          approvals: { approverReachLost: boolean }[];
+        }
+      ).approvals,
+    ).toEqual([expect.objectContaining({ approverReachLost: true })]);
+
+    const customerInbox = await portalRequest(
+      tenant,
+      customerApprover,
+      "/api/portal/approvals",
+    );
+    expect(customerInbox.status, await customerInbox.clone().text()).toBe(200);
+    expect(
+      (
+        (await customerInbox.json()) as {
+          approvals: { approverReachLost: boolean }[];
+        }
+      ).approvals,
+    ).toEqual([expect.objectContaining({ approverReachLost: true })]);
+    const customerDecision = await portalRequest(
+      tenant,
+      customerApprover,
+      `/api/portal/approvals/${createdApproval.id}/decide`,
+      { method: "POST", body: { action: "approve" } },
+    );
+    expect(customerDecision.status).toBe(403);
+    expect((await approvalRows(tenant.workItem.id))[0]?.state).toBe("pending");
     const stillBlocked = await runTransition(tenant, tenant.done.id);
     expect(stillBlocked.status).toBe(422);
   });

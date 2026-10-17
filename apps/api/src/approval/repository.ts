@@ -611,7 +611,7 @@ export async function loadApprovalTargetByKey(
   if (!row) throw new HTTPException(404, { message: "Work item not found" });
 
   const visibleToPersonIds =
-    identity.side === "customer" && row.customerVisibility === "private"
+    row.customerVisibility === "private"
       ? [
           ...new Set(
             [row.requesterId, ...row.participantIds].filter(
@@ -758,7 +758,7 @@ export async function loadApprovalTargetByApprovalId(
     .limit(1);
   if (!row) return null;
   const visibleToPersonIds =
-    identity.side === "customer" && row.customerVisibility === "private"
+    row.customerVisibility === "private"
       ? [
           ...new Set(
             [row.requesterId, ...row.participantIds].filter(
@@ -1249,7 +1249,11 @@ export async function hasWorkItemReach(
   identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
   target: ApprovalTarget,
 ): Promise<boolean> {
-  return reaches(identity, target.reachFacts);
+  const reachFacts =
+    identity.side === "staff"
+      ? { ...target.reachFacts, visibleToPersonIds: null }
+      : target.reachFacts;
+  return reaches(identity, reachFacts);
 }
 
 export function hasApprovalCapability(
