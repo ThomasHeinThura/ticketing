@@ -1,9 +1,8 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
 import type { ScimAdminRequest } from "@taskdesk/domain";
 import { canonicalScimAdminRequest } from "@taskdesk/domain";
-import { and, eq, gt, sql } from "drizzle-orm";
-import db, { schema } from "../database";
+import db from "../database";
 import {
   canonicalOidcGroupMappingBody,
   OIDC_GROUP_MAPPING_CREATE_OPERATION,
@@ -15,14 +14,11 @@ import {
 } from "../identity/oidc-group-mapping-contract";
 import {
   consumeOperationProofRecord,
-  countRecentPendingActionChallenges,
+  consumePendingActionProofRecord,
   createOperationChallengeRecord,
+  createPendingActionChallengeRecord,
   issueOperationTokenRecord,
-  lockActiveStepUpSession,
-  lockPendingActionById,
-  lockPendingActionChallenge,
-  lockPendingActionForChallenge,
-  lockPendingActionProof,
+  issuePendingActionTokenRecord,
 } from "./repository";
 
 export const STEP_UP_OPERATION = "metrics_token_rotate" as const;
@@ -308,76 +304,17 @@ export async function createPendingActionChallenge(input: {
   const id = createId();
   const nonce = randomBytes(32);
   const challengeExpiresAt = await db.transaction(async (tx) => {
-    const [action] = await lockPendingActionForChallenge(
-      tx,
-      input.pendingActionId,
-      input.personId,
-    );
-    if (!action?.confirmation.endsWith("_step_up")) return null;
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.pendingActionId}))`,
-    );
-    const [recent] = await countRecentPendingActionChallenges(
-      tx,
-      input.personId,
-      input.sessionId,
-      input.pendingActionId,
-    );
-    if ((recent?.value ?? 0) >= STEP_UP_CHALLENGE_LIMIT)
-      throw new StepUpAttemptLimitError();
-    await tx
-      .update(schema.stepUpConfirmationTable)
-      .set({ challengeExpiresAt: sql`now()` })
-      .where(
-        and(
-          eq(schema.stepUpConfirmationTable.personId, input.personId),
-          eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
-          eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
-          eq(
-            schema.stepUpConfirmationTable.pendingActionId,
-            input.pendingActionId,
-          ),
-          eq(schema.stepUpConfirmationTable.state, "challenge"),
-          gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
-        ),
-      );
-    await tx
-      .update(schema.stepUpConfirmationTable)
-      .set({ tokenExpiresAt: sql`now()` })
-      .where(
-        and(
-          eq(schema.stepUpConfirmationTable.personId, input.personId),
-          eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
-          eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
-          eq(
-            schema.stepUpConfirmationTable.pendingActionId,
-            input.pendingActionId,
-          ),
-          eq(schema.stepUpConfirmationTable.state, "issued"),
-          gt(schema.stepUpConfirmationTable.tokenExpiresAt, sql`now()`),
-        ),
-      );
-    const clock = await tx.execute<{ challenge_expires_at: string }>(
-      sql`SELECT (now() + interval '5 minutes')::text AS challenge_expires_at`,
-    );
-    const clockRow = clock.rows[0];
-    if (!clockRow) throw new Error("Database time is unavailable");
-    const expiresAt = new Date(clockRow.challenge_expires_at);
-    await tx.insert(schema.stepUpConfirmationTable).values({
+    return createPendingActionChallengeRecord(tx, {
       id,
       personId: input.personId,
       sessionId: input.sessionId,
-      bindingKind: "pending_action",
       pendingActionId: input.pendingActionId,
-      operationKey: null,
-      routeKey: null,
-      expectedVersion: null,
-      bodyHash: null,
-      challengeNonceHash: sha256(nonce),
-      state: "challenge",
-      challengeExpiresAt: expiresAt,
+      nonceHash: sha256(nonce),
+      limit: STEP_UP_CHALLENGE_LIMIT,
+      onLimit: () => {
+        throw new StepUpAttemptLimitError();
+      },
     });
-    return expiresAt;
   });
   if (!challengeExpiresAt) return null;
   return {
@@ -506,25 +443,12 @@ export async function consumePendingActionProof(
   if (raw.length !== 32 || raw.toString("base64url") !== input.token)
     return null;
   const tokenHash = sha256(raw);
-  const [proof] = await lockPendingActionProof(tx, {
+  return consumePendingActionProofRecord(tx, {
     tokenHash,
     personId: input.personId,
     sessionId: input.sessionId,
     pendingActionId: input.pendingActionId,
   });
-  if (!proof) return null;
-  const consumed = await tx
-    .update(schema.stepUpConfirmationTable)
-    .set({ state: "consumed", consumedAt: sql`now()` })
-    .where(
-      and(
-        eq(schema.stepUpConfirmationTable.id, proof.id),
-        eq(schema.stepUpConfirmationTable.state, "issued"),
-        gt(schema.stepUpConfirmationTable.tokenExpiresAt, sql`now()`),
-      ),
-    )
-    .returning({ id: schema.stepUpConfirmationTable.id });
-  return consumed.length === 1 ? { id: proof.id } : null;
 }
 
 export async function consumeScimAdminProof(
@@ -778,80 +702,18 @@ export async function issuePendingActionToken(
   if (nonce.length !== 32 || nonce.toString("base64url") !== input.nonce)
     return null;
   const token = randomBytes(32);
-  const result = await db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.pendingActionId}))`,
-    );
-    const [activeSession] = await lockActiveStepUpSession(
-      tx,
-      input.sessionId,
-      input.userId,
-    );
-    if (!activeSession) return null;
-    const [action] = await lockPendingActionById(
-      tx,
-      input.pendingActionId,
-      input.personId,
-    );
-    if (!action) return null;
-    const [challenge] = await lockPendingActionChallenge(tx, input);
-    if (!challenge) return null;
-    const nonceHash = sha256(nonce);
-    if (!timingSafeEqual(challenge.challengeNonceHash, nonceHash)) {
-      await tx
-        .update(schema.stepUpConfirmationTable)
-        .set({ challengeExpiresAt: sql`now()` })
-        .where(
-          and(
-            eq(schema.stepUpConfirmationTable.id, input.id),
-            eq(schema.stepUpConfirmationTable.state, "challenge"),
-          ),
-        );
-      return null;
-    }
-    const authMethod = await verifyAuthentication();
-    if (!authMethod) {
-      await tx
-        .update(schema.stepUpConfirmationTable)
-        .set({ challengeExpiresAt: sql`now()` })
-        .where(
-          and(
-            eq(schema.stepUpConfirmationTable.id, input.id),
-            eq(schema.stepUpConfirmationTable.state, "challenge"),
-          ),
-        );
-      return null;
-    }
-    const clock = await tx.execute<{
-      issued_at: string;
-      token_expires_at: string;
-    }>(
-      sql`SELECT now()::text AS issued_at, (now() + interval '5 minutes')::text AS token_expires_at`,
-    );
-    const clockRow = clock.rows[0];
-    if (!clockRow) throw new Error("Database time is unavailable");
-    const issuedAt = new Date(clockRow.issued_at);
-    const tokenExpiresAt = new Date(clockRow.token_expires_at);
-    const updated = await tx
-      .update(schema.stepUpConfirmationTable)
-      .set({
-        state: "issued",
-        tokenHash: sha256(token),
-        authMethod,
-        authenticatedAt: issuedAt,
-        issuedAt,
-        tokenExpiresAt,
-      })
-      .where(
-        and(
-          eq(schema.stepUpConfirmationTable.id, input.id),
-          eq(schema.stepUpConfirmationTable.state, "challenge"),
-          gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
-        ),
-      )
-      .returning({ id: schema.stepUpConfirmationTable.id });
-    return updated.length === 1 ? { authMethod, tokenExpiresAt } : null;
-  });
+  const result = await db.transaction((tx) =>
+    issuePendingActionTokenRecord(tx, {
+      id: input.id,
+      personId: input.personId,
+      sessionId: input.sessionId,
+      userId: input.userId,
+      pendingActionId: input.pendingActionId,
+      nonceHash: sha256(nonce),
+      tokenHash: sha256(token),
+      verifyAuthentication,
+    }),
+  );
   return result
     ? {
         token: token.toString("base64url"),
