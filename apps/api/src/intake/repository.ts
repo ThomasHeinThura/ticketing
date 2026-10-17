@@ -997,6 +997,9 @@ async function convertSubmissionInTransaction(
       )
     : [];
   let eligibleAssigneeId: string | null = null;
+  // #761 / RT-6: an ineligible snapshotted default assignee never fails acceptance; the item
+  // is left unassigned and the reason is recorded in the acceptance audit row.
+  let assigneeSkipped: { id: string; reason: string } | null = null;
   if (defaultAssigneeId) {
     const [person] = await tx
       .select({
@@ -1019,6 +1022,15 @@ async function convertSubmissionInTransaction(
       .limit(1);
     if (person?.active && person.side === "staff")
       eligibleAssigneeId = person.id;
+    else
+      assigneeSkipped = {
+        id: defaultAssigneeId,
+        reason: !person
+          ? "not_a_project_member"
+          : !person.active
+            ? "inactive"
+            : "not_staff",
+      };
   }
   const number = await claimWorkItemNumber(project.id, tx);
   const now = new Date();
@@ -1136,6 +1148,14 @@ async function convertSubmissionInTransaction(
     after: {
       ref: formatSubmissionReference(submission.number),
       workItemKey: item.key,
+      ...(assigneeSkipped
+        ? {
+            defaultAssigneeSkipped: {
+              personId: assigneeSkipped.id,
+              reason: assigneeSkipped.reason,
+            },
+          }
+        : {}),
     },
   });
   await enqueueOutboxEvent(tx, {
