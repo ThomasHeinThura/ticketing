@@ -2328,3 +2328,46 @@ export async function declineSubmission(
     return { ref, state: updated.state, reason, message };
   });
 }
+
+/** The instance-level `feature.intake` flag row, or `undefined` (issue #580). */
+export async function findInstanceIntakeFlag() {
+  const [instance] = await db
+    .select({
+      enabled: schema.instanceFeatureFlagTable.enabled,
+      locked: schema.instanceFeatureFlagTable.locked,
+    })
+    .from(schema.instanceFeatureFlagTable)
+    .where(eq(schema.instanceFeatureFlagTable.featureKey, "feature.intake"))
+    .limit(1);
+  return instance;
+}
+
+/** The workspace-level `feature.intake` flag row, or `undefined` (issue #580). */
+export async function findWorkspaceIntakeFlag(workspaceId: string) {
+  const [workspace] = await db
+    .select({ enabled: schema.workspaceFeatureFlagTable.enabled })
+    .from(schema.workspaceFeatureFlagTable)
+    .where(
+      and(
+        eq(schema.workspaceFeatureFlagTable.workspaceId, workspaceId),
+        eq(schema.workspaceFeatureFlagTable.featureKey, "feature.intake"),
+      ),
+    )
+    .limit(1);
+  return workspace;
+}
+
+/** An organisation's default customer visibility, or `undefined` (issue #580). */
+export async function findOrganisationDefaultCustomerVisibility(
+  organisationId: string,
+) {
+  const [organisation] = await db
+    .select({
+      defaultCustomerVisibility:
+        schema.organisationTable.defaultCustomerVisibility,
+    })
+    .from(schema.organisationTable)
+    .where(eq(schema.organisationTable.id, organisationId))
+    .limit(1);
+  return organisation;
+}

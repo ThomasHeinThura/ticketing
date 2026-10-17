@@ -1,8 +1,6 @@
 import { resolveFeatureFlag } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
 import { getActiveStaffPerson } from "../instance/users/repository";
 import {
   apiRouter,
@@ -26,8 +24,11 @@ import {
   createRequestType,
   createSubmission,
   declineSubmission,
+  findInstanceIntakeFlag,
+  findOrganisationDefaultCustomerVisibility,
   findPortalSubmission,
   findSubmission,
+  findWorkspaceIntakeFlag,
   getRequestType,
   listOwnSubmissions,
   listRequestTypes,
@@ -279,25 +280,9 @@ async function submissionReach(c: IntakeContext, next: Next) {
 }
 
 async function requireIntakeEnabled(workspaceId: string) {
-  const [[instance], [workspace]] = await Promise.all([
-    db
-      .select({
-        enabled: schema.instanceFeatureFlagTable.enabled,
-        locked: schema.instanceFeatureFlagTable.locked,
-      })
-      .from(schema.instanceFeatureFlagTable)
-      .where(eq(schema.instanceFeatureFlagTable.featureKey, "feature.intake"))
-      .limit(1),
-    db
-      .select({ enabled: schema.workspaceFeatureFlagTable.enabled })
-      .from(schema.workspaceFeatureFlagTable)
-      .where(
-        and(
-          eq(schema.workspaceFeatureFlagTable.workspaceId, workspaceId),
-          eq(schema.workspaceFeatureFlagTable.featureKey, "feature.intake"),
-        ),
-      )
-      .limit(1),
+  const [instance, workspace] = await Promise.all([
+    findInstanceIntakeFlag(),
+    findWorkspaceIntakeFlag(workspaceId),
   ]);
   if (
     !resolveFeatureFlag({
@@ -922,14 +907,9 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
       identity.organisationId,
       c.req.valid("query").q,
     );
-    const [organisation] = await db
-      .select({
-        defaultCustomerVisibility:
-          schema.organisationTable.defaultCustomerVisibility,
-      })
-      .from(schema.organisationTable)
-      .where(eq(schema.organisationTable.id, identity.organisationId))
-      .limit(1);
+    const organisation = await findOrganisationDefaultCustomerVisibility(
+      identity.organisationId,
+    );
     return c.json(
       {
         defaultCustomerVisibility:

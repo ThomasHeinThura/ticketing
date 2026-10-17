@@ -1,6 +1,3 @@
-import { eq } from "drizzle-orm";
-import db from "../database";
-import { externalLinkTable } from "../database/schema";
 import {
   apiRouter,
   type BaseVariables,
@@ -9,6 +6,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { listExternalLinksByTask } from "./repository";
 import { externalLinkListSchema } from "./response";
 import { taskIdParam } from "./schema";
 
@@ -38,9 +36,7 @@ const externalLink = apiRouter<
 >().openapi(getExternalLinksByTaskRoute, async (c) => {
   const { taskId } = c.req.valid("param");
 
-  const links = await db.query.externalLinkTable.findMany({
-    where: eq(externalLinkTable.taskId, taskId),
-  });
+  const links = await listExternalLinksByTask(taskId);
 
   return c.json(
     links.map((link) => ({

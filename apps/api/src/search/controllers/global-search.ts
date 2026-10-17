@@ -1,14 +1,13 @@
-import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
-import db from "../../database";
 import {
-  projectTable,
-  taskActivityTable,
-  taskTable,
-  userTable,
-  workspaceTable,
-  workspaceUserTable,
-} from "../../database/schema";
-import { escapeLikePattern } from "../like-pattern";
+  findTasksByShortId,
+  findUserIdsByEmail,
+  listUserWorkspaceIds,
+  type SearchScope,
+  searchActivities,
+  searchProjects,
+  searchTasks,
+  searchWorkspaces,
+} from "../repository";
 import { TASK_SHORT_ID_PATTERN } from "../task-short-id";
 
 type SearchParams = {
@@ -121,11 +120,7 @@ async function globalSearch(params: SearchParams): Promise<{
 
   let resolvedUserId = userId;
   if (!resolvedUserId && userEmail) {
-    const user = await db
-      .select({ id: userTable.id })
-      .from(userTable)
-      .where(eq(userTable.email, userEmail))
-      .limit(1);
+    const user = await findUserIdsByEmail(userEmail);
 
     if (user.length > 0 && user[0]) {
       resolvedUserId = user[0].id;
@@ -136,10 +131,7 @@ async function globalSearch(params: SearchParams): Promise<{
     return { results: [], totalCount: 0, searchQuery: query };
   }
 
-  const userWorkspaces = await db
-    .select({ workspaceId: workspaceUserTable.workspaceId })
-    .from(workspaceUserTable)
-    .where(eq(workspaceUserTable.userId, resolvedUserId));
+  const userWorkspaces = await listUserWorkspaceIds(resolvedUserId);
 
   const accessibleWorkspaceIds = userWorkspaces
     .map((w) => w.workspaceId)
@@ -161,13 +153,11 @@ async function globalSearch(params: SearchParams): Promise<{
   const reachable = await reachableProjectIds(
     workspaceId ? [workspaceId] : accessibleWorkspaceIds,
   );
-  const workspaceFilter = and(
-    workspaceId
-      ? eq(projectTable.workspaceId, workspaceId)
-      : inArray(projectTable.workspaceId, accessibleWorkspaceIds),
-    isNull(projectTable.deletedAt),
-    reachable.length > 0 ? inArray(projectTable.id, reachable) : sql`false`,
-  );
+  const scope: SearchScope = {
+    workspaceId,
+    accessibleWorkspaceIds,
+    reachableProjectIds: reachable,
+  };
 
   // Check if query matches short-id pattern (e.g. "DEP-23"). `generateProjectSlug`
   // normalizes to NFKC before it stores a key, so the query is normalized too,
@@ -183,44 +173,12 @@ async function globalSearch(params: SearchParams): Promise<{
       const numberStr = shortIdMatch[2];
       const taskNumber = Number.parseInt(numberStr, 10);
 
-      const shortIdTasks = await db
-        .select({
-          id: taskTable.id,
-          title: taskTable.title,
-          description: taskTable.description,
-          projectId: taskTable.projectId,
-          projectName: projectTable.name,
-          projectSlug: projectTable.slug,
-          workspaceId: projectTable.workspaceId,
-          workspaceName: workspaceTable.name,
-          userId: taskTable.userId,
-          userName: userTable.name,
-          createdAt: taskTable.createdAt,
-          taskNumber: taskTable.number,
-          version: taskTable.version,
-          priority: taskTable.priority,
-          status: taskTable.status,
-        })
-        .from(taskTable)
-        .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-        .leftJoin(
-          workspaceTable,
-          eq(projectTable.workspaceId, workspaceTable.id),
-        )
-        .leftJoin(userTable, eq(taskTable.userId, userTable.id))
-        .where(
-          and(
-            workspaceFilter,
-            projectId ? eq(taskTable.projectId, projectId) : undefined,
-            // A project key may hold `_`, which `ilike` reads as "any one
-            // character", so `DE_-23` would also match a task in `DEP` and the
-            // `limit(1)` below would pick whichever came back first. Escaping
-            // keeps the case-insensitive comparison and drops the wildcards.
-            ilike(projectTable.slug, escapeLikePattern(slug)),
-            eq(taskTable.number, taskNumber),
-          ),
-        )
-        .limit(1);
+      const shortIdTasks = await findTasksByShortId({
+        scope,
+        projectId,
+        slug,
+        taskNumber,
+      });
 
       for (const task of shortIdTasks) {
         seenTaskIds.add(task.id);
@@ -247,51 +205,12 @@ async function globalSearch(params: SearchParams): Promise<{
     }
 
     // Also run text search for tasks
-    const taskRelevanceScore = sql<number>`
-      CASE
-        WHEN LOWER(${taskTable.title}) LIKE ${searchPattern} THEN 3
-        WHEN LOWER(${taskTable.description}) LIKE ${searchPattern} THEN 2
-        ELSE 1
-      END
-    `;
-
-    const taskQuery = db
-      .select({
-        id: taskTable.id,
-        title: taskTable.title,
-        description: taskTable.description,
-        projectId: taskTable.projectId,
-        projectName: projectTable.name,
-        projectSlug: projectTable.slug,
-        workspaceId: projectTable.workspaceId,
-        workspaceName: workspaceTable.name,
-        userId: taskTable.userId,
-        userName: userTable.name,
-        createdAt: taskTable.createdAt,
-        taskNumber: taskTable.number,
-        version: taskTable.version,
-        priority: taskTable.priority,
-        status: taskTable.status,
-        relevanceScore: taskRelevanceScore.as("relevanceScore"),
-      })
-      .from(taskTable)
-      .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
-      .leftJoin(userTable, eq(taskTable.userId, userTable.id))
-      .where(
-        and(
-          workspaceFilter,
-          projectId ? eq(taskTable.projectId, projectId) : undefined,
-          or(
-            ilike(taskTable.title, searchPattern),
-            ilike(taskTable.description, searchPattern),
-          ),
-        ),
-      )
-      .orderBy(desc(taskRelevanceScore), desc(taskTable.createdAt))
-      .limit(limit);
-
-    const tasks = await taskQuery;
+    const tasks = await searchTasks({
+      scope,
+      projectId,
+      searchPattern,
+      limit,
+    });
 
     for (const task of tasks) {
       if (seenTaskIds.has(task.id)) continue;
@@ -318,40 +237,7 @@ async function globalSearch(params: SearchParams): Promise<{
   }
 
   if (type === "all" || type === "projects") {
-    const projectRelevanceScore = sql<number>`
-      CASE
-        WHEN LOWER(${projectTable.name}) LIKE ${searchPattern} THEN 3
-        WHEN LOWER(${projectTable.description}) LIKE ${searchPattern} THEN 2
-        ELSE 1
-      END
-    `;
-
-    const projectQuery = db
-      .select({
-        id: projectTable.id,
-        name: projectTable.name,
-        description: projectTable.description,
-        slug: projectTable.slug,
-        workspaceId: projectTable.workspaceId,
-        workspaceName: workspaceTable.name,
-        createdAt: projectTable.createdAt,
-        relevanceScore: projectRelevanceScore.as("relevanceScore"),
-      })
-      .from(projectTable)
-      .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
-      .where(
-        and(
-          workspaceFilter,
-          or(
-            ilike(projectTable.name, searchPattern),
-            ilike(projectTable.description, searchPattern),
-          ),
-        ),
-      )
-      .orderBy(desc(projectRelevanceScore), desc(projectTable.createdAt))
-      .limit(limit);
-
-    const projects = await projectQuery;
+    const projects = await searchProjects({ scope, searchPattern, limit });
 
     for (const project of projects) {
       results.push({
@@ -370,40 +256,11 @@ async function globalSearch(params: SearchParams): Promise<{
   }
 
   if (type === "all" || type === "workspaces") {
-    const workspaceRelevanceScore = sql<number>`
-      CASE
-        WHEN LOWER(${workspaceTable.name}) LIKE ${searchPattern} THEN 3
-        WHEN LOWER(${workspaceTable.description}) LIKE ${searchPattern} THEN 2
-        ELSE 1
-      END
-    `;
-
-    const workspaceQuery = db
-      .select({
-        id: workspaceTable.id,
-        name: workspaceTable.name,
-        description: workspaceTable.description,
-        createdAt: workspaceTable.createdAt,
-        relevanceScore: workspaceRelevanceScore.as("relevanceScore"),
-      })
-      .from(workspaceTable)
-      .leftJoin(
-        workspaceUserTable,
-        eq(workspaceTable.id, workspaceUserTable.workspaceId),
-      )
-      .where(
-        and(
-          inArray(workspaceTable.id, accessibleWorkspaceIds),
-          or(
-            ilike(workspaceTable.name, searchPattern),
-            ilike(workspaceTable.description, searchPattern),
-          ),
-        ),
-      )
-      .orderBy(desc(workspaceRelevanceScore), desc(workspaceTable.createdAt))
-      .limit(limit);
-
-    const workspaces = await workspaceQuery;
+    const workspaces = await searchWorkspaces({
+      accessibleWorkspaceIds,
+      searchPattern,
+      limit,
+    });
 
     for (const workspace of workspaces) {
       results.push({
@@ -420,56 +277,13 @@ async function globalSearch(params: SearchParams): Promise<{
   }
 
   if (type === "all" || type === "comments" || type === "activities") {
-    const searchableActivityText = sql<string>`COALESCE(${taskActivityTable.content}, CAST(${taskActivityTable.eventData} AS text), '')`;
-    const activityRelevanceScore = sql<number>`
-      CASE
-        WHEN LOWER(${searchableActivityText}) LIKE ${searchPattern} THEN 2
-        WHEN LOWER(${taskTable.title}) LIKE ${searchPattern} THEN 1
-        ELSE 1
-      END
-    `;
-
-    const activityQuery = db
-      .select({
-        id: taskActivityTable.id,
-        type: taskActivityTable.type,
-        content: taskActivityTable.content,
-        eventData: taskActivityTable.eventData,
-        taskId: taskActivityTable.taskId,
-        taskTitle: taskTable.title,
-        taskNumber: taskTable.number,
-        projectId: projectTable.id,
-        projectName: projectTable.name,
-        projectSlug: projectTable.slug,
-        workspaceId: projectTable.workspaceId,
-        workspaceName: workspaceTable.name,
-        userId: taskActivityTable.userId,
-        userName: userTable.name,
-        createdAt: taskActivityTable.createdAt,
-        relevanceScore: activityRelevanceScore.as("relevanceScore"),
-      })
-      .from(taskActivityTable)
-      .leftJoin(taskTable, eq(taskActivityTable.taskId, taskTable.id))
-      .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
-      .leftJoin(userTable, eq(taskActivityTable.userId, userTable.id))
-      .where(
-        and(
-          workspaceFilter,
-          projectId ? eq(taskTable.projectId, projectId) : undefined,
-          or(
-            ilike(searchableActivityText, searchPattern),
-            ilike(taskTable.title, searchPattern),
-          ),
-          type === "comments"
-            ? eq(taskActivityTable.type, "comment")
-            : undefined,
-        ),
-      )
-      .orderBy(desc(activityRelevanceScore), desc(taskActivityTable.createdAt))
-      .limit(limit);
-
-    const activities = await activityQuery;
+    const activities = await searchActivities({
+      scope,
+      projectId,
+      type,
+      searchPattern,
+      limit,
+    });
 
     for (const activity of activities) {
       const isComment = activity.type === "comment";

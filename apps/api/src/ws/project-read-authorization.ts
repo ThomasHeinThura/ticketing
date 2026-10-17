@@ -1,10 +1,8 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq, isNull } from "drizzle-orm";
-import db, { schema } from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { evaluateProjectRead } from "../utils/has-project-reach";
 import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
-import { reachableWorkspacePredicate } from "../utils/workspace-access-middleware";
+import { findReachableLiveProject } from "./repository";
 
 /**
  * The credential facts a realtime socket holds for its caller. The native socket and the
@@ -112,24 +110,10 @@ export async function findSocketProject(
   credential: Pick<ProjectSocketCredential, "userId" | "apiKeyId">,
   projectId: string,
 ): Promise<{ workspaceId: string; organisationId: string | null } | null> {
-  const [project] = await db
-    .select({
-      workspaceId: schema.projectTable.workspaceId,
-      organisationId: schema.projectTable.organisationId,
-    })
-    .from(schema.projectTable)
-    .where(
-      and(
-        eq(schema.projectTable.id, projectId),
-        isNull(schema.projectTable.deletedAt),
-        isNull(schema.projectTable.archivedAt),
-        reachableWorkspacePredicate(
-          schema.projectTable.workspaceId,
-          credential.userId,
-          credential.apiKeyId,
-        ),
-      ),
-    )
-    .limit(1);
+  const project = await findReachableLiveProject(
+    projectId,
+    credential.userId,
+    credential.apiKeyId,
+  );
   return project ?? null;
 }
