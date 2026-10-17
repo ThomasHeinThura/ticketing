@@ -422,3 +422,90 @@ Non-blocking: `git diff --check 1a34e579..9e28bef7` reports a trailing blank lin
 
 No repository edits were made. No tests, CI, build, browser, PostgreSQL, image, or runtime operation was run; this review checked the exact records and cited receipts, not the underlying historical hosted runs. No push, PR mutation, or merge was performed.
 
+
+## Current bounded policy and records reviews
+
+The full six-path records candidate has one fresh strong independent ordinary review and a separate fresh full independent GPT-6.1 Sol security/control-plane review. These reports cover the actual current source; older embedded reports retain their historical exact-source scopes. No product acceptance, release or gate waiver is granted. The original historical note prefix is preserved byte-for-byte.
+
+## Evidence file
+
+`records803-a92-full-ordinary-luna.md`
+
+# Strong ordinary review — records803 candidate
+
+**Verdict: CLEAR** for the exact candidate `a92e2798d6eb28f6f1ee58821473b8a65dc7fec0` against accepted base `5a26ca75e60c7232ab8280a13e599fcbe4fd3518`.
+
+**Role and independence:** Fresh GPT-6 Luna strong ordinary review. I did not author, direct, or remediate this candidate and did not rely on another review as approval. This is the ordinary review only; the separate required GPT-6 Sol review remains outstanding because the change clarifies normative CI/security-gate semantics.
+
+**Scope:** The complete six-path net diff: `docs/01-architecture/api-design.md`, `docs/04-engineering/ci-cd.md`, `docs/07-planning/decision-log.md`, `docs/07-planning/integration-execution-queue.md`, `docs/07-planning/security-reviews/takeover-status-20261016.md`, and `docs/07-planning/status.md`. Read AGENTS.md, agent-workflow.md, CLAUDE.md, active-mission.md, and status/decision context. Checked the exact owner decision receipt and targeted saved proof files for accepted #809, recovered #773/#789, #811/#812 publication/check state, earlier adverse CI, and the workflow owner decision.
+
+**Checks performed:**
+
+- Verified exact HEAD/base and six changed paths; net diff is 1,031 insertions and 7 deletions. Worktree was clean.
+- Read the full policy changes. They correctly classify an explicitly prerelease GitHub Release as pre-stable even when the tag has stable syntax; tag syntax alone no longer passes the boundary; inability to establish live classification fails closed. The text explicitly preserves required independent review/CI and requires exact reviewed break fingerprints, without approving fingerprints or implicitly authorizing a stable-tag release.
+- Verified the direct owner-answer JSON records: “Treat GitHub prereleases as pre-stable; correct and review the gate, then use exact reviewed break fingerprints” and “Allow the narrow erasure safety summary, including names of currently joined workspaces.” The decision-log summary limits erasure data to the authenticated subject's own current memberships and member/owner safety counts; workspace names are used only in the existing conflict message. It excludes other members' identities, individual role rows, and any general query exception. Existing eligibility, locks, two-pass checks, and refusal-before-invalidation/deletion remain.
+- Checked WF-9/WF-19 references: every workspace project, including empty and archived projects, is already recorded as an owner decision; WF-19 retains shape-only authoring and execution-time eligibility. The candidate does not present either as a new policy decision.
+- Checked dated-state framing and source traceability. The new top status snapshot and queue are explicitly timestamped; historical status snapshots remain historical. Accepted #809 is bounded to protected acceptance evidence, #773/#789 reviews are described at their source scope and as pending current acceptance where appropriate, and #811/#812 runs remain pending rather than being represented as accepted. Adverse CI and performance evidence is retained.
+- Checked for overclaiming: the records preserve #580 as incomplete, do not claim whole-program or phase completion, signed release, final SIT, usable restore, final audit, or merge readiness, and do not invoke retired routes or claim a waiver.
+- `git diff --check` reports one formatting-only extra blank line at EOF in the historical review record. It does not affect meaning or rendered review evidence.
+
+**Findings:** No blocking findings. One non-blocking formatting observation: remove the extra blank line at EOF of `docs/07-planning/security-reviews/takeover-status-20261016.md` in a later records cleanup if desired; no correction is needed for this review verdict.
+
+**Limits:** No source or shared-document edits; no GitHub mutation; no tests, build, install, browser, database, Docker, or runtime work. This verdict covers the records and policy clarification at this exact SHA. It does not replace the required independent GPT-6 Sol review, required CI, publication checks, or any product/runtime acceptance.
+
+## Evidence file
+
+`records803-a92-full-security-61-sol.md`
+
+# Records #803 — full independent security/control-plane review
+
+**Reviewed head:** `a92e2798d6eb28f6f1ee58821473b8a65dc7fec0`
+
+**Comparison base:** accepted `main@5a26ca75e60c7232ab8280a13e599fcbe4fd3518`.
+
+**Verdict: CLEAR.** No blocking security, instruction-authority, provenance, or acceptance-inflation finding in the complete six-path candidate. This is a full pass on this bounded normative release-classification and records change, not a lightweight confirmation or a product-source audit.
+
+**Role and independence:** Fresh security reviewer context `/root/records803_a92_full_security_sol`. I did not author, direct, or remediate the candidate, and supplied no material repair design. No subagent was spawned. The conductor supplied explicit dispatch provenance `gpt-6.1-sol`, `fork_turns=none`, `reasoning_effort=high`, for the GPT-6.1 Sol security role. Those identify the requested route; this context does not expose an independently verifiable served-model/version fingerprint, and I do not invent one.
+
+**Ordinary prerequisite:** Read the complete authentic `records803-a92-full-ordinary-luna.md`, CLEAR on this exact SHA/base. I independently checked its substantive claims instead of treating that verdict as evidence for them. The bounded release-gate classification clarification falls under one strong ordinary review followed by one full security pass; no author-context self-review or review-count reduction is authorized by this report.
+
+## Complete scope and policy authority
+
+Read AGENTS.md, active-mission.md, agent-workflow.md, CLAUDE.md, the applicable normative API versioning and CI release-gate/security-path sections, and the complete six-path net change: api-design.md, ci-cd.md, decision-log.md, integration-execution-queue.md, security-reviews/takeover-status-20261016.md, and status.md. Confirmed 1,031 insertions/7 deletions and no application, test, workflow, gate script, dependency, schema, capability, or deployment file changed. The worktree was clean and exact HEAD was confirmed at orientation and immediately before report creation.
+
+The active mission remains Integration Freeze/SIT Consolidation with final combined signed prerelease, exact-digest SIT, recovery and final audit still required. This candidate changes the normative release-classification boundary in the owning API/CI standards; it does not change the active mission, who may merge, review independence/counts/models, applicable CI, retries, or the ban on bypassing an enforced gate.
+
+The direct-answer receipt `owner-erasure-summary-release-classification-decisions-20261016.json` records receipt at 2026-10-16T17:08:21.415187+00:00, provenance as Thomas's direct replies in the root conversation, and exact question-item identifiers. Its release answer is: “Treat GitHub prereleases as pre-stable; correct and review the gate, then use exact reviewed break fingerprints (Recommended).” Its erasure answer permits the narrow safety summary including currently joined workspace names. The appended decision-log entry faithfully records these bounded decisions and names the earlier tag-syntax classification it supersedes; the record does not manufacture a broader permission. I checked this saved direct-answer trace; I have no separate access to independently attest the original human conversation beyond that retained receipt and the conductor's provenance.
+
+## Security conclusions
+
+1. **Release boundary remains fail closed and reviewed.** API/CI text consistently says an explicitly prerelease GitHub Release remains pre-stable even with a stable-shaped tag; tag syntax alone cannot establish stable release. It requires live metadata and failure when classification is unavailable or indeterminate. The first stable v2.0.0-or-later release still closes the breaking-change allowlist. Existing same-PR/new-relative-to-main operation/rule/fingerprint matching, unmatched-entry rejection, own security review, and exact required CI remain. No exact finding is approved here, no existing published tag/release is changed, no permission to publish a stable release is added, and the actual gate correction remains a separately reviewed implementation. Written clarification is not permission to ignore or bypass a machine refusal.
+
+2. **Erasure entitlement remains narrowly subject-bound.** Compared the owner receipt, appended decision entry and already-accepted security-model paragraph. The permitted internal summary is for the authenticated deletion subject's own current persisted memberships and aggregate member/owner safety counts; workspace names are only for the existing conflict message. It does not expose other members' identities or individual role rows, grant workspace access, add a capability, or create a general/internal-producer query exception. Persisted inactive/legacy/personless memberships cannot vanish from safety counts through ordinary canonical reach filtering. Existing ownership interpretation, deletion eligibility, locks, two-pass checks and refusal-before-invalidation/deletion remain. The candidate does not implement or certify this path.
+
+3. **Previously settled workflow decisions remain settled.** Read `workflow-query-scope-owner-decisions-20261016.json` and `workflow-wf9-adoption-owner-decision-20261016.json`. The records accurately retain WF-9 access to every workspace project including empty/archived projects with generic refusal, and WF-19 shape-only authoring plus execution eligibility. They do not reopen those decisions, silently narrow them, or count their records as new acceptance.
+
+4. **Dated records do not enlarge authority or acceptance.** Historical checkpoints preserve their cutoffs and separately retain corrections for stale review state, metric attribution, failed runs and unauthorized local reset/recovery. Current queue/status retain red performance/calibration gates, AT-7, source-conversion/checker incompleteness, owner holds and #626 deferrals. No whole-#580/#589, feature/stage/P0–P7, release, final SIT, usable restore or final-audit completion is claimed. Existing diagnostic routes stay stopped; retired provider routes are historical references only. Required current checks and source/composition review are distinct from runtime and merge readiness.
+
+## Independent evidence and preservation checks
+
+- Raw Git-object comparisons show accepted-base status.md is an exact suffix of candidate status.md, and accepted-base decision-log.md an exact prefix of candidate decision-log.md. The complete added historical note is 424 lines, SHA-256 `fe41c7e1dded334afdf607aec41dcd872116939931d13f2120f3551fd29fd85d`. Eleven labelled historical report/receipt hashes match private originals and their text is embedded unchanged; both additional 9e28 factual reports likewise match their printed hashes and embedded bytes. Historical verdicts keep their exact old SHAs and do not approve a92.
+- Read #809 protected acceptance and selected exact-source receipts: merge 21:57:59Z, accepted main5a26/publication894d/source435, 18 contexts, PG222files/3283tests/5tasks, browser63/G1122 and final unit12tasks/API121/872/web186/1023. Independently hashed retained PG/full-unit raw logs against the receipts; both lengths and SHA-256 match the status claims. Earlier5511 and bb298 PG failure receipts and5511 assignment failure remain adverse, rather than being overwritten by a later pass. These are source-bound historical checks, not reruns performed by me.
+- Read accepted809 dual-composition ordinary correction and independent security report. They explicitly withdraw #789 whole-tree equality and distinguish #773 metadata-only final merge from #789's real31-path disjoint import. Checked the #773 conservation receipt and publication diffs: source8a→publicatione30 changes only its own note1198+/0; source88→publicationd65 only its own note703+/0. Independently matched all21 and13 public Markdown artifacts, respectively, byte-for-byte to private originals. The separately retained private #789 planning addendum is22335bytes with SHA-256 `c406f98c0cdde8567b7d65c6e2bcb64a2bbce9dccefe3a5feafc5a5602672826` and exactly four Markdown hard-break lines. Its exclusion does not omit a dispatched independent report. No report-edit or secret-scanner exception follows.
+- Read-only live GitHub PR/issue inventories and `gh pr view 803` confirm remote #803 remains open at older `0fddd1d6edeaedb6e5de2d58f694e26d91485955` on base3d1894ba, not this candidate. Live #811/#812 publications match e30/d65. Later GitHub activity does not move the saved snapshots' dated cutoffs, and older #803 checks/approval do not transfer to a92.
+
+## Findings, commands and limits
+
+**Blocking findings:** none.
+
+**Non-blocking observation:** `git diff --check 5a26ca75..a92` exits2 solely for a new blank line at EOF of the authentic historical note, line424. This is formatting only. Do not rewrite authentic historical reports to tidy it. A later authentic appended report may naturally make that line cease to be EOF.
+
+Read-only commands actually used: pwd; git status/rev-parse/log/diff with exact refs and name/status/stat/check/numstat forms; cat/sed/rg for bounded guides, all candidate changes and named receipts; Python pathlib/subprocess/hashlib/json/re for raw Git preservation, exact embedded-report bytes/hashes, top-level evidence inventory, publication diffs and selected raw-log verification; `gh pr list`, `gh issue list`, `gh pr view 803`. No tests/reproductions, install, build, browser, PostgreSQL, Docker, runtime, CI action, source/ref/shared-document edit, GitHub write, push or merge was performed.
+
+Review-command incident: an initial `rg --files` evidence inventory used overly broad globs, causing recursive pnpm-store path enumeration and truncated filename output despite the task's requested inventory boundary. It read filenames, not store contents, and made no mutation. I stopped that approach, disclosed it to the conductor, and switched to top-level pathlib inventory and explicit receipt paths. Some large combined text reads were also truncated; relevant ranges were subsequently read in bounded chunks. No conclusion relies on unseen truncated output.
+
+Residual limits: this full pass covers the bounded policy/records candidate and targeted supporting proofs, not a fresh audit of every underlying product report or historical hosted run. No candidate CI was run here; required statuses must be green on the eventual exact publication. The live metadata implementation, exact break fingerprints, product SQL behavior, image/runtime, final signed release/SIT/nonempty-attachment restore and independent final audit remain separately gated. This verdict grants no waiver, no stable-publication permission and no phase/mission completion.
+
+**Completed at:** 2026-10-17T02:18:17.122905+00:00
+
+**Reviewed head:** `a92e2798d6eb28f6f1ee58821473b8a65dc7fec0`
