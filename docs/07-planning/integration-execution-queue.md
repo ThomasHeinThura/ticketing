@@ -1,3 +1,16 @@
+## Current publications and required blocker dispositions — 2026-10-17 03:36 UTC
+
+Accepted main remains130508ef24f6442a59dbccaf305712891c8b3fbb. Detailed raw receipts and adverse history are recorded in the newest status snapshot; historical queue bytes remain intact.
+
+| Owner / unit | Current state | Next action |
+| --- | --- | --- |
+| Conductor /811 recovered773 | Publication73ce; current browser63/G1122/unit12/image125 pass, fullPG running; actual check:reviews failure on open P5 time-and-cost section. | Independent scope/contract assessment and real gate disposition; then fullPG/finalbody/newFAST/strict18. No finding deletion or waiver. |
+| Conductor /812 recovered789 | Publication78c3; browser63/G1122/unit12/image125 pass, fullPG running; credible new staff/private-audience P1 blocks acceptance. | Bounded customer-only visibility repair and meaningful allowed/denied regression, fresh applicable ordinary/Sol and runtime gates. Prior fixture-only correction is insufficient. |
+| Conductor /814 operation-proof580 | Publication518f; eight authentic reports and current source CLEAR; browser63/G1122/unit12/image125 pass, fullPG running. | ActualPG, one finalbody/newFAST/strict18 and protected acceptance when all gates clear; recompose on actual main if it moves. |
+| Luna /Carrier791 | Current2cbbe3 diagnostic timed out240s with partial semantic failures; tests/manifest unchanged. | Structural lifecycle/cache and consumer binding repair, root-owned complete-file diagnostic before inventory; no thresholds/skips/masks. |
+| Conductor /records803 | Prior400 bounded nested-auth scope fix has ordinary/fullSol CLEAR and7/7; this operational snapshot newly records surfaced blockers. | Bounded snapshot confirmation before additive ownnote/newCI; retain normative policy and owner decisions. |
+| Conductor /remaining580 and final589 | Remaining pending-action persistence plan is read-only; held810/807/798 require genuine new compositions. Final release/SIT/nonempty restore/audit unfinished. | Continue dependency-safe selected work; no whole580 or phase claim. |
+
 ## Accepted step-up slice and repaired recovery owners — 2026-10-17 02:58 UTC
 
 Accepted main `130508ef24f6442a59dbccaf305712891c8b3fbb` is protected #813 acceptance. This dated snapshot supersedes task-state rows below; prior bytes and owner decisions are preserved.
