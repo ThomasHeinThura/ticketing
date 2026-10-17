@@ -92,7 +92,7 @@ export async function getCalendarForEvaluation(
   calendarId: string,
   workspaceId: string,
 ) {
-  return await db
+  const rows = await db
     .select({
       timezone: serviceCalendarTable.timezone,
       windows: serviceCalendarTable.windows,
@@ -106,6 +106,17 @@ export async function getCalendarForEvaluation(
       ),
     )
     .limit(1);
+  type CalendarEvaluationRow = Omit<
+    (typeof rows)[number],
+    "windows" | "holidays"
+  > & { windows: JsonValue; holidays: JsonValue };
+  return rows.map(
+    (row): CalendarEvaluationRow => ({
+      ...row,
+      windows: row.windows as JsonValue,
+      holidays: row.holidays as JsonValue,
+    }),
+  );
 }
 
 export async function listGoalsForEvaluation(

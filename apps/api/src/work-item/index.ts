@@ -1107,15 +1107,16 @@ const workItem = apiRouter<
       | { impersonatedBy?: string | null }
       | null
       | undefined;
-    const result = await searchWorkItems({
-      userId: c.get("userId"),
-      apiKey: c.get("apiKey"),
-      impersonatedBy: session?.impersonatedBy,
-      workspaceId: c.get("workspaceId"),
-      query,
-      limit: body.limit ?? 50,
-      cursor: body.cursor ?? undefined,
-    });
+    const result: z.infer<typeof workItemListResponseSchema> =
+      await searchWorkItems({
+        userId: c.get("userId"),
+        apiKey: c.get("apiKey"),
+        impersonatedBy: session?.impersonatedBy,
+        workspaceId: c.get("workspaceId"),
+        query,
+        limit: body.limit ?? 50,
+        cursor: body.cursor ?? undefined,
+      });
     return c.json(result, 200);
   })
   .openapi(getWorkItemRoute, async (c) => {
