@@ -6,6 +6,10 @@ import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { isCurrentInstanceAdmin } from "../../apps/api/src/instance/observability/audit-failure-notifier";
+import {
+  restoreProjectMembership,
+  revokeProjectMembership,
+} from "./helpers/approval-fixtures";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -430,6 +434,10 @@ describe("API integration: approval lifecycle", () => {
       expect.objectContaining({ id: approval.id, canWithdraw: true }),
     ]);
 
+    const approverMembership = await revokeProjectMembership(
+      approverPerson.id,
+      project.id,
+    );
     await db
       .delete(schema.requestParticipantTable)
       .where(
@@ -465,6 +473,7 @@ describe("API integration: approval lifecycle", () => {
     );
     expect(lostReachDecision.status).toBe(403);
 
+    await restoreProjectMembership(approverMembership);
     await db.insert(schema.requestParticipantTable).values({
       workItemId: workItemRow?.id ?? "",
       personId: approverPerson.id,

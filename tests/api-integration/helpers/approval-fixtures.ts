@@ -325,6 +325,36 @@ export async function buildTenant(
 }
 export type Tenant = Awaited<ReturnType<typeof buildTenant>>;
 
+export async function revokeProjectMembership(
+  personId: string,
+  projectId: string,
+) {
+  const [membership] = await db
+    .select()
+    .from(schema.membershipTable)
+    .where(
+      and(
+        eq(schema.membershipTable.personId, personId),
+        eq(schema.membershipTable.scope, "project"),
+        eq(schema.membershipTable.scopeId, projectId),
+      ),
+    )
+    .limit(1);
+  if (!membership) {
+    throw new Error("revokeProjectMembership: project membership missing");
+  }
+  await db
+    .delete(schema.membershipTable)
+    .where(eq(schema.membershipTable.id, membership.id));
+  return membership;
+}
+
+export async function restoreProjectMembership(
+  membership: typeof schema.membershipTable.$inferSelect,
+) {
+  await db.insert(schema.membershipTable).values(membership);
+}
+
 export function request(
   t: Tenant,
   as: { user: Member["user"] },
