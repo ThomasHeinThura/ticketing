@@ -388,3 +388,119 @@ There are no new blocking findings. The unchanged N1 availability risk, unconver
 This publication appends only its own regular100644 review note after the current independently reviewed source. Every report retains its own coverage and limitations; no old check is reused.
 
 **Reviewed head:** `f220a9d659394e4a9dad2e856b24b80f867cb141`
+
+
+## Accepted #812 composition — current source confirmation
+
+**Reviewed head:** `aea9e4edb303091a2a9945e442c9e6a6ac04ab5d`
+
+The conductor normally composed accepted main `b78fd6853a890c6e2b10d17be18885e3b1612b2d` with the prior publication. All 3,397 mode/type/blob entries match that main plus the exact three prior overlay paths; the two auth source blobs remain identical to the full-semantic-reviewed `f220a9d659394e4a9dad2e856b24b80f867cb141`. Twenty incoming approval/work-item paths are disjoint. Fresh independent Luna and GPT-6.1 Sol composition reviews below preserve their bounded scope; prior full auth semantics retain their actual review bindings. The original Luna composition artifact remains unchanged privately; its reviewer-authored publication derivative records its exact hash and removal of ten trailing ASCII spaces across five lines, with all wording preserved.
+
+Prior actual API typecheck and 7 PostgreSQL files / 218 tests belong to f220, not this composition's hosted acceptance. New exact-publication full CI and shipping-image build/boot/health are still required. N1's inherited lock-order availability residual and the builder-returning preflight remain unresolved; no whole #580 or PA-15 compliance is claimed. No gate is waived.
+
+### Authentic report: pending-action-aea9-accepted812-ordinary-publication-luna.md
+
+# Independent ordinary review — accepted #812 composition with pending-action proof ownership
+
+**Reviewed head:** aea9e4edb303091a2a9945e442c9e6a6ac04ab5d
+**Comparison:** two-parent merge; first parent f44e8633b11cbda9ede8dd8538c8b58effb726d7, accepted-main second parent b78fd6853a890c6e2b10d17be18885e3b1612b2d
+**Reviewer:** GPT-6 Luna, fresh independent ordinary-review context; did not author, direct, or remediate this candidate
+**Scope:** Accepted-main merge composition, exact path/tree ownership, imported identity target and approval integration-test boundary. This is not a renewed semantic review of the pending-action auth changes or approval feature.
+
+## Verdict
+
+**CLEAR — no blocking composition or interop finding.** The candidate is exactly accepted #812 main with the three paths from the previously reviewed pending-action publication overlaid. The two branches changed disjoint paths from their common base. The approval changes use the canonical permissions identity resolver, and the approval/work-item test targets do not exercise the changed pending-action repository or step-up service.
+
+## Composition evidence
+
+- Verified HEAD exactly matches the reviewed SHA, is clean, and has the stated two parents. The second parent is b78fd6853a890c6e2b10d17be18885e3b1612b2d, whose commit metadata identifies it as the merge commit for PR #812 from `codex/query789-current-main-luna`. The composition proof JSON independently records these exact parents and source/accepted-main SHAs. I did not query GitHub in this review.
+- Compared recursive Git tree entries (mode, type, blob) for first parent, accepted-main parent and candidate. Reconstructing the candidate as accepted main plus the three first-parent blobs at `apps/api/src/auth/repository.ts`, `apps/api/src/auth/step-up-service.ts`, and `docs/07-planning/security-reviews/query-ownership-pending-action-challenge-580.md` exactly reproduces the candidate tree. No additional candidate-only or missing path was present.
+- Independently compared changed path sets from common base e848f3bd05bec95c8af657c29923a6413a11c63f to each parent: first parent changed exactly those three paths; accepted main changed the 20 approval/work-item source, test, helper and review-note paths recorded in the composition proof. The intersection was empty. No overlapping-path resolution was needed.
+- The merge commit author and committer are both TaskDesk GPT conductor. This corroborates conductor composition identity in local commit metadata.
+
+## Import and test boundary
+
+- `apps/api/src/approval/repository.ts` accepts `ResolvedIdentity` from `@taskdesk/permissions` and imports `resolveRequestIdentity` from `../permissions/resolve-request-identity`; that helper delegates to `resolveIdentity`. The approval code does not import `apps/api/src/auth/repository.ts` or `apps/api/src/auth/step-up-service.ts`.
+- The accepted incoming test paths target approval repository/scope/feature-flag/lifecycle behavior and work-item reach/transition behavior. The approval lifecycle test imports the top-level `auth` module to call `auth.api.getSession` for session-restoration coverage; this is test setup/verification of an authenticated session, not a changed auth persistence path. No incoming test path imports or directly exercises the pending-action repository or step-up service.
+- The overlay does not change the 20 incoming approval paths; this assessment is import/test boundary inspection, not approval-feature correctness approval.
+
+## Prior review evidence and residuals
+
+I read the supplied composition proof, the prior f220 full GPT-6.1 Sol report and the two independent f220 ordinary reports. Those reports record CLEAR for their stated source deltas. They remain bound to f220a9d659394e4a9dad2e856b24b80f867cb141; this composition review does not extend their semantic coverage to new code.
+
+The inherited N1 creation/issuance lock-order inversion remains explicitly unresolved and not runtime reproduced. The preflight `getPendingActionForStepUp` seam remains outside the prior lifecycle extraction. The prior security review and ordinary reports do not establish runtime deadlock/rollback behavior, full PA-15 compliance, or the pending-action feature as a whole. Current API TypeScript and selected PostgreSQL evidence described in the prior notes are f220 evidence, not executed against this new merge head. Hosted CI, image/build/runtime/browser acceptance and exact-head checks are outside this review.
+
+## Commands and files inspected
+
+Read-only commands: `git status --short --branch`, `git rev-parse HEAD`, `git show -s --format=...` for HEAD and its second parent, `git diff-tree --raw -r HEAD`, `git diff-tree --name-status -r HEAD`, `git diff --name-status/--numstat` against each parent, `git diff --check f44e8633b11cbda9ede8dd8538c8b58effb726d7 HEAD`, and a Python comparison of recursive `git ls-tree` mode/type/blob entries. Used `rg` to inspect auth/identity imports and pending-action references in the incoming source/test paths. Read the approval repository, request identity helper, approval source, representative repository/lifecycle/feature-flag/work-item tests, active mission and required repository workflow guidance. Read the supplied JSON proof and prior f220 author/ordinary/security reports.
+
+No tests, native API typecheck, analyzer, PostgreSQL, Docker, build, browser, hosted CI, GitHub mutation, or source change was performed.
+
+**Blocking findings:** none.
+**Non-blocking findings:** none new for this bounded composition review.
+**Verdict:** CLEAR for accepted-main composition and the stated import/test boundary only.
+
+
+---
+
+## Publication provenance
+
+Formatting-only derivative of original report: /Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/pending-action-aea9-accepted812-ordinary-luna.md
+Original bytes: 5642
+Original SHA-256: 2c011f209cde702fb9147abc81db3c8084fb0ce8eb78891d60a1137543874541
+Transform: remove ASCII spaces at line ends only; removed 10 trailing spaces across 5 lines. No wording or semantic content changed.
+Reviewer context, scope, source SHA and verdict are unchanged from the original.
+
+
+### Authentic report: pending-action-aea9-accepted812-security-61-sol.md
+
+# Independent security confirmation — accepted #812 composition
+
+**Model:** GPT-6.1 Sol
+**Role:** Independent security reviewer, bounded accepted-main composition confirmation
+**Context:** `/root/pending_action_aea9_accepted812_security_sol`
+**Reviewed head:** aea9e4edb303091a2a9945e442c9e6a6ac04ab5d
+**First parent / prior publication:** f44e8633b11cbda9ede8dd8538c8b58effb726d7
+**Second parent / accepted main:** b78fd6853a890c6e2b10d17be18885e3b1612b2d
+**Prior full semantic security source:** f220a9d659394e4a9dad2e856b24b80f867cb141
+**Common lineage base:** e848f3bd05bec95c8af657c29923a6413a11c63f
+**Invocation provenance:** The conductor supplied requested model `gpt-6.1-sol`, reasoning `high`, and `fork_turns=none`. A served-model/backend fingerprint is unavailable to this context; these are supplied requested invocation parameters, not independent backend attestation.
+**Independence:** Fresh context for this composition review. I did not author, direct or remediate the candidate or the earlier pending-action implementation. No inherited author conversation was provided. Prior reports were inputs to inspect, not substitutes for my source and tree checks.
+
+## Verdict
+
+**CLEAR — no blocking security composition or interoperability finding.** The candidate exactly composes accepted #812 with the three intended pending-action overlay paths. Its two auth source blobs are identical to the prior full-security-reviewed f220 source. The imported approval code uses the canonical permissions identity resolver and has no new pending-action proof dependency. This is a current-head composition confirmation with connected auth inspection, not a renewed full semantic audit of every imported approval change or a new full pending-action audit.
+
+## Source and composition evidence
+
+I verified clean HEAD and both exact parents. Live read-only GitHub inspection of PR #812 reports `MERGED`, merge commit b78fd6853a890c6e2b10d17be18885e3b1612b2d, publication head 004492a8b0e901fe3d0644d07ae520045db251f5, and merge time 2026-10-17T04:57:22Z. Local `origin/main` resolves to that accepted merge. I read the supplied `pending-action-accepted812-composition-proof.json` and independently reconstructed the recursive candidate tree using Git mode/type/blob entries. All 3,397 entries exactly match accepted main with these first-parent paths overlaid:
+
+- `apps/api/src/auth/repository.ts`
+- `apps/api/src/auth/step-up-service.ts`
+- `docs/07-planning/security-reviews/query-ownership-pending-action-challenge-580.md`
+
+The two source entries are mode 100644 and have blobs `add1853315ee1c7db12ae09d0c8e2ffb4055bf23` and `b5cc951f66708889d02db1d14f61e12c6b0a7af7`, respectively, at f220, the first parent and the candidate. The note exactly preserves the first-parent blob `41c620dea0a8fa5e33a51caabe67fdb23789a3d7`; unlike the auth files, it legitimately differs from f220 because of later report publication. I checked the intervening f220-to-f44 raw commit history: its only change is that own note. The complete prior f220 full security report is present verbatim in the current note; its private artifact SHA-256 is `6ef515e04d8b7197ee7a20b84e3603b1ab29c1b14f7fe67868f3606c31484bf8`.
+
+The first-parent and accepted-main changed path sets relative to e848 are disjoint. The accepted incoming set is exactly the 20 approval/work-item source, test/helper and approval-note paths in the supplied proof, and every one retains the accepted-main entry. No conflicting-path resolution, additional candidate-only path, missing entry or mode/type change was found. Diff-checks against both parents passed.
+
+## Connected security boundary checked
+
+I read the current pending-action creation, issuance and consumption repository implementations and their service wrappers, and checked the real issuance callback and consumption caller. Creation still receives the service transaction. Issuance still receives its service transaction, locks the active agent session and requester-owned pending action, checks the exact challenge binding and nonce digest, awaits authentication, and conditionally issues a hash-only token. Consumption still receives the caller's transaction and matches digest/person/session/action before its conditional issued-to-consumed update. The user-deactivation approval invokes it on the same `tx` used for the protected lifecycle mutation and pending-action execution. No imported approval code changes that executor or adds an inner commit. These are source observations; no rollback or race outcome was executed.
+
+I checked actual identity imports rather than inferring identity authority from a module name. Approval repository identity types come from `@taskdesk/permissions`; `resolveApprovalIdentityIfActive` calls `../permissions/resolve-request-identity`, which delegates to `./resolve-identity`. The latter is the canonical current-facts loader and mapper, including inactive-person and banned-user rejection and credential distinctions. It does not use the overlaid auth repository as its identity resolver. The permissions implementation, pending-action implementation, step-up API, database/schema and governing instruction files have no changes from f220 to this head.
+
+I inspected imports and relevant transaction boundaries in the incoming approval/work-item sources and representative repository, lifecycle and single-use test sources. No incoming TypeScript path references the changed pending-action repository/service, pending-action identifiers or step-up confirmation table. The approval lifecycle test's top-level `auth` import calls `auth.api.getSession` to verify restored session setup; it does not directly exercise the changed pending-action persistence family. Several tests load the full application, so this is not a claim that auth modules are absent from the loaded graph. The composition preserves their current dependencies without a detected new cross-boundary interaction.
+
+I read the fresh ordinary composition report `pending-action-aea9-accepted812-ordinary-luna.md` (CLEAR for its bounded scope), the prior full f220 security artifact, the preserved 1198 full security report and both f220 ordinary reports in the own note. I also read the repository instructions, active mission, workflow, provider adapter, current status opening/blocked state, newest decision entries, queue context, CI security-scope rules and canonical PA-15 contract. One initially guessed feature-document path did not exist; I located and read `docs/01-architecture/pending-actions.md` instead.
+
+## Findings and limits
+
+**Blocking findings:** none for this bounded composition confirmation.
+
+**New non-blocking findings:** none.
+
+**Inherited N1 remains unresolved:** creation takes action-row then session/action advisory lock; issuance takes advisory then session-row then action-row lock. Their opposite action/advisory order can form a wait cycle for concurrent requests on the same session/action and PostgreSQL may abort a transaction. Both exact auth blobs are unchanged. This remains the prior non-blocking availability residual for the statement-preserving extraction, not a reproduced runtime result, remediation or claim of unauthorized issuance. The builder-returning preflight `getPendingActionForStepUp` remains outside the lifecycle extraction.
+
+No tests, native/API TypeScript or compiler check, analyzer, PostgreSQL access, verifier/rollback/concurrency probe, Docker operation, image build/boot, browser, CI execution, GitHub mutation, source edit, commit, push or merge was performed. Commands were read-only Git/GitHub inspection, source/document searches and reads, plus a Python tree/blob/text comparison. The only file I created is this report outside the repository, with exclusive creation and mode 0600.
+
+Prior 1198/f220 test results retain their original source bindings; I did not rerun or independently audit those runtime receipts in this composition pass. Accepted #812's runtime and hosted evidence was not re-executed or independently revalidated here. No full current-head hosted, image/health or runtime pass is supplied by this report. Required exact-head checks and appropriate integration/runtime acceptance remain separate gates. The prior full semantic security review remains explicitly bound to its f220 source scope; this confirmation covers only composition at aea9 and the connected boundaries stated above. It establishes neither whole #580 completion, whole pending-action/PA-15 compliance, concurrency correctness, stage closure nor merge readiness.
