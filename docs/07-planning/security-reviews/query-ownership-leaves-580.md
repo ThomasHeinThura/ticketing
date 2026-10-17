@@ -750,3 +750,1370 @@ No tests, compiler, project checker, PostgreSQL/database probe, runtime, build, 
 ## Current machine binding
 
 **Reviewed head:** `3302262419fcb94922f9ab84e209354995f2540c`
+
+
+## Current accepted-main and selected intake composition — 2026-10-17
+
+**Reviewed head:** `d9d6ed4d6553f11b4a647f1637d32f90d5cbb534`
+
+Normal history: preserved publication daa6f6 + actual accepted main23fb0fe8 →1625a516; selected existing #77495b6f276 →3414b616; selected existing #77931cb2490 →d9d6ed4d. The resulting46-path/3416-entry source keeps38 prior owned paths other than the deliberate intake-repository merge exact, and preserves all accepted-main entries elsewhere. The original own note's90869-byte prefix/22 authentic artifacts and both imported component notes/six historical Claude reports remain byte-exact. No cumulative Carrier merge or feature reconstruction occurred.
+
+The fresh1625 ordinary review BLOCKED an inherited acceptance claim committed before conversion, contrary to the accepted #743 owner decision. That adverse report remains below. The existing #774 transaction/audit repair was composed normally; the existing #779 skip-reason audit repair was batched for the adjacent accepted #761 contract. Current ordinary A independently resolved its blocker; fresh ordinary B APPROVE and fresh FULL independent GPT-6.1 Sol APPROVE cover the current composition at their stated scopes. Prior three ordinary source contexts retain their original unchanged-source coverage. Root transported these reports, did not independently review its own orchestration, and verified the report origins and bytes. Author1625 reversed two parent-diff labels; the original and additive factual correction are both retained.
+
+Root actually ran current focused PostgreSQL4files45PASS/native0 and API typecheck/native0, with exact-source raw hashes, owned isolation/cleanup and limits recorded below. These are not full hosted suite, browser, image, G11, SIT or release acceptance. Old G11 calibration refusal factor1.752 atdaa6 remains failed and is not relabelled or retried unchanged; genuine accepted-main and selected-unit composition changes the source input. Every required check must be green on the exact new publication before protected merge.
+
+Non-blocking audit-catalogue and late-failure regression-precision gaps remain as the authentic reviewers classified them. #580, the structural checker, Carrier acceptance, signed combined release, exact-digest SIT, nonempty attachment recovery and final independent audit remain unfinished. No waiver, production action, predecessor closure or phase completion is claimed. The following ten artifacts are authentic and unedited; together with the retained prefix the own note carries32 artifacts, plus six historical component reports in their separately conserved notes. Requested model routes/provenance are recorded as supplied; unavailable served fingerprints are not invented.
+
+
+## Evidence file
+
+`810-1625-luna-composition-handoff.json`
+
+```json
+{
+  "acceptanceStatus": "local composition frozen for root inspection; no review/CI/acceptance/#580 completion claim",
+  "acceptedPR818": {
+    "merge": "23fb0fe8b78d09249d77957a9a0000b8a9f45d2c",
+    "parent": "7a99ae9e8696d6202f3a3b39472cc058cc0d61da",
+    "publication": "f4f6b0a1f376f42b57fdb5833fdae65d42115032"
+  },
+  "atUtc": "2026-10-17T08:36:49.125115+00:00",
+  "branch": "codex/query765-current-main-luna",
+  "candidate": "1625a516a2d10a1fbb76d7681c787873c802032a",
+  "commands": [
+    "git status --short --branch",
+    "git rev-parse HEAD HEAD^1 HEAD^2 HEAD^{tree}",
+    "git diff --name-status HEAD^1 HEAD",
+    "git diff --name-status HEAD^2 HEAD",
+    "git diff --check HEAD^2 HEAD",
+    "git merge-tree --write-tree <accepted-main> <candidate>",
+    "git diff --name-only <common-base> <accepted-main>",
+    "git diff --name-only <common-base> <candidate>",
+    "gh pr view 810 --json number,state,headRefName,headRefOid,baseRefName,baseRefOid,url,mergeStateStatus",
+    "gh pr view 818 --json number,state,headRefOid,baseRefName,baseRefOid,mergedAt,mergeCommit,url"
+  ],
+  "conservation": {
+    "allIncomingMainModeTypeBlobEntriesPreserved": true,
+    "allOwnedModeTypeBlobEntriesPreserved": true,
+    "commonBase": "c022915a8768b96b460c798feafafd7d48214d5c",
+    "completeTreeEntries": 3413,
+    "completeTreeEqualsReadOnlyMergeTree": "f5f2ed0f5d4a67a9a441239951bc08be3db0c8e5",
+    "incomingMainPaths": 68,
+    "overlap": 0,
+    "ownedPaths": 39
+  },
+  "independentConservationReceipt": {
+    "path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/810-1625-root-composition-conservation.json",
+    "reportCount": 22,
+    "sha256": "3d254d366d1938a9d28e1ef069bcc32ffcda4517adb94a4072008a4e12a0a98c"
+  },
+  "livePR810": {
+    "base": "c022915a8768b96b460c798feafafd7d48214d5c",
+    "head": "daa6f6cc196b91b2d6f069f750b0785784d303e0",
+    "state": "OPEN"
+  },
+  "mergeMethod": "normal git merge --no-ff; no cherry-pick, rebase, reconstruction, push, or PR edit",
+  "notPerformed": [
+    "tests",
+    "typecheck",
+    "Node/install",
+    "PG",
+    "Docker",
+    "browser",
+    "benchmark",
+    "CI",
+    "full checker",
+    "push",
+    "PR edit",
+    "review publication",
+    "merge to main"
+  ],
+  "ownNote": {
+    "bytes": 90869,
+    "embeddedAuthenticReports": 22,
+    "gitBlob": "2737c27eb82205e34c32f9c40f116417eddb8fe4",
+    "path": "docs/07-planning/security-reviews/query-ownership-leaves-580.md",
+    "preservedUnchanged": true,
+    "sha256": "401140d4c79294af354df78b10f39ed1d581ea9b016590e2ea3bf37f5a78b7b0"
+  },
+  "ownedPathEntries": {
+    "apps/api/src/attachment/require-submission-attachment-reach.ts": {
+      "mode": "100644",
+      "oid": "9f5bd2ce1b3dd1346a67c07a1aef645ffe505743",
+      "type": "blob"
+    },
+    "apps/api/src/column/controllers/create-column.ts": {
+      "mode": "100644",
+      "oid": "2ec6df652c5d458f7945d07341e7fbff02f402d7",
+      "type": "blob"
+    },
+    "apps/api/src/column/controllers/delete-column.ts": {
+      "mode": "100644",
+      "oid": "c5c64d4646284496c559d7b17219f46367a42cf2",
+      "type": "blob"
+    },
+    "apps/api/src/column/controllers/get-columns.ts": {
+      "mode": "100644",
+      "oid": "de8a5f63b524655d289d220eb9f332428c4de646",
+      "type": "blob"
+    },
+    "apps/api/src/column/controllers/reorder-columns.ts": {
+      "mode": "100644",
+      "oid": "6e285f87285a94e1d9fd970d3618d969fc3c7134",
+      "type": "blob"
+    },
+    "apps/api/src/column/controllers/update-column.ts": {
+      "mode": "100644",
+      "oid": "f9fca376af178f5ddb2b66154e7b30dff9d661a0",
+      "type": "blob"
+    },
+    "apps/api/src/column/index.ts": {
+      "mode": "100644",
+      "oid": "6f6614ff3a94c6fa5205def428ad431c6557f762",
+      "type": "blob"
+    },
+    "apps/api/src/column/repository.ts": {
+      "mode": "100644",
+      "oid": "8de430e8438d5462365bf7663cc55a2eb4d4a29c",
+      "type": "blob"
+    },
+    "apps/api/src/comment/controllers/get-comments.ts": {
+      "mode": "100644",
+      "oid": "13460d05b18bedacfb52574562b2488ea3c7e2e2",
+      "type": "blob"
+    },
+    "apps/api/src/comment/index.ts": {
+      "mode": "100644",
+      "oid": "cb01934991117c20309e25aab910a2c4c9106ff9",
+      "type": "blob"
+    },
+    "apps/api/src/comment/repository.ts": {
+      "mode": "100644",
+      "oid": "f259a4bc0e6cb5096e70c8db0320d121dc7a1a6f",
+      "type": "blob"
+    },
+    "apps/api/src/external-link/index.ts": {
+      "mode": "100644",
+      "oid": "6b3384b71457d441d04f5ecf450b081ba3c3f9e3",
+      "type": "blob"
+    },
+    "apps/api/src/external-link/repository.ts": {
+      "mode": "100644",
+      "oid": "ccfe72a9cb6e4cee197521cb821c4d46652611fb",
+      "type": "blob"
+    },
+    "apps/api/src/intake/index.ts": {
+      "mode": "100644",
+      "oid": "25f1f1a85930841d8a1a77ae80677238f33db9a0",
+      "type": "blob"
+    },
+    "apps/api/src/intake/linked-work-item.repository.ts": {
+      "mode": "100644",
+      "oid": "a6fb3763b55d9ded858b17fe85199c14647805eb",
+      "type": "blob"
+    },
+    "apps/api/src/intake/repository.ts": {
+      "mode": "100644",
+      "oid": "cea97cfc3549552ea1014f9c3f7f81a49648aa06",
+      "type": "blob"
+    },
+    "apps/api/src/intake/submission-linked-work-item.ts": {
+      "mode": "100644",
+      "oid": "45fe158ea475560f69813801ff382b3c6727dfe9",
+      "type": "blob"
+    },
+    "apps/api/src/oauth/controllers/get-id-token.ts": {
+      "mode": "100644",
+      "oid": "6bce3ff004116d245b3be2fb7907bbccb62455c8",
+      "type": "blob"
+    },
+    "apps/api/src/oauth/repository.ts": {
+      "mode": "100644",
+      "oid": "76444bf02248cb1b2b536898155a88ac39e2024d",
+      "type": "blob"
+    },
+    "apps/api/src/search/controllers/global-search.ts": {
+      "mode": "100644",
+      "oid": "0d0228433d203ef589458164f53303db4af34caa",
+      "type": "blob"
+    },
+    "apps/api/src/search/index.ts": {
+      "mode": "100644",
+      "oid": "487016edd5d3b27adf2a94cf41e9436e545fffdf",
+      "type": "blob"
+    },
+    "apps/api/src/search/repository.ts": {
+      "mode": "100644",
+      "oid": "81e2a0cbca32251b78223d1c882176aee59133a0",
+      "type": "blob"
+    },
+    "apps/api/src/workflow-rule/controllers/delete-workflow-rule.ts": {
+      "mode": "100644",
+      "oid": "459c530ac1fba09d77c2b827b0f8c9cdd0a5f9b9",
+      "type": "blob"
+    },
+    "apps/api/src/workflow-rule/controllers/get-workflow-rules.ts": {
+      "mode": "100644",
+      "oid": "78e72a7835c7cf820c355bebeaba64afc6cb0fd5",
+      "type": "blob"
+    },
+    "apps/api/src/workflow-rule/controllers/upsert-workflow-rule.ts": {
+      "mode": "100644",
+      "oid": "494db169a851055d2463c533e1a119577623a135",
+      "type": "blob"
+    },
+    "apps/api/src/workflow-rule/index.ts": {
+      "mode": "100644",
+      "oid": "7780b93e1598646648ad9c24f462bbbafe2b6d26",
+      "type": "blob"
+    },
+    "apps/api/src/workflow-rule/repository.ts": {
+      "mode": "100644",
+      "oid": "2a1cdd30ac1780b1a595b207548a28a5f348a74c",
+      "type": "blob"
+    },
+    "apps/api/src/ws/native-work-item-realtime.ts": {
+      "mode": "100644",
+      "oid": "e65a77ef64a12c7285555bfc2d608197c989b4a3",
+      "type": "blob"
+    },
+    "apps/api/src/ws/project-read-authorization.ts": {
+      "mode": "100644",
+      "oid": "187954221c1b4a847e2ef6e7158eb0134320b550",
+      "type": "blob"
+    },
+    "apps/api/src/ws/repository.ts": {
+      "mode": "100644",
+      "oid": "ad89fafbbd99db40bdfa164406d1b667e366beca",
+      "type": "blob"
+    },
+    "docs/07-planning/security-reviews/query-ownership-leaves-580.md": {
+      "mode": "100644",
+      "oid": "2737c27eb82205e34c32f9c40f116417eddb8fe4",
+      "type": "blob"
+    },
+    "tests/api-integration/column-workflow-rule-crud.test.ts": {
+      "mode": "100644",
+      "oid": "ab65dfd19ebaf70f83c611dbf3932327f8751185",
+      "type": "blob"
+    },
+    "tests/api-integration/global-search-scope.test.ts": {
+      "mode": "100644",
+      "oid": "7f4134e440522c40e05d3f11c500f6f5856c0d2a",
+      "type": "blob"
+    },
+    "tests/api-integration/intake-attachment-duplicate-reach.test.ts": {
+      "mode": "100644",
+      "oid": "40f2515efc5881abc38fc709219d8e263eb5dcc2",
+      "type": "blob"
+    },
+    "tests/api-integration/leaf-module-repositories.test.ts": {
+      "mode": "100644",
+      "oid": "21a3ce16fa6c595a2dbcf1afe0285c87c8783fc6",
+      "type": "blob"
+    },
+    "tests/api-integration/node-server-websocket.test.ts": {
+      "mode": "100644",
+      "oid": "445f169669a33c58200c2baa9b905404336268cf",
+      "type": "blob"
+    },
+    "tests/api-integration/project-reach-reads.test.ts": {
+      "mode": "100644",
+      "oid": "c07ad8fb1823d634e847483a7ecf81762a134633",
+      "type": "blob"
+    },
+    "tests/api-integration/ws-project-reach.test.ts": {
+      "mode": "100644",
+      "oid": "f214d85e34a7bc7c9fc5328641c490f9b4b88f45",
+      "type": "blob"
+    },
+    "tests/api/ws/project-read-authorization.test.ts": {
+      "mode": "100644",
+      "oid": "32ca11b959fd72ef04a2a33234fa1bd2e048bd2a",
+      "type": "blob"
+    }
+  },
+  "parents": [
+    "daa6f6cc196b91b2d6f069f750b0785784d303e0",
+    "23fb0fe8b78d09249d77957a9a0000b8a9f45d2c"
+  ],
+  "perCommitProof": {
+    "acceptedMainParentDeltaMatchesIncomingInventory": true,
+    "acceptedMainParentToMergePaths": 68,
+    "candidateDeltaCheckWhitespace": "passed",
+    "candidateParentToMergePaths": 39,
+    "sourceParentDeltaMatchesOwnedInventory": true
+  },
+  "role": "GPT-6 Luna composition author handoff; served model fingerprint unavailable",
+  "staticSeamInspection": {
+    "checked": "accepted-main auth/approval/task repository additions against #810 modules and existing identity/reach helpers",
+    "finding": "no changed #810 file path overlaps; selected modules continue to use identity-scope predicates and no direct import to the newly added auth/task/approval repositories was found by text search",
+    "limits": "static inspection only; no runtime or test claim"
+  },
+  "tree": "f5f2ed0f5d4a67a9a441239951bc08be3db0c8e5",
+  "worktree": "/Users/heinthura/.codex/worktrees/query765-current-luna"
+}
+```
+
+
+## Evidence file
+
+`810-1625-luna-parent-diff-label-correction.json`
+
+```json
+{
+  "atUtc": "2026-10-17T08:37:27.309193+00:00",
+  "candidate": "1625a516a2d10a1fbb76d7681c787873c802032a",
+  "noSourceOrRefChanges": true,
+  "originalHandoff": {
+    "path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/810-1625-luna-composition-handoff.json",
+    "preservedUnchanged": true,
+    "sha256": "550ef77343cf24feeaecd7a76ea1b4f54f6a15f0921f6069a6b0dc100534a68b"
+  },
+  "parents": {
+    "HEAD^1": "daa6f6cc196b91b2d6f069f750b0785784d303e0",
+    "HEAD^2": "23fb0fe8b78d09249d77957a9a0000b8a9f45d2c"
+  },
+  "purpose": "Additive correction to per-parent diff labels/counts in the original author handoff; original preserved byte-for-byte.",
+  "verifiedDiffs": {
+    "HEAD^1_to_HEAD": {
+      "count": 68,
+      "meaning": "accepted-main content imported onto prior candidate",
+      "nameOnlySha256": "469c466a6953846d936f1435bd1594fd6af0c366bab2392c9f55a9f53043b218",
+      "paths": [
+        "apps/api/src/approval/evidence.ts",
+        "apps/api/src/approval/index.ts",
+        "apps/api/src/approval/reminder-scan.ts",
+        "apps/api/src/approval/repository.ts",
+        "apps/api/src/approval/service.ts",
+        "apps/api/src/auth/repository.ts",
+        "apps/api/src/auth/step-up-service.ts",
+        "apps/api/src/task/assert-task-project-live.ts",
+        "apps/api/src/task/controllers/bulk-update-tasks.ts",
+        "apps/api/src/task/controllers/claim-task-numbers.ts",
+        "apps/api/src/task/controllers/create-task.ts",
+        "apps/api/src/task/controllers/delete-task.ts",
+        "apps/api/src/task/controllers/export-tasks.ts",
+        "apps/api/src/task/controllers/get-task.ts",
+        "apps/api/src/task/controllers/get-tasks.ts",
+        "apps/api/src/task/controllers/import-tasks.ts",
+        "apps/api/src/task/controllers/move-task.ts",
+        "apps/api/src/task/controllers/require-task-permission.ts",
+        "apps/api/src/task/controllers/update-task-assignee.ts",
+        "apps/api/src/task/controllers/update-task-description.ts",
+        "apps/api/src/task/controllers/update-task-due-date.ts",
+        "apps/api/src/task/controllers/update-task-priority.ts",
+        "apps/api/src/task/controllers/update-task-status.ts",
+        "apps/api/src/task/controllers/update-task-title.ts",
+        "apps/api/src/task/controllers/update-task.ts",
+        "apps/api/src/task/index.ts",
+        "apps/api/src/task/repository.ts",
+        "apps/api/src/task/validate-task-fields.ts",
+        "apps/api/src/work-item/controllers/list-work-item-transitions.ts",
+        "apps/api/src/work-item/controllers/transition-work-item.ts",
+        "apps/api/src/work-item/index.ts",
+        "docs/01-architecture/api-design.md",
+        "docs/04-engineering/ci-cd.md",
+        "docs/07-planning/decision-log.md",
+        "docs/07-planning/integration-execution-queue.md",
+        "docs/07-planning/security-reviews/auth-directory-security-scope-816.md",
+        "docs/07-planning/security-reviews/query-ownership-approvals-580.md",
+        "docs/07-planning/security-reviews/query-ownership-auth-read-materialization-580.md",
+        "docs/07-planning/security-reviews/query-ownership-operation-proof-580.md",
+        "docs/07-planning/security-reviews/query-ownership-pending-action-challenge-580.md",
+        "docs/07-planning/security-reviews/query-ownership-step-up-session-580.md",
+        "docs/07-planning/security-reviews/query-ownership-task-580.md",
+        "docs/07-planning/security-reviews/records-after817-20261017.md",
+        "docs/07-planning/security-reviews/takeover-status-20261016.md",
+        "docs/07-planning/status.md",
+        "scripts/ci/lib/security-paths.test.mjs",
+        "scripts/ci/probes/security-scope-shrink.test.mjs",
+        "tests/api-integration/approval-closure-and-clock.test.ts",
+        "tests/api-integration/approval-feature-flag.test.ts",
+        "tests/api-integration/approval-gate-semantics.test.ts",
+        "tests/api-integration/approval-lifecycle.test.ts",
+        "tests/api-integration/approval-repository.test.ts",
+        "tests/api-integration/approval-tenant-checks.test.ts",
+        "tests/api-integration/database-reset-locks.test.ts",
+        "tests/api-integration/helpers/approval-fixtures.ts",
+        "tests/api-integration/helpers/approval-single-use-suite.ts",
+        "tests/api-integration/helpers/database.ts",
+        "tests/api-integration/helpers/reach-world.ts",
+        "tests/api-integration/local-factor-policy.test.ts",
+        "tests/api-integration/project-archive-freeze-legacy.test.ts",
+        "tests/api-integration/task-repository-moves.test.ts",
+        "tests/api-integration/task-repository.test.ts",
+        "tests/api-integration/task-title-activity.test.ts",
+        "tests/api-integration/work-item-comment.test.ts",
+        "tests/api-integration/work-item-project-reach.test.ts",
+        "tests/api-integration/work-item-transition.test.ts",
+        "tests/api/task/bulk-update-tasks.test.ts",
+        "tests/api/task/require-task-permission.test.ts"
+      ]
+    },
+    "HEAD^2_to_HEAD": {
+      "count": 39,
+      "meaning": "candidate-owned content added over accepted main",
+      "nameOnlySha256": "803dfc7b1c7b5dd12e6b853ef687398136f4cf44ff6848d589a26b0c1a6a7d4f",
+      "paths": [
+        "apps/api/src/attachment/require-submission-attachment-reach.ts",
+        "apps/api/src/column/controllers/create-column.ts",
+        "apps/api/src/column/controllers/delete-column.ts",
+        "apps/api/src/column/controllers/get-columns.ts",
+        "apps/api/src/column/controllers/reorder-columns.ts",
+        "apps/api/src/column/controllers/update-column.ts",
+        "apps/api/src/column/index.ts",
+        "apps/api/src/column/repository.ts",
+        "apps/api/src/comment/controllers/get-comments.ts",
+        "apps/api/src/comment/index.ts",
+        "apps/api/src/comment/repository.ts",
+        "apps/api/src/external-link/index.ts",
+        "apps/api/src/external-link/repository.ts",
+        "apps/api/src/intake/index.ts",
+        "apps/api/src/intake/linked-work-item.repository.ts",
+        "apps/api/src/intake/repository.ts",
+        "apps/api/src/intake/submission-linked-work-item.ts",
+        "apps/api/src/oauth/controllers/get-id-token.ts",
+        "apps/api/src/oauth/repository.ts",
+        "apps/api/src/search/controllers/global-search.ts",
+        "apps/api/src/search/index.ts",
+        "apps/api/src/search/repository.ts",
+        "apps/api/src/workflow-rule/controllers/delete-workflow-rule.ts",
+        "apps/api/src/workflow-rule/controllers/get-workflow-rules.ts",
+        "apps/api/src/workflow-rule/controllers/upsert-workflow-rule.ts",
+        "apps/api/src/workflow-rule/index.ts",
+        "apps/api/src/workflow-rule/repository.ts",
+        "apps/api/src/ws/native-work-item-realtime.ts",
+        "apps/api/src/ws/project-read-authorization.ts",
+        "apps/api/src/ws/repository.ts",
+        "docs/07-planning/security-reviews/query-ownership-leaves-580.md",
+        "tests/api-integration/column-workflow-rule-crud.test.ts",
+        "tests/api-integration/global-search-scope.test.ts",
+        "tests/api-integration/intake-attachment-duplicate-reach.test.ts",
+        "tests/api-integration/leaf-module-repositories.test.ts",
+        "tests/api-integration/node-server-websocket.test.ts",
+        "tests/api-integration/project-reach-reads.test.ts",
+        "tests/api-integration/ws-project-reach.test.ts",
+        "tests/api/ws/project-read-authorization.test.ts"
+      ]
+    }
+  }
+}
+```
+
+
+## Evidence file
+
+`810-1625-composition-ordinary-luna.md`
+
+# #810 exact composition review — GPT-6 Luna
+
+## Verdict
+
+**BLOCK — current composition is incompatible with the accepted #743 failed-accept contract.** This is an inherited defect, not behavior newly introduced by #810 or by the normal merge. The candidate retains it while composing the newer accepted owner decision that supersedes the old behavior. No authoring or remediation was performed.
+
+## Exact source and ancestry
+
+- Candidate: `1625a516a2d10a1fbb76d7681c787873c802032a`
+- Parents: `daa6f6cc196b91b2d6f069f750b0785784d303e0` and accepted main `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`
+- Tree: `f5f2ed0f5d4a67a9a441239951bc08be3db0c8e5`
+- Worktree `/Users/heinthura/.codex/worktrees/query765-current-luna` was clean at review start. Candidate, parents and tree match the supplied receipts.
+- Independent composition receipt records 3,413 entries, 39 owned path entries, 68 disjoint incoming-main paths, exact mode/type/blob preservation, and the existing review note/report prefix unchanged. The corrected parent-label receipt correctly identifies parent 1→merge as the 68 accepted-main additions and parent 2→merge as the 39 candidate-owned paths. I treated the original mislabeled handoff as superseded by that preserved additive correction.
+
+## Blocking finding — failed intake accept leaves a committed claim
+
+Accepted `docs/07-planning/decision-log.md` lines 6–11 records Thomas's 2026-10-15 #743 decision: a failed accept leaves no claim, by validating before claim or rolling the claim back in the same transaction. It explicitly supersedes the 2026-10-14 decision-log statements that a failed accept leaves a claim and that claiming happens before destination validation.
+
+The composed `apps/api/src/intake/repository.ts` lines 1174–1177 still says the claim is deliberately committed before destination validation, calls `await claimSubmission(...)`, then opens a separate `db.transaction(...)`. Subsequent missing/unreachable/stale destination failures therefore leave the earlier claim committed. The 2026-10-14 rule and this code were already present in accepted-main parent `23fb0fe8`; the #810 diff changes this repository for other query-ownership work but leaves this acceptance block intact. Thus this is not a newly introduced #810 behavior, but it remains a current contract violation and blocks composition against the accepted-main contract.
+
+An existing, unaccepted #774 repair is present in `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/carrier-visual-7a99905d/repo`: it moves the claim into the conversion transaction, defers claim-audit append until successful conversion, and has an integration assertion that a failed destination leaves no claim/audit/outbox and another triager can accept. This is evidence of a potential repair path only. It is outside the current candidate and main; because it overlaps `intake/repository.ts` and tests, a future composition must explicitly preserve/reconcile it and review the exact resulting source. I do not assume that future change has landed or cleared review.
+
+## Bounded seam review
+
+- Composition conservation supports that accepted auth/task/approval/identity additions and candidate-owned paths are disjoint. The candidate tree preserves the accepted-main records rather than replaying its own records over them; its own query-ownership note blob remains unchanged.
+- Intake conversion calls the accepted work-item `claimWorkItemNumber(project.id, tx)`, `recordWorkItemActivity(tx, ...)`, and `recordWorkItemEvent(tx, ...)` through `await`; the accepted helper signatures accept the transaction executor and event/activity helpers are awaited. No composition-level signature or transaction-handle mismatch was found in these inspected calls.
+- Candidate search repository statements compose current project-reach predicates into task/project/activity reads, with caller-provided project IDs narrowing those results. The controller awaits repository materialization before assembling response results.
+- Candidate linked intake/attachment owner lookup applies `currentProjectReachPredicate(identity, ...)` in SQL and retains deleted-project exclusion while allowing archived projects as the retained-read-only contract requires. Staff attachment list/content paths retain their own linked-item SQL scope.
+- Candidate WebSocket lookups require current workspace and project reach in SQL for project topics, and current project reach for item facts. The authorization path resolves the socket identity, retains `project:read`, and keeps the API-key owner and stored capability ceilings, including `work_item:read` for event topics. No import of the new accepted auth/task/approval repositories into these candidate modules was found.
+- The new leaf repository integration fixture uses existing database/test fixture helpers and accepted work-item schema fields; assertions were inspected only.
+
+## Scope, independence, and limits
+
+- Requested model: GPT-6 Luna; served fingerprint is unavailable in this environment.
+- Fresh independent ordinary composition-delta context; I did not author, direct, or remediate this candidate. I used prior reports only as preserved provenance and bounded source context, not as current composition approval.
+- Inspected ancestry/tree receipts and the parent-label correction; candidate query ownership, intake, attachment and socket seams; accepted-main auth/task/approval additions and the applicable current decision and architecture contracts; and the candidate's preserved review note.
+- No tests, runtime, compiler, checker, install, database, Docker, browser, benchmark, CI, source edit, ref update, push, PR action, or merge was performed. No runtime, test-pass, CI, security-review, #580 completion, phase-finalizer, or stage-acceptance claim is made.
+
+
+## Evidence file
+
+`810-3414-luna-774-composition-handoff.json`
+
+```json
+{
+  "774ReviewNote": {
+    "entry": {
+      "mode": "100644",
+      "oid": "9a9a9ef54b4f1c14db4f5597045236b7df6653af",
+      "type": "blob"
+    },
+    "path": "docs/07-planning/security-reviews/774-intake-release-claim.md",
+    "reports": [
+      {
+        "artifact": "774-ordinary-b-sonnet.md",
+        "bytes": 6951,
+        "embeddedBytesVerifiedBeforeMerge": true,
+        "sha256": "14cd816338eafdce85af8e9c81b8cb76aa34aca5c8f0b9bc596facac2d2a5523"
+      },
+      {
+        "artifact": "774-ordinary-c-sonnet.md",
+        "bytes": 8169,
+        "embeddedBytesVerifiedBeforeMerge": true,
+        "sha256": "a52a914bc9897ba513188948dabd7116228ee8af0eb5483e93a49c6c35eb24a2"
+      },
+      {
+        "artifact": "774-security-opus.md",
+        "bytes": 4712,
+        "embeddedBytesVerifiedBeforeMerge": true,
+        "sha256": "130ce25488ade222111216707aca2e5cf144492d58c9487a0f17085167d01483"
+      }
+    ],
+    "sameBlobAs95b6": true
+  },
+  "atUtc": "2026-10-17T08:42:21.083027+00:00",
+  "branch": "codex/query765-current-main-luna",
+  "candidate": "3414b61608ac358b1631af3fd8ccfb81017ecb3a",
+  "component5EntriesAtFinal": {
+    "apps/api/src/intake/repository.ts": {
+      "mode": "100644",
+      "oid": "f1d911f605e72edea076d5aed66d0598908b1126",
+      "type": "blob"
+    },
+    "docs/03-features/intake-queue.md": {
+      "mode": "100644",
+      "oid": "2224be1a7246eb281d8f45ccf40ad47d095f60d7",
+      "type": "blob"
+    },
+    "docs/07-planning/security-reviews/774-intake-release-claim.md": {
+      "mode": "100644",
+      "oid": "9a9a9ef54b4f1c14db4f5597045236b7df6653af",
+      "type": "blob"
+    },
+    "tests/api-integration/intake-triage-negative.test.ts": {
+      "mode": "100644",
+      "oid": "4c19747ae23d0b022734d44506463b2e9b03a232",
+      "type": "blob"
+    },
+    "tests/api-integration/project-reach-writes.test.ts": {
+      "mode": "100644",
+      "oid": "ec8c49b88798c5e49452a17adba8cd7a471be4f7",
+      "type": "blob"
+    }
+  },
+  "componentDeltaPaths": [
+    "apps/api/src/intake/repository.ts",
+    "docs/03-features/intake-queue.md",
+    "docs/07-planning/security-reviews/774-intake-release-claim.md",
+    "tests/api-integration/intake-triage-negative.test.ts",
+    "tests/api-integration/project-reach-writes.test.ts"
+  ],
+  "composition": {
+    "all22PriorOwnReportsRetainedThroughExactNoteBlob": true,
+    "all38NonoverlapPriorSourcePathsPreserved": true,
+    "allAcceptedMainEntriesOutside43Preserved": true,
+    "completeTreeEntries": 3414,
+    "overlap": [
+      "apps/api/src/intake/repository.ts"
+    ],
+    "priorOwnNoteUnchanged": true,
+    "priorOwnedPaths": 39,
+    "resultingOwnedPathsVsAcceptedMain": 43,
+    "selectedComponentPaths": 5
+  },
+  "contractSeamInspection": {
+    "acceptSubmission": "#743 claim is in the same conversion transaction using DbTransaction; failure rollback covers claim, deferred claim-audit thunk, accepted audit, outbox, and conversion writes",
+    "limits": "static source inspection only; no tests/runtime claim",
+    "lockOrder": "claim helper defers appendAudit until after destination validation/conversion and before accepted audit; code comment preserves project-lock before audit-chain advisory lock",
+    "reach": "currentProjectReachPredicate import and scoped query paths retained in intake repository; linked archived-item read helper and websocket repository blobs unchanged from 1625",
+    "standaloneClaim": "explicit claim route reuses helper then awaits appendAudit inside its own transaction"
+  },
+  "evidenceRead": {
+    "ordinaryBlock": "810-1625-composition-ordinary-luna.md",
+    "priorConservation": "810-1625-root-composition-conservation.json",
+    "sourceComparison": "810-1625-accept-claim-source-comparison.json"
+  },
+  "merge": "normal git merge --no-ff of selected existing #774 publication commit into frozen #810 composition; no reconstruction/cherry-pick/rebase",
+  "mergeBase": "c35666c531c4b84c300bac5432fd4dc8dca3ed4f",
+  "notPerformed": [
+    "tests",
+    "typecheck",
+    "install/Node",
+    "PostgreSQL",
+    "Docker",
+    "browser",
+    "benchmark",
+    "CI",
+    "full checker",
+    "push",
+    "PR edit",
+    "review publication",
+    "main merge"
+  ],
+  "ownNote": {
+    "authenticEmbeddedReportsRetained": 22,
+    "entry": {
+      "mode": "100644",
+      "oid": "2737c27eb82205e34c32f9c40f116417eddb8fe4",
+      "type": "blob"
+    },
+    "path": "docs/07-planning/security-reviews/query-ownership-leaves-580.md",
+    "sameBlobAs1625": true
+  },
+  "parents": [
+    "1625a516a2d10a1fbb76d7681c787873c802032a",
+    "95b6f276a628811471710a2fe2e97d9ab6205169"
+  ],
+  "perParentDiffs": {
+    "HEAD^1_1625_to_HEAD": {
+      "binaryPatchBytes": 41635,
+      "binaryPatchSha256": "913d4a815aa9828fc199bc9d8fe693c934d0d777d4614c6dca23900f6e3b836f",
+      "count": 5,
+      "meaning": "selected #774 component applied to frozen #810 candidate",
+      "nameOnlySha256": "1356a3d78cfbfda435115a9f9db9d187775d73a94e75520e6415247632c57e71",
+      "paths": [
+        "apps/api/src/intake/repository.ts",
+        "docs/03-features/intake-queue.md",
+        "docs/07-planning/security-reviews/774-intake-release-claim.md",
+        "tests/api-integration/intake-triage-negative.test.ts",
+        "tests/api-integration/project-reach-writes.test.ts"
+      ]
+    },
+    "HEAD^2_95b6_to_HEAD": {
+      "count": 311,
+      "meaning": "older #774 source compared with complete current candidate tree; includes intervening accepted-main and #810 history",
+      "nameOnlySha256": "e948cbee0b9cbb2499f6d40cbdd2d607e58a6fa26637b532a23522fb24b8b776"
+    }
+  },
+  "preflightMatchedFinalTree": true,
+  "preflightTree": "e6b1d53a5f57bebddafcdde1bc70800950a47e31",
+  "prior39EntriesAfter": {
+    "apps/api/src/attachment/require-submission-attachment-reach.ts": {
+      "mode": "100644",
+      "oid": "9f5bd2ce1b3dd1346a67c07a1aef645ffe505743",
+      "type": "blob"
+    },
+    "apps/api/src/column/controllers/create-column.ts": {
+      "mode": "100644",
+      "oid": "2ec6df652c5d458f7945d07341e7fbff02f402d7",
+      "type": "blob"
+    },
+    "apps/api/src/column/controllers/delete-column.ts": {
+      "mode": "100644",
+      "oid": "c5c64d4646284496c559d7b17219f46367a42cf2",
+      "type": "blob"
+    },
+    "apps/api/src/column/controllers/get-columns.ts": {
+      "mode": "100644",
+      "oid": "de8a5f63b524655d289d220eb9f332428c4de646",
+      "type": "blob"
+    },
+    "apps/api/src/column/controllers/reorder-columns.ts": {
+      "mode": "100644",
+      "oid": "6e285f87285a94e1d9fd970d3618d969fc3c7134",
+      "type": "blob"
+    },
+    "apps/api/src/column/controllers/update-column.ts": {
+      "mode": "100644",
+      "oid": "f9fca376af178f5ddb2b66154e7b30dff9d661a0",
+      "type": "blob"
+    },
+    "apps/api/src/column/index.ts": {
+      "mode": "100644",
+      "oid": "6f6614ff3a94c6fa5205def428ad431c6557f762",
+      "type": "blob"
+    },
+    "apps/api/src/column/repository.ts": {
+      "mode": "100644",
+      "oid": "8de430e8438d5462365bf7663cc55a2eb4d4a29c",
+      "type": "blob"
+    },
+    "apps/api/src/comment/controllers/get-comments.ts": {
+      "mode": "100644",
+      "oid": "13460d05b18bedacfb52574562b2488ea3c7e2e2",
+      "type": "blob"
+    },
+    "apps/api/src/comment/index.ts": {
+      "mode": "100644",
+      "oid": "cb01934991117c20309e25aab910a2c4c9106ff9",
+      "type": "blob"
+    },
+    "apps/api/src/comment/repository.ts": {
+      "mode": "100644",
+      "oid": "f259a4bc0e6cb5096e70c8db0320d121dc7a1a6f",
+      "type": "blob"
+    },
+    "apps/api/src/external-link/index.ts": {
+      "mode": "100644",
+      "oid": "6b3384b71457d441d04f5ecf450b081ba3c3f9e3",
+      "type": "blob"
+    },
+    "apps/api/src/external-link/repository.ts": {
+      "mode": "100644",
+      "oid": "ccfe72a9cb6e4cee197521cb821c4d46652611fb",
+      "type": "blob"
+    },
+    "apps/api/src/intake/index.ts": {
+      "mode": "100644",
+      "oid": "25f1f1a85930841d8a1a77ae80677238f33db9a0",
+      "type": "blob"
+    },
+    "apps/api/src/intake/linked-work-item.repository.ts": {
+      "mode": "100644",
+      "oid": "a6fb3763b55d9ded858b17fe85199c14647805eb",
+      "type": "blob"
+    },
+    "apps/api/src/intake/repository.ts": {
+      "mode": "100644",
+      "oid": "f1d911f605e72edea076d5aed66d0598908b1126",
+      "type": "blob"
+    },
+    "apps/api/src/intake/submission-linked-work-item.ts": {
+      "mode": "100644",
+      "oid": "45fe158ea475560f69813801ff382b3c6727dfe9",
+      "type": "blob"
+    },
+    "apps/api/src/oauth/controllers/get-id-token.ts": {
+      "mode": "100644",
+      "oid": "6bce3ff004116d245b3be2fb7907bbccb62455c8",
+      "type": "blob"
+    },
+    "apps/api/src/oauth/repository.ts": {
+      "mode": "100644",
+      "oid": "76444bf02248cb1b2b536898155a88ac39e2024d",
+      "type": "blob"
+    },
+    "apps/api/src/search/controllers/global-search.ts": {
+      "mode": "100644",
+      "oid": "0d0228433d203ef589458164f53303db4af34caa",
+      "type": "blob"
+    },
+    "apps/api/src/search/index.ts": {
+      "mode": "100644",
+      "oid": "487016edd5d3b27adf2a94cf41e9436e545fffdf",
+      "type": "blob"
+    },
+    "apps/api/src/search/repository.ts": {
+      "mode": "100644",
+      "oid": "81e2a0cbca32251b78223d1c882176aee59133a0",
+      "type": "blob"
+    },
+    "apps/api/src/workflow-rule/controllers/delete-workflow-rule.ts": {
+      "mode": "100644",
+      "oid": "459c530ac1fba09d77c2b827b0f8c9cdd0a5f9b9",
+      "type": "blob"
+    },
+    "apps/api/src/workflow-rule/controllers/get-workflow-rules.ts": {
+      "mode": "100644",
+      "oid": "78e72a7835c7cf820c355bebeaba64afc6cb0fd5",
+      "type": "blob"
+    },
+    "apps/api/src/workflow-rule/controllers/upsert-workflow-rule.ts": {
+      "mode": "100644",
+      "oid": "494db169a851055d2463c533e1a119577623a135",
+      "type": "blob"
+    },
+    "apps/api/src/workflow-rule/index.ts": {
+      "mode": "100644",
+      "oid": "7780b93e1598646648ad9c24f462bbbafe2b6d26",
+      "type": "blob"
+    },
+    "apps/api/src/workflow-rule/repository.ts": {
+      "mode": "100644",
+      "oid": "2a1cdd30ac1780b1a595b207548a28a5f348a74c",
+      "type": "blob"
+    },
+    "apps/api/src/ws/native-work-item-realtime.ts": {
+      "mode": "100644",
+      "oid": "e65a77ef64a12c7285555bfc2d608197c989b4a3",
+      "type": "blob"
+    },
+    "apps/api/src/ws/project-read-authorization.ts": {
+      "mode": "100644",
+      "oid": "187954221c1b4a847e2ef6e7158eb0134320b550",
+      "type": "blob"
+    },
+    "apps/api/src/ws/repository.ts": {
+      "mode": "100644",
+      "oid": "ad89fafbbd99db40bdfa164406d1b667e366beca",
+      "type": "blob"
+    },
+    "docs/07-planning/security-reviews/query-ownership-leaves-580.md": {
+      "mode": "100644",
+      "oid": "2737c27eb82205e34c32f9c40f116417eddb8fe4",
+      "type": "blob"
+    },
+    "tests/api-integration/column-workflow-rule-crud.test.ts": {
+      "mode": "100644",
+      "oid": "ab65dfd19ebaf70f83c611dbf3932327f8751185",
+      "type": "blob"
+    },
+    "tests/api-integration/global-search-scope.test.ts": {
+      "mode": "100644",
+      "oid": "7f4134e440522c40e05d3f11c500f6f5856c0d2a",
+      "type": "blob"
+    },
+    "tests/api-integration/intake-attachment-duplicate-reach.test.ts": {
+      "mode": "100644",
+      "oid": "40f2515efc5881abc38fc709219d8e263eb5dcc2",
+      "type": "blob"
+    },
+    "tests/api-integration/leaf-module-repositories.test.ts": {
+      "mode": "100644",
+      "oid": "21a3ce16fa6c595a2dbcf1afe0285c87c8783fc6",
+      "type": "blob"
+    },
+    "tests/api-integration/node-server-websocket.test.ts": {
+      "mode": "100644",
+      "oid": "445f169669a33c58200c2baa9b905404336268cf",
+      "type": "blob"
+    },
+    "tests/api-integration/project-reach-reads.test.ts": {
+      "mode": "100644",
+      "oid": "c07ad8fb1823d634e847483a7ecf81762a134633",
+      "type": "blob"
+    },
+    "tests/api-integration/ws-project-reach.test.ts": {
+      "mode": "100644",
+      "oid": "f214d85e34a7bc7c9fc5328641c490f9b4b88f45",
+      "type": "blob"
+    },
+    "tests/api/ws/project-read-authorization.test.ts": {
+      "mode": "100644",
+      "oid": "32ca11b959fd72ef04a2a33234fa1bd2e048bd2a",
+      "type": "blob"
+    }
+  },
+  "requestedModel": "GPT-6 Luna",
+  "selectedUnit": {
+    "liveState": "OPEN at verified head per gh pr view; base main was 9297362b5f2dd1f17da935c8051c1562b473638a",
+    "pr": 774,
+    "publication": "95b6f276a628811471710a2fe2e97d9ab6205169",
+    "reviewedSource": "13f4151408bda2e83bd5aafb622ab940f463d499"
+  },
+  "servedFingerprint": "unavailable",
+  "status": "frozen local composition handed to root for full read and independent review; does not claim review clearance, runtime acceptance, #580 completion, or mission completion",
+  "tree": "e6b1d53a5f57bebddafcdde1bc70800950a47e31",
+  "worktree": "/Users/heinthura/.codex/worktrees/query765-current-luna"
+}
+```
+
+
+## Evidence file
+
+`810-final-3416-luna-774-779-composition-handoff.json`
+
+```json
+{
+  "atUtc": "2026-10-17T08:43:15.081080+00:00",
+  "branch": "codex/query765-current-main-luna",
+  "candidate": "d9d6ed4d6553f11b4a647f1637d32f90d5cbb534",
+  "conservation": {
+    "774ComponentPaths": 5,
+    "779ComponentPaths": 4,
+    "allAcceptedMainEntriesOutside46Preserved": true,
+    "allNonoverlap774PathsPreservedAfter779": true,
+    "allNonoverlap779PathsMatchPublication": true,
+    "allPrior810OwnedPathsPreservedExceptIntentionalIntakeRepositoryMerge": true,
+    "completeTreeEntries": 3416,
+    "mainTree": "23fb0fe8b78d09249d77957a9a0000b8a9f45d2c",
+    "prior810OwnedPaths": 39,
+    "sharedPath": [
+      "apps/api/src/intake/repository.ts"
+    ],
+    "unionChangedFromAcceptedMain": 46
+  },
+  "evidenceNotes": {
+    "774-intake-release-claim.md": {
+      "blob": "9a9a9ef54b4f1c14db4f5597045236b7df6653af",
+      "bytes": 23067,
+      "path": "docs/07-planning/security-reviews/774-intake-release-claim.md",
+      "sha256": "88d41c8e88b0bf8520f5664b6a54b813e9a8613d8fa52c1efb7d5b984bf3085a"
+    },
+    "779-intake-rt6-alignment.md": {
+      "blob": "15dadf4574412e7b36075e29a434eb253f5ac240",
+      "bytes": 16515,
+      "path": "docs/07-planning/security-reviews/779-intake-rt6-alignment.md",
+      "sha256": "e2e9ca982903703d32bf79b1198d646570ca522ae1de6033cf522f5242465ac0"
+    },
+    "query-ownership-leaves-580.md": {
+      "blob": "2737c27eb82205e34c32f9c40f116417eddb8fe4",
+      "bytes": 90869,
+      "path": "docs/07-planning/security-reviews/query-ownership-leaves-580.md",
+      "sha256": "401140d4c79294af354df78b10f39ed1d581ea9b016590e2ea3bf37f5a78b7b0"
+    }
+  },
+  "finalMatchesPreflightTree": true,
+  "limitations": [
+    "Static source/composition proof only. Root-authorized focused PG tests remain unrun and belong to root.",
+    "No typecheck, full checker, install, Docker, browser, benchmark, CI, push, PR edit, review publication, or main merge.",
+    "This is not review clearance, runtime acceptance, or completion of #580/#589."
+  ],
+  "mergeSequence": "Normal --no-ff merge of #774 into frozen #810, then normal --no-ff merge of selected #779 unit into that same branch.",
+  "ownershipSet": {
+    "774Paths": [
+      "apps/api/src/intake/repository.ts",
+      "docs/03-features/intake-queue.md",
+      "docs/07-planning/security-reviews/774-intake-release-claim.md",
+      "tests/api-integration/intake-triage-negative.test.ts",
+      "tests/api-integration/project-reach-writes.test.ts"
+    ],
+    "779Paths": [
+      "apps/api/src/intake/repository.ts",
+      "docs/03-features/request-types-and-catalogue.md",
+      "docs/07-planning/security-reviews/779-intake-rt6-alignment.md",
+      "tests/api-integration/intake-rt6-snapshot.test.ts"
+    ],
+    "810Paths": [
+      "apps/api/src/attachment/require-submission-attachment-reach.ts",
+      "apps/api/src/column/controllers/create-column.ts",
+      "apps/api/src/column/controllers/delete-column.ts",
+      "apps/api/src/column/controllers/get-columns.ts",
+      "apps/api/src/column/controllers/reorder-columns.ts",
+      "apps/api/src/column/controllers/update-column.ts",
+      "apps/api/src/column/index.ts",
+      "apps/api/src/column/repository.ts",
+      "apps/api/src/comment/controllers/get-comments.ts",
+      "apps/api/src/comment/index.ts",
+      "apps/api/src/comment/repository.ts",
+      "apps/api/src/external-link/index.ts",
+      "apps/api/src/external-link/repository.ts",
+      "apps/api/src/intake/index.ts",
+      "apps/api/src/intake/linked-work-item.repository.ts",
+      "apps/api/src/intake/repository.ts",
+      "apps/api/src/intake/submission-linked-work-item.ts",
+      "apps/api/src/oauth/controllers/get-id-token.ts",
+      "apps/api/src/oauth/repository.ts",
+      "apps/api/src/search/controllers/global-search.ts",
+      "apps/api/src/search/index.ts",
+      "apps/api/src/search/repository.ts",
+      "apps/api/src/workflow-rule/controllers/delete-workflow-rule.ts",
+      "apps/api/src/workflow-rule/controllers/get-workflow-rules.ts",
+      "apps/api/src/workflow-rule/controllers/upsert-workflow-rule.ts",
+      "apps/api/src/workflow-rule/index.ts",
+      "apps/api/src/workflow-rule/repository.ts",
+      "apps/api/src/ws/native-work-item-realtime.ts",
+      "apps/api/src/ws/project-read-authorization.ts",
+      "apps/api/src/ws/repository.ts",
+      "docs/07-planning/security-reviews/query-ownership-leaves-580.md",
+      "tests/api-integration/column-workflow-rule-crud.test.ts",
+      "tests/api-integration/global-search-scope.test.ts",
+      "tests/api-integration/intake-attachment-duplicate-reach.test.ts",
+      "tests/api-integration/leaf-module-repositories.test.ts",
+      "tests/api-integration/node-server-websocket.test.ts",
+      "tests/api-integration/project-reach-reads.test.ts",
+      "tests/api-integration/ws-project-reach.test.ts",
+      "tests/api/ws/project-read-authorization.test.ts"
+    ],
+    "resultingVsMainPaths": [
+      "apps/api/src/attachment/require-submission-attachment-reach.ts",
+      "apps/api/src/column/controllers/create-column.ts",
+      "apps/api/src/column/controllers/delete-column.ts",
+      "apps/api/src/column/controllers/get-columns.ts",
+      "apps/api/src/column/controllers/reorder-columns.ts",
+      "apps/api/src/column/controllers/update-column.ts",
+      "apps/api/src/column/index.ts",
+      "apps/api/src/column/repository.ts",
+      "apps/api/src/comment/controllers/get-comments.ts",
+      "apps/api/src/comment/index.ts",
+      "apps/api/src/comment/repository.ts",
+      "apps/api/src/external-link/index.ts",
+      "apps/api/src/external-link/repository.ts",
+      "apps/api/src/intake/index.ts",
+      "apps/api/src/intake/linked-work-item.repository.ts",
+      "apps/api/src/intake/repository.ts",
+      "apps/api/src/intake/submission-linked-work-item.ts",
+      "apps/api/src/oauth/controllers/get-id-token.ts",
+      "apps/api/src/oauth/repository.ts",
+      "apps/api/src/search/controllers/global-search.ts",
+      "apps/api/src/search/index.ts",
+      "apps/api/src/search/repository.ts",
+      "apps/api/src/workflow-rule/controllers/delete-workflow-rule.ts",
+      "apps/api/src/workflow-rule/controllers/get-workflow-rules.ts",
+      "apps/api/src/workflow-rule/controllers/upsert-workflow-rule.ts",
+      "apps/api/src/workflow-rule/index.ts",
+      "apps/api/src/workflow-rule/repository.ts",
+      "apps/api/src/ws/native-work-item-realtime.ts",
+      "apps/api/src/ws/project-read-authorization.ts",
+      "apps/api/src/ws/repository.ts",
+      "docs/03-features/intake-queue.md",
+      "docs/03-features/request-types-and-catalogue.md",
+      "docs/07-planning/security-reviews/774-intake-release-claim.md",
+      "docs/07-planning/security-reviews/779-intake-rt6-alignment.md",
+      "docs/07-planning/security-reviews/query-ownership-leaves-580.md",
+      "tests/api-integration/column-workflow-rule-crud.test.ts",
+      "tests/api-integration/global-search-scope.test.ts",
+      "tests/api-integration/intake-attachment-duplicate-reach.test.ts",
+      "tests/api-integration/intake-rt6-snapshot.test.ts",
+      "tests/api-integration/intake-triage-negative.test.ts",
+      "tests/api-integration/leaf-module-repositories.test.ts",
+      "tests/api-integration/node-server-websocket.test.ts",
+      "tests/api-integration/project-reach-reads.test.ts",
+      "tests/api-integration/project-reach-writes.test.ts",
+      "tests/api-integration/ws-project-reach.test.ts",
+      "tests/api/ws/project-read-authorization.test.ts"
+    ]
+  },
+  "parentDiffs": {
+    "HEAD^1_3414_to_HEAD": {
+      "binaryPatchBytes": 27680,
+      "binaryPatchSha256": "1c2bc687f07edd818083bda1638b8cb000d0625e55aca43d36050c96ba591b97",
+      "count": 4,
+      "meaning": "#779 unit delta composed into candidate containing #810+#774",
+      "nameOnlySha256": "0afdf2f8c6fda70f045dc989988b5f262cb0885ea6c706397ce8f393258542e2",
+      "paths": [
+        "apps/api/src/intake/repository.ts",
+        "docs/03-features/request-types-and-catalogue.md",
+        "docs/07-planning/security-reviews/779-intake-rt6-alignment.md",
+        "tests/api-integration/intake-rt6-snapshot.test.ts"
+      ]
+    },
+    "HEAD^2_31cb_to_HEAD": {
+      "count": 313,
+      "meaning": "complete current candidate tree relative to older selected-unit source; includes intervening accepted main and #810/#774 history",
+      "nameOnlySha256": "deba1facaf55bdecf0ddddcda2a27fa9f8422684d2ae0910891f74429d5a336b"
+    }
+  },
+  "parents": [
+    "3414b61608ac358b1631af3fd8ccfb81017ecb3a",
+    "31cb24904c39309a7645147b06f0785b21f08f7b"
+  ],
+  "preflightTree": "e7247df14f335f2ac9f0d94d6d91bd92de7e7562",
+  "reports": {
+    "774": [
+      [
+        "774-ordinary-b-sonnet.md",
+        "14cd816338eafdce85af8e9c81b8cb76aa34aca5c8f0b9bc596facac2d2a5523"
+      ],
+      [
+        "774-ordinary-c-sonnet.md",
+        "a52a914bc9897ba513188948dabd7116228ee8af0eb5483e93a49c6c35eb24a2"
+      ],
+      [
+        "774-security-opus.md",
+        "130ce25488ade222111216707aca2e5cf144492d58c9487a0f17085167d01483"
+      ]
+    ],
+    "779": [
+      [
+        "779-ordinary-b-sonnet.md",
+        "6ed8300f1db56791365e1a031c780caf77d9283f2617255732afd3dbf54b86a0"
+      ],
+      [
+        "779-ordinary-d-sonnet.md",
+        "67e2a4b7c80a675a8911dda42f1dc1652963968f5798889a278688c77bbc9abc"
+      ],
+      [
+        "779-security-opus.md",
+        "eb2a6c3c88eff8d8c3423fb2c3a3c7c755f7492be4c28ef5ac593e5d77eda7e2"
+      ]
+    ],
+    "810OwnNoteByteBlobPreserved": true,
+    "810PriorReports": 22,
+    "allSixEmbeddedBodiesVerifiedAgainstPublicationNotes": true,
+    "allSixPrivateFileHashesVerified": true
+  },
+  "requestedModel": "GPT-6 Luna",
+  "selectedUnits": {
+    "774": {
+      "actualCommonBase": "c35666c531c4b84c300bac5432fd4dc8dca3ed4f",
+      "paths": [
+        "apps/api/src/intake/repository.ts",
+        "docs/03-features/intake-queue.md",
+        "docs/07-planning/security-reviews/774-intake-release-claim.md",
+        "tests/api-integration/intake-triage-negative.test.ts",
+        "tests/api-integration/project-reach-writes.test.ts"
+      ],
+      "publication": "95b6f276a628811471710a2fe2e97d9ab6205169",
+      "reviewedSource": "13f4151408bda2e83bd5aafb622ab940f463d499",
+      "state": "OPEN at verified publication head"
+    },
+    "779": {
+      "actualCommonBase": "9297362b5f2dd1f17da935c8051c1562b473638a",
+      "paths": [
+        "apps/api/src/intake/repository.ts",
+        "docs/03-features/request-types-and-catalogue.md",
+        "docs/07-planning/security-reviews/779-intake-rt6-alignment.md",
+        "tests/api-integration/intake-rt6-snapshot.test.ts"
+      ],
+      "publication": "31cb24904c39309a7645147b06f0785b21f08f7b",
+      "reviewedSource": "df542c913972ad4d939af0a25e69bc1097f46eb1",
+      "state": "OPEN at verified publication head"
+    }
+  },
+  "servedFingerprint": "unavailable",
+  "staticContractInspection": {
+    "743_claim": "claimSubmissionInTransaction is called inside conversion tx; failed conversion throws roll back claim and deferred claim audit; accepted audit/outbox remain after successful path only",
+    "761_assignee": "ineligible snapshotted assignee records defaultAssigneeSkipped with personId and closed reason vocabulary in submission.accepted audit; item remains unassigned; no event key was added",
+    "auditLockOrder": "claim audit thunk invoked only after conversion validation/number allocation, immediately before submission.accepted audit; preserves project-before-audit advisory lock ordering",
+    "explicitClaim": "standalone claim executes helper and await appendAudit in transaction",
+    "queryOwnership": "currentProjectReachPredicate import remains in intake repository; archived-read helper and WebSocket repository path blobs unchanged across both selected merges"
+  },
+  "status": "final composed local candidate frozen for independent ordinary repair/composition reviews and full security review",
+  "tree": "e7247df14f335f2ac9f0d94d6d91bd92de7e7562",
+  "worktree": "/Users/heinthura/.codex/worktrees/query765-current-luna"
+}
+```
+
+
+## Evidence file
+
+`810-d9d6-root-verified-intake-pg-success.json`
+
+```json
+{
+  "at": "2026-10-17T08:44:39.287955+00:00",
+  "candidate": "d9d6ed4d6553f11b4a647f1637d32f90d5cbb534",
+  "pid": 67315,
+  "command": [
+    "pnpm",
+    "--filter",
+    "@taskdesk/api",
+    "exec",
+    "vitest",
+    "run",
+    "--config",
+    "vitest.integration.config.ts",
+    "../../tests/api-integration/intake-triage-negative.test.ts",
+    "../../tests/api-integration/project-reach-writes.test.ts",
+    "../../tests/api-integration/intake-atomic-conversion.test.ts",
+    "../../tests/api-integration/intake-rt6-snapshot.test.ts"
+  ],
+  "cwd": "/Users/heinthura/.codex/worktrees/query765-current-luna",
+  "start_utc": "2026-10-17T08:44:07.626408+00:00",
+  "end_utc": "2026-10-17T08:44:27.288524+00:00",
+  "returncode": 0,
+  "timed_out": false,
+  "timeout_seconds": 600,
+  "duration_seconds": 19.662,
+  "CI_in_child": "absent",
+  "actualFiles": 4,
+  "actualPassedTests": 45,
+  "rawBytes": 76099,
+  "rawSha256": "403f91a2a063feafa62e4aa1673ea8a2ec16e6d6e5a3032c5c754efc3f0039a5",
+  "inventoryDiff": {
+    "containers": {
+      "before_count": 23,
+      "after_count": 23,
+      "added": [],
+      "missing": []
+    },
+    "volumes": {
+      "before_count": 109,
+      "after_count": 109,
+      "added": [],
+      "missing": []
+    },
+    "networks": {
+      "before_count": 7,
+      "after_count": 7,
+      "added": [],
+      "missing": []
+    }
+  },
+  "ownedContainerRemoved": "cc5749a89b8d9955dd5fe4759003fabead7dbfeee315719a7f26de32f1a76de0",
+  "privateEnvRemoved": true,
+  "sourcePostflightCleanAndExact": true,
+  "notFullIntegrationOrCIGreen": true
+}
+```
+
+
+## Evidence file
+
+`810-d9d6-api-typecheck-receipt.json`
+
+```json
+{
+  "source": "d9d6ed4d6553f11b4a647f1637d32f90d5cbb534",
+  "command": [
+    "pnpm",
+    "--filter",
+    "@taskdesk/api",
+    "typecheck"
+  ],
+  "pid": 70116,
+  "nativeExit": 0,
+  "startedAt": "2026-10-17T08:48:28.615606+00:00",
+  "endedAt": "2026-10-17T08:48:46.881338+00:00",
+  "elapsedSeconds": 18.265301417093724,
+  "rawBytes": 316,
+  "rawSha256": "2700219e6b5eb483227c221da9bccc8e571b630cb2b8390a7bd10370b6ebf755",
+  "postHead": "d9d6ed4d6553f11b4a647f1637d32f90d5cbb534",
+  "postStatus": ""
+}
+```
+
+
+## Evidence file
+
+`810-d9d6-intake-composition-ordinary-a-luna.md`
+
+# #810 + #774 + #779 intake composition delta — GPT-6 Luna
+
+## Verdict
+
+**CLEAR for this bounded repair/composition delta; the prior #743 blocker is factually resolved at this exact source.** The original BLOCK report remains authentic and unchanged as the history of the earlier candidate. This report evaluates the new exact head only; it does not constitute a second ordinary review, the required Sol review, publication clearance, or merge authority.
+
+## Exact head and composition
+
+- Candidate: `d9d6ed4d6553f11b4a647f1637d32f90d5cbb534`
+- Tree: `e7247df14f335f2ac9f0d94d6d91bd92de7e7562`
+- Parents: #774 composition `3414b61608ac358b1631af3fd8ccfb81017ecb3a`; selected #779 publication `31cb24904c39309a7645147b06f0785b21f08f7b`.
+- The worktree was clean. I verified the candidate identity, tree and parents locally. The supplied conservation receipt records 3,416 entries and 46 paths over accepted main, retains every prior #810 path except the intentional `apps/api/src/intake/repository.ts` overlap, and preserves the original 22-report #810 note plus the three authentic #774 and three authentic #779 reports. #774 is a normal merge onto frozen #810; #779 is then a normal merge onto that result. The selected deltas total nine unit path entries across eight unique files because both units touch the intake repository.
+- Source diff reviewed: exact `1625a516a2d10a1fbb76d7681c787873c802032a` → `d9d6ed4d6553f11b4a647f1637d32f90d5cbb534`, including both selected unit deltas and the unchanged connected #810 source seams.
+
+## Disposition of the original blocker: #743 failed-accept claim
+
+The accepted owner decision remains the 2026-10-15 #743 entry in `docs/07-planning/decision-log.md`: a failed accept must leave no claim, by validating before claim or rolling the claim back in the same transaction. The superseded 2026-10-14 behavior remains only as historical text under the explicit `Supersedes` clause.
+
+At `apps/api/src/intake/repository.ts` lines 1197–1231, `acceptSubmission` now starts one transaction, calls `claimSubmissionInTransaction(tx, ...)`, and performs snapshot validation and conversion on that same `DbTransaction`. Throws from missing/unreachable destinations, stale references or later conversion failures roll back the transaction. The new claim update and the work-item, activity, comment, attachment/participant, audit and outbox effects share that transaction. The code no longer calls the separately committing `claimSubmission` before conversion. The updated IQ-5a/IQ-16a text in `docs/03-features/intake-queue.md` now states failed accepts leave no claim.
+
+`claimSubmissionInTransaction` locks and reads the submission row, preserves the existing state and other-triager refusals, returns an existing same-actor claim without writing a duplicate claim audit, and otherwise performs the version-conditional claim update. On successful conversion the deferred audit thunk is awaited after the accepted-state CAS and immediately before the `submission.accepted` audit append. The accepted audit includes #779’s optional `defaultAssigneeSkipped` detail; the `submission.accepted` outbox event remains unchanged. A conversion failure therefore writes neither the new claim audit nor accepted audit/outbox rows.
+
+A claim explicitly committed earlier by the same actor remains if their later accept fails: it is pre-existing state from the independent claim action, and the helper returns a no-op audit thunk. A claim already held by another actor still returns 409. This matches the existing #774 review's stated semantics and preserves explicit claim/message behavior; the failed acceptance itself creates no surviving claim.
+
+## #779 RT-6 / #761 integration
+
+At `apps/api/src/intake/repository.ts` lines 999–1034 and 1140–1159, acceptance uses the pinned snapshot's default assignee, assigns only an active staff person with a project-scope membership in the chosen project, and otherwise leaves the new item unassigned. The reason mapping is deterministic and exhaustive for the examined cases: no project membership row → `not_a_project_member`; inactive → `inactive`; otherwise not staff → `not_staff`. Only the `submission.accepted` audit `after` is extended, with `{ personId, reason }`; no HTTP response or outbox event payload changes. The #761 decision and amended RT-6 spec agree: the triager's selected work-item type/project are accepted choices; snapshot form/mapping, SLA override and assignee remain pinned; an ineligible default assignee does not fail conversion.
+
+Both selected units compose in one helper: #779's `assigneeSkipped` data is included in the accepted audit, while #774's deferred claim audit runs immediately before it. The optional audit callback defaults to a resolved async no-op, so the pre-existing auto-accept caller continues without an acceptance claim audit; auto-accept still records skipped-assignee detail in its accepted audit as part of the same creation transaction. No accepted contract or event key was replayed or weakened by the composition.
+
+## Connected seams and findings
+
+- **Transactions and lock order:** candidate project validation/number allocation and all conversion writes use `tx`. The claim audit thunk is delayed until after destination validation and `claimWorkItemNumber`, then awaited before the accepted audit. This preserves project-lock-before-audit-chain-lock ordering; the accepted row/outbox remain in the same transaction. The standalone claim route runs the helper and awaits its audit within its own transaction.
+- **Current reach and credential ceilings:** `intake/index.ts` still gates submission access through `resolveCallerIdentity`, `findSubmission` current workspace reach and `validateWorkspaceAccess`; manual acceptance passes the same request's `listReachOf(c)` decision over the locked project facts. The #810 SQL current project/workspace reach paths remain unchanged in this delta. Socket authorization still resolves current identity and requires the project/item capability plus registered API-key capability subset and owner ceiling. I found no new cross-module authorization path in either selected unit.
+- **Query ownership:** new claim and assignee SQL is inside the intake repository and uses the caller transaction. Existing #810 repository ownership, identity-scoped submission/link lookups, linked attachment reads, current-reach search queries and socket queries remain intact in the exact final tree. No selected unit moves SQL to a controller or changes those reach predicates.
+- **#774 retained ordinary-review residuals (non-blocking):** its recorded N2 noted there is no direct assertion that a customer can withdraw after a failed accept, though the new test verifies claim null/state `new` and permits a different triager to accept. The #774 report also notes rollback for several validation failures is structurally established rather than asserted path-by-path. These are test-coverage gaps, not a source blocker identified in this delta.
+- **#779 retained ordinary/security-review residuals (non-blocking):** `docs/03-features/request-types-and-catalogue.md` documents the new audit metadata, but `docs/03-features/audit-trail.md` still lacks a `submission.accepted` row describing it. The retained #779 reviews also note gaps for a real cross-workspace type fixture, missing-version acceptance, and acceptance-time invalid-SLA validation. The retained security review found the metadata is confined to the accepted audit row, not exposed in customer/outbox/HTTP paths; no new visibility or oracle issue was identified by this source review.
+- No new blocking or non-blocking source finding was identified in the bounded delta.
+
+## Test evidence and limits
+
+I did not execute tests or other runtime/checking tools. I read the root-owned exact-head PostgreSQL receipt `/Users/heinthura/.codex/taskdesk-evidence/2026-10-15/takeover/810-d9d6-root-verified-intake-pg-success.json`: it records root's run of `intake-triage-negative.test.ts`, `project-reach-writes.test.ts`, `intake-atomic-conversion.test.ts`, and `intake-rt6-snapshot.test.ts` at this candidate, with 4 files / 45 tests passed in 19.662 seconds, no CI flag, and owned cleanup. That is root-executed focused PostgreSQL evidence, not a test run by this reviewer or full-suite/CI clearance.
+
+- Requested model: GPT-6 Luna; served fingerprint unavailable.
+- Fresh independent ordinary delta context. I did not author, direct or remediate #774/#779 or this candidate. I used the preserved reports as historical context and verified the current source delta independently.
+- No source edits, tests, compiler/checker, install, database/runtime, Docker, browser, benchmark, CI, ref update, push, PR action or merge was performed by me.
+- This bounded clear does not certify the full #810 source scope, the remaining required independent ordinary review, required full Sol review, all CI, #580/#589 completion, phase finalizer, SIT, or stage acceptance.
+
+
+## Evidence file
+
+`810-d9d6-intake-composition-ordinary-b-luna.md`
+
+# #810 current composition — ordinary review B
+
+## Provenance
+
+- Candidate: `d9d6ed4d6553f11b4a647f1637d32f90d5cbb534` (tree `e7247df14f335f2ac9f0d94d6d91bd92de7e7562`).
+- Comparison: accepted main `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`; additionally isolated the composition delta from `3414b61608ac358b1631af3fd8ccfb81017ecb3a`.
+- Worktree: `/Users/heinthura/.codex/worktrees/query765-current-luna`, exact candidate HEAD, clean before and after review.
+- Reviewer role: fresh independent ordinary review B; did not author, direct, or remediate this candidate.
+- Requested model: GPT-6 Luna. Served model fingerprint: unavailable in this context.
+- Verdict: **APPROVE**. No blocking source findings.
+
+## Scope inspected
+
+Read the complete accepted-main-to-candidate path inventory and root conservation receipts, then inspected the current composition and its integration seams: `apps/api/src/intake/repository.ts` acceptance, claim, conversion and staff-detail paths; the intake HTTP handlers and resolved-identity reach construction; current SQL project/workspace reach predicates; audit writer transaction/advisory-lock behavior; request-type snapshot and intake contracts; accepted #743/#761 decision entries; audit visibility and event contracts; and the exact current tests for failed/successful acceptance, concurrency, assignment snapshots, and project-archive locking. The exact `3414 → d9d6` path delta is limited to the intake repository, RT-6 contract, its review record, and its integration test. The root conservation evidence records the remaining prior leaf paths and accepted-main entries as preserved.
+
+## Assessment
+
+- **#743 claim rollback:** `acceptSubmission` claims under the same transaction used by conversion. The helper locks the submission, checks state/claim ownership and performs a version-conditional update. Destination/configuration failures throw within that transaction. The claim audit is a deferred thunk; after conversion succeeds, it appends `submission.claimed` immediately before `submission.accepted`. Thus a failed conversion rolls back claim fields and both audit rows; an already-committed explicit claim by this actor remains the pre-existing triage action, as IQ-16a requires.
+- **Lock order and audit chain:** acceptance takes the submission row lock, then the destination project `NO KEY UPDATE` lock and number-counter work, and only then the audit-chain advisory lock through the deferred thunk. The claim audit is not appended while waiting for the project lock. Nested `appendAuditLog(tx)` uses the caller transaction/session, so the claim and accepted audit rows remain in the conversion transaction. The composition preserves this order while adding the RT-6 audit metadata.
+- **#761 / RT-6:** manual acceptance obtains the pinned version and uses its form, SLA override, and default assignee; the triager-selected type is validated in the workspace. An ineligible snapshotted assignee leaves the item unassigned, and the accepted audit records only the person id and one of the three closed reasons. The outbox payload remains unchanged. The feature text agrees with these code paths.
+- **Identity, reach, and reads:** the staff detail route supplies resolved identity; submission/message reads require current workspace reach, and linked work-item/comment facts require current SQL project reach. The accept callback still applies the route's current project-reach decision to the locked destination. The surrounding leaf repositories retain SQL-scoped reach and the native socket query uses the project's customer organisation; I found no new identity or authority bypass in the composed intake paths.
+- **Atomicity and races:** source and authored regression assertions cover missing-destination rollback (claim fields, audit/outbox counts), successful acceptance, two-triager serialization, late attachment-transfer failure, selected type validation, and assignee skip reasons. These tests were inspected only, not executed in this review.
+
+## Non-blocking residuals
+
+- The `submission.accepted` action is written by the source but is not listed in `docs/03-features/audit-trail.md`'s audit-only action table. RT-6 documents the new `defaultAssigneeSkipped` metadata in the request-type contract, so the field is discoverable; adding the accepted action and its conditional metadata to the audit catalogue would give it one canonical audit-specific home. This is a documentation gap, not a correctness blocker.
+- The late attachment-transfer rollback test verifies work-item, submission state/link, comment and attachment rollback, but does not explicitly assert that `claimed_by`/`claimed_at`, a `submission.claimed` audit row, and outbox counts also rolled back. The missing-destination #743 test does assert claim/audit/outbox rollback after the claim update, and the source keeps late failures in the same transaction. An explicit late-failure assertion would improve regression precision.
+- No tests, database/runtime checks, compilers, AST/checker commands, installation, browser, image, CI, push, or PR actions were performed by this reviewer. Root's separately reported focused PostgreSQL run is not this review's execution evidence.
+
+## Commands / read-only actions
+
+- Confirmed exact HEAD and clean status; read-only Git diff/name-status and source reads.
+- One accidental `git diff --check` invocation was made despite the task's no-checker constraint; it produced no diagnostics and changed no files. No other checker or test command was run.
+
+
+## Evidence file
+
+`810-d9d6-full-security-61-sol.md`
+
+# #810 composed leaf repositories and intake acceptance — full independent security review
+
+**Reviewed head:** `d9d6ed4d6553f11b4a647f1637d32f90d5cbb534`
+**Comparison base:** `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c` (accepted main)
+**Tree:** `e7247df14f335f2ac9f0d94d6d91bd92de7e7562`
+**Verdict:** **APPROVE — no blocking security source findings in the full current candidate.** Two non-blocking documentation/regression-precision findings are retained below.
+
+## Provenance and independence
+
+- Role: fresh FULL independent Sol-tier security reviewer, after current ordinary review cleared. This is a full current-source review, not a delta-only or lightweight confirmation.
+- Requested model/dispatch: `gpt-6.1-sol`, reasoning `high`, `fork_turns=none`, as supplied in the assignment. The context identifies itself as a GPT-6-based Codex agent. An independently inspectable served model version/transport fingerprint is unavailable; the requested model is not asserted as separately verified serving metadata.
+- Reviewer context: `/root/leaf810_d9d6_full_security_sol`; parent/conductor: `/root`.
+- I did not author, direct, remediate or choose implementation changes for this candidate or its component repairs. Earlier reports were evidence to verify, never inherited current approval.
+- Worktree: `/Users/heinthura/.codex/worktrees/query765-current-luna`. Read-only Git inspection confirmed the requested HEAD/tree and clean state initially and at final inspection. No source, ref, shared contract or repository file was changed.
+- Mode: Integration Freeze, selected existing #580/#589 work plus existing #774/#779 acceptance contracts. This report grants no merge, publication, mission closure, phase-finalizer or runtime acceptance authority.
+
+## Actual scope and conservation
+
+I independently enumerated **46 changed paths: 30 API source paths, two feature contracts, three review notes and 11 test paths**. The candidate has **3,416 tracked tree entries**. I reviewed the current changed source, complete new repositories, changed tests and connected unchanged authorization/transaction seams against accepted main.
+
+Production scope: submission attachment reach identity threading; column router/controllers/repository; comment list controller/router/repository; external-link router/repository; intake staff route/detail queries and linked-item helper/repository; the full composed intake claim/conversion/acceptance path; OAuth custom-provider token lookup; global-search router/controller/repository; workflow-rule router/controllers/repository; native work-item realtime authorization, shared project-socket authorization and WebSocket repository. Contracts: IQ-5a/IQ-16a and RT-6. Test scope: column/workflow-rule CRUD, global-search scope, intake attachment/duplicate reach, RT-6 snapshots, triage negatives, leaf repositories, real Node sockets, project-reach reads/writes, socket reach and the five-case project-socket decision-input unit fixture. I also inspected connected existing atomic-conversion and identity/capability code.
+
+Read accepted AGENTS, active mission, workflow/provider guide, CI security-review scope, current status/decisions (especially #743/#761), query-ownership/Executor conventions, multi-tenancy/RBAC, search, comments/activity, project archive retention, intake, attachments, realtime and audit contracts. Project ancestry and owner-team reach remain explicitly unavailable in the accepted schema/runtime; their roadmap text does not authorize inventing them here.
+
+The history is a normal merge of accepted main into prior #810 at `1625a516a2d10a1fbb76d7681c787873c802032a`, then exact selected #774 publication `95b6f276a628811471710a2fe2e97d9ab6205169` into `3414b61608ac358b1631af3fd8ccfb81017ecb3a`, then exact selected #779 publication `31cb24904c39309a7645147b06f0785b21f08f7b` into this head. I checked actual parents and tree records. All 38 prior owned paths other than the intentional intake-repository overlap retain their mode/blob; the actual complete diff is the stated 46-path set, with accepted-main entries elsewhere preserved.
+
+The original 22-report #810 note retains its prior blob. All 22 private original report bodies are present unchanged; two surrounding machine-binding/fixture sections sit outside those original bodies. All six imported #774/#779 report bodies match their private originals and declared hashes. Their Claude identities, old SHAs, adverse results and scopes remain historical evidence, not new approval. I read both exact current ordinary reports: `810-d9d6-intake-composition-ordinary-a-luna.md` (bounded repair/composition CLEAR, independently resolving its earlier #743 BLOCK) and `810-d9d6-intake-composition-ordinary-b-luna.md` (APPROVE). The original BLOCK remains preserved.
+
+## Security assessment
+
+1. **Current SQL scope and identity.** Protected column, workflow-rule, comment, external-link, linked-item and search statements bind the actual owning project and canonical current project reach. Staff submission and stored-message reads independently bind current workspace reach; converted-item ids and transferred public-comment content independently bind current project reach. Caller-supplied ids and previously resolved positive reachable-project lists are narrowing inputs, not standalone authorization. Canonical role scope/workspace/key/rank/capability-shape validation remains in the shared SQL predicate and identity loader. The loader still refuses banned/inactive identities, malformed/mismatched key ownership and invalid customer organisation admission. No candidate path turns identity-provider metadata or stale legacy role labels into instance authority or sees_all.
+
+2. **Capabilities and key owner ceilings.** HTTP handlers use the authenticated caller and credential through `resolveCallerIdentity`. Missing/malformed key scope yields no capabilities. Route project checks retain registered capability evaluation; when the legacy key-scope gate is deferred, the owner's project authority is still required before the stored key scope is applied. Reach alone grants no mutation/read capability. Socket identity similarly intersects stored canonical key capabilities with current owner grants and checks enabled/owner facts. Project topics retain their additional stored `work_item:read` requirement. OAuth selection remains restricted to `account.user_id = authenticated user` and provider `custom`; no caller-selected identity or email fallback reaches that query.
+
+3. **Complete inserts, DML and rollback.** Column and workflow-rule reads and mutations include current reached owning-project predicates. Workflow-rule updates/inserts also correlate the target column to that same project. INSERT SELECTs supply the complete schema shape in target order: generated id, authoritative project/column bindings, target-column-encoded supplied values, nullable/default fields and timestamps. Query values remain parameters. Required returned rows are checked before reporting success. Reorder uses the same transaction executor for every scoped update and final read, throws on a missing/foreign/unreachable update result, and therefore rolls earlier position changes back. I found no new unconfirmed-write success or cross-project column substitution path.
+
+4. **Search content/count boundary.** Short-id tasks, ordinary tasks, projects, comments and activities apply the shared current reach filter in the content SELECT before ordering/limits. Workspace hits have current workspace reach and membership-derived bounds. Results and totalCount are assembled only from scoped returned rows, so revoked project rows cannot survive through a stale positive project-id list. Exact short-id escaping, type selection, ranking and task deduplication are retained. The existing workspace-member join can duplicate workspace hits; this is preserved behavior covered by the current test, not a newly introduced cross-tenant disclosure.
+
+5. **Linked attachments and retained archive reads.** Staff middleware now passes its resolved identity into the owner-facts query, which fails closed on missing identity/id and rechecks current project reach before the existing reach callback. It excludes deleted projects while allowing archived projects, consistent with retained read-only data and final attachment list/content predicates. Final attachment SQL rechecks current reach and live work-item constraints; direct project-reach revocation closes linked reads. Staff detail similarly omits an unreachable linked id and its public transferred comments. Public visibility/deleted-comment constraints remain server-side. Portal ownership handling stays on its separate existing requester path; this candidate adds no portal admission.
+
+6. **Realtime boundaries and revocation.** The shared project lookup requires current canonical workspace reach AND project reach in the same SELECT, plus live-project archive/deletion exclusions. Retaining a direct project membership after workspace removal cannot preserve native project-topic or legacy project-socket access. Both transports use the shared project authorization during rechecks. The native work-item query uses the project's customer organisation, never the workspace operating organisation, and retains live item/project and current project-reach constraints; its caller still checks workspace access and `work_item:read`. Organisation-scope customer authority does not satisfy staff project/work-item authority. Fresh credential reauthentication, invalidation, periodic rechecks and legacy bounded reuse remain intact. The changed tests preserve positive staff paths and distinguish retained project membership from removed workspace membership. No socket key/owner/capability bypass was found.
+
+7. **#743 transactional claim, atomic acceptance and lock order.** `acceptSubmission` opens one transaction and calls `claimSubmissionInTransaction` there. The helper locks the submission, checks open state and other-actor ownership, and performs a version-conditional claim update. Snapshot/destination/type/form/SLA validation, project lock, number allocation, item/activity/event/comment/attachment/participant/watcher writes and accepted-state CAS share that transaction. A thrown validation or later write failure rolls the newly taken claim and all transactional effects back. A previously committed explicit same-actor claim remains pre-existing state; its helper branch returns a no-op audit thunk rather than duplicating a claim audit. Another actor's claim still yields 409. Missing/unreachable destinations retain the same 422 and rollback effect. The deferred claim-audit thunk runs only after project validation, project/counter locking and successful accepted-state CAS, immediately before accepted audit. It therefore does not hold the audit-chain lock while waiting for the destination project. `appendAuditLog(tx)` uses a nested savepoint on the same session, not a separate commit. Both audit appends and accepted outbox insertion remain inside conversion's outer transaction.
+
+8. **#761 pinned mapping and audit-only skip detail.** The pinned version supplies form/mapping, request SLA override and default assignee. Missing version fails; no live-request-type substitution is introduced. The triager-selected project/type remain choices under IQ-7; the type lookup is explicitly workspace-bound. SLA resolution preserves chosen-type → snapshot override → project → workspace precedence and workspace-owned policy validation. Assignee selection accepts only an active staff person with destination-project membership; otherwise the item remains unassigned. The reason is selected from exactly `not_a_project_member`, `inactive`, `not_staff`, with deterministic precedence, and the new `{ personId, reason }` detail is added only to accepted audit `after`. HTTP response mappers and `submission.accepted` outbox payload do not gain that detail. Audit routes retain administrative admission/current identity and customer refusal; no new customer-visible staff-id or skip-reason channel was found. Existing staff request-type-version responses already expose their configured defaultAssigneeId; this report does not claim that pre-existing configuration id is absent from every staff HTTP response.
+
+## Findings and residuals
+
+**Blocking findings: none.** The earlier #743 blocker is independently resolved at this current source. The prior project-organisation, archived-attachment and workspace-removal defects are absent from the current inspected paths; historical failures are not relabelled as passes.
+
+**Non-blocking N1 — audit catalogue omission.** `docs/03-features/audit-trail.md` does not list `submission.accepted` and its conditional `defaultAssigneeSkipped` metadata in its audit-action catalogue, although RT-6 now defines the behavior and the source confines it to audit data. Add the accepted action/metadata to the audit-specific catalogue in bounded documentation work. This is discoverability/contract-location debt, not an identified authorization or privacy bypass.
+
+**Non-blocking N2 — late-failure regression precision.** The attachment-transfer failure test asserts rollback of the work item, submission state/link, comments/attachment and accepted audit, but does not explicitly assert claimedBy/claimedAt, the claimed audit or outbox counts. The missing-destination test does assert claim/audit/outbox rollback, and the full source keeps the late failure in that same transaction. Extending the late-failure assertions would better guard the invariant; no separate-transaction escape exists in the reviewed source.
+
+Additional test limits remain visible: the RT-6 test named for an outside-workspace type supplies a nonexistent id rather than a real foreign-workspace type; missing-version and acceptance-time invalid-SLA cases are primarily established here by source/constraint inspection. No claim is made that every error path, customer withdrawal after failed acceptance, or every concurrency schedule has a direct regression assertion.
+
+## Execution evidence inspected and limits
+
+**I ran no application tests, typecheck/compiler, project checker, AST tool, installation, database/runtime probe, Docker, browser, benchmark or CI command.** Operations were read-only Git/source/contract/evidence inspection, direct byte/hash comparisons and this report's exclusive creation. One slow recursive read-only evidence search was stopped; direct-path comparisons then completed. No source/ref/push/PR/review-publication/merge action was performed.
+
+I inspected root-produced exact-head evidence, not reviewer-executed tests:
+
+- `810-d9d6-root-verified-intake-pg-success.json` and `query810-d9d6-intake-focused-pg/vitest.full.log`: root invocation of intake-triage-negative, project-reach-writes, intake-atomic-conversion and intake-rt6-snapshot; **4 files / 45 passed**, native exit 0, PID 67315, 19.662 seconds operator duration, no CI flag. I read the raw log summary and independently recomputed **76,099 bytes**, SHA-256 `403f91a2a063feafa62e4aa1673ea8a2ec16e6d6e5a3032c5c754efc3f0039a5`. The root receipt records exact owned PostgreSQL-18 tmpfs/dynamic-loopback cleanup, unchanged inventories 23 containers / 109 volumes / 7 networks and private environment deletion. I did not independently query Docker or repeat that runtime.
+- `810-d9d6-api-typecheck-receipt.json` and `810-d9d6-api-typecheck-full.log`: root's `pnpm --filter @taskdesk/api typecheck`, five tsc configurations, native exit 0, PID 70116, 18.265 seconds. I read both and recomputed **316 bytes**, SHA-256 `2700219e6b5eb483227c221da9bccc8e571b630cb2b8390a7bd10370b6ebf755`. Its postflight records the same clean exact head.
+- Earlier full c7c3 security review, unit-fixture repair confirmations and their runtime records retain their original source, identities, scope and limitations. I do not promote their historical tests into fresh full-d9 execution.
+
+This is full static security clearance for the selected current candidate with the inspected focused evidence above. Full integration/unit/permission suites, exact-publication hosted checks, shipping image build/boot/health, any required browser/runtime work, performance acceptance, #580/Carrier acceptance, signed release/SIT/recovery and final audit remain separate conductor-owned gates. No gate is waived and no mission or stage completion is claimed.
