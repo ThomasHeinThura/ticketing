@@ -82,8 +82,8 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
 - `IQ-5a` Triage happens within reach. Suggested duplicates name only work items of projects the
   triager reaches. Accepting into, or linking a submission to a work item of, a project outside
   the triager's reach is answered exactly like a missing project or work item (accept: the same
-  422 as a missing destination, after the claim as for any failed destination check, so no
-  existence signal; link: the same 404). Nothing is converted or linked. For an accepted
+  422 as a missing destination, so no existence signal, and the failed accept leaves no claim
+  (`IQ-16a`); link: the same 404). Nothing is converted or linked. For an accepted
   submission, the staff detail shows the work item id and the comments carried over from it only
   to a triager who reaches the work item's project.
 - `IQ-7` Accepting requires choosing the project and confirming the work item type. Both
@@ -131,17 +131,19 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
 - `IQ-16` Declining requires a reason, which is shown to the customer verbatim. There is
   no silent decline.
 - `IQ-16a` The customer may withdraw their own submission at any time while it is `new` or
-  `clarifying`. The moment a triager takes any action on it — a queue claim, a message, or
-  starting acceptance — withdrawal is refused; from then on the submission is the triage
+  `clarifying`. The moment a triager takes any action on it — a queue claim, a message, or a
+  successful acceptance — withdrawal is refused (a failed acceptance leaves no claim); from then on the submission is the triage
   team's to dispose of. A withdrawn submission is retained (not deleted), visible to the
   customer as a record and to staff in the queue, filterable out by default. **Enforcement:**
   `submission.claimed_by`/`claimed_at` ([data-model.md](../01-architecture/data-model.md))
   are set the moment any of the three triggering actions happens — an explicit
   `POST /api/submissions/{ref}/claim` (see API below), the first `POST .../messages`, or a
-  `POST .../accept` attempt — whichever happens first, all under a conditional write
+  `POST .../accept` — whichever happens first, all under a conditional write
   (`WHERE claimed_by IS NULL`) so a race between a claim and a customer withdrawal is
   resolved the same way as the accept race in the edge cases below: whichever commits
-  first wins. `POST .../withdraw` is refused with `409` once `claimed_by` is set.
+  first wins. The accept claim is taken in the same transaction as conversion, so an
+  accept that fails (for example a missing or unreachable destination project) rolls the
+  claim back and leaves the submission unclaimed (owner decision, issue #743). `POST .../withdraw` is refused with `409` once `claimed_by` is set.
 - `IQ-17` Merging as duplicate links the submission to an existing work item and adds the
   customer as a watcher on it, so they still get updates.
 - `IQ-18` Duplicate suggestions are offered by trigram similarity
