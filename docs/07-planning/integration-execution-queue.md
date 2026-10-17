@@ -1,3 +1,29 @@
+## Protected833 acceptance; N1 reviews clear, current composition pending — 2026-10-17 22:29 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor /833 | DONE bounded column-startup ownership; maincf67fefc, protected22:25:58Z, all18checks and225PGfiles/3316tests/all5tasks plus image proof. | Preserve known startup-create/duplicate-slug residuals, source-bound counts and optional CPU diagnostic failure; no whole580/SIT claim. |
+| Review panel/conductor / N1 | Three ordinary+full Sol CLEARsource433e with one non-blocking internal-contract finding; current normal compositionca5d8c5d preserves all11ownedhashes/allacceptedmain. | Current composition checks/delta review, authentic final publication and exact hosted/image gates; not yet accepted. |
+| Critical material adviser / SAME Carrier791 | BLOCKED actual0bb0/6180focused10pass9fail/19/77not-run; sourcefrozen and unchangedmanifest e250. | Close canonical outcome/receiver transport under real controls; no more test/state claims until executed. Then full96/census/G3/main conservation/required combined reviews. |
+| Conductor / program | Whole580/810/811 selected units and final589 acceptance remain open;717DONE. | Preserve owner decisions/deferrals, signed release→laptop workflows→NONEMPTY backup/usable isolated restore→fresh audit→report/Hold. |
+
+The22:17 snapshot below is retained unchanged;833's later success/merge and subsequent N1 reviews are not backdated. Primary dirty work and source histories remain preserved. No formal stage, UAT, production, waiver or after-turn scheduler claim.
+
+## N1 policy source verified; column and Carrier acceptance pending — 2026-10-17 22:17 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor / accepted832 | DONE bounded records; main e77e0806, protected21:36:14Z, eighteen policy-scope checks green. | Preserve source-bound831 runtime; skipped product jobs are not new verification. |
+| Conductor / column833 | WAITING_CI at94bb25cf; two ordinary/full Sol clear source77c3, seventeen required contexts succeeded, fullPG still running. | Strict exact-head checks/raw counts/image proof, normal protected expected-head merge only when all green. |
+| Ordinary review panel / N1 | WAITING_REVIEW; clean pushed433e17a9, type9 and four complete PG82/82 pass on exact frozen precommit bytes; ordinaryA CLEAR/B running. | Third ordinary, further fresh full Sol, current-main composition, authentic publication and exact hosted/image gates. Old-policy and old-hook fault-injection worktrees NEVERmerge. |
+| Luna / SAME Carrier791 | RUNNING connected outcome/publication repair in same two scripts; last cdd3 focused10pass9fail/19,77not-run, manifest e250 unchanged. | Preserve all true drop/unknown/Portal obligations and real guards/provenance; root verification/full96/census/G3/main conservation/three ordinary/full independent Sol. |
+| Conductor / whole580 | RUNNING; red unwired diagnostic, no progress arithmetic. | Finish actual conversion and reviewed fail-closed gate activation; no baseline/exclusion or builder escape. |
+| Conductor /810 | BLOCKED; actual223.2ms fails strict200 assignment budget. | Genuine Carrier772 integration or demonstrated cause repair; no unchanged retry/premature predecessor closure. |
+| Thomas /811+773 | WAITING_DECISION plus thirteen owning-review findings. | Three valuation/midnight/timezone answers remain pending; do not guess or reopen settled decisions. |
+| Conductor / final589 | BLOCKED selected units and final acceptance;717 DONE. | Signed combined prerelease, exact-digest laptop SIT, consistent NONEMPTY backup+usable isolated restore, fresh audit, report/Hold. |
+
+Dated status carries exact source-bound evidence and qualifications. Two active children and one root-owned local heavy window; no stage/UAT/production/waiver or verified after-turn scheduler claim.
+
 ## Accepted #831; N1 runtime proof and Carrier role separation — 2026-10-17 21:28 UTC
 
 | Owner / unit | Actual state | Next action / boundary |
