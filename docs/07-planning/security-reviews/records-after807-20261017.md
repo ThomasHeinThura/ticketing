@@ -61,3 +61,40 @@ These are status facts as observed at verification time and may change later. Th
 
 The original c7c report and its `CLEAR — factual review` verdict remain unchanged and apply to the exact 13:29 UTC snapshot only. This addendum adds temporal precision and corroborates reviewer model/effort from the permitted platform metadata. No product approval is expressed. No repository record, PR, issue, branch, ref, commit, runtime, or CI run was changed or retried.
 
+
+
+## Independent current checkpoint and accepted-main composition delta
+
+**Reviewed head:** ba1ca00da8b461506b8c2314ac943c9bfc7a342c
+
+Conductor transport only; the same eligible independent factual reviewer checked the new dated facts and accepted-main composition. The original reports above remain unchanged. The authentic delta report follows verbatim.
+
+# Records after #807 — #822 acceptance delta factual review
+
+**Reviewed candidate:** `ba1ca00da8b461506b8c2314ac943c9bfc7a342c`
+**Candidate parent / delta base:** `b5597d3033816c5d153698eeed11a8c3a6bc7743`
+**Accepted-main composition base:** `4efe090566afdf723705f7f2423d93ac98d3f1ac`
+**Snapshot cutoff under review:** 2026-10-17 14:05 UTC
+**Verification time:** 2026-10-17 14:09 UTC
+**Reviewer/model:** GPT-6 Luna (`gpt-6-luna`), medium effort, provider OpenAI, as reported in this reviewer session’s platform metadata.
+**Independence:** Fresh bounded factual review context; I did not author, direct, or remediate the candidate or #822. This delta review reuses my prior factual report only for unchanged history.
+**Scope:** New 14:05 `status.md` and queue checkpoint; accepted-main composition/provenance and prior factual-review references. No product approval.
+
+## Checked
+
+- Candidate is clean and frozen at the exact reviewed head. Its parent is `b5597d3`, the records-only merge of prior candidate `742d744` and accepted #822 main `4efe090`. The candidate adds exactly 14 lines to `status.md` and 19 lines to `integration-execution-queue.md`; no other paths changed from that parent. `git diff --check` passes.
+- Independently reconstructed recursive Git mode/type/blob maps for accepted main and candidate. Accepted main has 3,409 entries; candidate has 3,410. The only paths differing from accepted main are the three conductor-owned records: `status.md`, `integration-execution-queue.md`, and the candidate’s own factual-review note. All other 3,407 entries match accepted main exactly. The unchanged 13:29 addition and its prior note remain present; the new checkpoint appends without altering old bytes.
+- Live GitHub confirms #822 merged normally at `2026-10-17T14:03:24Z`, publication `8b7c23a7f66656e9c68c7a881b8ddeb4f2247761`, base `2951838a608d43085aff55b3f50b7ab9ece16f84`, merge `4efe090566afdf723705f7f2423d93ac98d3f1ac`. Its retained protected-acceptance receipt binds ordered parents, tree `af078cc071f18a6810a6d18360dee4f1c9e3c03e`, normal protected merge, expected-head guard, and exact publication/tree equality. It records 18 required contexts green and the bounded 86 identity/users materializations plus accepted-main integration.
+- The exact-head readiness record and retained native logs support the new checkpoint’s counts: PostgreSQL 223 files / 3,302 tests / five tasks; FAST 12 tasks, API 121 files / 872 tests, UI 61 / 325 and web 186 / 1,023; gate 1,392 tests across 121 suites, 1,372 passed, 20 existing opt-in skips, zero failed/cancelled. Browser64; G4 155+8; G8 19+1; all22 required G11 budgets passed. G11 log records the calibrated first-assignment median as 112.9 ms under the 200 ms budget. The separate optional CPU diagnostic failed to collect sampled app JavaScript frames; the readiness record labels it separate from required G11 and makes no causal performance claim.
+- The image proof/readiness data bind image `sha256:5ce22775c013be717abf9d9293567aac394496284a3609610f65a3f6eaf334b1` to checkout/synthetic `0cc53955750f88744622f1f55c08fd713a7dce19`, exact accepted tree, 125 migrations, UID10001, healthy/live-ready200, no published ports, owned network and complete cleanup. The wording correctly limits this to candidate image evidence, not signed release or SIT.
+- The prior #807 acceptance and #759 absorption lines are consistent with their existing dated evidence and prior factual CLEAR. #715 is retained as conserved, unaccepted Carrier source. The #811/#810/N1 holds and non-completion claims remain explicit.
+- For Carrier, the latest cited frozen focused receipt is exact: `31fc00b9…`, checker `77416080…`, test `4cd14559…`, manifest `e250…`, eight selected cases = four pass/four fail, 87 not run, native exit 1. The four-fixture diagnostic receipt is separately dated 13:45:59Z and calls itself observer diagnostics, not tests/G3/acceptance. Its hashes match the 167,966-byte trace and unchanged source/fixture snapshot. The Sol advice supports the listed join gaps, says the latent DropSlot risk is static rather than an executed counterfactual, and identifies the prior direct List test title/coverage overclaim. The checkpoint reports the diagnostic as capture, distinguishes source analysis from execution, and does not claim a newer test batch, census, G3 or Carrier acceptance.
+- The status accurately says the earlier 13:29 checkpoint received factual CLEAR and that the separate addendum corrected only the review report’s post-cutoff wording. The original report and precision addendum were read; they remain unchanged.
+
+## Verdict
+
+**CLEAR — factual review of the #822 acceptance delta and the new 14:05 checkpoint.** No blocking or non-blocking factual correction found in the additions at their stated cutoff. This does not approve product behavior or certify later state.
+
+## Provenance and limits
+
+Platform metadata for this review reports session `01a14a27-4de9-7e73-b7e1-1d0305d9a020`, agent path `/root/records_after807_c7c_factual_luna`, model `gpt-6-luna`, effort `medium`, provider `openai`, parent thread `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`, depth 1. No serving fingerprint is exposed or claimed. Verification was read-only. No repository content, PR, issue, branch/ref, runtime or CI was changed or retried; no tests were run.
