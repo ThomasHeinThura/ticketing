@@ -1076,3 +1076,115 @@ Current exact-publication hosted CI, local integration tests, image build/boot/h
 
 
 **Reviewed head:** `fc094d9e6f9b2035b0cf806edd64253a0b37fc71`
+
+
+## Current accepted-main composition: authentic ordinary and security confirmations
+
+**Reviewed head:** c1804181ca6919b35d676798d0fffa287e264266
+
+Conductor transport only. The original reports, including both authentic ordinary identity addenda and the explicit retraction of its unsupported session-meta model attribution, follow verbatim. Independent Sol metadata inspection confirms the ordinary review turn was GPT-6 Luna/medium, followed by a separate GPT-6.1 Sol/high composition security confirmation. The earlier full-source panels retain their original exact-source coverage. Current exact-publication CI is not yet established; historical failures and residuals remain retained.
+
+
+### Independent ordinary composition report, including authentic identity corrections
+
+# #798 exact accepted-main composition ordinary review
+
+**Verdict: CLEAR — bounded composition review only.**
+
+**Reviewed head:** `c1804181ca6919b35d676798d0fffa287e264266`  
+**Parents:** `c4556ec60e0061832f42237ff5af4d9a32526ec0`, `aa77c2492af9a8d442629205db0d3b8f0ab773da`  
+**Tree:** `fb5e3438671ce80b4b378366f6c70b4835961046`  
+**Role/context:** fresh independent ordinary composition reviewer; did not author, direct, or remediate this candidate.  
+**Model:** GPT-6 (platform-facing identity in this context; the platform did not expose a version/effort field or an explicit Luna label).
+
+## Scope checked
+
+Reviewed only the new current-main composition delta and its seams with #798's already-reviewed source. I independently reconstructed recursive Git tree entries for the candidate, old publication, accepted main, and reviewed `fc094d9e6f9b2035b0cf806edd64253a0b37fc71` source. All 3,420 candidate entries match the specified partition: the 21 owned paths match the old publication exactly; all other paths match accepted main. There is no owned/incoming overlap. The 20 owned implementation/test paths match `fc094` exactly; the sole owned-path difference between `fc094` and the publication is the authentic appended review note. Candidate parents and tree match the assignment.
+
+Checked the startup seam in `apps/api/src/index.ts`: the accepted-main delta threads an optional hostname through `runApiBootTasks`/`createNodeServer`, starts observability with that option, and verifies the resulting bind address. It does not alter `runMigrationStep`'s migration handle, DDL ordering, or the separate one-shot `TASKDESK_ROLE=migrate` exit path. API boot still asserts the application role before DML seeds, then runs role/person seeds, reach reconciliation, workspace/project backfill, setup token, plugins, scheduler, websockets and observability before server listen.
+
+Checked seed callers and repositories: workspace creation passes its transaction to `ensureInternalOrganisation` and `seedWorkspaceDefaults`; project creation passes its transaction to `seedProjectStates`; OIDC performs connection/portal/role and mapping validation before calling `ensureInternalOrganisation(tx)`. Seed predicates and conflict handling remain intact. Boot-only helpers that use the shared database remain called outside a transaction; transaction-participating helpers use their supplied executor. No IdP-derived value creates an admin or `sees_all` grant in the inspected path.
+
+Checked outbox and lifecycle joins: `enqueueOutboxEvent` still validates event key/scope and delegates an insert-only write using the supplied transaction. SCIM deprovisioning and pending-action invalidation enqueue in the same transaction as identity/action changes; lifecycle gate and policy checks remain in the caller transaction, and native/socket invalidation and AU-14 reporting remain post-commit. Workspace-access invalidation also preserves the before/mutate/after transaction boundary. Spot-checked notification fanout and service-calendar producers; both enqueue through their passed transaction.
+
+Checked the composed `identity/repository.ts` and `instance/users/repository.ts` materialization against the accepted-main implementation at these seams; no owned-path collision or transaction-handle loss was found. No new composition finding requires reclassification beyond the assigned bounded ordinary pass.
+
+## Findings and residuals
+
+No blocking or non-blocking composition defect found in this scope.
+
+This is not a new full-source review, tenant-query audit, CI review, runtime claim, #580 completion, or performance disposition. The historical G11 task-state normalized median of 270.8 ms remains red, unwaived and undiagnosed; this composition does not repair it. Prior source reviews remain attributed only to their exact reviewed heads. Current-head native checks, hosted CI, image/runtime, and PostgreSQL evidence were not run or inferred here.
+
+## Commands and reproductions actually used
+
+- `git status --short --branch`, `git rev-parse`, `git show`, `git diff --name-status`, `git diff --raw`, `git diff --check`, and `git diff` for the exact candidate and parents.
+- A read-only Python reconstruction using `git ls-tree -rz --full-tree` compared all recursive mode/type/object entries against the old publication and accepted-main partition, and compared the owned implementation/test paths with `fc094`.
+- Read the active mission, workflow, provider guide, query-ownership coding standard, D1–D4 decision entry, current source, and the prior #798 source review and preparation evidence.
+- No tests, build, AST scan, inventory gate, CI dispatch, browser, image, database, or runtime was run.
+
+
+## Provenance precision addendum (appended; original report unchanged)
+
+The earlier report's platform-introspection limitation is retained as written because that was the evidence available when it was authored. The allowlisted session record was subsequently inspected for this addendum only. Its `session_meta` identifies this reviewer context as session `01a14a58-72a6-7a51-8bb7-cd1e3542a39c`, provider `openai`, parent/root session `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`, path `/root/boot798_c180_mainaa77_ordinary_luna`, with reported model provenance `gpt-6.1-sol`. The relevant `turn_context` identifies the review turn as `gpt-6-luna`, effort `medium`. The root dispatch provenance supplied for this review records `fork_turns=none`, model `gpt-6-luna`, reasoning effort `medium`. This clarifies the model identity for the review turn; it does not change the scope, source, findings, or verdict above. No hidden fingerprint or transcript claim is made.
+
+
+## Provenance precision correction (appended; prior bytes unchanged)
+
+I retract the preceding addendum's attribution of `gpt-6.1-sol` to `session_meta`: that model claim is unsupported and must not be used as reviewer provenance. The permitted `session_meta` fields inspected establish session id `01a14a58-72a6-7a51-8bb7-cd1e3542a39c`, provider `openai`, parent/root `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`, and thread-spawn depth `1`; they do not establish a session-meta model attribution. The review's `turn_context` identifies the actual review turn as `gpt-6-luna`, effort `medium`. The root dispatch records `fork_turns=none`, model `gpt-6-luna`, reasoning effort `medium`. This correction changes no review scope, candidate, findings, or CLEAR verdict.
+
+
+### Further independent security composition confirmation
+
+# #798 accepted-main composition security confirmation
+
+**Review in progress.** Exact candidate `c1804181ca6919b35d676798d0fffa287e264266`; old publication `c4556ec60e0061832f42237ff5af4d9a32526ec0`; accepted main `aa77c2492af9a8d442629205db0d3b8f0ab773da`. Fresh independent reviewer, not author, fixer or director. Read-only source/metadata inspection only; no tests, CI or runtime.
+
+## Completed review
+
+**Verdict: CLEAR — further lightweight security composition confirmation only.** No new blocking or non-blocking composition security finding. The inspected joins do not require escalation to a new full-source review. This is not merge approval, renewal of the original full-source panel, the Carrier final security pass, #580 completion, full PA-15 acceptance, runtime acceptance or phase closure.
+
+**Reviewed head:** `c1804181ca6919b35d676798d0fffa287e264266`  
+**Comparison parents:** old publication `c4556ec60e0061832f42237ff5af4d9a32526ec0`; accepted main `aa77c2492af9a8d442629205db0d3b8f0ab773da`.  
+**Tree:** `fb5e3438671ce80b4b378366f6c70b4835961046`.  
+**Role and independence:** fresh independent security reviewer, `/root/boot798_c180_mainaa77_security_sol`; I did not author, direct, materially advise on, fix or remediate this candidate. The ordinary review was CLEAR before this review began.
+
+**Actual platform model:** GPT-6.1 Sol (`gpt-6.1-sol`), effort `high`, from this context's allowlisted `turn_context` metadata. Root dispatch provenance is `fork_turns=none`, model `gpt-6.1-sol`, reasoning effort `high`. Independent metadata inspection found session `01a14a5b-5e2c-7a61-90da-68cb986f4a4f`, provider `openai`, `session_meta.session_id` and thread-spawn parent `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`, depth `1`, path `/root/boot798_c180_mainaa77_security_sol`. The inspected file was `/Users/heinthura/.codex/sessions/2026/10/17/rollout-2026-10-17T21-24-24-01a14a5b-5e2c-7a61-90da-68cb986f4a4f.jsonl`. Only the permitted identifiers/provider/thread-spawn fields and `turn_context.model`/`effort` were extracted. No model attribution was inferred from session-meta instructions, transcripts, analysis or hidden fingerprints.
+
+## Ordinary-review identity correction
+
+Read the complete private ordinary report `798-c180-mainaa77-ordinary-luna.md`, 6,426 bytes, SHA-256 `1ce33d4a1704f2b3d56e63708148eaf4423f6b66360e72ef04f567c500dfeb59`. Its original introspection limitation, first addendum and subsequent explicit retraction remain present. The retraction adequately removes the unsupported first addendum's session-meta attribution to `gpt-6.1-sol`; it does not relabel the original report as a Sol security review or alter its scope/findings/CLEAR verdict.
+
+I independently inspected only the allowlisted metadata in `/Users/heinthura/.codex/sessions/2026/10/17/rollout-2026-10-17T21-21-12-01a14a58-72a6-7a51-8bb7-cd1e3542a39c.jsonl`: session-meta id `01a14a58-72a6-7a51-8bb7-cd1e3542a39c`, provider `openai`, session-id/thread-spawn parent `01a14000-d9e0-7bb1-b3fd-2c0204a4834c`, depth `1`, agent path `/root/boot798_c180_mainaa77_ordinary_luna`. All three available turn-context records report `gpt-6-luna`, effort `medium`. This agrees with root's explicit fresh-context Luna/medium dispatch and the correction. Session-meta establishes context linkage, not a Sol model identity. This is an ordinary Luna review followed by this separate Sol security confirmation; it is not a counterfeit earlier Sol review. Publication must preserve all three original report portions unedited.
+
+## Exact composition and retained scope
+
+Independently reconstructed recursive Git trees with `git ls-tree -rz --full-tree`; compared mode, object type and object id, including path presence/absence. Derived the 21 owned paths from candidate-versus-accepted-main changed paths, then checked them against the receipt. All 3,420 candidate entries satisfy the partition: each owned path is exact old-publication source; every other path is exact accepted main. There are no partition mismatches. The parents/tree match the assignment, and the worktree was clean. The receipt `798-main-aa77-conservation.json` agrees, but was not used as proof.
+
+The common base of old publication and accepted main is `555879db9e4841c1460346c115111881d3cd3387`. The 46 incoming accepted-main paths and 21 owned paths are disjoint. All 20 owned implementation/test paths match both previously reviewed `fc094d9e6f9b2035b0cf806edd64253a0b37fc71` and repaired source `9f58e3279adbbb0f9c0444eb48ee1f197eab030d` exactly. Compared with original full-review composition `89290ab8b6fd5403f6513cc37063bd4ce78ea5cc`, only `apps/api/src/utils/repository.ts` differs among those 20 paths; its separately reviewed helper repair is exact at `9f58e327...`. That repaired head is an ancestor of the candidate.
+
+The candidate's own note is exact old-publication blob. The only intervening commit from `fc094...` to `c455...` changes that note in mode 100644, with 92 additions and zero deletions. The retained three original ordinary/full Sol composition reports, subsequent helper-delta ordinary/light Sol reports, and old `fc094` ordinary/light Sol composition confirmation retain their original source identities and limitations. I inspected those records; this report does not reissue their full-source approvals. Source-conservation evidence applies only to unchanged scope.
+
+The accepted security path list includes the boot index, utilities and database modules. This genuine current-main composition is eligible for one fresh ordinary composition pass plus further lightweight security confirmation because the owned source is conserved and the examined accepted-main joins introduce no additional authority, permission, schema, migration or gate semantics through composition. The incoming accepted changes are real changes; this is not an unchanged-source retry. No merge or rebase was executed by me.
+
+## Security seams inspected
+
+- **Boot and optional hostname:** inspected the exact old-publication-to-current index diff and current calls. Optional hostname is forwarded to observability and HTTP creation, with actual listener-address checks. It does not change the migration handle or order: pre-Drizzle email/session fixups, Drizzle migration, post-Drizzle API-key/preferences fixups, application-role setup and migration-pool close remain in the one-shot owner process. Utility wrappers forward the explicit owner database. Serving boot rejects a migration URL and verifies the nonprivileged application role before role/person seeding, admin-reach reconciliation, DML backfill, setup token and runtime initialization. The seed handle is not replaced by the hostname option.
+- **Workspace/project/OIDC seed callers:** current workspace creation passes its `tx` to `ensureInternalOrganisation` and `seedWorkspaceDefaults`; project creation retains its transaction and workspace serialization before `seedProjectStates(..., tx)`. The seed repositories read/write through the supplied handle, preserve project/workspace predicates, conflict targets and archived-template filter, and preserve the internal-organisation insertion savepoint. Per-workspace backfill checks and inserts share a transaction; project backfill retains advisory lock namespace/key 1524 and the same seed handle. OIDC verifies configured connection/portal and default-role restrictions before the internal-organisation call, then validates the mapping before grants. The accepted shared validator excludes admin/owner roles, `sees_all`, invalid capability composition and out-of-scope tenant mappings. Local staff-person seeding remains limited to the existing email-sign-up hook; no IdP-derived admin or sees-all grant was introduced at this seam.
+- **Outbox:** `enqueueOutboxEvent` still validates registered kinds and the four permitted empty-instance-scope event kinds before the repository call. The insert-only repository awaits the actual supplied `Executor`, preserves the complete original event envelope, event id, kind, workspace/organisation columns and pending/retry values, and opens no transaction or content/actor lookup. Its envelope import is type-only. The extracted function is not a new untrusted route.
+- **Pending-action/SCIM:** the accepted lifecycle repository uses the supplied executor for the global lifecycle advisory lock, ordered pending-row update locks and conditional pending-state invalidation. Its invalidation service enqueues the decision envelope on that same transaction; nested audit-savepoint failures are counted for the existing post-commit PA AU-14 reporter. Workspace-access invalidation retains lifecycle lock → before snapshot → mutation → after evaluation within one outer transaction, with reporting afterward. SCIM protocol mutations take the lifecycle gate before profile/person locks, bind identity id plus connection and SCIM provenance, validate lifecycle policy inside the same transaction and revalidate mutation authority. Person transition, session/key revocation, identity/provisioning writes and `identity.deprovisioned` enqueue share the passed transaction. Native/socket authorization invalidation remains after the outer transaction resolves. Existing audit handling is conserved; this is not a new assertion that every audit-notifier path is post-commit.
+- **Notification/calendar producers:** notification enqueue persists outbox then materializes fanout with the same `tx`; recipient resolution, person locking, inbox/delivery/digest helpers retain that handle. The inspected calendar event producer also receives its mutation transaction. No insert executor fallback or transaction split was found.
+- **Accepted identity/users and API-key controls:** the complete tree proof conserves every non-owned accepted-main path. Explicit identity/users repository blob comparisons also match main (`f2a8f5871b684d759a96a90b2f6969a5857f0d32`, `f19b51db3ae01c8f41ef7ce630cc58fc5d561c2e`). Inspected the materialized SCIM external-identity predicate, shared IdP role validator, person lifecycle closure/transition, instance-user mutation row locks and last-admin guard. Connection/person/user/portal/active predicates and caller executors are retained, including lifecycle API-key revocation by `referenceId` on the same transaction. The owned API-key startup fixup is exact prior source and still receives the owner handle; accepted API-key authorization controls outside the owned set are exact main. This is seam/conservation review, not a universal tenant-predicate audit.
+
+## Commands and limits
+
+Actually used read-only `git status`, `rev-parse`, `show`, `diff` (including raw/name/stat/check), `log -m --raw --no-renames`, `log --numstat`, `merge-base` and `ls-tree`, with Python subprocess comparisons; source/record reads used `cat`, `sed`, `rg`, `wc` and Python. Read accepted-equivalent AGENTS/workflow/provider guide, active mission, security scope, D1-D4/query/executor contract, event-envelope/outbox contract, current queue/status evidence, retained review records, supplied receipt and complete current ordinary report. Accepted AGENTS/workflow/CLAUDE blobs match the candidate. No live GitHub lookup was made, per the assigned read-only/no-API boundary.
+
+Full candidate-versus-main `git diff --check` reports only six preserved Markdown hard-break trailing-space lines in the authentic own review note (562–565, 611–612). Source/test-only diff check passed. Those historical report bytes were not edited. A preliminary file-list command also named a nonexistent `identity/scim-provisioning.ts`; subsequent inspection used the actual `scim-protocol.ts`. This was a read-path miss, not an executed test or source failure.
+
+**Tests/reproductions run:** none. No pnpm/Node/AST scan, inventory/checker gate, compiler, CI dispatch, test suite, PostgreSQL, browser, Docker build/boot/health, performance run or runtime was executed. Prior c455 evidence of 225 files/3,303 PostgreSQL tests/all five tasks and 22 G11 budgets remains bound to that old source; it is not current-head evidence. The historical `9620...` task-state normalized median 270.8 ms remains red, unwaived and undiagnosed. This composition establishes no causal performance fix and authorizes no retry-until-green.
+
+**New blocking findings:** none.  
+**New non-blocking findings:** none.  
+**Inherited residuals retained:** structural Selector/Inserter seed signature convention divergence; pending-action N1 remains unresolved/unwaived and outside this extraction confirmation. No full PA-15 acceptance is claimed. The final query gate and broader #580, Carrier, exact-current required checks, image/runtime, signed release/SIT/recovery/audit and stage-finalizer acceptance remain separate and unestablished by this review.
+
+Only this private mode-0600 evidence file was created/appended. No repository/source/ref/commit/push/PR/comment/GitHub API/CI/runtime mutation was made. The conductor alone may evaluate remaining gates and merge through the protected flow.
