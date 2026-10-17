@@ -31,7 +31,17 @@ export function approvalWorkItemEvidence() {
   return async (c: Context, next: Next) => {
     const key = c.req.param("key");
     if (!key) throw new HTTPException(404, { message: "Work item not found" });
-    publish(c, await loadApprovalTargetByKey(key));
+    const userId = c.get("userId") as string | undefined;
+    const identity = userId
+      ? await resolveApprovalIdentityIfActive(
+          userId,
+          c.get("apiKey"),
+          (c.get("session") as { impersonatedBy?: string | null } | null)
+            ?.impersonatedBy,
+        )
+      : null;
+    if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+    publish(c, await loadApprovalTargetByKey(identity, key));
     await next();
   };
 }
@@ -48,7 +58,12 @@ export function approvalIdEvidence(options: { portal?: boolean } = {}) {
     if (!id || !userId) {
       throw new HTTPException(404, { message: "Approval not found" });
     }
-    const identity = await resolveApprovalIdentityIfActive(userId);
+    const identity = await resolveApprovalIdentityIfActive(
+      userId,
+      c.get("apiKey"),
+      (c.get("session") as { impersonatedBy?: string | null } | null)
+        ?.impersonatedBy,
+    );
     if (!identity) {
       // An inactive identity is refused with 403, the status the app-wide guard gives it.
       throw new HTTPException(403, { message: "Forbidden" });
@@ -58,7 +73,11 @@ export function approvalIdEvidence(options: { portal?: boolean } = {}) {
       throw new HTTPException(404, { message: "Approval not found" });
     publish(c, target);
     if (options.portal) {
-      const addressing = await loadApprovalAddressing(id, target.workspaceId);
+      const addressing = await loadApprovalAddressing(
+        id,
+        target.workspaceId,
+        identity,
+      );
       c.set(
         "portalPredicateSatisfied",
         identity.side === "customer" &&
@@ -75,7 +94,12 @@ export function portalListEvidence() {
   return async (c: Context, next: Next) => {
     const userId = c.get("userId") as string | undefined;
     const identity = userId
-      ? await resolveApprovalIdentityIfActive(userId)
+      ? await resolveApprovalIdentityIfActive(
+          userId,
+          c.get("apiKey"),
+          (c.get("session") as { impersonatedBy?: string | null } | null)
+            ?.impersonatedBy,
+        )
       : null;
     c.set("portalPredicateSatisfied", identity?.side === "customer");
     await next();

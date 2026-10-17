@@ -211,7 +211,6 @@ const invitation = apiRouter()
       const accepted = await acceptInvitationCtrl(
         c.req.valid("param").id,
         c.get("userId"),
-        c.get("userEmail"),
       );
       return c.json(accepted, 200);
     } catch (error) {
@@ -242,7 +241,7 @@ const invitation = apiRouter()
     try {
       const rejected = await rejectInvitationCtrl(
         c.req.valid("param").id,
-        c.get("userEmail"),
+        c.get("userId"),
       );
       return c.json(rejected, 200);
     } catch (error) {
@@ -260,7 +259,10 @@ const invitation = apiRouter()
   })
   .openapi(cancelInvitationRoute, async (c) => {
     try {
-      const canceled = await cancelInvitationCtrl(c.req.valid("param").id);
+      const canceled = await cancelInvitationCtrl(
+        c.req.valid("param").id,
+        c.get("userId"),
+      );
       return c.json(canceled, 200);
     } catch (error) {
       if (error instanceof InvitationNotFoundError) {

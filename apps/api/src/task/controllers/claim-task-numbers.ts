@@ -1,22 +1,23 @@
-import { eq, sql } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { projectTable } from "../../database/schema";
+import type { Executor } from "../../database/executor";
+import { advanceProjectTaskNumberForIdentity } from "../repository";
 
-type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbOrTx = Executor;
 
 async function claimTaskNumbers(
   projectId: string,
   count: number,
+  identity: ResolvedIdentity,
   dbOrTx: DbOrTx = db,
 ) {
-  const [updated] = await dbOrTx
-    .update(projectTable)
-    .set({
-      lastTaskNumber: sql`${projectTable.lastTaskNumber} + ${count}`,
-    })
-    .where(eq(projectTable.id, projectId))
-    .returning({ lastTaskNumber: projectTable.lastTaskNumber });
+  const updated = await advanceProjectTaskNumberForIdentity(
+    dbOrTx,
+    identity,
+    projectId,
+    count,
+  );
 
   if (!updated) {
     throw new HTTPException(404, {
@@ -27,8 +28,10 @@ async function claimTaskNumbers(
   return updated.lastTaskNumber - count + 1;
 }
 
-export async function claimTaskNumber(projectId: string, dbOrTx: DbOrTx = db) {
-  return claimTaskNumbers(projectId, 1, dbOrTx);
+export async function claimTaskNumberForIdentity(
+  identity: ResolvedIdentity,
+  projectId: string,
+  dbOrTx: DbOrTx = db,
+) {
+  return claimTaskNumbers(projectId, 1, identity, dbOrTx);
 }
-
-export default claimTaskNumbers;
