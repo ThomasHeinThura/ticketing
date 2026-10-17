@@ -1,3 +1,17 @@
+## Protected #797 acceptance and bounded remaining repairs — 2026-10-17 16:23 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor / #823, #798, #797 | DONE for their bounded units. Latest accepted main is #797 merge `30d8c7005c319a131897b43750db6e6ab975be3c` at 16:20:21Z; all eighteen exact-publication checks, source-bound reviews, native counts and candidate image proof verified. | Preserve original scopes and branches; #797 is unwired preparation and does not close #580. Optional CPU diagnostic failure remains explicit. |
+| Luna / SAME Carrier #791 | RUNNING repair; unaccepted. Last tested 8ba9/cbf8: nine focused tests, four pass/five fail/87 not run. Wrong-nearest ordinary publication is a blocking false closure. | Repair own insertion paint versus exterior placement, canonical named transition, exact normalized child continuation and real route alpha closure in the same two scripts. Preserve all true blockers, matcher/reducer/threshold/manifest. Freeze and verify before current-main composition and three fresh ordinary/full independent Sol reviews. |
+| Luna / #580 admin-lock helper | RUNNING bounded source preparation on accepted 30d8. One module builder row points to synchronous lockInstanceAdminSerialization; all four callers already await it. | Materialize only the same executor lock statement; preserve SQL/key/order/authority and N1. Complete meaningful existing admin/transaction integration, API types and exact source diagnostic, then independent reviews/current gates. No result claimed yet. |
+| Conductor / #580 inventory and type boundaries | RUNNING. Current b330 diagnostic: 2,799 overlapping instances, 154 paths, 1,553 locations; twelve unresolved module rows remain. | Keep JSON/projection/Error/generic/member-type residuals explicit; resolve by source-bound evidence and reviewed narrow fixes. No unique-query/progress arithmetic, allowlist, baseline or activation. |
+| Conductor / #810 | WAITING_CI on genuine Carrier/#772 integration or evidence-backed cause repair. Existing G11 assignment223.2ms fails strict200. | Preserve adverse evidence; no unchanged retry or disposal of #774/#779 before accepted composition. |
+| Conductor / #811 and #773 | WAITING_DECISION plus owning-review blockers: three time-and-cost owner questions and thirteen findings. | Await actual valuation/midnight/timezone decisions and independent finding dispositions; do not invent behavior or re-ask settled questions. |
+| Conductor / final #589 | BLOCKED on selected units and acceptance sequence; #717 DONE. N1 remains unresolved/unwaived. | Signed combined prerelease, exact-digest laptop SIT, NONEMPTY attachment backup/usable isolated app restore, fresh final independent audit, report and Hold. No stage/UAT/production or functioning post-turn continuation claim. |
+
+The dated status snapshot records exact evidence, counts and limits. A blocked lane does not stop dependency-safe authorized work; none of these rows waives a gate.
+
 ## Conductor checkpoint — 2026-10-17 14:05 UTC
 
 Accepted main4efe0905 is protected #822 at14:03:24Z, exactaf078 publication/synthetic tree. Latest status binds its actual checks/review/image limits. Historical rows below remain dated evidence.
