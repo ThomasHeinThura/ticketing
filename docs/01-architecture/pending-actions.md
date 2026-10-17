@@ -234,6 +234,10 @@ thing that is hashed or executed.
   All four shared challenge-create and proof-issue entrypoints (pending action and registered
   operation) first enter the pending-action lifecycle gate, then use that admitted transaction
   through local password, TOTP or backup-code verification and final proof issuance. The
+  supported local-factor-policy PATCH joins the same gate as its first transaction statement,
+  before its existing required-role then singleton lock order. A policy update therefore
+  cannot commit between admitted final factor revalidation and proof issuance; it does not
+  retroactively invalidate proofs that were already issued.
   verifier receives the admitted executor; Better Auth adapter transactions are nested
   savepoints on that same backend. Provider effects, including native-authorization
   invalidation from Better Auth's session-delete hook, queue on the child and commit only

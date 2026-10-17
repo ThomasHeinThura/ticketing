@@ -1,6 +1,9 @@
+import { createRequire } from "node:module";
 import { eq, sql } from "drizzle-orm";
 import { Pool } from "pg";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getConfiguredAgentOrigin } from "../../apps/api/src/auth";
+import * as localFactorService from "../../apps/api/src/auth/local-factor-service";
 import {
   createMfaResetChallenge,
   createPendingActionChallenge,
@@ -8,14 +11,123 @@ import {
   issuePendingActionToken,
 } from "../../apps/api/src/auth/step-up-service";
 import db, { schema } from "../../apps/api/src/database";
+import { createApp } from "../../apps/api/src/index";
+import {
+  ensureInternalOrganisation,
+  ensureStaffPersonForUser,
+} from "../../apps/api/src/utils/seed-internal-organisation";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 import { createCredentialBoundPendingAction } from "./helpers/pending-action";
+
+const apiRequire = createRequire(
+  new URL("../../apps/api/package.json", import.meta.url),
+);
+const bcrypt = apiRequire("bcryptjs") as {
+  hash(value: string, rounds: number): Promise<string>;
+};
+let policyAdmissionSignInAddress = 10;
+
+function nextPolicyAdmissionSignInIp() {
+  policyAdmissionSignInAddress += 1;
+  return `198.51.100.${policyAdmissionSignInAddress}`;
+}
 
 beforeEach(async () => {
   await resetTestDatabase();
   await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
 });
+
+type PolicyAdmissionAdmin = {
+  id: string;
+  email: string;
+  password: string;
+  cookie: string;
+};
+
+async function createPolicyAdmissionAdmin(
+  app: ReturnType<typeof createApp>["app"],
+  id: string,
+): Promise<PolicyAdmissionAdmin> {
+  const email = `${id}@example.test`;
+  const password = `${id}-password`;
+  const [user] = await db
+    .insert(schema.userTable)
+    .values({ id, name: id, email, role: "admin" })
+    .returning({ id: schema.userTable.id, email: schema.userTable.email });
+  if (!user) throw new Error("policy admission admin was not created");
+  await ensureStaffPersonForUser(user.id);
+  await db.insert(schema.accountTable).values({
+    id: `${id}-account`,
+    accountId: user.id,
+    providerId: "credential",
+    userId: user.id,
+    password: await bcrypt.hash(password, 4),
+  });
+  const signIn = await app.request("/api/auth/sign-in/email", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-forwarded-for": nextPolicyAdmissionSignInIp(),
+    },
+    body: JSON.stringify({ email, password }),
+  });
+  expect(signIn.status).toBe(200);
+  const cookie = signIn.headers
+    .getSetCookie()
+    .find((value) => value.startsWith("__Host-tdk_agent_session="))
+    ?.split(";", 1)[0];
+  if (!cookie) throw new Error("policy admission session cookie is missing");
+  return { id: user.id, email: user.email, password, cookie };
+}
+
+async function preparePolicyAdmissionActors(
+  app: ReturnType<typeof createApp>["app"],
+  label: string,
+) {
+  const actor = await createPolicyAdmissionAdmin(
+    app,
+    `factor-policy-issuer-${label}`,
+  );
+  const writer = await createPolicyAdmissionAdmin(
+    app,
+    `factor-policy-writer-${label}`,
+  );
+  const [actorPerson] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, actor.id));
+  if (!actorPerson)
+    throw new Error("policy admission actor identity is missing");
+  const organisation = await ensureInternalOrganisation();
+  const roleId = `factor-policy-required-${label}`;
+  await db.insert(schema.roleTable).values({
+    id: roleId,
+    scope: "organisation",
+    workspaceId: null,
+    key: `factor-policy-${label}`,
+    name: `Factor policy ${label}`,
+    rank: 10,
+    capabilities: [],
+  });
+  await db.insert(schema.membershipTable).values({
+    personId: actorPerson.id,
+    scope: "organisation",
+    scopeId: organisation.id,
+    roleId,
+    seesAll: false,
+  });
+  return { actor, writer, roleId };
+}
+
+function deferred<T>() {
+  let resolve = (_value: T | PromiseLike<T>) => {};
+  const promise = new Promise<T>((accept) => {
+    resolve = accept;
+  });
+  return { promise, resolve };
+}
 
 async function setupRole() {
   await db.insert(schema.roleTable).values({
@@ -60,6 +172,223 @@ async function waitForLifecycleBlocker(
   throw new Error(
     "Step-up producer reached neither lifecycle wait nor observable database progress",
   );
+}
+
+async function waitForPolicyWriterAtTestBarrier(
+  observer: import("pg").PoolClient,
+  barrierPid: number,
+) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const result = await observer.query<{ pid: number; query: string }>(
+      `SELECT pid, query
+       FROM pg_stat_activity
+       WHERE datname = current_database()
+         AND pid <> pg_backend_pid()
+         AND wait_event_type = 'Lock'
+         AND $1 = ANY(pg_blocking_pids(pid))`,
+      [barrierPid],
+    );
+    const writer = result.rows.find((row) =>
+      row.query.toLowerCase().includes("instance_setting"),
+    );
+    if (writer) return writer;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error("Policy PATCH did not reach its controlled database barrier");
+}
+
+async function waitForPidBlockedByPid(
+  observer: import("pg").PoolClient,
+  blockedPid: number,
+  blockerPid: number,
+) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const result = await observer.query<{ blocked: boolean }>(
+      `SELECT $2 = ANY(pg_blocking_pids(pid)) AS blocked
+       FROM pg_stat_activity
+       WHERE datname = current_database() AND pid = $1`,
+      [blockedPid, blockerPid],
+    );
+    if (result.rows[0]?.blocked) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(
+    `PostgreSQL backend ${blockedPid} did not wait on ${blockerPid}`,
+  );
+}
+
+async function policyModeIs(observer: import("pg").PoolClient, mode: string) {
+  const result = await observer.query<{ policy: { mode: string } }>(
+    "SELECT local_factor_policy AS policy FROM instance_setting WHERE id = 'singleton'",
+  );
+  return result.rows[0]?.policy.mode === mode;
+}
+
+async function hasChallengeState(
+  observer: import("pg").PoolClient,
+  challengeId: string,
+  state: string,
+) {
+  const result = await observer.query(
+    "SELECT id FROM step_up_confirmation WHERE id = $1 AND state = $2",
+    [challengeId, state],
+  );
+  return result.rowCount === 1;
+}
+
+type PolicyRaceCase = {
+  kind: "pending_action" | "operation";
+  actor: PolicyAdmissionAdmin;
+  writer: PolicyAdmissionAdmin;
+  target: { id: string; email: string };
+  requiredRoleId: string;
+  challengeId: string;
+  nonce: string;
+  pendingActionId?: string;
+  verificationNote: string;
+};
+
+async function preparePolicyRaceCase(
+  app: ReturnType<typeof createApp>["app"],
+  label: string,
+  kind: PolicyRaceCase["kind"],
+): Promise<PolicyRaceCase> {
+  const { actor, writer, roleId } = await preparePolicyAdmissionActors(
+    app,
+    label,
+  );
+  const targetId = `factor-policy-target-${label}`;
+  const [target] = await db
+    .insert(schema.userTable)
+    .values({
+      id: targetId,
+      name: targetId,
+      email: `${targetId}@example.test`,
+      role: "user",
+      twoFactorEnabled: true,
+    })
+    .returning({ id: schema.userTable.id, email: schema.userTable.email });
+  if (!target) throw new Error("policy race target was not created");
+  await ensureStaffPersonForUser(target.id);
+
+  let pendingActionId: string | undefined;
+  if (kind === "pending_action") {
+    const requested = await csrfRequest(
+      app,
+      `/api/instance/users/${target.id}/deactivate`,
+      {
+        method: "POST",
+        headers: { cookie: actor.cookie, "content-type": "application/json" },
+        body: "{}",
+      },
+      actor.cookie,
+    );
+    expect(requested.status).toBe(202);
+    const requestBody = (await requested.json()) as {
+      pendingActionId: string;
+    };
+    pendingActionId = requestBody.pendingActionId;
+  }
+  const verificationNote = "Verified the account recovery request.";
+  let challengeInput:
+    | { kind: "pending_action"; pendingActionId: string }
+    | {
+        kind: "operation";
+        operation: "mfa_reset";
+        userId: string;
+        verificationNote: string;
+      };
+  if (kind === "pending_action") {
+    if (!pendingActionId) {
+      throw new Error("policy race pending action was not created");
+    }
+    challengeInput = { kind, pendingActionId };
+  } else {
+    challengeInput = {
+      kind,
+      operation: "mfa_reset",
+      userId: target.id,
+      verificationNote,
+    };
+  }
+  const challengeRequest = await csrfRequest(
+    app,
+    "/api/me/step-up/challenges",
+    {
+      method: "POST",
+      headers: { cookie: actor.cookie, "content-type": "application/json" },
+      body: JSON.stringify(challengeInput),
+    },
+    actor.cookie,
+  );
+  expect(challengeRequest.status).toBe(200);
+  const challenge = (await challengeRequest.json()) as {
+    challengeId: string;
+    nonce: string;
+  };
+  return {
+    kind,
+    actor,
+    writer,
+    target,
+    requiredRoleId: roleId,
+    challengeId: challenge.challengeId,
+    nonce: challenge.nonce,
+    ...(pendingActionId ? { pendingActionId } : {}),
+    verificationNote,
+  };
+}
+
+function policyRaceProofBody(race: PolicyRaceCase) {
+  if (race.kind === "pending_action") {
+    if (!race.pendingActionId) {
+      throw new Error("policy race pending action is missing");
+    }
+    return {
+      kind: race.kind,
+      pendingActionId: race.pendingActionId,
+      challengeId: race.challengeId,
+      nonce: race.nonce,
+      method: "password",
+      password: race.actor.password,
+    };
+  }
+  return {
+    kind: race.kind,
+    operation: "mfa_reset",
+    userId: race.target.id,
+    verificationNote: race.verificationNote,
+    challengeId: race.challengeId,
+    nonce: race.nonce,
+    method: "password",
+    password: race.actor.password,
+  };
+}
+
+async function issueApprovalCsrfContext(
+  app: ReturnType<typeof createApp>["app"],
+  sessionCookie: string,
+) {
+  const origin = getConfiguredAgentOrigin();
+  const response = await app.request("/api/me/csrf-token", {
+    headers: { cookie: sessionCookie, origin },
+  });
+  expect(response.status).toBe(200);
+  const issued = (await response.json()) as { token: string };
+  const cookieName =
+    new URL(origin).protocol === "https:" ? "__Host-tdk_csrf" : "tdk_csrf_dev";
+  const csrfCookie = response.headers
+    .getSetCookie()
+    .find((value) => value.startsWith(`${cookieName}=`))
+    ?.split(";", 1)[0];
+  if (!csrfCookie) throw new Error("CSRF issuer cookie was not set");
+  return {
+    origin,
+    token: issued.token,
+    cookie: `${sessionCookie}; ${csrfCookie}`,
+  };
 }
 
 async function hasPendingActionChallenge(
@@ -698,6 +1027,637 @@ describe("local-factor and step-up transaction invariants", () => {
     } finally {
       writer.release();
       deleter.release();
+      await pool.end();
+    }
+  });
+
+  it.each(["pending_action", "operation"] as const)(
+    "serializes a %s proof behind an actual local-factor policy PATCH",
+    async (kind) => {
+      const { app } = createApp();
+      const race = await preparePolicyRaceCase(app, `issuer-${kind}`, kind);
+      const approvalCsrf =
+        race.kind === "pending_action"
+          ? await issueApprovalCsrfContext(app, race.actor.cookie)
+          : undefined;
+      const pool = new Pool({
+        connectionString: process.env.TASKDESK_DATABASE_URL,
+        max: 3,
+      });
+      const finalFactorLoaded = deferred<{
+        pid: number;
+        required: boolean;
+        enabled: boolean;
+      }>();
+      const releaseFinalFactor = deferred<void>();
+      const originalLoadLocalFactorState =
+        localFactorService.loadLocalFactorState;
+      let enlistedFactorReads = 0;
+      const loadFactorSpy = vi
+        .spyOn(localFactorService, "loadLocalFactorState")
+        .mockImplementation(async (userId, executor) => {
+          const factor = await originalLoadLocalFactorState(userId, executor);
+          if (userId === race.actor.id && executor !== undefined) {
+            enlistedFactorReads += 1;
+            if (enlistedFactorReads === 2) {
+              const backend = await executor.execute<{ pid: number }>(
+                sql`SELECT pg_backend_pid() AS pid`,
+              );
+              finalFactorLoaded.resolve({
+                pid: backend.rows[0]?.pid ?? -1,
+                required: factor.required,
+                enabled: factor.enabled,
+              });
+              await releaseFinalFactor.promise;
+            }
+          }
+          return factor;
+        });
+      let proofRequest: Promise<Response> | undefined;
+      let policyRequest: Promise<Response> | undefined;
+      let observer: import("pg").PoolClient | undefined;
+      let probe: import("pg").PoolClient | undefined;
+      try {
+        const observerClient = await pool.connect();
+        observer = observerClient;
+        const probeClient = await pool.connect();
+        probe = probeClient;
+        proofRequest = csrfRequest(
+          app,
+          "/api/me/step-up",
+          {
+            method: "POST",
+            headers: {
+              cookie: race.actor.cookie,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify(policyRaceProofBody(race)),
+          },
+          race.actor.cookie,
+        );
+        let finalFactorDeadline: ReturnType<typeof setTimeout> | undefined;
+        let finalFactor: {
+          pid: number;
+          required: boolean;
+          enabled: boolean;
+        };
+        try {
+          const checkpoint = await Promise.race([
+            finalFactorLoaded.promise.then((factor) => ({
+              kind: "factor" as const,
+              factor,
+            })),
+            proofRequest.then((response) => ({
+              kind: "response" as const,
+              status: response.status,
+            })),
+            new Promise<{ kind: "deadline" }>((resolve) => {
+              finalFactorDeadline = setTimeout(
+                () => resolve({ kind: "deadline" }),
+                15_000,
+              );
+            }),
+          ]);
+          if (checkpoint.kind === "response") {
+            throw new Error(
+              `Step-up request returned ${checkpoint.status} before final factor revalidation`,
+            );
+          }
+          if (checkpoint.kind === "deadline") {
+            throw new Error(
+              "Timed out waiting for the delegated final-factor checkpoint",
+            );
+          }
+          finalFactor = checkpoint.factor;
+        } finally {
+          if (finalFactorDeadline !== undefined) {
+            clearTimeout(finalFactorDeadline);
+          }
+        }
+        expect(finalFactor.pid).toBeGreaterThan(0);
+        expect(finalFactor).toMatchObject({ required: false, enabled: false });
+
+        policyRequest = csrfRequest(
+          app,
+          "/api/instance/local-factor-policy",
+          {
+            method: "PATCH",
+            headers: {
+              cookie: race.writer.cookie,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              mode: "required_role",
+              requiredRoleId: race.requiredRoleId,
+            }),
+          },
+          race.writer.cookie,
+        );
+        const admission = await waitForLifecycleBlocker(
+          observerClient,
+          finalFactor.pid,
+          () => policyModeIs(observerClient, "required_role"),
+        );
+        if (admission.state === "waiting") {
+          expect(admission.query).toContain("pg_advisory_xact_lock");
+          await probeClient.query("BEGIN");
+          try {
+            const role = await probeClient.query(
+              "SELECT id FROM role WHERE id = $1 FOR UPDATE NOWAIT",
+              [race.requiredRoleId],
+            );
+            const singleton = await probeClient.query(
+              "SELECT id FROM instance_setting WHERE id = 'singleton' FOR UPDATE NOWAIT",
+            );
+            expect(role.rowCount).toBe(1);
+            expect(singleton.rowCount).toBe(1);
+          } finally {
+            await probeClient.query("ROLLBACK");
+          }
+        }
+
+        releaseFinalFactor.resolve();
+        if (!proofRequest || !policyRequest) {
+          throw new Error("policy issuer/writer requests were not started");
+        }
+        const [proofResponse, policyResponse] = await Promise.all([
+          proofRequest,
+          policyRequest,
+        ]);
+        const proofBody =
+          proofResponse.status === 200
+            ? ((await proofResponse.json()) as { token?: unknown })
+            : undefined;
+        const token =
+          typeof proofBody?.token === "string" ? proofBody.token : undefined;
+        const [issued] = await db
+          .select({
+            state: schema.stepUpConfirmationTable.state,
+            authMethod: schema.stepUpConfirmationTable.authMethod,
+          })
+          .from(schema.stepUpConfirmationTable)
+          .where(eq(schema.stepUpConfirmationTable.id, race.challengeId));
+        const [storedPolicy] = await db
+          .select({ policy: schema.instanceSettingTable.localFactorPolicy })
+          .from(schema.instanceSettingTable)
+          .where(eq(schema.instanceSettingTable.id, "singleton"));
+
+        let approvalStatus: number | null = null;
+        let approvalMessage: string | null = null;
+        let pendingState: string | null = null;
+        let targetActive: boolean | null = null;
+        if (race.kind === "pending_action") {
+          if (!approvalCsrf || !race.pendingActionId || !token) {
+            throw new Error("pending-action policy race fixture is incomplete");
+          }
+          const approval = await app.request(
+            `/api/me/pending-actions/${race.pendingActionId}/approve`,
+            {
+              method: "POST",
+              headers: {
+                cookie: approvalCsrf.cookie,
+                origin: approvalCsrf.origin,
+                "x-taskdesk-csrf": approvalCsrf.token,
+                "x-taskdesk-step-up-token": token,
+                "content-type": "application/json",
+              },
+              body: JSON.stringify({ typedName: race.target.email }),
+            },
+          );
+          approvalStatus = approval.status;
+          approvalMessage = await approval.text();
+          const [action] = await db
+            .select({ state: schema.pendingActionTable.state })
+            .from(schema.pendingActionTable)
+            .where(eq(schema.pendingActionTable.id, race.pendingActionId));
+          pendingState = action?.state ?? null;
+          const [person] = await db
+            .select({ active: schema.personTable.active })
+            .from(schema.personTable)
+            .where(eq(schema.personTable.userId, race.target.id));
+          targetActive = person?.active ?? null;
+        }
+
+        expect({
+          admissionState: admission.state,
+          policyStatus: policyResponse.status,
+          factorBeforePatch: {
+            required: finalFactor.required,
+            enabled: finalFactor.enabled,
+          },
+          proofStatus: proofResponse.status,
+          proofTokenPresent: token !== undefined,
+          challengeState: issued?.state ?? null,
+          authMethod: issued?.authMethod ?? null,
+          policyMode: storedPolicy?.policy.mode ?? null,
+          approvalStatus,
+          approvalMessage,
+          pendingState,
+          targetActive,
+        }).toEqual({
+          admissionState: "waiting",
+          policyStatus: 200,
+          factorBeforePatch: { required: false, enabled: false },
+          proofStatus: 200,
+          proofTokenPresent: true,
+          challengeState: "issued",
+          authMethod: "password",
+          policyMode: "required_role",
+          approvalStatus: race.kind === "pending_action" ? 403 : null,
+          approvalMessage:
+            race.kind === "pending_action" ? "mfa_enrollment_required" : null,
+          pendingState: race.kind === "pending_action" ? "pending" : null,
+          targetActive: race.kind === "pending_action" ? true : null,
+        });
+      } finally {
+        releaseFinalFactor.resolve();
+        const pending = [proofRequest, policyRequest].filter(
+          (request): request is Promise<Response> => request !== undefined,
+        );
+        await Promise.allSettled(pending);
+        loadFactorSpy.mockRestore();
+        observer?.release();
+        probe?.release();
+        await pool.end();
+      }
+    },
+  );
+
+  // The issuer waits behind the writer, then its verifier reads the committed
+  // required policy. Null verification expires the challenge but keeps its state.
+  it("expires a policy-first challenge after its verifier reads the required policy", async () => {
+    const { app } = createApp();
+    const race = await preparePolicyRaceCase(
+      app,
+      "policy-first",
+      "pending_action",
+    );
+    const proofCsrf = await issueApprovalCsrfContext(app, race.actor.cookie);
+    if (!race.pendingActionId) {
+      throw new Error("policy-first pending action was not created");
+    }
+    const [initialChallenge] = await db
+      .select({
+        state: schema.stepUpConfirmationTable.state,
+        live: sql<boolean>`
+            ${schema.stepUpConfirmationTable.challengeExpiresAt}
+            > clock_timestamp()
+          `,
+      })
+      .from(schema.stepUpConfirmationTable)
+      .where(eq(schema.stepUpConfirmationTable.id, race.challengeId));
+    expect(initialChallenge).toEqual({ state: "challenge", live: true });
+    const pool = new Pool({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+      max: 3,
+    });
+    const barrierKey = "taskdesk:test:local-factor-policy-writer-barrier";
+    let barrierHeld = false;
+    let functionInstalled = false;
+    let triggerInstalled = false;
+    let policyRequest: Promise<Response> | undefined;
+    let proofRequest: Promise<Response> | undefined;
+    let barrier: import("pg").PoolClient | undefined;
+    let observer: import("pg").PoolClient | undefined;
+    const originalLoadLocalFactorState =
+      localFactorService.loadLocalFactorState;
+    let verifierFactor:
+      | {
+          policyMode: string;
+          required: boolean;
+          enabled: boolean;
+        }
+      | undefined;
+    const loadFactorSpy = vi
+      .spyOn(localFactorService, "loadLocalFactorState")
+      .mockImplementation(async (userId, executor) => {
+        const factor = await originalLoadLocalFactorState(userId, executor);
+        if (userId === race.actor.id && executor !== undefined) {
+          verifierFactor = {
+            policyMode: factor.policy.mode,
+            required: factor.required,
+            enabled: factor.enabled,
+          };
+        }
+        return factor;
+      });
+    try {
+      const barrierClient = await pool.connect();
+      barrier = barrierClient;
+      const observerClient = await pool.connect();
+      observer = observerClient;
+      await db.execute(
+        sql`DROP TRIGGER IF EXISTS pause_policy_writer_for_test ON instance_setting`,
+      );
+      await db.execute(
+        sql`DROP FUNCTION IF EXISTS pause_policy_writer_for_test()`,
+      );
+      await db.execute(sql`
+        CREATE FUNCTION pause_policy_writer_for_test() RETURNS trigger
+        LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.id = 'singleton'
+            AND NEW.local_factor_policy IS DISTINCT FROM OLD.local_factor_policy THEN
+            PERFORM pg_advisory_xact_lock(
+              hashtext('taskdesk:test:local-factor-policy-writer-barrier'),
+              hashtext('policy-first')
+            );
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `);
+      functionInstalled = true;
+      await db.execute(sql`
+        CREATE TRIGGER pause_policy_writer_for_test
+        BEFORE UPDATE OF local_factor_policy ON instance_setting
+        FOR EACH ROW EXECUTE FUNCTION pause_policy_writer_for_test()
+      `);
+      triggerInstalled = true;
+
+      await barrierClient.query("BEGIN");
+      barrierHeld = true;
+      const barrierPidResult = await barrierClient.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const barrierPid = requireRow(
+        barrierPidResult.rows,
+        "policy barrier PID query",
+      ).pid;
+      await barrierClient.query(
+        "SELECT pg_advisory_xact_lock(hashtext($1), hashtext('policy-first'))",
+        [barrierKey],
+      );
+
+      policyRequest = csrfRequest(
+        app,
+        "/api/instance/local-factor-policy",
+        {
+          method: "PATCH",
+          headers: {
+            cookie: race.writer.cookie,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            mode: "required_role",
+            requiredRoleId: race.requiredRoleId,
+          }),
+        },
+        race.writer.cookie,
+      );
+      const writer = await waitForPolicyWriterAtTestBarrier(
+        observerClient,
+        barrierPid,
+      );
+      expect(writer.query.toLowerCase()).toContain("instance_setting");
+
+      proofRequest = Promise.resolve(
+        app.request("/api/me/step-up", {
+          method: "POST",
+          headers: {
+            cookie: proofCsrf.cookie,
+            origin: proofCsrf.origin,
+            "x-taskdesk-csrf": proofCsrf.token,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(policyRaceProofBody(race)),
+        }),
+      );
+      const admission = await waitForLifecycleBlocker(
+        observerClient,
+        writer.pid,
+        () => hasChallengeState(observerClient, race.challengeId, "issued"),
+      );
+
+      await barrierClient.query("COMMIT");
+      barrierHeld = false;
+      if (!policyRequest || !proofRequest) {
+        throw new Error("policy-first writer/issuer requests were not started");
+      }
+      const [policyResponse, proofResponse] = await Promise.all([
+        policyRequest,
+        proofRequest,
+      ]);
+      const proofMessage = await proofResponse.text();
+      const [challenge] = await db
+        .select({
+          state: schema.stepUpConfirmationTable.state,
+          authMethod: schema.stepUpConfirmationTable.authMethod,
+          expired: sql<boolean>`
+              ${schema.stepUpConfirmationTable.challengeExpiresAt}
+              <= clock_timestamp()
+            `,
+        })
+        .from(schema.stepUpConfirmationTable)
+        .where(eq(schema.stepUpConfirmationTable.id, race.challengeId));
+      const [action] = await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, race.pendingActionId));
+      const [person] = await db
+        .select({ active: schema.personTable.active })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, race.target.id));
+      const [storedPolicy] = await db
+        .select({ policy: schema.instanceSettingTable.localFactorPolicy })
+        .from(schema.instanceSettingTable)
+        .where(eq(schema.instanceSettingTable.id, "singleton"));
+
+      expect({
+        writerStatus: policyResponse.status,
+        policyMode: storedPolicy?.policy.mode ?? null,
+        issuerWait: admission.state,
+        proofStatus: proofResponse.status,
+        proofMessage,
+        verifierFactor: verifierFactor ?? null,
+        challengeState: challenge?.state ?? null,
+        challengeExpired: challenge?.expired ?? null,
+        authMethod: challenge?.authMethod ?? null,
+        pendingState: action?.state ?? null,
+        targetActive: person?.active ?? null,
+      }).toEqual({
+        writerStatus: 200,
+        policyMode: "required_role",
+        issuerWait: "waiting",
+        proofStatus: 403,
+        proofMessage: "step_up_unavailable",
+        verifierFactor: {
+          policyMode: "required_role",
+          required: true,
+          enabled: false,
+        },
+        challengeState: "challenge",
+        challengeExpired: true,
+        authMethod: null,
+        pendingState: "pending",
+        targetActive: true,
+      });
+    } finally {
+      if (barrierHeld && barrier) await barrier.query("ROLLBACK");
+      const pending = [policyRequest, proofRequest].filter(
+        (request): request is Promise<Response> => request !== undefined,
+      );
+      await Promise.allSettled(pending);
+      if (triggerInstalled) {
+        await db.execute(
+          sql`DROP TRIGGER IF EXISTS pause_policy_writer_for_test ON instance_setting`,
+        );
+      }
+      if (functionInstalled) {
+        await db.execute(
+          sql`DROP FUNCTION IF EXISTS pause_policy_writer_for_test()`,
+        );
+      }
+      loadFactorSpy.mockRestore();
+      barrier?.release();
+      observer?.release();
+      await pool.end();
+    }
+  });
+
+  it("keeps the actual policy PATCH role lock before its singleton update", async () => {
+    const { app } = createApp();
+    const { writer, roleId } = await preparePolicyAdmissionActors(
+      app,
+      "role-before-singleton",
+    );
+    const pool = new Pool({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+      max: 4,
+    });
+    let singletonLockHeld = false;
+    let deleterTransaction = false;
+    let policyRequest: Promise<Response> | undefined;
+    let deletion:
+      | Promise<
+          | { ok: true }
+          | {
+              ok: false;
+              code: string | undefined;
+              constraint: string | undefined;
+            }
+        >
+      | undefined;
+    let singletonBlocker: import("pg").PoolClient | undefined;
+    let deleter: import("pg").PoolClient | undefined;
+    let observer: import("pg").PoolClient | undefined;
+    try {
+      const singletonBlockerClient = await pool.connect();
+      singletonBlocker = singletonBlockerClient;
+      const deleterClient = await pool.connect();
+      deleter = deleterClient;
+      const observerClient = await pool.connect();
+      observer = observerClient;
+      await singletonBlockerClient.query("BEGIN");
+      singletonLockHeld = true;
+      const blockerPidResult = await singletonBlockerClient.query<{
+        pid: number;
+      }>("SELECT pg_backend_pid() AS pid");
+      const blockerPid = requireRow(
+        blockerPidResult.rows,
+        "singleton blocker PID query",
+      ).pid;
+      await singletonBlockerClient.query(
+        "SELECT id FROM instance_setting WHERE id = 'singleton' FOR UPDATE",
+      );
+
+      policyRequest = csrfRequest(
+        app,
+        "/api/instance/local-factor-policy",
+        {
+          method: "PATCH",
+          headers: {
+            cookie: writer.cookie,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            mode: "required_role",
+            requiredRoleId: roleId,
+          }),
+        },
+        writer.cookie,
+      );
+      const policyWaiter = await waitForPolicyWriterAtTestBarrier(
+        observerClient,
+        blockerPid,
+      );
+      expect(policyWaiter.query.toLowerCase()).toContain("instance_setting");
+
+      await deleterClient.query("BEGIN");
+      deleterTransaction = true;
+      const deletePidResult = await deleterClient.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const deletePid = requireRow(
+        deletePidResult.rows,
+        "role delete PID query",
+      ).pid;
+      deletion = deleterClient
+        .query("DELETE FROM role WHERE id = $1", [roleId])
+        .then(() => ({ ok: true as const }))
+        .catch((error: unknown) => ({
+          ok: false as const,
+          code:
+            error && typeof error === "object" && "code" in error
+              ? String(error.code)
+              : undefined,
+          constraint:
+            error && typeof error === "object" && "constraint" in error
+              ? String(error.constraint)
+              : undefined,
+        }));
+      await waitForPidBlockedByPid(observerClient, deletePid, policyWaiter.pid);
+
+      await singletonBlockerClient.query("COMMIT");
+      singletonLockHeld = false;
+      if (!policyRequest || !deletion) {
+        throw new Error("policy writer/role delete requests were not started");
+      }
+      const policyResponse = await policyRequest;
+      const deletionResult = await deletion;
+      await deleterClient.query("ROLLBACK");
+      deleterTransaction = false;
+      const [storedPolicy] = await db
+        .select({ policy: schema.instanceSettingTable.localFactorPolicy })
+        .from(schema.instanceSettingTable)
+        .where(eq(schema.instanceSettingTable.id, "singleton"));
+      const storedRole = await db
+        .select({ id: schema.roleTable.id })
+        .from(schema.roleTable)
+        .where(eq(schema.roleTable.id, roleId));
+
+      expect({
+        policyStatus: policyResponse.status,
+        policy: storedPolicy?.policy ?? null,
+        roleDelete: deletionResult,
+        roleCount: storedRole.length,
+      }).toEqual({
+        policyStatus: 200,
+        policy: { mode: "required_role", requiredRoleId: roleId },
+        roleDelete: {
+          ok: false,
+          code: "23503",
+          constraint: "role_required_by_local_factor_policy",
+        },
+        roleCount: 1,
+      });
+    } finally {
+      if (singletonLockHeld && singletonBlocker) {
+        await singletonBlocker.query("ROLLBACK");
+      }
+      if (deleterTransaction && deleter) await deleter.query("ROLLBACK");
+      const pending: Array<Promise<unknown> | undefined> = [
+        policyRequest,
+        deletion,
+      ];
+      await Promise.allSettled(
+        pending.filter(
+          (request): request is Promise<unknown> => request !== undefined,
+        ),
+      );
+      singletonBlocker?.release();
+      deleter?.release();
+      observer?.release();
       await pool.end();
     }
   });

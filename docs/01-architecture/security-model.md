@@ -295,6 +295,10 @@ pending-action lifecycle gate before their first row lock and retain one transac
 factor verification and final binding checks. Better Auth's local TOTP/backup-code adapter
 work runs on that transaction's backend through nested savepoints. Its session-delete native
 authorization effect queues with the child savepoint and publishes only after outer commit.
+A supported local-factor-policy PATCH acquires that same gate as its first transaction
+statement, before its existing required-role then singleton lock order. This serializes policy
+updates with final factor revalidation and proof issuance; it does not invalidate proofs that
+were issued before a later policy update.
 A successful verifier remains one-shot when final proof minting is denied or its savepoint
 fails; successful factor-side effects commit with the outer transaction and no token is
 returned. This is an implementation invariant for [PA-15](pending-actions.md#pa-15-step-up-is-single-use-and-bound-to-one-pending-action-or-one-explicitly-registered-operation),
