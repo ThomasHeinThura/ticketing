@@ -1,11 +1,14 @@
 import { createId } from "@paralleldrive/cuid2";
-import { and, eq, sql } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
 import type db from "../database";
-import { pendingActionTable } from "../database/schema";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import {
+  invalidateRequesterPendingAction,
+  listRequesterPendingActionsForUpdate,
+  lockPendingActionLifecycle as lockPendingActionLifecycleQuery,
+} from "./lifecycle-invalidation.repository";
 
 type PendingActionTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
@@ -18,9 +21,7 @@ type PendingActionTransaction = Parameters<
  * locks are needed, take the instance-admin lock first.
  */
 export async function lockPendingActionLifecycle(tx: PendingActionTransaction) {
-  await tx.execute(
-    sql`SELECT pg_advisory_xact_lock(hashtext('taskdesk:pending-action-lifecycle'), hashtext('global'))`,
-  );
+  await lockPendingActionLifecycleQuery(tx);
 }
 
 /**
@@ -33,36 +34,18 @@ export async function invalidatePendingActionsForRequester(
   requesterPersonId: string,
   occurredAt: Date,
 ) {
-  const pendingRows = await tx
-    .select()
-    .from(pendingActionTable)
-    .where(
-      and(
-        eq(pendingActionTable.requestedByPersonId, requesterPersonId),
-        eq(pendingActionTable.state, "pending"),
-      ),
-    )
-    .orderBy(pendingActionTable.id)
-    .for("update");
+  const pendingRows = await listRequesterPendingActionsForUpdate(
+    tx,
+    requesterPersonId,
+  );
 
   let auditFailures = 0;
   for (const row of pendingRows) {
-    const [invalidated] = await tx
-      .update(pendingActionTable)
-      .set({
-        state: "invalidated",
-        invalidationReason: "requester_deactivated",
-        decidedByPersonId: null,
-        decisionSessionId: null,
-        decidedAt: occurredAt,
-      })
-      .where(
-        and(
-          eq(pendingActionTable.id, row.id),
-          eq(pendingActionTable.state, "pending"),
-        ),
-      )
-      .returning({ id: pendingActionTable.id });
+    const invalidated = await invalidateRequesterPendingAction(
+      tx,
+      row.id,
+      occurredAt,
+    );
     if (!invalidated) continue;
 
     await enqueueOutboxEvent(tx, {
