@@ -1,3 +1,17 @@
+## Blocked first — Carrier #791; protected #842 accepted, role-lock slice unvalidated — 2026-10-18 05:42 UTC
+
+| Owner / unit | State and exact evidence | Next action / boundary |
+| --- | --- | --- |
+| Critical material adviser / SAME Carrier #791 | BLOCKED/adverse. Current frozen checker `1c0e6553…` / test `72887f48…`: selected30/97 29 pass / 1 fail / 67 not selected / 0 skipped or cancelled. Historical full96 (bf5aeb7d/f6b6f348) was91 pass/5 fail. Popup-hover expected `bg-popover`, observed enclosing-card backdrop; unchanged-source diagnostic and material analysis traced a lost callback-output boundary; no repair is verified. Callback-output private candidate v1 remains HELD after five material findings; no canonical edits. DnD v5.1 passed only bounded harness filesystem/hash fault injection, not product source. | Preserve the real popup assertion and all negative controls; diagnose the structural output path without filtering or weakening. Complete the source-bound repair and its controls before acceptance. |
+| Conductor / accepted #842 | DONE bounded invitation-query ownership. Protected main `340eb55e9778c71fbaed1b8ed3cd854ca3c6443c`, 05:29:42Z, parents `52a5480c7c5162966cab276755c66144edca6b69` / `cc0f6b605f89335eda1ca32aceab70cadf1c815a`, tree `d40c890b24e1568bf5accd2f558356af509ab162`. Exact-head required checks18/18 and source-bound image accepted. | Preserve bounded scope and optional CPU diagnostic adverse result. Whole580 remains unfinished. |
+| Conductor / next #580 role-assignment-lock ownership | RUNNING uncommitted10-path candidate on clean-start branch `codex/query580-role-assignment-ownership-20261018`, currently based on accepted main340eb. | Preserve exact transaction executor, namespaces/order and call placements. Root reviews and owns all checks/commit/publication; no checker activation or acceptance claimed. |
+| Thomas / #811 and #773 | WAITING_DECISION. Local clean/unpushed spec commit09bc records eleven existing-contract alignments; owning review still13 open. Three owner questions remain (TC-17 valuation, server midnight behavior, timer timezone). | Await recorded answers; keep settled screens/threshold/recipient decisions and do not invent behavior. |
+| Conductor / whole #580 | RUNNING; source conversion and reviewed fail-closed checker activation remain unfinished. | Continue bounded ownership slices; no overlapping diagnostic count arithmetic or gate activation before review. |
+| Conductor / #810 | BLOCKED; actual223.2ms exceeds strict200ms assignment. | Require genuine Carrier/#772 integration or evidence-backed repair; no unchanged retry/premature predecessor closure. |
+| Conductor / #589 program | OPEN; #717 DONE. | Complete selected units, signed combined release, exact-digest laptop workflows, non-empty backup/usable isolated restore, fresh audit and report/Hold. |
+
+This is a dated factual checkpoint only. No whole580 completion, formal stage, UAT, production, waiver or after-turn scheduler claim.
+
 ## PR840 setup failure and Carrier91/96 checkpoint — 2026-10-18 03:22 UTC
 
 | Owner / unit | State and exact evidence | Next action / boundary |
