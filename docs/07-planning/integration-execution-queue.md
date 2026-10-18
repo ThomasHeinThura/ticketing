@@ -1,3 +1,18 @@
+## Protected #836 acceptance; bootstrap and Carrier ownership — 2026-10-18 00:29 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor /836 | DONE bounded local-factor ownership; maind923f7b3, protected00:28:08Z, all18checks/225PGfiles/3328tests/all5tasks and exact source-image proof. | Preserve native review provenance, optional CPU diagnostic failure and all residuals; not whole580/SIT. |
+| Conductor /835 N1 | DONE lifecycle admission/serialization repair at28fdb2c1; original three ordinary/full Sol and current-composition clearances recorded. | NB1 internal bare-verifier-result contract remains non-blocking, unfixed/unwaived; do not undo accepted repair. |
+| Luna / SAME Carrier791 | RUNNING one bounded immediate-adjacency correction; last executed7682/c987 focused9pass10fail/19/77not-run, source/CSS/fixtures conserved. | Preserve actual complete endpoint proofs and real unsupported outcomes; verify corrected source, then full96/census/G3/current-main conservation/three ordinary/full independent Sol. |
+| Conductor /580 bootstrap | LOCAL_VERIFIED dirtyab4+twofiles; type9tasks(5cached), complete PG19/19; exact cleanup/source conservation. | Compose accepted main, commit source, fresh ordinary/Sol review, authentic publication and exact hosted/image gates. No acceptance yet. |
+| Conductor /whole580 | RUNNING; actual red unwired diagnostic2727 overlapping instances/140paths/1510locations; eight auth-hook rows remain. | Complete actual conversions and reviewed fail-closed checker activation; no baseline/exclusion, unique-query arithmetic or builder escape. |
+| Conductor /810 | BLOCKED actual223.2ms versus strict200 assignment budget. | Genuine Carrier772 integration or demonstrated cause repair; no unchanged retry or premature predecessor closure. |
+| Thomas /811+773 | WAITING_DECISION plus thirteen owning-review findings. | Three valuation/midnight/timer-timezone answers remain pending; do not guess or reopen settled decisions. |
+| Conductor /589 program | OPEN selected580/713/714/715/716/718 and remaining acceptance;717DONE. | Signed release→exact-digest laptop workflows→NONEMPTY backup/usable isolated restore→fresh audit→report/Hold after all selected units accepted/equivalent/owner-deferred. |
+
+Older dated snapshots remain unchanged. Primary dirty5+1 and every source history are preserved. No formal stage, UAT, production, waiver or functioning after-turn scheduler claim.
+
 ## Protected833 acceptance; N1 reviews clear, current composition pending — 2026-10-17 22:29 UTC
 
 | Owner / unit | Actual state | Next action / boundary |
