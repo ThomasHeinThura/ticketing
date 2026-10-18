@@ -16,7 +16,8 @@
  *    by a capable member is refused (scope intersection is retained), a fully scoped key owned
  *    by a capable member succeeds.
  */
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { Client, type Notification } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -349,6 +350,368 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
       [...PROJECT_READ_ROUTE_KEYS].sort(),
     );
   });
+
+  const ADVISORY_CLASS = 580840;
+  const ADVISORY_OBJECT = 842;
+  const PROBE_TRIGGER = "zz_session840_fixture_completion_gate";
+  const PROBE_FUNCTION = "session840_fixture_completion_gate";
+  const PROBE_CHANNEL = "session840_fixture_completion";
+
+  function sqlLiteral(value: string) {
+    return "'" + value.replaceAll("'", "''") + "'";
+  }
+
+  function deferred<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    const promise = new Promise<T>((resolvePromise) => {
+      resolve = resolvePromise;
+    });
+    return { promise, resolve };
+  }
+
+  async function waitForSignal<T>(signal: Promise<T>, description: string) {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        signal,
+        new Promise<T>((_resolve, reject) => {
+          timeout = setTimeout(
+            () => reject(new Error("Timed out waiting for " + description)),
+            5_000,
+          );
+        }),
+      ]);
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
+  }
+
+  async function waitForCondition<T>(
+    condition: () => Promise<T | undefined>,
+    description: string,
+  ) {
+    const deadline = Date.now() + 5_000;
+    while (Date.now() < deadline) {
+      const result = await condition();
+      if (result !== undefined) return result;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error("Timed out observing " + description);
+  }
+
+  it("waits for its actual created activity before returning from the fixture", async () => {
+    const control = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const observer = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const listener = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const connected = new Set<Client>();
+    let gateHeld = false;
+    let triggerInstalled = false;
+    let functionInstalled = false;
+    let seedPromise: ReturnType<typeof seedProjectRows> | undefined;
+    let seedSettled = false;
+    let activityCommitted = false;
+    const activityNotification = deferred<Notification>();
+    listener.on("notification", (notification) => {
+      if (notification.channel === PROBE_CHANNEL) {
+        activityCommitted = true;
+        activityNotification.resolve(notification);
+      }
+    });
+
+    try {
+      for (const client of [control, observer, listener]) {
+        await client.connect();
+        connected.add(client);
+      }
+      await listener.query("LISTEN " + PROBE_CHANNEL);
+
+      // Build all fixture rows before installing the narrowly scoped activity gate.
+      const world = await setupProjectWorld();
+      const app = createApp().app;
+      const projectLiteral = sqlLiteral(world.project.id);
+      const actorLiteral = sqlLiteral(world.projectAdmin.user.id);
+
+      const existing = await control.query(
+        "SELECT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.task_activity'::regclass AND tgname = $1) AS trigger_exists, " +
+          "to_regprocedure('public." +
+          PROBE_FUNCTION +
+          "()') IS NOT NULL AS function_exists",
+        [PROBE_TRIGGER],
+      );
+      expect(existing.rows[0]).toEqual({
+        trigger_exists: false,
+        function_exists: false,
+      });
+
+      const controlPidResult = await control.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const controlPid = controlPidResult.rows[0]?.pid;
+      if (controlPid === undefined)
+        throw new Error("expected owned control backend pid");
+
+      await control.query("SELECT pg_advisory_lock($1, $2)", [
+        ADVISORY_CLASS,
+        ADVISORY_OBJECT,
+      ]);
+      gateHeld = true;
+      await control.query(
+        [
+          "CREATE FUNCTION public." + PROBE_FUNCTION + "() RETURNS trigger",
+          "LANGUAGE plpgsql AS $$",
+          "BEGIN",
+          "  IF NEW.type = 'created' AND NEW.user_id::text = " + actorLiteral,
+          "     AND EXISTS (",
+          "       SELECT 1 FROM public.task AS target_task",
+          "       WHERE target_task.id = NEW.task_id",
+          "         AND target_task.project_id::text = " + projectLiteral,
+          "     ) THEN",
+          "    PERFORM pg_advisory_xact_lock(" +
+            ADVISORY_CLASS +
+            ", " +
+            ADVISORY_OBJECT +
+            ");",
+          "    PERFORM pg_notify('" + PROBE_CHANNEL + "', NEW.id);",
+          "  END IF;",
+          "  RETURN NEW;",
+          "END;",
+          "$$;",
+        ].join("\n"),
+      );
+      functionInstalled = true;
+      await control.query(
+        "CREATE TRIGGER " +
+          PROBE_TRIGGER +
+          " AFTER INSERT ON public.task_activity FOR EACH ROW EXECUTE FUNCTION public." +
+          PROBE_FUNCTION +
+          "()",
+      );
+      triggerInstalled = true;
+
+      const triggerOrder = await control.query(
+        "SELECT t.tgname AS trigger_name, " +
+          "coalesce(c.contype = 'f' AND c.conrelid = 'public.task_activity'::regclass " +
+          "AND c.confrelid = 'public.task'::regclass, false) AS is_task_fk, " +
+          "t.tgdeferrable AS deferrable, t.tginitdeferred AS initially_deferred, " +
+          "t.tgenabled AS enabled FROM pg_trigger t LEFT JOIN pg_constraint c ON c.oid = t.tgconstraint " +
+          "WHERE t.tgrelid = 'public.task_activity'::regclass AND (t.tgtype & 1) = 1 " +
+          "AND (t.tgtype & 2) = 0 AND (t.tgtype & 4) = 4 ORDER BY t.tgname::text COLLATE " +
+          '"C"',
+      );
+      const names = triggerOrder.rows.map((row) => row.trigger_name);
+      const gateIndex = names.indexOf(PROBE_TRIGGER);
+      const fkIndexes = triggerOrder.rows.flatMap((row, index) =>
+        row.is_task_fk ? [index] : [],
+      );
+      expect(gateIndex).toBeGreaterThan(-1);
+      expect(fkIndexes.length).toBeGreaterThan(0);
+      expect(Math.max(...fkIndexes)).toBeLessThan(gateIndex);
+      expect(
+        triggerOrder.rows
+          .filter((row) => row.is_task_fk)
+          .every((row) => !row.deferrable && !row.initially_deferred),
+      ).toBe(true);
+      expect(
+        triggerOrder.rows.find((row) => row.trigger_name === PROBE_TRIGGER)
+          ?.enabled,
+      ).not.toBe("D");
+
+      const taskResponseJson = deferred<void>();
+      const observedApp = new Proxy(app, {
+        get(target, property, receiver) {
+          if (property !== "request")
+            return Reflect.get(target, property, receiver);
+          return async (...args: Parameters<App["request"]>) => {
+            const response = await target.request(...args);
+            if (String(args[0]) === "/api/task/" + world.project.id) {
+              const parseJson = response.json.bind(response);
+              response.json = async () => {
+                const body = await parseJson();
+                taskResponseJson.resolve();
+                return body;
+              };
+            }
+            return response;
+          };
+        },
+      });
+      seedPromise = seedProjectRows(observedApp, world);
+      seedPromise.then(
+        () => {
+          seedSettled = true;
+        },
+        () => {
+          seedSettled = true;
+        },
+      );
+      const waitingActivity = await waitForCondition(async () => {
+        const result = await observer.query(
+          "SELECT a.pid, a.wait_event_type, a.wait_event, pg_blocking_pids(a.pid) AS blockers, " +
+            "EXISTS (SELECT 1 FROM pg_locks l WHERE l.pid = a.pid AND l.relation = 'public.task'::regclass " +
+            "AND l.mode = 'RowShareLock' AND l.granted) AS task_fk_lock, " +
+            "EXISTS (SELECT 1 FROM pg_locks l WHERE l.pid = a.pid " +
+            "AND l.relation = 'public.task_activity'::regclass AND l.mode = 'RowExclusiveLock' " +
+            "AND l.granted) AS activity_insert_lock, " +
+            "coalesce(a.query ~* '^INSERT[[:space:]]+INTO[[:space:]]+\"?task_activity\"?', false) " +
+            "AS created_activity_insert FROM pg_stat_activity a JOIN pg_locks gate ON gate.pid = a.pid " +
+            "AND gate.locktype = 'advisory' AND gate.classid = " +
+            ADVISORY_CLASS +
+            "::oid AND gate.objid = " +
+            ADVISORY_OBJECT +
+            "::oid AND gate.objsubid = 2 AND NOT gate.granted " +
+            "WHERE a.datname = current_database() LIMIT 8",
+        );
+        return result.rows.find(
+          (row) =>
+            row.wait_event_type === "Lock" && row.wait_event === "advisory",
+        );
+      }, "the actual created-activity INSERT at the owned advisory gate");
+      expect(waitingActivity.blockers).toContain(controlPid);
+      expect(waitingActivity.task_fk_lock).toBe(true);
+      expect(waitingActivity.activity_insert_lock).toBe(true);
+      expect(waitingActivity.created_activity_insert).toBe(true);
+      await waitForSignal(
+        taskResponseJson.promise,
+        "actual POST task response JSON completion",
+      );
+      // Drain promise continuations after the real response body is decoded. With the old
+      // helper this makes its immediate return observable; with the proposed helper the
+      // created-activity row is still held at the owned gate.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(seedSettled).toBe(false);
+
+      const unlock = await control.query("SELECT pg_advisory_unlock($1, $2)", [
+        ADVISORY_CLASS,
+        ADVISORY_OBJECT,
+      ]);
+      expect(unlock.rows[0]?.pg_advisory_unlock).toBe(true);
+      gateHeld = false;
+
+      const ids = await waitForSignal(
+        seedPromise,
+        "seedProjectRows after its created activity commits",
+      );
+      expect(ids.taskId).toBeTruthy();
+      const notification = await waitForSignal(
+        activityNotification.promise,
+        "actual created-activity commit after gate release",
+      );
+      expect(notification.payload).toBeTruthy();
+      const activity = await db.query.taskActivityTable.findFirst({
+        where: and(
+          eq(schema.taskActivityTable.id, notification.payload ?? ""),
+          eq(schema.taskActivityTable.taskId, ids.taskId),
+          eq(schema.taskActivityTable.type, "created"),
+          eq(schema.taskActivityTable.userId, world.projectAdmin.user.id),
+        ),
+      });
+      expect(activity).toBeDefined();
+
+      await resetTestDatabase();
+      expect(
+        await db.query.taskTable.findFirst({
+          where: eq(schema.taskTable.id, ids.taskId),
+        }),
+      ).toBeUndefined();
+      expect(
+        await db.query.taskActivityTable.findFirst({
+          where: eq(schema.taskActivityTable.id, notification.payload ?? ""),
+        }),
+      ).toBeUndefined();
+    } finally {
+      const cleanupFailures: string[] = [];
+      if (gateHeld && connected.has(control)) {
+        try {
+          const unlocked = await control.query(
+            "SELECT pg_advisory_unlock($1, $2)",
+            [ADVISORY_CLASS, ADVISORY_OBJECT],
+          );
+          if (!unlocked.rows[0]?.pg_advisory_unlock) {
+            throw new Error("owned advisory key was not held");
+          }
+          gateHeld = false;
+        } catch {
+          cleanupFailures.push("could not release the owned advisory gate");
+        }
+      }
+      if (seedPromise) {
+        try {
+          await waitForSignal(
+            seedPromise,
+            "seedProjectRows cleanup completion",
+          );
+        } catch {
+          cleanupFailures.push(
+            "seedProjectRows did not resolve during cleanup",
+          );
+        }
+      }
+      if (triggerInstalled && !activityCommitted) {
+        try {
+          await waitForSignal(
+            activityNotification.promise,
+            "created-activity cleanup commit",
+          );
+        } catch {
+          cleanupFailures.push(
+            "the actual created activity did not commit during cleanup",
+          );
+        }
+      }
+      if (triggerInstalled && connected.has(control)) {
+        try {
+          await control.query(
+            "DROP TRIGGER IF EXISTS " +
+              PROBE_TRIGGER +
+              " ON public.task_activity",
+          );
+          triggerInstalled = false;
+        } catch {
+          cleanupFailures.push("could not drop the owned trigger");
+        }
+      }
+      if (functionInstalled && connected.has(control)) {
+        try {
+          await control.query(
+            "DROP FUNCTION IF EXISTS public." + PROBE_FUNCTION + "()",
+          );
+          functionInstalled = false;
+        } catch {
+          cleanupFailures.push("could not drop the owned trigger function");
+        }
+      }
+      if (connected.has(listener)) {
+        try {
+          await listener.query("UNLISTEN " + PROBE_CHANNEL);
+        } catch {
+          cleanupFailures.push(
+            "could not clear the owned notification listener",
+          );
+        }
+      }
+      const closes = await Promise.allSettled(
+        [...connected].map((client) => client.end()),
+      );
+      if (closes.some((result) => result.status === "rejected")) {
+        cleanupFailures.push(
+          "one or more owned PostgreSQL clients did not close",
+        );
+      }
+      if (cleanupFailures.length > 0) {
+        throw new Error(
+          "Controlled fixture probe cleanup incomplete (" +
+            cleanupFailures.length +
+            " issue(s))",
+        );
+      }
+    }
+  }, 20_000);
 
   async function arrange(route: Case) {
     const world = await setupProjectWorld();
