@@ -584,7 +584,7 @@ describe("isolated MFA app fixture helpers", () => {
     const listener = createServer((socket) => socket.destroy());
     await new Promise<void>((resolveListen, rejectListen) => {
       listener.once("error", rejectListen);
-      listener.listen(9464, "0.0.0.0", resolveListen);
+      listener.listen(9464, "127.0.0.1", resolveListen);
     });
     try {
       await expect(
