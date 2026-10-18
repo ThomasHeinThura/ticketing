@@ -1373,7 +1373,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
       transform:
         "Two diagnostic CDP TimeStamp markers on the same document, measured around window.performance.now(); affine scale and offset map canonical recorder values to trace time. Uncertainty includes marker-call brackets plus measured slope uncertainty propagated across extrapolated distance.",
       cpuProfileClock:
-        "Sanitized V8 ProfileChunk sample intervals start at the initial Profile event timestamp and accumulate ordered timeDeltas across chunks for the same process, thread, source, and profile id. Chunk emission timestamps are not used as sample anchors. Profiles without a valid initial Profile anchor are omitted; intervals are clipped to the aligned recorder span.",
+        "Sanitized V8 ProfileChunk sample intervals join the initial Profile event by process and profile id, retain the owner thread id from the Profile head even when chunk event thread ids differ, and accumulate ordered timeDeltas from the head timestamp. Optional source tags must be consistent; invalid or ambiguous profiles are omitted. Chunk emission timestamps are not used as sample anchors; valid intervals are clipped to the aligned recorder span.",
       cpuFrameAttribution:
         "Self time is sampled time at the node; inclusive time sums each clipped sample once into that node and every reachable caller from retained child links. This is sampled CPU attribution, not wall time or a completeness guarantee. Coordinates remain compiled asset/function/line/column; source maps are inspected only for asset source lists and do not resolve individual functions.",
       contextMetrics:
