@@ -2117,3 +2117,471 @@ I inspected root-produced exact-head evidence, not reviewer-executed tests:
 - Earlier full c7c3 security review, unit-fixture repair confirmations and their runtime records retain their original source, identities, scope and limitations. I do not promote their historical tests into fresh full-d9 execution.
 
 This is full static security clearance for the selected current candidate with the inspected focused evidence above. Full integration/unit/permission suites, exact-publication hosted checks, shipping image build/boot/health, any required browser/runtime work, performance acceptance, #580/Carrier acceptance, signed release/SIT/recovery and final audit remain separate conductor-owned gates. No gate is waived and no mission or stage completion is claimed.
+
+
+## 2026-10-18 accepted-main composition and current-head review update
+
+Historical-record clarification: earlier uses of ‘current’ in the preserved note prefix remain bound to the SHA stated in each record, not this publication. In particular, the focused 4-file/45-test run is bound to `d9d6ed4d6553f11b4a647f1637d32f90d5cbb534`, and the prior PR head `3f5e8dab809a5a1a8baa5f3e23028eace33a1018` is historical. This addendum is the current record for source `02ff2ca3bd9711343e4b9de5ede4690717396414`; current publication-head CI and image evidence remain pending.
+
+**Reviewed source:** `02ff2ca3bd9711343e4b9de5ede4690717396414` (tree `7e5a5383b370259de0eea930c8a3edb16d2b6ea8`). Its parents are `08a1ee99ac4356935ef37234deddb9ce86b18da7` and accepted main `2aefb766092413b6137bbea4374e0ade6e5d243d`. The source tree contains 3,477 entries. The composition postflight records no path overlap, conservation of all source and accepted-main tuples, a clean source worktree, and no push. The selected existing #810 source slice and its historical evidence remain intact; the seven incoming accepted-main paths were disjoint from the existing 46-path #810 inventory. The 08a and 02ff composition reviews are limited to the respective composition deltas; they do not represent fresh semantic review of every untouched incoming-main path.
+
+### Review disposition at the actual scopes
+
+At `08a1ee99ac4356935ef37234deddb9ce86b18da7`, a fresh ordinary review was CLEAR for that source-composition delta and a fresh full-depth Sol review APPROVED that bounded delta. Their exact reports and native configured-context provenance follow below.
+
+At current source `02ff2ca3bd9711343e4b9de5ede4690717396414`, the fresh ordinary composition-delta review is CLEAR. A further full-depth GPT-6.1 Sol security review APPROVED the exact current source, with no new blocking or non-blocking source findings. That review independently checked the 3,477-entry composition and preserved evidence, but explicitly does not claim a full new semantic review of all 164 incoming-main paths; three earlier non-blocking findings remain retained. Authentic reports are unchanged and reproduced exactly below. Native context metadata records configured routes, not served model weights.
+
+### Local evidence at 02ff
+
+Root records a complete selected PostgreSQL run of 12 files / 158 passing tests (native exit 0, 82.532 seconds), with exact owned-container cleanup, source conservation and Docker inventory conservation. API typecheck passed (native exit 0, 19.6495 seconds). The focused WebSocket authorization unit file passed 5 tests (native exit 0, 0.968 seconds); its existing esbuild/OXC warning was retained. These bounded local results do not establish the full suite, current hosted checks, image, browser or performance acceptance.
+
+The source Gitleaks scan covered accepted main `2aefb766092413b6137bbea4374e0ade6e5d243d` through source `02ff2ca3bd9711343e4b9de5ede4690717396414`, exited 0 and emitted no stdout finding output; stderr digest and invocation are preserved in the exact receipt below.
+
+### Performance and remaining acceptance
+
+The historical G11 result at its actual earlier PR head `3f5e8dab809a5a1a8baa5f3e23028eace33a1018` remains adverse: 21 passed, one failed, normalized median 223.2 ms against a strict 200 ms budget. The 02ff composition makes no performance-code change, establishes no cause, and does not claim an unchanged rerun or repair. Current exact-publication hosted checks and applicable image/browser evidence remain required on the final PR head. No gate is waived. This update does not claim whole #580/#589 completion, release/SIT/recovery, or stage completion.
+
+### Exact evidence payloads
+
+The following reports and receipts are reproduced byte-for-byte from their private originals; native provenance is metadata, not a served-weight attestation.
+
+
+#### 08a ordinary composition report
+
+`````text
+# #810 composition-delta ordinary review — GPT-6
+
+## Provenance and verdict
+
+- Role: fresh independent ordinary reviewer.
+- Model: GPT-6, as exposed in this reviewer context; no more specific version label was exposed.
+- Exact candidate: `08a1ee99ac4356935ef37234deddb9ce86b18da7` (tree `315da5e519890ddbd7f9c4c9d6dd7ebf3253cb3b`).
+- Parents: `3f5e8dab809a5a1a8baa5f3e23028eace33a1018` and `173501e72aa92cb3241e4fd7c64dde86486e9a48`.
+- Comparison base: `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`.
+- Independence: this reviewer did not author, direct, or remediate the candidate. Prior reports and composition receipts were treated as evidence to check against source, not as this verdict.
+- Verdict: **APPROVE for the bounded source composition delta; no blocking or non-blocking source findings.** This is source review only and does not claim runtime, CI, or merge acceptance.
+
+## Scope actually reviewed
+
+Checked the exact candidate identity and clean worktree; compared its two parents and merge base; inspected the candidate-to-incoming-parent delta and focused on the only two overlapping product files, `apps/api/src/intake/index.ts` and `apps/api/src/intake/repository.ts`. Traced the resulting handlers and repository queries through the attachment reach middleware and attachment SQL, the accepted query-ownership/reach conventions, and the current intake, RBAC, #743 and #761 contracts and decision entries. Read the relevant earlier source review entries as context and verified the current source paths directly.
+
+The broader incoming-main delta is conserved from the incoming parent outside the overlap; this report does not re-review the independent merits of those untouched paths. The two overlapping intake files carry response materialization/type annotations plus the selected current-reach and #743/#761 behavior in the final tree.
+
+## Composition assessment
+
+- The staff submission middleware resolves the caller identity and passes it into `findSubmission`. The selecting statement constrains the submission by current workspace reach. Stored messages repeat that constraint in an `EXISTS`; linked work-item lookup and transferred public-comment lookup apply current project reach in their own SQL. The detail handler passes the same identity. An unreachable linked work item is omitted from the staff result. Attachment middleware also passes the resolved identity into linked-item reach, and the attachment content/list queries retain their own current workspace/project, accepted-state, and deletion/archive predicates. I found no path in this composition where the new identity filter is replaced by stale middleware facts or where an unreachable linked item is exposed.
+- The incoming request/response materializers preserve the result fields consumed by the existing route handlers; the new annotations do not change the portal predicate, portal response filtering, or staff response projection. The staff detail authorization remains guarded by the route's triage capability and workspace reach middleware.
+- Acceptance still claims and converts inside one transaction. Destination project validation and locking precede the deferred claim-audit append; the accepted audit and outbox event remain in the same transaction. The identity-scoped detail changes do not alter that transaction or its lock ordering. A failed conversion rolls back the claim, as required by #743.
+- The #761/RT-6 default-assignee handling still uses the pinned snapshot, assigns only an eligible active staff project member, and records an ineligible snapshot as audit metadata while leaving the work item unassigned. The composed audit callback runs before the accepted audit and leaves the event payload unchanged. I found no new authority, tenant-reach, concealment, redaction-order, transaction-handle, atomicity, error, or event-contract effect caused by the composition.
+
+## Checks and limits
+
+- Read-only Git and source inspection only; verified the worktree was clean and HEAD/tree matched the requested candidate.
+- No tests, compiler, checker, database probe, build, browser, application runtime, Docker, or CI command was run by this reviewer. No test pass is claimed.
+- No source edits or remediation were performed.
+- This verdict covers the composition source delta described above, not the correctness of every independent incoming-main change or hosted checks on this local candidate.
+
+`````
+
+
+#### 08a full Sol composition report
+
+`````text
+# #810 accepted-main composition — independent full-depth security review
+
+**Reviewed head:** `08a1ee99ac4356935ef37234deddb9ce86b18da7`
+**Tree:** `315da5e519890ddbd7f9c4c9d6dd7ebf3253cb3b`
+**Parents:** `3f5e8dab809a5a1a8baa5f3e23028eace33a1018` and `173501e72aa92cb3241e4fd7c64dde86486e9a48`
+**Comparison base:** `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`
+**Verdict:** **APPROVE for the bounded source composition delta at full security depth. No new blocking or non-blocking security source findings.** This is neither a new full review of every incoming-main change nor runtime, hosted-CI, image, performance or merge acceptance.
+
+## Provenance, independence and authority
+
+- Role: fresh independent Sol-tier security reviewer, following the supplied fresh strong ordinary composition review. This is a FULL security-depth composition review, not lightweight confirmation and not a phase finalizer.
+- Configured model/dispatch as reported in the assignment: `gpt-6.1-sol`, reasoning `high`, fresh independent context. This context's exposed self-description is a GPT-6-based Codex agent. I cannot independently attest hidden served model weights or a transport fingerprint; the configured route is not presented as such an attestation.
+- Reviewer context: `/root/query810_08a_security_sol`; parent/conductor: `/root`. I did not author, direct, remediate or select implementation changes for the candidate, its component repairs or tests. Earlier reports and receipts were leads to verify, not current approval to inherit.
+- Candidate worktree: `/Users/heinthura/.codex/worktrees/query765-current-luna`. Read-only Git inspection confirmed the exact head/tree and clean worktree at entry and final inspection. The primary dirty checkout was not accessed or modified. No secret environment or launch-metadata file contents or hashes were read.
+- Read candidate AGENTS, active mission, canonical workflow, provider adapter, coding/query-ownership standards, authoritative CI security path list, newest blocked-first status/queue entries and relevant decisions. Reviewed IQ-3/4/5a/7/9/10/16a, RT-6, response minimization and current identity-scoping contracts. Integration Freeze authorizes this existing-work composition; the mission, quality gates and stop condition are unchanged.
+- Read the exact ordinary report at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-18/E18/query810-08a-ordinary-luna-report.md`. It clears only this composition source delta. Its generic GPT-6 self-label remains its original label; the conductor separately reports native configuration corroborating `gpt-6-luna/high`. I did not independently inspect that native session metadata or relabel its report.
+
+## Mechanical conservation independently checked
+
+I enumerated mode/type/blob tree tuples from Git, not only the supplied postflight receipt. From the common base, the owned parent changes 46 paths and incoming main changes 164. The only intersection is `apps/api/src/intake/index.ts` and `apps/api/src/intake/repository.ts`. The candidate has 3,475 tracked entries. Every nonoverlapping path has the selected parent's exact mode/type/blob tuple, with zero exceptions. In each overlapping file, the signed added/removed-line multiset relative to base equals the sum of the two parent deltas. This proves mechanical conservation only; the semantic source analysis below supplies the composition assessment.
+
+I also examined per-commit raw and numstat history from prior fully reviewed source `d9d6ed4d6553f11b4a647f1637d32f90d5cbb534` to owned parent `3f5e8dab809a5a1a8baa5f3e23028eace33a1018`: the sole intervening commit modifies the designated own review note at mode 100644, adding 1,367 lines with zero deletions. No product input changes in that interval. The prior full independent ordinary/security reports are retained in `docs/07-planning/security-reviews/query-ownership-leaves-580.md` with their actual scopes and residuals. Their unaffected-source merits remain applicable only where the checked tuples and relevant inputs remain unchanged; their historical execution results are not promoted to this head.
+
+The canonical identity loader, current identity-scope predicates, caller identity/reach adapters, reach context middleware, intake policy, intake response mapper, attachment repository, audit writer, work-item native event helper and Executor contract each have identical mode/type/blob tuples across both parents and this candidate. Other incoming authority changes are conserved from incoming main; this report does not claim to re-review their independent merits or all 164 paths.
+
+## Semantic scope actually checked
+
+Read both parent diffs for the two overlapping files and traced their final callers and repository implementations. Inspected incoming request/submission/work-item JSON materializers, named response-schema/type assignments, portal catalogue/detail/list projections, staff detail/queue projections, current identity and workspace/project predicates, linked-item lookup, attachment middleware and final list/content SQL, the complete manual claim/conversion/acceptance path, audit writer transaction behavior, native event/outbox helpers and the incoming outbox repository extraction. Inspected relevant regression assertions, including the incoming portal JSON driver-value/response-shape test, RT-6 tests, missing-destination claim rollback, late attachment-transfer failure and existing atomic-conversion tests. Tests were read as source, never counted as passing execution.
+
+### Identity, reach, concealment and redaction
+
+The staff submission middleware resolves the authenticated credential's identity and passes it to `findSubmission`; a missing identity yields the existing concealed 404. The content SELECT binds current workspace reach, independently of its optional workspace narrowing input. The stored-message SELECT repeats current workspace reach in its own correlated EXISTS. Staff detail resolves identity again and passes it through the same query path; route-level triage capability and key subset gates remain in place.
+
+Linked-work-item lookup binds the actual owning project's workspace and customer organisation to canonical current project reach and excludes deleted projects. Failure redacts `submission.workItemId` before the final bundle is materialized. Transferred comments separately repeat current project reach and preserve public visibility/deleted-comment predicates. The materializer spreads the already-redacted submission; it has no saved unredacted row from which to restore the linked id. It does not change lookup conditions, error distinctions, query ordering or messages. The final staff response remains the explicit mapper rather than the stored bundle.
+
+Attachment middleware threads the current resolved identity into its linked-owner lookup. Missing identity/id fails closed. That query and the subsequent reach callback precede linked-item exposure. Accepted-state ownership is still required for a converted item's attachments; duplicate/nonaccepted links do not confer ownership. Final attachment content/list statements retain current workspace/project predicates, accepted-state correlation, item deletion/archive restrictions and ready/nondeleted attachment checks. Archived-project read retention is preserved. I found no composition path replacing a current content predicate with a stale middleware fact or exposing an unreachable converted item through materialization.
+
+### JSON and public response boundaries
+
+The new materializers await already-selected rows and replace only the relevant JSON property's TypeScript view with the same property value/reference. They add no parsing, normalization, SQL, defaulting, authority lookup or serialization. Bundle replacement materializes its nested submission/requestType/version after the existing queries and redaction. Required result checks, locks, transaction handles, predicates and selected columns remain unchanged.
+
+The portal's typed `PortalSubmissionSource` is a compatibility assignment, not validation or a new read. Portal lookup still narrows to the current requester's person id; projected form schema retains visible-field minimization. The portal detail returns only its pre-existing explicit submission, safe request-type, minimal version, requester-owned work-item and message fields. The route's spread is of that minimized DTO, not a database row. Catalogue schema extraction and typed assignments preserve the former exact field sets and validators. Staff queue/detail and acceptance/duplicate responses still use their explicit projections. I found no newly serialized staff identifier, storage key, audit skip reason, secret or unredacted row field.
+
+The incoming persisted-JSON regression deliberately distinguishes typed driver values from raw JSONB values and checks declared response keys, including scalar/null cases. This materialization does not establish that every persisted JSON value satisfies the older FormSchema/FormValue assumptions; those compatibility assumptions remain a pre-existing residual, not a new validation claim.
+
+### #743, #761, locks, audit and outbox
+
+Manual acceptance still opens one outer transaction. It locks and conditionally claims the submission there, then reads the pinned snapshot and validates/locks the chosen destination project before conversion. Workspace, organisation, live project/type/state and workspace-owned SLA restrictions remain in the final conversion. Missing and unreachable destinations retain the same 422 behavior. A thrown validation or later write failure rolls back the newly taken claim together with the item/activity/comment/attachment/participant/watcher writes, accepted-state CAS and transactional event writes. A pre-existing explicit same-actor claim remains pre-existing state; no-op claim-audit handling avoids a duplicate claim audit.
+
+The deferred claim audit callback runs after project/counter locking and successful accepted-state CAS, immediately before accepted audit. Audit append uses a nested savepoint on the supplied transaction's session. The composition adds no audit-before-project lock inversion. All relevant calls still pass the outer transaction. Incoming `enqueueOutboxEvent` now delegates insertion to a repository, but passes that exact transaction through; the new helper inserts the same envelope/scope/state/attempt fields and opens no independent transaction or shared-connection escape. The native work-item event helper also uses the supplied transaction. No outbox or audit effect has been moved outside acceptance's transaction by this composition.
+
+RT-6 still pins form mapping, SLA override and default assignee while permitting the triager's workspace-bound type choice. Only an active staff person with destination-project membership is assigned. Ineligibility leaves the item unassigned and records the existing closed skip-reason vocabulary in accepted audit metadata. That metadata is not added to HTTP or the accepted event payload. Materialized description handling on duplicate output does not change its explicit HTTP projection.
+
+## Findings, review sizing and retained residuals
+
+**New blocking findings: none. New non-blocking findings: none.** I found no composition-induced authority redesign, new capability/trust boundary, tenant disclosure, redaction-order regression, key-owner ceiling change or transaction/lock semantic change requiring a new broad ordinary panel. The supplied fresh strong ordinary composition review plus this further full-depth security review is appropriate for this bounded composition. This does not reduce the independent review required for other candidates or original incoming-main changes.
+
+The earlier full-d9d6 review's non-blocking audit-catalogue omission and late-failure regression-precision gap remain retained, not silently closed. I rechecked that the late attachment-failure test still omits explicit claim/claimed-audit/outbox rollback assertions, while the missing-destination regression explicitly asserts them; source keeps both failure paths in the same transaction. The RT-6 test titled for a foreign-workspace type still supplies a nonexistent id. None of these historical test limits is upgraded to runtime proof or a new composition blocker. This review does not accept whole #580 or close #774/#779.
+
+## Execution and acceptance limits
+
+**Reviewer-executed tests: NONE.** No compiler/typecheck, checker/AST tool, install, database probe, application/runtime, build, browser, Docker, benchmark or CI command was run. Work consisted of read-only Git/source/contract/evidence inspection and small standard-library Git tuple/text comparisons, followed solely by private report creation. No source/test/policy/shared-contract edit, remediation, Git ref change, commit, push, GitHub mutation, merge or deployment occurred.
+
+The conductor reports API typecheck passed at this head (19.52 seconds) and was running one complete 12-file PostgreSQL selection at dispatch. I did not inspect its final raw execution evidence or claim a result from that run. Prior runtime results remain bound to their actual prior SHAs. The old G11 assignment result of 223.2 ms against strict <200 ms remains adverse. This source review neither reruns it unchanged nor establishes a performance cause or repair.
+
+Current exact-publication hosted checks, complete applicable execution evidence, image build/boot/health, performance and runtime/browser acceptance remain separate conductor-owned gates. No current CI/image/merge result, predecessor closure, release/SIT/recovery proof, mission/stage completion or gate waiver is claimed. Any later product/input change requires review at the applicable exact-head delta scope.
+
+`````
+
+
+#### 08a native review provenance
+
+`````text
+{
+  "at": "2026-10-18T12:28:53.244794+00:00",
+  "candidate": "08a1ee99ac4356935ef37234deddb9ce86b18da7",
+  "contexts": [
+    {
+      "role": "security",
+      "session": "01a14ef4-124d-7ee1-9fab-6c8a19f5d22c",
+      "agent": "/root/query810_08a_security_sol",
+      "createdAt": "2026-10-18T12:19:40.779Z",
+      "latestTurn": {
+        "timestamp": "2026-10-18T12:19:42.943Z",
+        "model": "gpt-6.1-sol",
+        "effort": "high"
+      },
+      "configuredModel": "gpt-6.1-sol",
+      "configuredEffort": "high"
+    },
+    {
+      "role": "ordinary",
+      "session": "01a14ef1-aa6a-7a01-9dcd-2cf6ba34d400",
+      "agent": "/root/query810_08a_ordinary_luna",
+      "createdAt": "2026-10-18T12:17:03.114Z",
+      "latestTurn": {
+        "timestamp": "2026-10-18T12:17:05.635Z",
+        "model": "gpt-6-luna",
+        "effort": "high"
+      },
+      "configuredModel": "gpt-6-luna",
+      "configuredEffort": "high"
+    }
+  ],
+  "reviewersSpawnedForkNone": true,
+  "ordinaryReportSelfLabel": "GPT-6 generic, retained verbatim; native configured route shown separately",
+  "servedWeightsNotAttested": true,
+  "method": "Filtered native session_meta/turn_context only, no raw transcripts published",
+  "authorCompositionContext": "01a14000-d9e0-7bb1-b3fd-2c0204a4834c"
+}
+
+`````
+
+
+#### 02ff ordinary composition report
+
+`````text
+# Independent ordinary composition-delta review
+
+- **Candidate:** `02ff2ca3bd9711343e4b9de5ede4690717396414` (tree `7e5a5383b370259de0eea930c8a3edb16d2b6ea8`)
+- **Accepted-main base:** `2aefb766092413b6137bbea4374e0ade6e5d243d`
+- **Pre-composition source parent:** `08a1ee99ac4356935ef37234deddb9ce86b18da7`
+- **Review role:** fresh independent ordinary composition-delta review; I did not author, direct, or remediate this composition. The task assigned a Luna-tier review; this execution context does not expose a verifiable configured/served model label, so none is asserted. Served weights are not attested.
+- **Scope:** seven incoming accepted-main paths identified by the source-bound preflight: the CAL-9 helper relocation and two dated planning records. Compared those paths against the pre-composition source, traced imports, both call sites, transaction handles, errors and data returned. The existing 46-path #810 body was not re-reviewed.
+
+## Verdict
+
+**CLEAR — no blocking or non-blocking findings in the composition delta.** The accepted-main addition is disjoint from the 46 existing #810 paths. The source-bound postflight records 3,477 tree entries, all source and accepted-main tuples conserved, no path overlap, clean source state, and the expected merge parents/tree. My read-only diff agrees: the incoming source changes are confined to `apps/api/src/pending-action/deletion-targets.ts`, `apps/api/src/service-calendar/index.ts`, `apps/api/src/service-calendar/repository.ts`, and four planning-record paths. The calendar integration is a helper relocation with imports updated; both call statements and the calendar integration test file are unchanged from `08a1ee99`.
+
+## Checks and reasoning
+
+`assertCalendarUnused` remains a single implementation in `service-calendar/repository.ts`. It checks project and SLA-version references with both `workspaceId` and `calendarId`, and raises the existing `409 service_calendar_in_use` when either exists. The route request path calls it with the authorized workspace and route calendar ID before creating the pending action. The approval path calls the same helper with the calendar row's workspace/id through the existing transaction handle before the conditional delete. The helper accepts the same `select` capability as before; moving its definition does not open another transaction, change isolation, or move the approval-time recheck outside the transaction.
+
+The moved helper body is byte-identical to the prior definition (935 bytes). The imports are coherent: the service-calendar route imports the helper from its repository, while pending-action deletion orchestration imports that same repository helper. The repository imports the pending-action workspace-access invalidation utility, not the deletion-target module, so this relocation does not introduce a direct import cycle. The returned values and externally visible error remain unchanged; the helper returns no reference identifiers or extra data. Existing caller-side authorization, pending-action checks, audit/outbox writes and deletion conditions are unchanged in the delta.
+
+The CAL-9 feature contract requires rejecting deletion while any project or SLA-version reference exists, with a request-time check and an approval-time recheck. The moved query still covers both reference classes and remains workspace-scoped at both call sites. The original `service-calendar-usage-delete.test.ts` is byte-identical across this delta and already contains request-time, approval-time, foreign-workspace, SLA-version and unreferenced-calendar cases; I inspected the test inventory but did not execute it.
+
+The #850 accepted-main receipt identifies the source helper relocation. The #851 receipt identifies the planning-record-only publication on which #810 was recomposed. The preflight initially stopped because it compared the historical PR base with live `main`; the corrected accepted-main premerge receipt records the actual main separately and verifies the preview tree and disjoint tuples. I read these receipts for provenance and did not re-run them.
+
+## Tests and limits
+
+No project commands, tests, compiler, runtime, Docker, browser, Gitleaks or GitHub mutation were run, per assignment. This is static review of the exact composition delta. It does not renew the prior #810 full-merits reviews, verify their authenticity, establish current hosted checks or image/runtime acceptance, or close the strict G11 performance issue. The recorded `223.2ms` result against the `200ms` assignment limit remains adverse and unexplained; this calendar relocation provides no causal repair or unchanged retry. Existing predecessor and stage/release obligations remain outside this verdict.
+
+`````
+
+
+#### 02ff full Sol composition report
+
+`````text
+# #810 accepted-main recomposition — full-depth independent security review
+
+**Reviewed head:** `02ff2ca3bd9711343e4b9de5ede4690717396414`
+**Tree:** `7e5a5383b370259de0eea930c8a3edb16d2b6ea8`
+**Parents:** `08a1ee99ac4356935ef37234deddb9ce86b18da7` and accepted main `2aefb766092413b6137bbea4374e0ade6e5d243d`
+**Immediate composition comparison:** `08a1ee99ac4356935ef37234deddb9ce86b18da7`; common base `173501e72aa92cb3241e4fd7c64dde86486e9a48`.
+**Verdict:** **APPROVE for this exact composition at FULL security depth. No new blocking or non-blocking security source findings.** Earlier source merits remain supported at their established scopes as explained below. This is not new full-merits review of every accepted-main change, runtime/hosted acceptance, permission to merge, or a phase finalizer.
+
+## Identity, independence and sequence
+
+- Model/role: **GPT-6.1 Sol**, fresh independent full-depth security reviewer. The root-filtered native metadata records configured `gpt-6.1-sol`, effort `high`, session `01a14f16-df58-70f3-b6cd-105e76b43f0a`, context `/root/query810_02ff_security_sol`. This context's general self-description is a GPT-6-based Codex agent. Hidden served weights are not attested.
+- The same filtered receipt identifies the separate ordinary reviewer `/root/query810_02ff_ordinary_luna`, session `01a14f15-5690-74b1-9a8e-389cd79441e7`, configured `gpt-6-luna/high`, and distinct material author/root session. It records both reviewers spawned with `fork_turns=none`. I read the filtered receipt, not raw session transcripts. The ordinary report's original wording is preserved; I do not relabel its self-description.
+- I did not author, direct, remediate or choose implementation changes for this candidate or its component repairs. I received the ordinary CLEAR before performing this further security review. I read the current ordinary report completely and recomputed its 4,722 bytes / SHA-256 `9ca46892afb3f03dc0a471f61ea365b146bb685849cae253b0525ed7d829d58e`.
+- Worktree: `/Users/heinthura/.codex/worktrees/query765-current-luna`. Entry and final read-only Git inspection found the exact requested head and clean state. No repository source, tests, policy, shared contract or Git ref was changed. The only created artifact is this private report. No primary-checkout environment or launch-metadata contents/hashes were read.
+- Read AGENTS, required workflow/provider guide, active mission, newest blocked-first status and decisions, authoritative CI security path scope, CAL-9/deletion/event contract and relevant pending-action required-access behavior. Integration Freeze authorizes existing-work composition; it does not change any quality gate.
+
+## Independent conservation and accepted-main provenance
+
+I enumerated Git mode/type/blob tuples rather than relying solely on the supplied receipts. Relative to common base `173501e...`, the owned parent changes **46 paths** and incoming accepted main changes **7 paths**, with **zero overlap**. The final tree has **3,477 entries**. Every final tuple matches the selected owned parent for owned paths and the incoming parent elsewhere, with **zero exceptions**. Relative to accepted main, the complete candidate still has the same 46 owned paths. The seven incoming paths are the three calendar/pending-action source files, queue, status and two designated review-record files. No dependency, schema, authorization helper, test, build input, route policy, or hidden extra source change is introduced by this merge.
+
+The moved CAL-9 comment, declaration and implementation are **935 equal bytes**, normalized only by removing surrounding trailing whitespace and retaining one final newline, SHA-256 `7e2e2e86dcbd0fe7e57d3b412ab67ee2a53a5defe5eaa577c3f316f67b159116`. Both call statements retain their arguments and placement. This proves byte preservation, not the surrounding security assessment by itself.
+
+I read root preflight, corrected accepted-main premerge and composition postflight receipts. The initial historical-PR-base expectation stopped before mutation; the correction independently records actual accepted main instead of treating the PR's historical base SHA as current main. Live read-only GitHub inspection agrees that #850 merged as `eab89b0fdc4ecb46ef3756eadd2bf2439682adc1` and #851 as `2aefb766092413b6137bbea4374e0ade6e5d243d`. The local candidate remains unpushed: live #810 still names `3f5e8dab809a5a1a8baa5f3e23028eace33a1018`, with historical PR base `23fb0fe8b78d09249d77957a9a0000b8a9f45d2c`. Historical hosted results therefore do not establish checks at `02ff...`.
+
+## Prior review authenticity and continuing merits
+
+I read the committed `query-ownership-leaves-580.md` chain, the original full ordinary reports and repair dispositions, c7c3 full security, d9d6 full security/current ordinary reports, and the full 08a ordinary/security composition reports. I independently compared **all 32 source artifacts** listed by the original 22-artifact and d9d6 10-artifact publication proofs: every private original matches its declared digest and occurs exactly once, byte-for-byte, in the current committed note. The note is **175,326 bytes**, SHA-256 `af37f1f2028c993711bd4a2b6ccf64f334f0a1102d10050d6e06028cda2b5325`, unchanged from the owned parent. I also compared all **six imported #774/#779 original Claude reports** with their declared digests and embedded component-note bytes: all match exactly once. Original identities, earlier BLOCK verdicts, adverse runs, later dispositions and scope limits are preserved.
+
+Per-commit raw and numstat inspection from fully reviewed d9d6 to published `3f5e...` shows one own-note-only commit, regular mode 100644, **1,367 additions / zero deletions**, with no product-input change. The subsequent 08a composition explicitly reviewed its two overlapping intake files at full security depth. Its report is 13,732 bytes / SHA-256 `1aecf3147904dcf0789c2aa7313b648c1ec4d89cba36cfdf6ba13c0da473d156`; the separate 08a ordinary report is 4,408 bytes / SHA-256 `58c85161a760ab199f82400be887483a8cadb5d5ea4615cac2d7ba3cb65ea4f8`. Both remain historical exact-source reports, not newly authored current verdicts. This current composition leaves all 46 owned tuples and their connected prior authorization/transaction inputs unchanged.
+
+Hashes authenticate the preserved bytes against originals; they alone do not prove independence. Historical provenance additionally consists of the original reports' distinct context/role/source declarations and the recorded conductor-dispatched origin verification, retained unchanged in the chain. I have not independently re-attested old hidden serving metadata or rerun the old review sessions. The current review has its own fresh native-bound identity and independently checks the changed source and critical connected seams.
+
+The original broad three-context ordinary panel retains its actual full/delta coverage: the earlier native-organisation, archived-link and workspace-removal blockers were independently dispositioned, and the superseded approval/follow-up blocker remains visible. c7c3 full security covered the complete leaf-query scope; the unit-fixture delta was separately reviewed; d9d6 ordinary A/B and full security covered the composed #743/#761 behavior; 08a ordinary/full security covered the subsequent intake materialization/outbox composition. Their unchanged-source merits remain applicable at those scopes. Nothing here silently converts an earlier failed test into a pass, expands an old verdict to unrelated incoming main, or substitutes the current bounded ordinary review for the original full panel.
+
+## Security assessment at full depth
+
+### Calendar request, tenancy and non-disclosure
+
+`DELETE /api/service-calendars/{id}` retains calendar reach resolution/concealed 404, API-key stored `sla_policy:manage` scope and current workspace capability middleware. The route resolves a valid pending-action requester before the guard. It passes `db`, the authorized row-derived workspace and validated calendar id, awaits the guard and only then creates a pending action. The helper itself returns no reference data: each existence query selects an id with `limit(1)`, binds both workspace and calendar, checks projects and retained SLA-policy versions, and throws the unchanged `409 service_calendar_in_use` when either exists. A foreign calendar encounters the concealment boundary before the guard; the relocation introduces no in-use existence oracle or caller-chosen tenant authority.
+
+The request check is advisory against later reference changes, just as before. Final approval still supplies the authoritative transactional recheck; moving the helper does not introduce a new claim about concurrency coverage.
+
+### Destructive approval, transaction and lock order
+
+Approval opens the same outer transaction and takes the existing pending-action lifecycle gate, then pending-row, requester/person and current agent-session locks/checks. It verifies pending state, action/type/confirmation, active non-banned staff requester bound to the session, expiration, registered workspace `sla_policy:manage` policy, canonical payload/hash/scope, exactly one target, locked target workspace and asserted version. `evaluateActionRequiredAccess(tx, ...)` rechecks current target/credential/reach/capability against current identity through that transaction; its calendar branch reads the locked target and validates scope/version.
+
+Only after those checks does approval await `assertCalendarUnused(tx, calendar.workspaceId, calendar.id)`. The moved helper uses exactly that executor for both SELECTs, imports the same schema/operators/error class and neither opens a transaction nor falls back to shared `db`. Calendar DELETE retains id/workspace/version predicates and requires a returned row. Pending state transitions conditionally, then decided/executed/calendar-deleted outbox effects use the same `tx`; audit savepoints follow the mutation/event work under the existing audit-failure contract. No guard has moved outside the transaction, no lock ordering changes, no new early audit-chain lock, direct delete endpoint, approval shortcut or independent commit was found. A guard exception still aborts that approval attempt without marking the action executed.
+
+The repository's existing dependency is the direct workspace-access-invalidation module. Its inspected imports lead through credential/lifecycle invalidation, required-access, payload and repository helpers rather than back through deletion-targets or the calendar router. The moved export is a function declaration, with no eager query or registration. I found no newly introduced module-initialization cycle, startup side effect or import circumvention.
+
+### Continuing #810 authority, redaction and acceptance seams
+
+I rechecked current staff submission middleware/detail identity threading, selecting SQL workspace predicates, stored-message correlated reach, linked-item/current-project lookup, redaction before bundle materialization and explicit response projection. The unchanged linked-owner and socket repositories still use actual project customer-organisation facts and current project reach; project socket facts require current workspace AND project reach in the same SQL statement. These files and their canonical identity/capability dependencies are conserved in this delta. The calendar move neither supplies alternate identities nor creates any path around key-owner authority ceilings or current tenant predicates.
+
+I inspected manual acceptance and the claim helper again. The submission lock/version-conditional claim, pinned snapshot and chosen destination/type validation, project `NO KEY UPDATE` lock, conversion effects and accepted CAS remain within one outer transaction. Missing/unreachable destinations retain the same 422 and roll back the newly acquired claim; a pre-existing explicit same-actor claim remains pre-existing state. The deferred claim audit executes after project/counter locking and successful CAS, immediately before accepted audit. The accepted audit and event are transaction-bound; `enqueueOutboxEvent` delegates to `insertOutboxEvent` with that exact executor and opens no independent transaction. RT-6 skip details remain conditional accepted-audit metadata, absent from the accepted event payload/explicit response. No new authority, tenant, redaction, rollback, audit-order or outbox-boundary effect arises from the calendar composition.
+
+### Regression definitions and review sizing
+
+The unchanged ten-case calendar integration file includes request-time project/SLA-version rejection, approval recheck/retry, version invalidation, credential/role/workspace scope, unrelated-calendar success, outsider 404 without in-use text/pending/audit creation, replay and deletion/audit/event behavior. I inspected the inventory and material current assertions; I did not execute them. This is not exhaustive concurrent reference-writer proof or a new approval-time SLA-version insertion regression.
+
+This seven-path composition introduces no authority/gate-semantic change and has no overlap with the prior broad candidate. One fresh strong ordinary composition review plus this further FULL-depth independent security pass is sufficient for the delta under the risk-sized workflow. Repeating a three-person full-merits panel over all unchanged owned paths or 164 earlier incoming paths would not add missing current-delta coverage. The original panel/security chain continues only at its actually verified scopes; no required review count or tier is waived.
+
+## Findings and retained residuals
+
+**New blocking findings: none. New non-blocking findings: none.**
+
+The prior d9d6/08a non-blocking residuals remain open and unchanged:
+
+- `audit-trail.md` still omits `submission.accepted` and its conditional `defaultAssigneeSkipped` metadata from the audit-action catalogue, although RT-6 defines it and the source confines it to audit data.
+- The late attachment-transfer rollback test still checks work item, submission state/link, comments/attachment and accepted audit but does not explicitly check claim fields, claimed audit and outbox rollback. The missing-destination regression has those explicit assertions, and source keeps the late failure in the same transaction.
+- The RT-6 test titled for an outside-workspace type still supplies a nonexistent id; missing-version/acceptance-time invalid-SLA and other schedules retain the prior stated test limits. None is silently upgraded into direct runtime proof by this review.
+
+The original strict G11 result **223.2 ms versus <200 ms** remains adverse and unexplained. This relocation provides no causal repair and authorizes no unchanged retry. #774/#779, whole #580, Carrier and stage/mission completion are not closed here.
+
+## Actual checks, execution evidence and limits
+
+**Reviewer-executed application tests: NONE.** No project script, compiler/typecheck, checker/AST command, dependency install, database/runtime probe, browser, Docker/image, benchmark, Gitleaks, CI or GitHub mutation was run. I used read-only Git/source/contracts/evidence and live GitHub reads, plus standard-library tuple/byte/hash comparisons. One comparison script initially failed to parse because of an extra parenthesis; its corrected read-only invocation completed. No source or ref mutation occurred.
+
+I inspected the conductor-owned exact-02ff PostgreSQL invocation/result/raw summary and root verification receipt. They record the complete selection of **12 integration files / 158 tests passed**, native exit 0, no operator timeout, 82.532 seconds wrapper / 81.20 seconds Vitest. I independently recomputed the raw log's **210,926 bytes**, SHA-256 `b097b0d4716caf578c576228d772ae4d973b5a2b84d13a5148ca9e519c3b1a32`. The root receipt records source conservation, owned cleanup, Docker inventory conservation and removal of the generated environment unread. I did not operate Docker or independently rerun cleanup/runtime. This 12-file selection covers the #810/intake seams; it does not contain the separate calendar-use deletion file. #850's historical ten-case calendar result stays bound to its actual source.
+
+The current API typecheck/five-case unit execution was reported running by root; I have not inspected final receipts and claim no result for it. Earlier 08a/d9d6 execution results remain historical. Current exact-publication hosted checks, complete applicable execution, image build/boot/health, required browser/runtime/performance acceptance and protected merge remain separate conductor-owned gates. No waiver, publication acceptance, phase-finalizer, release/SIT/recovery or mission-completion claim is made.
+
+`````
+
+
+#### 02ff native review provenance
+
+`````text
+{
+  "candidate": "02ff2ca3bd9711343e4b9de5ede4690717396414",
+  "at": "2026-10-18T12:58:23.927200+00:00",
+  "contexts": [
+    {
+      "agent": "/root/query810_02ff_security_sol",
+      "session": "01a14f16-df58-70f3-b6cd-105e76b43f0a",
+      "createdAt": "2026-10-18T12:57:41.504Z",
+      "latestTurn": {
+        "timestamp": "2026-10-18T12:57:43.646Z",
+        "model": "gpt-6.1-sol",
+        "effort": "high"
+      }
+    },
+    {
+      "agent": "/root/query810_02ff_ordinary_luna",
+      "session": "01a14f15-5690-74b1-9a8e-389cd79441e7",
+      "createdAt": "2026-10-18T12:56:00.943Z",
+      "latestTurn": {
+        "timestamp": "2026-10-18T12:56:04.038Z",
+        "model": "gpt-6-luna",
+        "effort": "high"
+      }
+    }
+  ],
+  "rootMaterialAuthor": "01a14000-d9e0-7bb1-b3fd-2c0204a4834c",
+  "reviewersSpawnedForkNone": true,
+  "ordinarySelfLabel": "Luna-tier assignment only; retain authenticreport wording; native configuredroute verified separately",
+  "servedWeightsNotAttested": true,
+  "method": "Filtered native session identity and turn_context model/effort only; no raw transcripts published"
+}
+
+`````
+
+
+#### 02ff source composition postflight
+
+`````text
+{
+  "at": "2026-10-18T12:55:41.434716+00:00",
+  "source": "08a1ee99ac4356935ef37234deddb9ce86b18da7",
+  "acceptedMain": "2aefb766092413b6137bbea4374e0ade6e5d243d",
+  "mergeCommit": "02ff2ca3bd9711343e4b9de5ede4690717396414",
+  "parents": [
+    "08a1ee99ac4356935ef37234deddb9ce86b18da7",
+    "2aefb766092413b6137bbea4374e0ade6e5d243d"
+  ],
+  "tree": "7e5a5383b370259de0eea930c8a3edb16d2b6ea8",
+  "entries": 3477,
+  "allSourceAndAcceptedMainTuplesConserved": true,
+  "overlap": [],
+  "primaryConserved": true,
+  "sourceClean": true,
+  "pushed": false,
+  "prHeadStill": "3f5e8dab809a5a1a8baa5f3e23028eace33a1018"
+}
+
+`````
+
+
+#### 02ff accepted-main premerge receipt
+
+`````text
+{
+  "at": "2026-10-18T12:55:39.281953+00:00",
+  "source": "08a1ee99ac4356935ef37234deddb9ce86b18da7",
+  "acceptedMain": "2aefb766092413b6137bbea4374e0ade6e5d243d",
+  "prReportedBaseSha": "23fb0fe8b78d09249d77957a9a0000b8a9f45d2c",
+  "actualMainVerifiedSeparately": true,
+  "priorPreflightStoppedBeforeMutation": "incorrectly expected historical PR base SHA to equal live main",
+  "previewTree": "7e5a5383b370259de0eea930c8a3edb16d2b6ea8",
+  "allDisjointTuplesConserved": true,
+  "overlap": [],
+  "incomingPaths": [
+    "apps/api/src/pending-action/deletion-targets.ts",
+    "apps/api/src/service-calendar/index.ts",
+    "apps/api/src/service-calendar/repository.ts",
+    "docs/07-planning/integration-execution-queue.md",
+    "docs/07-planning/security-reviews/calendar-use-ownership.md",
+    "docs/07-planning/security-reviews/records-after850-carrier-cascade-checkpoint.md",
+    "docs/07-planning/status.md"
+  ],
+  "primaryConserved": true,
+  "noPushOrPRMutation": true
+}
+
+`````
+
+
+#### 02ff focused PostgreSQL result
+
+`````text
+{
+  "candidate": "02ff2ca3bd9711343e4b9de5ede4690717396414",
+  "nativeExit": 0,
+  "completeFiles": 12,
+  "testsPassed": 158,
+  "wrapperSeconds": 82.532,
+  "vitestSeconds": 81.2,
+  "rawBytes": 210926,
+  "rawSha256": "b097b0d4716caf578c576228d772ae4d973b5a2b84d13a5148ca9e519c3b1a32",
+  "sourceConserved": true,
+  "exactOwnedCleanup": true,
+  "dockerInventoryConserved": true,
+  "generatedEnvironmentRemovedWithoutRead": true
+}
+
+`````
+
+
+#### 02ff API typecheck and focused unit result
+
+`````text
+{
+  "typecheck": {
+    "nativeExit": 0,
+    "seconds": 19.649547499837354,
+    "stdoutBytes": 316,
+    "stdoutSha256": "2700219e6b5eb483227c221da9bccc8e571b630cb2b8390a7bd10370b6ebf755",
+    "stderrBytes": 0,
+    "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "unit": {
+    "nativeExit": 0,
+    "seconds": 0.9681556671857834,
+    "stdoutBytes": 245,
+    "stdoutSha256": "97fa25d62f678f7601073529dff04ffc60dddbbc8924f1475f6bdb5126d97d04",
+    "stderrBytes": 164,
+    "stderrSha256": "ff41279c313a3087b5456eb817b524a55b3dd8c59a46854612e9f3bb48018b0a"
+  },
+  "candidate": "02ff2ca3bd9711343e4b9de5ede4690717396414",
+  "unitCompleteFiles": 1,
+  "unitTestsPassed": 5,
+  "knownEsbuildOxcWarningRetained": true,
+  "sourceCleanAfterBoth": true
+}
+
+`````
+
+
+#### 02ff source Gitleaks receipt
+
+`````text
+{
+  "at": "2026-10-18T13:00:59.210216+00:00",
+  "candidate": "02ff2ca3bd9711343e4b9de5ede4690717396414",
+  "argv": [
+    "gitleaks",
+    "git",
+    "--no-banner",
+    "--redact",
+    "--log-opts=2aefb766092413b6137bbea4374e0ade6e5d243d..02ff2ca3bd9711343e4b9de5ede4690717396414",
+    "."
+  ],
+  "nativeExit": 0,
+  "seconds": 0.17177812498994172,
+  "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderrSha256": "74cc3615177c066f8487f8a5905284a20c19f0b00322f16745185d5378a3e9d1"
+}
+
+`````
