@@ -14,7 +14,6 @@ import {
 import { listTaskCommentRows } from "../../apps/api/src/comment/repository";
 import db, { schema } from "../../apps/api/src/database";
 import { listExternalLinksByTask } from "../../apps/api/src/external-link/repository";
-import { findOrganisationDefaultCustomerVisibility } from "../../apps/api/src/intake/repository";
 import { reachableLinkedWorkItemId } from "../../apps/api/src/intake/submission-linked-work-item";
 import { findCustomProviderIdToken } from "../../apps/api/src/oauth/repository";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
@@ -35,6 +34,7 @@ import {
   grantProjectManageAccess,
   requireRow,
 } from "./helpers/fixtures";
+import { seedIntake, submissionRow, submitAs } from "./helpers/intake-http";
 
 beforeEach(async () => {
   await resetTestDatabase();
@@ -211,35 +211,22 @@ describe("current leaf repository reach", () => {
     expect(await findCustomProviderIdToken("missing-user")).toBeNull();
   });
 
-  it("reads organization default customer visibility by organization id", async () => {
-    const [privateOrg] = await db
-      .insert(schema.organisationTable)
-      .values({
-        key: `private-${randomUUID()}`,
-        name: "Private customer",
-        defaultCustomerVisibility: "private",
-      })
-      .returning();
-    const [organisationOrg] = await db
-      .insert(schema.organisationTable)
-      .values({
-        key: `organisation-${randomUUID()}`,
-        name: "Organisation customer",
-        defaultCustomerVisibility: "organisation",
-      })
-      .returning();
-    if (!privateOrg || !organisationOrg)
-      throw new Error("organization fixture missing");
-
-    expect(
-      await findOrganisationDefaultCustomerVisibility(privateOrg.id),
-    ).toEqual({ defaultCustomerVisibility: "private" });
-    expect(
-      await findOrganisationDefaultCustomerVisibility(organisationOrg.id),
-    ).toEqual({ defaultCustomerVisibility: "organisation" });
-    expect(
-      await findOrganisationDefaultCustomerVisibility("missing-organization"),
-    ).toBeUndefined();
+  it("defaults intake submission visibility from the requester's organization", async () => {
+    const seeded = await seedIntake(`leaf-visibility-${randomUUID()}`);
+    for (const visibility of ["private", "organisation"] as const) {
+      await db
+        .update(schema.organisationTable)
+        .set({ defaultCustomerVisibility: visibility })
+        .where(eq(schema.organisationTable.id, seeded.customer.orgId));
+      const reference = await submitAs(
+        seeded,
+        seeded.customer,
+        `Visibility ${visibility}`,
+      );
+      const submission = await submissionRow(reference);
+      expect(submission.organisationId).toBe(seeded.customer.orgId);
+      expect(submission.customerVisibility).toBe(visibility);
+    }
   });
 
   it("returns websocket scope only for live work items in currently reached projects", async () => {
