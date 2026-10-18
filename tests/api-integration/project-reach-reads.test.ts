@@ -741,6 +741,12 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
       // hidden-row/count oracle under a staff member with its own project reach; customers
       // are denied by GET /api/search's workspace:read policy above.
       const staffId = a.world.projectAdmin.user.id;
+      const staffIdentity = await resolveIdentity({
+        userId: staffId,
+        credential: "session",
+      });
+      if (!staffIdentity)
+        throw new Error("staff caller identity did not resolve");
       const staffReach = await callerReach(
         {
           get: (key: string) => (key === "apiKey" ? undefined : staffId),
@@ -749,7 +755,7 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
       );
       const found = await globalSearch({
         query: MARKER,
-        userId: staffId,
+        identity: staffIdentity,
         workspaceId: a.world.workspaceId,
         reachableProjectIds: (ids) => staffReach.reachableProjectIds(ids),
       });

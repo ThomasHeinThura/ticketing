@@ -77,6 +77,7 @@ export function requireSubmissionAttachmentReach(
     const linkedWorkItemId = mode.startsWith("portal_")
       ? row.workItemId
       : await reachableLinkedWorkItemId(
+          identity,
           await callerReach(c as unknown as Context, c.get("userId")),
           row.workItemId,
         );
