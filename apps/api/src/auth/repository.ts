@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { JsonValue } from "@taskdesk/domain";
 import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
+import { SETUP_TOKEN_SINGLETON_ID } from "../instance/setup-token";
 import { dbClockUtc } from "../utils/db-time";
 
 export type StepUpExecutor = Parameters<
@@ -49,6 +50,44 @@ export async function getSetupCompletionMarker(
     .select({ setupCompletedAt: schema.instanceSettingTable.setupCompletedAt })
     .from(schema.instanceSettingTable)
     .limit(1);
+}
+
+export async function lockFirstUserPromotion(
+  executor: StepUpExecutor,
+): Promise<void> {
+  await executor.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
+}
+
+export async function promoteFirstAuthUser(
+  executor: StepUpExecutor,
+  userId: string,
+): Promise<void> {
+  await executor
+    .update(schema.userTable)
+    .set({ role: "admin" })
+    .where(eq(schema.userTable.id, userId));
+}
+
+export async function completeFirstUserSetup(
+  executor: StepUpExecutor,
+): Promise<void> {
+  await executor
+    .insert(schema.instanceSettingTable)
+    .values({
+      id: SETUP_TOKEN_SINGLETON_ID,
+      setupCompletedAt: new Date(),
+      setupTokenHash: null,
+      setupTokenExpiresAt: null,
+    })
+    .onConflictDoUpdate({
+      target: schema.instanceSettingTable.id,
+      set: {
+        setupCompletedAt: new Date(),
+        setupTokenHash: null,
+        setupTokenExpiresAt: null,
+        updatedAt: new Date(),
+      },
+    });
 }
 
 export async function getFirstUserWorkspaceMembership(userId: string) {
