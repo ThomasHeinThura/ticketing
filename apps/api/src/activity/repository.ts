@@ -70,6 +70,10 @@ export async function insertTaskActivityForIdentity(
         sql`${sql.param(values.eventData ?? null, taskActivityTable.eventData)}`.as(
           "eventData",
         ),
+      externalUserName: sql`NULL`.as("externalUserName"),
+      externalUserAvatar: sql`NULL`.as("externalUserAvatar"),
+      externalSource: sql`NULL`.as("externalSource"),
+      externalUrl: sql`NULL`.as("externalUrl"),
     })
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))

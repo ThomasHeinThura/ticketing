@@ -45,17 +45,23 @@ async function createLegacyTask(
   );
 }
 
-async function requestActivityCreate(taskId: string) {
+async function requestActivityCreate(
+  taskId: string,
+  input: {
+    type: string;
+    message: string | null;
+    eventData?: Record<string, unknown> | null;
+  } = {
+    type: "created",
+    message: "Created through the public activity route",
+    eventData: { source: "integration-test" },
+  },
+) {
   const { app } = createApp();
   return app.request("/api/activity/create", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      taskId,
-      type: "created",
-      message: "Created through the public activity route",
-      eventData: { source: "integration-test" },
-    }),
+    body: JSON.stringify({ taskId, ...input }),
   });
 }
 
@@ -128,6 +134,53 @@ describe("legacy activity write repository", () => {
         .from(schema.taskActivityTable)
         .where(eq(schema.taskActivityTable.taskId, task.id)),
     ).toHaveLength(0);
+  });
+
+  it("returns the full persisted activity row from the public create route", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    await grantProjectManageAccess(member.user.id, project.id);
+    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
+    const task = await createLegacyTask(project.id, columns.todo.id, 1);
+    mockAuthenticatedSession(member.user);
+
+    const eventData = {
+      oldTitle: task.title,
+      newTitle: "Returned from public route",
+      source: "public-route-success-test",
+    };
+    const response = await requestActivityCreate(task.id, {
+      type: "title_changed",
+      message: "Title changed through the public route",
+      eventData,
+    });
+    expect(response.status).toBe(200);
+    const returned = await response.json();
+    const [persisted] = await db
+      .select()
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.taskId, task.id));
+    if (!persisted) throw new Error("expected persisted task activity");
+
+    expect(returned).toMatchObject({
+      id: expect.any(String),
+      taskId: task.id,
+      type: "title_changed",
+      userId: member.user.id,
+      content: "Title changed through the public route",
+      eventData,
+      externalUserName: null,
+      externalUserAvatar: null,
+      externalSource: null,
+      externalUrl: null,
+    });
+    expect(returned).toEqual({
+      ...persisted,
+      createdAt: persisted.createdAt.toISOString(),
+      updatedAt: persisted.updatedAt.toISOString(),
+    });
   });
 
   it("keeps a committed event's original actor and payload after archive and actor deactivation", async () => {
