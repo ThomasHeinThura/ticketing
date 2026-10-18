@@ -27,6 +27,7 @@ import {
   findLiveWorkItemSocketScope,
   findReachableLiveProject,
 } from "../../apps/api/src/ws/repository";
+import { addCustomer, buildTenant } from "./helpers/approval-fixtures";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -213,19 +214,38 @@ describe("current leaf repository reach", () => {
 
   it("defaults intake submission visibility from the requester's organization", async () => {
     const seeded = await seedIntake(`leaf-visibility-${randomUUID()}`);
-    for (const visibility of ["private", "organisation"] as const) {
+    const requesterTenant = await buildTenant(
+      `leaf-visibility-requester-${randomUUID()}`,
+    );
+    const requester = await addCustomer(requesterTenant);
+    expect(requester.orgId).not.toBe(seeded.customer.orgId);
+    // Opposite defaults distinguish requester identity from the project organization.
+    await db.insert(schema.organisationRequestTypeTable).values({
+      organisationId: requester.orgId,
+      requestTypeId: seeded.requestType.id,
+    });
+
+    for (const [requesterVisibility, tenantVisibility] of [
+      ["private", "organisation"],
+      ["organisation", "private"],
+    ] as const) {
       await db
         .update(schema.organisationTable)
-        .set({ defaultCustomerVisibility: visibility })
+        .set({ defaultCustomerVisibility: tenantVisibility })
         .where(eq(schema.organisationTable.id, seeded.customer.orgId));
+      await db
+        .update(schema.organisationTable)
+        .set({ defaultCustomerVisibility: requesterVisibility })
+        .where(eq(schema.organisationTable.id, requester.orgId));
       const reference = await submitAs(
         seeded,
-        seeded.customer,
-        `Visibility ${visibility}`,
+        requester,
+        `Visibility ${requesterVisibility}`,
       );
       const submission = await submissionRow(reference);
-      expect(submission.organisationId).toBe(seeded.customer.orgId);
-      expect(submission.customerVisibility).toBe(visibility);
+      expect(submission.organisationId).toBe(requester.orgId);
+      expect(submission.requesterId).toBe(requester.person.id);
+      expect(submission.customerVisibility).toBe(requesterVisibility);
     }
   });
 
