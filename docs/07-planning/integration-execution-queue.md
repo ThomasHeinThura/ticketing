@@ -1,3 +1,18 @@
+## Protected #838 acceptance; Carrier construction and verified next slices — 2026-10-18 01:12 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor /838 | DONE bounded first-user bootstrap statement ownership; mainbf11c6a9, protected01:10:48Z, all18checks/225PGfiles/3328tests/all5tasks and exact source-image proof. | Preserve authentic Luna/Sol provenance, optional CPU diagnostic failure, #231/NB1 residuals; not whole580/SIT. |
+| Luna / SAME Carrier791 | RUNNING bounded constructor/adapter correction; last executed39b4/c987 full96:79pass17fail/0not-run, source/CSS/fixtures conserved. Focus19passed; ten-observation diagnostic conserved. e8a/52ef proposal HELD unexecuted for concrete static defects. | Preserve all real negative controls and strict matcher/binder/reducer/composer; review frozen correction, full96/census/G3/current-main conservation, three ordinary and full independent Sol. |
+| Conductor /580 session hooks | LOCAL_VERIFIED exact two-file dirty slice on bf11 after base-identical normalFF; type9tasks(5cached), three complete PGfiles23/23, exact cleanup/conservation. | Source commit at current accepted base, fresh independent ordinary/Sol review, authentic publication, exact hosted/image gates. No acceptance yet. |
+| Conductor /580 invitation queries | LOCAL_VERIFIED controller plus new dedicated repository on bf11 after base-identical normalFF; type9tasks(5cached), three complete PGfiles36/36, exact cleanup/conservation. | Keep route/identity/activation/lock/email semantics; independent review/commit/publication/gates after acceptance order permits. Shared lock ownership remains separate unfinished work; no third PR opened. |
+| Conductor /whole580 | RUNNING; separate red unwired diagnostics2719/139paths/1506locations (session hooks) and2681/139paths/1487locations (invitation only). | Counts overlap and have different inputs; no unique-query/progress arithmetic. Finish actual conversions and reviewed fail-closed checker activation without exclusions or builder escape. |
+| Conductor /810 | BLOCKED actual223.2ms versus strict200 assignment budget. | Genuine Carrier772 integration or demonstrated cause repair; no unchanged retry/premature predecessor closure. |
+| Thomas /811+773 | WAITING_DECISION plus thirteen owning-review findings. | Three valuation/midnight/timer-timezone answers remain pending; do not guess or reopen settled decisions. |
+| Conductor /589 program | OPEN selected580/713/714/715/716/718 and remaining acceptance;717DONE. | Signed release→exact-digest laptop workflows→NONEMPTY backup/usable isolated restore→fresh audit→report/Hold after every selected unit accepted/equivalent/owner-deferred. |
+
+Older dated snapshots remain unchanged. Primary dirty5+1/source histories are preserved. No policy change, formal stage, UAT, production, waiver or functioning after-turn scheduler claim.
+
 ## Protected #836 acceptance; bootstrap and Carrier ownership — 2026-10-18 00:29 UTC
 
 | Owner / unit | Actual state | Next action / boundary |
