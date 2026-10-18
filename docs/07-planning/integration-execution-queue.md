@@ -1,3 +1,15 @@
+## Blocked first — SAME Carrier diagnostics; protected #844 accepted — 2026-10-18 08:05 UTC
+
+| Owner / unit | Actual state and evidence | Next action / boundary |
+| --- | --- | --- |
+| Luna / SAME Carrier #791 | BLOCKED on frozen `31fc00b9bf30e563711e080bba71c9495606b333`. Focused v14:2/2 actual connected tests passed (native0/35.429s),97 unselected. v13 remains adverse1/2 after empty helper-file packet assembly; TaskCard v12 exposed `DeleteExpression.expression` / unary-operand AST mismatch. | Root owns the unfiltered full99-test v15 run started around08:04; result pending. Preserve adverse history/controls; no acceptance until complete verification, conservation, reviews and gates. |
+| Conductor / accepted #844 | DONE bounded role-lock ownership. Main `2a043777056f07d29a7893481aa247ea49243692`, protected08:01:48Z, parents `c98f290022a7dcc4356a89bbe9f02bf6db2d8e9a` / `8ef01acf7e9af51a2f1a29505a9294ae353fad0e`, tree `a00334ab45c6f4bfb417b02db38662777c3e3703`. Current18/18 checks green; PG225/3329/all5, type9, unit12, G11 22, image passed. | Preserve bounded scope. Old224.4ms remains adverse history; current optional CPU diagnostic lacks app frames, with no causal repair claim. |
+| Luna / profile correlation | Private checker/test `184e6ee4`/`23612233` passed12 focused tests; bounded probe observed chunks on a different TID than their Profile header. | No hosted-cause or Carrier acceptance claim. |
+| Thomas / #811 and #773 | Thirteen owning findings remain; three previously asked valuation, midnight and timer-timezone questions unanswered. | Preserve settled decisions; no re-ask or guessed behavior. |
+| Conductor / #810 and #589 | #810 remains223.2ms vs strict200; #717 DONE. Whole580 and final release/SIT/backup/restore/audit unfinished. | Complete selected units and the existing release/recovery/audit sequence; no stage or production claim. |
+
+Dated checkpoint only. No waiver, whole580 completion, performance-cause claim or functioning after-turn scheduler.
+
 ## Blocked first — Carrier downstream proof join; protected #845 accepted — 2026-10-18 07:04 UTC
 
 | Owner / unit | Actual state and evidence | Next action / boundary |
