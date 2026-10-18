@@ -1,9 +1,13 @@
 import { createId } from "@paralleldrive/cuid2";
+import type { JsonValue } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import db from "../database";
 import type { Executor } from "../database/executor";
-import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
+import {
+  currentProjectReachPredicate,
+  currentResolvedIdentityPredicate,
+} from "../database/repositories/identity-scope.repository";
 import { projectTable, userPreferenceTable } from "../database/schema";
 import { SETTINGS_WRITE_LOCK_NAMESPACE } from "./whitelist";
 
@@ -47,6 +51,7 @@ export async function listReachableProjectFacts(
       and(
         inArray(projectTable.id, [...projectIds]),
         isNull(projectTable.deletedAt),
+        currentResolvedIdentityPredicate(identity, db),
         currentProjectReachPredicate(
           identity,
           projectTable.id,
@@ -59,7 +64,7 @@ export async function listReachableProjectFacts(
 }
 
 export async function listOwnSettingRows(identity: ResolvedIdentity) {
-  return await db
+  const rows = await db
     .select({
       scope: userPreferenceTable.scope,
       scopeId: userPreferenceTable.scopeId,
@@ -67,7 +72,18 @@ export async function listOwnSettingRows(identity: ResolvedIdentity) {
       value: userPreferenceTable.value,
     })
     .from(userPreferenceTable)
-    .where(ownRowsFilter(identity.personId));
+    .where(
+      and(
+        ownRowsFilter(identity.personId),
+        currentResolvedIdentityPredicate(identity, db),
+      ),
+    );
+  type OwnSettingRow = Omit<(typeof rows)[number], "value"> & {
+    value: JsonValue;
+  };
+  return rows.map(
+    (row): OwnSettingRow => ({ ...row, value: row.value as JsonValue }),
+  );
 }
 
 export async function lockOwnSettingsWrites(
@@ -183,6 +199,7 @@ export async function upsertOwnSettingRow(
       and(
         eq(projectTable.id, target.scopeId),
         isNull(projectTable.deletedAt),
+        currentResolvedIdentityPredicate(identity, executor),
         currentProjectReachPredicate(
           identity,
           projectTable.id,

@@ -1,9 +1,10 @@
-import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { BUILT_IN_ROLES, type ResolvedIdentity } from "@taskdesk/permissions";
 import {
   and,
   eq,
   exists,
   inArray,
+  isNull,
   ne,
   not,
   or,
@@ -15,6 +16,7 @@ import db from "..";
 import type { Executor } from "../executor";
 import {
   membershipTable,
+  organisationTable,
   personTable,
   roleTable,
   userTable,
@@ -69,6 +71,94 @@ export function currentInstanceAdminPredicate(
           eq(personTable.active, true),
         ),
       ),
+  );
+}
+
+/**
+ * Current persisted identity admission corresponding to the canonical facts captured by
+ * resolveIdentity. Caller-specific predicates use this beside their own resource check so a
+ * resolved snapshot cannot outlive person, account, organisation, or customer-role revocation.
+ */
+export function currentResolvedIdentityPredicate(
+  identity: ResolvedIdentity,
+  executor: Executor = db,
+) {
+  const currentPerson = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(userTable)
+      .innerJoin(personTable, eq(personTable.userId, userTable.id))
+      .where(
+        and(
+          eq(userTable.id, identity.userId),
+          eq(personTable.id, identity.personId),
+          eq(personTable.side, identity.side),
+          eq(personTable.active, true),
+          sql`coalesce(${userTable.banned}, false) = false`,
+          identity.side === "customer"
+            ? eq(personTable.organisationId, identity.organisationId)
+            : sql`true`,
+        ),
+      ),
+  );
+
+  if (identity.side === "staff") return currentPerson;
+  if (identity.reach.kind !== "organisation") return sql`false`;
+
+  const currentOrganisation = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(organisationTable)
+      .where(
+        and(
+          eq(organisationTable.id, identity.organisationId),
+          eq(organisationTable.active, true),
+          eq(organisationTable.portalAccess, true),
+          isNull(organisationTable.deletedAt),
+        ),
+      ),
+  );
+  const canonicalOwnMembership = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(membershipTable)
+      .innerJoin(roleTable, eq(roleTable.id, membershipTable.roleId))
+      .where(
+        and(
+          eq(membershipTable.personId, identity.personId),
+          eq(membershipTable.scope, "organisation"),
+          eq(membershipTable.scopeId, identity.organisationId),
+          eq(membershipTable.seesAll, false),
+          sql`length(${roleTable.id}) > 0`,
+          eq(roleTable.key, BUILT_IN_ROLES.customer.key),
+          eq(roleTable.scope, BUILT_IN_ROLES.customer.scope),
+          isNull(roleTable.workspaceId),
+          eq(roleTable.isSystem, true),
+          eq(roleTable.rank, BUILT_IN_ROLES.customer.rank),
+          eq(roleTable.capabilities, [...BUILT_IN_ROLES.customer.capabilities]),
+        ),
+      ),
+  );
+  const noOtherOrganisationMembership = not(
+    exists(
+      executor
+        .select({ one: sql`1` })
+        .from(membershipTable)
+        .where(
+          and(
+            eq(membershipTable.personId, identity.personId),
+            eq(membershipTable.scope, "organisation"),
+            ne(membershipTable.scopeId, identity.organisationId),
+          ),
+        ),
+    ),
+  );
+
+  return and(
+    currentPerson,
+    currentOrganisation,
+    canonicalOwnMembership,
+    noOtherOrganisationMembership,
   );
 }
 
