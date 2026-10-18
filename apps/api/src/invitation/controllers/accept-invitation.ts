@@ -1,8 +1,8 @@
 import db from "../../database";
 import { resolveIdentity } from "../../permissions/resolve-identity";
 import { WorkspaceRoleNotFoundError } from "../../workspace/controllers/workspace-membership-errors";
-import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
 import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
+import { lockWorkspaceRoleAssignment } from "../../workspace/workspace-role-assignment.repository";
 import {
   findInvitationForAccept,
   findInvitationRecipientMatch,

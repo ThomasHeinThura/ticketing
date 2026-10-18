@@ -2,9 +2,9 @@ import { statement } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
+import { lockWorkspaceRoleAssignment } from "../workspace-role-assignment.repository";
 import type { WorkspaceRoleRow } from "./list-workspace-roles";
 import { WorkspaceRoleNotFoundError } from "./workspace-membership-errors";
-import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 import {
   InsufficientPermissionToGrantError,
   InvalidPermissionResourceError,

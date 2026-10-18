@@ -10,8 +10,8 @@ import {
 } from "../../pending-action/credential-invalidation";
 import { revokeProjectCreatorGrantsForMember } from "../../project/project-creator-grant";
 import { deleteWorkspaceRoleDependents } from "../../workspace/controllers/delete-workspace-role-dependents";
-import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
 import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
+import { lockWorkspaceRoleAssignment } from "../../workspace/workspace-role-assignment.repository";
 
 import {
   formatBlockedWorkspacesMessage,
