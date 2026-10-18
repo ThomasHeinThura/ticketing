@@ -1,3 +1,16 @@
+## Blocked first — #810 accepted; SAME Carrier/#765 remain open — 2026-10-18 13:59 UTC
+
+| Owner / lane | Current state and evidence | Next action / boundary |
+| --- | --- | --- |
+| Conductor / protected #810 | ACCEPTED at main `01516b2e366c88356f8fe81158b5022a62d3e70c` (13:51:21 UTC); 18/18 required checks green, PG229 files/3,360 tests/all5, G11 22/22, applicable unit/type/gate/browser/G4/G8 and source-image checks green. Image:125 migrations, UID10001, healthy/live/ready200. | Preserve bounded acceptance. This does not complete whole #580, Carrier, or release acceptance. |
+| Conductor / #774 and #779 | GitHub marks both MERGED by ancestry through #810 at main0151. | Preserve the actual ancestry disposition; no separate merge or new component review is claimed. |
+| Test author / #765 regression conservation | OPEN. Candidate commit `fa15d1d8b468ea3211e45cdf28e67840e0faee0b`; complete seven-test file:6 pass/1 fail in5.505s. Failure: `findOrganisationDefaultCustomerVisibility is not a function`; current query is inline in the existing atomic transaction and the helper is not exported. | Do not add an export just for the test. Next revision must use a supported API/behavior or remove the direct-helper assertion only with exact existing-coverage evidence; then rerun the complete file and review normally. No #765 acceptance. |
+| Material adviser / SAME Carrier #791 | BLOCKED/unaccepted at frozen HEAD31fc; checker6a603e39/test12972cf5 focused3:1 pass/2 fail,99 not selected,0 skip/cancel,7.5495s. Pressed-loop ID mismatch7845 and effect-source closure remain; helper6829 fails. Fourteen frozen-complete leaves include unsound absence, not inventory loss. Sol material d31a080e is not approval. | Preserve failures and controls. No full102, G3/production, current-main composition, fresh reviews, current CI/image or Carrier acceptance exists. |
+| Thomas / #811 and #773 | Three previously asked owner questions remain pending; #717 is DONE. | Preserve settled decisions; do not guess or reopen them. |
+| Conductor / whole #580 and #589 | Whole-580 ownership/checker work and release/SIT/recovery/final audit remain open. Earlier3f5e 223.2ms failure is historical, not a current cause finding. | Complete bounded units under normal review and exact required gates; no stage-completion claim. |
+
+Dated checkpoint only. No waiver, whole-580/Carrier acceptance, production/UAT, release/SIT, nonempty-backup/usable-restore, final-audit, or stage-completion claim.
+
 ## Blocked first — Carrier #791 adverse; #850 accepted; #810 needs new-base composition — 2026-10-18 12:36 UTC
 
 | Owner / unit | Actual state and evidence | Next action / boundary |
