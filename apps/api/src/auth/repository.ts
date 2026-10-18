@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { JsonValue } from "@taskdesk/domain";
 import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
+import type { Executor } from "../database/executor";
 import { SETUP_TOKEN_SINGLETON_ID } from "../instance/setup-token";
 import { dbClockUtc } from "../utils/db-time";
 
@@ -96,6 +97,28 @@ export async function getFirstUserWorkspaceMembership(userId: string) {
     .from(schema.workspaceUserTable)
     .where(eq(schema.workspaceUserTable.userId, userId))
     .limit(1);
+}
+
+export async function updateSessionPortal(
+  executor: Executor,
+  sessionId: string,
+  portal: "agent" | "customer",
+): Promise<void> {
+  await executor
+    .update(schema.sessionTable)
+    .set({ portal })
+    .where(eq(schema.sessionTable.id, sessionId));
+}
+
+export async function updateSessionActiveOrganizationId(
+  executor: Executor,
+  sessionId: string,
+  activeOrganizationId: string,
+): Promise<void> {
+  await executor
+    .update(schema.sessionTable)
+    .set({ activeOrganizationId })
+    .where(eq(schema.sessionTable.id, sessionId));
 }
 
 export async function getActiveSessionForStepUp(
