@@ -18,7 +18,6 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
-import { assertCalendarUnused } from "../pending-action/deletion-targets";
 import {
   createPendingAction,
   requirePendingActionRequesterIdentity,
@@ -30,6 +29,7 @@ import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { ServiceCalendarVersionConflictError } from "./errors";
 import {
+  assertCalendarUnused,
   createCalendar,
   getCalendar,
   getCalendarUsage,

@@ -1,3 +1,16 @@
+## Blocked first — Carrier #791 adverse; #850 accepted; #810 needs new-base composition — 2026-10-18 12:36 UTC
+
+| Owner / unit | Actual state and evidence | Next action / boundary |
+| --- | --- | --- |
+| Luna / SAME Carrier #791 | BLOCKED/adverse on frozen `31fc…`; checker `6de82…` / test `b0e169…`, v35 selected 3: 0 pass / 3 fail, 99 not selected, 0 skip/cancel; scoped inputs conserved. Pure-helper closure, `bg-clip`/color and false-positive `present` base-oracle findings remain. Private `3adb…` / `4534…` candidate is unapplied and unaccepted. | Preserve current and historical controls; finish source-bound repair, full102/census/G3/browser/image/current-main review and exact CI. The older v6 scan (985/938/11,083) is from 4d/cb, not current 6de. No Carrier acceptance. |
+| Conductor / accepted #849 | DONE bounded PID/profile-ID correlation repair in the optional CPU-trace parser at main `173501e72aa92cb3241e4fd7c64dde86486e9a48`; 18 required checks, PG225/3,329/all5, G11 22/22 and source image passed. | Preserve the optional CPU diagnostic inner failure without a hosted empty-frame or performance-cause claim; do not extend this slice to whole580. |
+| Conductor / accepted #850 | DONE bounded calendar repository ownership at main `eab89b0fdc4ecb46ef3756eadd2bf2439682adc1`, parents `173501e72aa92cb3241e4fd7c64dde86486e9a48` / `bde45b495c365beb5472fef9df5cdff59de36139`, tree `093d7c2fe6917d3429ff73a1a16a6f4a5708449a`. All18 required checks passed; PG225/3,329/all5, type9, unit12, API121/872, UI61/325, web186/1,027, G11 22/22, browser64, G4 155+8, G8 19+1, gate1375/1395 with20 existing opt-in skips and image passed. | Preserve bounded scope. Optional CPU diagnostic had one inner failure; no causal performance claim. |
+| Conductor / #810 intake reach | RUNNING recompose against newly accepted eab. Old local `08a1ee99ac4356935ef37234deddb9ce86b18da7` is based on1735; its typecheck, PG12 files/158 tests, unit5 tests and reviews do not bind a new composition. Old G11223.2ms/strict200 remains adverse. | Recompose and conserve the exact overlap, then obtain fresh delta reviews and current exact-head CI/image evidence. No #774/#779 closure or performance-repair claim. |
+| Thomas / #811 and #773 | WAITING_DECISION; unpublished09bc spec alignment,13 owning findings and the three previously asked valuation / midnight / timer-timezone questions remain. | Await existing answers; do not re-ask settled decisions or infer behavior. |
+| Conductor / #589 and whole580 | OPEN; #717 DONE. Whole580/checker activation, Carrier, selected units and release acceptance remain unfinished. | Complete selected units, signed release, exact-digest SIT, NONEMPTY backup/usable isolated restore, fresh final Sol audit and report/Hold; no stage/UAT/production claim. |
+
+Dated factual checkpoint only. Preserve histories, adverse evidence and required gates. #849 and #850 are bounded accepted slices, not whole580 or release completion.
+
 ## Blocked first — Carrier source-model verification — 2026-10-18 10:14 UTC
 
 | Owner / unit | Actual state and evidence | Next action / boundary |
