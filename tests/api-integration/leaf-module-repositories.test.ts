@@ -23,6 +23,11 @@ import {
   insertWorkflowRule,
   updateWorkflowRuleColumn,
 } from "../../apps/api/src/workflow-rule/repository";
+import {
+  findLiveWorkItemSocketScope,
+  findReachableLiveProject,
+} from "../../apps/api/src/ws/repository";
+import { addCustomer, buildTenant } from "./helpers/approval-fixtures";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -30,12 +35,13 @@ import {
   grantProjectManageAccess,
   requireRow,
 } from "./helpers/fixtures";
+import { seedIntake, submissionRow, submitAs } from "./helpers/intake-http";
 
 beforeEach(async () => {
   await resetTestDatabase();
 });
 
-async function seedTask(projectId: string, columnId: string) {
+async function seedTask(projectId: string, columnId: string, number = 1) {
   return requireRow(
     await db
       .insert(schema.taskTable)
@@ -45,8 +51,8 @@ async function seedTask(projectId: string, columnId: string) {
         status: "to-do",
         columnId,
         priority: "medium",
-        number: 1,
-        position: 1,
+        number,
+        position: number,
       })
       .returning(),
     "seed leaf repository task",
@@ -206,6 +212,172 @@ describe("current leaf repository reach", () => {
     expect(await findCustomProviderIdToken("missing-user")).toBeNull();
   });
 
+  it("defaults intake submission visibility from the requester's organization", async () => {
+    const seeded = await seedIntake(`leaf-visibility-${randomUUID()}`);
+    const requesterTenant = await buildTenant(
+      `leaf-visibility-requester-${randomUUID()}`,
+    );
+    const requester = await addCustomer(requesterTenant);
+    expect(requester.orgId).not.toBe(seeded.customer.orgId);
+    // Opposite defaults distinguish requester identity from the project organization.
+    await db.insert(schema.organisationRequestTypeTable).values({
+      organisationId: requester.orgId,
+      requestTypeId: seeded.requestType.id,
+    });
+
+    for (const [requesterVisibility, tenantVisibility] of [
+      ["private", "organisation"],
+      ["organisation", "private"],
+    ] as const) {
+      await db
+        .update(schema.organisationTable)
+        .set({ defaultCustomerVisibility: tenantVisibility })
+        .where(eq(schema.organisationTable.id, seeded.customer.orgId));
+      await db
+        .update(schema.organisationTable)
+        .set({ defaultCustomerVisibility: requesterVisibility })
+        .where(eq(schema.organisationTable.id, requester.orgId));
+      const reference = await submitAs(
+        seeded,
+        requester,
+        `Visibility ${requesterVisibility}`,
+      );
+      const submission = await submissionRow(reference);
+      expect(submission.organisationId).toBe(requester.orgId);
+      expect(submission.requesterId).toBe(requester.person.id);
+      expect(submission.customerVisibility).toBe(requesterVisibility);
+    }
+  });
+
+  it("returns websocket scope only for live work items in currently reached projects", async () => {
+    const member = await createWorkspaceMember({ role: "member" });
+    const live = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const archived = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const deleted = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const unreached = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    await grantProjectManageAccess(member.user.id, live.project.id);
+    await grantProjectManageAccess(member.user.id, archived.project.id);
+    await grantProjectManageAccess(member.user.id, deleted.project.id);
+
+    const identity = await resolveIdentity({
+      userId: member.user.id,
+      credential: "session",
+    });
+    if (!identity) throw new Error("test caller identity did not resolve");
+
+    const now = new Date();
+    const type = requireRow(
+      await db
+        .insert(schema.workItemTypeTable)
+        .values({
+          workspaceId: member.workspace.id,
+          key: `socket-type-${randomUUID()}`,
+          name: "Socket item",
+          category: "delivery",
+        })
+        .returning(),
+      "socket work-item type",
+    );
+    const template = requireRow(
+      await db
+        .insert(schema.stateTemplateTable)
+        .values({
+          workspaceId: member.workspace.id,
+          key: `socket-state-${randomUUID()}`,
+          name: "Open",
+          group: "backlog",
+        })
+        .returning(),
+      "socket state template",
+    );
+    async function seedSocketItem(
+      projectId: string,
+      number: number,
+      overrides: Partial<typeof schema.workItemTable.$inferInsert> = {},
+    ) {
+      const state = requireRow(
+        await db
+          .insert(schema.stateTable)
+          .values({
+            projectId,
+            stateTemplateId: template.id,
+            isDefault: false,
+          })
+          .returning(),
+        "socket state",
+      );
+      const key = `SOCK-${randomUUID().slice(0, 8)}`;
+      await db.insert(schema.workItemTable).values({
+        workspaceId: member.workspace.id,
+        projectId,
+        typeId: type.id,
+        stateId: state.id,
+        number,
+        key,
+        title: "Socket scope test item",
+        createdAt: now,
+        updatedAt: now,
+        ...overrides,
+      });
+      return key;
+    }
+
+    const liveKey = await seedSocketItem(live.project.id, 1);
+    const archivedItemKey = await seedSocketItem(live.project.id, 2, {
+      archivedAt: now,
+    });
+    const deletedItemKey = await seedSocketItem(live.project.id, 3, {
+      deletedAt: now,
+    });
+    const archivedProjectKey = await seedSocketItem(archived.project.id, 1);
+    const deletedProjectKey = await seedSocketItem(deleted.project.id, 1);
+    const unreachedProjectKey = await seedSocketItem(unreached.project.id, 1);
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: now })
+      .where(eq(schema.projectTable.id, archived.project.id));
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: now, purgeAfter: now })
+      .where(eq(schema.projectTable.id, deleted.project.id));
+
+    expect(
+      await findReachableLiveProject(identity, live.project.id),
+    ).toMatchObject({ workspaceId: member.workspace.id });
+    expect(
+      await findReachableLiveProject(identity, archived.project.id),
+    ).toBeUndefined();
+    expect(
+      await findReachableLiveProject(identity, deleted.project.id),
+    ).toBeUndefined();
+    expect(
+      await findReachableLiveProject(identity, unreached.project.id),
+    ).toBeUndefined();
+
+    expect(await findLiveWorkItemSocketScope(identity, liveKey)).toMatchObject({
+      projectId: live.project.id,
+      workspaceId: member.workspace.id,
+    });
+    for (const key of [
+      archivedItemKey,
+      deletedItemKey,
+      archivedProjectKey,
+      deletedProjectKey,
+      unreachedProjectKey,
+      "SOCK-missing",
+    ]) {
+      expect(await findLiveWorkItemSocketScope(identity, key)).toBeUndefined();
+    }
+  });
+
   it("keeps positive comment/link reads and blocks content and DML after persisted reach revocation", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
@@ -219,21 +391,68 @@ describe("current leaf repository reach", () => {
     if (!identity) throw new Error("test caller identity did not resolve");
 
     const task = await seedTask(project.id, columns.todo.id);
-    await db.insert(schema.taskActivityTable).values({
-      taskId: task.id,
-      type: "comment",
-      userId: member.user.id,
-      content: "current scoped comment body",
-    });
+    const siblingTask = await seedTask(project.id, columns.todo.id, 2);
+    await db.insert(schema.taskActivityTable).values([
+      {
+        taskId: task.id,
+        type: "comment",
+        userId: member.user.id,
+        content: "second comment",
+        createdAt: new Date("2026-01-02T00:00:00.000Z"),
+      },
+      {
+        taskId: task.id,
+        type: "comment",
+        userId: member.user.id,
+        content: "first comment",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+      {
+        taskId: siblingTask.id,
+        type: "comment",
+        userId: member.user.id,
+        content: "sibling-task comment",
+      },
+      {
+        taskId: task.id,
+        type: "task",
+        userId: member.user.id,
+        content: "not a comment",
+      },
+      { taskId: task.id, type: "comment", userId: null, content: "orphan" },
+      {
+        taskId: task.id,
+        type: "comment",
+        userId: member.user.id,
+        content: null,
+      },
+    ]);
     await db.insert(schema.externalLinkTable).values({
       taskId: task.id,
       resourceType: "issue",
-      externalId: "external-1",
-      url: "https://example.test/issue/1",
+      externalId: "external-own",
+      url: "https://example.test/issue/own",
+    });
+    await db.insert(schema.externalLinkTable).values({
+      taskId: siblingTask.id,
+      resourceType: "issue",
+      externalId: "external-sibling",
+      url: "https://example.test/issue/sibling",
     });
 
-    expect(await listTaskCommentRows(identity, task.id)).toHaveLength(1);
-    expect(await listExternalLinksByTask(identity, task.id)).toHaveLength(1);
+    const comments = await listTaskCommentRows(identity, task.id);
+    expect(comments.map((row) => row.content)).toEqual([
+      "first comment",
+      "second comment",
+    ]);
+    expect(comments[0]).toMatchObject({
+      taskId: task.id,
+      userId: member.user.id,
+      userName: member.user.name,
+      content: "first comment",
+    });
+    const links = await listExternalLinksByTask(identity, task.id);
+    expect(links.map((row) => row.externalId)).toEqual(["external-own"]);
     expect(await findColumnById(identity, columns.todo.id)).toBeDefined();
 
     const [person] = await db
