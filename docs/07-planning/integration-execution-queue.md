@@ -1,3 +1,15 @@
+## Blocked first — Carrier source-model verification — 2026-10-18 10:14 UTC
+
+| Owner / unit | Actual state and evidence | Next action / boundary |
+| --- | --- | --- |
+| Luna / SAME Carrier #791 | RUNNING acceptance repair. Current dirty checker a8ba4b1d/test a307c6cf at committed31fc00b9. v23:2/2 focused pass; broader v24:6/8 pass, two supported forwarding/popup positives fail,93 declarations unselected. All scoped inputs conserved. | Restore the exact supported transfer contracts while retaining whole-callable mutation/default rejection. Then complete full101, canonical G3, browser/image, current-main composition, fresh required ordinary panel/further Sol and exact CI. No expectation waiver or Carrier acceptance. |
+| Conductor / source diagnostic | Native0 v5 observed all358 paths/43 tokens;985 occurrence union,938 unresolved,11,089 frozen requirements (10,389 OPEN/700 complete). Original seven-field projection hold preserved; no projection problems. | Diagnostic only. Retain unknown regions and exact identities. ProjectLayout still has17 affected occurrences/498 requirements at an unresolved nested insertion boundary. No aggregate progress or product-bug count. |
+| Conductor / accepted #847 | DONE records-only protected merge8d41d07e at08:31:28Z. | Preserve bounded scope; scope-skipped product steps were not runtime passes. |
+| Thomas / #811 and #773 | WAITING_DECISION:13 owning findings; the three previously asked valuation, midnight and timer-timezone questions remain pending. | Await answers without re-asking settled decisions or inventing behavior. |
+| Conductor / #810 and #589 | #810 BLOCKED at223.2ms versus strict200; #717 DONE. Whole580 and release/SIT/recovery/audit unfinished. | Finish selected units, signed combined release, exact-digest laptop HTTPS SIT, NONEMPTY backup/usable isolated restore, fresh final independent Sol audit, report/Hold. |
+
+Dated checkpoint only. Earlier full99 and canonical token-gate failures remain adverse history. No full101, stage, mission, UAT, production, waiver or after-turn scheduler acceptance.
+
 ## Blocked first — SAME Carrier diagnostics; protected #844 accepted — 2026-10-18 08:05 UTC
 
 | Owner / unit | Actual state and evidence | Next action / boundary |
