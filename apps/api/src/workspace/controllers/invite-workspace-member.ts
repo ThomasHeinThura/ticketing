@@ -12,6 +12,7 @@ import {
   insertWorkspaceInvitation,
   refreshWorkspaceInvitation,
 } from "../workspace-invitation.repository";
+import { lockWorkspaceRoleAssignment } from "../workspace-role-assignment.repository";
 import {
   InvitationAlreadyPendingError,
   InvitationLimitReachedError,
@@ -21,7 +22,6 @@ import {
   UserAlreadyMemberError,
   WorkspaceRoleNotFoundError,
 } from "./workspace-membership-errors";
-import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 /** Matches better-auth's own default (`crud-invites.mjs`:
  * `getDate(ctx.context.orgOptions.invitationExpiresIn || 3600 * 48, "sec")`),
