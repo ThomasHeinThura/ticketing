@@ -1,3 +1,17 @@
+## Blocked first — Carrier downstream proof join; protected #845 accepted — 2026-10-18 07:04 UTC
+
+| Owner / unit | Actual state and evidence | Next action / boundary |
+| --- | --- | --- |
+| Luna / SAME Carrier #791 | BLOCKED: checker d22fc9be/test01ac5a37,98 static declarations; focused1 failed,97 not selected,0 skip/cancel. Subsequent conserved private diagnostic accepts map admission/effect inventory/native type/default-library method and retains map/IIFE transitions, but leaves2 OPEN theme requirements and no pair. TaskCard proposal unapplied. | Diagnose authentic downstream paint/proof join; preserve all controls. Complete focused/full/census/G3/current-main conservation, required ordinary panel and further full independent Sol before acceptance. |
+| Conductor / accepted #845 | DONE bounded role-list repository ownership at main9d52ee4e,07:01:56Z; exact publication6c8b4c92/treef1078ae9,18 required checks,PG225/3329/all5,G1122/browser64 and healthy isolated source image74442af3 accepted. | Preserve fresh independent Luna/further Sol evidence, own-note-only publication and optional CPU adverse result. Whole580 remains unfinished. |
+| Conductor / #844 | HELD at0a3a8dc2: requiredG11 actual21pass1fail/assignment224.4ms strict<200. PG225/3329/all5 and current image passed. | No unchanged rerun/waiver/merge. Legitimate accepted-main composition requires source conservation, independent delta/further Sol review and all current gates. |
+| Luna / optional CPU diagnostic | Controlled about:blank probe1Profile/98chunks9733samples; samePID/source/ID but differentTIDs split the current key. Within bounds/all cleanup. | Verify primary-source identity contract and fail-closed association design; no accepted fix or hosted/performance cause claim. |
+| Thomas / #811 and #773 | WAITING_DECISION; local09bc clean/unpushed,13 owning findings open; three earlier valuation/midnight/timer-timezone questions pending. | Await answers without reopening settled decisions or guessing behavior. |
+| Conductor / #810 and whole580 | #810 BLOCKED223.2ms strict200; whole580 source conversion and reviewed gate activation unfinished. | Continue genuine Carrier/#772 integration or evidence-backed repair; no premature predecessor closure. |
+| Conductor / #589 program | OPEN; #717 DONE. | Selected-unit acceptance → signed combined release → exact-digest laptop HTTPS SIT → consistent NONEMPTY backup/usable isolated restore → fresh final Sol audit → report/Hold. |
+
+Dated checkpoint only. Preserve primary dirty5+1, histories, strict gates and bounded runtime ownership; no stage/UAT/production/waiver or functioning after-turn scheduler claim.
+
 ## Blocked first — Carrier #791; protected #842 accepted, role-lock slice unvalidated — 2026-10-18 05:42 UTC
 
 | Owner / unit | State and exact evidence | Next action / boundary |
