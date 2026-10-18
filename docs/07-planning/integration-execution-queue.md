@@ -8,7 +8,7 @@
 | Thomas / #811 and #773 | WAITING_DECISION:13 owning findings; the three previously asked valuation, midnight and timer-timezone questions remain pending. | Await answers without re-asking settled decisions or inventing behavior. |
 | Conductor / #810 and #589 | #810 BLOCKED at223.2ms versus strict200; #717 DONE. Whole580 and release/SIT/recovery/audit unfinished. | Finish selected units, signed combined release, exact-digest laptop HTTPS SIT, NONEMPTY backup/usable isolated restore, fresh final independent Sol audit, report/Hold. |
 
-Dated checkpoint only. Earlier full99 and canonical token-gate failures remain adverse history. No full101, stage, mission, UAT, production, waiver or after-turn scheduler acceptance.
+Dated checkpoint only. Earlier full99 and canonical contrast source-gate failures remain adverse history; token discipline passed. No full101, stage, mission, UAT, production, waiver or after-turn scheduler acceptance.
 
 ## Blocked first — SAME Carrier diagnostics; protected #844 accepted — 2026-10-18 08:05 UTC
 
