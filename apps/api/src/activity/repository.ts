@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
@@ -54,8 +55,11 @@ export async function insertTaskActivityForIdentity(
 ) {
   const selectedActivity = executor
     .select({
+      id: sql`${sql.param(createId(), taskActivityTable.id)}`.as("id"),
       taskId: taskTable.id,
       type: sql`${sql.param(values.type, taskActivityTable.type)}`.as("type"),
+      createdAt: sql`now()`.as("createdAt"),
+      updatedAt: sql`now()`.as("updatedAt"),
       userId: sql`${sql.param(values.userId, taskActivityTable.userId)}`.as(
         "userId",
       ),
