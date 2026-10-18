@@ -15,7 +15,6 @@ import {
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
-import { eq } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
 import { authConfigurationVersion } from "./auth/configuration-version";
 import { loadLocalFactorState } from "./auth/local-factor-service";
@@ -31,8 +30,10 @@ import {
   getStoredAuthPluginConfigRows,
   lockFirstUserPromotion,
   promoteFirstAuthUser,
+  updateSessionActiveOrganizationId,
+  updateSessionPortal,
 } from "./auth/repository";
-import db, { schema } from "./database";
+import db from "./database";
 import {
   bindTwoFactorOidcSession,
   identityOidcPlugin,
@@ -1010,10 +1011,7 @@ function createAuth(
             ? currentTotpEnrollmentTransaction()
             : null;
         const sessionWriter = totpTransaction ?? db;
-        await sessionWriter
-          .update(schema.sessionTable)
-          .set({ portal })
-          .where(eq(schema.sessionTable.id, newSession.session.id));
+        await updateSessionPortal(sessionWriter, newSession.session.id, portal);
 
         if (factorVerifiedEndpoint) {
           const factorCookie = ctx.context.createAuthCookie("two_factor");
@@ -1082,10 +1080,11 @@ function createAuth(
           const activeWorkspaceId = workspaceMember[0]?.workspaceId || null;
 
           if (activeWorkspaceId) {
-            await sessionWriter
-              .update(schema.sessionTable)
-              .set({ activeOrganizationId: activeWorkspaceId })
-              .where(eq(schema.sessionTable.id, newSession.session.id));
+            await updateSessionActiveOrganizationId(
+              sessionWriter,
+              newSession.session.id,
+              activeWorkspaceId,
+            );
           }
         }
       }),
