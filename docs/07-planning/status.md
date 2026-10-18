@@ -1,4 +1,4 @@
-## PR840 PostgreSQL setup failure; Carrier full96 diagnosis — 2026-10-18 03:24 UTC
+## PR840 PostgreSQL setup failure; Carrier full96 diagnosis — 2026-10-18 03:22 UTC
 
 **Blocked first:** SAME Carrier C remains unaccepted at committed `31fc00b9bf30e563711e080bba71c9495606b333`. Frozen checker `bf5aeb7dffd5487d21bae81e7b67b92879e25f3e5857394d80980421d67264a7` / test `f6b6f348dedd0e6d19b5432f0c2312325aee19c52bbfb80c6d6f18685f994826` completed all96 tests:91 passed,5 failed,0 skipped/cancelled/not-run,native1/824.107s. The failures are TaskCard selected-state guard ownership, Menu highlighted surface, List physical-state/placement metadata, Profile icon backdrop, and the direct Gantt icon context. Source/manifest, four CSS inputs and empty final fixture inventory were conserved. The earlier focused27 result26pass1fail was partial verification, not full acceptance. A subsequent native0/198.331s diagnostic used all358 collected production source paths and retained five target occurrence graphs with no synthetic fixtures/errors and the same conservation. It does not clear the failed suite.
 

@@ -1,4 +1,4 @@
-## PR840 setup failure and Carrier91/96 checkpoint — 2026-10-18 03:24 UTC
+## PR840 setup failure and Carrier91/96 checkpoint — 2026-10-18 03:22 UTC
 
 | Owner / unit | State and exact evidence | Next action / boundary |
 | --- | --- | --- |
