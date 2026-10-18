@@ -1,3 +1,18 @@
+## PR840 setup failure and Carrier91/96 checkpoint — 2026-10-18 03:22 UTC
+
+| Owner / unit | State and exact evidence | Next action / boundary |
+| --- | --- | --- |
+| Conductor / accepted839 | DONE records-only; maina6b3d7c5, protected01:27:30Z, factual review/all18 current checks. | Preserve838 source-bound runtime; skipped product steps are not new passes. |
+| Conductor /840 session hooks | WAITING_CI atb9040a46; source5e0 has fresh ordinary/Sol clearance, current image verified; FULL39091277201 PG failed setup55P03/task,224/225files and3327/3328tests passed. | Diagnose actual project fixture/subscriber/reset completion, then cause-supported repair and current reviews/CI. No unchanged rerun or merge. Hosted holder unknown. |
+| Conductor /580 invitation | BLOCKED on actual840 acceptance; owned tracked+untracked diff preserved atbf11, uncommitted. | Compose actual accepted main with exact conservation, commit/review/publish/current gates. Existing old local type9/PG36 is not new-source acceptance. |
+| Luna/material adviser / SAME Carrier791 | RUNNING bounded repair; frozenbf5a/f6b6 full96 actual91pass5fail/0skipcancel; one complete-input358-path production diagnostic native0. | Preserve actual paint and closed identity controls; repair proven source/projection defects, resolve finite Menu/icon premises. Then full96/census/G3/main conservation/three ordinary/full independent Sol. |
+| Conductor /whole580 | RUNNING; ownership/checker activation remains unfinished. | Finish actual conversions and reviewed fail-closed gate; no baseline, exclusion or overlapping-count arithmetic. |
+| Conductor /810 | BLOCKED actual223.2ms versus strict200 assignment. | Genuine Carrier772 integration or demonstrated cause repair; no unchanged retry/premature774/779 closure. |
+| Thomas /811+773 | WAITING_DECISION plus thirteen owning findings. | Three valuation/midnight/timer-timezone answers remain pending; retain settled decisions. |
+| Conductor /589 program | OPEN selected integration and final acceptance;717DONE. | Signed combined release→exact-digest laptop HTTPS workflows→NONEMPTY backup/usable isolated restore→fresh final audit→report/Hold. |
+
+The dated status carries source-bound counts and limits. Primary dirty5+1 and all histories remain preserved. Root owns the sole local heavy window and at most two active children. No stage/UAT/production/waiver or working after-turn scheduler claim.
+
 ## Protected #838 acceptance; Carrier construction and verified next slices — 2026-10-18 01:12 UTC
 
 | Owner / unit | Actual state | Next action / boundary |
