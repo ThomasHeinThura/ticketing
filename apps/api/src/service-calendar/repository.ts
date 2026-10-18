@@ -37,6 +37,40 @@ type MaterializedCalendar = Omit<
   "windows" | "holidays"
 > & { windows: JsonValue; holidays: JsonValue };
 
+/**
+ * CAL-9: the single definition of "in use", shared by the deletion request
+ * (service-calendar route) and its approval recheck.
+ */
+export async function assertCalendarUnused(
+  tx: Pick<typeof db, "select">,
+  workspaceId: string,
+  calendarId: string,
+) {
+  const [projectReference] = await tx
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.workspaceId, workspaceId),
+        eq(projectTable.serviceCalendarId, calendarId),
+      ),
+    )
+    .limit(1);
+  const [policyReference] = await tx
+    .select({ id: slaPolicyVersionTable.id })
+    .from(slaPolicyVersionTable)
+    .where(
+      and(
+        eq(slaPolicyVersionTable.workspaceId, workspaceId),
+        eq(slaPolicyVersionTable.calendarId, calendarId),
+      ),
+    )
+    .limit(1);
+  if (projectReference || policyReference) {
+    throw new HTTPException(409, { message: "service_calendar_in_use" });
+  }
+}
+
 function materializeCalendarRows(
   rows: (typeof serviceCalendarTable.$inferSelect)[],
 ): MaterializedCalendar[] {
