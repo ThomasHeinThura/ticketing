@@ -212,7 +212,7 @@ describe("current notification reach and preference", () => {
       evaluateCurrentNotificationReachAndPreference(tx, {
         ...delivery,
         payload: {
-          id: eventId,
+          ...(eventId === undefined ? {} : { id: eventId }),
           kind: delivery.eventKind,
           scope: {
             workspaceId: delivery.workspaceId,

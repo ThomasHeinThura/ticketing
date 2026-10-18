@@ -1,13 +1,11 @@
-import { eq } from "drizzle-orm";
-import db from "../../database";
-import { cannedResponseTable } from "../../database/schema";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { listCannedResponsesForWorkItem } from "../repository";
 
-export async function listCannedResponses(workspaceId: string) {
-  return db
-    .select()
-    .from(cannedResponseTable)
-    .where(eq(cannedResponseTable.workspaceId, workspaceId))
-    .orderBy(cannedResponseTable.name);
+export async function listCannedResponses(
+  identity: ResolvedIdentity,
+  workItemKey: string,
+) {
+  return listCannedResponsesForWorkItem(identity, workItemKey);
 }
 
 export default listCannedResponses;

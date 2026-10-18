@@ -28,6 +28,7 @@ import { requireApiKeyPermissionScope } from "../utils/require-api-key-permissio
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { ServiceCalendarVersionConflictError } from "./errors";
 import {
   createCalendar,
   getCalendar,
@@ -35,7 +36,6 @@ import {
   getCalendarWorkspace,
   importCalendarHolidays,
   listCalendars,
-  ServiceCalendarVersionConflictError,
   updateCalendar,
 } from "./repository";
 import {

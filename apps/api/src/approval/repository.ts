@@ -232,13 +232,18 @@ export async function markDueApprovalReminderSent(
 }
 
 /** Lock one bounded batch and run each state/event writer inside the same transaction. */
-export async function withDueApprovalRows<T>(
+type DueApprovalRowResult = "expired" | "reminded" | "unchanged";
+
+export async function withDueApprovalRows(
   limit: number,
-  process: (tx: Transaction, row: DueApprovalRow) => Promise<T>,
-): Promise<T[]> {
+  process: (
+    tx: Transaction,
+    row: DueApprovalRow,
+  ) => Promise<DueApprovalRowResult>,
+): Promise<DueApprovalRowResult[]> {
   return db.transaction(async (tx) => {
     const rows = await selectDueApprovalRows(tx, limit);
-    const results: T[] = [];
+    const results: DueApprovalRowResult[] = [];
     for (const row of rows) results.push(await process(tx, row));
     return results;
   });

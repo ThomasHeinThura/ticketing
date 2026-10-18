@@ -302,39 +302,40 @@ const view = apiRouter()
   .openapi(listViewsRoute, async (c) => {
     const { workspaceId } = c.req.valid("query");
     const personId = await resolveCallerPersonId(c.get("userId"));
-    return c.json(
+    const response: z.infer<typeof reachableSavedViewListSchema> =
       await listViews(
         workspaceId,
         personId,
         c.get("userId"),
         await listReachOf(c).reachableProjectIds([workspaceId]),
-      ),
-      200,
-    );
+      );
+    return c.json(response, 200);
   })
   .openapi(createViewRoute, async (c) => {
     const body = c.req.valid("json");
     const userId = c.get("userId") as string;
     const personId = await resolveCallerPersonId(userId);
     const actor = savedViewAuditActor(userId, c.get("apiKey")?.id);
-    return c.json(
-      await createView(
-        body,
-        personId,
-        userId,
-        actor,
-        c.get("apiKey") as ApiKeyPermissionScope | undefined,
-        listReachOf(c),
-      ),
-      200,
+    const response: z.infer<typeof savedViewSchema> = await createView(
+      body,
+      personId,
+      userId,
+      actor,
+      c.get("apiKey") as ApiKeyPermissionScope | undefined,
+      listReachOf(c),
     );
+    return c.json(response, 200);
   })
   .openapi(getViewRoute, async (c) => {
     const { id } = c.req.valid("param");
     const userId = c.get("userId");
     const personId = await resolveCallerPersonId(userId);
-    const view = await getView(id, personId, userId);
-    return c.json(view, 200);
+    const response: z.infer<typeof savedViewSchema> = await getView(
+      id,
+      personId,
+      userId,
+    );
+    return c.json(response, 200);
   })
   .openapi(updateViewRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -342,17 +343,15 @@ const view = apiRouter()
     const userId = c.get("userId");
     const personId = await resolveCallerPersonId(userId);
     const actor = savedViewAuditActor(userId, c.get("apiKey")?.id);
-    return c.json(
-      await updateView(
-        id,
-        body,
-        personId,
-        userId,
-        actor,
-        c.get("apiKey") as ApiKeyPermissionScope | undefined,
-      ),
-      200,
+    const response: z.infer<typeof savedViewSchema> = await updateView(
+      id,
+      body,
+      personId,
+      userId,
+      actor,
+      c.get("apiKey") as ApiKeyPermissionScope | undefined,
     );
+    return c.json(response, 200);
   })
   .openapi(pinViewRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -369,15 +368,16 @@ const view = apiRouter()
       impersonatedBy?: string | null;
     } | null;
     const personId = await resolveCallerPersonId(userId);
-    const result = await runSavedView({
-      id,
-      personId,
-      userId,
-      apiKey: c.get("apiKey") as ApiKey | undefined,
-      impersonatedBy: session?.impersonatedBy,
-      limit: query.limit,
-      cursor: query.cursor,
-    });
+    const result: z.infer<typeof workItemListResponseSchema> =
+      await runSavedView({
+        id,
+        personId,
+        userId,
+        apiKey: c.get("apiKey") as ApiKey | undefined,
+        impersonatedBy: session?.impersonatedBy,
+        limit: query.limit,
+        cursor: query.cursor,
+      });
     return c.json(result, 200);
   })
   .openapi(countViewRoute, async (c) => {

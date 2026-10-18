@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import type { FormSchema, FormValue } from "@taskdesk/domain";
+import type { FormSchema, FormValue, JsonValue } from "@taskdesk/domain";
 import {
   formatSubmissionReference,
   parseSubmissionReference,
@@ -66,6 +66,68 @@ type RequestTypeInput = {
   position: number;
 };
 
+type MaterializedRequestType<T extends { formSchema: unknown }> = Omit<
+  T,
+  "formSchema"
+> & { formSchema: JsonValue };
+type MaterializedRequestTypeVersion<T extends { formSchema: unknown }> = Omit<
+  T,
+  "formSchema"
+> & { formSchema: JsonValue };
+type MaterializedSubmission<T extends { formData: unknown }> = Omit<
+  T,
+  "formData"
+> & { formData: JsonValue };
+type MaterializedWorkItemDescription<T extends { description: unknown }> = Omit<
+  T,
+  "description"
+> & { description: JsonValue | null };
+
+function materializeRequestType<T extends { formSchema: unknown }>(
+  row: T,
+): MaterializedRequestType<T> {
+  return { ...row, formSchema: row.formSchema as JsonValue };
+}
+
+function materializeRequestTypeVersion<T extends { formSchema: unknown }>(
+  row: T,
+): MaterializedRequestTypeVersion<T> {
+  return { ...row, formSchema: row.formSchema as JsonValue };
+}
+
+function materializeSubmission<T extends { formData: unknown }>(
+  row: T,
+): MaterializedSubmission<T> {
+  return { ...row, formData: row.formData as JsonValue };
+}
+
+function materializeWorkItemDescription<T extends { description: unknown }>(
+  row: T,
+): MaterializedWorkItemDescription<T> {
+  return { ...row, description: row.description as JsonValue | null };
+}
+
+function materializeSubmissionBundle<
+  T extends {
+    submission: { formData: unknown };
+    requestType: { formSchema: unknown };
+    version: { formSchema: unknown };
+  },
+>(
+  row: T,
+): Omit<T, "submission" | "requestType" | "version"> & {
+  submission: MaterializedSubmission<T["submission"]>;
+  requestType: MaterializedRequestType<T["requestType"]>;
+  version: MaterializedRequestTypeVersion<T["version"]>;
+} {
+  return {
+    ...row,
+    submission: materializeSubmission(row.submission),
+    requestType: materializeRequestType(row.requestType),
+    version: materializeRequestTypeVersion(row.version),
+  };
+}
+
 export async function requestTypeWorkspace(id: string) {
   const [row] = await db
     .select({
@@ -79,7 +141,7 @@ export async function requestTypeWorkspace(id: string) {
 }
 
 export async function listRequestTypes(workspaceId: string) {
-  return db
+  const rows = await db
     .select()
     .from(schema.requestTypeTable)
     .where(eq(schema.requestTypeTable.workspaceId, workspaceId))
@@ -87,6 +149,7 @@ export async function listRequestTypes(workspaceId: string) {
       asc(schema.requestTypeTable.position),
       asc(schema.requestTypeTable.id),
     );
+  return rows.map(materializeRequestType);
 }
 
 export async function getRequestType(id: string, workspaceId?: string) {
@@ -108,7 +171,10 @@ export async function getRequestType(id: string, workspaceId?: string) {
     .from(schema.requestTypeVersionTable)
     .where(eq(schema.requestTypeVersionTable.requestTypeId, id))
     .orderBy(desc(schema.requestTypeVersionTable.number));
-  return { ...row, versions };
+  return {
+    ...materializeRequestType(row),
+    versions: versions.map(materializeRequestTypeVersion),
+  };
 }
 
 export async function createRequestType(
@@ -139,7 +205,7 @@ export async function createRequestType(
     });
     return created;
   });
-  return row;
+  return materializeRequestType(row);
 }
 
 export async function updateRequestType(
@@ -201,7 +267,7 @@ export async function updateRequestType(
       before: { version: current.version },
       after: { version: row.version, changedFields: Object.keys(input).sort() },
     });
-    return row;
+    return materializeRequestType(row);
   });
 }
 
@@ -419,7 +485,10 @@ export async function publishRequestType(id: string, actorId: string) {
         version: version.number,
       },
     });
-    return { requestType: published, version };
+    return {
+      requestType: materializeRequestType(published),
+      version: materializeRequestTypeVersion(version),
+    };
   });
 }
 
@@ -437,7 +506,7 @@ export async function setRequestTypePublished(
       .limit(1);
     if (!current)
       throw new HTTPException(404, { message: "Request type not found" });
-    if (current.published === published) return current;
+    if (current.published === published) return materializeRequestType(current);
     if (published) {
       const [latest] = await tx
         .select()
@@ -480,7 +549,7 @@ export async function setRequestTypePublished(
       before: { published: current.published, version: current.version },
       after: { published, version: row.version },
     });
-    return row;
+    return materializeRequestType(row);
   });
 }
 
@@ -620,7 +689,12 @@ export async function portalCatalogue(organisationId: string, query = "") {
           (groupOrder.get(b.type.group) ?? 0) ||
         a.type.position - b.type.position ||
         a.type.id.localeCompare(b.type.id),
-    );
+    )
+    .map((row) => ({
+      ...row,
+      type: materializeRequestType(row.type),
+      version: materializeRequestTypeVersion(row.version),
+    }));
 }
 
 export async function createSubmission(input: {
@@ -812,7 +886,10 @@ export async function createSubmission(input: {
     }
     return created;
   });
-  return { ...submission, ref: formatSubmissionReference(submission.number) };
+  return {
+    ...materializeSubmission(submission),
+    ref: formatSubmissionReference(submission.number),
+  };
 }
 
 function paragraphDocument(text: string) {
@@ -1331,7 +1408,11 @@ export async function markSubmissionDuplicate(
         source: "implicit",
       })
       .onConflictDoNothing();
-    return { ref, state: updated.state, workItem: target.item };
+    return {
+      ref,
+      state: updated.state,
+      workItem: materializeWorkItemDescription(target.item),
+    };
   });
 }
 
@@ -1523,15 +1604,24 @@ export async function findSubmission(
       left.createdAt.localeCompare(right.createdAt),
     );
   }
-  return { ...row, ref, messages };
+  return { ...materializeSubmissionBundle(row), ref, messages };
 }
+
+type PortalSubmissionSource = Omit<
+  Awaited<ReturnType<typeof findSubmission>>,
+  "submission" | "version"
+> & {
+  submission: typeof schema.submissionTable.$inferSelect;
+  version: typeof schema.requestTypeVersionTable.$inferSelect;
+};
 
 export async function findPortalSubmission(ref: string, requesterId: string) {
   const row = await findSubmission(ref, undefined, requesterId);
-  const formSchema = row.version.formSchema as FormSchema;
+  const portalRow: PortalSubmissionSource = row;
+  const formSchema = portalRow.version.formSchema as FormSchema;
   const fields = visibleFields(
     formSchema,
-    row.submission.formData as Record<string, FormValue>,
+    portalRow.submission.formData as Record<string, FormValue>,
   ).map((field) => ({
     key: field.key,
     type: field.type,
@@ -1544,7 +1634,7 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
     state: string;
     priority: string | null;
   } | null = null;
-  if (row.submission.workItemId) {
+  if (portalRow.submission.workItemId) {
     const [item] = await db
       .select({
         title: schema.workItemTable.title,
@@ -1563,7 +1653,7 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
       )
       .where(
         and(
-          eq(schema.workItemTable.id, row.submission.workItemId),
+          eq(schema.workItemTable.id, portalRow.submission.workItemId),
           eq(schema.workItemTable.requesterId, requesterId),
           isNull(schema.workItemTable.deletedAt),
         ),
@@ -1576,26 +1666,26 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
       };
   }
   return {
-    ref: row.ref,
+    ref: portalRow.ref,
     submission: {
-      state: row.submission.state,
-      formData: row.submission.formData as Record<string, unknown>,
-      customerVisibility: row.submission.customerVisibility,
-      createdAt: row.submission.createdAt.toISOString(),
+      state: portalRow.submission.state,
+      formData: row.submission.formData,
+      customerVisibility: portalRow.submission.customerVisibility,
+      createdAt: portalRow.submission.createdAt.toISOString(),
     },
     canWithdraw:
-      (row.submission.state === "new" ||
-        row.submission.state === "clarifying") &&
-      row.submission.claimedBy === null,
+      (portalRow.submission.state === "new" ||
+        portalRow.submission.state === "clarifying") &&
+      portalRow.submission.claimedBy === null,
     requestType: {
-      name: row.requestType.name,
-      description: row.requestType.description,
-      icon: row.requestType.icon,
-      group: row.requestType.group,
+      name: portalRow.requestType.name,
+      description: portalRow.requestType.description,
+      icon: portalRow.requestType.icon,
+      group: portalRow.requestType.group,
     },
     version: { formSchema: { fields } },
     workItem,
-    messages: row.messages.map((message) => ({
+    messages: portalRow.messages.map((message) => ({
       id: message.id,
       actorType: message.actorType,
       body: message.body,
@@ -1735,7 +1825,7 @@ export async function listSubmissions(
           )
         : "";
       return {
-        ...row,
+        ...materializeSubmissionBundle(row),
         summary,
         ref: formatSubmissionReference(row.submission.number),
       };
@@ -1864,6 +1954,8 @@ export async function listOwnSubmissions(
   return {
     submissions: pageRows.map((row) => ({
       ...row,
+      submission: materializeSubmission(row.submission),
+      requestType: materializeRequestType(row.requestType),
       ref: formatSubmissionReference(row.submission.number),
     })),
     page: { nextCursor, hasMore },

@@ -4,6 +4,7 @@ import { appendAuditLog } from "../audit/audit-writer";
 import { parseLocalFactorPolicy } from "../auth/local-factor-policy";
 import db, { schema } from "../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
+import { lockPendingActionLifecycle } from "../pending-action/lifecycle-invalidation";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "./observability/audit-failure-notifier";
@@ -107,6 +108,8 @@ const routes = apiRouter()
     c.header("Cache-Control", "no-store");
     const requested = parseLocalFactorPolicy(c.req.valid("json"));
     const result = await db.transaction(async (tx) => {
+      // Serialize this policy change with PA-15's final factor check and proof mint.
+      await lockPendingActionLifecycle(tx);
       // Match PostgreSQL DELETE's unavoidable role-row → singleton ordering. The
       // database trigger remains the final invariant for every deletion path.
       if (requested.mode === "required_role") {

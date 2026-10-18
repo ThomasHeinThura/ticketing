@@ -1,3 +1,13 @@
+### 2026-10-17 · Exact immutable #797 review-wrapper scan finding
+
+**Technical disposition (conductor; subject to independent ordinary and full Sol review):** the one local Gitleaks finding in publication commit `78c976c8198c6ed1702cfa3192ba6e98a0770b61`, this candidate's query-checker review note, line 971, matches the basename of its retained independent ordinary report. Equality against that actual evidence file and the committed wrapper line was checked. The matched text identifies a report and confers no access; it is not a credential. The report bodies and original wrapper remain unchanged.
+
+**Bound:** add only the exact commit/file/rule/line fingerprint to the existing `.gitleaksignore`. No file, directory, rule, value pattern or future commit is exempted. This is a non-secret classification, not a quality-gate waiver. Independent review must check the raw finding, committed bytes and the narrow fingerprint. The full-range scan must pass; a fresh commit containing the same triggering wrapper and a synthetic credential must still be detected. All required hosted checks remain mandatory.
+
+**Evidence and limits:** installed Gitleaks 8.30.1 reported one match. Its original report and native failure are retained privately. No hosted result, review clearance or #580 acceptance is inferred from this disposition. New conductor wrapper headings will avoid placing report basenames after credential-like labels; that formatting choice does not change scanner behavior.
+
+**Reversal:** remove this one fingerprint; the immutable finding blocks again.
+
 ### 2026-10-15 · Owner decisions on acceptance risks: API-key authority, erasure, Intake claims and RT-6
 
 **Decisions (Thomas, 2026-10-15, answered in the conductor session and recorded on each issue):**
@@ -8431,3 +8441,12 @@ The phrase about the earlier `fdc` false closure is clarified: the authentic fin
 The records-only candidate is frozen on its isolated branch from accepted #817 main. It waits on two fresh independent ordinary factual reviews, followed by records-only CI; no push or PR has been made.
 
 The preceding additive correction described #807's strict <200 ms result as “failed at 21/22,” which could be read as 21 failures. The actual result is 21 passes and one failed test, with cause undiagnosed. #807's 1.392/1.480 calibration remains valid; #810 owns the separate 1.752 host refusal.
+
+
+### 2026-10-17 · Exact two immutable807 publication-heading findings
+
+**Technical disposition (conductor; independent ordinary and full Sol review required):** local Gitleaks8.30.1 reports two generic-api-key matches in the immutable807 continuation-note publication2c2e3e648cfdfc71170429a1479b80583cb68789, `docs/07-planning/security-reviews/query-ownership-canned-responses-580.md`, lines2640 and2704. Both lines are conductor-authored report headings; the matched strings are the already-retained public A/B report basenames, not credentials. No report body or Git history is rewritten.
+
+**Bound:** add only those two exact commit/file/rule/line fingerprints to the existing immutable-finding register. No file, path, directory, rule, arbitrary digest, future commit or actual credential is exempted. Preserve the original red result. Verify the original range becomes clean and identical heading prose in a fresh commit plus a synthetic credential still triggers scanning. Local results supplement the required hosted scanner/version; current exact-head CI and the normal protected flow remain mandatory. This is a non-secret classification correction under the existing reviewed mechanism, not a gate waiver or a new owner authorization.
+
+**Supersedes:** nothing. **Reversal:** remove those two lines; the same immutable public-heading findings block again.

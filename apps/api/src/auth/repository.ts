@@ -1,7 +1,30 @@
 import { timingSafeEqual } from "node:crypto";
+import type { JsonValue } from "@taskdesk/domain";
 import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
-import { dbNowUtc } from "../utils/db-time";
+import type { Executor } from "../database/executor";
+import { SETUP_TOKEN_SINGLETON_ID } from "../instance/setup-token";
+import { dbClockUtc } from "../utils/db-time";
+
+export type StepUpExecutor = Parameters<
+  Parameters<typeof db.transaction>[0]
+>[0];
+
+export type PendingActionStepUpAdmission = {
+  action: string;
+  targetType: string;
+  confirmation: string;
+  routeKey: string;
+};
+
+export type VerifiedStepUpAuthentication =
+  | "password"
+  | "totp"
+  | "backup_code"
+  | {
+      authMethod: "password" | "totp" | "backup_code";
+      revalidate: (executor: StepUpExecutor) => Promise<boolean>;
+    };
 
 export async function getAuthUserLocale(email: string) {
   return await db
@@ -30,6 +53,44 @@ export async function getSetupCompletionMarker(
     .limit(1);
 }
 
+export async function lockFirstUserPromotion(
+  executor: StepUpExecutor,
+): Promise<void> {
+  await executor.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
+}
+
+export async function promoteFirstAuthUser(
+  executor: StepUpExecutor,
+  userId: string,
+): Promise<void> {
+  await executor
+    .update(schema.userTable)
+    .set({ role: "admin" })
+    .where(eq(schema.userTable.id, userId));
+}
+
+export async function completeFirstUserSetup(
+  executor: StepUpExecutor,
+): Promise<void> {
+  await executor
+    .insert(schema.instanceSettingTable)
+    .values({
+      id: SETUP_TOKEN_SINGLETON_ID,
+      setupCompletedAt: new Date(),
+      setupTokenHash: null,
+      setupTokenExpiresAt: null,
+    })
+    .onConflictDoUpdate({
+      target: schema.instanceSettingTable.id,
+      set: {
+        setupCompletedAt: new Date(),
+        setupTokenHash: null,
+        setupTokenExpiresAt: null,
+        updatedAt: new Date(),
+      },
+    });
+}
+
 export async function getFirstUserWorkspaceMembership(userId: string) {
   return await db
     .select({ workspaceId: schema.workspaceUserTable.workspaceId })
@@ -38,12 +99,35 @@ export async function getFirstUserWorkspaceMembership(userId: string) {
     .limit(1);
 }
 
+export async function updateSessionPortal(
+  executor: Executor,
+  sessionId: string,
+  portal: "agent" | "customer",
+): Promise<void> {
+  await executor
+    .update(schema.sessionTable)
+    .set({ portal })
+    .where(eq(schema.sessionTable.id, sessionId));
+}
+
+export async function updateSessionActiveOrganizationId(
+  executor: Executor,
+  sessionId: string,
+  activeOrganizationId: string,
+): Promise<void> {
+  await executor
+    .update(schema.sessionTable)
+    .set({ activeOrganizationId })
+    .where(eq(schema.sessionTable.id, sessionId));
+}
+
 export async function getActiveSessionForStepUp(
   sessionId: string,
   userId: string,
   now: Date,
+  executor: typeof db | StepUpExecutor = db,
 ) {
-  return await db
+  return await executor
     .select({ id: schema.sessionTable.id })
     .from(schema.sessionTable)
     .where(
@@ -61,8 +145,9 @@ export async function getPendingActionForStepUp(
   actionId: string,
   personId: string,
   now: Date,
+  executor: typeof db | StepUpExecutor = db,
 ) {
-  return await db
+  return await executor
     .select({
       action: schema.pendingActionTable.action,
       targetType: schema.pendingActionTable.targetType,
@@ -87,6 +172,104 @@ export async function getUserFactorEnabled(userId: string) {
     .from(schema.userTable)
     .where(eq(schema.userTable.id, userId))
     .limit(1);
+}
+
+export async function getActiveLocalFactorIdentity(
+  userId: string,
+  executor: typeof db | StepUpExecutor = db,
+) {
+  return await executor
+    .select({
+      id: schema.personTable.id,
+      side: schema.personTable.side,
+      active: schema.personTable.active,
+      enabled: schema.userTable.twoFactorEnabled,
+    })
+    .from(schema.personTable)
+    .innerJoin(
+      schema.userTable,
+      eq(schema.personTable.userId, schema.userTable.id),
+    )
+    .where(
+      and(
+        eq(schema.personTable.userId, userId),
+        eq(schema.personTable.active, true),
+      ),
+    )
+    .limit(1);
+}
+
+export async function getInactiveLocalFactorIdentity(
+  userId: string,
+  executor: typeof db | StepUpExecutor = db,
+) {
+  return await executor
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(
+      and(
+        eq(schema.personTable.userId, userId),
+        eq(schema.personTable.active, false),
+      ),
+    )
+    .limit(1);
+}
+
+export async function getLocalFactorPolicySetting(
+  executor: typeof db | StepUpExecutor = db,
+) {
+  return await executor
+    .select({ policy: schema.instanceSettingTable.localFactorPolicy })
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
+    .limit(1);
+}
+
+export async function getLocalFactorMembershipRoles(
+  personId: string,
+  executor: typeof db | StepUpExecutor = db,
+) {
+  return await executor
+    .select({ roleId: schema.membershipTable.roleId })
+    .from(schema.membershipTable)
+    .innerJoin(
+      schema.roleTable,
+      eq(schema.membershipTable.roleId, schema.roleTable.id),
+    )
+    .where(eq(schema.membershipTable.personId, personId));
+}
+
+export async function getConfiguredLocalFactorRole(
+  roleId: string,
+  executor: typeof db | StepUpExecutor = db,
+) {
+  return await executor
+    .select({ id: schema.roleTable.id })
+    .from(schema.roleTable)
+    .where(eq(schema.roleTable.id, roleId))
+    .limit(1);
+}
+
+export async function isCurrentInstanceAdminForStepUp(
+  userId: string,
+  executor: typeof db | StepUpExecutor = db,
+) {
+  const [admin] = await executor
+    .select({ id: schema.userTable.id })
+    .from(schema.userTable)
+    .innerJoin(
+      schema.personTable,
+      and(
+        eq(schema.personTable.userId, schema.userTable.id),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.personTable.active, true),
+      ),
+    )
+    .where(
+      and(eq(schema.userTable.id, userId), eq(schema.userTable.role, "admin")),
+    )
+    .limit(1);
+  return admin !== undefined;
 }
 
 export async function getUserId(userId: string) {
@@ -138,8 +321,11 @@ export async function getIdentityConfigVersion(connectionId: string) {
     .limit(1);
 }
 
-export async function getPasswordCredential(userId: string) {
-  return await db
+export async function getPasswordCredential(
+  userId: string,
+  executor: typeof db | StepUpExecutor = db,
+) {
+  return await executor
     .select({ password: schema.accountTable.password })
     .from(schema.accountTable)
     .where(
@@ -150,8 +336,6 @@ export async function getPasswordCredential(userId: string) {
     )
     .limit(1);
 }
-
-type StepUpExecutor = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export async function createPendingActionChallengeRecord(
   executor: StepUpExecutor,
@@ -176,7 +360,7 @@ export async function createPendingActionChallengeRecord(
         eq(schema.pendingActionTable.id, input.pendingActionId),
         eq(schema.pendingActionTable.requestedByPersonId, input.personId),
         eq(schema.pendingActionTable.state, "pending"),
-        gt(schema.pendingActionTable.expiresAt, sql`now()`),
+        gt(schema.pendingActionTable.expiresAt, sql`clock_timestamp()`),
       ),
     )
     .for("update")
@@ -219,7 +403,10 @@ export async function createPendingActionChallengeRecord(
           input.pendingActionId,
         ),
         eq(schema.stepUpConfirmationTable.state, "challenge"),
-        gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
+        gt(
+          schema.stepUpConfirmationTable.challengeExpiresAt,
+          sql`clock_timestamp()`,
+        ),
       ),
     );
   await executor
@@ -339,9 +526,13 @@ export async function issuePendingActionTokenRecord(
     pendingActionId: string;
     nonceHash: Buffer;
     tokenHash: Buffer;
-    verifyAuthentication: () => Promise<
-      "password" | "totp" | "backup_code" | null
-    >;
+    expectedPendingAction?: PendingActionStepUpAdmission;
+    verifyAuthentication: (
+      executor: StepUpExecutor,
+    ) => Promise<VerifiedStepUpAuthentication | null>;
+    finalize: <T>(
+      callback: (executor: StepUpExecutor) => Promise<T>,
+    ) => Promise<T | null>;
   },
 ): Promise<{
   authMethod: "password" | "totp" | "backup_code";
@@ -358,19 +549,34 @@ export async function issuePendingActionTokenRecord(
   if (!activeSession) return null;
 
   const [action] = await executor
-    .select({ id: schema.pendingActionTable.id })
+    .select({
+      id: schema.pendingActionTable.id,
+      action: schema.pendingActionTable.action,
+      targetType: schema.pendingActionTable.targetType,
+      confirmation: schema.pendingActionTable.confirmationRequired,
+      routeKey: schema.pendingActionTable.routeKey,
+    })
     .from(schema.pendingActionTable)
     .where(
       and(
         eq(schema.pendingActionTable.id, input.pendingActionId),
         eq(schema.pendingActionTable.requestedByPersonId, input.personId),
         eq(schema.pendingActionTable.state, "pending"),
-        gt(schema.pendingActionTable.expiresAt, sql`now()`),
+        gt(schema.pendingActionTable.expiresAt, sql`clock_timestamp()`),
       ),
     )
     .for("update")
     .limit(1);
   if (!action) return null;
+  if (
+    input.expectedPendingAction &&
+    (action.action !== input.expectedPendingAction.action ||
+      action.targetType !== input.expectedPendingAction.targetType ||
+      action.confirmation !== input.expectedPendingAction.confirmation ||
+      action.routeKey !== input.expectedPendingAction.routeKey)
+  ) {
+    return null;
+  }
 
   const [challenge] = await executor
     .select()
@@ -386,7 +592,10 @@ export async function issuePendingActionTokenRecord(
           input.pendingActionId,
         ),
         eq(schema.stepUpConfirmationTable.state, "challenge"),
-        gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
+        gt(
+          schema.stepUpConfirmationTable.challengeExpiresAt,
+          sql`clock_timestamp()`,
+        ),
       ),
     )
     .for("update")
@@ -406,8 +615,8 @@ export async function issuePendingActionTokenRecord(
     return null;
   }
 
-  const authMethod = await input.verifyAuthentication();
-  if (!authMethod) {
+  const verification = await input.verifyAuthentication(executor);
+  if (!verification) {
     await executor
       .update(schema.stepUpConfirmationTable)
       .set({ challengeExpiresAt: sql`now()` })
@@ -419,36 +628,136 @@ export async function issuePendingActionTokenRecord(
       );
     return null;
   }
+  const authMethod =
+    typeof verification === "string" ? verification : verification.authMethod;
 
-  const clock = await executor.execute<{
-    issued_at: string;
-    token_expires_at: string;
-  }>(
-    sql`SELECT now()::text AS issued_at, (now() + interval '5 minutes')::text AS token_expires_at`,
-  );
-  const clockRow = clock.rows[0];
-  if (!clockRow) throw new Error("Database time is unavailable");
-  const issuedAt = new Date(clockRow.issued_at);
-  const tokenExpiresAt = new Date(clockRow.token_expires_at);
-  const updated = await executor
-    .update(schema.stepUpConfirmationTable)
-    .set({
-      state: "issued",
-      tokenHash: input.tokenHash,
-      authMethod,
-      authenticatedAt: issuedAt,
-      issuedAt,
-      tokenExpiresAt,
-    })
-    .where(
-      and(
-        eq(schema.stepUpConfirmationTable.id, input.id),
-        eq(schema.stepUpConfirmationTable.state, "challenge"),
-        gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
-      ),
-    )
-    .returning({ id: schema.stepUpConfirmationTable.id });
-  return updated.length === 1 ? { authMethod, tokenExpiresAt } : null;
+  const finalized = await input.finalize(async (finalExecutor) => {
+    const [currentSession] = await lockActiveStepUpSession(
+      finalExecutor,
+      input.sessionId,
+      input.userId,
+    );
+    if (!currentSession) return null;
+    const [currentAction] = await finalExecutor
+      .select({
+        id: schema.pendingActionTable.id,
+        action: schema.pendingActionTable.action,
+        targetType: schema.pendingActionTable.targetType,
+        confirmation: schema.pendingActionTable.confirmationRequired,
+        routeKey: schema.pendingActionTable.routeKey,
+      })
+      .from(schema.pendingActionTable)
+      .where(
+        and(
+          eq(schema.pendingActionTable.id, input.pendingActionId),
+          eq(schema.pendingActionTable.requestedByPersonId, input.personId),
+          eq(schema.pendingActionTable.state, "pending"),
+          gt(schema.pendingActionTable.expiresAt, sql`clock_timestamp()`),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!currentAction) return null;
+    if (
+      input.expectedPendingAction &&
+      (currentAction.action !== input.expectedPendingAction.action ||
+        currentAction.targetType !== input.expectedPendingAction.targetType ||
+        currentAction.confirmation !==
+          input.expectedPendingAction.confirmation ||
+        currentAction.routeKey !== input.expectedPendingAction.routeKey)
+    ) {
+      return null;
+    }
+    const [currentChallenge] = await finalExecutor
+      .select()
+      .from(schema.stepUpConfirmationTable)
+      .where(
+        and(
+          eq(schema.stepUpConfirmationTable.id, input.id),
+          eq(schema.stepUpConfirmationTable.personId, input.personId),
+          eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
+          eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
+          eq(
+            schema.stepUpConfirmationTable.pendingActionId,
+            input.pendingActionId,
+          ),
+          eq(schema.stepUpConfirmationTable.state, "challenge"),
+          gt(
+            schema.stepUpConfirmationTable.challengeExpiresAt,
+            sql`clock_timestamp()`,
+          ),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (
+      !currentChallenge?.challengeNonceHash ||
+      !timingSafeEqual(currentChallenge.challengeNonceHash, input.nonceHash)
+    ) {
+      return null;
+    }
+    if (
+      typeof verification !== "string" &&
+      !(await verification.revalidate(finalExecutor))
+    ) {
+      await finalExecutor
+        .update(schema.stepUpConfirmationTable)
+        .set({ challengeExpiresAt: sql`clock_timestamp()` })
+        .where(
+          and(
+            eq(schema.stepUpConfirmationTable.id, input.id),
+            eq(schema.stepUpConfirmationTable.state, "challenge"),
+          ),
+        );
+      return null;
+    }
+    const clock = await finalExecutor.execute<{
+      issued_at: string;
+      token_expires_at: string;
+    }>(
+      sql`SELECT clock_timestamp()::text AS issued_at, (clock_timestamp() + interval '5 minutes')::text AS token_expires_at`,
+    );
+    const clockRow = clock.rows[0];
+    if (!clockRow) throw new Error("Database time is unavailable");
+    const issuedAt = new Date(clockRow.issued_at);
+    const tokenExpiresAt = new Date(clockRow.token_expires_at);
+    const updated = await finalExecutor
+      .update(schema.stepUpConfirmationTable)
+      .set({
+        state: "issued",
+        tokenHash: input.tokenHash,
+        authMethod,
+        authenticatedAt: issuedAt,
+        issuedAt,
+        tokenExpiresAt,
+      })
+      .where(
+        and(
+          eq(schema.stepUpConfirmationTable.id, input.id),
+          eq(schema.stepUpConfirmationTable.state, "challenge"),
+          gt(
+            schema.stepUpConfirmationTable.challengeExpiresAt,
+            sql`clock_timestamp()`,
+          ),
+        ),
+      )
+      .returning({ id: schema.stepUpConfirmationTable.id });
+    return updated.length === 1 ? { authMethod, tokenExpiresAt } : null;
+  });
+  if (finalized === null) {
+    // Proof attempts are one-shot even when a recovered mint savepoint failed.
+    // This write uses the admitted outer executor after that savepoint rolled back.
+    await executor
+      .update(schema.stepUpConfirmationTable)
+      .set({ challengeExpiresAt: sql`clock_timestamp()` })
+      .where(
+        and(
+          eq(schema.stepUpConfirmationTable.id, input.id),
+          eq(schema.stepUpConfirmationTable.state, "challenge"),
+        ),
+      );
+  }
+  return finalized;
 }
 
 export async function lockOperationProof(
@@ -497,11 +806,20 @@ export async function lockActiveStepUpSession(
         eq(schema.sessionTable.portal, "agent"),
         // `session.expires_at` is a UTC wall clock in a `timestamp without time zone` column: a
         // bare `now()` would be coerced through the session TimeZone (#631).
-        gt(schema.sessionTable.expiresAt, dbNowUtc()),
+        gt(schema.sessionTable.expiresAt, dbClockUtc()),
       ),
     )
     .for("update")
     .limit(1);
+}
+
+export async function hasLiveStepUpSession(
+  executor: StepUpExecutor,
+  sessionId: string,
+  userId: string,
+) {
+  const [session] = await lockActiveStepUpSession(executor, sessionId, userId);
+  return session !== undefined;
 }
 
 export async function lockOperationChallenge(
@@ -528,7 +846,10 @@ export async function lockOperationChallenge(
         eq(schema.stepUpConfirmationTable.routeKey, input.route),
         eq(schema.stepUpConfirmationTable.expectedVersion, input.version),
         eq(schema.stepUpConfirmationTable.state, "challenge"),
-        gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
+        gt(
+          schema.stepUpConfirmationTable.challengeExpiresAt,
+          sql`clock_timestamp()`,
+        ),
       ),
     )
     .for("update")
@@ -622,9 +943,12 @@ export async function issueOperationTokenRecord(
     bodyHash: Buffer;
     nonceHash: Buffer;
     tokenHash: Buffer;
-    verifyAuthentication: () => Promise<
-      "password" | "totp" | "backup_code" | null
-    >;
+    verifyAuthentication: (
+      executor: StepUpExecutor,
+    ) => Promise<VerifiedStepUpAuthentication | null>;
+    finalize: <T>(
+      callback: (executor: StepUpExecutor) => Promise<T>,
+    ) => Promise<T | null>;
   },
 ): Promise<{
   authMethod: "password" | "totp" | "backup_code";
@@ -656,8 +980,8 @@ export async function issueOperationTokenRecord(
       );
     return null;
   }
-  const authMethod = await input.verifyAuthentication();
-  if (!authMethod) {
+  const verification = await input.verifyAuthentication(executor);
+  if (!verification) {
     await executor
       .update(schema.stepUpConfirmationTable)
       .set({ challengeExpiresAt: sql`now()` })
@@ -669,35 +993,90 @@ export async function issueOperationTokenRecord(
       );
     return null;
   }
-  const clock = await executor.execute<{
-    issued_at: string;
-    token_expires_at: string;
-  }>(
-    sql`SELECT now()::text AS issued_at, (now() + interval '5 minutes')::text AS token_expires_at`,
-  );
-  const clockRow = clock.rows[0];
-  if (!clockRow) throw new Error("Unable to read database token time");
-  const issuedAt = new Date(clockRow.issued_at);
-  const tokenExpiresAt = new Date(clockRow.token_expires_at);
-  const updated = await executor
-    .update(schema.stepUpConfirmationTable)
-    .set({
-      state: "issued",
-      tokenHash: input.tokenHash,
-      authMethod,
-      authenticatedAt: issuedAt,
-      issuedAt,
-      tokenExpiresAt,
-    })
-    .where(
-      and(
-        eq(schema.stepUpConfirmationTable.id, input.id),
-        eq(schema.stepUpConfirmationTable.state, "challenge"),
-        gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
-      ),
-    )
-    .returning({ id: schema.stepUpConfirmationTable.id });
-  return updated.length === 1 ? { authMethod, issuedAt, tokenExpiresAt } : null;
+  const authMethod =
+    typeof verification === "string" ? verification : verification.authMethod;
+  const finalized = await input.finalize(async (finalExecutor) => {
+    const [currentSession] = await lockActiveStepUpSession(
+      finalExecutor,
+      input.sessionId,
+      input.userId,
+    );
+    if (!currentSession) return null;
+    const [currentChallenge] = await lockOperationChallenge(
+      finalExecutor,
+      input,
+    );
+    if (
+      !currentChallenge?.bodyHash ||
+      !currentChallenge.challengeNonceHash ||
+      !timingSafeEqual(currentChallenge.bodyHash, input.bodyHash) ||
+      !timingSafeEqual(currentChallenge.challengeNonceHash, input.nonceHash)
+    ) {
+      return null;
+    }
+    if (
+      typeof verification !== "string" &&
+      !(await verification.revalidate(finalExecutor))
+    ) {
+      await finalExecutor
+        .update(schema.stepUpConfirmationTable)
+        .set({ challengeExpiresAt: sql`clock_timestamp()` })
+        .where(
+          and(
+            eq(schema.stepUpConfirmationTable.id, input.id),
+            eq(schema.stepUpConfirmationTable.state, "challenge"),
+          ),
+        );
+      return null;
+    }
+    const clock = await finalExecutor.execute<{
+      issued_at: string;
+      token_expires_at: string;
+    }>(
+      sql`SELECT clock_timestamp()::text AS issued_at, (clock_timestamp() + interval '5 minutes')::text AS token_expires_at`,
+    );
+    const clockRow = clock.rows[0];
+    if (!clockRow) throw new Error("Unable to read database token time");
+    const issuedAt = new Date(clockRow.issued_at);
+    const tokenExpiresAt = new Date(clockRow.token_expires_at);
+    const updated = await finalExecutor
+      .update(schema.stepUpConfirmationTable)
+      .set({
+        state: "issued",
+        tokenHash: input.tokenHash,
+        authMethod,
+        authenticatedAt: issuedAt,
+        issuedAt,
+        tokenExpiresAt,
+      })
+      .where(
+        and(
+          eq(schema.stepUpConfirmationTable.id, input.id),
+          eq(schema.stepUpConfirmationTable.state, "challenge"),
+          gt(
+            schema.stepUpConfirmationTable.challengeExpiresAt,
+            sql`clock_timestamp()`,
+          ),
+        ),
+      )
+      .returning({ id: schema.stepUpConfirmationTable.id });
+    return updated.length === 1
+      ? { authMethod, issuedAt, tokenExpiresAt }
+      : null;
+  });
+  if (finalized === null) {
+    // Keep a successful verifier one-shot when post-check or minting fails.
+    await executor
+      .update(schema.stepUpConfirmationTable)
+      .set({ challengeExpiresAt: sql`clock_timestamp()` })
+      .where(
+        and(
+          eq(schema.stepUpConfirmationTable.id, input.id),
+          eq(schema.stepUpConfirmationTable.state, "challenge"),
+        ),
+      );
+  }
+  return finalized;
 }
 
 export async function consumeOperationProofRecord(
@@ -738,7 +1117,7 @@ export async function consumeOperationProofRecord(
 }
 
 export async function getCustomerPortalIdentityRow(userId: string) {
-  return await db
+  const rows = await db
     .select({
       personId: schema.personTable.id,
       organisationId: schema.personTable.organisationId,
@@ -783,6 +1162,16 @@ export async function getCustomerPortalIdentityRow(userId: string) {
         isNull(schema.organisationTable.deletedAt),
       ),
     );
+  type CustomerPortalIdentityRow = Omit<
+    (typeof rows)[number],
+    "roleCapabilities"
+  > & { roleCapabilities: JsonValue };
+  return rows.map(
+    (row): CustomerPortalIdentityRow => ({
+      ...row,
+      roleCapabilities: row.roleCapabilities as JsonValue,
+    }),
+  );
 }
 
 export async function getStoredAuthPluginConfigRows() {

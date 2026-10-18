@@ -6,7 +6,7 @@ import { dbNowUtc } from "../../utils/db-time";
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export const userDirectoryProjection = {
+const userDirectoryProjection = {
   id: schema.userTable.id,
   name: schema.userTable.name,
   email: schema.userTable.email,
@@ -25,8 +25,8 @@ export const userDirectoryProjection = {
   isPlaceholder: schema.personTable.isPlaceholder,
 };
 
-export function listDirectoryUsers(predicates: SQL[], limit: number) {
-  return db
+export async function listDirectoryUsers(predicates: SQL[], limit: number) {
+  return await db
     .select(userDirectoryProjection)
     .from(schema.userTable)
     .leftJoin(
@@ -42,8 +42,8 @@ export function listDirectoryUsers(predicates: SQL[], limit: number) {
     .limit(limit);
 }
 
-export function getDirectoryUser(id: string) {
-  return db
+export async function getDirectoryUser(id: string) {
+  return await db
     .select(userDirectoryProjection)
     .from(schema.userTable)
     .leftJoin(
@@ -58,8 +58,8 @@ export function getDirectoryUser(id: string) {
     .limit(1);
 }
 
-export function lockUserForMutation(executor: Executor, id: string) {
-  return executor
+export async function lockUserForMutation(executor: Executor, id: string) {
+  return await executor
     .select({
       id: schema.userTable.id,
       banned: schema.userTable.banned,
@@ -71,8 +71,8 @@ export function lockUserForMutation(executor: Executor, id: string) {
     .limit(1);
 }
 
-export function lockUserId(executor: Executor, id: string) {
-  return executor
+export async function lockUserId(executor: Executor, id: string) {
+  return await executor
     .select({ id: schema.userTable.id })
     .from(schema.userTable)
     .where(eq(schema.userTable.id, id))
@@ -80,8 +80,8 @@ export function lockUserId(executor: Executor, id: string) {
     .limit(1);
 }
 
-export function getPersonStatus(userId: string) {
-  return db
+export async function getPersonStatus(userId: string) {
+  return await db
     .select({
       personId: schema.personTable.id,
       active: schema.personTable.active,
@@ -91,8 +91,8 @@ export function getPersonStatus(userId: string) {
     .limit(1);
 }
 
-export function getActiveStaffPerson(userId: string) {
-  return db
+export async function getActiveStaffPerson(userId: string) {
+  return await db
     .select({ id: schema.personTable.id })
     .from(schema.personTable)
     .where(
@@ -105,8 +105,8 @@ export function getActiveStaffPerson(userId: string) {
     .limit(1);
 }
 
-export function lockSetupCompletion(executor: Executor) {
-  return executor
+export async function lockSetupCompletion(executor: Executor) {
+  return await executor
     .select({ completedAt: schema.instanceSettingTable.setupCompletedAt })
     .from(schema.instanceSettingTable)
     .where(eq(schema.instanceSettingTable.id, "singleton"))
@@ -114,8 +114,8 @@ export function lockSetupCompletion(executor: Executor) {
     .limit(1);
 }
 
-export function lockGrantTarget(executor: Executor, id: string) {
-  return executor
+export async function lockGrantTarget(executor: Executor, id: string) {
+  return await executor
     .select({
       id: schema.userTable.id,
       role: schema.userTable.role,
@@ -128,8 +128,11 @@ export function lockGrantTarget(executor: Executor, id: string) {
     .limit(1);
 }
 
-export function lockGrantTargetPeople(executor: Executor, userId: string) {
-  return executor
+export async function lockGrantTargetPeople(
+  executor: Executor,
+  userId: string,
+) {
+  return await executor
     .select({
       id: schema.personTable.id,
       side: schema.personTable.side,
@@ -140,8 +143,8 @@ export function lockGrantTargetPeople(executor: Executor, userId: string) {
     .for("update");
 }
 
-export function lockAdminUser(executor: Executor, userId: string) {
-  return executor
+export async function lockAdminUser(executor: Executor, userId: string) {
+  return await executor
     .select({ id: schema.userTable.id })
     .from(schema.userTable)
     .where(
@@ -151,12 +154,12 @@ export function lockAdminUser(executor: Executor, userId: string) {
     .limit(1);
 }
 
-export function lockActiveStaffPerson(
+export async function lockActiveStaffPerson(
   executor: Executor,
   personId: string,
   userId: string,
 ) {
-  return executor
+  return await executor
     .select({ id: schema.personTable.id })
     .from(schema.personTable)
     .where(
@@ -171,12 +174,12 @@ export function lockActiveStaffPerson(
     .limit(1);
 }
 
-export function lockActiveAgentSession(
+export async function lockActiveAgentSession(
   executor: Executor,
   sessionId: string,
   userId: string,
 ) {
-  return executor
+  return await executor
     .select({ id: schema.sessionTable.id })
     .from(schema.sessionTable)
     .where(
@@ -191,8 +194,8 @@ export function lockActiveAgentSession(
     .limit(1);
 }
 
-export function listAdminIds(executor: Executor) {
-  return executor
+export async function listAdminIds(executor: Executor) {
+  return await executor
     .select({ id: schema.userTable.id })
     .from(schema.userTable)
     .where(eq(schema.userTable.role, "admin"));
@@ -246,6 +249,8 @@ export async function assertAdminRemovalAllowed(
     throw new HTTPException(409, { message: "last_instance_admin" });
 }
 
-export function lockInstanceAdminSerialization(executor: Executor) {
-  return executor.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
+export async function lockInstanceAdminSerialization(
+  executor: Executor,
+): Promise<void> {
+  await executor.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
 }

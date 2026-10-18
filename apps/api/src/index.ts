@@ -1980,7 +1980,9 @@ export async function runMigrationStep(): Promise<void> {
  * `runMigrationStep`'s doc comment above for why these are two separate functions,
  * run from two separate OS processes, rather than two calls in one.
  */
-export async function runApiBootTasks(): Promise<void> {
+export async function runApiBootTasks(
+  options: Pick<NodeServerShutdownOptions, "hostname"> = {},
+): Promise<void> {
   // S1's structural backstop: fail loudly, before anything else, if this process's
   // own environment carries the owner/migration credential at all. A correctly
   // configured compose/Helm deployment never sets it here in the first place; this
@@ -2018,7 +2020,7 @@ export async function runApiBootTasks(): Promise<void> {
   initializePlugins();
   initializeScheduler();
   await initializeWebSocketAdapter();
-  await startObservabilityRuntime();
+  await startObservabilityRuntime(options);
 }
 
 const DEFAULT_PORT = 5173;
@@ -2189,9 +2191,12 @@ export function createNodeServer(
   return { server, websocketServer, close };
 }
 
-export async function startServer(port = DEFAULT_PORT) {
+export async function startServer(
+  port = DEFAULT_PORT,
+  options: Pick<NodeServerShutdownOptions, "hostname"> = {},
+) {
   try {
-    await runApiBootTasks();
+    await runApiBootTasks(options);
   } catch {
     logHttpLifecycleFailure();
     process.exit(1);
@@ -2199,8 +2204,19 @@ export async function startServer(port = DEFAULT_PORT) {
 
   let shuttingDown = false;
 
-  const { close, server } = createNodeServer(app, port);
+  const { close, server } = createNodeServer(app, port, options);
   server.on("listening", () => {
+    const address = server.address();
+    if (
+      options.hostname &&
+      (!address ||
+        typeof address === "string" ||
+        address.address !== options.hostname)
+    ) {
+      logHttpLifecycleFailure();
+      void close().finally(() => process.exit(1));
+      return;
+    }
     console.log(
       `⚡ API is running at ${process.env.KANEO_API_URL || `http://localhost:${port}`}`,
     );

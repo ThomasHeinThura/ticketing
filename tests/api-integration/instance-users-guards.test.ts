@@ -3,10 +3,11 @@ import { and, eq } from "drizzle-orm";
 import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { IdentityGrantClosureChangedError } from "../../apps/api/src/identity/errors";
 import {
   databaseErrorCode,
   retryIdentityGrantClosure,
-} from "../../apps/api/src/identity/repository";
+} from "../../apps/api/src/identity/grant-closure-retry";
 import { createApp } from "../../apps/api/src/index";
 import * as observability from "../../apps/api/src/instance/observability/runtime";
 import { createPendingAction } from "../../apps/api/src/pending-action/service";
@@ -907,6 +908,25 @@ describe("retryIdentityGrantClosure", () => {
       }),
     ).rejects.toBe(wrapped);
     expect(exhausted).toBe(3);
+    let closureAttempts = 0;
+    const closureChanged = new IdentityGrantClosureChangedError();
+    const recovered = await retryIdentityGrantClosure(async () => {
+      closureAttempts += 1;
+      if (closureAttempts < 3) throw closureChanged;
+      return "recovered";
+    });
+    expect(recovered).toBe("recovered");
+    expect(closureAttempts).toBe(3);
+
+    let closureExhausted = 0;
+    await expect(
+      retryIdentityGrantClosure(async () => {
+        closureExhausted += 1;
+        throw closureChanged;
+      }),
+    ).rejects.toBe(closureChanged);
+    expect(closureExhausted).toBe(3);
+
     let unrelated = 0;
     await expect(
       retryIdentityGrantClosure(async () => {

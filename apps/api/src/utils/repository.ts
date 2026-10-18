@@ -4,18 +4,18 @@ import { schema } from "../database";
 
 type SelectExecutor = Pick<typeof db, "select">;
 
-export function listAllWorkspaceIds(executor: SelectExecutor) {
-  return executor
+export async function listAllWorkspaceIds(executor: SelectExecutor) {
+  return await executor
     .select({ id: schema.workspaceTable.id })
     .from(schema.workspaceTable);
 }
 
-export function listWorkspaceRoleKeys(
+export async function listWorkspaceRoleKeys(
   executor: SelectExecutor,
   workspaceIds: string[],
   roles: string[],
 ) {
-  return executor
+  return await executor
     .select({
       workspaceId: schema.workspaceRoleTable.workspaceId,
       role: schema.workspaceRoleTable.role,
