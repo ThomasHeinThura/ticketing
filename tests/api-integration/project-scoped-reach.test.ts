@@ -424,6 +424,10 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
       }
     });
 
+    const cleanupFailures: string[] = [];
+    let probeFailed = false;
+    let probeError: unknown;
+
     try {
       for (const client of [control, observer, listener]) {
         await client.connect();
@@ -624,8 +628,10 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
           where: eq(schema.taskActivityTable.id, notification.payload ?? ""),
         }),
       ).toBeUndefined();
+    } catch (error) {
+      probeFailed = true;
+      probeError = error;
     } finally {
-      const cleanupFailures: string[] = [];
       if (gateHeld && connected.has(control)) {
         try {
           const unlocked = await control.query(
@@ -633,9 +639,12 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
             [ADVISORY_CLASS, ADVISORY_OBJECT],
           );
           if (!unlocked.rows[0]?.pg_advisory_unlock) {
-            throw new Error("owned advisory key was not held");
+            cleanupFailures.push(
+              "owned advisory key was not held during cleanup",
+            );
+          } else {
+            gateHeld = false;
           }
-          gateHeld = false;
         } catch {
           cleanupFailures.push("could not release the owned advisory gate");
         }
@@ -696,20 +705,37 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
         }
       }
       const closes = await Promise.allSettled(
-        [...connected].map((client) => client.end()),
+        [...connected].map(async (client) => {
+          await client.end();
+        }),
       );
       if (closes.some((result) => result.status === "rejected")) {
         cleanupFailures.push(
           "one or more owned PostgreSQL clients did not close",
         );
       }
-      if (cleanupFailures.length > 0) {
-        throw new Error(
-          "Controlled fixture probe cleanup incomplete (" +
-            cleanupFailures.length +
-            " issue(s))",
-        );
-      }
+    }
+
+    const cleanupError =
+      cleanupFailures.length > 0
+        ? new Error(
+            "Controlled fixture probe cleanup incomplete (" +
+              cleanupFailures.length +
+              " issue(s)): " +
+              cleanupFailures.join("; "),
+          )
+        : undefined;
+    if (probeFailed && cleanupError) {
+      throw new AggregateError(
+        [probeError, cleanupError],
+        "Controlled fixture probe failed and cleanup was incomplete",
+      );
+    }
+    if (probeFailed) {
+      throw probeError;
+    }
+    if (cleanupError) {
+      throw cleanupError;
     }
   }, 20_000);
 
