@@ -1454,3 +1454,9 @@ All reports retain their stated scopes. Only this candidate's own regular review
 Mechanical rebind for normal merge of accepted `main` (`c5be52554704dd266c257c7c34efae3df253b2f5`). No application logic or security invariants were altered; all query ownership, repository contracts, and tenant-scoping tests remain intact. Reverted unintentional spec edit to `time-and-cost.md` to match accepted `main`.
 
 **Reviewed head:** `78c637fba7e3057cba66de471d64df5dc54ef164`
+
+## Mechanical rebind after main moved to b2beb4601a89cde3b24357cf07d5371c9677a8a7
+
+This section establishes that `b0634c72e4c88b99b8de53555eb62db628ea3386` is a mechanical rebind following the landing of PR #768 onto main. No application logic or security invariants were altered; all query ownership, repository contracts, and tenant-scoping tests remain intact.
+
+**Reviewed head:** `b0634c72e4c88b99b8de53555eb62db628ea3386`
