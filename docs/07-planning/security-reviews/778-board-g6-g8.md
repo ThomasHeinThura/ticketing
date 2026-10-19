@@ -170,3 +170,20 @@ Scope: one file, `work-item-board.test.tsx` (+84/-16); no product code changed (
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 9698ac1dbbce67e37dcc459ff6d83d1a87c21686e41964d3da55cbbea3c91923) -->
+
+## Mechanical rebind after main moved to 9fecda429de7793c0f3d6058394c558903841a38
+
+This section establishes that `d7fda160e5fe167b35be4d3c2d51d8160244157f` is a mechanical rebind of `c982e78f2eadd8cd75c5e6123d9c21a784d05b30`.
+
+**Reviewed head:** `d7fda160e5fe167b35be4d3c2d51d8160244157f`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 9fecda429de7793c0f3d6058394c558903841a38 (accepted main)
+**Previous reviewed head:** c982e78f2eadd8cd75c5e6123d9c21a784d05b30
+
+Method:
+- **Parents:** first = `17a68409` (prior branch head), second = `9fecda42` (main tip). Clean merge commit.
+- **Merge-tree equality:** `git merge-tree --write-tree 17a68409 9fecda42` equals `d7fda160^{tree}`. Clean merge, no manual conflict resolution or extra edits.
+- **Overlap:** files changed by PR do not intersect files changed on main since merge base (0 files overlap).
+- **PR content:** byte-identical to previous reviewed head.
+
+**Verdict:** CLEAR
