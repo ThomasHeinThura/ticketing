@@ -15,6 +15,7 @@ A Claude Sonnet 5.5 lane implemented the change. The reviewers below are fresh, 
 **Reviewed head:** `8254a5949657572fe1219eef007814c83154f938`
 **Reviewed head:** `28ce4cfa7a18d7ce257c9045d7d78464e5e53217`
 **Reviewed head:** `e7fbe069b2e61f065e7bff828764ecb06a16a28f`
+**Reviewed head:** `43d999a0d431478a45319a4091d4fff5ddb80fce`
 
 ## Context index
 
