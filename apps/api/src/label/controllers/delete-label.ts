@@ -1,7 +1,6 @@
-import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { labelTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   type lockLegacyTaskRow,
@@ -9,12 +8,22 @@ import {
   lockProjectsAndAssertLive,
   lockTaskAndAssertProjectLive,
 } from "../../task/assert-task-project-live";
-import { lockWorkspaceLabelNames } from "../label-name-lock";
+import {
+  deleteLabelById,
+  deleteLabelsByIds,
+  findLabelById,
+  listTaskLabelCopiesWithTask,
+  lockLabelRow,
+  lockTaskLabelCopies,
+  lockWorkspaceLabelNames,
+} from "../repository";
 
-async function deleteLabel(id: string, userId: string) {
-  const labelSnapshot = await db.query.labelTable.findFirst({
-    where: eq(labelTable.id, id),
-  });
+async function deleteLabel(
+  identity: ResolvedIdentity,
+  id: string,
+  userId: string,
+) {
+  const labelSnapshot = await findLabelById(identity, id);
   if (!labelSnapshot) {
     throw new HTTPException(404, { message: "Label not found" });
   }
@@ -27,11 +36,7 @@ async function deleteLabel(id: string, userId: string) {
     if (labelSnapshot.taskId) {
       lockedTask = await lockTaskAndAssertProjectLive(tx, labelSnapshot.taskId);
     }
-    const [label] = await tx
-      .select()
-      .from(labelTable)
-      .where(eq(labelTable.id, id))
-      .for("update");
+    const label = await lockLabelRow(tx, identity, id);
     if (!label) {
       throw new HTTPException(404, { message: "Label not found" });
     }
@@ -50,10 +55,7 @@ async function deleteLabel(id: string, userId: string) {
       if (!lockedTask) {
         throw new HTTPException(404, { message: "Task not found" });
       }
-      const [deletedLabel] = await tx
-        .delete(labelTable)
-        .where(eq(labelTable.id, id))
-        .returning();
+      const deletedLabel = await deleteLabelById(tx, identity, id);
       if (!deletedLabel) {
         throw new HTTPException(404, { message: "Label not found" });
       }
@@ -70,21 +72,7 @@ async function deleteLabel(id: string, userId: string) {
     }
 
     const affectedLabels = label.workspaceId
-      ? await tx
-          .select({
-            label: labelTable,
-            taskId: taskTable.id,
-            projectId: taskTable.projectId,
-          })
-          .from(labelTable)
-          .innerJoin(taskTable, eq(labelTable.taskId, taskTable.id))
-          .where(
-            and(
-              eq(labelTable.workspaceId, label.workspaceId),
-              eq(labelTable.name, label.name),
-              isNotNull(labelTable.taskId),
-            ),
-          )
+      ? await listTaskLabelCopiesWithTask(tx, label.workspaceId, label.name)
       : [];
     const taskIds = [
       ...new Set(affectedLabels.map((entry) => entry.taskId)),
@@ -105,39 +93,24 @@ async function deleteLabel(id: string, userId: string) {
     const remainingTaskIds = [...tasks.keys()];
     const remainingCopies =
       label.workspaceId && remainingTaskIds.length
-        ? await tx
-            .select({ id: labelTable.id })
-            .from(labelTable)
-            .where(
-              and(
-                eq(labelTable.workspaceId, label.workspaceId),
-                eq(labelTable.name, label.name),
-                isNotNull(labelTable.taskId),
-                inArray(labelTable.taskId, remainingTaskIds),
-              ),
-            )
-            .orderBy(asc(labelTable.taskId), asc(labelTable.id))
-            .for("update")
+        ? await lockTaskLabelCopies(
+            tx,
+            label.workspaceId,
+            label.name,
+            remainingTaskIds,
+          )
         : [];
 
-    const [deletedLabel] = await tx
-      .delete(labelTable)
-      .where(eq(labelTable.id, id))
-      .returning();
+    const deletedLabel = await deleteLabelById(tx, identity, id);
     if (!deletedLabel) {
       throw new HTTPException(404, { message: "Label not found" });
     }
 
     const deletedCopies = remainingCopies.length
-      ? await tx
-          .delete(labelTable)
-          .where(
-            inArray(
-              labelTable.id,
-              remainingCopies.map((copy) => copy.id),
-            ),
-          )
-          .returning()
+      ? await deleteLabelsByIds(
+          tx,
+          remainingCopies.map((copy) => copy.id),
+        )
       : [];
     const emittedRows = deletedCopies.flatMap((child) => {
       const taskId = child.taskId;
@@ -152,9 +125,8 @@ async function deleteLabel(id: string, userId: string) {
     };
   });
 
-  for (const { label, taskId, projectId } of result.affectedLabels) {
+  for (const { taskId, projectId } of result.affectedLabels) {
     await publishEvent("task.label_deleted", {
-      label,
       task: { id: taskId, projectId },
       projectId,
       taskId,

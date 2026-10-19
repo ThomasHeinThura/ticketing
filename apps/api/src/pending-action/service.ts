@@ -35,6 +35,7 @@ import {
 } from "../instance/users/repository";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
+import { dbNowUtc } from "../utils/db-time";
 import { invalidateNativeAuthorization } from "../ws";
 import { resolvePendingActionApprovalContract } from "./approval-contract";
 import { lockPendingActionLifecycle } from "./lifecycle-invalidation";
@@ -694,7 +695,7 @@ export async function approveUserDeactivation(input: {
             eq(schema.sessionTable.id, input.sessionId),
             eq(schema.sessionTable.userId, input.userId),
             eq(schema.sessionTable.portal, "agent"),
-            gt(schema.sessionTable.expiresAt, sql`now()`),
+            gt(schema.sessionTable.expiresAt, dbNowUtc()),
           ),
         )
         .for("update")

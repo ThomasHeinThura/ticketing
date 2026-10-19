@@ -1,4 +1,13 @@
-# Live pull request disposition ledger
+# Pull request disposition ledger (dated snapshot)
+
+> **Historical snapshot (#754).** The table below is the 2026-10-08 17:32 UTC read and is
+> kept unchanged as evidence. It is not live: on 2026-10-15 the only open PR from it is
+> **#589**, still **ABSORB THEN CLOSE**. Its residual approved units are #580 (M1), #713
+> (M2), #714 (M3), #715 (M4), #716 (M6) and #718 (M9); #717 (M7) is complete through #738.
+> #589 closes only when each of those is merged and verified, proven equivalent, or deferred
+> by Thomas (decision log 2026-10-15). Current state lives in
+> [integration-execution-queue.md](integration-execution-queue.md) and on GitHub.
+
 
 **Verified:** 2026-10-08 17:32 UTC. **Repository:** `ThomasHeinThura/ticketing`.
 **Accepted `main`:** `3096cb044bdf6ae98488bfc385f532fa6386343a`.

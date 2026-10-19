@@ -18,7 +18,6 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
-import { assertCalendarUnused } from "../pending-action/deletion-targets";
 import {
   createPendingAction,
   requirePendingActionRequesterIdentity,
@@ -28,14 +27,15 @@ import { requireApiKeyPermissionScope } from "../utils/require-api-key-permissio
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { ServiceCalendarVersionConflictError } from "./errors";
 import {
+  assertCalendarUnused,
   createCalendar,
   getCalendar,
   getCalendarUsage,
   getCalendarWorkspace,
   importCalendarHolidays,
   listCalendars,
-  ServiceCalendarVersionConflictError,
   updateCalendar,
 } from "./repository";
 import {

@@ -1,9 +1,9 @@
-import { asc, eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import db from "../database";
-import { columnTable } from "../database/schema";
+import type { Executor } from "../database/executor";
+import { listColumnSlugsForIdentity } from "./repository";
 
-type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbOrTx = Executor;
 
 export const VALID_PRIORITIES = [
   "no-priority",
@@ -24,24 +24,30 @@ export function assertValidPriority(priority: string): void {
 }
 
 export async function getValidTaskStatuses(
+  identity: ResolvedIdentity,
   projectId: string,
-  executor: DbOrTx = db,
+  executor: DbOrTx,
 ): Promise<string[]> {
-  const columns = await executor
-    .select({ slug: columnTable.slug })
-    .from(columnTable)
-    .where(eq(columnTable.projectId, projectId))
-    .orderBy(asc(columnTable.position));
+  const columns = await listColumnSlugsForIdentity(
+    executor,
+    identity,
+    projectId,
+  );
 
   return [...columns.map((c) => c.slug), ...VIRTUAL_STATUSES];
 }
 
 export async function assertValidTaskStatus(
+  identity: ResolvedIdentity,
   status: string,
   projectId: string,
-  executor: DbOrTx = db,
+  executor: DbOrTx,
 ): Promise<void> {
-  const validStatuses = await getValidTaskStatuses(projectId, executor);
+  const validStatuses = await getValidTaskStatuses(
+    identity,
+    projectId,
+    executor,
+  );
 
   if (!validStatuses.includes(status)) {
     throw new HTTPException(400, {

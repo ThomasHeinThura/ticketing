@@ -6,16 +6,20 @@
 # waits for health and probes the result. Bare `docker compose up` produces a
 # stack that appears to be running and is not.
 #
-# THIS IS THE ONLY FILE THAT PUBLISHES THE APPLICATION PORT. Compose
-# concatenates `ports:` across files, so a base file that published 5173 would
-# publish it in production too, and the "never published" premise that
-# TASKDESK_TRUST_PROXY rests on would be false.
+# NO FILE PUBLISHES THE APPLICATION PORT, this one included (#752). Traefik
+# reaches 5173 over the `taskdesk` network and scripts/deploy.sh probes it from
+# inside the container, so a host port adds nothing but a way around the proxy:
+# with TASKDESK_TRUST_PROXY=1 below, anything that can reach a published 5173
+# can forge X-Forwarded-For. Compose concatenates `ports:` across files, so a
+# base file that published 5173 would publish it in production too.
 # Production never loads this file. scripts/deploy.sh production asserts it.
+#
+# Every port a local overlay does publish is bound to loopback (127.0.0.1 and
+# [::1]); see deploy/compose.traefik.yml and traefik-and-domains.md § Local
+# development for reaching the stack from another machine.
 
 services:
   taskdesk:
-    ports:
-      - "${TASKDESK_PORT:-5173}:${TASKDESK_PORT:-5173}"
     environment:
       # Local Traefik is the only hop in front of the container, and it is on
       # the same Docker network. Directly verifiable here, unlike a real

@@ -5721,7 +5721,7 @@
           "Projects"
         ],
         "summary": "Update project",
-        "description": "Replace a project's name, icon, slug, description, and visibility. defaultCommentVisibility (CA-2) is optional and needs project:manage_settings.",
+        "description": "Replace a project's name, icon, slug, description, and visibility. defaultCommentVisibility (CA-2) and the engagement fields kind, supportLevel and serviceCalendarId (#766) are optional and each needs project:manage_settings.",
         "parameters": [
           {
             "schema": {
@@ -5821,7 +5821,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing project:update permission, or defaultCommentVisibility was sent without the project:manage_settings capability",
+            "description": "Missing project:update permission, or defaultCommentVisibility, kind, supportLevel or serviceCalendarId was sent without the project:manage_settings capability",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10254,7 +10254,7 @@
           "Canned responses"
         ],
         "summary": "List canned responses",
-        "description": "A workspace's reusable composer snippets (`CA-19`).",
+        "description": "Reusable composer snippets available on this work item (`CA-19`).",
         "parameters": [
           {
             "schema": {
@@ -10262,13 +10262,13 @@
               "minLength": 1
             },
             "required": true,
-            "name": "workspaceId",
+            "name": "workItemKey",
             "in": "query"
           }
         ],
         "responses": {
           "200": {
-            "description": "The workspace's canned responses",
+            "description": "Canned responses available on the work item",
             "content": {
               "application/json": {
                 "schema": {
@@ -10281,7 +10281,7 @@
             }
           },
           "400": {
-            "description": "Workspace ID could not be determined",
+            "description": "Work item key is required",
             "content": {
               "text/plain": {
                 "schema": {
@@ -10295,6 +10295,16 @@
           },
           "403": {
             "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found or not reachable",
             "content": {
               "text/plain": {
                 "schema": {

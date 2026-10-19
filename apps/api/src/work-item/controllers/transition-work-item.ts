@@ -10,6 +10,7 @@ import {
   resolveStateTemplateForProject,
   type TransitionOfferContext,
 } from "@taskdesk/domain";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { lockApprovalsForWorkItemTransition } from "../../approval/repository";
@@ -268,6 +269,7 @@ function resolveSetAssigneePersonId(
  */
 export async function transitionWorkItem(
   workItemId: string,
+  identity: ResolvedIdentity,
   personId: string | null,
   actorId: string,
   actorType: ActivityActorType,
@@ -473,6 +475,7 @@ export async function transitionWorkItem(
         // gate between this read and the transition write.
         approvalRows = await lockApprovalsForWorkItemTransition(
           tx,
+          identity,
           ctx.workItem.id,
           ctx.workItem.workspaceId,
         );
@@ -680,6 +683,7 @@ export async function transitionWorkItem(
       if (match.requiresApproval || match.requiresCab) {
         // Owner decision 2026-10-10: the run closes the other still-pending approvals.
         await closePendingApprovalsOnTransition(tx, {
+          identity,
           workspaceId: ctx.workItem.workspaceId,
           projectId: ctx.workItem.projectId,
           workItemId: ctx.workItem.id,

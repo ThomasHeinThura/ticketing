@@ -1,9 +1,11 @@
+import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createColumn from "./controllers/create-column";
@@ -161,30 +163,52 @@ const deleteColumnRoute = createRoute({
 });
 
 const column = apiRouter()
-  .openapi(getColumnsRoute, async (c) =>
-    c.json(await getColumns(c.req.valid("param").projectId), 200),
-  )
+  .openapi(getColumnsRoute, async (c) => {
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity)
+      throw new HTTPException(404, { message: "Project not found" });
+    return c.json(
+      await getColumns(identity, c.req.valid("param").projectId),
+      200,
+    );
+  })
   .openapi(createColumnRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const { name, icon, color, isFinal } = c.req.valid("json");
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity)
+      throw new HTTPException(404, { message: "Project not found" });
     return c.json(
-      await createColumn({ projectId, name, icon, color, isFinal }),
+      await createColumn({ identity, projectId, name, icon, color, isFinal }),
       200,
     );
   })
   .openapi(reorderColumnsRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const { columns } = c.req.valid("json");
-    return c.json(await reorderColumns(projectId, columns), 200);
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity)
+      throw new HTTPException(404, { message: "Project not found" });
+    return c.json(await reorderColumns(identity, projectId, columns), 200);
   })
-  .openapi(updateColumnRoute, async (c) =>
-    c.json(
-      await updateColumn(c.req.valid("param").id, c.req.valid("json")),
+  .openapi(updateColumnRoute, async (c) => {
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity)
+      throw new HTTPException(404, { message: "Column not found" });
+    return c.json(
+      await updateColumn(
+        identity,
+        c.req.valid("param").id,
+        c.req.valid("json"),
+      ),
       200,
-    ),
-  )
-  .openapi(deleteColumnRoute, async (c) =>
-    c.json(await deleteColumn(c.req.valid("param").id), 200),
-  );
+    );
+  })
+  .openapi(deleteColumnRoute, async (c) => {
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity)
+      throw new HTTPException(404, { message: "Column not found" });
+    return c.json(await deleteColumn(identity, c.req.valid("param").id), 200);
+  });
 
 export default column;

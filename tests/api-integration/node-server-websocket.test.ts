@@ -8,7 +8,7 @@ import { createConnection } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { defaultRolePayloads } from "@taskdesk/permissions";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { portalAuth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
@@ -116,6 +116,42 @@ async function grantNativeProjectRead(
     scopeId: projectId,
     roleId: role.id,
   });
+}
+
+async function expectDirectProjectMembershipRemains(
+  userId: string,
+  projectId: string,
+  workspaceId: string,
+) {
+  const person = requireRow(
+    await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, userId))
+      .limit(1),
+    "project membership assertion person",
+  );
+  const memberships = await db
+    .select({ id: schema.membershipTable.id })
+    .from(schema.membershipTable)
+    .where(
+      and(
+        eq(schema.membershipTable.personId, person.id),
+        eq(schema.membershipTable.scope, "project"),
+        eq(schema.membershipTable.scopeId, projectId),
+      ),
+    );
+  expect(memberships).toHaveLength(1);
+  const workspaceMemberships = await db
+    .select({ id: schema.workspaceUserTable.id })
+    .from(schema.workspaceUserTable)
+    .where(
+      and(
+        eq(schema.workspaceUserTable.userId, userId),
+        eq(schema.workspaceUserTable.workspaceId, workspaceId),
+      ),
+    );
+  expect(workspaceMemberships).toHaveLength(0);
 }
 
 /**
@@ -827,6 +863,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       member.user.id,
     );
     expect(removed.status).toBe(200);
+    await expectDirectProjectMembershipRemains(
+      member.user.id,
+      project.project.id,
+      workspace.id,
+    );
     await expect(denied).resolves.toEqual({ type: "subscription_denied" });
 
     const closed = new Promise<void>((resolve) =>
@@ -1839,6 +1880,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       member.user.id,
     );
     expect(removed.status).toBe(200);
+    await expectDirectProjectMembershipRemains(
+      member.user.id,
+      project.id,
+      workspace.id,
+    );
     broadcastToProject(project.id, message);
     await expect(closed).resolves.toBe(1008);
     expect(received).toEqual([]);

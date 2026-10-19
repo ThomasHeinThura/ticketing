@@ -1,10 +1,17 @@
-import { and, eq } from "drizzle-orm";
-import db, { schema } from "../database";
+import db from "../database";
 import {
   isLocalFactorRequired,
   type LocalFactorPolicy,
   parseLocalFactorPolicy,
 } from "./local-factor-policy";
+import {
+  getActiveLocalFactorIdentity,
+  getConfiguredLocalFactorRole,
+  getInactiveLocalFactorIdentity,
+  getLocalFactorMembershipRoles,
+  getLocalFactorPolicySetting,
+  type StepUpExecutor,
+} from "./repository";
 
 export type LocalFactorState = {
   policy: LocalFactorPolicy;
@@ -23,37 +30,14 @@ export class InactiveFactorIdentityError extends Error {
 
 export async function loadLocalFactorState(
   userId: string,
+  executor: typeof db | StepUpExecutor = db,
 ): Promise<LocalFactorState> {
-  const [person] = await db
-    .select({
-      id: schema.personTable.id,
-      side: schema.personTable.side,
-      active: schema.personTable.active,
-      enabled: schema.userTable.twoFactorEnabled,
-    })
-    .from(schema.personTable)
-    .innerJoin(
-      schema.userTable,
-      eq(schema.personTable.userId, schema.userTable.id),
-    )
-    .where(
-      and(
-        eq(schema.personTable.userId, userId),
-        eq(schema.personTable.active, true),
-      ),
-    )
-    .limit(1);
+  const [person] = await getActiveLocalFactorIdentity(userId, executor);
   if (!person || (person.side !== "staff" && person.side !== "customer")) {
-    const [inactivePerson] = await db
-      .select({ id: schema.personTable.id })
-      .from(schema.personTable)
-      .where(
-        and(
-          eq(schema.personTable.userId, userId),
-          eq(schema.personTable.active, false),
-        ),
-      )
-      .limit(1);
+    const [inactivePerson] = await getInactiveLocalFactorIdentity(
+      userId,
+      executor,
+    );
     if (inactivePerson) throw new InactiveFactorIdentityError();
     throw new Error(
       "Active identity is unavailable for factor policy evaluation",
@@ -62,31 +46,19 @@ export async function loadLocalFactorState(
 
   // Resolve the person first so an inactive identity is denied as such even when the
   // instance setting row is missing or the stored policy does not parse.
-  const [setting] = await db
-    .select({ policy: schema.instanceSettingTable.localFactorPolicy })
-    .from(schema.instanceSettingTable)
-    .where(eq(schema.instanceSettingTable.id, "singleton"))
-    .limit(1);
+  const [setting] = await getLocalFactorPolicySetting(executor);
   if (!setting) throw new Error("Instance factor policy is unavailable");
   const policy = parseLocalFactorPolicy(setting.policy);
 
-  const memberships = await db
-    .select({ roleId: schema.membershipTable.roleId })
-    .from(schema.membershipTable)
-    .innerJoin(
-      schema.roleTable,
-      eq(schema.membershipTable.roleId, schema.roleTable.id),
-    )
-    .where(eq(schema.membershipTable.personId, person.id));
+  const memberships = await getLocalFactorMembershipRoles(person.id, executor);
   if (policy.mode === "required_role") {
     const requiredRoleId = policy.requiredRoleId;
     if (!requiredRoleId)
       throw new Error("Configured factor role is unavailable");
-    const configuredRole = await db
-      .select({ id: schema.roleTable.id })
-      .from(schema.roleTable)
-      .where(eq(schema.roleTable.id, requiredRoleId))
-      .limit(1);
+    const configuredRole = await getConfiguredLocalFactorRole(
+      requiredRoleId,
+      executor,
+    );
     if (configuredRole.length !== 1) {
       throw new Error("Configured factor role is unavailable");
     }

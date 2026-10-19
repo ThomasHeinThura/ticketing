@@ -1,3 +1,529 @@
+## Blocked first — #810 accepted; SAME Carrier/#765 remain open — 2026-10-18 13:59 UTC
+
+| Owner / lane | Current state and evidence | Next action / boundary |
+| --- | --- | --- |
+| Conductor / protected #810 | ACCEPTED at main `01516b2e366c88356f8fe81158b5022a62d3e70c` (13:51:21 UTC); 18/18 required checks green, PG229 files/3,360 tests/all5, G11 22/22, applicable unit/type/gate/browser/G4/G8 and source-image checks green. Image:125 migrations, UID10001, healthy/live/ready200. | Preserve bounded acceptance. This does not complete whole #580, Carrier, or release acceptance. |
+| Conductor / #774 and #779 | GitHub marks both MERGED by ancestry through #810 at main0151. | Preserve the actual ancestry disposition; no separate merge or new component review is claimed. |
+| Test author / #765 regression conservation | OPEN. Candidate commit `fa15d1d8b468ea3211e45cdf28e67840e0faee0b`; complete seven-test file:6 pass/1 fail in5.505s. Failure: `findOrganisationDefaultCustomerVisibility is not a function`; current query is inline in the existing atomic transaction and the helper is not exported. | Do not add an export just for the test. Next revision must use a supported API/behavior or remove the direct-helper assertion only with exact existing-coverage evidence; then rerun the complete file and review normally. No #765 acceptance. |
+| Material adviser / SAME Carrier #791 | BLOCKED/unaccepted at frozen HEAD31fc; checker6a603e39/test12972cf5 focused3:1 pass/2 fail,99 not selected,0 skip/cancel,7.5495s. Pressed-loop ID mismatch7845 and effect-source closure remain; helper6829 fails. Fourteen frozen-complete leaves include unsound absence, not inventory loss. Sol material d31a080e is not approval. | Preserve failures and controls. No full102, G3/production, current-main composition, fresh reviews, current CI/image or Carrier acceptance exists. |
+| Thomas / #811 and #773 | Three previously asked owner questions remain pending; #717 is DONE. | Preserve settled decisions; do not guess or reopen them. |
+| Conductor / whole #580 and #589 | Whole-580 ownership/checker work and release/SIT/recovery/final audit remain open. Earlier3f5e 223.2ms failure is historical, not a current cause finding. | Complete bounded units under normal review and exact required gates; no stage-completion claim. |
+
+Dated checkpoint only. No waiver, whole-580/Carrier acceptance, production/UAT, release/SIT, nonempty-backup/usable-restore, final-audit, or stage-completion claim.
+
+## Blocked first — Carrier #791 adverse; #850 accepted; #810 needs new-base composition — 2026-10-18 12:36 UTC
+
+| Owner / unit | Actual state and evidence | Next action / boundary |
+| --- | --- | --- |
+| Luna / SAME Carrier #791 | BLOCKED/adverse on frozen `31fc…`; checker `6de82…` / test `b0e169…`, v35 selected 3: 0 pass / 3 fail, 99 not selected, 0 skip/cancel; scoped inputs conserved. Pure-helper closure, `bg-clip`/color and false-positive `present` base-oracle findings remain. Private `3adb…` / `4534…` candidate is unapplied and unaccepted. | Preserve current and historical controls; finish source-bound repair, full102/census/G3/browser/image/current-main review and exact CI. The older v6 scan (985/938/11,083) is from 4d/cb, not current 6de. No Carrier acceptance. |
+| Conductor / accepted #849 | DONE bounded PID/profile-ID correlation repair in the optional CPU-trace parser at main `173501e72aa92cb3241e4fd7c64dde86486e9a48`; 18 required checks, PG225/3,329/all5, G11 22/22 and source image passed. | Preserve the optional CPU diagnostic inner failure without a hosted empty-frame or performance-cause claim; do not extend this slice to whole580. |
+| Conductor / accepted #850 | DONE bounded calendar repository ownership at main `eab89b0fdc4ecb46ef3756eadd2bf2439682adc1`, parents `173501e72aa92cb3241e4fd7c64dde86486e9a48` / `bde45b495c365beb5472fef9df5cdff59de36139`, tree `093d7c2fe6917d3429ff73a1a16a6f4a5708449a`. All18 required checks passed; PG225/3,329/all5, type9, unit12, API121/872, UI61/325, web186/1,027, G11 22/22, browser64, G4 155+8, G8 19+1, gate1375/1395 with20 existing opt-in skips and image passed. | Preserve bounded scope. Optional CPU diagnostic had one inner failure; no causal performance claim. |
+| Conductor / #810 intake reach | RUNNING recompose against newly accepted eab. Old local `08a1ee99ac4356935ef37234deddb9ce86b18da7` is based on1735; its typecheck, PG12 files/158 tests, unit5 tests and reviews do not bind a new composition. Old G11223.2ms/strict200 remains adverse. | Recompose and conserve the exact overlap, then obtain fresh delta reviews and current exact-head CI/image evidence. No #774/#779 closure or performance-repair claim. |
+| Thomas / #811 and #773 | WAITING_DECISION; unpublished09bc spec alignment,13 owning findings and the three previously asked valuation / midnight / timer-timezone questions remain. | Await existing answers; do not re-ask settled decisions or infer behavior. |
+| Conductor / #589 and whole580 | OPEN; #717 DONE. Whole580/checker activation, Carrier, selected units and release acceptance remain unfinished. | Complete selected units, signed release, exact-digest SIT, NONEMPTY backup/usable isolated restore, fresh final Sol audit and report/Hold; no stage/UAT/production claim. |
+
+Dated factual checkpoint only. Preserve histories, adverse evidence and required gates. #849 and #850 are bounded accepted slices, not whole580 or release completion.
+
+## Blocked first — Carrier source-model verification — 2026-10-18 10:14 UTC
+
+| Owner / unit | Actual state and evidence | Next action / boundary |
+| --- | --- | --- |
+| Luna / SAME Carrier #791 | RUNNING acceptance repair. Current dirty checker a8ba4b1d/test a307c6cf at committed31fc00b9. v23:2/2 focused pass; broader v24:6/8 pass, two supported forwarding/popup positives fail,93 declarations unselected. All scoped inputs conserved. | Restore the exact supported transfer contracts while retaining whole-callable mutation/default rejection. Then complete full101, canonical G3, browser/image, current-main composition, fresh required ordinary panel/further Sol and exact CI. No expectation waiver or Carrier acceptance. |
+| Conductor / source diagnostic | Native0 v5 observed all358 paths/43 tokens;985 occurrence union,938 unresolved,11,089 frozen requirements (10,389 OPEN/700 complete). Original seven-field projection hold preserved; no projection problems. | Diagnostic only. Retain unknown regions and exact identities. ProjectLayout still has17 affected occurrences/498 requirements at an unresolved nested insertion boundary. No aggregate progress or product-bug count. |
+| Conductor / accepted #847 | DONE records-only protected merge8d41d07e at08:31:28Z. | Preserve bounded scope; scope-skipped product steps were not runtime passes. |
+| Thomas / #811 and #773 | WAITING_DECISION:13 owning findings; the three previously asked valuation, midnight and timer-timezone questions remain pending. | Await answers without re-asking settled decisions or inventing behavior. |
+| Conductor / #810 and #589 | #810 BLOCKED at223.2ms versus strict200; #717 DONE. Whole580 and release/SIT/recovery/audit unfinished. | Finish selected units, signed combined release, exact-digest laptop HTTPS SIT, NONEMPTY backup/usable isolated restore, fresh final independent Sol audit, report/Hold. |
+
+Dated checkpoint only. Earlier full99 and canonical contrast source-gate failures remain adverse history; token discipline passed. No full101, stage, mission, UAT, production, waiver or after-turn scheduler acceptance.
+
+## Blocked first — SAME Carrier diagnostics; protected #844 accepted — 2026-10-18 08:05 UTC
+
+| Owner / unit | Actual state and evidence | Next action / boundary |
+| --- | --- | --- |
+| Luna / SAME Carrier #791 | BLOCKED on frozen `31fc00b9bf30e563711e080bba71c9495606b333`. Focused v14:2/2 actual connected tests passed (native0/35.429s),97 unselected. v13 remains adverse1/2 after empty helper-file packet assembly; TaskCard v12 exposed `DeleteExpression.expression` / unary-operand AST mismatch. | Root owns the unfiltered full99-test v15 run started around08:04; result pending. Preserve adverse history/controls; no acceptance until complete verification, conservation, reviews and gates. |
+| Conductor / accepted #844 | DONE bounded role-lock ownership. Main `2a043777056f07d29a7893481aa247ea49243692`, protected08:01:48Z, parents `c98f290022a7dcc4356a89bbe9f02bf6db2d8e9a` / `8ef01acf7e9af51a2f1a29505a9294ae353fad0e`, tree `a00334ab45c6f4bfb417b02db38662777c3e3703`. Current18/18 checks green; PG225/3329/all5, type9, unit12, G11 22, image passed. | Preserve bounded scope. Old224.4ms remains adverse history; current optional CPU diagnostic lacks app frames, with no causal repair claim. |
+| Luna / profile correlation | Private checker/test `184e6ee4`/`23612233` passed12 focused tests; bounded probe observed chunks on a different TID than their Profile header. | No hosted-cause or Carrier acceptance claim. |
+| Thomas / #811 and #773 | Thirteen owning findings remain; three previously asked valuation, midnight and timer-timezone questions unanswered. | Preserve settled decisions; no re-ask or guessed behavior. |
+| Conductor / #810 and #589 | #810 remains223.2ms vs strict200; #717 DONE. Whole580 and final release/SIT/backup/restore/audit unfinished. | Complete selected units and the existing release/recovery/audit sequence; no stage or production claim. |
+
+Dated checkpoint only. No waiver, whole580 completion, performance-cause claim or functioning after-turn scheduler.
+
+## Blocked first — Carrier downstream proof join; protected #845 accepted — 2026-10-18 07:04 UTC
+
+| Owner / unit | Actual state and evidence | Next action / boundary |
+| --- | --- | --- |
+| Luna / SAME Carrier #791 | BLOCKED: checker d22fc9be/test01ac5a37,98 static declarations; focused1 failed,97 not selected,0 skip/cancel. Subsequent conserved private diagnostic accepts map admission/effect inventory/native type/default-library method and retains map/IIFE transitions, but leaves2 OPEN theme requirements and no pair. TaskCard proposal unapplied. | Diagnose authentic downstream paint/proof join; preserve all controls. Complete focused/full/census/G3/current-main conservation, required ordinary panel and further full independent Sol before acceptance. |
+| Conductor / accepted #845 | DONE bounded role-list repository ownership at main9d52ee4e,07:01:56Z; exact publication6c8b4c92/treef1078ae9,18 required checks,PG225/3329/all5,G1122/browser64 and healthy isolated source image74442af3 accepted. | Preserve fresh independent Luna/further Sol evidence, own-note-only publication and optional CPU adverse result. Whole580 remains unfinished. |
+| Conductor / #844 | HELD at0a3a8dc2: requiredG11 actual21pass1fail/assignment224.4ms strict<200. PG225/3329/all5 and current image passed. | No unchanged rerun/waiver/merge. Legitimate accepted-main composition requires source conservation, independent delta/further Sol review and all current gates. |
+| Luna / optional CPU diagnostic | Controlled about:blank probe1Profile/98chunks9733samples; samePID/source/ID but differentTIDs split the current key. Within bounds/all cleanup. | Verify primary-source identity contract and fail-closed association design; no accepted fix or hosted/performance cause claim. |
+| Thomas / #811 and #773 | WAITING_DECISION; local09bc clean/unpushed,13 owning findings open; three earlier valuation/midnight/timer-timezone questions pending. | Await answers without reopening settled decisions or guessing behavior. |
+| Conductor / #810 and whole580 | #810 BLOCKED223.2ms strict200; whole580 source conversion and reviewed gate activation unfinished. | Continue genuine Carrier/#772 integration or evidence-backed repair; no premature predecessor closure. |
+| Conductor / #589 program | OPEN; #717 DONE. | Selected-unit acceptance → signed combined release → exact-digest laptop HTTPS SIT → consistent NONEMPTY backup/usable isolated restore → fresh final Sol audit → report/Hold. |
+
+Dated checkpoint only. Preserve primary dirty5+1, histories, strict gates and bounded runtime ownership; no stage/UAT/production/waiver or functioning after-turn scheduler claim.
+
+## Blocked first — Carrier #791; protected #842 accepted, role-lock slice unvalidated — 2026-10-18 05:42 UTC
+
+| Owner / unit | State and exact evidence | Next action / boundary |
+| --- | --- | --- |
+| Critical material adviser / SAME Carrier #791 | BLOCKED/adverse. Current frozen checker `1c0e6553…` / test `72887f48…`: selected30/97 29 pass / 1 fail / 67 not selected / 0 skipped or cancelled. Historical full96 (bf5aeb7d/f6b6f348) was91 pass/5 fail. Popup-hover expected `bg-popover`, observed enclosing-card backdrop; unchanged-source diagnostic and material analysis traced a lost callback-output boundary; no repair is verified. Callback-output private candidate v1 remains HELD after five material findings; no canonical edits. DnD v5.1 passed only bounded harness filesystem/hash fault injection, not product source. | Preserve the real popup assertion and all negative controls; diagnose the structural output path without filtering or weakening. Complete the source-bound repair and its controls before acceptance. |
+| Conductor / accepted #842 | DONE bounded invitation-query ownership. Protected main `340eb55e9778c71fbaed1b8ed3cd854ca3c6443c`, 05:29:42Z, parents `52a5480c7c5162966cab276755c66144edca6b69` / `cc0f6b605f89335eda1ca32aceab70cadf1c815a`, tree `d40c890b24e1568bf5accd2f558356af509ab162`. Exact-head required checks18/18 and source-bound image accepted. | Preserve bounded scope and optional CPU diagnostic adverse result. Whole580 remains unfinished. |
+| Conductor / next #580 role-assignment-lock ownership | RUNNING uncommitted10-path candidate on clean-start branch `codex/query580-role-assignment-ownership-20261018`, currently based on accepted main340eb. | Preserve exact transaction executor, namespaces/order and call placements. Root reviews and owns all checks/commit/publication; no checker activation or acceptance claimed. |
+| Thomas / #811 and #773 | WAITING_DECISION. Local clean/unpushed spec commit09bc records eleven existing-contract alignments; owning review still13 open. Three owner questions remain (TC-17 valuation, server midnight behavior, timer timezone). | Await recorded answers; keep settled screens/threshold/recipient decisions and do not invent behavior. |
+| Conductor / whole #580 | RUNNING; source conversion and reviewed fail-closed checker activation remain unfinished. | Continue bounded ownership slices; no overlapping diagnostic count arithmetic or gate activation before review. |
+| Conductor / #810 | BLOCKED; actual223.2ms exceeds strict200ms assignment. | Require genuine Carrier/#772 integration or evidence-backed repair; no unchanged retry/premature predecessor closure. |
+| Conductor / #589 program | OPEN; #717 DONE. | Complete selected units, signed combined release, exact-digest laptop workflows, non-empty backup/usable isolated restore, fresh audit and report/Hold. |
+
+This is a dated factual checkpoint only. No whole580 completion, formal stage, UAT, production, waiver or after-turn scheduler claim.
+
+## PR840 setup failure and Carrier91/96 checkpoint — 2026-10-18 03:22 UTC
+
+| Owner / unit | State and exact evidence | Next action / boundary |
+| --- | --- | --- |
+| Conductor / accepted839 | DONE records-only; maina6b3d7c5, protected01:27:30Z, factual review/all18 current checks. | Preserve838 source-bound runtime; skipped product steps are not new passes. |
+| Conductor /840 session hooks | WAITING_CI atb9040a46; source5e0 has fresh ordinary/Sol clearance, current image verified; FULL39091277201 PG failed setup55P03/task,224/225files and3327/3328tests passed. | Diagnose actual project fixture/subscriber/reset completion, then cause-supported repair and current reviews/CI. No unchanged rerun or merge. Hosted holder unknown. |
+| Conductor /580 invitation | BLOCKED on actual840 acceptance; owned tracked+untracked diff preserved atbf11, uncommitted. | Compose actual accepted main with exact conservation, commit/review/publish/current gates. Existing old local type9/PG36 is not new-source acceptance. |
+| Luna/material adviser / SAME Carrier791 | RUNNING bounded repair; frozenbf5a/f6b6 full96 actual91pass5fail/0skipcancel; one complete-input358-path production diagnostic native0. | Preserve actual paint and closed identity controls; repair proven source/projection defects, resolve finite Menu/icon premises. Then full96/census/G3/main conservation/three ordinary/full independent Sol. |
+| Conductor /whole580 | RUNNING; ownership/checker activation remains unfinished. | Finish actual conversions and reviewed fail-closed gate; no baseline, exclusion or overlapping-count arithmetic. |
+| Conductor /810 | BLOCKED actual223.2ms versus strict200 assignment. | Genuine Carrier772 integration or demonstrated cause repair; no unchanged retry/premature774/779 closure. |
+| Thomas /811+773 | WAITING_DECISION plus thirteen owning findings. | Three valuation/midnight/timer-timezone answers remain pending; retain settled decisions. |
+| Conductor /589 program | OPEN selected integration and final acceptance;717DONE. | Signed combined release→exact-digest laptop HTTPS workflows→NONEMPTY backup/usable isolated restore→fresh final audit→report/Hold. |
+
+The dated status carries source-bound counts and limits. Primary dirty5+1 and all histories remain preserved. Root owns the sole local heavy window and at most two active children. No stage/UAT/production/waiver or working after-turn scheduler claim.
+
+## Protected #838 acceptance; Carrier construction and verified next slices — 2026-10-18 01:12 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor /838 | DONE bounded first-user bootstrap statement ownership; mainbf11c6a9, protected01:10:48Z, all18checks/225PGfiles/3328tests/all5tasks and exact source-image proof. | Preserve authentic Luna/Sol provenance, optional CPU diagnostic failure, #231/NB1 residuals; not whole580/SIT. |
+| Luna / SAME Carrier791 | RUNNING bounded constructor/adapter correction; last executed39b4/c987 full96:79pass17fail/0not-run, source/CSS/fixtures conserved. Focus19passed; ten-observation diagnostic conserved. e8a/52ef proposal HELD unexecuted for concrete static defects. | Preserve all real negative controls and strict matcher/binder/reducer/composer; review frozen correction, full96/census/G3/current-main conservation, three ordinary and full independent Sol. |
+| Conductor /580 session hooks | LOCAL_VERIFIED exact two-file dirty slice on bf11 after base-identical normalFF; type9tasks(5cached), three complete PGfiles23/23, exact cleanup/conservation. | Source commit at current accepted base, fresh independent ordinary/Sol review, authentic publication, exact hosted/image gates. No acceptance yet. |
+| Conductor /580 invitation queries | LOCAL_VERIFIED controller plus new dedicated repository on bf11 after base-identical normalFF; type9tasks(5cached), three complete PGfiles36/36, exact cleanup/conservation. | Keep route/identity/activation/lock/email semantics; independent review/commit/publication/gates after acceptance order permits. Shared lock ownership remains separate unfinished work; no third PR opened. |
+| Conductor /whole580 | RUNNING; separate red unwired diagnostics2719/139paths/1506locations (session hooks) and2681/139paths/1487locations (invitation only). | Counts overlap and have different inputs; no unique-query/progress arithmetic. Finish actual conversions and reviewed fail-closed checker activation without exclusions or builder escape. |
+| Conductor /810 | BLOCKED actual223.2ms versus strict200 assignment budget. | Genuine Carrier772 integration or demonstrated cause repair; no unchanged retry/premature predecessor closure. |
+| Thomas /811+773 | WAITING_DECISION plus thirteen owning-review findings. | Three valuation/midnight/timer-timezone answers remain pending; do not guess or reopen settled decisions. |
+| Conductor /589 program | OPEN selected580/713/714/715/716/718 and remaining acceptance;717DONE. | Signed release→exact-digest laptop workflows→NONEMPTY backup/usable isolated restore→fresh audit→report/Hold after every selected unit accepted/equivalent/owner-deferred. |
+
+Older dated snapshots remain unchanged. Primary dirty5+1/source histories are preserved. No policy change, formal stage, UAT, production, waiver or functioning after-turn scheduler claim.
+
+## Protected #836 acceptance; bootstrap and Carrier ownership — 2026-10-18 00:29 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor /836 | DONE bounded local-factor ownership; maind923f7b3, protected00:28:08Z, all18checks/225PGfiles/3328tests/all5tasks and exact source-image proof. | Preserve native review provenance, optional CPU diagnostic failure and all residuals; not whole580/SIT. |
+| Conductor /835 N1 | DONE lifecycle admission/serialization repair at28fdb2c1; original three ordinary/full Sol and current-composition clearances recorded. | NB1 internal bare-verifier-result contract remains non-blocking, unfixed/unwaived; do not undo accepted repair. |
+| Luna / SAME Carrier791 | RUNNING one bounded immediate-adjacency correction; last executed7682/c987 focused9pass10fail/19/77not-run, source/CSS/fixtures conserved. | Preserve actual complete endpoint proofs and real unsupported outcomes; verify corrected source, then full96/census/G3/current-main conservation/three ordinary/full independent Sol. |
+| Conductor /580 bootstrap | LOCAL_VERIFIED dirtyab4+twofiles; type9tasks(5cached), complete PG19/19; exact cleanup/source conservation. | Compose accepted main, commit source, fresh ordinary/Sol review, authentic publication and exact hosted/image gates. No acceptance yet. |
+| Conductor /whole580 | RUNNING; actual red unwired diagnostic2727 overlapping instances/140paths/1510locations; eight auth-hook rows remain. | Complete actual conversions and reviewed fail-closed checker activation; no baseline/exclusion, unique-query arithmetic or builder escape. |
+| Conductor /810 | BLOCKED actual223.2ms versus strict200 assignment budget. | Genuine Carrier772 integration or demonstrated cause repair; no unchanged retry or premature predecessor closure. |
+| Thomas /811+773 | WAITING_DECISION plus thirteen owning-review findings. | Three valuation/midnight/timer-timezone answers remain pending; do not guess or reopen settled decisions. |
+| Conductor /589 program | OPEN selected580/713/714/715/716/718 and remaining acceptance;717DONE. | Signed release→exact-digest laptop workflows→NONEMPTY backup/usable isolated restore→fresh audit→report/Hold after all selected units accepted/equivalent/owner-deferred. |
+
+Older dated snapshots remain unchanged. Primary dirty5+1 and every source history are preserved. No formal stage, UAT, production, waiver or functioning after-turn scheduler claim.
+
+## Protected833 acceptance; N1 reviews clear, current composition pending — 2026-10-17 22:29 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor /833 | DONE bounded column-startup ownership; maincf67fefc, protected22:25:58Z, all18checks and225PGfiles/3316tests/all5tasks plus image proof. | Preserve known startup-create/duplicate-slug residuals, source-bound counts and optional CPU diagnostic failure; no whole580/SIT claim. |
+| Review panel/conductor / N1 | Three ordinary+full Sol CLEARsource433e with one non-blocking internal-contract finding; current normal compositionca5d8c5d preserves all11ownedhashes/allacceptedmain. | Current composition checks/delta review, authentic final publication and exact hosted/image gates; not yet accepted. |
+| Critical material adviser / SAME Carrier791 | BLOCKED actual0bb0/6180focused10pass9fail/19/77not-run; sourcefrozen and unchangedmanifest e250. | Close canonical outcome/receiver transport under real controls; no more test/state claims until executed. Then full96/census/G3/main conservation/required combined reviews. |
+| Conductor / program | Whole580/810/811 selected units and final589 acceptance remain open;717DONE. | Preserve owner decisions/deferrals, signed release→laptop workflows→NONEMPTY backup/usable isolated restore→fresh audit→report/Hold. |
+
+The22:17 snapshot below is retained unchanged;833's later success/merge and subsequent N1 reviews are not backdated. Primary dirty work and source histories remain preserved. No formal stage, UAT, production, waiver or after-turn scheduler claim.
+
+## N1 policy source verified; column and Carrier acceptance pending — 2026-10-17 22:17 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor / accepted832 | DONE bounded records; main e77e0806, protected21:36:14Z, eighteen policy-scope checks green. | Preserve source-bound831 runtime; skipped product jobs are not new verification. |
+| Conductor / column833 | WAITING_CI at94bb25cf; two ordinary/full Sol clear source77c3, seventeen required contexts succeeded, fullPG still running. | Strict exact-head checks/raw counts/image proof, normal protected expected-head merge only when all green. |
+| Ordinary review panel / N1 | WAITING_REVIEW; clean pushed433e17a9, type9 and four complete PG82/82 pass on exact frozen precommit bytes; ordinaryA CLEAR/B running. | Third ordinary, further fresh full Sol, current-main composition, authentic publication and exact hosted/image gates. Old-policy and old-hook fault-injection worktrees NEVERmerge. |
+| Luna / SAME Carrier791 | RUNNING connected outcome/publication repair in same two scripts; last cdd3 focused10pass9fail/19,77not-run, manifest e250 unchanged. | Preserve all true drop/unknown/Portal obligations and real guards/provenance; root verification/full96/census/G3/main conservation/three ordinary/full independent Sol. |
+| Conductor / whole580 | RUNNING; red unwired diagnostic, no progress arithmetic. | Finish actual conversion and reviewed fail-closed gate activation; no baseline/exclusion or builder escape. |
+| Conductor /810 | BLOCKED; actual223.2ms fails strict200 assignment budget. | Genuine Carrier772 integration or demonstrated cause repair; no unchanged retry/premature predecessor closure. |
+| Thomas /811+773 | WAITING_DECISION plus thirteen owning-review findings. | Three valuation/midnight/timezone answers remain pending; do not guess or reopen settled decisions. |
+| Conductor / final589 | BLOCKED selected units and final acceptance;717 DONE. | Signed combined prerelease, exact-digest laptop SIT, consistent NONEMPTY backup+usable isolated restore, fresh audit, report/Hold. |
+
+Dated status carries exact source-bound evidence and qualifications. Two active children and one root-owned local heavy window; no stage/UAT/production/waiver or verified after-turn scheduler claim.
+
+## Accepted #831; N1 runtime proof and Carrier role separation — 2026-10-17 21:28 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor / #830 and #831 | DONE for bounded records/pure-ownership units; main dd7f384e, protected #831 at21:15:55Z after authentic ordinary/full Sol reviews, eighteen exact-head checks and candidate image proof. | Preserve reports and source-bound limits; no whole580 or SIT claim. |
+| Conductor / pending-action N1 | RUNNING verification, unaccepted and uncommitted; patch9068e5c6, types9 and four complete PG files78/78 pass. Three old admission schedules fail; meaningful old-hook counterfactual fails on actual publication. | Finish scoped checks and accepted-main composition; three fresh ordinary reviewers, further full fresh Sol, exact hosted/image gates. Never commit the detached fault-injection worktree. |
+| Critical Sol material adviser / SAME Carrier #791 | BLOCKED on structural identity-role mismatch; frozen7c0d/c1b8 unexecuted. Last focused df8e6PASS12FAIL78NOTRUN; old full96 adverse66/30 preserved. | Separate authentic observation identity from required-leaf diagnostic placeholders; preserve all controls, then root verification, conservation and full combined review/gates. Adviser cannot approve. |
+| Conductor / #580 column startup | FROZEN source-only on dd7f, exactly three paths; no runtime result or commit. | Verify byte-preserved relocation and meaningful mapping/idempotence regression; root checks, two fresh ordinary reviews and full fresh Sol, then current hosted/image gates. |
+| Conductor / remaining #580 | RUNNING; prior combined diagnostic2,782 overlapping instances/142 paths/1,537 locations, no unresolved export modules/builders/TS rows. | Finish actual source conversion and reviewed fail-closed activation; no baseline, exclusion or progress arithmetic. |
+| Conductor / #810 | BLOCKED; actual223.2ms fails strict200 assignment budget. | Genuine Carrier/#772 integration or demonstrated cause repair; no unchanged retry or premature predecessor closure. |
+| Thomas / #811 and #773 | WAITING_DECISION plus thirteen owning-review findings; existing-contract alignment09bc preserved clean/unpushed. | Await three valuation/midnight/timezone answers; do not guess or reopen settled decisions. |
+| Conductor / final #589 | BLOCKED on selected units and final acceptance; #717 DONE. | Signed combined prerelease → exact-digest laptop workflows → consistent NONEMPTY backup and usable isolated restore → fresh final audit → report/Hold. |
+
+The dated status snapshot carries source-bound evidence and limitations. Root owns the queue, merge order and sole local heavy runtime. Primary dirty work and histories remain preserved; no policy change, stage/UAT/production, waiver or functioning after-turn scheduler is claimed.
+
+## Finite contracts accepted; pure ownership and Carrier verification — 2026-10-17 20:13 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor / #827, #828 and #829 | DONE for bounded records/JSON/finite units. Main `a472c4d5047eb7c71afc37cf9dfe462ea2a5832a`; protected #829 at20:00:22Z after eighteen exact-head checks, authentic ordinary/full Sol reviews and candidate image proof. | Preserve branches/reports and source-bound limits. No whole580, domain-validation or SIT claim. |
+| Conductor / pure ownership batch | WAITING_REVIEW at `beb1c5eff2b1168b1e3ed01ec54d21454c22bf5d`, clean/pushed on a472. Current types and checker tests pass; fresh ordinary CLEAR, further full independent Sol pending. | Preserve all21 paths and exact class/retry identity; complete current review, publication and hosted/image gates. Earlier13-file/280-test PG result belongs to484d plus frozen patch. |
+| Conductor and material adviser / SAME Carrier #791 | BLOCKED on static interface defects; committed31fc, frozen d180/18fc unexecuted, manifest unchanged. | Resolve producer/receiver/dispatch contracts and non-vacuous tests in the same two scripts, then root verification/full96/census/G3/main conservation and required combined reviews. Material advisers cannot approve. |
+| Conductor / remaining #580 | RUNNING. Combined diagnostic on a472 plus pure21: 2,782 overlapping findings /142 paths /1,537 locations, zero unknown export modules/builders/TS diagnostics. | Finish actual source conversion and reviewed fail-closed activation; no progress arithmetic or baseline/exclusion. |
+| Conductor / pending-action N1 and adjacent cycles | BLOCKED on technical implementation/verification. Two static plans complete; no source repair or runtime reproduction. | Reuse existing admission/executor boundary only through a separately authorized bounded fix, controlled regression schedules and independent review; all three source cycles remain unresolved/unwaived. |
+| Conductor / #810 | BLOCKED on genuine Carrier/#772 integration or demonstrated cause repair; actual223.2ms fails strict200. | Preserve failure/predecessors; no unchanged retry. |
+| Thomas / #811 and #773 | WAITING_DECISION plus thirteen owning-review findings; existing-contract alignment09bc is clean/unpushed. | Retain three valuation/midnight/timezone questions. No guessed behavior, re-asked settled thresholds/screens or false review clearance. |
+| Conductor / final #589 | BLOCKED on selected units and final verification; #717 DONE. | Signed combined prerelease → exact-digest laptop workflows → consistent NONEMPTY backup and usable isolated app restore → fresh final independent audit → report/Hold. |
+
+The dated snapshot carries exact evidence and boundaries. Root owns the queue, merge order and sole local heavy runtime. Source histories and primary dirty work remain preserved; no stage/UAT/production, waiver or working after-turn scheduler is claimed.
+
+## Protected #826 acceptance and whole Carrier diagnosis — 2026-10-17 18:06 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor / #825 and #826 | DONE for bounded units. Main `fa26aaee985e2b7eda49ac77281c0b0ff831c9c5`; #826 protected at 18:03:14Z after all eighteen exact-head checks, authentic ordinary/full Sol review coverage and candidate image proof. | Preserve branches and source-bound reports. Advisory-lock materialization and shorthand inspection do not close N1 or whole #580. |
+| Critical Sol adviser / SAME Carrier #791 | BLOCKED on actual full96: 66 pass / 30 fail / native 1; source frozen at checker7655/testc546, committed31fc, manifest unchanged. | Diagnose the complete shared proof/placement/binding path; obtain bounded public-ledger evidence before a connected repair. Preserve all real unknown/drop/Portal controls and adverse attempts. Material adviser cannot provide final approval. |
+| Luna / JSONB output batch | RUNNING verification preparation; nine repository sources plus existing notification delivery test, frozen, uncommitted and untested. | Verify the frozen valid-workspace fixture correction after independent full-entrypoint diagnosis, then root types/checker/PG verification and required fresh ordinary/full Sol reviews. Preserve decoder values and all excluded residuals. |
+| Conductor / remaining #580 | RUNNING; accepted diagnostic is red and checker unwired. | Complete source conversion and safe output boundaries; no baseline, query-progress arithmetic or activation claim. |
+| Conductor / #810 | WAITING_CI on genuine Carrier/#772 integration or demonstrated cause repair; actual assignment223.2ms fails strict200. | Preserve failure; no unchanged retry, and no predecessor closure before accepted composition. |
+| Thomas / #811 and #773 | WAITING_DECISION plus thirteen owning-review findings. | Existing valuation, midnight and timezone answers remain pending; do not invent behavior or reopen settled decisions. |
+| Conductor / final #589 acceptance | BLOCKED on selected units and final verification; #717 DONE, N1 unresolved/unwaived. | Canonical signed combined prerelease → exact-digest laptop SIT → consistent NONEMPTY backup and usable isolated application restore → fresh final independent audit → report and Hold. No UAT/production or stage claim. |
+
+The dated status snapshot carries exact evidence and limits. The primary dirty checkout and all source histories remain preserved. Root owns the sole local heavy runtime; maximum two active children. No verified post-turn scheduler is claimed.
+
+## Protected #797 acceptance and bounded remaining repairs — 2026-10-17 16:23 UTC
+
+| Owner / unit | Actual state | Next action / boundary |
+| --- | --- | --- |
+| Conductor / #823, #798, #797 | DONE for their bounded units. Latest accepted main is #797 merge `30d8c7005c319a131897b43750db6e6ab975be3c` at 16:20:21Z; all eighteen exact-publication checks, source-bound reviews, native counts and candidate image proof verified. | Preserve original scopes and branches; #797 is unwired preparation and does not close #580. Optional CPU diagnostic failure remains explicit. |
+| Luna / SAME Carrier #791 | RUNNING repair; unaccepted. Last tested 8ba9/cbf8: nine focused tests, four pass/five fail/87 not run. Wrong-nearest ordinary publication is a blocking false closure. | Repair own insertion paint versus exterior placement, canonical named transition, exact normalized child continuation and real route alpha closure in the same two scripts. Preserve all true blockers, matcher/reducer/threshold/manifest. Freeze and verify before current-main composition and three fresh ordinary/full independent Sol reviews. |
+| Luna / #580 admin-lock helper | RUNNING bounded source preparation on accepted 30d8. One module builder row points to synchronous lockInstanceAdminSerialization; all four callers already await it. | Materialize only the same executor lock statement; preserve SQL/key/order/authority and N1. Complete meaningful existing admin/transaction integration, API types and exact source diagnostic, then independent reviews/current gates. No result claimed yet. |
+| Conductor / #580 inventory and type boundaries | RUNNING. Current b330 diagnostic: 2,799 overlapping instances, 154 paths, 1,553 locations; twelve unresolved module rows remain. | Keep JSON/projection/Error/generic/member-type residuals explicit; resolve by source-bound evidence and reviewed narrow fixes. No unique-query/progress arithmetic, allowlist, baseline or activation. |
+| Conductor / #810 | WAITING_CI on genuine Carrier/#772 integration or evidence-backed cause repair. Existing G11 assignment223.2ms fails strict200. | Preserve adverse evidence; no unchanged retry or disposal of #774/#779 before accepted composition. |
+| Conductor / #811 and #773 | WAITING_DECISION plus owning-review blockers: three time-and-cost owner questions and thirteen findings. | Await actual valuation/midnight/timezone decisions and independent finding dispositions; do not invent behavior or re-ask settled questions. |
+| Conductor / final #589 | BLOCKED on selected units and acceptance sequence; #717 DONE. N1 remains unresolved/unwaived. | Signed combined prerelease, exact-digest laptop SIT, NONEMPTY attachment backup/usable isolated app restore, fresh final independent audit, report and Hold. No stage/UAT/production or functioning post-turn continuation claim. |
+
+The dated status snapshot records exact evidence, counts and limits. A blocked lane does not stop dependency-safe authorized work; none of these rows waives a gate.
+
+## Conductor checkpoint — 2026-10-17 14:05 UTC
+
+Accepted main4efe0905 is protected #822 at14:03:24Z, exactaf078 publication/synthetic tree. Latest status binds its actual checks/review/image limits. Historical rows below remain dated evidence.
+
+| Unit | State | Exact source/publication | Owner and next action |
+| --- | --- | --- | --- |
+| Identity/users #822 | DONE | sourcefd061392 / publication8b7c23 / main4efe0905 | Conductor; protected acceptance recorded,86 materializations only; optional CPU diagnostic adverse retained |
+| Canned responses #807 | DONE | source657618 / publication1ed689 / main295183 | Conductor; retain source-bound tests/reviews, inherited N1/NB1 and historical failures |
+| Partial canned predecessor #759 | SUPERSEDED | originald83f240e branch preserved | Conductor; accepted807 fully absorbs selected seven paths/five query responsibilities; no whole580 claim |
+| SAME Carrier C #791 | RUNNING | committed31fc; last tested774160/4cd145; new repair not frozen | Sole Luna author; complete approved shared request/domain/placement join and actual combined negative test, then root static/native/full/census and required independent reviews |
+| Boot/outbox #798 | READY | publicationc4556ec6 / reviewedfc094 | Conductor; normally compose latest accepted main, verify21 owned/restmain conservation, current ordinary/Sol, publish and obtain exact checks; old225/3303 proof stays source-bound |
+| Query checker preparation #797 | READY | publication82224710 / reviewed6fc8ce0 | Conductor; current-main composition/review/exact gates; diagnostic-only checker remains unwired until real remaining580 work is complete |
+| Leaf/intake #810 | BLOCKED | publication3f5e8dab | Conductor; actual223.2ms G11 failure/unwaived. Prerequisite accepted Carrier#772 scheduler/integration inputs or evidence-backed cause repair; no unchanged retry |
+| Time/cost #811 and predecessor773 | WAITING_DECISION | remote73ce0912 / local09bcfa38 | Thomas; three existing valuation/midnight/timezone questions and13 findings, preserve source and held scope |
+| Remaining580 / selected589 accounting | RUNNING | accepted4efe and existing unit ledger | Conductor; complete actual source conversion and structural activation, conserve all selected units, avoid duplicateM4/overlapping totals |
+| Signed combined release/SIT/recovery/final audit | BLOCKED | no final combined accepted signed digest | Conductor; finish selected integration first, then canonical signed prerelease/exact digest workflows/NONEMPTY backup/usable isolated application restore/fresh independent Sol audit |
+
+#717 remains DONE. #715's #768 source is conserved through #769 in Carrier, not accepted and not absent. Keep owner holds, inherited N1 and626 deferrals. At most two children and one local heavy window. No verified post-turn conductor continuation, UAT/production action or phase closure.
+
+## Conductor checkpoint — 2026-10-17 13:29 UTC
+
+Main is protected #807 merge2951838a at13:19:58Z, exact publication/synthetic tree2f65124d. The matching status snapshot and public acceptance comment bind all actual tests/reviews/image results; historical dated rows below retain their earlier scopes.
+
+| Unit | State | Exact source/publication | Owner and next action |
+| --- | --- | --- | --- |
+| Canned responses #807 | DONE | source657618 / publication1ed689 / main295183 | Conductor; protected acceptance recorded, preserve N1/NB1 and historical adverse evidence |
+| Partial canned predecessor #759 | SUPERSEDED | preserved branchd83f240e | Conductor; selected seven paths/five query responsibilities absorbed by accepted807, authentic accounting/correction published; no whole580 claim |
+| Records #821 | DONE | publication200832 / mainf0b7 | Conductor; records-only protected acceptance,1393 tests1373PASS20opt-inSKIP, product steps skipped; no product acceptance from records |
+| Identity/users #822 | WAITING_CI | sourcefd061392 / publication8b7c23a7 | Conductor; ordinary/current Sol CLEAR, new FAST39036599989/FULL39036588761 pending; verify actual full counts/image/current18 gates before merge |
+| SAME Carrier C #791 | RUNNING | local31fc00b9; last tested723eef/15c294, current repairs moving | Sole Luna author; fix canonical contract propagation/binding, freeze exact inputs, root scoped tests/full suite/census, then current combined review/gates |
+| Boot/outbox #798 | READY | publicationc4556ec6 / reviewedfc094 | Conductor; necessary current-main composition/conservation/current reviews and fresh exact checks when prioritized; old225/3303 proof stays source-bound |
+| Query checker preparation #797 | READY | publication82224710 / reviewed6fc8ce0 | Conductor; current-main composition and current reviews/gates; diagnostic-only preparation stays unwired, no production gate claim |
+| Leaf/intake #810 | BLOCKED | publication3f5e8dab | Conductor; G11 actual223.2ms failed/unwaived. Prerequisite accepted Carrier#772 scheduler/integration inputs or evidence-backed cause repair; no unchanged retry |
+| Time/cost #811 and predecessor #773 | WAITING_DECISION | remote73ce0912 / local09bcfa38 | Thomas; existing valuation/midnight/timezone questions and13 owning findings; preserve source, no P5 expansion |
+| Remaining #580 and selected #589 | RUNNING | accepted295183 plus existing owner ledger | Conductor; reconcile actual combined source inventory, complete conversions/structural gate and selected unit dispositions without overlapping totals |
+| Signed combined image/SIT/recovery/final audit | BLOCKED | no final combined accepted digest | Conductor; prerequisite selected integration complete, then canonical signed prerelease/exact digest workflows/NONEMPTY backup/usable isolated restore/fresh independent Sol audit |
+
+#715 is an existing Carrier owner unit with #768 source lineage through #769; it remains unaccepted, not absent. #717 is DONE and is not repeated. Primary dirty5+1, inherited N1, owner holds and626 deferrals stay preserved. No local heavy window is active at this cutoff; sole Carrier author and bounded read-only822 verifier preparation are the two active children. No automatic continuation is verified.
+
+## Conductor checkpoint — 2026-10-17 12:05 UTC
+
+Main is protected #820 merge `fe063765774b73587488b753c91c6477653662cc` (11:56:59Z), exact publication treebf1c605e. The dated status snapshot records its full tests/image/review evidence. This records checkpoint neither accepts remaining product candidates nor enables #580.
+
+| Unit | State | Exact source/publication | Owner and next action |
+| --- | --- | --- | --- |
+| Pending-action invalidation #820 | DONE | reviewedb4a49 / publication3e292 / mainfe063 | Conductor; bounded extraction merged through all18 gates, N1 remains unresolved |
+| SAME Carrier C #791 | RUNNING | local31fc00b9 / checkerf16494ed / test0e2b5fe0 | Conductor; current public source census running, then actual manifest/current verification and three ordinary/full Sol reviews; remote PR remains older head |
+| Canned responses #807 | WAITING_CI | a1218b91, reviewed d7e0177 | Conductor; current PG pending, preserve NB1 and historic failures, then strict current-main integration/reviews/exact checks |
+| Boot/outbox #798 | WAITING_CI | c4556ec6, reviewedfc094 | Conductor; current PG pending, then strict current-main integration/reviews/exact checks; no causal G11 fix claim |
+| Query checker preparation #797 | WAITING_CI | 82224710, reviewed6fc8ce0 | Conductor; required exact-publication CI pending; no production wiring/whole580 acceptance |
+| Identity/users confirmed builders #580 | WAITING_REVIEW | localde4e3433 / authorbee98bc4 | Conductor; two ordinary source clearances and API5config pass recorded, full Sol pending; then serialized focused PG/unit and normal publication/current gates |
+| Leaf/intake #810 | BLOCKED | 3f5e8dab | Conductor; completed G11 second-set223.2ms failed/unwaived. Prerequisite: accepted Carrier #772 scheduler/integration inputs or evidence-backed cause repair before current review/gates; no unchanged retry |
+| Time/cost #811 and predecessor #773 | WAITING_DECISION | remote73ce0912 / local09bcfa38 | Thomas; three existing valuation/midnight/timezone questions plus owning review findings remain; preserve source |
+| Remaining #580 and #589 accounting | RUNNING | acceptedmainfe063 and existing selected-unit ledger | Conductor; finish actual conversions/structural activation and all selected unit dispositions; no overlapping progress totals |
+| Combined signed image/SIT/recovery/final audit | BLOCKED | no new combined accepted digest | Conductor; complete selected integration first, then canonical signed prerelease/exact digest workflows/NONEMPTY backup and usable isolated restore/fresh independent Sol audit |
+
+Primary dirty files, #626 deferrals, identity/outbound/MCP/unsupported-action and other owner holds remain preserved. #717 is DONE; do not repeat it. One local heavy window belongs to Carrier census at this cutoff. At most two active child tasks are scheduled; no automatic continuation has been verified.
+
+## Acceptance failures and bounded repair queue — 2026-10-17 10:41 UTC
+
+Accepted main at this snapshot is23fb0fe through protected818; exact source-bound results and limits are in the matching status snapshot. Earlier dated snapshots remain historical.
+
+| Owner / unit | State | Actual state / named gate | Next action |
+| --- | --- | --- | --- |
+| Conductor /818 | DONE | Protected accepted23fb at08:34:05Z; all18contexts green, gate1373PASS20existing opt-inSKIP. | Preserve authentic scopes and scoped817 product proof; records do not close580. |
+| Conductor /807 | RUNNING | Reviewed304d/publication8d25, two ordinary plus full SolCLEAR; P1resolved. ActualPG3300PASS1FAIL/223files in resetbeforeA2P5; other current gates/image passed. | Diagnose actual lock/work lifecycle before repair; no unchanged retry. Allrequired gates must genuinely pass before protected acceptance and759 disposition. |
+| Luna /Carrier791 | RUNNING | Last full114957/51af:91tests85PASS6FAIL/native1, no cancellation; one later observer proved40 distinct guarded memo subjects. Sole author has bounded whole-path repair authorization; no newer native result. | Complete source/guard/resume/normalizer/slot batch, root inspect then meaningful native checks, census and fresh independent ordinary/full security review on final exact source. Integrate preparedUI9ac/erasurecc5 into SAME Carrier only. |
+| Conductor /810 | WAITING_CI | Current3f5e has fullPG227files3323tests/5tasks and reviews/image clear, but G11 assignment223.2ms fails200. | Preserve adverse result; genuine accepted-main integration or evidence-backed cause repair, current review/gates. No unchanged retry or component disposal before acceptance. |
+| Conductor /798 | READY | Existing9620 has21 owned paths including the two already-materialized utils helpers; oldG11task-state270.8ms failed. | Normal current-main composition/conservation/current reviews and genuine gates; do not duplicate the utils unit or claim performance causation. |
+| Conductor /invalidatione67 | READY | Four owned paths/source reviews/3file43testPG preserved; currentmain object preflight only. | Normal composition, bound review publication and exact-head required gates. N1 remains separate and unresolved. |
+| Conductor /580 inventory | RUNNING | Main23fb diagnostic3198 overlapping instances/173paths/1812locations;797unwired. | Complete existing owner units and actual remaining conversions; resolve12 unknown shapes before checker activation. No baseline subtraction or green placeholder. |
+| Conductor /811 and773 | WAITING_DECISION | Thirteen owning findings and three unanswered owner questions remain; local09bc preserved/unpushed. | Await actual Thomas dispositions for valuation, midnight splitting and timezone; no behaviour invention or waiver. |
+| Conductor /final589 | BLOCKED | Carrier/580 and signedcombinedrelease/SIT/nonemptybackup/usableapprestore/finalaudit incomplete;717done. | Finish authorized selected units or actual owner deferrals, then the existing release/recovery/audit sequence and truthful report/Hold. |
+
+## PR #818 queue correction; protected #817 baseline — 2026-10-17 08:16 UTC
+
+Accepted main is `7a99ae9e8696d6202f3a3b39472cc058cc0d61da` through protected #817 at 07:58:07Z. The dated status snapshot records its exact evidence and limitations. The 06:55 records checkpoint from rejected mixed commit `cf847f86` is preserved as historical content only; current records are in the separate records-only PR.
+
+| Owner / unit | Actual state | Next action |
+| --- | --- | --- |
+| Conductor / records PR #818 | Both independent ordinary factual reviews are CLEAR for exact source `7772f75a3c91236bf159493efcada91e25c186c6`; publication `6767f443e133d3cffe6b46766a641503ee303240` adds only their authentic designated note. All 18 required contexts were green at 08:13 UTC. The gate recorded 1,393 tests across 121 suites: 1,373 passed, 20 skipped, 0 failed; the skips are existing real-engine/registry tests gated on `TASKDESK_REAL_DOCKER=1` (receipt path is in status). No tests changed and no Docker/registry runtime coverage is claimed. Full product test steps were not run for this policy-only records change. Valid P2 comment 4301997809 identifies stale status/queue after these completions; independent disposition path is recorded in status. | `RUNNING` — conductor checks the designated review note’s actual reviewed-source/per-commit bindings and the live required-check rollup on the current exact head. Complete only factual-review coverage genuinely absent from those records. Authentic note-only publication records coverage for its declared reviewed source and does not reopen that review; after such publication, verify only the new head’s required checks, which are never reused. Do not redispatch review coverage already recorded. Advance protected acceptance only when coverage is complete and all required checks are green on the exact current head. |
+| Luna / Carrier791 G3 | Current captured source is checker `f4685b89405e410769faa17d25777075f589c7b69659932c0950f16dbee4b703`, test `fbc71e20c76ebc9f10d17afa7ead0ad650abcac2c53ea7aca6f55b27be797d24`, HEAD `10236d0cf0f14a6be6e590998119c49a5e96f15b`, unchanged manifest `e250b1dfbffbfea11c0345d7f66913c99028461c877be7a7aabcc7855ca00803`. The 08:06Z native28 result was19 pass/9 fail/62 not run (native1, 8.274846s); the full90, census and G3 acceptance remain unrun. Six 08:12Z private calls were diagnostics, not tests (native0, 1.788960s); the exact capture details and five unresolved joins are in status. Prior `f7c5` and `fdc` adverse evidence remains preserved; this does not establish end-to-end false-closure remediation or acceptance. | `carrier_f7_seven_gap_completion_luna` remains sole checker/test owner, frozen pending bounded repairs. Do not infer completion from the diagnostic calls; obtain the required independent reviews and actual acceptance evidence after repairs. |
+| Conductor / #810 | Existing 39-path source remains preserved; #817 is now accepted. | Normally compose accepted #817 into the existing #810 branch. The 07:59:26Z read-only preflight verified 22 embedded reports, 39 owned paths disjoint from 67 incoming paths, 3,412 reconstructed entries and clean merge-tree; it grants no review/runtime/CI approval. Repeat conservation after composition, then run current-source review and exact-head gates. Keep it separate from records. |
+| Conductor / #807 | Accepted policy resolves the three documentation conflicts: retain `auth*` plus `auth/**`, and the more-specific GitHub-prerelease wording in `ci-cd.md` and the append-only decision log. Calibration is valid (1.392/1.480); assignment 218.0 ms then 200.43141014024977 ms fails strict <200: 21 passed, 1 failed; cause undiagnosed. The 1.752 host refusal belongs to #810. | Normally compose the existing #807 branch with fresh reviews and CI; classifier and two exact break fingerprints remain unaccepted. No owner-only disposition is pending. |
+| Conductor / invalidation e67 | Source ordinary and mandatory lightweight Sol reviews are clear; actual PostgreSQL passed 3 files / 43 tests, native exit 0. Source is not yet composed to current main; publication, review bindings and current gates remain pending. Author raw install/build/typecheck logs were not persisted. | Compose current accepted main, then complete source-bound publication and current exact-head gates. |
+| Conductor / #773 | Thirteen owning review findings and three time-and-cost owner questions remain open; no answer received. | Wait for Thomas's recorded dispositions; no assumptions or waiver. |
+| Conductor / final #589 | Final accounting, signed combined release, exact-digest SIT, consistent nonempty backup, usable isolated restore and fresh final Sol audit remain incomplete. | Complete selected dependencies or record actual owner deferrals, then perform required release/recovery/audit sequence and report before Hold. |
+
+## Nested-auth accepted; auth reads and Carrier repair — 2026-10-17 06:55 UTC
+
+Accepted main is `2e6aa3dcf74ba5f2d6dc733ae54dc68be16c552b` through protected803; newest status gives actual source-bound counts and limits. Earlier snapshots remain unchanged.
+
+| Owner / unit | Actual state | Next action |
+| --- | --- | --- |
+| Conductor /803 and816 | Protected803 accepted3277; current full223/3292/5, finalunit12/API121872/web1861023, browser63/G1122/image125/all18. Old squash thread resolved with later authentic current reviews; issue816 absorbed and closed. | Preserve scope correction and approved normative policy; no promotion of #807 classifier or fingerprints. |
+| Conductor /auth read580 | Clean a43ce919 normally imports accepted803 into reviewed e52/445 read-materialization source; earlier typecheck and eight-file136-test proof preserved. | Current ordinary/lightweight Sol confirmation, own-note publication, normal push/PR and new exact-head CI/image/protected acceptance. |
+| Luna /Carrier791 G3 | Frozen6cad/6e40, manifest unchanged; bounded19 native1 with12pass7fail/64notrun, all five new controls pass. | Exact-leaf diagnosis for uncertain Storybook/LayoutOnly causes, coherent shared graph/paint repair, authentic fresh independent reviews/full Sol and actual current verification; no manifest workaround. |
+| Conductor /selected UI and erasure composition | UI9ac source/browser17/typecheck proofs; isolated cc5 preserves12 UI publication paths and all3497 tree entries. API typecheck and Postgres3files51 pass; current independent combined review pending. | Bring bounded preparation into SAME Carrier after current source freeze permits; conserve guard and query ownership, then actual combined gates. |
+| Conductor /811 recovered773 | Local09bc unpushed; owning review nonempty; three owner questions unanswered. | Await actual Thomas answers; no inference, gate waiver or P5 expansion. |
+| Conductor /810,807,798 and remaining580 | Old adverse performance/calibration states remain; reviewed sources preserved. | Genuine dependency-safe current-main compositions and current verification; finish actual conversions before enabling structural checker. |
+| Conductor /final589 | Signed combined release, exact-digest SIT, consistent nonempty backup/usable isolated restore/final audit pending;717 already done. | Finish all selected units or real owner deferrals, required runtime/recovery/audit, report then Hold. |
+
+## Pending-action accepted; records/gate import next — 2026-10-17 05:51 UTC
+
+Accepted mainff5e16b677e2c72c8b14e0aaff38ea2df930a428 is protected815, exact publication/synthetic tree. The newest status snapshot contains actual counts and source limits; prior dated rows remain intact.
+
+| Owner / unit | Actual current state | Next action |
+| --- | --- | --- |
+| Conductor /815 pending-action580 | Accepted693d/sourceaea9; full223/3292/5, finalunit12/API121872/web1861023, browser63/G1122/image125/health200/all18. | Preserve bounded acceptance and inheritedN1; continue real580 conversion. |
+| Conductor /803 and816 | cf724 nine-path composition ordinary/fullSol CLEAR,14/14 focused gate tests; normal accepted815 import prepared with only3 disjoint incoming paths. | Verify exact mode/blob conservation/current records, bounded import confirmations, own-note publication, normal push and new current CI; no duplicate816 PR. |
+| Conductor /auth read580 | Pushede52/445 five authentic reports; APItsc0 afterworkspacebuild, real8files136tests/native0/38.107s and exactownedcleanup. | Compose actual accepted records/gate source, source-bound current confirmation, current hosted/image gates and protected acceptance. |
+| Luna /Carrier791 | fd9b complete78:62pass16fail0skip; private7case ledger diagnosis retained. Current7b961 source-only exact-invocation/split-proof batch, unchanged599tests/manifest. | Independent delta scrutiny, actual finite semantic/negative checks and eventual complete78; unresolved property/story/guard/route classes stay open. |
+| Conductor /811 recovered773 | Local09bc spec alignment unpushed, owning review nonempty, three Thomas questions pending. | Obtain actual owner answers/disposition/current exact-head verification; no P5 or gate bypass. |
+| Conductor /810,807,798 | Old refusals and full source reviews retained; no unchanged manual retry. | Genuine current-main composition and current ordinary/Sol/requiredCI when the small queue allows. |
+| Luna /selectedUI source/evidence | Recovered713–716 source remains in unaccepted Carrier; scope/navigation precision and realAPI journey mapping underway. | Honor owner-limited713 and held surfaces; resolve actual SV-18 reach and verify included workflows on the final signed digest. |
+| Conductor /final589 | Remaining580/Carrier and signedrelease/SIT/nonemptyrestore/finalaudit unfinished;717 already done. | Finish every selected unit or actual Thomas deferral, final artifact/workflows/recovery/audit, then Hold. |
+
+## Approval accepted; pending-action and gate composition — 2026-10-17 05:34 UTC
+
+Accepted mainb78fd6853a890c6e2b10d17be18885e3b1612b2d is protected812. The newest status snapshot gives source-bound counts and residuals; dated rows below remain historical.
+
+| Owner / unit | Actual current state | Next action |
+| --- | --- | --- |
+| Conductor /812 approval580 | Accepted0044/source5f21; full223/3292/5, finalunit12/API121872/web1861023, browser63/G1122/image125/health200/all18. Original789 conserved and closed. | Preserve bounded acceptance and all adverse history; continue real remaining580. |
+| Conductor /815 pending-action580 | Publication693d/sourceaea9 onb78, 11authenticreports; unit/browser/G11/image passed, PostgreSQL117316070868 still running. | Actual fullPG, truthful finalbody/newFAST/finalunit/strict18/currentthreads and protected merge only if eligible. N1 lock-order residual remains. |
+| Conductor + bounded Luna /803 and816 | Stronger reviewed2f86 gate regressions/publication4bd86 composing normally into existing803; one test conflict resolution retains old and stronger assertions. | Finish source conservation/current status, current ordinary/fullSol review, own-note publication/new exact-head CI. No duplicate repair PR or old-head pass promotion. |
+| Luna /Carrier791 | Checkerfd9b/test599e/unchangedmanifest; independent memo source clears; local240cap incomplete29pass7fail1cancel. Same unfiltered78 with900cap active becausefour complete-source scans. | Collect actual complete verdict, finite failure-reason diagnosis and structural repair; no inventory/G3/runtime acceptance from source reviews. |
+| Luna /remaining auth reads580 | One-file14async/await wrapper patch f45bf7c5 on693d; fresh ordinary/lightweight Sol CLEAR source only; uncommitted/no runtime. | Normal dependency setup/commit and exact-SHA binding, accepted-main composition and applicable real checks; preserve all query/executor behavior. |
+| Conductor /811 recovered773 | Local09bc spec alignment unpushed, older full224/3302/5; owning review still nonempty. | Await actual Thomas valuation/midnight/timezone answers, independent disposition and current gates; no P5 scope or gate bypass. |
+| Conductor /810,807,798 | Old calibration/budget refusals retained; authentic reviewed source preserved. | Necessary genuine current-main compositions and current reviews/CI when queue allows; no unchanged manual retries or claimed causal performance savings. |
+| Conductor /selected589 finish | 631/632 scoped acceptance,717 completed and M9 selected work retained; Carrier/remaining580 and final release/SIT/recovery/audit incomplete. | Finish every selected unit or obtain actual Thomas deferral, then one canonical signed image, exact-digest laptop workflows, consistent nonempty backup/usable restore and fresh Sol final audit before Hold. |
+
+## Protected814 and remaining selected acceptance queue — 2026-10-17 03:59 UTC
+
+Acceptedmain e848f3bd05bec95c8af657c29923a6413a11c63f; protected814 actual source/tree/gates proof is recorded in status. Historical queue snapshots remain unchanged.
+
+| Owner / unit | Actual current state | Next action |
+| --- | --- | --- |
+| Conductor /814 operation-proof580 | Accepted518f/dcf, full222/3284/5, browser63/G1122, finalunit12/API121872/web1861023, actual125migration nonroot healthy isolated image/all18green. | Preserve scoped acceptance; next existing pending-action persistence families remain unconverted. |
+| Conductor /811 recovered773 | Current73ce full224/3302/5 passes; required owning-review gate red. Independent13finding map+precision done. | Await three actual Thomas answers, align owning spec to existing canonical contracts, independent disposition and exact-head gates; no citation bypass. |
+| Luna /812 recovered789 | Current5548 structural customer-audience P1 source CLEAR;8filePG94/95 red on false instance-admin no-reach fixture. All prior failures retained. | Finish bounded fixture repair with genuine foreign non-admin404/no-write cases; root compose actuale848, scopedPG/currentordinary+Sol/own-note/newhosted gates. |
+| Luna /Carrier791 | Checker4d22/test2b569 unchangedmanifest; full240s timeout/no suite verdict; profiler launch attempts unsuccessful. | Private bounded phase diagnostic to isolate full-source work, then structural compiler/guard proof repair without dropping obligations or widening limits. |
+| Conductor /records803 | Normal accepted814 composition conserves seven own/three incoming paths; current operational snapshot not yet reviewed/published. | Bounded ordinary/Sol confirmation, additive own-note, normal push/currentCI; old9d7 not accepted. |
+| Conductor /held lanes and final589 | 810/807/798 require genuine compositions and new gates; release/SIT/nonempty restore/final audit not done. | Continue dependency-safe authorized work, preserve owner holds and selected-unit accounting; no stage claim. |
+
+## Current publications and required blocker dispositions — 2026-10-17 03:33 UTC
+
+Accepted main remains130508ef24f6442a59dbccaf305712891c8b3fbb. Detailed raw receipts and adverse history are recorded in the newest status snapshot; historical queue bytes remain intact.
+
+| Owner / unit | Current state | Next action |
+| --- | --- | --- |
+| Conductor /811 recovered773 | Publication73ce; current browser63/G1122/unit12/image125 pass, fullPG running; actual check:reviews failure on open P5 time-and-cost section. | Independent scope/contract assessment and real gate disposition; then fullPG/finalbody/newFAST/strict18. No finding deletion or waiver. |
+| Conductor /812 recovered789 | Publication78c3; browser63/G1122/unit12/image125 pass, fullPG running; credible new staff/private-audience P1 blocks acceptance. | Bounded customer-only visibility repair and meaningful allowed/denied regression, fresh applicable ordinary/Sol and runtime gates. Prior fixture-only correction is insufficient. |
+| Conductor /814 operation-proof580 | Publication518f; eight authentic reports and current source CLEAR; browser63/G1122/unit12/image125 pass, fullPG running. | ActualPG, one finalbody/newFAST/strict18 and protected acceptance when all gates clear; recompose on actual main if it moves. |
+| Luna /Carrier791 | Current2cbbe3 diagnostic timed out240s with partial semantic failures; tests/manifest unchanged. | Structural lifecycle/cache and consumer binding repair, root-owned complete-file diagnostic before inventory; no thresholds/skips/masks. |
+| Conductor /records803 | Prior400 bounded nested-auth scope fix has ordinary/fullSol CLEAR and7/7; this operational snapshot newly records surfaced blockers. | Bounded snapshot confirmation before additive ownnote/newCI; retain normative policy and owner decisions. |
+| Conductor /remaining580 and final589 | Remaining pending-action persistence plan is read-only; held810/807/798 require genuine new compositions. Final release/SIT/nonempty restore/audit unfinished. | Continue dependency-safe selected work; no whole580 or phase claim. |
+
+## Accepted step-up slice and repaired recovery owners — 2026-10-17 02:58 UTC
+
+Accepted main `130508ef24f6442a59dbccaf305712891c8b3fbb` is protected #813 acceptance. This dated snapshot supersedes task-state rows below; prior bytes and owner decisions are preserved.
+
+| Owner / unit | Actual current source/evidence | Next action |
+| --- | --- | --- |
+| Conductor / accepted813 | Source7d301/publication433, full222/3284/5, browser63/G1122, finalunit12/API121872/web1861023, image125/UID10001/health200/isolation/cleanup, all18 checks; actual main1305. | Preserve scoped acceptance; remaining proof persistence and whole580 unfinished. |
+| Conductor / #811 recovered773 | Localc3329e7d on accepted1305 includes narrow404 repair7671; unit1file2 and APItsc0; ordinary repair CLEAR. Olde30 runtime was green but final live finding blocked merge. | Current-composition ordinary/Sol, authentic own-note append, new exact-publication full/image/finalbody/FAST/strict18. Original773 stays open. |
+| Conductor / #812 recovered789 | Local24711f61 on accepted1305 includes fixture5fa; actualfocused6files78/native0; ordinary repair CLEAR. Oldd65 full failure and0d600 negative-body failure retained. | Current-composition ordinary/Sol, own-note append, new exact-publication full/image/finalbody/FAST/strict18. Original789 stays open. |
+| Conductor / operation-proof persistence580 | Localdcf4071f composes accepted1305, treeidentical to7f4 with two ordinary/fullSol and actual4files159/native0. | Bounded current-composition confirmations, own-note publication and focused protected acceptance; preserve coverage corrections. |
+| Luna / Carrier791 | Addendum6 checker59215dc2/test2b569a12, unchanged manifest; known linkage/state-frontier requirements incomplete. All earlier native failures retained. | Complete connected source repair before fresh critical readiness and one complete focused file diagnostic; no inventory or manifest workaround. |
+| Conductor / held810,807,798 | Existing exact-head calibration/budget refusals remain; no unchanged manual retry. | Genuine accepted-main composition/review/new checks when acceptance queue allows. |
+| Conductor / records803 and final589 | Latest record refresh on accepted1305 requires its own review/current checks. Combined signed release/SIT/nonempty restore/final audit not done. | Continue current queue; no record merge around product dependencies, no UAT/production. |
+
+## Current recovered-source acceptance queue — 2026-10-17 02:01 UTC
+
+Accepted main remains `5a26ca75e60c7232ab8280a13e599fcbe4fd3518`. This snapshot supersedes task-state rows below; no scope/owner decision changes.
+
+| Owner / unit | Current evidence | Next action |
+| --- | --- | --- |
+| Conductor / #811 recovered773 | Publicatione30eb752/source8a89525c;21 authentic artifacts, note1198+/0, current independent ordinary/Sol composition CLEAR. Full38993047305/fast38993047413 running. | Actual current PG/browser/G11/image proof, then one final evidence body/new fast/strict18 and normal protected merge only if green. Preserve old773 unique source. |
+| Conductor / #812 recovered789 | Publicationd65c498c/source88b78073;13 public authentic artifacts, note703+/0, current ordinary corrected composition and separate Sol CLEAR. Full38993052679/fast38993052534 queued/running. | Actual current runtime/image evidence; final body/new fast/strict18 only after success. Preserve old789 and private exact internal planning artifact. |
+| Luna / Carrier791 | Current finite pipeline attempt71tests44pass27fail; no inventory or metadata update. Full raw and prior attempts retained. | Preserve source and diagnose every failure class; critical reassessment before another test/inventory, then actual ordinary/security review at finished exact source. |
+| Luna / remaining580 bounded recovery | Read-only historical source map complete; next existing seam is step-up session/preflight repository read materialization on5a26. | Implement only scoped reads/callers with exact current UTC, row-lock and executor predicates; scoped static checks, authentic handoff; no local heavy run or shared edits. |
+| Conductor / held810,807,798 | Existing exact-head G11 calibration/budget refusals remain. | Genuine accepted-main compositions and applicable fresh delta review/checks; never unchanged retries or inherited statuses. |
+| Conductor / records803 and final589 | Records local pending own normative-policy reviews. Final combined artifact/SIT/nonempty restore/audit unfinished. | Keep required review and source acceptance separate; continue dependency-safe existing work. No UAT/production. |
+
+## Sole-conductor active queue — 2026-10-16 22:00 UTC
+
+**Accepted main:** `5a26ca75e60c7232ab8280a13e599fcbe4fd3518` (#809). Newest detailed verification belongs in [status.md](status.md); historical snapshots below retain their original dates. The existing #589 mission, selected units, owner holds and #626 deferrals remain unchanged. Thomas's direct takeover designates the root Codex session as sole conductor. Both outgoing automations remain paused; there is no verified automatic post-turn continuation. At most two active child contexts and one local heavy verification window.
+
+**Blocked first:** #810 required calibration factor1.752 exceeds1.75 before budgets; #807 assignment200.43141014024977ms and #798 state270.8ms fail strict budgets; Carrier retains historical529.7ms render/33.4ms drag and incomplete source contrast proof. No unchanged rerun or waiver. These lanes do not stop the remaining authorized work.
+
+| Unit / owner | Current source and actual evidence | Next dependency-safe action |
+| --- | --- | --- |
+| #809 / conductor — DONE at slice acceptance | Protected merge5a26ca75 at21:57:59Z, publication894d/source435;45authenticreports/note152+/0/18requiredgreen. PG222files3283tests/5tasks/browser63/G1122/imageebfc125UID10001healthy200; finalFASTunit12/API121872/web1861023 actual. | Accepted tree matches publication/synthetic. Preserve both adverse PG runs and old assignment failure. No whole580, release or SIT closure; continue remaining lanes. |
+| Recovered #773 / conductor | Local8a89525c composes actual accepted809; tree unchanged d89adff9,40own mode/blob entries conserved. Full3ordinary coverage and FULLSol d7f CLEAR, prior focused61/61+10/10 retained source-bound. | Fresh current composition confirmation, then authentic own note, publication and exact-head hosted/image gates. Five legacy shared helper bodies remain unclaimed. |
+| Carrier #791 / Luna structural author | Failed structural batch71tests39pass32fail, bounded follow-up61pass10fail; source/manifest/logs preserved, no inventory. Last inventory357paths444rows60unresolved898validatorfailures is historical. | Whole-path Sol advice read; coherent typed edge/value/slot/guard/completion correction active in same checker/test. No metadata until proof complete; later ordinary/full Sol/G3/current-main composition/runtime/performance/image required. |
+| #810 / conductor held | Publicationdaa6f6cc, fullPG222files3274tests/5tasks, browser63, unit12tasks and image6bacb8ee/125/UID10001/healthy200/isolation/cleanup pass. G11 refuses calibration. | Keep held; no final-pass body or inferred factor-bound retry. Future genuine accepted-main composition requires appropriate review and new exact-head checks. |
+| #807 / conductor held | Publication198a5abd, sourcea49a63cf,40authenticreports; PG216files3240tests/5tasks/browser64/image5f0dc pass; assignment budget red. | Preserve exact break fingerprints and owner-approved GitHub-prerelease policy. Reconcile current accepted main before future acceptance; no unchanged rerun. |
+| #580 residual / conductor | Accepted contract/reach/workflow/notification/attachment/label-family/SLA-calendar/principals/task slices retain actual scopes. #789 local88b78073:15own+31accepted entries conserved, f7 full3ordinary/FULLSol CLEAR and root14files91/91. Existing unwired checker at accepted809 tree fails3416overlapping instances/176paths/1961file-line locations; not unique statements/progress. | Current773/789 composition confirmations and publication/CI; finish remaining preserved source and actual conversion, four builder exports/12 unresolved shapes/raw fragments/operations including legacy helpers, reconcile Carrier, then enable the real checker. No broad infrastructure/producer exception or placeholder. |
+| Selected #631/#632/#717/M9 | Identity631 accepted795 with actual three-zone PG; realtime632 accepted805 with cross-instance revocation evidence; #717 already complete; selected718 M9 paragraph/snapshot source accepted757/782. | Reuse actual coverage; do not redo accepted units. Other selected718 controls and #713–716 still require Carrier/integrated acceptance. |
+| Records #803 / conductor | New durable status, policy clarifications and queue facts remain local/unpushed pending fresh review. | Freeze current facts, strong independent ordinary review and independent Sol for normative security/CI scope, then normal own-note publication/required checks/protected flow. |
+| Final artifact/SIT/recovery/audit / conductor | Oldalpha4 and recovery materials preserved. No final combined signed artifact or updated-digest workflow/usable nonempty-attachment restore proof. | After all selected units are accepted/equivalent/Thomas-deferred: one canonical signed prerelease, exact published digest on ticketing.localhost+portal.localhost HTTPS443 loopback-only; consistent DB/attachments/config backup, isolated usable restore, complete workflows and fresh independent Sol final audit. Then report/Hold. |
+
+The primary dirty checkout remains preserved. Remote UAT/production, held external identity/outbound capabilities and all owner-only gate/roadmap decisions remain untouched. Diagnostic #794 is retired/never-merge. The conductor continues after a merge or a blocked lane; this dated queue is not a completion claim.
+
+## Protected acceptance and repair checkpoint — 2026-10-16 00:06 UTC
+
+**Accepted main:** `d93c0967ecc7b1a1d721ff25202737cd72430a0d`, protected merge of [#800](https://github.com/ThomasHeinThura/ticketing/pull/800) at reviewed head `259a6648b04ad9b9adc7987df80c6e9c51074401`. The real-editor test lifecycle repair has independent ordinary/full Sol clearance and all 18 required checks green. Its final ready-event PostgreSQL run passed 203 files / 2,925 tests / five tasks; unit/component passed all 12 tasks, including web 186 files / 1,023 tests and API 119 files / 855 tests. Marking ready first triggered fresh checks and protection refused the initial merge; only after those checks passed did normal expected-head merge succeed. No administrator bypass or automatic merge was used. The dirty primary checkout remains untouched.
+
+**Blocked first:** Carrier791 remains `99ff2a81d32712dda046d025f0b70595c52a692a` with the required 33.4/33.4/33.4 ms drag failure. The single reviewed non-required original full-runner control [38819382652](https://github.com/ThomasHeinThura/ticketing/actions/runs/38819382652), source `38377e0fffcefcdad20ef4e2aab5159e3062b5eb`, passed all 22 cases with initial drag p95 16.8/16.8/16.7 ms. Fresh Sol interpretation confirms the failed mode was absent: [stop this capture path](https://github.com/ThomasHeinThura/ticketing/pull/794#issuecomment-6204121396). This does not explain the failure or transfer a required pass. Diagnostic794 remains draft and NEVERMERGE.
+
+Local OrbStack remains unresponsive; restart authorization is unanswered because unknown workloads cannot be inventoried. No restart, prune, persistent-data mutation, SIT upgrade or new health claim. Existing alpha.4 configuration and recovery material remain; remote UAT/production are untouched.
+
+| Unit | Exact evidence and current action | Acceptance limitation |
+| --- | --- | --- |
+| API-key783/784 | Published17675375 real PG: 206 files / 2,999 tests, one failed customer denial assertion, 2,998 passed. The legal customer session now targets the configured agent host and expects 401 plus no-write, replacing an impossible agent-session fixture. Local source02d59f4f has ordinary clearance; accepted-main composition8d52a7f7 independently conserves API bytes and imports only800's two paths. Full current Sol review is running. | No current repaired PG pass. Existing782 disposition remains only in unaccepted791; image/required CI pending. Never deploy783 alone. |
+| Notification785 | Publishede561411f PG failed 2/206 files and 3/2,947 tests. Local2a38 and5fd2 privacy repairs are held by authentic ordinary findings. Canonical customer membership/revocation and event-audience dependency fixes are under a three-context ordinary panel; public state transitions must not be categorically suppressed. | Historical source clearance is not runtime acceptance. Source is frozen during review; fresh full Sol and real PG/image proof still required. No customer inbox HTTP route or outbound activation is inferred. |
+| #580 remaining query batches | Contract764, checker797, reach790, boot/outbox798, attachment799 and preserved earlier batches remain unaccepted. Prior exact-source PG/checker evidence is retained; scopes overlap and are not progress totals. | Finish dependency-safe repairs, accepted-main composition, image proof and remaining real conversion before enabling the unwired structural gate. No broad replacement carrier. |
+| Identity631 / realtime632 | Reviewed drafts795/796 retain historical exact-source PG 205/3,059 and 204/2,938 respectively, five tasks each. | New accepted-main compatibility and current image proof remain before acceptance. |
+| Selected UI/spec units | #713–716/#718 remain in unaccepted791;768 is conserved through769;717 remains complete via738. | No selected issue or stage is closed from source presence. |
+
+The shared customer fix uses existing canonical role/membership contracts; it does not authorize a new capability, route, grant scope, migration or owner hold change. API-key and notification adverse reports remain intact. Test-only800 changes no shipped runtime input and is not an image, signed release, SIT, recovery, final audit or mission-completion claim.
+
+The sole conductor continues the existing589 Integration Freeze/SIT mission. Both automations remain PAUSED; no verified automatic post-turn continuation. The finish line remains every selected unit accepted through protected flow, one combined signed prerelease, exact-digest laptop SIT workflows, consistent backup and usable isolated restore, fresh independent Sol final audit, report and Hold. No phase completion or waiver.
+
+## Codex continuation checkpoint — 2026-10-15 22:54 UTC
+
+**Accepted main:** `e9df2294fa580fd2885343bbef0cec28e81ead4c`. Only the takeover records #792/#793 have merged under this conductor; no product, carrier, release or SIT acceptance is claimed. The preserved dirty primary checkout remains untouched. The existing #589 Integration Freeze/SIT mission and owner holds are unchanged.
+
+**Blocked first:** Carrier [#791](https://github.com/ThomasHeinThura/ticketing/pull/791), head `99ff2a81d32712dda046d025f0b70595c52a692a`, still has its real required board-drag p95 failure: final retry values33.4/33.4/33.4ms against strict<20. No product hotspot or fix is established. Earlier ABBA diagnostics did not reproduce it and do not clear the gate. Independently reviewed, non-required [original full-runner control38819382652](https://github.com/ThomasHeinThura/ticketing/actions/runs/38819382652) is running at `38377e0fffcefcdad20ef4e2aab5159e3062b5eb` on NEVERMERGE draft794. It preserves original inputs, budgets, calibration and genuine failures; only sanitized summaries may be retrieved.
+
+The local OrbStack Docker socket is unresponsive. Read-only diagnosis found no available alternate engine. Restart authorization is pending because a daemon restart affects unknown workloads that cannot currently be inventoried. No restart, prune, volume/data change or SIT upgrade was performed. Existing alpha.4 configuration and recovery material remain; current SIT health is unavailable, not asserted healthy. Remote UAT/production are untouched.
+
+| Unit | Source and evidence at this checkpoint | Next action / blocker |
+| --- | --- | --- |
+| #580 contract764 / checker797 | Contract head0627093d remains reviewed but unaccepted. Checker797 head4e8e6bc9, reviewed source7b5c5427, has all current checks green; actual hosted PG203 files/2925 tests/five tasks. | Accepted764 and780 decision provenance in carrier791 remain prerequisites. The structural gate is still unwired; no whole580 completion. |
+| #580 notification785 | Pushed e561411f, product d193f683. Fresh whole-composition full Sol and ordinary deltas clear source; actual analyzer7b reports0 findings on36 changed production files. Fresh Sol focused4 files/56 tests passed. All adverse records and clarified C provenance are published. | Full current hosted CI/PG running; new DB regressions were not run locally. Image proof and accepted764/780 required. No outbound activation or whole-feature acceptance. |
+| #580 boot/outbox798 | Head dcfbacf7, reviewed source9f58e327; all code checks green, hosted PG206 files/2938 tests/five tasks. | Image build/boot/migration/health and accepted764/780 pending. |
+| #580 attachment799 | Head92d01280, sourcef2f78c92; two ordinary/full Sol clear, all code checks green, hosted PG204 files/2927 tests/five tasks. | Image and764/780 pending. Preserve API-key pair's attachment clamp when composing; AT7 residual is unwaived. |
+| #580 reach790 | Heade49e88c9, productac330d31; three ordinary/full Sol clear; hosted PG205 files/2933 tests/five tasks. | Current unit job failed on uncaught delayed Tiptap destruction after jsdom teardown, despite passing assertions. Separate800 is the bounded repair; no unchanged rerun or full-unit success claim. |
+| API-key783/784 | Pair784 head3594cb34, product596a2332 preserves capability propagation, owner ceiling and target-project settings authority. Two ordinary/fresh full Sol cleared source. Actual PG then FAILED:4/206 files and11/2999 tests failed. | Grouped Sol/Luna adjudication separates overpowered fixtures, stale in-scope-key expectation and lost key-scope error text. Bounded correction is in progress; no runtime clearance. Register gate correctly waits for782's review disposition in791. Never deploy783 alone. |
+| Identity631 / draft795 | Heade9e94a77; current ordinary/full Sol and all code checks clear. Actual hosted PG205 files/3059 tests/five tasks includes both non-UTC wrappers. | Current image proof unavailable; no issue closure. |
+| Realtime632 / draft796 | Headd20dc4f5; current ordinary/full Sol and all code checks clear. Actual hosted PG204 files/2938 tests/five tasks. | Current image proof unavailable; no issue closure or new multiprocess Redis acceptance claim. |
+| Test lifecycle800 | Head259a6648, source4e69c9ce, based on accepted main. Strong ordinary/full Sol pass; real editor lifecycle and navigation/undo assertions retained. Focused2 files/4 tests pass; no shipped runtime change. | Exact-head hosted full checks running. Local comparison did not reproduce hosted timing fault; source review does not clear old790. |
+| Retained #580 batches | Existing759/765/773/786/788/789 and recovered batch9 head4d0e92cd remain preserved. Scopes overlap and are not added as progress. | Finish acceptance dependencies and real remaining conversion before enabling check:queries. No new broad carrier or placeholder gate. |
+| Selected UI/spec units | #713–716/#718 frozen source is in791;768 is conserved through769. #717 remains complete via738. | Carrier and actual integrated workflow acceptance remain; no selected issue is closed merely from source presence. |
+
+**Continuation:** the sole active conductor advances reviewed repairs and exact-head CI. Both retained automations remain PAUSED; no verified automatic post-turn continuation is asserted. Existing holds include export limits, request-type deletion, manual SLA pause, team-lead view editing/ownership transfer, unsupported set_field, MCP, registration/invitations/typed-domain SSO and unapproved identity/outbound activation. No phase is claimed complete.
+
+The finish line remains eligible protected acceptance of every selected unit, one combined signed prerelease, exact-digest laptop SIT workflows, consistent backup and usable isolated restore, fresh independent Sol final audit, report and Hold. No final artifact, recovery acceptance or final audit exists for this continuation yet.
+
+## Codex delivery continuation — 2026-10-15 15:41 UTC
+
+**Accepted main:** `a07df32424185559a079002144f91df17d004798`, the protected records-only #792 merge. No product carrier merge is claimed. Carrier [#791](https://github.com/ThomasHeinThura/ticketing/pull/791) is at `99ff2a81d32712dda046d025f0b70595c52a692a`, including that accepted main; its eleven frozen component heads and #768 through #769 are preserved.
+
+**Carrier repair and review:** the dropped #778 board-state fixture was restored. Independent Sol then reproduced a concurrent customer-project creation/erasure race; the bounded repair serializes both operations through the existing workspace advisory-lock namespace. The regression exercises actual project creation with observed database lock waiters; separate missing-lock negative controls fail. Focused PostgreSQL verification passed 27/27. Three ordinary contexts cleared the production/test deltas, and fresh independent Sol cleared the repaired composition. Authentic adverse reports, corrections and clearances are retained in `docs/07-planning/security-reviews/791-carrier-c.md`; accepted-main import got additional independent ordinary and Sol confirmation. The final own-note-only publication delta was verified per commit, rather than by final tree alone.
+
+**Current acceptance blocker:** exact-head hosted G11 job `116506475645` in run `38759195396` failed board-drag p95 at 33.4 ms against strict <20, including its built-in retry. Board render passed at 496.4 ms against <500. A later context-menu test separately failed calibration at factor 1.934; it does not explain the drag failure. The optional profile also lacked sampled app JavaScript frames. Required G8, browser E2E, accessibility, static, unit, build and other completed required checks passed; PostgreSQL integration is still running at this checkpoint, and the template check remains red pending full acceptance. No unchanged G11 rerun, threshold change, calibration relaxation or merge is authorized by these results.
+
+**Diagnosis:** the measured board route is the legacy dnd-kit board, not the changed v2 work-item board. Recorded frame sampling ends before pointer-up and the ensuing query mutations, excluding the suspected query-notification scheduler from that sampled interval. Existing traces do not identify a product hotspot. A bounded private extension of the existing diagnostic, with unchanged product/build inputs and separately recorded harness delta, is assigned to capture drag CPU frames and frame timing. This is non-gating diagnosis, not performance acceptance. [Published diagnosis](https://github.com/ThomasHeinThura/ticketing/pull/791#issuecomment-6196010425).
+
+**Exact-head local image:** `99ff2a81` built as `sha256:4fab5f913d07291a33a05baac6d15d8954a0530281177e198224ba5d2cc4bf4f`, booted with isolated PostgreSQL18/Valkey, migrated 125 rows, ran as UID10001 and returned live/ready200. No host ports were published; owned resources were removed. This is local image proof, not a signed release or SIT acceptance.
+
+**#580 recovery:** batch9 is clean, committed and pushed at `4d0e92cd3f1890f5320ab4a5e2e2ab55fe77e97c`; focused7/7 and neighboring198/198 passed, with six restored negative controls. Batch10 is clean, committed and pushed at `399b41cad0aae910d25fa61a2913033b2f8ccf08`; seven focused PostgreSQL files/37 tests passed. Its statements are in named repository modules, with existing startup entrypoints retained; there is no blanket database-directory exception. These are unaccepted partial batches. #764's canonical documentation corrections remain under exact-head independent review; `check:queries` remains planned and unwired. All remaining conversion and the genuine structural fail-closed checker are still required.
+
+**Other selected units:** #783/#784 retain their dependent capability/clamp heads and independent ordinary/security evidence; neither is accepted by this checkpoint. #631/#632 also have independent ordinary/security evidence at their retained heads, with current-main composition/CI/runtime acceptance outstanding. #713–#716/#718 frozen source is in the unaccepted carrier; #717 remains complete via #738. No historical selected unit is closed merely because it has review evidence.
+
+**Environment and finish line:** alpha.4 SIT, canonical loopback HTTPS hostnames, persistent volumes, owner holds and remote UAT remain untouched. Both retained Codex automations remain PAUSED; no automatic continuation is asserted. The active conductor continues carrier diagnosis and dependency-safe query work, then protected acceptance, combined signed prerelease, exact-digest SIT workflows/recovery and fresh independent final audit. No phase closure, updated release, restore acceptance or mission completion is claimed.
+
+## Codex takeover checkpoint — 2026-10-15
+
+Thomas designated Codex `/root` as replacement conductor in two direct takeover instructions after the Claude quota interruption. The existing #589 continuation, accepted scope, owner holds and alpha.4 recovery material remain. No new phase or roadmap work is authorized. Both retained Codex automations remain PAUSED; no automatic continuation mechanism is asserted verified. The active session owns the queue.
+
+**Accepted remote main:** `9bb28099a69d1e599e1d7451ebdf6225e380546c`. **Carrier:** draft [#791](https://github.com/ThomasHeinThura/ticketing/pull/791), branch `codex/carrier-2026-10-15-c`, initially pushed source `9ccdeed432c73c3c8d139df3ccd2698713096fd7`. The carrier and its eleven component heads were retained, including #768 through #769. No takeover merge yet. The dirty primary checkout is older (`8ddb9de8`) and remains untouched.
+
+**Recovery:** 223 registered worktrees were inventoried and all 13 dirty trees snapshotted outside the repository in restricted evidence. A confirmed temporary label-ID mutation in #580 batch 9 was restored from its exact retained original; its untracked regression test was preserved. Batch 10 has legitimate uncommitted startup/seed repository work and tests; no active mutant was found. Authentication/saved-view/structured-list retained trees are clean at their recorded heads, not assumed to contain newer work merely from the handoff description. Private evidence: `~/.codex/taskdesk-evidence/2026-10-15/takeover/` (`worktrees.json`, recovery receipts, authentic review reports).
+
+| Unit | Owner | State | Exact source / next action |
+| --- | --- | --- | --- |
+| Carrier #791 | Codex `/root` | RUNNING | Initial ordinary A/B/C reviews completed at `9ccdeed4`. A/C found dropped board states fixture; independent delta clearance at local `5893afeda2a8750a81ccb351b7c70882eaaa5531`. |
+| Carrier security S1 / #734 | Luna repair context | RUNNING | Fresh independent Sol at `5893afed` requests changes for concurrent customer-project binding during erasure. Reproduce on isolated PostgreSQL, repair only the verified defect, review current delta. |
+| #580 batch 9 | recovered, conductor assigns next | READY | Local `869362fa` is unpushed; untracked regression test retained; after carrier, verify and review the recovered bounded batch. |
+| #580 batch 10 | recovered, conductor assigns next | READY | Local `c32ab85f` plus uncommitted startup/seed conversion/tests; verify and finish under the current inventory definition. |
+| #580 remaining conversion/checker | conductor | BLOCKED | Depends on accepted source conversions and final structural fail-closed checker; `check:queries` remains genuinely unwired, never claimed enabled. |
+| #783 / #784 API keys | conductor | WAITING_REVIEW | Existing dependent heads `e0d5e9c2` / `1bd68514`; preserve paired capability/clamp acceptance before release. |
+| #631 / #632 | conductor | READY | Reconcile existing source/evidence, run actual clock and legacy revocation cases; no closure inferred. |
+| #713–#716 / #718 | conductor | BLOCKED | Frozen selected source is in #791; incomplete acceptance and later follow-up work remain separately accounted for. #717 remains complete via #738. |
+| #589 disposition | conductor | BLOCKED | Selected-unit completion, equivalence or explicit Thomas deferral required; issue reassignment is not completion. |
+| Combined release / SIT / restore / audit | conductor | BLOCKED | Depends on all selected units; alpha.4 remains deployed. No updated release/deployment/final audit or phase closure claimed. |
+
+**Verification at initial pushed `9ccdeed4`:** hosted unit/component 12 tasks, including 215 web files / 1,390 tests and 119 API files / 857 tests; browser suite 123/123 including Authentication/SCIM, saved views, structured search and engagement cases; G11 22/22; accessibility passed. Real PostgreSQL integration is still running at this checkpoint. G8 failed on the missing board-state fixture (23/24 application cases passed); draft template/security note check is honestly red pending reviews/publication. GitGuardian incident 38240567 is independently adjudicated by Sol as a negative URL-parser literal rather than a credential; external status remains red. Required checks must run on the final candidate; none is inherited from this head.
+
+**Local image at `5893afed`:** build passed (`sha256:df4e9a6d2d9b44c2cb366671c9d34eef3c68c49c823d1467a635ab25e9f5d183`), isolated PostgreSQL 18 migration exited 0 (125 migration rows), runtime UID 10001, documented `/api/public/health/live` and `/api/public/health/ready` returned 200, no published ports. Initial probes omitted `/api` and returned 404; that failed attempt is retained separately from the corrected successful proof. All owned disposable containers/network were removed; persistent SIT was untouched. This image predates S1 remediation and is not final-source or signed SIT acceptance.
+
+**Next:** verify S1, complete its bounded repair/reviews, publish authentic carrier reviews with per-commit review-record accounting, obtain all final-head checks and image/runtime/browser evidence, then protected expected-head merge if eligible. Advance the remaining selected-unit queue afterwards. No gate is waived and no phase completion is claimed.
+
+## Continuation checkpoint — 2026-10-15 07:55 UTC
+
+**Source:** accepted `main` `d159704be626136e728df7ddef0381dc37cf7756` (merge of #749). v2.0.0-alpha.4 is published from it and deployed to laptop SIT; its backup, isolated restore, SIT smoke and independent Opus audit (PASS WITH FINDINGS, none blocking) are the completed alpha.4 checkpoint. Thomas's 2026-10-15 decision resumes the remaining #589 integration. Only Codex automations on this host are PAUSED; this Claude Code session is the sole conductor.
+
+**Open PRs:** #589 (historical train, retained source `2350397b`, ABSORB THEN CLOSE after the units below), #755 (#752 loopback, draft).
+
+| Unit | Issue | Owner | State | Next action |
+|---|---|---|---|---|
+| M1 query ownership + enforced `check:queries` | #580 | Sonnet lane `codex/query-ownership-580` | RUNNING | current-tree inventory, batch plan, batch 1 |
+| M2 God Mode Authentication/SCIM UI | #713 | unassigned | WAITING (lane cap) | reconcile against accepted DTOs, preconditions and step-up; #561 |
+| M3 saved views index/detail | #714 | one coordinated #714/#715 owner | WAITING | after a lane frees; shares routes, filters and query contracts with M4 |
+| M4 structured work-list | #715 | same owner as #714 | WAITING | export (F3) excluded |
+| M6 project engagement controls | #716 | Sonnet lane `codex/project-engagement-716` | RUNNING | web-only against the API on `main` |
+| M7 service-calendar tests | #717 | — | DONE | #738, merge `6015f016`, note `738-service-calendar-request-recheck.md` |
+| M9 documentation drift | #718 | conductor | READY | items 1, 2, 4; verify stale #437, #444, #592; item 3 inside #580 |
+| Laptop loopback | #752 | conductor | REVIEW | #755: reviews, Opus, CI |
+| Disposition ledger | #754 | conductor | IN THIS CHANGE | ledger marked as a dated snapshot |
+| Release reliability | #753 | conductor | WAITING | bounded diagnosis before the next release |
+
+**Acceptance risks to reconcile before final acceptance:** #724, #734, #743, #750, #751, #729, #631/#632. Each gets a source-and-test verdict; none is assumed current or stale.
+
+**Stop conditions:** every selected unit merged and verified, proven equivalent, or deferred by Thomas; #589 closed as absorbed with its branch kept; one signed prerelease deployed by digest to `https://ticketing.localhost` and `https://portal.localhost`; backup and isolated restore proven; real-browser workflows recorded; fresh independent audit with no unresolved blocking finding; report; Hold.
+
 ## Delivery integration checkpoint — 2026-10-12 04:17:41 UTC
 
 **P0–P7 / acceptance boundary:** P0 remains accepted within #624/#628 and #626's exact deferrals. No later phase completion, consolidated artifact publication, laptop SIT acceptance/recovery, final audit or handover completion is claimed. Thomas's “FINISH EXISTING DELIVERY, DO NOT RESTART” addendum retains the existing mission, conductor, queue, workers and sole continuation. Its original attachment remains preserved; the private `finish-existing-delivery-addendum-receipt.json` records its path and SHA-256. Priorities are real Comments/D9, Users, approved customer intake, auth correction and remaining unique #609/#512 journeys; existing holds and predecessor conservation remain.

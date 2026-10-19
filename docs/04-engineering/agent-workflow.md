@@ -149,16 +149,17 @@ that materially authored, directed or remediated a change is not its independent
 
 | Tier and roles | Models — whichever is available, each in its own independent context |
 | --- | --- |
-| **Luna tier:** implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, **Claude Sonnet** or **Claude Haiku** |
-| **Sol tier:** security review, critical cross-boundary review, phase finalizer and final audit, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol** / **GPT-6.1 Sol**, or a fresh **Claude Opus** context |
-| Conductor | The session Thomas designates |
+| **Luna tier:** implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, **Claude Sonnet**, **Claude Haiku**, or **Gemini 3.8 Flash** |
+| **Sol tier:** security review, critical cross-boundary review, phase finalizer and final audit, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol** / **GPT-6.1 Sol**, a fresh **Claude Opus** context, or a fresh **Gemini 4 Argon** context |
+| Conductor | The session Thomas designates (active mission) |
 | Read-only extraction (optional) | Any assigned model in either tier, never a retired route; its output is data, cited only after a reviewer re-verifies it against the source |
 | Sampled auditor | A fresh **Claude Opus** context, only from a packet another context prepared; never replaces a required review |
 | Policy maintenance | The session Thomas assigns. Its PRs still receive the independent reviews, and the security pass, their tier requires |
 
-**Source:** decision log 2026-09-29 (GPT-6 Luna/Sol routing) and 2026-10-09 "Model tiers by
-availability" (Sol = Opus, Luna = Sonnet or Haiku, chosen by real usage limits), which
-supersedes the earlier 2026-10-09 assignments for model choice. These are disclosed changes of
+**Source:** decision log 2026-09-29 (GPT-6 Luna/Sol routing), 2026-10-09 "Model tiers by
+availability" (Sol = Opus, Luna = Sonnet or Haiku), and 2026-10-19 "Antigravity orchestrator takeover,
+Gemini model assignments, and PR-consolidation-then-Hold stopping boundary" (Sol tier includes Gemini 4 Argon;
+Luna tier includes Gemini 3.8 Flash). These are disclosed changes of
 **who** reviews, not of review depth, counts or independence. Within a tier the models are
 interchangeable by availability; their **labels are not**: one context never fills two roles on
 the same change, and the author's context is never its reviewer. When no Luna-tier model is
@@ -166,10 +167,12 @@ available, a Sol-tier model may fill a Luna-tier role; a Luna-tier model never f
 role.
 
 Every review records the model and version **as the platform reports it** (for example
-`Claude Sonnet 5.5 (claude-sonnet-5-5)`, `Claude Opus 5.5 (claude-opus-5-5)`; a table entry
+`Claude Sonnet 5.5 (claude-sonnet-5-5)`, `Claude Opus 5.5 (claude-opus-5-5)`, `Gemini 4 Argon`,
+`Gemini 3.8 Flash`; a table entry
 without a version means whichever version the platform reports), its role,
 context, exact source, scope and verdict. **Never label a report with a model that did not
-produce it** — a Claude report is never recorded as a GPT model or the reverse, nor a
+produce it** — a Claude report is never recorded as a GPT model or the reverse, nor a Gemini
+report as Claude or GPT, nor a
 Sonnet or Haiku report as Opus, and historical reviews keep their original identity. An existing review counts
 for a role only where its scope and source coverage are established; it never approves later
 changes. Reviews completed under an earlier assignment stay valid for what they covered.
@@ -189,6 +192,7 @@ change that replaces the active mission re-decides it in the same reviewed chang
 - `GPT-6 Sol`
 - `GPT-6.1 Sol`
 - `Claude Opus 5.5 (claude-opus-5-5)`
+- `Gemini 4 Argon`
 <!-- /policy:security-review-models -->
 
 If no assigned model is available, the candidate waits, marked **SECURITY RE-REVIEW PENDING —

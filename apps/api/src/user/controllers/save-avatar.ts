@@ -1,7 +1,5 @@
-import { createId } from "@paralleldrive/cuid2";
-import db from "../../database";
-import { userAvatarTable } from "../../database/schema";
 import { buildAvatarUrl, decodeAvatarUpload } from "../avatar";
+import { upsertAvatar } from "../repository";
 
 export async function saveAvatar({
   userId,
@@ -14,25 +12,7 @@ export async function saveAvatar({
 }) {
   const { mimeType, bytes } = decodeAvatarUpload({ contentType, data });
 
-  const [saved] = await db
-    .insert(userAvatarTable)
-    .values({
-      userId,
-      mimeType,
-      size: bytes.length,
-      data: bytes,
-    })
-    .onConflictDoUpdate({
-      target: userAvatarTable.userId,
-      set: {
-        id: createId(),
-        mimeType,
-        size: bytes.length,
-        data: bytes,
-        updatedAt: new Date(),
-      },
-    })
-    .returning({ id: userAvatarTable.id });
+  const saved = await upsertAvatar({ userId, mimeType, data: bytes });
 
   if (!saved) {
     throw new Error("Failed to store avatar");

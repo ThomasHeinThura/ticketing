@@ -120,7 +120,7 @@ Docker port-in-use error: set `TASKDESK_LOCAL_HTTP_PORT` / `TASKDESK_LOCAL_HTTPS
 | File | Purpose |
 | --- | --- |
 | `compose.yml` | Base — at the repository root. Services, images, volumes, networks. **Publishes no application port** |
-| `deploy/compose.local.yml` | Overlay — local development: publishes 5173, no TLS, Mailpit |
+| `deploy/compose.local.yml` | Overlay — local development: local settings, Mailpit, Postgres on loopback. Publishes no application port (#752) |
 | `deploy/compose.prod.yml` | Overlay — Traefik labels, resource limits, external proxy network |
 | `deploy/compose.uat.yml` | Overlay — as production, different hostnames, and the bimats.com host's real topology: CloudFront terminates TLS, so the routers use the plain `web` entrypoint with no certificate resolver ([proxy topology evidence](proxy-topology-evidence.md)) |
 | `deploy/compose.traefik.yml` | Local Traefik, so production labels can be tested locally |
@@ -131,12 +131,13 @@ Docker port-in-use error: set `TASKDESK_LOCAL_HTTP_PORT` / `TASKDESK_LOCAL_HTTPS
 # production
 docker compose -f compose.yml -f deploy/compose.prod.yml up -d --wait
 
-# local development — this is the overlay that publishes the port
-docker compose -f compose.yml -f deploy/compose.local.yml up -d --wait
+# local development — the local overlay plus its own Traefik (use scripts/deploy.sh local)
+docker compose -f compose.yml -f deploy/compose.local.yml -f deploy/compose.traefik.yml up -d --wait
 ```
 
-**The port lives in the local overlay, not in the base file, and this is deliberate.**
-Compose *concatenates* `ports:` across files — an overlay can add a published port but
+**No file publishes the application port, and this is deliberate.** It never lived in the
+base file, and the local overlay stopped publishing it in #752; locally, the bundled Traefik
+reaches it over the Docker network. Compose *concatenates* `ports:` across files — an overlay can add a published port but
 cannot take one away — so a base file that published 5173 would publish it in production
 too, and the "never published" premise that `TASKDESK_TRUST_PROXY=1` rests on
 ([traefik-and-domains.md](traefik-and-domains.md)) would be false. `scripts/deploy.sh

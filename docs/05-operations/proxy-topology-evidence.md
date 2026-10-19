@@ -168,8 +168,8 @@ arrangement they describe: one Traefik, terminating TLS, directly in front, with
 the application port unpublished so nothing else can reach the container.
 
 That last clause is the load-bearing one. Compose *concatenates* `ports:` across
-files, so the base `compose.yml` publishes nothing and only
-`deploy/compose.local.yml` publishes 5173. `scripts/deploy.sh production`
+files, so the base `compose.yml` publishes nothing, and since #752 no overlay publishes 5173
+either. `scripts/deploy.sh production`
 asserts it from the Docker engine's record of every `taskdesk` container
 (`docker inspect`: no host or container-shared networking, no `PublishAllPorts`, no port binding, no live
 host port mapping; no container at all also stops the deploy). It does not rely on

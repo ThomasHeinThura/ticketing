@@ -6,17 +6,28 @@
  * those are a follow-up issue, tracked separately, and depend on the not-yet-built
  * `approval` table (#36) for full `requires_approval`/`requires_cab` semantics.
  */
+import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import {
+  insertWorkflow,
+  listWorkflowsInWorkspace,
+} from "../../apps/api/src/workflow/repository";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+  grantProjectRole,
+  requireRow,
+} from "./helpers/fixtures";
 
-async function listWorkflows(workspaceId: string) {
+async function listWorkflows(workspaceId: string, init?: RequestInit) {
   const { app } = createApp();
-  return app.request(`/api/workflows?workspaceId=${workspaceId}`);
+  return app.request(`/api/workflows?workspaceId=${workspaceId}`, init);
 }
 
 async function createWorkflow(body: unknown) {
@@ -28,9 +39,9 @@ async function createWorkflow(body: unknown) {
   });
 }
 
-async function getWorkflow(id: string) {
+async function getWorkflow(id: string, init?: RequestInit) {
   const { app } = createApp();
-  return app.request(`/api/workflows/${id}`);
+  return app.request(`/api/workflows/${id}`, init);
 }
 
 async function createWorkflowVersion(id: string, body: unknown) {
@@ -42,10 +53,27 @@ async function createWorkflowVersion(id: string, body: unknown) {
   });
 }
 
-async function publishWorkflowVersion(id: string, number: number) {
+async function publishWorkflowVersion(
+  id: string,
+  number: number,
+  init?: RequestInit,
+) {
   const { app } = createApp();
   return app.request(`/api/workflows/${id}/versions/${number}/publish`, {
     method: "POST",
+    ...init,
+  });
+}
+
+async function validateWorkflowVersion(
+  id: string,
+  number: number,
+  init?: RequestInit,
+) {
+  const { app } = createApp();
+  return app.request(`/api/workflows/${id}/versions/${number}/validate`, {
+    method: "POST",
+    ...init,
   });
 }
 
@@ -97,6 +125,542 @@ describe("API integration: workflow persistence", () => {
     expect(await response.json()).toEqual([]);
   });
 
+  it.each([
+    { initialRole: "owner", duplicateRole: "owner", shape: "same role" },
+    { initialRole: "admin", duplicateRole: "member", shape: "different role" },
+  ])(
+    "refuses legacy workspace reach after a duplicate $shape membership is added",
+    async ({ initialRole, duplicateRole }) => {
+      const member = await createWorkspaceMember({ role: initialRole });
+      const workflow = await insertWorkflow({
+        workspaceId: member.workspace.id,
+        key: `duplicate-membership-${randomUUID()}`,
+        name: "Duplicate membership reach check",
+      });
+      if (!workflow) throw new Error("Expected inserted workflow");
+      const identity = await resolveIdentity({
+        userId: member.user.id,
+        credential: "session",
+      });
+      expect(identity).not.toBeNull();
+      if (!identity) throw new Error("Expected resolved member identity");
+
+      expect(
+        (await listWorkflowsInWorkspace(identity, member.workspace.id)).map(
+          (row) => row.id,
+        ),
+      ).toEqual([workflow.id]);
+
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: member.workspace.id,
+        userId: member.user.id,
+        role: duplicateRole,
+        joinedAt: new Date(),
+      });
+
+      expect(
+        await listWorkflowsInWorkspace(identity, member.workspace.id),
+      ).toEqual([]);
+    },
+  );
+
+  it("allows an unknown literal assignee id to be saved when authoring a version", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    mockAuthenticatedSession(owner.user);
+    const { backlog, done } = await seedStateTemplates(owner.workspace.id);
+    const createResponse = await createWorkflow({
+      workspaceId: owner.workspace.id,
+      key: "authoring-assignee",
+      name: "Authoring assignee workflow",
+    });
+    expect(createResponse.status).toBe(200);
+    const workflow = (await createResponse.json()) as { id: string };
+
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        {
+          fromStateTemplateId: backlog.id,
+          toStateTemplateId: done.id,
+          effects: [
+            { kind: "set_assignee", personId: "person-not-yet-created" },
+          ],
+          notePolicy: "none",
+          noteVisibility: "internal",
+        },
+      ],
+    });
+    expect(versionResponse.status).toBe(200);
+    expect((await versionResponse.json()).number).toBe(1);
+  });
+
+  it("validates and publishes against every reachable workspace project, including empty and archived projects", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(owner.user);
+    const { backlog, done } = await seedStateTemplates(owner.workspace.id);
+    const workflowResponse = await createWorkflow({
+      workspaceId: owner.workspace.id,
+      key: "all-projects",
+      name: "All projects workflow",
+    });
+    expect(workflowResponse.status).toBe(200);
+    const workflow = (await workflowResponse.json()) as { id: string };
+    const type = requireRow(
+      await db
+        .insert(schema.workItemTypeTable)
+        .values({
+          workspaceId: owner.workspace.id,
+          key: "all-projects-type",
+          name: "All projects type",
+          category: "delivery",
+          workflowId: workflow.id,
+        })
+        .returning(),
+      "all-projects work item type",
+    );
+    expect(type.workflowId).toBe(workflow.id);
+
+    const emptyProject = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+      name: "Empty adopting project",
+    });
+    const archivedProject = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+      name: "Archived adopting project",
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, archivedProject.project.id));
+    for (const project of [emptyProject.project, archivedProject.project]) {
+      await db.insert(schema.stateTable).values([
+        { projectId: project.id, stateTemplateId: backlog.id, isDefault: true },
+        { projectId: project.id, stateTemplateId: done.id, position: 1 },
+      ]);
+      await grantProjectRole(owner.user.id, project.id, ["project:read"]);
+    }
+
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        { fromStateTemplateId: backlog.id, toStateTemplateId: done.id },
+        { fromStateTemplateId: done.id, toStateTemplateId: backlog.id },
+      ],
+    });
+    expect(versionResponse.status).toBe(200);
+    const version = (await versionResponse.json()) as {
+      number: number;
+      id: string;
+    };
+
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    await db.insert(schema.apikeyTable).values({
+      referenceId: owner.user.id,
+      userId: owner.user.id,
+      key: createHash("sha256")
+        .update(rawKey)
+        .digest()
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, ""),
+      name: "workflow validation scope test key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ workflow: ["manage"] }),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const keyRequest = {
+      headers: { authorization: `Bearer ${rawKey}` },
+    };
+
+    const validationResponse = await validateWorkflowVersion(
+      workflow.id,
+      version.number,
+      keyRequest,
+    );
+    expect(
+      validationResponse.status,
+      await validationResponse.clone().text(),
+    ).toBe(200);
+    const validation = (await validationResponse.json()) as {
+      valid: boolean;
+      projects: {
+        projectId: string;
+        valid: boolean;
+        stuckWorkItemKeys: string[];
+      }[];
+    };
+    expect(validation.valid).toBe(true);
+    expect(
+      validation.projects.map((project) => project.projectId).sort(),
+    ).toEqual([emptyProject.project.id, archivedProject.project.id].sort());
+    expect(
+      validation.projects.every(
+        (project) => project.valid && project.stuckWorkItemKeys.length === 0,
+      ),
+    ).toBe(true);
+
+    const publishResponse = await publishWorkflowVersion(
+      workflow.id,
+      version.number,
+      keyRequest,
+    );
+    expect(publishResponse.status, await publishResponse.clone().text()).toBe(
+      200,
+    );
+    const [publishedWorkflow] = await db
+      .select()
+      .from(schema.workflowTable)
+      .where(eq(schema.workflowTable.id, workflow.id));
+    const [publishedVersion] = await db
+      .select()
+      .from(schema.workflowVersionTable)
+      .where(eq(schema.workflowVersionTable.id, version.id));
+    expect(publishedWorkflow?.activeVersionId).toBe(version.id);
+    expect(publishedVersion?.publishedAt).toBeInstanceOf(Date);
+  });
+
+  it("returns generic refusal and leaves publication untouched when any empty archived workspace project is unreachable", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(admin.user);
+    const { backlog, done } = await seedStateTemplates(admin.workspace.id);
+    const workflowResponse = await createWorkflow({
+      workspaceId: admin.workspace.id,
+      key: "hidden-project",
+      name: "Hidden project workflow",
+    });
+    expect(workflowResponse.status).toBe(200);
+    const workflow = (await workflowResponse.json()) as { id: string };
+    await db.insert(schema.workItemTypeTable).values({
+      workspaceId: admin.workspace.id,
+      key: "hidden-project-type",
+      name: "Hidden project type",
+      category: "delivery",
+      workflowId: workflow.id,
+    });
+
+    const reachableProject = await createProjectFixture({
+      workspaceId: admin.workspace.id,
+      name: "Reachable adopting project",
+    });
+    const hiddenArchivedProject = await createProjectFixture({
+      workspaceId: admin.workspace.id,
+      name: "Hidden archived adopting project",
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, hiddenArchivedProject.project.id));
+    await grantProjectRole(admin.user.id, reachableProject.project.id, [
+      "project:read",
+    ]);
+
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        { fromStateTemplateId: backlog.id, toStateTemplateId: done.id },
+        { fromStateTemplateId: done.id, toStateTemplateId: backlog.id },
+      ],
+    });
+    expect(versionResponse.status).toBe(200);
+    const version = (await versionResponse.json()) as {
+      number: number;
+      id: string;
+    };
+
+    const validationResponse = await validateWorkflowVersion(
+      workflow.id,
+      version.number,
+    );
+    const validationText = await validationResponse.clone().text();
+    expect(validationResponse.status).toBe(403);
+    expect(validationText).toBe("Workflow project access required");
+    expect(validationText).not.toContain(reachableProject.project.id);
+    expect(validationText).not.toContain(hiddenArchivedProject.project.id);
+    expect(validationText).not.toContain("Hidden archived adopting project");
+
+    const publishResponse = await publishWorkflowVersion(
+      workflow.id,
+      version.number,
+    );
+    expect(publishResponse.status).toBe(403);
+    expect(await publishResponse.text()).toBe(
+      "Workflow project access required",
+    );
+    const [unpublishedWorkflow] = await db
+      .select()
+      .from(schema.workflowTable)
+      .where(eq(schema.workflowTable.id, workflow.id));
+    const [unpublishedVersion] = await db
+      .select()
+      .from(schema.workflowVersionTable)
+      .where(eq(schema.workflowVersionTable.id, version.id));
+    expect(unpublishedWorkflow?.activeVersionId).toBeNull();
+    expect(unpublishedVersion?.publishedAt).toBeNull();
+    expect(unpublishedVersion?.publishedBy).toBeNull();
+  });
+
+  it("keeps WF-9 validation on one PostgreSQL snapshot when project reach is revoked mid-read", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(admin.user);
+    const { backlog, done } = await seedStateTemplates(admin.workspace.id);
+    const workflowResponse = await createWorkflow({
+      workspaceId: admin.workspace.id,
+      key: "snapshot-validation",
+      name: "Snapshot validation",
+    });
+    const workflow = (await workflowResponse.json()) as { id: string };
+    const project = await createProjectFixture({
+      workspaceId: admin.workspace.id,
+    });
+    await grantProjectRole(admin.user.id, project.project.id, ["project:read"]);
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        { fromStateTemplateId: backlog.id, toStateTemplateId: done.id },
+        { fromStateTemplateId: done.id, toStateTemplateId: backlog.id },
+      ],
+    });
+    const version = (await versionResponse.json()) as { number: number };
+    const repository = await import("../../apps/api/src/workflow/repository");
+    const original = repository.hasCompleteWorkflowProjectReach;
+    let releaseRead!: () => void;
+    let reachedOracle!: () => void;
+    const readPaused = new Promise<void>((resolve) => {
+      reachedOracle = resolve;
+    });
+    const continueRead = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    const spy = vi
+      .spyOn(repository, "hasCompleteWorkflowProjectReach")
+      .mockImplementation(async (identity, workflowId, executor) => {
+        const result = await original(identity, workflowId, executor);
+        reachedOracle();
+        await continueRead;
+        return result;
+      });
+    try {
+      const responsePromise = validateWorkflowVersion(
+        workflow.id,
+        version.number,
+      );
+      await readPaused;
+      const [person] = await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, admin.user.id))
+        .limit(1);
+      if (!person) throw new Error("Expected person fixture");
+      await db
+        .delete(schema.membershipTable)
+        .where(eq(schema.membershipTable.personId, person.id));
+      releaseRead();
+      const response = await responsePromise;
+      expect(response.status).toBe(200);
+      const result = (await response.json()) as {
+        projects: Array<{ projectId: string }>;
+      };
+      expect(result.projects.map(({ projectId }) => projectId)).toContain(
+        project.project.id,
+      );
+    } finally {
+      releaseRead();
+      spy.mockRestore();
+    }
+  });
+
+  it("does not count a malformed cross-scope role row as WF-9 project reach", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(admin.user);
+    const { backlog, done } = await seedStateTemplates(admin.workspace.id);
+    const workflowResponse = await createWorkflow({
+      workspaceId: admin.workspace.id,
+      key: "malformed-reach",
+      name: "Malformed reach",
+    });
+    const workflow = (await workflowResponse.json()) as { id: string };
+    const project = await createProjectFixture({
+      workspaceId: admin.workspace.id,
+    });
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, admin.user.id))
+      .limit(1);
+    if (!person) throw new Error("Expected person fixture");
+    const [wrongScopeRole] = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "workspace",
+        workspaceId: admin.workspace.id,
+        key: "malformed-project-reach",
+        name: "Malformed project reach",
+        rank: 1,
+        capabilities: ["project:read"],
+      })
+      .returning();
+    if (!wrongScopeRole) throw new Error("Expected malformed role fixture");
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "project",
+      scopeId: project.project.id,
+      roleId: wrongScopeRole.id,
+      seesAll: false,
+    });
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        { fromStateTemplateId: backlog.id, toStateTemplateId: done.id },
+        { fromStateTemplateId: done.id, toStateTemplateId: backlog.id },
+      ],
+    });
+    const version = (await versionResponse.json()) as { number: number };
+    const validation = await validateWorkflowVersion(
+      workflow.id,
+      version.number,
+    );
+    expect(validation.status).toBe(403);
+    expect(await validation.text()).toBe("Workflow project access required");
+  });
+
+  it("retries the full serializable WF-9 publication after a project-insert SSI cycle", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(admin.user);
+    const { backlog, done } = await seedStateTemplates(admin.workspace.id);
+    const workflowResponse = await createWorkflow({
+      workspaceId: admin.workspace.id,
+      key: "ssi-publication",
+      name: "SSI publication",
+    });
+    const workflow = (await workflowResponse.json()) as { id: string };
+    const project = await createProjectFixture({
+      workspaceId: admin.workspace.id,
+    });
+    await grantProjectRole(admin.user.id, project.project.id, ["project:read"]);
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        { fromStateTemplateId: backlog.id, toStateTemplateId: done.id },
+        { fromStateTemplateId: done.id, toStateTemplateId: backlog.id },
+      ],
+    });
+    const version = (await versionResponse.json()) as {
+      number: number;
+      id: string;
+    };
+    const repository = await import("../../apps/api/src/workflow/repository");
+    const originalStamp = repository.stampVersionPublished;
+    let releaseWrite!: () => void;
+    let reachedWrite!: () => void;
+    const writePaused = new Promise<void>((resolve) => {
+      reachedWrite = resolve;
+    });
+    const continueWrite = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+    let firstWrite = true;
+    const stampSpy = vi
+      .spyOn(repository, "stampVersionPublished")
+      .mockImplementation(async (executor, versionId, publishedBy) => {
+        if (firstWrite) {
+          firstWrite = false;
+          reachedWrite();
+          await continueWrite;
+        }
+        return originalStamp(executor, versionId, publishedBy);
+      });
+    let reachChecks = 0;
+    const originalReach = repository.hasCompleteWorkflowProjectReach;
+    const reachSpy = vi
+      .spyOn(repository, "hasCompleteWorkflowProjectReach")
+      .mockImplementation(async (...args) => {
+        reachChecks += 1;
+        return originalReach(...args);
+      });
+    try {
+      const responsePromise = publishWorkflowVersion(
+        workflow.id,
+        version.number,
+      );
+      await writePaused;
+      await db.transaction(
+        async (tx) => {
+          await tx
+            .select({ id: schema.workflowTable.id })
+            .from(schema.workflowTable)
+            .where(eq(schema.workflowTable.id, workflow.id))
+            .limit(1);
+          await tx.insert(schema.projectTable).values({
+            workspaceId: admin.workspace.id,
+            name: "SSI inserted adopting project",
+            slug: `ssi-${randomUUID()}`,
+          });
+        },
+        { isolationLevel: "serializable" },
+      );
+      releaseWrite();
+      const response = await responsePromise;
+      expect(response.status).toBe(403);
+      expect(await response.text()).toBe("Workflow project access required");
+      expect(reachChecks).toBeGreaterThanOrEqual(2);
+      const [storedWorkflow] = await db
+        .select()
+        .from(schema.workflowTable)
+        .where(eq(schema.workflowTable.id, workflow.id));
+      const [storedVersion] = await db
+        .select()
+        .from(schema.workflowVersionTable)
+        .where(eq(schema.workflowVersionTable.id, version.id));
+      expect(storedWorkflow?.activeVersionId).toBeNull();
+      expect(storedVersion?.publishedAt).toBeNull();
+      expect(storedVersion?.publishedBy).toBeNull();
+    } finally {
+      releaseWrite();
+      stampSpy.mockRestore();
+      reachSpy.mockRestore();
+    }
+  });
+
+  it("allows a workflow-scoped API key to read reachable list and detail rows", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    mockAuthenticatedSession(owner.user);
+    const createResponse = await createWorkflow({
+      workspaceId: owner.workspace.id,
+      key: "key-readable",
+      name: "Key-readable workflow",
+    });
+    expect(createResponse.status).toBe(200);
+    const workflow = (await createResponse.json()) as { id: string };
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    await db.insert(schema.apikeyTable).values({
+      referenceId: owner.user.id,
+      userId: owner.user.id,
+      key: createHash("sha256")
+        .update(rawKey)
+        .digest()
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, ""),
+      name: "workflow read scope test key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ workflow: ["read"] }),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const keyRequest = {
+      headers: { authorization: `Bearer ${rawKey}` },
+    };
+
+    const listResponse = await listWorkflows(owner.workspace.id, keyRequest);
+    expect(listResponse.status, await listResponse.clone().text()).toBe(200);
+    expect(await listResponse.json()).toHaveLength(1);
+
+    const detailResponse = await getWorkflow(workflow.id, keyRequest);
+    expect(detailResponse.status, await detailResponse.clone().text()).toBe(
+      200,
+    );
+    expect((await detailResponse.json()).id).toBe(workflow.id);
+  });
+
   it("creates a workflow, a version, and publishes it", async () => {
     const owner = await createWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
@@ -125,6 +689,9 @@ describe("API integration: workflow persistence", () => {
         {
           fromStateTemplateId: backlog.id,
           toStateTemplateId: done.id,
+          effects: [
+            { kind: "set_assignee", personId: "person-not-yet-created" },
+          ],
           notePolicy: "none",
           noteVisibility: "internal",
         },
