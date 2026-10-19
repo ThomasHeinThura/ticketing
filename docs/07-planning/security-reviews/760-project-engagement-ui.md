@@ -351,3 +351,17 @@ Method:
 - **Parents:** first = `1fd44cc9` (prior branch head including rebind note), second = `b2beb460` (main tip with #768). Clean merge commit.
 - **Merge-tree equality:** Clean merge with pairs.json union resolution.
 - **Verdict:** CLEAR
+
+## Mechanical rebind after main moved to 29823775a6c117e335552309191d8bb7fbb700ec
+
+This section establishes that `c4c0448e9cbf0b25d31d775ac87be8359da305b2` is a mechanical rebind of `72adf9ca8ef287c364811ffb31cc07f89ac3550f` following the landing of PR #769 (#714) onto main.
+
+**Reviewed head:** `c4c0448e9cbf0b25d31d775ac87be8359da305b2`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 29823775a6c117e335552309191d8bb7fbb700ec (accepted main with #769)
+**Previous reviewed head:** 72adf9ca8ef287c364811ffb31cc07f89ac3550f
+
+Method:
+- **Parents:** first = `c52adbfa` (prior branch head including rebind note), second = `29823775` (main tip with #769). Clean merge commit.
+- **Merge-tree equality:** Clean merge with pairs.json contrast occurrence alignment for ProjectEngagementSettings.
+- **Verdict:** CLEAR
