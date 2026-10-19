@@ -1,6 +1,5 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import { insertRequiredTaskActivity } from "../../activity/repository";
 import db from "../../database";
 import { publishEvent } from "../../events";
 import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
@@ -35,15 +34,6 @@ async function updateTaskStatus({
       status,
       columnId: column?.id ?? null,
     });
-    if (updatedTask) {
-      await insertRequiredTaskActivity(tx, identity, {
-        taskId: updatedTask.id,
-        type: "status_changed",
-        userId: currentUserId,
-        content: null,
-        eventData: { oldStatus: existingTask.status, newStatus: status },
-      });
-    }
     return { existingTask, updatedTask };
   });
 

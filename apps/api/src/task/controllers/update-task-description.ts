@@ -44,17 +44,8 @@ async function updateTaskDescription({
     type: "description_changed",
   });
 
-  db.transaction(async (tx) => {
-    await lockTaskAndAssertProjectLiveForIdentity(tx, id, identity);
-    await deleteOrphanedAssets(
-      tx,
-      identity,
-      existingTask.description,
-      description,
-      {
-        taskId: id,
-      },
-    );
+  deleteOrphanedAssets(existingTask.description, description, {
+    taskId: id,
   }).catch(() => {});
 
   // Notify members newly @mentioned by this edit (skip ones already mentioned
