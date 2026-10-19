@@ -1448,3 +1448,9 @@ The B paragraph saying the original 15 entries are unchanged “except their des
 All reports retain their stated scopes. Only this candidate's own regular review note is added/appended after the independently reviewed source. Exact-publication full hosted/image gates remain outstanding.
 
 **Reviewed head:** `c3329e7d195c63a6e46caebdd2f306b4dc9ba1a4`
+
+## Mechanical rebind for accepted main merge
+
+Mechanical rebind for normal merge of accepted `main` (`c5be52554704dd266c257c7c34efae3df253b2f5`). No application logic or security invariants were altered; all query ownership, repository contracts, and tenant-scoping tests remain intact. Reverted unintentional spec edit to `time-and-cost.md` to match accepted `main`.
+
+**Reviewed head:** `78c637fba7e3057cba66de471d64df5dc54ef164`
