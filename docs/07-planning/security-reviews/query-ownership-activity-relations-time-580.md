@@ -1460,3 +1460,9 @@ Mechanical rebind for normal merge of accepted `main` (`c5be52554704dd266c257c7c
 This section establishes that `b0634c72e4c88b99b8de53555eb62db628ea3386` is a mechanical rebind following the landing of PR #768 onto main. No application logic or security invariants were altered; all query ownership, repository contracts, and tenant-scoping tests remain intact.
 
 **Reviewed head:** `b0634c72e4c88b99b8de53555eb62db628ea3386`
+
+## Mechanical rebind after main moved to 29823775a6c117e335552309191d8bb7fbb700ec
+
+This section establishes that `9c158718f2e01cc8026308dc275d765971157172` is a mechanical rebind following the landing of PR #769 (#714) onto main. No application logic or security invariants were altered; all query ownership, repository contracts, and tenant-scoping tests remain intact.
+
+**Reviewed head:** `9c158718f2e01cc8026308dc275d765971157172`
