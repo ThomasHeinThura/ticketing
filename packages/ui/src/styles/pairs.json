@@ -9462,28 +9462,6 @@
         "backdropLayers": []
       },
       {
-        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/common/project-layout.tsx:ProjectLayout",
-          "Layout->apps/web/src/components/common/layout.tsx:default"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/common/task-layout.tsx:TaskLayout",
-          "Layout->apps/web/src/components/common/layout.tsx:default"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "apps/web/src/components/work-item/work-item-filter-editor.tsx::FilterNodeEditor::div[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-filter-editor.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
@@ -9570,6 +9548,28 @@
         "chain": [
           "apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/project-layout.tsx:ProjectLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/task-layout.tsx:TaskLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
         ],
         "backdropLayers": []
       },
@@ -12084,28 +12084,6 @@
         "backdropLayers": []
       },
       {
-        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/common/project-layout.tsx:ProjectLayout",
-          "Layout->apps/web/src/components/common/layout.tsx:default"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/common/task-layout.tsx:TaskLayout",
-          "Layout->apps/web/src/components/common/layout.tsx:default"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "apps/web/src/components/work-item/work-item-filter-editor.tsx::FilterNodeEditor::div[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-filter-editor.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
@@ -12192,6 +12170,28 @@
         "chain": [
           "apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/project-layout.tsx:ProjectLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/task-layout.tsx:TaskLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
         ],
         "backdropLayers": []
       },
@@ -29559,23 +29559,11 @@
     },
     "surfaceContext": "imported-opaque-wrapper",
     "occurrenceIds": [
-      "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0",
       "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0",
-      "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#1"
+      "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#1",
+      "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0"
     ],
     "occurrences": [
-      {
-        "id": "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0",
-        "usage": "apps/web/src/components/nav-projects.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/nav-projects.tsx:NavProjects",
-          "jsx:Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]",
-          "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
-        ],
-        "backdropLayers": []
-      },
       {
         "id": "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0",
         "usage": "apps/web/src/components/nav-main.tsx",
@@ -29596,6 +29584,18 @@
         "chain": [
           "apps/web/src/components/nav-main.tsx:NavMain",
           "jsx:Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]",
+          "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0",
+        "usage": "apps/web/src/components/nav-projects.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/nav-projects.tsx:NavProjects",
+          "jsx:Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]",
           "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
         ],
         "backdropLayers": []
@@ -29618,23 +29618,11 @@
     },
     "surfaceContext": "imported-opaque-wrapper",
     "occurrenceIds": [
-      "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0",
       "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0",
-      "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#1"
+      "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#1",
+      "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0"
     ],
     "occurrences": [
-      {
-        "id": "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0",
-        "usage": "apps/web/src/components/nav-projects.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/nav-projects.tsx:NavProjects",
-          "jsx:Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]",
-          "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
-        ],
-        "backdropLayers": []
-      },
       {
         "id": "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0",
         "usage": "apps/web/src/components/nav-main.tsx",
@@ -29658,6 +29646,18 @@
           "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0",
+        "usage": "apps/web/src/components/nav-projects.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/nav-projects.tsx:NavProjects",
+          "jsx:Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/SidebarMenuButton[0]",
+          "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -29677,23 +29677,11 @@
     },
     "surfaceContext": "imported-opaque-wrapper",
     "occurrenceIds": [
-      "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]::text-sidebar-foreground#0",
       "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]/span[0]::text-sidebar-foreground#0",
-      "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]/span[0]::text-sidebar-foreground#1"
+      "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]/span[0]::text-sidebar-foreground#1",
+      "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]::text-sidebar-foreground#0"
     ],
     "occurrences": [
-      {
-        "id": "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]::text-sidebar-foreground#0",
-        "usage": "apps/web/src/components/workspace-switcher.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/workspace-switcher.tsx:WorkspaceSwitcher",
-          "jsx:div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]",
-          "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
-        ],
-        "backdropLayers": []
-      },
       {
         "id": "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]/span[0]::text-sidebar-foreground#0",
         "usage": "apps/web/src/components/nav-main.tsx",
@@ -29714,6 +29702,18 @@
         "chain": [
           "apps/web/src/components/nav-main.tsx:NavMain",
           "jsx:Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]/span[0]",
+          "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]::text-sidebar-foreground#0",
+        "usage": "apps/web/src/components/workspace-switcher.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/workspace-switcher.tsx:WorkspaceSwitcher",
+          "jsx:div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]",
           "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
         ],
         "backdropLayers": []
@@ -29736,23 +29736,11 @@
     },
     "surfaceContext": "imported-opaque-wrapper",
     "occurrenceIds": [
-      "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]::text-sidebar-foreground#0",
       "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]/span[0]::text-sidebar-foreground#0",
-      "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]/span[0]::text-sidebar-foreground#1"
+      "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]/span[0]::text-sidebar-foreground#1",
+      "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]::text-sidebar-foreground#0"
     ],
     "occurrences": [
-      {
-        "id": "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]::text-sidebar-foreground#0",
-        "usage": "apps/web/src/components/workspace-switcher.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/workspace-switcher.tsx:WorkspaceSwitcher",
-          "jsx:div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]",
-          "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
-        ],
-        "backdropLayers": []
-      },
       {
         "id": "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]/span[0]::text-sidebar-foreground#0",
         "usage": "apps/web/src/components/nav-main.tsx",
@@ -29773,6 +29761,18 @@
         "chain": [
           "apps/web/src/components/nav-main.tsx:NavMain",
           "jsx:Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/Fragment[0]/SidebarMenuItem[0]/SidebarMenuButton[0]/span[0]",
+          "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]::text-sidebar-foreground#0",
+        "usage": "apps/web/src/components/workspace-switcher.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/workspace-switcher.tsx:WorkspaceSwitcher",
+          "jsx:div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]",
           "SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem>bg-background"
         ],
         "backdropLayers": []

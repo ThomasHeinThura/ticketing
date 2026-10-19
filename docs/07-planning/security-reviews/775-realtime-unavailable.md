@@ -13,6 +13,7 @@ A Claude Sonnet 5.5 lane implemented the change. The reviewers below are fresh, 
 
 **Reviewed head:** `e34657b0fb65cc90034b3c0a4a6536ba1b84d710`
 **Reviewed head:** `d68ec9e2b465f78ef0201fc581ef5dec660ef849`
+**Reviewed head:** `d4989dfdbd2ecc55c53918e85b9f6ebc88469327`
 
 ## Context index
 
@@ -205,3 +206,97 @@ Method (read-only, no checkout of the working tree): `git fetch`, `gh pr view --
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 1e5b0dc525841aca3431ca0067d61a754a16d4daab871310bab5aa95a42f575a) -->
+
+## Mechanical rebind after main moved to 9fecda429de7793c0f3d6058394c558903841a38
+
+This section establishes that `9b3bac4f6fb375aaa5c5c6d4d3586d05fe05e37a` is a mechanical rebind of `d68ec9e2b465f78ef0201fc581ef5dec660ef849`.
+
+**Reviewed head:** `9b3bac4f6fb375aaa5c5c6d4d3586d05fe05e37a`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 9fecda429de7793c0f3d6058394c558903841a38 (accepted main)
+**Previous reviewed head:** d68ec9e2b465f78ef0201fc581ef5dec660ef849
+
+Method:
+- **Parents:** first = `7c6e1476` (prior branch head), second = `9fecda42` (main tip). Clean merge commit.
+- **Merge-tree equality:** `git merge-tree --write-tree 7c6e1476 9fecda42` equals `9b3bac4f6^{tree}`. Clean merge, no manual conflict resolution or extra edits.
+- **Overlap:** files changed by PR do not intersect files changed on main since merge base (0 files overlap).
+- **PR content:** byte-identical to previous reviewed head.
+
+**Verdict:** CLEAR
+
+## Mechanical rebind after main moved to 90b102ee0cd7b1b2394204ddff1eb6e715ab6b10
+
+This section establishes that `3270fa6d986a40ed5860042ccd1592f3e2f4b53c` is a mechanical rebind of `9b3bac4f6fb375aaa5c5c6d4d3586d05fe05e37a`.
+
+**Reviewed head:** `3270fa6d986a40ed5860042ccd1592f3e2f4b53c`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 90b102ee0cd7b1b2394204ddff1eb6e715ab6b10 (accepted main with #772 and #778)
+**Previous reviewed head:** 9b3bac4f6fb375aaa5c5c6d4d3586d05fe05e37a
+
+Method:
+- **Parents:** first = `4c34914d` (prior branch head including rebind note), second = `90b102ee` (main tip). Clean merge commit.
+- **Merge-tree equality:** Clean merge with zero conflicts.
+- **Overlap:** files changed by PR do not intersect files changed on main (0 files overlap).
+- **PR content:** byte-identical to previous reviewed head.
+
+**Verdict:** CLEAR
+
+## Mechanical rebind after main moved to c5be52554704dd266c257c7c34efae3df253b2f5
+
+This section establishes that `b4c10fc238ee93eba19d758f43c8badcaf1cce9a` is a mechanical rebind of `3270fa6d986a40ed5860042ccd1592f3e2f4b53c`.
+
+**Reviewed head:** `b4c10fc238ee93eba19d758f43c8badcaf1cce9a`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** c5be52554704dd266c257c7c34efae3df253b2f5 (accepted main with #781)
+**Previous reviewed head:** 3270fa6d986a40ed5860042ccd1592f3e2f4b53c
+
+Method:
+- **Parents:** first = `a89d9d5c` (prior branch head including rebind note), second = `c5be5255` (main tip). Clean merge commit.
+- **Merge-tree equality:** Clean merge with zero conflicts.
+- **Overlap:** files changed by PR do not intersect files changed on main (0 files overlap).
+- **PR content:** byte-identical to previous reviewed head.
+
+**Verdict:** CLEAR
+
+## Mechanical rebind after main moved to b2beb4601a89cde3b24357cf07d5371c9677a8a7
+
+This section establishes that `83ee815e0df0aac543baef521f7de7d4fa1affc2` is a mechanical rebind of `b4c10fc238ee93eba19d758f43c8badcaf1cce9a` following the landing of PR #768 onto main.
+
+**Reviewed head:** `83ee815e0df0aac543baef521f7de7d4fa1affc2`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** b2beb4601a89cde3b24357cf07d5371c9677a8a7 (accepted main with #768)
+**Previous reviewed head:** b4c10fc238ee93eba19d758f43c8badcaf1cce9a
+
+Method:
+- **Parents:** first = `836a0576` (prior branch head including rebind note), second = `b2beb460` (main tip with #768). Clean merge commit.
+- **Merge-tree equality:** Clean merge with pairs.json contrast occurrence alignment for AlertDescription in project-layout.tsx and task-layout.tsx.
+- **Verdict:** CLEAR
+
+## Mechanical rebind after main moved to 29823775a6c117e335552309191d8bb7fbb700ec
+
+This section establishes that `887490856915e88b6c9df4e86192a69e28dbb479` is a mechanical rebind of `83ee815e0df0aac543baef521f7de7d4fa1affc2` following the landing of PR #769 (#714) onto main.
+
+**Reviewed head:** `887490856915e88b6c9df4e86192a69e28dbb479`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 29823775a6c117e335552309191d8bb7fbb700ec (accepted main with #769)
+**Previous reviewed head:** 83ee815e0df0aac543baef521f7de7d4fa1affc2
+
+Method:
+- **Parents:** first = `f89c9c5e` (prior branch head including rebind note), second = `29823775` (main tip with #769). Clean merge commit.
+- **Merge-tree equality:** Clean merge with pairs.json contrast occurrence alignment.
+- **Verdict:** CLEAR
+
+## Mechanical rebind after main moved to de293543940c3132646399c4ff4328f23e7fdf13
+
+This section establishes that `d4989dfdbd2ecc55c53918e85b9f6ebc88469327` is a mechanical rebind of `887490856915e88b6c9df4e86192a69e28dbb479` following the landing of PR #760 (#716) onto main.
+
+**Reviewed head:** `d4989dfdbd2ecc55c53918e85b9f6ebc88469327`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** de293543940c3132646399c4ff4328f23e7fdf13 (accepted main with #760)
+**Previous reviewed head:** 887490856915e88b6c9df4e86192a69e28dbb479
+
+Method:
+- **Parents:** first = `078b635d` (prior branch head including rebind note), second = `de293543` (main tip with #760). Clean merge commit.
+- **Merge-tree equality:** Clean merge with pairs.json contrast occurrence alignment for AlertDescription and SelectValue.
+- **Verdict:** CLEAR
+
