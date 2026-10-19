@@ -131,6 +131,39 @@ describe("API integration: project reach on item-scoped work-item routes", () =>
           route.successStatus ?? 200,
         );
       });
+
+      if (route.capability === "handler") {
+        it("private-item participation does not replace project reach or the route capability", async () => {
+          const { world, app, item } = await arrange();
+          const before = await snapshot();
+          // Valid references ensure these cases reach the handler's reach/capability checks.
+          const validBody = {
+            transitionId: world.transition.id,
+            kind: "cab" as const,
+            approverId: world.projectMember.personId,
+          };
+
+          mockAuthenticatedSession(world.outsiderLead.user);
+          const outside = await json(
+            app,
+            "POST",
+            `/api/work-items/${item.key}/approvals`,
+            validBody,
+          );
+          expect(outside.status, await outside.clone().text()).toBe(404);
+          expect(await snapshot()).toBe(before);
+
+          mockAuthenticatedSession(world.readerLead.user);
+          const incapable = await json(
+            app,
+            "POST",
+            `/api/work-items/${item.key}/approvals`,
+            validBody,
+          );
+          expect(incapable.status, await incapable.clone().text()).toBe(403);
+          expect(await snapshot()).toBe(before);
+        });
+      }
     });
   }
 

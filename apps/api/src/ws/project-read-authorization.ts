@@ -1,10 +1,8 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq, isNull } from "drizzle-orm";
-import db, { schema } from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { evaluateProjectRead } from "../utils/has-project-reach";
 import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
-import { reachableWorkspacePredicate } from "../utils/workspace-access-middleware";
+import { findReachableLiveProject } from "./repository";
 
 /**
  * The credential facts a realtime socket holds for its caller. The native socket and the
@@ -57,8 +55,9 @@ export async function authorizeProjectSocketRead(
     return null;
   }
   const identity = await resolveSocketIdentity(credential);
-  const project = await findSocketProject(credential, projectId);
-  if (!project || !identity) return null;
+  if (!identity) return null;
+  const project = await findReachableLiveProject(identity, projectId);
+  if (!project) return null;
   const decision = evaluateProjectRead(identity, "project:read", "project", {
     projectId,
     workspaceId: project.workspaceId,
@@ -109,27 +108,18 @@ export function resolveSocketIdentity(
  * is the PROJECT's own (`rbac.md` Reach step 6), never the workspace's.
  */
 export async function findSocketProject(
-  credential: Pick<ProjectSocketCredential, "userId" | "apiKeyId">,
+  credential: Pick<
+    ProjectSocketCredential,
+    | "userId"
+    | "apiKeyId"
+    | "apiKeyEnabled"
+    | "apiKeyOwnerUserId"
+    | "apiKeyPermissions"
+    | "impersonated"
+  >,
   projectId: string,
 ): Promise<{ workspaceId: string; organisationId: string | null } | null> {
-  const [project] = await db
-    .select({
-      workspaceId: schema.projectTable.workspaceId,
-      organisationId: schema.projectTable.organisationId,
-    })
-    .from(schema.projectTable)
-    .where(
-      and(
-        eq(schema.projectTable.id, projectId),
-        isNull(schema.projectTable.deletedAt),
-        isNull(schema.projectTable.archivedAt),
-        reachableWorkspacePredicate(
-          schema.projectTable.workspaceId,
-          credential.userId,
-          credential.apiKeyId,
-        ),
-      ),
-    )
-    .limit(1);
-  return project ?? null;
+  const identity = await resolveSocketIdentity(credential);
+  if (!identity) return null;
+  return (await findReachableLiveProject(identity, projectId)) ?? null;
 }

@@ -15,11 +15,11 @@ import {
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
-import { eq, sql } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
 import { authConfigurationVersion } from "./auth/configuration-version";
 import { loadLocalFactorState } from "./auth/local-factor-service";
 import {
+  completeFirstUserSetup,
   countAuthUsers,
   countAuthUsersForExecutor,
   getAuthUserLocale,
@@ -28,8 +28,12 @@ import {
   getIdentityConnectionConfigVersions,
   getSetupCompletionMarker,
   getStoredAuthPluginConfigRows,
+  lockFirstUserPromotion,
+  promoteFirstAuthUser,
+  updateSessionActiveOrganizationId,
+  updateSessionPortal,
 } from "./auth/repository";
-import db, { schema } from "./database";
+import db from "./database";
 import {
   bindTwoFactorOidcSession,
   identityOidcPlugin,
@@ -43,7 +47,6 @@ import {
   isBootstrapAdminEmail,
   isSetupCompleted,
   SETUP_TOKEN_HEADER,
-  SETUP_TOKEN_SINGLETON_ID,
   verifyAndConsumeSetupToken,
 } from "./instance/setup-token";
 import {
@@ -53,10 +56,12 @@ import {
   currentTotpEnrollmentTransaction,
   noteTotpEnrollmentMutationAuditFailure,
   revokeTotpPeerSessions,
+  runOrAfterTotpEnrollmentCommit,
   withAccountDeletionTransaction,
   withExplicitCredentialMutation,
   withTotpSessionEnrollment,
 } from "./pending-action/credential-invalidation";
+import { hasCanonicalCustomerMembership } from "./permissions/customer-membership";
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
@@ -259,7 +264,38 @@ const authSecret = authSecretResult.secret;
 
 export async function hasCustomerPortalIdentity(userId: string) {
   const rows = await getCustomerPortalIdentityRow(userId);
-  return rows.length === 1;
+  const person = rows[0];
+  return (
+    person !== undefined &&
+    person.side === "customer" &&
+    person.personActive &&
+    !person.isPlaceholder &&
+    person.organisationActive &&
+    person.organisationPortalAccess &&
+    person.organisationDeletedAt === null &&
+    rows.every(
+      (row) =>
+        row.personId === person.personId &&
+        row.organisationId === person.organisationId,
+    ) &&
+    hasCanonicalCustomerMembership(
+      person.organisationId,
+      rows.map((row) => ({
+        scope: row.scope,
+        scopeId: row.scopeId,
+        seesAll: row.seesAll,
+        roleId: row.roleId,
+        roleKey: row.roleKey,
+        roleScope: row.roleScope,
+        roleWorkspaceId: row.roleWorkspaceId,
+        roleIsSystem: row.roleIsSystem,
+        scopeExists:
+          row.scope === "organisation" && row.scopeId === person.organisationId,
+        rank: row.roleRank,
+        capabilities: row.roleCapabilities,
+      })),
+    )
+  );
 }
 
 /** Sign narrowly scoped CSRF tokens without exposing Better Auth's root secret. */
@@ -609,7 +645,9 @@ function createAuth(
         },
         delete: {
           after: async (session) => {
-            await invalidateNativeAuthorization({ userId: session.userId });
+            await runOrAfterTotpEnrollmentCommit(() =>
+              invalidateNativeAuthorization({ userId: session.userId }),
+            );
           },
         },
       },
@@ -757,7 +795,7 @@ function createAuth(
             // let the next signup silently re-trigger admin auto-promotion --
             // exactly the durable-marker guarantee this column exists for.
             await db.transaction(async (tx) => {
-              await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
+              await lockFirstUserPromotion(tx);
 
               const totalRows = await countAuthUsersForExecutor(tx);
               const totalUserCount = totalRows[0]?.value ?? 0;
@@ -771,28 +809,8 @@ function createAuth(
               // completed setup, this is the fresh-instance bootstrap and
               // they get promoted to admin.
               if (totalUserCount === 1 && !setupAlreadyCompleted) {
-                await tx
-                  .update(schema.userTable)
-                  .set({ role: "admin" })
-                  .where(eq(schema.userTable.id, user.id));
-
-                await tx
-                  .insert(schema.instanceSettingTable)
-                  .values({
-                    id: SETUP_TOKEN_SINGLETON_ID,
-                    setupCompletedAt: new Date(),
-                    setupTokenHash: null,
-                    setupTokenExpiresAt: null,
-                  })
-                  .onConflictDoUpdate({
-                    target: schema.instanceSettingTable.id,
-                    set: {
-                      setupCompletedAt: new Date(),
-                      setupTokenHash: null,
-                      setupTokenExpiresAt: null,
-                      updatedAt: new Date(),
-                    },
-                  });
+                await promoteFirstAuthUser(tx, user.id);
+                await completeFirstUserSetup(tx);
               }
             });
 
@@ -993,10 +1011,7 @@ function createAuth(
             ? currentTotpEnrollmentTransaction()
             : null;
         const sessionWriter = totpTransaction ?? db;
-        await sessionWriter
-          .update(schema.sessionTable)
-          .set({ portal })
-          .where(eq(schema.sessionTable.id, newSession.session.id));
+        await updateSessionPortal(sessionWriter, newSession.session.id, portal);
 
         if (factorVerifiedEndpoint) {
           const factorCookie = ctx.context.createAuthCookie("two_factor");
@@ -1065,10 +1080,11 @@ function createAuth(
           const activeWorkspaceId = workspaceMember[0]?.workspaceId || null;
 
           if (activeWorkspaceId) {
-            await sessionWriter
-              .update(schema.sessionTable)
-              .set({ activeOrganizationId: activeWorkspaceId })
-              .where(eq(schema.sessionTable.id, newSession.session.id));
+            await updateSessionActiveOrganizationId(
+              sessionWriter,
+              newSession.session.id,
+              activeWorkspaceId,
+            );
           }
         }
       }),

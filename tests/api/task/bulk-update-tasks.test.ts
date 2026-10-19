@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
+import { resolveIdentityFromFacts } from "../../../apps/api/src/permissions/resolve-identity";
 import bulkUpdateTasks from "../../../apps/api/src/task/controllers/bulk-update-tasks";
+
+const identity = resolveIdentityFromFacts({
+  userId: "some-user-id",
+  person: {
+    personId: "some-person-id",
+    organisationId: "internal-organisation-id",
+    side: "staff",
+    active: true,
+    organisationActive: true,
+    organisationPortalAccess: true,
+    organisationDeleted: false,
+  },
+  banned: false,
+  isInstanceAdmin: false,
+  workspaceMemberships: [],
+  teamMemberships: [],
+  credential: "session",
+});
+if (!identity) throw new Error("expected resolved unit-test identity");
 
 // S6 (Opus review of PR #307, delta round): `bulkUpdateTasks` takes `workspaceId`
 // from its one caller's `c.get("workspaceId")`, set by `workspaceAccess.fromTasks()`.
@@ -13,6 +33,7 @@ describe("issue #307 S6: bulkUpdateTasks fails closed when workspaceId is falsy"
   it("throws 500 for an empty workspaceId, before any database access", async () => {
     await expect(
       bulkUpdateTasks({
+        identity,
         taskIds: ["some-task-id"],
         operation: "delete",
         userId: "some-user-id",
@@ -33,6 +54,7 @@ describe("issue #307 S6: bulkUpdateTasks fails closed when workspaceId is falsy"
   it("throws 500 when the route's reach context is missing, before any database access", async () => {
     await expect(
       bulkUpdateTasks({
+        identity,
         taskIds: ["some-task-id"],
         operation: "delete",
         userId: "some-user-id",

@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import type { FormSchema, FormValue } from "@taskdesk/domain";
+import type { FormSchema, FormValue, JsonValue } from "@taskdesk/domain";
 import {
   formatSubmissionReference,
   parseSubmissionReference,
@@ -10,13 +10,17 @@ import {
   validateSubmissionData,
   visibleFields,
 } from "@taskdesk/domain";
-import { resolveFeatureFlag } from "@taskdesk/permissions";
+import {
+  type ResolvedIdentity,
+  resolveFeatureFlag,
+} from "@taskdesk/permissions";
 import {
   and,
   asc,
   count,
   desc,
   eq,
+  exists,
   gt,
   inArray,
   isNull,
@@ -27,6 +31,10 @@ import {
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
+import {
+  currentProjectReachPredicate,
+  currentWorkspaceReachPredicate,
+} from "../database/repositories/identity-scope.repository";
 import {
   type DbTransaction,
   enqueueOutboxEvent,
@@ -40,10 +48,6 @@ import {
   findWorkspaceDefaultSlaPolicyQuery,
   findWorkspaceOwnedSlaPolicyQuery,
 } from "../work-item/repository";
-import {
-  type LinkedWorkItemReach,
-  reachableLinkedWorkItemId,
-} from "./submission-linked-work-item";
 
 type RequestTypeInput = {
   workspaceId: string;
@@ -62,6 +66,68 @@ type RequestTypeInput = {
   position: number;
 };
 
+type MaterializedRequestType<T extends { formSchema: unknown }> = Omit<
+  T,
+  "formSchema"
+> & { formSchema: JsonValue };
+type MaterializedRequestTypeVersion<T extends { formSchema: unknown }> = Omit<
+  T,
+  "formSchema"
+> & { formSchema: JsonValue };
+type MaterializedSubmission<T extends { formData: unknown }> = Omit<
+  T,
+  "formData"
+> & { formData: JsonValue };
+type MaterializedWorkItemDescription<T extends { description: unknown }> = Omit<
+  T,
+  "description"
+> & { description: JsonValue | null };
+
+function materializeRequestType<T extends { formSchema: unknown }>(
+  row: T,
+): MaterializedRequestType<T> {
+  return { ...row, formSchema: row.formSchema as JsonValue };
+}
+
+function materializeRequestTypeVersion<T extends { formSchema: unknown }>(
+  row: T,
+): MaterializedRequestTypeVersion<T> {
+  return { ...row, formSchema: row.formSchema as JsonValue };
+}
+
+function materializeSubmission<T extends { formData: unknown }>(
+  row: T,
+): MaterializedSubmission<T> {
+  return { ...row, formData: row.formData as JsonValue };
+}
+
+function materializeWorkItemDescription<T extends { description: unknown }>(
+  row: T,
+): MaterializedWorkItemDescription<T> {
+  return { ...row, description: row.description as JsonValue | null };
+}
+
+function materializeSubmissionBundle<
+  T extends {
+    submission: { formData: unknown };
+    requestType: { formSchema: unknown };
+    version: { formSchema: unknown };
+  },
+>(
+  row: T,
+): Omit<T, "submission" | "requestType" | "version"> & {
+  submission: MaterializedSubmission<T["submission"]>;
+  requestType: MaterializedRequestType<T["requestType"]>;
+  version: MaterializedRequestTypeVersion<T["version"]>;
+} {
+  return {
+    ...row,
+    submission: materializeSubmission(row.submission),
+    requestType: materializeRequestType(row.requestType),
+    version: materializeRequestTypeVersion(row.version),
+  };
+}
+
 export async function requestTypeWorkspace(id: string) {
   const [row] = await db
     .select({
@@ -75,7 +141,7 @@ export async function requestTypeWorkspace(id: string) {
 }
 
 export async function listRequestTypes(workspaceId: string) {
-  return db
+  const rows = await db
     .select()
     .from(schema.requestTypeTable)
     .where(eq(schema.requestTypeTable.workspaceId, workspaceId))
@@ -83,6 +149,7 @@ export async function listRequestTypes(workspaceId: string) {
       asc(schema.requestTypeTable.position),
       asc(schema.requestTypeTable.id),
     );
+  return rows.map(materializeRequestType);
 }
 
 export async function getRequestType(id: string, workspaceId?: string) {
@@ -104,7 +171,10 @@ export async function getRequestType(id: string, workspaceId?: string) {
     .from(schema.requestTypeVersionTable)
     .where(eq(schema.requestTypeVersionTable.requestTypeId, id))
     .orderBy(desc(schema.requestTypeVersionTable.number));
-  return { ...row, versions };
+  return {
+    ...materializeRequestType(row),
+    versions: versions.map(materializeRequestTypeVersion),
+  };
 }
 
 export async function createRequestType(
@@ -135,7 +205,7 @@ export async function createRequestType(
     });
     return created;
   });
-  return row;
+  return materializeRequestType(row);
 }
 
 export async function updateRequestType(
@@ -197,7 +267,7 @@ export async function updateRequestType(
       before: { version: current.version },
       after: { version: row.version, changedFields: Object.keys(input).sort() },
     });
-    return row;
+    return materializeRequestType(row);
   });
 }
 
@@ -415,7 +485,10 @@ export async function publishRequestType(id: string, actorId: string) {
         version: version.number,
       },
     });
-    return { requestType: published, version };
+    return {
+      requestType: materializeRequestType(published),
+      version: materializeRequestTypeVersion(version),
+    };
   });
 }
 
@@ -433,7 +506,7 @@ export async function setRequestTypePublished(
       .limit(1);
     if (!current)
       throw new HTTPException(404, { message: "Request type not found" });
-    if (current.published === published) return current;
+    if (current.published === published) return materializeRequestType(current);
     if (published) {
       const [latest] = await tx
         .select()
@@ -476,7 +549,7 @@ export async function setRequestTypePublished(
       before: { published: current.published, version: current.version },
       after: { published, version: row.version },
     });
-    return row;
+    return materializeRequestType(row);
   });
 }
 
@@ -616,7 +689,12 @@ export async function portalCatalogue(organisationId: string, query = "") {
           (groupOrder.get(b.type.group) ?? 0) ||
         a.type.position - b.type.position ||
         a.type.id.localeCompare(b.type.id),
-    );
+    )
+    .map((row) => ({
+      ...row,
+      type: materializeRequestType(row.type),
+      version: materializeRequestTypeVersion(row.version),
+    }));
 }
 
 export async function createSubmission(input: {
@@ -808,7 +886,10 @@ export async function createSubmission(input: {
     }
     return created;
   });
-  return { ...submission, ref: formatSubmissionReference(submission.number) };
+  return {
+    ...materializeSubmission(submission),
+    ref: formatSubmissionReference(submission.number),
+  };
 }
 
 function paragraphDocument(text: string) {
@@ -845,6 +926,8 @@ async function convertSubmissionInTransaction(
     workspaceId: string;
     organisationId: string | null;
   }) => Promise<boolean> = async () => true,
+  /** Runs after validation and before the accepted audit row (acceptance's claim audit). */
+  beforeAcceptedAudit: () => Promise<void> = async () => {},
 ) {
   const actorId = actor.id;
   const actorName =
@@ -991,6 +1074,9 @@ async function convertSubmissionInTransaction(
       )
     : [];
   let eligibleAssigneeId: string | null = null;
+  // #761 / RT-6: an ineligible snapshotted default assignee never fails acceptance; the item
+  // is left unassigned and the reason is recorded in the acceptance audit row.
+  let assigneeSkipped: { id: string; reason: string } | null = null;
   if (defaultAssigneeId) {
     const [person] = await tx
       .select({
@@ -1013,6 +1099,15 @@ async function convertSubmissionInTransaction(
       .limit(1);
     if (person?.active && person.side === "staff")
       eligibleAssigneeId = person.id;
+    else
+      assigneeSkipped = {
+        id: defaultAssigneeId,
+        reason: !person
+          ? "not_a_project_member"
+          : !person.active
+            ? "inactive"
+            : "not_staff",
+      };
   }
   const number = await claimWorkItemNumber(project.id, tx);
   const now = new Date();
@@ -1118,6 +1213,7 @@ async function convertSubmissionInTransaction(
     throw new HTTPException(409, {
       message: "Submission changed before it could be accepted",
     });
+  await beforeAcceptedAudit();
   await appendAuditLog(tx, {
     actorId,
     actorType: actor.type,
@@ -1129,6 +1225,14 @@ async function convertSubmissionInTransaction(
     after: {
       ref: formatSubmissionReference(submission.number),
       workItemKey: item.key,
+      ...(assigneeSkipped
+        ? {
+            defaultAssigneeSkipped: {
+              personId: assigneeSkipped.id,
+              reason: assigneeSkipped.reason,
+            },
+          }
+        : {}),
     },
   });
   await enqueueOutboxEvent(tx, {
@@ -1167,39 +1271,22 @@ export async function acceptSubmission(
   const number = parseSubmissionReference(ref);
   if (number === null)
     throw new HTTPException(404, { message: "Submission not found" });
-  // Claim is deliberately committed before destination validation. IQ-16a defines starting
-  // acceptance as triage action even if stale configuration later makes conversion fail.
-  await claimSubmission(ref, workspaceId, actorId);
+  // #743: the claim (IQ-16a) is taken inside the conversion transaction, so a failed accept
+  // (missing or unreachable destination, stale configuration) rolls it back and leaves the
+  // submission unclaimed for any triager.
   return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        submission: schema.submissionTable,
-        workspaceId: schema.requestTypeTable.workspaceId,
-      })
-      .from(schema.submissionTable)
-      .innerJoin(
-        schema.requestTypeTable,
-        eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
-      )
-      .where(
-        and(
-          eq(schema.submissionTable.number, number),
-          eq(schema.requestTypeTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("update", { of: schema.submissionTable })
-      .limit(1);
-    if (!row) throw new HTTPException(404, { message: "Submission not found" });
-    if (row.submission.state !== "new" && row.submission.state !== "clarifying")
-      throw new HTTPException(409, { message: "Submission is no longer open" });
+    const { submission, appendAudit } = await claimSubmissionInTransaction(
+      tx,
+      number,
+      ref,
+      workspaceId,
+      actorId,
+    );
     const [snapshot] = await tx
       .select()
       .from(schema.requestTypeVersionTable)
       .where(
-        eq(
-          schema.requestTypeVersionTable.id,
-          row.submission.requestTypeVersionId,
-        ),
+        eq(schema.requestTypeVersionTable.id, submission.requestTypeVersionId),
       )
       .limit(1);
     if (!snapshot)
@@ -1208,7 +1295,7 @@ export async function acceptSubmission(
       });
     const item = await convertSubmissionInTransaction(
       tx,
-      row.submission,
+      submission,
       workspaceId,
       { id: actorId, type: "person", name: "Staff" },
       projectId,
@@ -1216,6 +1303,7 @@ export async function acceptSubmission(
       snapshot.slaPolicyId,
       snapshot.defaultAssigneeId,
       canReachProject,
+      appendAudit,
     );
     return { ref, state: "accepted" as const, workItem: item };
   });
@@ -1320,7 +1408,11 @@ export async function markSubmissionDuplicate(
         source: "implicit",
       })
       .onConflictDoNothing();
-    return { ref, state: updated.state, workItem: target.item };
+    return {
+      ref,
+      state: updated.state,
+      workItem: materializeWorkItemDescription(target.item),
+    };
   });
 }
 
@@ -1333,7 +1425,7 @@ export async function findSubmission(
    * comments carried over from it are left out (`submission-linked-work-item.ts`). The portal
    * requester's own view passes nothing and keeps its existing behaviour.
    */
-  staffReach?: LinkedWorkItemReach,
+  staffIdentity?: ResolvedIdentity,
 ) {
   const number = /^SUB-([1-9]\d{0,9})$/u.exec(ref)?.[1];
   if (!number)
@@ -1366,6 +1458,15 @@ export async function findSubmission(
         ...(requesterId
           ? [eq(schema.submissionTable.requesterId, requesterId)]
           : []),
+        ...(staffIdentity
+          ? [
+              currentWorkspaceReachPredicate(
+                staffIdentity,
+                schema.requestTypeTable.workspaceId,
+                db,
+              ),
+            ]
+          : []),
       ),
     )
     .limit(1);
@@ -1373,7 +1474,35 @@ export async function findSubmission(
   const storedMessages = await db
     .select()
     .from(schema.submissionMessageTable)
-    .where(eq(schema.submissionMessageTable.submissionId, row.submission.id))
+    .where(
+      and(
+        eq(schema.submissionMessageTable.submissionId, row.submission.id),
+        staffIdentity
+          ? exists(
+              db
+                .select({ one: sql`1` })
+                .from(schema.submissionTable)
+                .innerJoin(
+                  schema.requestTypeTable,
+                  eq(
+                    schema.requestTypeTable.id,
+                    schema.submissionTable.requestTypeId,
+                  ),
+                )
+                .where(
+                  and(
+                    eq(schema.submissionTable.id, row.submission.id),
+                    currentWorkspaceReachPredicate(
+                      staffIdentity,
+                      schema.requestTypeTable.workspaceId,
+                      db,
+                    ),
+                  ),
+                ),
+            )
+          : undefined,
+      ),
+    )
     .orderBy(
       asc(schema.submissionMessageTable.createdAt),
       asc(schema.submissionMessageTable.id),
@@ -1383,24 +1512,70 @@ export async function findSubmission(
     createdAt: message.createdAt.toISOString(),
   }));
   let linkedWorkItemId = row.submission.workItemId;
-  if (staffReach) {
-    linkedWorkItemId = await reachableLinkedWorkItemId(
-      staffReach,
-      row.submission.workItemId,
-    );
+  if (staffIdentity) {
+    const [reachableWorkItem] = row.submission.workItemId
+      ? await db
+          .select({ id: schema.workItemTable.id })
+          .from(schema.workItemTable)
+          .innerJoin(
+            schema.projectTable,
+            eq(schema.projectTable.id, schema.workItemTable.projectId),
+          )
+          .where(
+            and(
+              eq(schema.workItemTable.id, row.submission.workItemId),
+              isNull(schema.projectTable.deletedAt),
+              currentProjectReachPredicate(
+                staffIdentity,
+                schema.projectTable.id,
+                schema.projectTable.workspaceId,
+                schema.projectTable.organisationId,
+                db,
+              ),
+            ),
+          )
+          .limit(1)
+      : [];
+    linkedWorkItemId = reachableWorkItem?.id ?? null;
     if (linkedWorkItemId === null) {
       row.submission = { ...row.submission, workItemId: null };
     }
   }
   if (row.submission.state === "accepted" && linkedWorkItemId) {
     const comments = await db
-      .select()
+      .select({
+        id: schema.commentTable.id,
+        authorId: schema.commentTable.authorId,
+        actorType: schema.commentTable.actorType,
+        body: schema.commentTable.body,
+        createdAt: schema.commentTable.createdAt,
+      })
       .from(schema.commentTable)
+      .innerJoin(
+        schema.workItemTable,
+        eq(schema.workItemTable.id, schema.commentTable.workItemId),
+      )
+      .innerJoin(
+        schema.projectTable,
+        eq(schema.projectTable.id, schema.workItemTable.projectId),
+      )
       .where(
         and(
           eq(schema.commentTable.workItemId, linkedWorkItemId),
           eq(schema.commentTable.visibility, "public"),
           isNull(schema.commentTable.deletedAt),
+          ...(staffIdentity ? [isNull(schema.projectTable.deletedAt)] : []),
+          ...(staffIdentity
+            ? [
+                currentProjectReachPredicate(
+                  staffIdentity,
+                  schema.projectTable.id,
+                  schema.projectTable.workspaceId,
+                  schema.projectTable.organisationId,
+                  db,
+                ),
+              ]
+            : []),
         ),
       )
       .orderBy(asc(schema.commentTable.createdAt), asc(schema.commentTable.id));
@@ -1429,15 +1604,24 @@ export async function findSubmission(
       left.createdAt.localeCompare(right.createdAt),
     );
   }
-  return { ...row, ref, messages };
+  return { ...materializeSubmissionBundle(row), ref, messages };
 }
+
+type PortalSubmissionSource = Omit<
+  Awaited<ReturnType<typeof findSubmission>>,
+  "submission" | "version"
+> & {
+  submission: typeof schema.submissionTable.$inferSelect;
+  version: typeof schema.requestTypeVersionTable.$inferSelect;
+};
 
 export async function findPortalSubmission(ref: string, requesterId: string) {
   const row = await findSubmission(ref, undefined, requesterId);
-  const formSchema = row.version.formSchema as FormSchema;
+  const portalRow: PortalSubmissionSource = row;
+  const formSchema = portalRow.version.formSchema as FormSchema;
   const fields = visibleFields(
     formSchema,
-    row.submission.formData as Record<string, FormValue>,
+    portalRow.submission.formData as Record<string, FormValue>,
   ).map((field) => ({
     key: field.key,
     type: field.type,
@@ -1450,7 +1634,7 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
     state: string;
     priority: string | null;
   } | null = null;
-  if (row.submission.workItemId) {
+  if (portalRow.submission.workItemId) {
     const [item] = await db
       .select({
         title: schema.workItemTable.title,
@@ -1469,7 +1653,7 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
       )
       .where(
         and(
-          eq(schema.workItemTable.id, row.submission.workItemId),
+          eq(schema.workItemTable.id, portalRow.submission.workItemId),
           eq(schema.workItemTable.requesterId, requesterId),
           isNull(schema.workItemTable.deletedAt),
         ),
@@ -1482,26 +1666,26 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
       };
   }
   return {
-    ref: row.ref,
+    ref: portalRow.ref,
     submission: {
-      state: row.submission.state,
-      formData: row.submission.formData as Record<string, unknown>,
-      customerVisibility: row.submission.customerVisibility,
-      createdAt: row.submission.createdAt.toISOString(),
+      state: portalRow.submission.state,
+      formData: row.submission.formData,
+      customerVisibility: portalRow.submission.customerVisibility,
+      createdAt: portalRow.submission.createdAt.toISOString(),
     },
     canWithdraw:
-      (row.submission.state === "new" ||
-        row.submission.state === "clarifying") &&
-      row.submission.claimedBy === null,
+      (portalRow.submission.state === "new" ||
+        portalRow.submission.state === "clarifying") &&
+      portalRow.submission.claimedBy === null,
     requestType: {
-      name: row.requestType.name,
-      description: row.requestType.description,
-      icon: row.requestType.icon,
-      group: row.requestType.group,
+      name: portalRow.requestType.name,
+      description: portalRow.requestType.description,
+      icon: portalRow.requestType.icon,
+      group: portalRow.requestType.group,
     },
     version: { formSchema: { fields } },
     workItem,
-    messages: row.messages.map((message) => ({
+    messages: portalRow.messages.map((message) => ({
       id: message.id,
       actorType: message.actorType,
       body: message.body,
@@ -1641,7 +1825,7 @@ export async function listSubmissions(
           )
         : "";
       return {
-        ...row,
+        ...materializeSubmissionBundle(row),
         summary,
         ref: formatSubmissionReference(row.submission.number),
       };
@@ -1770,6 +1954,8 @@ export async function listOwnSubmissions(
   return {
     submissions: pageRows.map((row) => ({
       ...row,
+      submission: materializeSubmission(row.submission),
+      requestType: materializeRequestType(row.requestType),
       ref: formatSubmissionReference(row.submission.number),
     })),
     page: { nextCursor, hasMore },
@@ -1849,6 +2035,86 @@ export async function suggestDuplicateWorkItems(
     .limit(10);
 }
 
+/**
+ * Claims the submission inside the caller's transaction. #743: acceptance runs this in the
+ * same transaction as conversion, so a failed accept rolls the claim (and its audit row)
+ * back instead of leaving the submission claimed. The claim audit row is returned as a thunk
+ * so acceptance can append it after its own validation: audit appends take the audit-chain
+ * advisory lock, which must not be held while waiting on the destination project lock.
+ */
+async function claimSubmissionInTransaction(
+  tx: DbTransaction,
+  number: number,
+  ref: string,
+  workspaceId: string,
+  actorId: string,
+) {
+  const [row] = await tx
+    .select({
+      submission: schema.submissionTable,
+      workspaceId: schema.requestTypeTable.workspaceId,
+    })
+    .from(schema.submissionTable)
+    .innerJoin(
+      schema.requestTypeTable,
+      eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+    )
+    .where(
+      and(
+        eq(schema.submissionTable.number, number),
+        eq(schema.requestTypeTable.workspaceId, workspaceId),
+      ),
+    )
+    .for("update", { of: schema.submissionTable })
+    .limit(1);
+  if (!row) throw new HTTPException(404, { message: "Submission not found" });
+  if (row.submission.state !== "new" && row.submission.state !== "clarifying")
+    throw new HTTPException(409, { message: "Submission is no longer open" });
+  if (row.submission.claimedBy && row.submission.claimedBy !== actorId)
+    throw new HTTPException(409, {
+      message: "Submission is claimed by another triager",
+    });
+  if (row.submission.claimedBy === actorId && row.submission.claimedAt)
+    return { submission: row.submission, appendAudit: async () => {} };
+  const [updated] = await tx
+    .update(schema.submissionTable)
+    .set({
+      claimedBy: actorId,
+      claimedAt: row.submission.claimedAt ?? new Date(),
+      version: row.submission.version + 1,
+    })
+    .where(
+      and(
+        eq(schema.submissionTable.id, row.submission.id),
+        eq(schema.submissionTable.version, row.submission.version),
+      ),
+    )
+    .returning();
+  if (!updated)
+    throw new HTTPException(409, {
+      message: "Submission changed; reload before acting",
+    });
+  return {
+    submission: updated,
+    appendAudit: async () => {
+      await appendAuditLog(tx, {
+        actorId,
+        actorType: "person",
+        workspaceId,
+        organisationId: row.submission.organisationId,
+        action: "submission.claimed",
+        entityType: "submission",
+        entityId: row.submission.id,
+        after: {
+          ref,
+          claimedBy: actorId,
+          claimedAt: updated.claimedAt?.toISOString() ?? null,
+        },
+      });
+    },
+  };
+}
+
 export async function claimSubmission(
   ref: string,
   workspaceId: string,
@@ -1858,77 +2124,20 @@ export async function claimSubmission(
   if (number === null)
     throw new HTTPException(404, { message: "Submission not found" });
   return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        submission: schema.submissionTable,
-        workspaceId: schema.requestTypeTable.workspaceId,
-      })
-      .from(schema.submissionTable)
-      .innerJoin(
-        schema.requestTypeTable,
-        eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
-      )
-      .where(
-        and(
-          eq(schema.submissionTable.number, number),
-          eq(schema.requestTypeTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("update", { of: schema.submissionTable })
-      .limit(1);
-    if (!row) throw new HTTPException(404, { message: "Submission not found" });
-    if (row.submission.state !== "new" && row.submission.state !== "clarifying")
-      throw new HTTPException(409, { message: "Submission is no longer open" });
-    if (row.submission.claimedBy && row.submission.claimedBy !== actorId)
-      throw new HTTPException(409, {
-        message: "Submission is claimed by another triager",
-      });
-    if (row.submission.claimedBy === actorId && row.submission.claimedAt)
-      return {
-        id: row.submission.id,
-        ref,
-        state: row.submission.state,
-        claimedBy: row.submission.claimedBy,
-        claimedAt: row.submission.claimedAt,
-      };
-    const [updated] = await tx
-      .update(schema.submissionTable)
-      .set({
-        claimedBy: actorId,
-        claimedAt: row.submission.claimedAt ?? new Date(),
-        version: row.submission.version + 1,
-      })
-      .where(
-        and(
-          eq(schema.submissionTable.id, row.submission.id),
-          eq(schema.submissionTable.version, row.submission.version),
-        ),
-      )
-      .returning();
-    if (!updated)
-      throw new HTTPException(409, {
-        message: "Submission changed; reload before acting",
-      });
-    await appendAuditLog(tx, {
-      actorId,
-      actorType: "person",
-      workspaceId,
-      organisationId: row.submission.organisationId,
-      action: "submission.claimed",
-      entityType: "submission",
-      entityId: row.submission.id,
-      after: {
-        ref,
-        claimedBy: actorId,
-        claimedAt: updated.claimedAt?.toISOString() ?? null,
-      },
-    });
-    return {
-      id: updated.id,
+    const { submission, appendAudit } = await claimSubmissionInTransaction(
+      tx,
+      number,
       ref,
-      state: updated.state,
-      claimedBy: updated.claimedBy,
-      claimedAt: updated.claimedAt,
+      workspaceId,
+      actorId,
+    );
+    await appendAudit();
+    return {
+      id: submission.id,
+      ref,
+      state: submission.state,
+      claimedBy: submission.claimedBy,
+      claimedAt: submission.claimedAt,
     };
   });
 }

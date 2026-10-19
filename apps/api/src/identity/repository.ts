@@ -1,5 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
+import type { JsonValue } from "@taskdesk/domain";
 import {
+  BUILT_IN_ROLES,
   isCapability,
   type RoleScope,
   roleCompositionProblems,
@@ -28,13 +30,115 @@ import {
   invalidateWorkspaceDeletionAccessLosses,
 } from "../pending-action/workspace-access-invalidation";
 import {
+  IdentityGrantClosureChangedError,
+  ScimGroupWriteError,
+} from "./errors";
+import { retryIdentityGrantClosure } from "./grant-closure-retry";
+import {
   lockAndVerifyScimMutation,
   type ScimRequestAuthority,
 } from "./scim-authentication";
 
 type IdentityTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export const connectionProjection = {
+type MaterializedConnectionRow<
+  T extends { claimMapping: unknown; jitPolicy: unknown },
+> = Omit<T, "claimMapping" | "jitPolicy"> & {
+  claimMapping: JsonValue;
+  jitPolicy: JsonValue;
+};
+type MaterializedJitRow<T extends { jitPolicy: unknown }> = Omit<
+  T,
+  "jitPolicy"
+> & { jitPolicy: JsonValue };
+type MaterializedRoleRow<T extends { capabilities: unknown }> = Omit<
+  T,
+  "capabilities"
+> & { capabilities: JsonValue };
+type MaterializedScimMappingRow<T extends { attributeMapping: unknown }> = Omit<
+  T,
+  "attributeMapping"
+> & { attributeMapping: JsonValue | null };
+type MaterializedScimProfileRow<T extends { mapping: unknown }> = Omit<
+  T,
+  "mapping"
+> & { mapping: JsonValue | null };
+type MaterializedFullScimRow<
+  T extends { attributeMapping: unknown; lastFailure: unknown },
+> = Omit<T, "attributeMapping" | "lastFailure"> & {
+  attributeMapping: JsonValue | null;
+  lastFailure: JsonValue | null;
+};
+
+function materializeConnectionRows<
+  T extends { claimMapping: unknown; jitPolicy: unknown },
+>(rows: T[]): MaterializedConnectionRow<T>[] {
+  return rows.map(
+    (row): MaterializedConnectionRow<T> => ({
+      ...row,
+      claimMapping: row.claimMapping as JsonValue,
+      jitPolicy: row.jitPolicy as JsonValue,
+    }),
+  );
+}
+
+function materializeJitRows<T extends { jitPolicy: unknown }>(
+  rows: T[],
+): MaterializedJitRow<T>[] {
+  return rows.map(
+    (row): MaterializedJitRow<T> => ({
+      ...row,
+      jitPolicy: row.jitPolicy as JsonValue,
+    }),
+  );
+}
+
+function materializeRoleRows<T extends { capabilities: unknown }>(
+  rows: T[],
+): MaterializedRoleRow<T>[] {
+  return rows.map(
+    (row): MaterializedRoleRow<T> => ({
+      ...row,
+      capabilities: row.capabilities as JsonValue,
+    }),
+  );
+}
+
+function materializeScimMappingRows<T extends { attributeMapping: unknown }>(
+  rows: T[],
+): MaterializedScimMappingRow<T>[] {
+  return rows.map(
+    (row): MaterializedScimMappingRow<T> => ({
+      ...row,
+      attributeMapping: row.attributeMapping as JsonValue | null,
+    }),
+  );
+}
+
+function materializeScimProfileMappings<T extends { mapping: unknown }>(
+  rows: T[],
+): MaterializedScimProfileRow<T>[] {
+  return rows.map(
+    (row): MaterializedScimProfileRow<T> => ({
+      ...row,
+      mapping: row.mapping as JsonValue | null,
+    }),
+  );
+}
+
+function materializeFullScimRows<
+  T extends { attributeMapping: unknown; lastFailure: unknown },
+>(rows: T[]): MaterializedFullScimRow<T>[] {
+  return rows.map(
+    (row): MaterializedFullScimRow<T> => ({
+      ...row,
+      attributeMapping: row.attributeMapping as JsonValue | null,
+      lastFailure: row.lastFailure as JsonValue | null,
+    }),
+  );
+}
+
+const connectionProjection = {
   id: schema.identityConnectionTable.id,
   providerType: schema.identityConnectionTable.providerType,
   portalScope: schema.identityConnectionTable.portalScope,
@@ -58,35 +162,44 @@ export const connectionProjection = {
   healthCheckedAt: schema.identityConnectionTable.healthCheckedAt,
 } as const;
 
-export function listIdentityConnections() {
-  return db
-    .select(connectionProjection)
-    .from(schema.identityConnectionTable)
-    .orderBy(
-      schema.identityConnectionTable.portalScope,
-      schema.identityConnectionTable.id,
-    );
+export async function listIdentityConnections() {
+  return materializeConnectionRows(
+    await db
+      .select(connectionProjection)
+      .from(schema.identityConnectionTable)
+      .orderBy(
+        schema.identityConnectionTable.portalScope,
+        schema.identityConnectionTable.id,
+      ),
+  );
 }
 
-export function getIdentityConnection(id: string) {
-  return db
-    .select(connectionProjection)
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, id))
-    .limit(1);
+export async function getIdentityConnection(id: string) {
+  return materializeConnectionRows(
+    await db
+      .select(connectionProjection)
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, id))
+      .limit(1),
+  );
 }
 
-export function lockIdentityConnection(tx: IdentityTransaction, id: string) {
-  return tx
-    .select(connectionProjection)
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, id))
-    .for("update")
-    .limit(1);
+export async function lockIdentityConnection(
+  tx: IdentityTransaction,
+  id: string,
+) {
+  return materializeConnectionRows(
+    await tx
+      .select(connectionProjection)
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, id))
+      .for("update")
+      .limit(1),
+  );
 }
 
-export function listIdentityDomainBindings(tx: IdentityTransaction) {
-  return tx
+export async function listIdentityDomainBindings(tx: IdentityTransaction) {
+  return await tx
     .select({
       id: schema.identityConnectionTable.id,
       domains: schema.identityConnectionTable.domainBindings,
@@ -94,8 +207,11 @@ export function listIdentityDomainBindings(tx: IdentityTransaction) {
     .from(schema.identityConnectionTable);
 }
 
-export function lockCustomerOrganisation(tx: IdentityTransaction, id: string) {
-  return tx
+export async function lockCustomerOrganisation(
+  tx: IdentityTransaction,
+  id: string,
+) {
+  return await tx
     .select({ id: schema.organisationTable.id })
     .from(schema.organisationTable)
     .where(
@@ -110,11 +226,11 @@ export function lockCustomerOrganisation(tx: IdentityTransaction, id: string) {
     .limit(1);
 }
 
-export function lockActiveInternalWorkspace(
+export async function lockActiveInternalWorkspace(
   tx: IdentityTransaction,
   workspaceId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.workspaceTable.id })
     .from(schema.workspaceTable)
     .innerJoin(
@@ -134,42 +250,46 @@ export function lockActiveInternalWorkspace(
     .limit(1);
 }
 
-export function lockIdentityDefaultRole(
+export async function lockIdentityDefaultRole(
   tx: IdentityTransaction,
   roleId: string,
 ) {
-  return tx
-    .select({
-      id: schema.roleTable.id,
-      scope: schema.roleTable.scope,
-      workspaceId: schema.roleTable.workspaceId,
-      key: schema.roleTable.key,
-      rank: schema.roleTable.rank,
-      capabilities: schema.roleTable.capabilities,
-    })
-    .from(schema.roleTable)
-    .where(eq(schema.roleTable.id, roleId))
-    .for("update")
-    .limit(1);
+  return materializeRoleRows(
+    await tx
+      .select({
+        id: schema.roleTable.id,
+        scope: schema.roleTable.scope,
+        workspaceId: schema.roleTable.workspaceId,
+        key: schema.roleTable.key,
+        rank: schema.roleTable.rank,
+        capabilities: schema.roleTable.capabilities,
+      })
+      .from(schema.roleTable)
+      .where(eq(schema.roleTable.id, roleId))
+      .for("update")
+      .limit(1),
+  );
 }
 
-export function getIdentityConnectionIdForOrganisation(id: string) {
-  return db
-    .select(connectionProjection)
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.organisationId, id))
-    .limit(1);
+export async function getIdentityConnectionIdForOrganisation(id: string) {
+  return materializeConnectionRows(
+    await db
+      .select(connectionProjection)
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.organisationId, id))
+      .limit(1),
+  );
 }
 
-export function getIdentityConnectionPresence(id: string) {
-  return db
+export async function getIdentityConnectionPresence(id: string) {
+  return await db
     .select({ id: schema.identityConnectionTable.id })
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.id, id))
     .limit(1);
 }
 
-export function listIdentityConnectionEvents(
+export async function listIdentityConnectionEvents(
   connectionId: string,
   after: ReturnType<typeof and> | undefined,
   limit: number,
@@ -178,7 +298,7 @@ export function listIdentityConnectionEvents(
     eq(schema.provisioningEventTable.identityConnectionId, connectionId),
   ];
   if (after) conditions.push(after);
-  return db
+  return await db
     .select({
       id: schema.provisioningEventTable.id,
       cursorCreatedAt: sql<string>`to_char(
@@ -199,38 +319,38 @@ export function listIdentityConnectionEvents(
     .limit(limit + 1);
 }
 
-export function getOrganisationPresence(id: string) {
-  return db
+export async function getOrganisationPresence(id: string) {
+  return await db
     .select({ id: schema.organisationTable.id })
     .from(schema.organisationTable)
     .where(eq(schema.organisationTable.id, id))
     .limit(1);
 }
 
-export function getIdentityPersonForUser(userId: string) {
-  return db
+export async function getIdentityPersonForUser(userId: string) {
+  return await db
     .select({ id: schema.personTable.id })
     .from(schema.personTable)
     .where(eq(schema.personTable.userId, userId))
     .limit(1);
 }
 
-export function getIdentityPersonForUserInTransaction(
+export async function getIdentityPersonForUserInTransaction(
   tx: IdentityTransaction,
   userId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.personTable.id })
     .from(schema.personTable)
     .where(eq(schema.personTable.userId, userId))
     .limit(1);
 }
 
-export function getCurrentInstanceAdminPersonInTransaction(
+export async function getCurrentInstanceAdminPersonInTransaction(
   tx: IdentityTransaction,
   userId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.personTable.id })
     .from(schema.userTable)
     .innerJoin(
@@ -247,33 +367,40 @@ export function getCurrentInstanceAdminPersonInTransaction(
     .limit(1);
 }
 
-export function lockFullIdentityConnection(
+export async function lockFullIdentityConnection(
   tx: IdentityTransaction,
   id: string,
 ) {
-  return tx
-    .select()
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, id))
-    .for("update")
-    .limit(1);
+  return materializeConnectionRows(
+    await tx
+      .select()
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, id))
+      .for("update")
+      .limit(1),
+  );
 }
 
-export function lockFullScimConnection(tx: IdentityTransaction, id: string) {
-  return tx
-    .select()
-    .from(schema.scimConnectionTable)
-    .where(eq(schema.scimConnectionTable.identityConnectionId, id))
-    .for("update")
-    .limit(1);
+export async function lockFullScimConnection(
+  tx: IdentityTransaction,
+  id: string,
+) {
+  return materializeFullScimRows(
+    await tx
+      .select()
+      .from(schema.scimConnectionTable)
+      .where(eq(schema.scimConnectionTable.identityConnectionId, id))
+      .for("update")
+      .limit(1),
+  );
 }
 
-export function findScimGroupMapping(
+export async function findScimGroupMapping(
   tx: IdentityTransaction,
   connectionId: string,
   externalGroupId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.scimGroupMappingTable.id })
     .from(schema.scimGroupMappingTable)
     .where(
@@ -285,12 +412,12 @@ export function findScimGroupMapping(
     .limit(1);
 }
 
-export function lockScimGroupMappingById(
+export async function lockScimGroupMappingById(
   tx: IdentityTransaction,
   connectionId: string,
   mappingId: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.scimGroupMappingTable)
     .where(
@@ -303,127 +430,137 @@ export function lockScimGroupMappingById(
     .limit(1);
 }
 
-export function getScimConnectionVersion(tx: IdentityTransaction, id: string) {
-  return tx
+export async function getScimConnectionVersion(
+  tx: IdentityTransaction,
+  id: string,
+) {
+  return await tx
     .select({ version: schema.identityConnectionTable.configVersion })
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.id, id))
     .limit(1);
 }
 
-export function findIdentityConnectionForOrganisation(
+export async function findIdentityConnectionForOrganisation(
   tx: IdentityTransaction,
   organisationId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.identityConnectionTable.id })
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.organisationId, organisationId))
     .limit(1);
 }
 
-export function getWorkspaceOrganisation(
+export async function getWorkspaceOrganisation(
   tx: IdentityTransaction,
   workspaceId: string,
 ) {
-  return tx
+  return await tx
     .select({ organisationId: schema.workspaceTable.organisationId })
     .from(schema.workspaceTable)
     .where(eq(schema.workspaceTable.id, workspaceId))
     .limit(1);
 }
 
-export function getIdentityConnectionConfiguration(id: string) {
-  return db
-    .select({
-      tenantId: schema.identityConnectionTable.tenantId,
-      portalScope: schema.identityConnectionTable.portalScope,
-      organisationId: schema.identityConnectionTable.organisationId,
-      defaultWorkspaceId: schema.identityConnectionTable.defaultWorkspaceId,
-      jitPolicy: schema.identityConnectionTable.jitPolicy,
-      configVersion: schema.identityConnectionTable.configVersion,
-    })
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, id))
-    .limit(1);
+export async function getIdentityConnectionConfiguration(id: string) {
+  return materializeJitRows(
+    await db
+      .select({
+        tenantId: schema.identityConnectionTable.tenantId,
+        portalScope: schema.identityConnectionTable.portalScope,
+        organisationId: schema.identityConnectionTable.organisationId,
+        defaultWorkspaceId: schema.identityConnectionTable.defaultWorkspaceId,
+        jitPolicy: schema.identityConnectionTable.jitPolicy,
+        configVersion: schema.identityConnectionTable.configVersion,
+      })
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, id))
+      .limit(1),
+  );
 }
 
-export function getScimSettingsRow(connectionId: string) {
-  return db
-    .select({
-      id: schema.identityConnectionTable.id,
-      portalScope: schema.identityConnectionTable.portalScope,
-      organisationId: schema.identityConnectionTable.organisationId,
-      configVersion: schema.identityConnectionTable.configVersion,
-      enabled: schema.scimConnectionTable.enabled,
-      allowedResources: schema.scimConnectionTable.allowedResources,
-      lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy,
-      attributeMapping: schema.scimConnectionTable.attributeMapping,
-      matchAttributes: schema.scimConnectionTable.matchAttributes,
-    })
-    .from(schema.identityConnectionTable)
-    .innerJoin(
-      schema.scimConnectionTable,
-      eq(
-        schema.scimConnectionTable.identityConnectionId,
-        schema.identityConnectionTable.id,
-      ),
-    )
-    .where(eq(schema.identityConnectionTable.id, connectionId))
-    .limit(1);
+export async function getScimSettingsRow(connectionId: string) {
+  return materializeScimMappingRows(
+    await db
+      .select({
+        id: schema.identityConnectionTable.id,
+        portalScope: schema.identityConnectionTable.portalScope,
+        organisationId: schema.identityConnectionTable.organisationId,
+        configVersion: schema.identityConnectionTable.configVersion,
+        enabled: schema.scimConnectionTable.enabled,
+        allowedResources: schema.scimConnectionTable.allowedResources,
+        lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy,
+        attributeMapping: schema.scimConnectionTable.attributeMapping,
+        matchAttributes: schema.scimConnectionTable.matchAttributes,
+      })
+      .from(schema.identityConnectionTable)
+      .innerJoin(
+        schema.scimConnectionTable,
+        eq(
+          schema.scimConnectionTable.identityConnectionId,
+          schema.identityConnectionTable.id,
+        ),
+      )
+      .where(eq(schema.identityConnectionTable.id, connectionId))
+      .limit(1),
+  );
 }
 
-export function getScimMatchAttributes(connectionId: string) {
-  return db
+export async function getScimMatchAttributes(connectionId: string) {
+  return await db
     .select({ matchAttributes: schema.scimConnectionTable.matchAttributes })
     .from(schema.scimConnectionTable)
     .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
     .limit(1);
 }
 
-export function getScimLifecyclePolicy(connectionId: string) {
-  return db
+export async function getScimLifecyclePolicy(connectionId: string) {
+  return await db
     .select({ lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy })
     .from(schema.scimConnectionTable)
     .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
     .limit(1);
 }
 
-export function getScimLifecyclePolicyInTransaction(
+export async function getScimLifecyclePolicyInTransaction(
   tx: IdentityTransaction,
   connectionId: string,
 ) {
-  return tx
+  return await tx
     .select({ lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy })
     .from(schema.scimConnectionTable)
     .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
     .limit(1);
 }
 
-export function lockScimProfileOrganisation(
+export async function lockScimProfileOrganisation(
   tx: IdentityTransaction,
   organisationId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.organisationTable.id })
     .from(schema.organisationTable)
     .where(eq(schema.organisationTable.id, organisationId))
     .for("update");
 }
 
-export function lockScimProfilePerson(
+export async function lockScimProfilePerson(
   tx: IdentityTransaction,
   personId: string,
 ) {
-  return tx
+  return await tx
     .select({ organisationId: schema.personTable.organisationId })
     .from(schema.personTable)
     .where(eq(schema.personTable.id, personId))
     .for("update");
 }
 
-export function getScimGroupForProtocol(connectionId: string, groupId: string) {
-  return db
+export async function getScimGroupForProtocol(
+  connectionId: string,
+  groupId: string,
+) {
+  return await db
     .select({
       id: schema.scimGroupTable.id,
       externalId: schema.scimGroupTable.externalId,
@@ -442,11 +579,11 @@ export function getScimGroupForProtocol(connectionId: string, groupId: string) {
     .limit(1);
 }
 
-export function listActiveScimGroupMembers(
+export async function listActiveScimGroupMembers(
   connectionId: string,
   groupId: string,
 ) {
-  return db
+  return await db
     .select({
       value: schema.externalIdentityTable.id,
       display: schema.personTable.displayName,
@@ -472,7 +609,7 @@ export function listActiveScimGroupMembers(
     );
 }
 
-export const scimUserProjection = {
+const scimUserProjection = {
   id: schema.externalIdentityTable.id,
   externalId: schema.externalIdentityTable.scimExternalId,
   userName: schema.externalIdentityTable.userNameSnapshot,
@@ -485,8 +622,8 @@ export const scimUserProjection = {
   updatedAt: schema.personTable.updatedAt,
 } as const;
 
-export function countScimUsers(where: SQL | undefined) {
-  return db
+export async function countScimUsers(where: SQL | undefined) {
+  return await db
     .select({ totalResults: sql<number>`count(*)::int` })
     .from(schema.externalIdentityTable)
     .innerJoin(
@@ -496,12 +633,12 @@ export function countScimUsers(where: SQL | undefined) {
     .where(where);
 }
 
-export function listScimUsers(
+export async function listScimUsers(
   where: SQL | undefined,
   pageCount: number,
   offset: number,
 ) {
-  return db
+  return await db
     .select(scimUserProjection)
     .from(schema.externalIdentityTable)
     .innerJoin(
@@ -514,8 +651,8 @@ export function listScimUsers(
     .offset(offset);
 }
 
-export function getScimUser(where: SQL | undefined) {
-  return db
+export async function getScimUser(where: SQL | undefined) {
+  return await db
     .select(scimUserProjection)
     .from(schema.externalIdentityTable)
     .innerJoin(
@@ -526,13 +663,13 @@ export function getScimUser(where: SQL | undefined) {
     .limit(1);
 }
 
-export function findScimCreateIdentityConflict(
+export async function findScimCreateIdentityConflict(
   tx: IdentityTransaction,
   connectionId: string,
   externalId: string,
   userName: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.externalIdentityTable.id })
     .from(schema.externalIdentityTable)
     .where(
@@ -544,11 +681,11 @@ export function findScimCreateIdentityConflict(
     .limit(1);
 }
 
-export function findScimCreateEmailConflict(
+export async function findScimCreateEmailConflict(
   tx: IdentityTransaction,
   email: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.externalIdentityTable.id })
     .from(schema.externalIdentityTable)
     .innerJoin(
@@ -565,12 +702,12 @@ export function findScimCreateEmailConflict(
     .limit(1);
 }
 
-export function findScimReplaceEmailConflict(
+export async function findScimReplaceEmailConflict(
   email: string,
   identityId: string,
   personId: string,
 ) {
-  return db
+  return await db
     .select({ id: schema.externalIdentityTable.id })
     .from(schema.externalIdentityTable)
     .innerJoin(
@@ -589,8 +726,8 @@ export function findScimReplaceEmailConflict(
     .limit(1);
 }
 
-export function findActiveInternalOrganisation(tx: IdentityTransaction) {
-  return tx
+export async function findActiveInternalOrganisation(tx: IdentityTransaction) {
+  return await tx
     .select({ id: schema.organisationTable.id })
     .from(schema.organisationTable)
     .where(
@@ -603,19 +740,19 @@ export function findActiveInternalOrganisation(tx: IdentityTransaction) {
     .limit(1);
 }
 
-export function countScimGroups(connectionId: string) {
-  return db
+export async function countScimGroups(connectionId: string) {
+  return await db
     .select({ totalResults: sql<number>`count(*)::int` })
     .from(schema.scimGroupTable)
     .where(eq(schema.scimGroupTable.scimConnectionId, connectionId));
 }
 
-export function listScimGroupIds(
+export async function listScimGroupIds(
   connectionId: string,
   pageCount: number,
   offset: number,
 ) {
-  return db
+  return await db
     .select({ id: schema.scimGroupTable.id })
     .from(schema.scimGroupTable)
     .where(eq(schema.scimGroupTable.scimConnectionId, connectionId))
@@ -624,16 +761,18 @@ export function listScimGroupIds(
     .offset(offset);
 }
 
-export function getScimProfileMapping(connectionId: string) {
-  return db
-    .select({ mapping: schema.scimConnectionTable.attributeMapping })
-    .from(schema.scimConnectionTable)
-    .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
-    .limit(1);
+export async function getScimProfileMapping(connectionId: string) {
+  return materializeScimProfileMappings(
+    await db
+      .select({ mapping: schema.scimConnectionTable.attributeMapping })
+      .from(schema.scimConnectionTable)
+      .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
+      .limit(1),
+  );
 }
 
-export function getScimCurrentUserForReplace(where: SQL | undefined) {
-  return db
+export async function getScimCurrentUserForReplace(where: SQL | undefined) {
+  return await db
     .select({
       id: schema.externalIdentityTable.id,
       externalId: schema.externalIdentityTable.scimExternalId,
@@ -655,8 +794,8 @@ export function getScimCurrentUserForReplace(where: SQL | undefined) {
     .limit(1);
 }
 
-export function getScimCurrentUserForPatch(where: SQL | undefined) {
-  return db
+export async function getScimCurrentUserForPatch(where: SQL | undefined) {
+  return await db
     .select({
       id: schema.externalIdentityTable.id,
       personId: schema.externalIdentityTable.personId,
@@ -677,8 +816,8 @@ export function getScimCurrentUserForPatch(where: SQL | undefined) {
     .limit(1);
 }
 
-export function listScimGroupMappings(connectionId: string) {
-  return db
+export async function listScimGroupMappings(connectionId: string) {
+  return await db
     .select({
       id: schema.scimGroupMappingTable.id,
       externalGroupId: schema.scimGroupMappingTable.externalGroupId,
@@ -697,8 +836,8 @@ export function listScimGroupMappings(connectionId: string) {
     );
 }
 
-export function listOidcGroupMappings(connectionId: string) {
-  return db
+export async function listOidcGroupMappings(connectionId: string) {
+  return await db
     .select({
       id: schema.oidcGroupMappingTable.id,
       externalGroupId: schema.oidcGroupMappingTable.externalGroupId,
@@ -719,8 +858,8 @@ export function listOidcGroupMappings(connectionId: string) {
     );
 }
 
-export function getOidcMappingAdminConnection(connectionId: string) {
-  return db
+export async function getOidcMappingAdminConnection(connectionId: string) {
+  return await db
     .select({
       id: schema.identityConnectionTable.id,
       providerType: schema.identityConnectionTable.providerType,
@@ -734,11 +873,11 @@ export function getOidcMappingAdminConnection(connectionId: string) {
     .limit(1);
 }
 
-export function getOidcGroupMappingById(
+export async function getOidcGroupMappingById(
   connectionId: string,
   mappingId: string,
 ) {
-  return db
+  return await db
     .select()
     .from(schema.oidcGroupMappingTable)
     .where(
@@ -750,11 +889,11 @@ export function getOidcGroupMappingById(
     .limit(1);
 }
 
-export function getOidcGroupMappingSnapshot(
+export async function getOidcGroupMappingSnapshot(
   connectionId: string,
   mappingId: string,
 ) {
-  return db
+  return await db
     .select()
     .from(schema.oidcGroupMappingTable)
     .where(
@@ -766,22 +905,22 @@ export function getOidcGroupMappingSnapshot(
     .limit(1);
 }
 
-export function listOidcMappingAffectedUserIds(
+export async function listOidcMappingAffectedUserIds(
   tx: IdentityTransaction,
   personIds: readonly string[],
 ) {
-  return tx
+  return await tx
     .select({ userId: schema.personTable.userId })
     .from(schema.personTable)
     .where(inArray(schema.personTable.id, [...personIds]));
 }
 
-export function findOidcGroupMapping(
+export async function findOidcGroupMapping(
   tx: IdentityTransaction,
   connectionId: string,
   externalGroupId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.oidcGroupMappingTable.id })
     .from(schema.oidcGroupMappingTable)
     .where(
@@ -793,12 +932,12 @@ export function findOidcGroupMapping(
     .limit(1);
 }
 
-export function lockOidcGroupMappingById(
+export async function lockOidcGroupMappingById(
   tx: IdentityTransaction,
   connectionId: string,
   mappingId: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.oidcGroupMappingTable)
     .where(
@@ -897,6 +1036,8 @@ export async function validateIdpMappingRole(
       key: schema.roleTable.key,
       rank: schema.roleTable.rank,
       capabilities: schema.roleTable.capabilities,
+      isSystem: schema.roleTable.isSystem,
+      isEditable: schema.roleTable.isEditable,
     })
     .from(schema.roleTable)
     .where(eq(schema.roleTable.id, input.roleId))
@@ -904,7 +1045,20 @@ export async function validateIdpMappingRole(
   if (!role || role.scope !== input.scope || role.rank < 0) return false;
   if (!hasSafeOidcRoleCapabilities(role.scope, role.capabilities)) return false;
   if (input.portalScope === "customer")
-    return role.workspaceId === null && role.key === "customer";
+    return (
+      role.workspaceId === null &&
+      role.key === BUILT_IN_ROLES.customer.key &&
+      role.isSystem &&
+      !role.isEditable &&
+      role.rank === BUILT_IN_ROLES.customer.rank &&
+      Array.isArray(role.capabilities) &&
+      role.capabilities.length ===
+        BUILT_IN_ROLES.customer.capabilities.length &&
+      role.capabilities.every(
+        (capability, index) =>
+          capability === BUILT_IN_ROLES.customer.capabilities[index],
+      )
+    );
   if (
     input.maxRoleRank === null ||
     role.rank > input.maxRoleRank ||
@@ -977,49 +1131,6 @@ export async function retireOidcGroupGrants(
     })),
   );
   return active;
-}
-
-export class IdentityGrantClosureChangedError extends Error {
-  constructor() {
-    super("IP-22 closure changed while locking; retry from a fresh snapshot");
-  }
-}
-
-/**
- * Drizzle wraps driver failures in a `DrizzleQueryError`; the Postgres SQLSTATE lives on
- * the innermost `cause`. Walk the chain so a wrapped 40P01/40001/23503/23505 is retried.
- */
-export function databaseErrorCode(error: unknown): string | undefined {
-  let current: unknown = error;
-  for (let depth = 0; depth < 5; depth += 1) {
-    if (typeof current !== "object" || current === null) return undefined;
-    const code = (current as { code?: unknown }).code;
-    if (typeof code === "string" && /^[0-9A-Z]{5}$/u.test(code)) return code;
-    current = (current as { cause?: unknown }).cause;
-  }
-  return undefined;
-}
-
-export async function retryIdentityGrantClosure<T>(work: () => Promise<T>) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      return await work();
-    } catch (error) {
-      const code = databaseErrorCode(error);
-      const retryableDatabaseConflict =
-        code === "40P01" ||
-        code === "40001" ||
-        code === "23503" ||
-        code === "23505";
-      if (
-        (!(error instanceof IdentityGrantClosureChangedError) &&
-          !retryableDatabaseConflict) ||
-        attempt === 2
-      )
-        throw error;
-    }
-  }
-  throw new IdentityGrantClosureChangedError();
 }
 
 export type MembershipProjectionKey = {
@@ -1513,8 +1624,8 @@ export async function lockScimGrantClosure(
   );
 }
 
-export function getScimIdentityByTokenDigest(digest: Buffer) {
-  return db
+export async function getScimIdentityByTokenDigest(digest: Buffer) {
+  return await db
     .select({
       connectionId: schema.scimConnectionTable.identityConnectionId,
       enabled: schema.scimConnectionTable.enabled,
@@ -1541,11 +1652,11 @@ export function getScimIdentityByTokenDigest(digest: Buffer) {
     .limit(1);
 }
 
-export function lockScimIdentityConnection(
+export async function lockScimIdentityConnection(
   executor: IdentityTransaction,
   connectionId: string,
 ) {
-  return executor
+  return await executor
     .select({
       issuer: schema.identityConnectionTable.issuer,
       enabled: schema.identityConnectionTable.enabled,
@@ -1557,29 +1668,31 @@ export function lockScimIdentityConnection(
     .for("update");
 }
 
-export function lockScimConnection(
+export async function lockScimConnection(
   executor: IdentityTransaction,
   connectionId: string,
 ) {
-  return executor
-    .select({
-      enabled: schema.scimConnectionTable.enabled,
-      tokenHash: schema.scimConnectionTable.tokenHash,
-      allowedResources: schema.scimConnectionTable.allowedResources,
-      attributeMapping: schema.scimConnectionTable.attributeMapping,
-      lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy,
-    })
-    .from(schema.scimConnectionTable)
-    .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
-    .for("update");
+  return materializeScimMappingRows(
+    await executor
+      .select({
+        enabled: schema.scimConnectionTable.enabled,
+        tokenHash: schema.scimConnectionTable.tokenHash,
+        allowedResources: schema.scimConnectionTable.allowedResources,
+        attributeMapping: schema.scimConnectionTable.attributeMapping,
+        lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy,
+      })
+      .from(schema.scimConnectionTable)
+      .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
+      .for("update"),
+  );
 }
 
-export function getScimExternalIdentity(
+export async function getScimExternalIdentity(
   executor: IdentityTransaction,
   identityId: string,
   connectionId: string,
 ) {
-  return executor
+  return await executor
     .select({
       personId: schema.externalIdentityTable.personId,
       active: schema.externalIdentityTable.active,
@@ -1595,11 +1708,11 @@ export function getScimExternalIdentity(
     .limit(1);
 }
 
-export function lockOidcConnection(
+export async function lockOidcConnection(
   tx: IdentityTransaction,
   connectionId: string,
 ) {
-  return tx
+  return await tx
     .select({
       id: schema.identityConnectionTable.id,
       enabled: schema.identityConnectionTable.enabled,
@@ -1611,12 +1724,12 @@ export function lockOidcConnection(
     .limit(1);
 }
 
-export function lockOidcExternalIdentity(
+export async function lockOidcExternalIdentity(
   tx: IdentityTransaction,
   connectionId: string,
   userId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.externalIdentityTable.id })
     .from(schema.externalIdentityTable)
     .where(
@@ -1630,11 +1743,11 @@ export function lockOidcExternalIdentity(
     .limit(1);
 }
 
-export function lockOidcVerification(
+export async function lockOidcVerification(
   tx: IdentityTransaction,
   identifier: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.verificationTable)
     .where(eq(schema.verificationTable.identifier, identifier))
@@ -1642,39 +1755,43 @@ export function lockOidcVerification(
     .limit(1);
 }
 
-export function getOidcConnectionForStart(connectionId: string) {
-  return db
-    .select({
-      id: schema.identityConnectionTable.id,
-      portalScope: schema.identityConnectionTable.portalScope,
-      enabled: schema.identityConnectionTable.enabled,
-      tenantId: schema.identityConnectionTable.tenantId,
-      defaultWorkspaceId: schema.identityConnectionTable.defaultWorkspaceId,
-      issuer: schema.identityConnectionTable.issuer,
-      clientId: schema.identityConnectionTable.clientId,
-      redirectUri: schema.identityConnectionTable.redirectUri,
-      scopes: schema.identityConnectionTable.scopes,
-      claimMapping: schema.identityConnectionTable.claimMapping,
-      jitPolicy: schema.identityConnectionTable.jitPolicy,
-    })
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, connectionId))
-    .limit(1);
+export async function getOidcConnectionForStart(connectionId: string) {
+  return materializeConnectionRows(
+    await db
+      .select({
+        id: schema.identityConnectionTable.id,
+        portalScope: schema.identityConnectionTable.portalScope,
+        enabled: schema.identityConnectionTable.enabled,
+        tenantId: schema.identityConnectionTable.tenantId,
+        defaultWorkspaceId: schema.identityConnectionTable.defaultWorkspaceId,
+        issuer: schema.identityConnectionTable.issuer,
+        clientId: schema.identityConnectionTable.clientId,
+        redirectUri: schema.identityConnectionTable.redirectUri,
+        scopes: schema.identityConnectionTable.scopes,
+        claimMapping: schema.identityConnectionTable.claimMapping,
+        jitPolicy: schema.identityConnectionTable.jitPolicy,
+      })
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, connectionId))
+      .limit(1),
+  );
 }
 
-export function getOidcConnectionForCallback(connectionId: string) {
-  return db
-    .select()
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, connectionId))
-    .limit(1);
+export async function getOidcConnectionForCallback(connectionId: string) {
+  return materializeConnectionRows(
+    await db
+      .select()
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, connectionId))
+      .limit(1),
+  );
 }
 
-export function getOidcIdentityForSignIn(
+export async function getOidcIdentityForSignIn(
   tx: IdentityTransaction,
   input: { connectionId: string; issuer: string; subject: string },
 ) {
-  return tx
+  return await tx
     .select({
       id: schema.externalIdentityTable.id,
       personId: schema.externalIdentityTable.personId,
@@ -1704,22 +1821,24 @@ export function getOidcIdentityForSignIn(
     .limit(1);
 }
 
-export function getOidcConnectionSnapshot(
+export async function getOidcConnectionSnapshot(
   tx: IdentityTransaction,
   connectionId: string,
 ) {
-  return tx
-    .select()
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, connectionId))
-    .limit(1);
+  return materializeConnectionRows(
+    await tx
+      .select()
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, connectionId))
+      .limit(1),
+  );
 }
 
-export function findOidcIdentityForClosure(
+export async function findOidcIdentityForClosure(
   tx: IdentityTransaction,
   input: { connectionId: string; issuer: string; subject: string },
 ) {
-  return tx
+  return await tx
     .select({
       id: schema.externalIdentityTable.id,
       personId: schema.externalIdentityTable.personId,
@@ -1738,11 +1857,11 @@ export function findOidcIdentityForClosure(
     .limit(1);
 }
 
-export function listActiveOidcGrantsForSignIn(
+export async function listActiveOidcGrantsForSignIn(
   tx: IdentityTransaction,
   input: { personId: string; connectionId: string; externalIdentityId: string },
 ) {
-  return tx
+  return await tx
     .select({
       id: schema.membershipGrantTable.id,
       roleId: schema.membershipGrantTable.roleId,
@@ -1774,11 +1893,11 @@ export function listActiveOidcGrantsForSignIn(
     .for("update");
 }
 
-export function listAdmissionFailedOidcGrants(
+export async function listAdmissionFailedOidcGrants(
   tx: IdentityTransaction,
   input: { personId: string; externalIdentityId: string; connectionId: string },
 ) {
-  return tx
+  return await tx
     .select({
       id: schema.membershipGrantTable.id,
       scope: schema.membershipGrantTable.scope,
@@ -1808,68 +1927,78 @@ export function listAdmissionFailedOidcGrants(
     .for("update");
 }
 
-export function getOidcPersonForSignIn(
+export async function getOidcPersonForSignIn(
   tx: IdentityTransaction,
   personId: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.personTable)
     .where(eq(schema.personTable.id, personId))
     .limit(1);
 }
 
-export function listOidcMappingsForReconciliation(
+export async function listOidcMappingsForReconciliation(
   tx: IdentityTransaction,
   connectionId: string,
 ) {
-  return tx
+  return await tx
     .select()
     .from(schema.oidcGroupMappingTable)
     .where(eq(schema.oidcGroupMappingTable.identityConnectionId, connectionId))
     .orderBy(schema.oidcGroupMappingTable.id);
 }
 
-export function getOidcRoleForReconciliation(
+export async function getOidcRoleForReconciliation(
   tx: IdentityTransaction,
   roleId: string,
 ) {
-  return tx
-    .select()
-    .from(schema.roleTable)
-    .where(eq(schema.roleTable.id, roleId))
-    .limit(1);
+  return materializeRoleRows(
+    await tx
+      .select()
+      .from(schema.roleTable)
+      .where(eq(schema.roleTable.id, roleId))
+      .limit(1),
+  );
 }
 
-export function findOidcEmailOwner(tx: IdentityTransaction, email: string) {
-  return tx
+export async function findOidcEmailOwner(
+  tx: IdentityTransaction,
+  email: string,
+) {
+  return await tx
     .select({ id: schema.userTable.id })
     .from(schema.userTable)
     .where(eq(schema.userTable.email, email))
     .limit(1);
 }
 
-export function lockOidcDefaultRole(tx: IdentityTransaction, roleId: string) {
-  return tx
-    .select({
-      id: schema.roleTable.id,
-      scope: schema.roleTable.scope,
-      rank: schema.roleTable.rank,
-      key: schema.roleTable.key,
-      workspaceId: schema.roleTable.workspaceId,
-      capabilities: schema.roleTable.capabilities,
-    })
-    .from(schema.roleTable)
-    .where(eq(schema.roleTable.id, roleId))
-    .for("update")
-    .limit(1);
+export async function lockOidcDefaultRole(
+  tx: IdentityTransaction,
+  roleId: string,
+) {
+  return materializeRoleRows(
+    await tx
+      .select({
+        id: schema.roleTable.id,
+        scope: schema.roleTable.scope,
+        rank: schema.roleTable.rank,
+        key: schema.roleTable.key,
+        workspaceId: schema.roleTable.workspaceId,
+        capabilities: schema.roleTable.capabilities,
+      })
+      .from(schema.roleTable)
+      .where(eq(schema.roleTable.id, roleId))
+      .for("update")
+      .limit(1),
+  );
 }
 
-export function lockOidcDefaultWorkspace(
+export async function lockOidcDefaultWorkspace(
   tx: IdentityTransaction,
   workspaceId: string,
 ) {
-  return tx
+  return await tx
     .select({ id: schema.workspaceTable.id })
     .from(schema.workspaceTable)
     .innerJoin(
@@ -1888,8 +2017,11 @@ export function lockOidcDefaultWorkspace(
     .limit(1);
 }
 
-export function lockOidcPerson(tx: IdentityTransaction, personId: string) {
-  return tx
+export async function lockOidcPerson(
+  tx: IdentityTransaction,
+  personId: string,
+) {
+  return await tx
     .select({ id: schema.personTable.id, userId: schema.personTable.userId })
     .from(schema.personTable)
     .where(eq(schema.personTable.id, personId))
@@ -1897,8 +2029,8 @@ export function lockOidcPerson(tx: IdentityTransaction, personId: string) {
     .limit(1);
 }
 
-export function listEnabledOidcDomainOwners() {
-  return db
+export async function listEnabledOidcDomainOwners() {
+  return await db
     .select({
       domain: sql<string>`unnest(${schema.identityConnectionTable.domainBindings})`,
       identityConnectionId: schema.identityConnectionTable.id,
@@ -1907,8 +2039,8 @@ export function listEnabledOidcDomainOwners() {
     .where(eq(schema.identityConnectionTable.enabled, true));
 }
 
-export function getOidcUserFactorState(userId: string) {
-  return db
+export async function getOidcUserFactorState(userId: string) {
+  return await db
     .select({ enabled: schema.userTable.twoFactorEnabled })
     .from(schema.userTable)
     .where(eq(schema.userTable.id, userId))
@@ -2692,6 +2824,9 @@ export async function transitionPersonLifecycleInTransaction(
   }
   await projectMembershipKeys(tx, keys);
   return {
+    // The user whose sessions and keys this deactivation removed, so the caller can announce it
+    // on the realtime control channel once the transaction has committed (#632).
+    revokedUserId: !active && person.userId ? person.userId : null,
     sessionsRevoked,
     keysRevoked,
     membershipsEnded,
@@ -2710,15 +2845,6 @@ type GroupWrite = {
   active: boolean;
   memberIds: readonly string[];
 };
-
-export class ScimGroupWriteError extends Error {
-  constructor(
-    readonly status: 400 | 404 | 409 | 503,
-    readonly code: "invalidValue" | "notFound" | "uniqueness" | "configuration",
-  ) {
-    super("SCIM group write rejected");
-  }
-}
 
 /** Store directory state and apply only currently valid mapped-role grants. */
 export async function writeScimGroup(input: GroupWrite) {

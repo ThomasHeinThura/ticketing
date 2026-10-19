@@ -1,16 +1,21 @@
-import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../database";
-import {
-  projectTable,
-  userNotificationPreferenceTable,
-  userNotificationWorkspaceProjectTable,
-  userNotificationWorkspaceRuleTable,
-  workspaceTable,
-  workspaceUserTable,
-} from "../database/schema";
 import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
-import { reachableWorkspacePredicate } from "../utils/workspace-access-middleware";
+import {
+  deleteWorkspaceProjectsForRule,
+  deleteWorkspaceRuleById,
+  findNotificationPreference,
+  findWorkspaceMembership,
+  findWorkspaceRule,
+  getReachableWorkspaceRules,
+  getSelectedWorkspaceProjects,
+  insertNotificationPreference,
+  insertWorkspaceRule,
+  insertWorkspaceRuleProjects,
+  listSelectedProjects,
+  updateActiveWorkspaceRules,
+  updateNotificationPreference,
+  updateWorkspaceRule,
+} from "./repository";
 import { decryptSecret, encryptSecret } from "./secrets";
 
 export type NotificationPreferenceProjectMode = "all" | "selected";
@@ -119,16 +124,7 @@ function normalizeSecretInput(
 }
 
 async function assertWorkspaceMembership(userId: string, workspaceId: string) {
-  const [membership] = await db
-    .select({ workspaceId: workspaceUserTable.workspaceId })
-    .from(workspaceUserTable)
-    .where(
-      and(
-        eq(workspaceUserTable.userId, userId),
-        eq(workspaceUserTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
+  const membership = await findWorkspaceMembership(userId, workspaceId);
 
   if (!membership) {
     throw new HTTPException(403, {
@@ -147,15 +143,7 @@ export async function validateProjectSelection(
     });
   }
 
-  const projects = await db
-    .select({ id: projectTable.id })
-    .from(projectTable)
-    .where(
-      and(
-        eq(projectTable.workspaceId, workspaceId),
-        inArray(projectTable.id, selectedProjectIds),
-      ),
-    );
+  const projects = await listSelectedProjects(workspaceId, selectedProjectIds);
 
   if (projects.length !== selectedProjectIds.length) {
     throw new HTTPException(400, {
@@ -168,9 +156,7 @@ export async function getNotificationPreferences(
   userId: string,
   emailAddress: string | null,
 ): Promise<NotificationPreferenceResponse> {
-  const preference = await db.query.userNotificationPreferenceTable.findFirst({
-    where: eq(userNotificationPreferenceTable.userId, userId),
-  });
+  const preference = await findNotificationPreference(userId);
 
   const decryptedPreference = preference
     ? {
@@ -181,38 +167,10 @@ export async function getNotificationPreferences(
       }
     : null;
 
-  const rules = await db
-    .select({
-      rule: userNotificationWorkspaceRuleTable,
-      workspaceName: workspaceTable.name,
-    })
-    .from(userNotificationWorkspaceRuleTable)
-    .innerJoin(
-      workspaceTable,
-      eq(userNotificationWorkspaceRuleTable.workspaceId, workspaceTable.id),
-    )
-    .where(
-      and(
-        eq(userNotificationWorkspaceRuleTable.userId, userId),
-        reachableWorkspacePredicate(workspaceTable.id, userId),
-      ),
-    )
-    .orderBy(asc(userNotificationWorkspaceRuleTable.createdAt));
+  const rules = await getReachableWorkspaceRules(userId);
 
   const selectedProjects = rules.length
-    ? await db
-        .select({
-          workspaceRuleId:
-            userNotificationWorkspaceProjectTable.workspaceRuleId,
-          projectId: userNotificationWorkspaceProjectTable.projectId,
-        })
-        .from(userNotificationWorkspaceProjectTable)
-        .where(
-          inArray(
-            userNotificationWorkspaceProjectTable.workspaceRuleId,
-            rules.map(({ rule }) => rule.id),
-          ),
-        )
+    ? await getSelectedWorkspaceProjects(rules.map(({ rule }) => rule.id))
     : [];
 
   return {
@@ -271,9 +229,7 @@ export async function updateNotificationPreferences(
   emailAddress: string | null,
   input: UpdateNotificationPreferenceInput,
 ): Promise<NotificationPreferenceResponse> {
-  const existing = await db.query.userNotificationPreferenceTable.findFirst({
-    where: eq(userNotificationPreferenceTable.userId, userId),
-  });
+  const existing = await findNotificationPreference(userId);
 
   const decryptedExisting = existing
     ? {
@@ -439,15 +395,9 @@ export async function updateNotificationPreferences(
   };
 
   if (existing) {
-    await db
-      .update(userNotificationPreferenceTable)
-      .set({
-        ...data,
-        updatedAt: new Date(),
-      })
-      .where(eq(userNotificationPreferenceTable.userId, userId));
+    await updateNotificationPreference(userId, data, new Date());
   } else {
-    await db.insert(userNotificationPreferenceTable).values(data);
+    await insertNotificationPreference(data);
   }
 
   const ruleCascade: {
@@ -507,25 +457,11 @@ export async function updateNotificationPreferences(
     Object.keys(ruleCascade).length > 0 ||
     Object.keys(ruleEnableCascade).length > 0
   ) {
-    await db
-      .update(userNotificationWorkspaceRuleTable)
-      .set({
-        ...ruleEnableCascade,
-        ...ruleCascade,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(userNotificationWorkspaceRuleTable.userId, userId),
-          eq(userNotificationWorkspaceRuleTable.isActive, true),
-          or(
-            eq(userNotificationWorkspaceRuleTable.emailEnabled, true),
-            eq(userNotificationWorkspaceRuleTable.ntfyEnabled, true),
-            eq(userNotificationWorkspaceRuleTable.gotifyEnabled, true),
-            eq(userNotificationWorkspaceRuleTable.webhookEnabled, true),
-          ),
-        ),
-      );
+    await updateActiveWorkspaceRules(
+      userId,
+      { ...ruleEnableCascade, ...ruleCascade },
+      new Date(),
+    );
   }
 
   return getNotificationPreferences(userId, emailAddress);
@@ -543,9 +479,7 @@ export async function upsertWorkspaceRule(
     await validateProjectSelection(workspaceId, input.selectedProjectIds ?? []);
   }
 
-  const preference = await db.query.userNotificationPreferenceTable.findFirst({
-    where: eq(userNotificationPreferenceTable.userId, userId),
-  });
+  const preference = await findNotificationPreference(userId);
 
   if (input.emailEnabled && (!preference?.emailEnabled || !emailAddress)) {
     throw new HTTPException(400, {
@@ -584,43 +518,14 @@ export async function upsertWorkspaceRule(
     });
   }
 
-  const existing = await db.query.userNotificationWorkspaceRuleTable.findFirst({
-    where: and(
-      eq(userNotificationWorkspaceRuleTable.userId, userId),
-      eq(userNotificationWorkspaceRuleTable.workspaceId, workspaceId),
-    ),
-  });
+  const existing = await findWorkspaceRule(userId, workspaceId);
 
   let ruleId = existing?.id;
 
   if (existing) {
-    await db
-      .update(userNotificationWorkspaceRuleTable)
-      .set({
-        isActive: input.isActive,
-        emailEnabled: input.emailEnabled,
-        ntfyEnabled: input.ntfyEnabled,
-        gotifyEnabled: input.gotifyEnabled,
-        webhookEnabled: input.webhookEnabled,
-        projectMode: input.projectMode,
-        updatedAt: new Date(),
-      })
-      .where(eq(userNotificationWorkspaceRuleTable.id, existing.id));
+    await updateWorkspaceRule(existing.id, input, new Date());
   } else {
-    const [createdRule] = await db
-      .insert(userNotificationWorkspaceRuleTable)
-      .values({
-        userId,
-        workspaceId,
-        isActive: input.isActive,
-        emailEnabled: input.emailEnabled,
-        ntfyEnabled: input.ntfyEnabled,
-        gotifyEnabled: input.gotifyEnabled,
-        webhookEnabled: input.webhookEnabled,
-        projectMode: input.projectMode,
-      })
-      .returning({ id: userNotificationWorkspaceRuleTable.id });
-    ruleId = createdRule?.id;
+    ruleId = await insertWorkspaceRule(userId, workspaceId, input);
   }
 
   if (!ruleId) {
@@ -631,22 +536,13 @@ export async function upsertWorkspaceRule(
 
   const workspaceRuleId = ruleId;
 
-  await db
-    .delete(userNotificationWorkspaceProjectTable)
-    .where(
-      eq(
-        userNotificationWorkspaceProjectTable.workspaceRuleId,
-        workspaceRuleId,
-      ),
-    );
+  await deleteWorkspaceProjectsForRule(workspaceRuleId);
 
   if (input.projectMode === "selected") {
-    await db.insert(userNotificationWorkspaceProjectTable).values(
-      (input.selectedProjectIds ?? []).map((projectId) => ({
-        workspaceId,
-        workspaceRuleId,
-        projectId,
-      })),
+    await insertWorkspaceRuleProjects(
+      workspaceId,
+      workspaceRuleId,
+      input.selectedProjectIds ?? [],
     );
   }
 
@@ -660,12 +556,7 @@ export async function deleteWorkspaceRule(
 ): Promise<NotificationPreferenceResponse> {
   await assertWorkspaceMembership(userId, workspaceId);
 
-  const existing = await db.query.userNotificationWorkspaceRuleTable.findFirst({
-    where: and(
-      eq(userNotificationWorkspaceRuleTable.userId, userId),
-      eq(userNotificationWorkspaceRuleTable.workspaceId, workspaceId),
-    ),
-  });
+  const existing = await findWorkspaceRule(userId, workspaceId);
 
   if (!existing) {
     throw new HTTPException(404, {
@@ -673,9 +564,7 @@ export async function deleteWorkspaceRule(
     });
   }
 
-  await db
-    .delete(userNotificationWorkspaceRuleTable)
-    .where(eq(userNotificationWorkspaceRuleTable.id, existing.id));
+  await deleteWorkspaceRuleById(existing.id);
 
   return getNotificationPreferences(userId, emailAddress);
 }

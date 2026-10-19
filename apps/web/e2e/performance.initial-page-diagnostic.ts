@@ -6,10 +6,8 @@ import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { summarizeProfileCoverage } from "../src/lib/performance-profile-intervals";
 import {
-  anchorTraceProfile,
-  type TraceProfileClock,
-  timeTraceProfileChunk,
-  traceProfileKey,
+  createTraceProfileState,
+  ingestTraceProfileEvent,
 } from "../src/lib/performance-trace-profile-clock";
 import {
   aggregateCpuProfileFrames,
@@ -762,9 +760,8 @@ async function withDiagnosticProfile(
   let metrics: InitialDocumentMetrics | undefined;
   let browserPerformance: DiagnosticCapture["browserPerformance"] | undefined;
   const timelineEvents: BrowserTimelineEvent[] = [];
-  const traceCpuProfilesByThread = new Map<string, TraceCpuProfile>();
-  const traceProfileClocks = new Map<string, TraceProfileClock>();
-  const invalidTraceProfileKeys = new Set<string>();
+  const traceCpuProfilesByIdentity = new Map<string, TraceCpuProfile>();
+  const traceProfileState = createTraceProfileState();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
   let timelineOverflow = false;
   cdp.on("Tracing.dataCollected", ({ value }) => {
@@ -773,52 +770,43 @@ async function withDiagnosticProfile(
         const data = (
           event.args as { data?: Record<string, unknown> } | undefined
         )?.data;
-        const source = String(data?.source ?? "unknown");
-        const pid = Number(event.pid) || 0;
-        const tid = Number(event.tid) || 0;
-        const id = String(event.id ?? "profile");
-        const key = traceProfileKey(pid, tid, source, id);
-        if (invalidTraceProfileKeys.has(key)) continue;
-        if (event.name === "Profile") {
-          if (!anchorTraceProfile(traceProfileClocks, key, Number(event.ts))) {
-            invalidTraceProfileKeys.add(key);
-            traceCpuProfilesByThread.delete(key);
-          }
-          continue;
-        }
         const cpuProfile = data?.cpuProfile as
           | { nodes?: TraceCpuNode[]; samples?: number[] }
           | undefined;
-        const timeDeltas = data?.timeDeltas as number[] | undefined;
-        const samples = Array.isArray(cpuProfile?.samples)
-          ? cpuProfile.samples
-          : [];
-        const deltas = Array.isArray(timeDeltas) ? timeDeltas : [];
-        const timedSamples = timeTraceProfileChunk(
-          traceProfileClocks.get(key),
-          samples,
-          deltas,
-        );
-        if (samples.length > 0 && !timedSamples) {
-          invalidTraceProfileKeys.add(key);
-          traceCpuProfilesByThread.delete(key);
+        const profileEvent = ingestTraceProfileEvent(traceProfileState, {
+          name: event.name,
+          pid: event.pid,
+          tid: event.tid,
+          id: event.id,
+          source: data?.source,
+          timestamp: event.ts,
+          samples: cpuProfile?.samples,
+          timeDeltas: data?.timeDeltas,
+        });
+        if (profileEvent.status === "invalid") {
+          if (profileEvent.key)
+            traceCpuProfilesByIdentity.delete(profileEvent.key);
           continue;
         }
-        let traceProfile = traceCpuProfilesByThread.get(key);
+        if (profileEvent.status === "anchored") continue;
+
+        let traceProfile = traceCpuProfilesByIdentity.get(profileEvent.key);
         if (!traceProfile) {
           traceProfile = {
-            id,
-            source,
-            pid,
-            tid,
+            id: profileEvent.id,
+            source: profileEvent.source ?? "unknown",
+            pid: profileEvent.pid,
+            tid: profileEvent.ownerTid,
             nodes: new Map(),
             samples: [],
           };
-          traceCpuProfilesByThread.set(key, traceProfile);
+          traceCpuProfilesByIdentity.set(profileEvent.key, traceProfile);
         }
+        if (profileEvent.source !== undefined)
+          traceProfile.source = profileEvent.source;
         for (const node of cpuProfile?.nodes ?? [])
           traceProfile.nodes.set(node.id, node);
-        traceProfile.samples.push(...(timedSamples ?? []));
+        traceProfile.samples.push(...profileEvent.samples);
       }
       const sanitized = sanitizeTimelineEvent(event);
       if (!sanitized) continue;
@@ -999,7 +987,7 @@ async function withDiagnosticProfile(
     metrics,
     network: JSON.parse(networkCapture.finish()),
     browserPerformance,
-    traceCpuProfiles: [...traceCpuProfilesByThread.values()],
+    traceCpuProfiles: [...traceCpuProfilesByIdentity.values()],
     clockMarks,
     boundary,
   };
@@ -1385,7 +1373,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
       transform:
         "Two diagnostic CDP TimeStamp markers on the same document, measured around window.performance.now(); affine scale and offset map canonical recorder values to trace time. Uncertainty includes marker-call brackets plus measured slope uncertainty propagated across extrapolated distance.",
       cpuProfileClock:
-        "Sanitized V8 ProfileChunk sample intervals start at the initial Profile event timestamp and accumulate ordered timeDeltas across chunks for the same process, thread, source, and profile id. Chunk emission timestamps are not used as sample anchors. Profiles without a valid initial Profile anchor are omitted; intervals are clipped to the aligned recorder span.",
+        "Sanitized V8 ProfileChunk sample intervals join the initial Profile event by process and profile id, retain the owner thread id from the Profile head even when chunk event thread ids differ, and accumulate ordered timeDeltas from the head timestamp. Optional source tags must be consistent; invalid or ambiguous profiles are omitted. Chunk emission timestamps are not used as sample anchors; valid intervals are clipped to the aligned recorder span.",
       cpuFrameAttribution:
         "Self time is sampled time at the node; inclusive time sums each clipped sample once into that node and every reachable caller from retained child links. This is sampled CPU attribution, not wall time or a completeness guarantee. Coordinates remain compiled asset/function/line/column; source maps are inspected only for asset source lists and do not resolve individual functions.",
       contextMetrics:

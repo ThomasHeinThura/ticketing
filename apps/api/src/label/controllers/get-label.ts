@@ -1,10 +1,9 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
+import { findLabelById } from "../repository";
 
-async function getLabel(id: string) {
-  const label = await db.query.labelTable.findFirst({
-    where: (label, { eq }) => eq(label.id, id),
-  });
+async function getLabel(identity: ResolvedIdentity, id: string) {
+  const label = await findLabelById(identity, id);
 
   if (!label) {
     throw new HTTPException(404, {

@@ -18,7 +18,7 @@ import {
 import {
   findSavedViewById,
   lockSavedViewByIdInTransaction,
-  teamMemberInWorkspaceTransaction,
+  teamMemberInWorkspace,
   updateSavedView,
 } from "../repository";
 import type { updateViewBody } from "../schema";
@@ -73,11 +73,11 @@ async function updateView(
         // membership check: membership in the team alone is not enough -- the team must
         // also belong to THIS view's own workspace, or a caller who is a member of some
         // unrelated team in a foreign workspace could re-share their own view into it.
-        const membershipExists = await teamMemberInWorkspaceTransaction(
-          tx,
+        const membershipExists = await teamMemberInWorkspace(
           nextSharedWithTeamId,
           userId,
           view.workspaceId,
+          tx,
         );
         if (!membershipExists) {
           throw new HTTPException(403, {

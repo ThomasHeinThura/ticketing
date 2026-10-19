@@ -16,6 +16,8 @@ import {
   createApproval,
   decide,
   request,
+  restoreProjectMembership,
+  revokeProjectMembership,
   runTransition,
   setApproval,
   withdrawAs,
@@ -170,20 +172,14 @@ describe("approvals: request-time and read-time validation", () => {
 
   it("the approver's reach on the work item is checked when the request is made", async () => {
     const t = await buildTenant("reach");
-    await db
-      .update(schema.workItemTable)
-      .set({ customerVisibility: "private" })
-      .where(eq(schema.workItemTable.id, t.workItem.id));
-    await db.insert(schema.requestParticipantTable).values({
-      workItemId: t.workItem.id,
-      personId: t.requesterPerson.id,
-      addedBy: t.requesterPerson.id,
-      createdAt: new Date(),
-    });
-    // The approver is a CAB member with every capability but cannot see this private item.
+    const approverMembership = await revokeProjectMembership(
+      t.approverPerson.id,
+      t.project.id,
+    );
     const response = await request(t, t.requester);
     expect(response.status, await response.clone().text()).toBe(422);
     expect(await approvalRows(t.workItem.id)).toHaveLength(0);
+    await restoreProjectMembership(approverMembership);
   });
 
   it("the approver must have the right side and an account", async () => {

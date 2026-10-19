@@ -16,10 +16,10 @@ import {
   completeNotificationDelivery,
   deferNotificationDelivery,
   hasRecentNotificationSuccess,
-  NotificationReservationContentionError,
   releaseNotificationReservation,
   renewNotificationReservation,
 } from "../../../apps/api/src/database/repositories/notification-delivery.repository";
+import { NotificationReservationContentionError } from "../../../apps/api/src/notification/delivery-errors";
 import { notificationReservationKey } from "../../../apps/api/src/notification/delivery-primitives";
 import type { NotificationOutboxRuntime } from "../../../apps/api/src/notification/outbox-drain";
 import {

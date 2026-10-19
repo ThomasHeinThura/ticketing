@@ -12,6 +12,12 @@ import {
   listGoalsForEvaluation,
 } from "./repository";
 
+type SlaCalendarEvaluationInput = {
+  timezone: string;
+  windows: unknown;
+  holidays: unknown;
+};
+
 /** Evaluate the version persisted on the work item, against its live calendar. */
 export async function evaluatePinnedWorkItemSla(input: {
   policyVersionId: string | null;
@@ -47,10 +53,9 @@ export async function evaluatePinnedWorkItemSla(input: {
     );
   }
 
-  const [calendar] = await getCalendarForEvaluation(
-    version.calendarId,
-    input.workspaceId,
-  );
+  const calendars: SlaCalendarEvaluationInput[] =
+    await getCalendarForEvaluation(version.calendarId, input.workspaceId);
+  const [calendar] = calendars;
 
   if (!calendar) {
     throw new Error(

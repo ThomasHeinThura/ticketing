@@ -1,7 +1,6 @@
-import { and, eq, sql } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
 import {
@@ -13,7 +12,8 @@ import {
   validateAndParseDate,
   validateDateRange,
 } from "../../utils/validate-dates";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
+import { findColumnBySlugForIdentity, updateTaskRow } from "../repository";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 export class TaskVersionConflictError extends Error {
@@ -29,6 +29,7 @@ export class TaskVersionConflictError extends Error {
 }
 
 async function updateTask(
+  identity: ResolvedIdentity,
   id: string,
   assertedVersion: number | undefined,
   title: string,
@@ -46,7 +47,11 @@ async function updateTask(
 
   const { existingTask: lockedTask, updatedTask } = await db.transaction(
     async (tx) => {
-      const lockedTask = await lockTaskAndAssertProjectLive(tx, id);
+      const lockedTask = await lockTaskAndAssertProjectLiveForIdentity(
+        tx,
+        id,
+        identity,
+      );
       if (
         assertedVersion !== undefined &&
         lockedTask.version !== assertedVersion
@@ -72,7 +77,7 @@ async function updateTask(
         rejectNulByte(normalizedUserId, "Assignee id");
       }
       const projectWorkspaceId = await getProjectWorkspaceId(projectId, tx);
-      await assertValidTaskStatus(status, projectId, tx);
+      await assertValidTaskStatus(identity, status, projectId, tx);
       if (normalizedUserId) {
         await assertAssignableUserAndLockMembership(
           normalizedUserId,
@@ -80,29 +85,23 @@ async function updateTask(
           tx,
         );
       }
-      const column = await tx.query.columnTable.findFirst({
-        where: and(
-          eq(columnTable.projectId, projectId),
-          eq(columnTable.slug, status),
-        ),
+      const column = await findColumnBySlugForIdentity(
+        tx,
+        identity,
+        projectId,
+        status,
+      );
+      const updatedTask = await updateTaskRow(tx, identity, id, {
+        title,
+        status,
+        columnId: column?.id ?? null,
+        startDate: parsedStartDate || null,
+        dueDate: parsedDueDate || null,
+        description,
+        priority,
+        position,
+        userId: normalizedUserId ?? null,
       });
-      const [updatedTask] = await tx
-        .update(taskTable)
-        .set({
-          title,
-          status,
-          columnId: column?.id ?? null,
-          startDate: parsedStartDate || null,
-          dueDate: parsedDueDate || null,
-          projectId,
-          description,
-          priority,
-          position,
-          userId: normalizedUserId ?? null,
-          version: sql`${taskTable.version} + 1`,
-        })
-        .where(eq(taskTable.id, id))
-        .returning();
       return { existingTask: lockedTask, updatedTask };
     },
   );
