@@ -58,6 +58,20 @@
 		"screenshot": "instance-users-directory.png"
 	},
 	{
+		"name": "authentication-providers-list",
+		"inventoryRoute": "/agent/god-mode/authentication",
+		"applicationRoute": "/agent/god-mode/authentication",
+		"test": "authentication providers list screen @visual",
+		"screenshot": "authentication-providers-list.png"
+	},
+	{
+		"name": "authentication-provider-editor",
+		"inventoryRoute": "/agent/god-mode/authentication/{id}",
+		"applicationRoute": "/agent/god-mode/authentication/$id",
+		"test": "authentication provider editor screen @visual",
+		"screenshot": "authentication-provider-editor.png"
+	},
+	{
 		"name": "pending-actions-list",
 		"inventoryRoute": "/agent/settings/profile/pending-actions",
 		"applicationRoute": "/agent/settings/profile/pending-actions",

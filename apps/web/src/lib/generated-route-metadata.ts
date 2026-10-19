@@ -4,6 +4,8 @@ export const generatedRouteMetadata = {
   agent: [
     // Canonical full paths for this surface.
     "/",
+    "/agent/god-mode/authentication",
+    "/agent/god-mode/authentication/$id",
     "/agent/god-mode/users",
     "/agent/projects/$projectKey/work",
     "/agent/settings/calendars",
