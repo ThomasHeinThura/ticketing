@@ -285,3 +285,21 @@ Method (read-only, no checkout of the working tree): `git fetch`, `gh pr view --
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 61299eb396541881a7087c9e6b88ff5066561e926bbce651aa9342f13ec0ca6b) -->
+
+
+## Mechanical rebind after main moved to 9fecda429de7793c0f3d6058394c558903841a38
+
+This section establishes that `0a30e101e6d979e1a698ddf756d2a4affbf0a23f` is a mechanical rebind of `cef5c8c40e6da0b4cda64209816427db9c51c557`.
+
+**Reviewed head:** `0a30e101e6d979e1a698ddf756d2a4affbf0a23f`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 9fecda429de7793c0f3d6058394c558903841a38 (accepted main)
+**Previous reviewed head:** cef5c8c40e6da0b4cda64209816427db9c51c557
+
+Method:
+- **Parents:** first = `15e791ec` (prior branch head), second = `9fecda42` (main tip). Clean merge commit.
+- **Merge-tree equality:** `git merge-tree --write-tree 15e791ec 9fecda42` equals `0a30e101e^{tree}`. Clean merge, no manual conflict resolution or extra edits.
+- **Overlap:** files changed by PR do not intersect files changed on main since merge base (0 files overlap).
+- **PR content:** byte-identical to previous reviewed head.
+
+**Verdict:** CLEAR
