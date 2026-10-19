@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -564,6 +564,23 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     expect(
       persistedTasks.find((task) => task.id === foreignTask.id)?.priority,
     ).toBe("low");
+
+    // Own this async activity before the next test starts its database reset.
+    await vi.waitFor(async () => {
+      const priorityActivity = await db.query.taskActivityTable.findFirst({
+        where: and(
+          eq(schema.taskActivityTable.taskId, ownTask.id),
+          eq(schema.taskActivityTable.type, "priority_changed"),
+        ),
+      });
+
+      expect(priorityActivity).toMatchObject({
+        taskId: ownTask.id,
+        type: "priority_changed",
+        userId: caller.user.id,
+        eventData: { newPriority: "high" },
+      });
+    });
   });
 
   it("websocket: an authenticated caller receives the unknown-project response for a foreign project", async () => {

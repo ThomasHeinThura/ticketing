@@ -145,14 +145,20 @@ export async function setupWorld() {
       .returning(),
     "workflow version",
   );
-  await db.insert(schema.workflowTransitionTable).values({
-    versionId: version.id,
-    fromStateTemplateId: backlog.stateTemplate.id,
-    toStateTemplateId: started.stateTemplate.id,
-    roleId: null,
-    guards: [],
-    effects: [],
-  });
+  const transition = requireRow(
+    await db
+      .insert(schema.workflowTransitionTable)
+      .values({
+        versionId: version.id,
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: started.stateTemplate.id,
+        roleId: null,
+        guards: [],
+        effects: [],
+      })
+      .returning(),
+    "workflow transition",
+  );
   await db
     .update(schema.workflowTable)
     .set({ activeVersionId: version.id })
@@ -205,6 +211,7 @@ export async function setupWorld() {
     workspaceId,
     project,
     type,
+    transition,
     started,
     projectMember,
     readerLead,
@@ -240,12 +247,14 @@ export async function snapshot() {
   const comments = await db.select().from(schema.commentTable);
   const watchers = await db.select().from(schema.watcherTable);
   const attachments = await db.select().from(schema.attachmentTable);
+  const approvals = await db.select().from(schema.approvalTable);
   const activity = await db.select().from(schema.activityTable);
   return JSON.stringify({
     items,
     comments: comments.length,
     watchers: watchers.length,
     attachments: attachments.length,
+    approvals: approvals.length,
     activity: activity.length,
   });
 }

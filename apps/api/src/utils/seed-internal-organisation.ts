@@ -1,6 +1,15 @@
-import { eq, isNotNull, sql } from "drizzle-orm";
-import db, { schema } from "../database";
+import type db from "../database";
+import type { schema } from "../database";
+import { executorOrDefault } from "../database/executor";
 import { isUniqueViolation } from "./is-unique-violation";
+import {
+  findInternalOrganisationId,
+  insertInternalOrganisation,
+  insertStaffPersonBatch,
+  insertStaffPersonIfAbsent,
+  listAllUserIds,
+  listUserIdsWithPerson,
+} from "./seed-defaults.repository";
 
 /**
  * The one internal `organisation` row every deployment needs — the operating company
@@ -52,13 +61,12 @@ export async function ensureInternalOrganisation(
   // callback's `tx` argument is a `PgTransaction`, structurally missing `$client` and a few
   // other members `typeof db` has -- but it has every method this function actually calls,
   // so this is the narrowest type that accepts both the plain pooled `db` and a `tx`.
-  dbOrTx: Pick<typeof db, "select" | "insert" | "transaction"> = db,
+  dbOrTx: Pick<
+    typeof db,
+    "select" | "insert" | "transaction"
+  > = executorOrDefault(),
 ): Promise<{ id: string }> {
-  const [existing] = await dbOrTx
-    .select({ id: schema.organisationTable.id })
-    .from(schema.organisationTable)
-    .where(eq(schema.organisationTable.isInternal, true))
-    .limit(1);
+  const existing = await findInternalOrganisationId(dbOrTx);
 
   if (existing) {
     return existing;
@@ -68,17 +76,11 @@ export async function ensureInternalOrganisation(
 
   try {
     const inserted = await dbOrTx.transaction(async (nested) => {
-      const [row] = await nested
-        .insert(schema.organisationTable)
-        .values({
-          key: INTERNAL_ORGANISATION_KEY,
-          name: INTERNAL_ORGANISATION_NAME,
-          isInternal: true,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning({ id: schema.organisationTable.id });
-      return row;
+      return insertInternalOrganisation(nested, {
+        key: INTERNAL_ORGANISATION_KEY,
+        name: INTERNAL_ORGANISATION_NAME,
+        now,
+      });
     });
 
     if (inserted) {
@@ -95,11 +97,7 @@ export async function ensureInternalOrganisation(
     // transaction (if any) is still healthy here -- fall through to re-read below.
   }
 
-  const [nowExisting] = await dbOrTx
-    .select({ id: schema.organisationTable.id })
-    .from(schema.organisationTable)
-    .where(eq(schema.organisationTable.isInternal, true))
-    .limit(1);
+  const nowExisting = await findInternalOrganisationId(dbOrTx);
 
   if (!nowExisting) {
     throw new Error(
@@ -114,19 +112,7 @@ export async function ensureInternalOrganisation(
 export async function ensureStaffPersonForUser(userId: string): Promise<void> {
   const internalOrganisation = await ensureInternalOrganisation();
   const now = new Date();
-  await db
-    .insert(schema.personTable)
-    .values({
-      userId,
-      organisationId: internalOrganisation.id,
-      side: "staff",
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoNothing({
-      target: [schema.personTable.userId],
-      where: sql`${schema.personTable.userId} is not null`,
-    });
+  await insertStaffPersonIfAbsent(userId, internalOrganisation.id, now);
 }
 
 /**
@@ -148,18 +134,13 @@ export async function seedInternalOrganisationAndStaffPersons() {
   try {
     const internalOrganisation = await ensureInternalOrganisation();
 
-    const users = await db
-      .select({ id: schema.userTable.id })
-      .from(schema.userTable);
+    const users = await listAllUserIds();
 
     if (users.length === 0) {
       return;
     }
 
-    const existingPersons = await db
-      .select({ userId: schema.personTable.userId })
-      .from(schema.personTable)
-      .where(isNotNull(schema.personTable.userId));
+    const existingPersons = await listUserIdsWithPerson();
 
     const existingUserIds = new Set(
       existingPersons
@@ -192,20 +173,7 @@ export async function seedInternalOrganisationAndStaffPersons() {
     // (mirrors seed-default-workspace-roles.ts's BATCH_SIZE reasoning).
     const BATCH_SIZE = 1000;
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      await db
-        .insert(schema.personTable)
-        .values(rows.slice(i, i + BATCH_SIZE))
-        // Matches the global partial unique index `person_user_unique`'s own predicate --
-        // Postgres only accepts this as a conflict arbiter when the `where` clause here
-        // is identical to the index's, and every row inserted here always has a
-        // non-null userId anyway (see the filter above). The arbiter is on `user_id`
-        // alone (not `organisation_id, user_id`) because the invariant is global: at
-        // most one `person` row per `user_id`, across every organisation, not just this
-        // one -- see the index's own comment in schema.ts.
-        .onConflictDoNothing({
-          target: [schema.personTable.userId],
-          where: sql`${schema.personTable.userId} is not null`,
-        });
+      await insertStaffPersonBatch(rows.slice(i, i + BATCH_SIZE));
     }
 
     console.log(

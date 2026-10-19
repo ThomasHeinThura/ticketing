@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
+import { lockWorkspaceRoleAssignment } from "../workspace-role-assignment.repository";
 import { WorkspaceRoleNotFoundError } from "./workspace-membership-errors";
-import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 import {
   RoleAssignedToMembersError,
   RoleNameReservedError,

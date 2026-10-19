@@ -15,6 +15,7 @@ import {
 } from "../database/schema";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import { PolicyVersionConflictError } from "./errors";
 import {
   type PolicyGoalCandidate,
   type PolicyGoalInput,
@@ -92,7 +93,7 @@ export async function getCalendarForEvaluation(
   calendarId: string,
   workspaceId: string,
 ) {
-  return await db
+  const rows = await db
     .select({
       timezone: serviceCalendarTable.timezone,
       windows: serviceCalendarTable.windows,
@@ -106,6 +107,17 @@ export async function getCalendarForEvaluation(
       ),
     )
     .limit(1);
+  type CalendarEvaluationRow = Omit<
+    (typeof rows)[number],
+    "windows" | "holidays"
+  > & { windows: JsonValue; holidays: JsonValue };
+  return rows.map(
+    (row): CalendarEvaluationRow => ({
+      ...row,
+      windows: row.windows as JsonValue,
+      holidays: row.holidays as JsonValue,
+    }),
+  );
 }
 
 export async function listGoalsForEvaluation(
@@ -328,16 +340,6 @@ export async function getPolicy(id: string, workspaceId: string) {
     )
     .limit(1);
   return policy ? loadPolicyResult(workspaceId, policy) : undefined;
-}
-
-export class PolicyVersionConflictError extends Error {
-  constructor(
-    public readonly assertedVersion: number,
-    public readonly currentVersion: number,
-  ) {
-    super("SLA policy version conflict");
-    this.name = "PolicyVersionConflictError";
-  }
 }
 
 function decodeCursor(cursor: string, workspaceId: string) {

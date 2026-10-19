@@ -19,6 +19,15 @@ import {
   taskTable,
   userTable,
 } from "../database/schema";
+import { lockTaskRowForIdentity } from "../task/repository";
+
+type NewTaskActivity = {
+  taskId: string;
+  type: string;
+  userId: string;
+  content: string | null;
+  eventData?: Record<string, unknown> | null;
+};
 
 function taskReach(
   identity: ResolvedIdentity,
@@ -49,35 +58,15 @@ function taskReach(
   );
 }
 
-/** Preserve the established task→project row-lock order with current persisted reach. */
-export async function lockTaskAndAssertProjectLive(
+/** Lock in task→project order and recheck the caller's current reach inside the write transaction. */
+export async function lockTaskAndAssertProjectLiveForActivity(
   executor: Executor,
   identity: ResolvedIdentity,
   taskId: string,
 ) {
-  const [task] = await executor
-    .select({
-      id: taskTable.id,
-      projectId: taskTable.projectId,
-      userId: taskTable.userId,
-      title: taskTable.title,
-    })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(
-      and(
-        eq(taskTable.id, taskId),
-        currentProjectReachPredicate(
-          identity,
-          projectTable.id,
-          projectTable.workspaceId,
-          projectTable.organisationId,
-          executor,
-        ),
-      ),
-    )
-    .for("update", { of: taskTable });
+  const task = await lockTaskRowForIdentity(executor, identity, taskId);
   if (!task) throw new HTTPException(404, { message: "Task not found" });
+
   const [project] = await executor
     .select({ id: projectTable.id })
     .from(projectTable)
@@ -100,20 +89,16 @@ export async function lockTaskAndAssertProjectLive(
   return task;
 }
 
-export type NewTaskActivity = {
-  taskId: string;
-  type: string;
-  userId: string;
-  content: string | null;
-  eventData?: Record<string, unknown> | null;
-};
+export const lockTaskAndAssertProjectLive =
+  lockTaskAndAssertProjectLiveForActivity;
 
-export async function insertTaskActivity(
+/** Insert the public route's activity only while its task remains live and reachable. */
+export async function insertTaskActivityForIdentity(
   executor: Executor,
   identity: ResolvedIdentity,
   values: NewTaskActivity,
 ) {
-  const select = executor
+  const selectedActivity = executor
     .select({
       id: sql`${sql.param(createId(), taskActivityTable.id)}`.as("id"),
       taskId: taskTable.id,
@@ -130,21 +115,10 @@ export async function insertTaskActivity(
         sql`${sql.param(values.eventData ?? null, taskActivityTable.eventData)}`.as(
           "eventData",
         ),
-      externalUserName:
-        sql`${sql.param(null, taskActivityTable.externalUserName)}`.as(
-          "externalUserName",
-        ),
-      externalUserAvatar:
-        sql`${sql.param(null, taskActivityTable.externalUserAvatar)}`.as(
-          "externalUserAvatar",
-        ),
-      externalSource:
-        sql`${sql.param(null, taskActivityTable.externalSource)}`.as(
-          "externalSource",
-        ),
-      externalUrl: sql`${sql.param(null, taskActivityTable.externalUrl)}`.as(
-        "externalUrl",
-      ),
+      externalUserName: sql`NULL`.as("externalUserName"),
+      externalUserAvatar: sql`NULL`.as("externalUserAvatar"),
+      externalSource: sql`NULL`.as("externalSource"),
+      externalUrl: sql`NULL`.as("externalUrl"),
     })
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
@@ -162,12 +136,14 @@ export async function insertTaskActivity(
         ),
       ),
     );
-  const [row] = await executor
+  const [activity] = await executor
     .insert(taskActivityTable)
-    .select(select)
+    .select(selectedActivity)
     .returning();
-  return row;
+  return activity;
 }
+
+export const insertTaskActivity = insertTaskActivityForIdentity;
 
 /** A task mutation and its history row must commit or roll back together. */
 export async function insertRequiredTaskActivity(
@@ -175,8 +151,29 @@ export async function insertRequiredTaskActivity(
   identity: ResolvedIdentity,
   values: NewTaskActivity,
 ) {
-  const activity = await insertTaskActivity(executor, identity, values);
+  const activity = await insertTaskActivityForIdentity(
+    executor,
+    identity,
+    values,
+  );
   if (!activity) throw new HTTPException(404, { message: "Task not found" });
+  return activity;
+}
+
+/** Store a task event already emitted by a successful write, even if archive wins delivery. */
+export async function insertTaskEventActivityFromSubscriber(
+  values: NewTaskActivity,
+) {
+  const [activity] = await db
+    .insert(taskActivityTable)
+    .values({
+      taskId: values.taskId,
+      type: values.type,
+      userId: values.userId,
+      content: values.content,
+      eventData: values.eventData ?? null,
+    })
+    .returning();
   return activity;
 }
 

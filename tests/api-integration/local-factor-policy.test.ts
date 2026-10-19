@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { auth } from "../../apps/api/src/auth";
@@ -19,9 +19,12 @@ import {
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import * as observability from "../../apps/api/src/instance/observability/runtime";
+import { currentTotpEnrollmentTransaction } from "../../apps/api/src/pending-action/credential-invalidation";
 import { lockPendingActionLifecycle } from "../../apps/api/src/pending-action/lifecycle-invalidation";
 import { createPendingAction } from "../../apps/api/src/pending-action/service";
+import { dbClockUtc } from "../../apps/api/src/utils/db-time";
 import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
+import * as ws from "../../apps/api/src/ws";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
@@ -120,7 +123,7 @@ async function prepareTotpEnrollmentFailureFixture(id: string) {
     },
     body: JSON.stringify({ email: user.email, password }),
   });
-  expect(signIn.status, await signIn.clone().text()).toBe(200);
+  expect(signIn.status).toBe(200);
   const cookie = signIn.headers
     .getSetCookie()
     .find((value) => value.startsWith("__Host-tdk_agent_session="))
@@ -135,13 +138,15 @@ async function prepareTotpEnrollmentFailureFixture(id: string) {
     },
     body: JSON.stringify({ password, issuer: "TaskDesk" }),
   });
-  expect(enabled.status, await enabled.clone().text()).toBe(200);
-  const enrollment = (await enabled.json()) as { totpURI: string };
+  expect(enabled.status).toBe(200);
+  const enrollment = (await enabled.json()) as {
+    totpURI: string;
+    backupCodes: string[];
+  };
   const secret = new URL(enrollment.totpURI).searchParams.get("secret");
   if (!secret) throw new Error("TOTP failure fixture has no secret");
-  const code = await createOTP(
-    Buffer.from(base32.decode(secret)).toString("utf8"),
-  ).totp();
+  const rawSecret = Buffer.from(base32.decode(secret)).toString("utf8");
+  const code = await createOTP(rawSecret).totp();
   const [session] = await db
     .select()
     .from(schema.sessionTable)
@@ -162,6 +167,8 @@ async function prepareTotpEnrollmentFailureFixture(id: string) {
     session,
     cookie,
     code,
+    rawSecret,
+    backupCodes: enrollment.backupCodes,
     actionId,
     verifyIp: nextTotpTestIp(),
   };
@@ -945,27 +952,760 @@ describe("instance local-factor policy API", () => {
     });
   });
 
+  it("verifies and rechecks a real TOTP proof inside the admitted step-up transaction", async () => {
+    const [user] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-step-up-totp-admission",
+        name: "Step-up TOTP Admission",
+        email: "factor-step-up-totp-admission@example.test",
+        role: "admin",
+      })
+      .returning();
+    if (!user) throw new Error("step-up TOTP user was not created");
+    await ensureStaffPersonForUser(user.id);
+    const password = "step-up-totp-password";
+    await db.insert(schema.accountTable).values({
+      id: "factor-step-up-totp-admission-account",
+      accountId: user.id,
+      providerId: "credential",
+      userId: user.id,
+      password: await bcrypt.hash(password, 4),
+    });
+    const { app } = createApp();
+    const signIn = await app.request("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": nextTotpTestIp(),
+      },
+      body: JSON.stringify({ email: user.email, password }),
+    });
+    expect(signIn.status).toBe(200);
+    const initialCookie = signIn.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    if (!initialCookie) throw new Error("step-up TOTP login cookie is missing");
+    const enabled = await app.request("/api/auth/two-factor/enable", {
+      method: "POST",
+      headers: { cookie: initialCookie, "content-type": "application/json" },
+      body: JSON.stringify({ password, issuer: "TaskDesk" }),
+    });
+    expect(enabled.status).toBe(200);
+    const enrollment = (await enabled.json()) as {
+      totpURI: string;
+      backupCodes: string[];
+    };
+    const secret = new URL(enrollment.totpURI).searchParams.get("secret");
+    if (!secret) throw new Error("step-up TOTP enrollment secret is missing");
+    const rawSecret = Buffer.from(base32.decode(secret)).toString("utf8");
+    const enrolled = await app.request("/api/auth/two-factor/verify-totp", {
+      method: "POST",
+      headers: {
+        cookie: initialCookie,
+        "content-type": "application/json",
+        "x-forwarded-for": nextTotpTestIp(),
+      },
+      body: JSON.stringify({ code: await createOTP(rawSecret).totp() }),
+    });
+    expect(enrolled.status).toBe(200);
+    const sessionCookie = enrolled.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    if (!sessionCookie)
+      throw new Error("enrolled TOTP session cookie is missing");
+    const target = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-step-up-totp-target",
+        name: "Step-up TOTP Target",
+        email: "factor-step-up-totp-target@example.test",
+        role: "user",
+        twoFactorEnabled: true,
+      })
+      .returning();
+    if (!target[0]) throw new Error("step-up TOTP target was not created");
+    const verificationNote = "Verified the account recovery request.";
+    const challenge = await csrfRequest(
+      app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target[0].id,
+          verificationNote,
+        }),
+      },
+      sessionCookie,
+    );
+    expect(challenge.status).toBe(200);
+    const binding = (await challenge.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+    const proof = await csrfRequest(
+      app,
+      "/api/me/step-up",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target[0].id,
+          verificationNote,
+          challengeId: binding.challengeId,
+          nonce: binding.nonce,
+          method: "totp",
+          code: await createOTP(rawSecret).totp(),
+        }),
+      },
+      sessionCookie,
+    );
+    expect(proof.status).toBe(200);
+    const issued = await db.query.stepUpConfirmationTable.findFirst({
+      where: eq(schema.stepUpConfirmationTable.id, binding.challengeId),
+    });
+    expect(issued).toMatchObject({ state: "issued", authMethod: "totp" });
+
+    const backupChallenge = await csrfRequest(
+      app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target[0].id,
+          verificationNote,
+        }),
+      },
+      sessionCookie,
+    );
+    expect(backupChallenge.status).toBe(200);
+    const backupBinding = (await backupChallenge.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+    const [backupCodesBeforeFailure] = await db
+      .select({ backupCodes: schema.twoFactorTable.backupCodes })
+      .from(schema.twoFactorTable)
+      .where(eq(schema.twoFactorTable.userId, user.id));
+    const verifyBackup = vi.spyOn(auth.api, "verifyBackupCode");
+    let failedMintProof: Response;
+    try {
+      await db.execute(
+        sql`CREATE SEQUENCE step_up_provider_backend_pid START 1`,
+      );
+      await db.execute(sql`CREATE SEQUENCE step_up_mint_backend_pid START 1`);
+      await db.execute(sql`
+        CREATE FUNCTION record_step_up_provider_backend() RETURNS trigger
+        LANGUAGE plpgsql AS $$
+        BEGIN
+          IF OLD.backup_codes IS DISTINCT FROM NEW.backup_codes THEN
+            PERFORM setval('step_up_provider_backend_pid', pg_backend_pid(), true);
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `);
+      await db.execute(sql`
+        CREATE TRIGGER record_step_up_provider_backend
+        AFTER UPDATE ON two_factor
+        FOR EACH ROW EXECUTE FUNCTION record_step_up_provider_backend()
+      `);
+      await db.execute(sql`
+        CREATE FUNCTION fail_step_up_mint_after_provider() RETURNS trigger
+        LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.state = 'issued' THEN
+            PERFORM setval('step_up_mint_backend_pid', pg_backend_pid(), true);
+            RAISE EXCEPTION 'controlled proof mint failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `);
+      await db.execute(sql`
+        CREATE TRIGGER fail_step_up_mint_after_provider
+        BEFORE UPDATE ON step_up_confirmation
+        FOR EACH ROW EXECUTE FUNCTION fail_step_up_mint_after_provider()
+      `);
+      failedMintProof = await csrfRequest(
+        app,
+        "/api/me/step-up",
+        {
+          method: "POST",
+          headers: {
+            cookie: sessionCookie,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "operation",
+            operation: "mfa_reset",
+            userId: target[0].id,
+            verificationNote,
+            challengeId: backupBinding.challengeId,
+            nonce: backupBinding.nonce,
+            method: "backup_code",
+            code: enrollment.backupCodes[0],
+          }),
+        },
+        sessionCookie,
+      );
+      expect(failedMintProof.status).toBeGreaterThanOrEqual(500);
+      expect(verifyBackup).toHaveBeenCalledTimes(1);
+      const backendIds = await db.execute<{
+        provider_pid: string;
+        mint_pid: string;
+      }>(sql`
+        SELECT
+          (SELECT last_value::text FROM step_up_provider_backend_pid) AS provider_pid,
+          (SELECT last_value::text FROM step_up_mint_backend_pid) AS mint_pid
+      `);
+      expect(backendIds.rows[0]?.provider_pid).not.toBe("1");
+      expect(backendIds.rows[0]?.provider_pid).toBe(
+        backendIds.rows[0]?.mint_pid,
+      );
+      const [backupCodesAfterFailure] = await db
+        .select({ backupCodes: schema.twoFactorTable.backupCodes })
+        .from(schema.twoFactorTable)
+        .where(eq(schema.twoFactorTable.userId, user.id));
+      expect(backupCodesAfterFailure?.backupCodes).not.toBe(
+        backupCodesBeforeFailure?.backupCodes,
+      );
+      expect(
+        await db.query.stepUpConfirmationTable.findFirst({
+          where: eq(
+            schema.stepUpConfirmationTable.id,
+            backupBinding.challengeId,
+          ),
+        }),
+      ).toMatchObject({ state: "challenge" });
+      const expiredAfterMintFailure = await db.execute<{
+        expired: boolean;
+      }>(sql`
+        SELECT challenge_expires_at <= clock_timestamp() AS expired
+        FROM step_up_confirmation WHERE id = ${backupBinding.challengeId}
+      `);
+      expect(expiredAfterMintFailure.rows[0]?.expired).toBe(true);
+    } finally {
+      await db.execute(
+        sql`DROP TRIGGER IF EXISTS fail_step_up_mint_after_provider ON step_up_confirmation`,
+      );
+      await db.execute(
+        sql`DROP FUNCTION IF EXISTS fail_step_up_mint_after_provider()`,
+      );
+      await db.execute(
+        sql`DROP TRIGGER IF EXISTS record_step_up_provider_backend ON two_factor`,
+      );
+      await db.execute(
+        sql`DROP FUNCTION IF EXISTS record_step_up_provider_backend()`,
+      );
+      await db.execute(
+        sql`DROP SEQUENCE IF EXISTS step_up_provider_backend_pid`,
+      );
+      await db.execute(sql`DROP SEQUENCE IF EXISTS step_up_mint_backend_pid`);
+      verifyBackup.mockRestore();
+    }
+
+    const retryAfterMintFailure = await csrfRequest(
+      app,
+      "/api/me/step-up",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target[0].id,
+          verificationNote,
+          challengeId: backupBinding.challengeId,
+          nonce: backupBinding.nonce,
+          method: "backup_code",
+          code: enrollment.backupCodes[1],
+        }),
+      },
+      sessionCookie,
+    );
+    expect(retryAfterMintFailure.status).toBe(403);
+    const newBackupChallenge = await csrfRequest(
+      app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target[0].id,
+          verificationNote,
+        }),
+      },
+      sessionCookie,
+    );
+    expect(newBackupChallenge.status).toBe(200);
+    const newBackupBinding = (await newBackupChallenge.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+    const backupProof = await csrfRequest(
+      app,
+      "/api/me/step-up",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target[0].id,
+          verificationNote,
+          challengeId: newBackupBinding.challengeId,
+          nonce: newBackupBinding.nonce,
+          method: "backup_code",
+          code: enrollment.backupCodes[1],
+        }),
+      },
+      sessionCookie,
+    );
+    expect(backupProof.status).toBe(200);
+    expect(
+      await db.query.stepUpConfirmationTable.findFirst({
+        where: eq(
+          schema.stepUpConfirmationTable.id,
+          newBackupBinding.challengeId,
+        ),
+      }),
+    ).toMatchObject({ state: "issued", authMethod: "backup_code" });
+
+    const replayChallenge = await csrfRequest(
+      app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target[0].id,
+          verificationNote,
+        }),
+      },
+      sessionCookie,
+    );
+    expect(replayChallenge.status).toBe(200);
+    const replayBinding = (await replayChallenge.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+    const replayProof = await csrfRequest(
+      app,
+      "/api/me/step-up",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target[0].id,
+          verificationNote,
+          challengeId: replayBinding.challengeId,
+          nonce: replayBinding.nonce,
+          method: "backup_code",
+          code: enrollment.backupCodes[1],
+        }),
+      },
+      sessionCookie,
+    );
+    expect(replayProof.status).toBe(403);
+    expect(
+      await db.query.stepUpConfirmationTable.findFirst({
+        where: eq(schema.stepUpConfirmationTable.id, replayBinding.challengeId),
+      }),
+    ).toMatchObject({ state: "challenge" });
+    expect(
+      await db
+        .select({ id: schema.sessionTable.id })
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.userId, user.id)),
+    ).toHaveLength(1);
+  });
+
+  it("keeps a successful backup-code attempt one-shot when admin revalidation denies minting", async () => {
+    const fixture = await prepareTotpEnrollmentFailureFixture(
+      "factor-step-up-postcheck-denial",
+    );
+    const enrolled = await fixture.app.request(
+      "/api/auth/two-factor/verify-totp",
+      {
+        method: "POST",
+        headers: {
+          cookie: fixture.cookie,
+          "content-type": "application/json",
+          "x-forwarded-for": nextTotpTestIp(),
+        },
+        body: JSON.stringify({
+          code: await createOTP(fixture.rawSecret).totp(),
+        }),
+      },
+    );
+    expect(enrolled.status).toBe(200);
+    const sessionCookie = enrolled.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    if (!sessionCookie) throw new Error("post-check session cookie is missing");
+    const [target] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-step-up-postcheck-target",
+        name: "Post-check Target",
+        email: "factor-step-up-postcheck-target@example.test",
+        role: "user",
+        twoFactorEnabled: true,
+      })
+      .returning();
+    if (!target) throw new Error("post-check target was not created");
+    const verificationNote = "Verify the post-check denial case.";
+    const challengeResponse = await csrfRequest(
+      fixture.app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target.id,
+          verificationNote,
+        }),
+      },
+      sessionCookie,
+    );
+    expect(challengeResponse.status).toBe(200);
+    const binding = (await challengeResponse.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+    const [backupBefore] = await db
+      .select({ backupCodes: schema.twoFactorTable.backupCodes })
+      .from(schema.twoFactorTable)
+      .where(eq(schema.twoFactorTable.userId, fixture.user.id));
+    const originalVerifyBackup = auth.api.verifyBackupCode;
+    let verifierCalls = 0;
+    const verifyBackup = vi
+      .spyOn(auth.api, "verifyBackupCode")
+      .mockImplementation(async (options) => {
+        verifierCalls += 1;
+        const result = await originalVerifyBackup(options);
+        if (verifierCalls === 1) {
+          await db
+            .update(schema.userTable)
+            .set({ role: "user" })
+            .where(eq(schema.userTable.id, fixture.user.id));
+        }
+        return result;
+      });
+    try {
+      const denied = await csrfRequest(
+        fixture.app,
+        "/api/me/step-up",
+        {
+          method: "POST",
+          headers: {
+            cookie: sessionCookie,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "operation",
+            operation: "mfa_reset",
+            userId: target.id,
+            verificationNote,
+            challengeId: binding.challengeId,
+            nonce: binding.nonce,
+            method: "backup_code",
+            code: fixture.backupCodes[0],
+          }),
+        },
+        sessionCookie,
+      );
+      expect(denied.status).toBe(403);
+      expect(verifierCalls).toBe(1);
+      await db
+        .update(schema.userTable)
+        .set({ role: "admin" })
+        .where(eq(schema.userTable.id, fixture.user.id));
+      const [backupAfter] = await db
+        .select({ backupCodes: schema.twoFactorTable.backupCodes })
+        .from(schema.twoFactorTable)
+        .where(eq(schema.twoFactorTable.userId, fixture.user.id));
+      expect(backupAfter?.backupCodes).not.toBe(backupBefore?.backupCodes);
+      const expired = await db.execute<{ expired: boolean }>(sql`
+        SELECT challenge_expires_at <= clock_timestamp() AS expired
+        FROM step_up_confirmation WHERE id = ${binding.challengeId}
+      `);
+      expect(expired.rows[0]?.expired).toBe(true);
+
+      const retry = await csrfRequest(
+        fixture.app,
+        "/api/me/step-up",
+        {
+          method: "POST",
+          headers: {
+            cookie: sessionCookie,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "operation",
+            operation: "mfa_reset",
+            userId: target.id,
+            verificationNote,
+            challengeId: binding.challengeId,
+            nonce: binding.nonce,
+            method: "backup_code",
+            code: fixture.backupCodes[1],
+          }),
+        },
+        sessionCookie,
+      );
+      expect(retry.status).toBe(403);
+      expect(verifierCalls).toBe(1);
+      const freshChallenge = await csrfRequest(
+        fixture.app,
+        "/api/me/step-up/challenges",
+        {
+          method: "POST",
+          headers: {
+            cookie: sessionCookie,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "operation",
+            operation: "mfa_reset",
+            userId: target.id,
+            verificationNote,
+          }),
+        },
+        sessionCookie,
+      );
+      expect(freshChallenge.status).toBe(200);
+      const freshBinding = (await freshChallenge.json()) as {
+        challengeId: string;
+        nonce: string;
+      };
+      const freshProof = await csrfRequest(
+        fixture.app,
+        "/api/me/step-up",
+        {
+          method: "POST",
+          headers: {
+            cookie: sessionCookie,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "operation",
+            operation: "mfa_reset",
+            userId: target.id,
+            verificationNote,
+            challengeId: freshBinding.challengeId,
+            nonce: freshBinding.nonce,
+            method: "backup_code",
+            code: fixture.backupCodes[1],
+          }),
+        },
+        sessionCookie,
+      );
+      expect(freshProof.status).toBe(200);
+      expect(verifierCalls).toBe(2);
+    } finally {
+      verifyBackup.mockRestore();
+      await db
+        .update(schema.userTable)
+        .set({ role: "admin" })
+        .where(eq(schema.userTable.id, fixture.user.id));
+    }
+  });
+
+  it("rolls a real backup-code provider write back when its SQL update fails", async () => {
+    const fixture = await prepareTotpEnrollmentFailureFixture(
+      "factor-step-up-provider-sql-failure",
+    );
+    const enrolled = await fixture.app.request(
+      "/api/auth/two-factor/verify-totp",
+      {
+        method: "POST",
+        headers: {
+          cookie: fixture.cookie,
+          "content-type": "application/json",
+          "x-forwarded-for": nextTotpTestIp(),
+        },
+        body: JSON.stringify({
+          code: await createOTP(fixture.rawSecret).totp(),
+        }),
+      },
+    );
+    expect(enrolled.status).toBe(200);
+    const sessionCookie = enrolled.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    if (!sessionCookie)
+      throw new Error("provider-failure session cookie is missing");
+    const [target] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-step-up-provider-sql-target",
+        name: "Provider SQL Target",
+        email: "factor-step-up-provider-sql-target@example.test",
+        role: "user",
+        twoFactorEnabled: true,
+      })
+      .returning();
+    if (!target) throw new Error("provider-failure target was not created");
+    const verificationNote = "Verify provider rollback on SQL failure.";
+    const challengeResponse = await csrfRequest(
+      fixture.app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target.id,
+          verificationNote,
+        }),
+      },
+      sessionCookie,
+    );
+    expect(challengeResponse.status).toBe(200);
+    const binding = (await challengeResponse.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+    const [backupBefore] = await db
+      .select({ backupCodes: schema.twoFactorTable.backupCodes })
+      .from(schema.twoFactorTable)
+      .where(eq(schema.twoFactorTable.userId, fixture.user.id));
+    const publication = vi
+      .spyOn(ws, "invalidateNativeAuthorization")
+      .mockResolvedValue(undefined);
+    try {
+      await db.execute(sql`
+        CREATE FUNCTION fail_step_up_backup_code_write() RETURNS trigger
+        LANGUAGE plpgsql AS $$
+        BEGIN
+          IF OLD.user_id = 'factor-step-up-provider-sql-failure'
+            AND OLD.backup_codes IS DISTINCT FROM NEW.backup_codes THEN
+            RAISE EXCEPTION 'controlled provider backup-code write failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `);
+      await db.execute(sql`
+        CREATE TRIGGER fail_step_up_backup_code_write
+        BEFORE UPDATE ON two_factor
+        FOR EACH ROW EXECUTE FUNCTION fail_step_up_backup_code_write()
+      `);
+      const proof = await csrfRequest(
+        fixture.app,
+        "/api/me/step-up",
+        {
+          method: "POST",
+          headers: {
+            cookie: sessionCookie,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "operation",
+            operation: "mfa_reset",
+            userId: target.id,
+            verificationNote,
+            challengeId: binding.challengeId,
+            nonce: binding.nonce,
+            method: "backup_code",
+            code: fixture.backupCodes[0],
+          }),
+        },
+        sessionCookie,
+      );
+      expect(proof.status).toBe(403);
+      const [backupAfter] = await db
+        .select({ backupCodes: schema.twoFactorTable.backupCodes })
+        .from(schema.twoFactorTable)
+        .where(eq(schema.twoFactorTable.userId, fixture.user.id));
+      expect(backupAfter?.backupCodes).toBe(backupBefore?.backupCodes);
+      const challenge = await db.query.stepUpConfirmationTable.findFirst({
+        where: eq(schema.stepUpConfirmationTable.id, binding.challengeId),
+      });
+      expect(challenge?.state).toBe("challenge");
+      const expired = await db.execute<{ expired: boolean }>(sql`
+        SELECT challenge_expires_at <= clock_timestamp() AS expired
+        FROM step_up_confirmation WHERE id = ${binding.challengeId}
+      `);
+      expect(expired.rows[0]?.expired).toBe(true);
+      expect(publication).not.toHaveBeenCalled();
+    } finally {
+      publication.mockRestore();
+      await db.execute(
+        sql`DROP TRIGGER IF EXISTS fail_step_up_backup_code_write ON two_factor`,
+      );
+      await db.execute(
+        sql`DROP FUNCTION IF EXISTS fail_step_up_backup_code_write()`,
+      );
+    }
+  });
+
   it("rolls back TOTP factor/session changes when the PA-9 outbox write fails", async () => {
     const fixture = await prepareTotpEnrollmentFailureFixture(
       "factor-totp-outbox-rollback",
     );
     const auditFailure = vi.spyOn(observability, "recordAuditWriteFailure");
-    await db.execute(
-      sql.raw(`
-      CREATE OR REPLACE FUNCTION fail_totp_pending_action_outbox()
-      RETURNS trigger LANGUAGE plpgsql AS $$
-      BEGIN
-        IF NEW.kind = 'pending_action.decided' THEN
-          RAISE EXCEPTION 'test TOTP pending-action outbox failure';
-        END IF;
-        RETURN NEW;
-      END $$;
-      CREATE TRIGGER fail_totp_pending_action_outbox
-      BEFORE INSERT ON outbox FOR EACH ROW
-      EXECUTE FUNCTION fail_totp_pending_action_outbox();
-    `),
-    );
+    const publication = vi
+      .spyOn(ws, "invalidateNativeAuthorization")
+      .mockResolvedValue(undefined);
     try {
+      await db.execute(sql`
+        CREATE SEQUENCE totp_session_delete_observed START 1
+      `);
+      await db.execute(sql`
+        CREATE FUNCTION observe_totp_session_delete() RETURNS trigger
+        LANGUAGE plpgsql AS $$
+        BEGIN
+          IF OLD.user_id = 'factor-totp-outbox-rollback' THEN
+            PERFORM nextval('totp_session_delete_observed');
+          END IF;
+          RETURN OLD;
+        END;
+        $$
+      `);
+      await db.execute(sql`
+        CREATE TRIGGER observe_totp_session_delete
+        BEFORE DELETE ON session
+        FOR EACH ROW EXECUTE FUNCTION observe_totp_session_delete()
+      `);
+      await db.execute(
+        sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_totp_pending_action_outbox()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.kind = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'test TOTP pending-action outbox failure';
+          END IF;
+          RETURN NEW;
+        END $$;
+        CREATE TRIGGER fail_totp_pending_action_outbox
+        BEFORE INSERT ON outbox FOR EACH ROW
+        EXECUTE FUNCTION fail_totp_pending_action_outbox();
+      `),
+      );
       const response = await fixture.app.request(
         "/api/auth/two-factor/verify-totp",
         {
@@ -994,6 +1734,16 @@ describe("instance local-factor policy API", () => {
           where: eq(schema.sessionTable.id, fixture.session.id),
         }),
       ).toBeDefined();
+      const deletedSession = await db.execute<{
+        last_value: string;
+        is_called: boolean;
+      }>(
+        sql`SELECT last_value::text, is_called FROM totp_session_delete_observed`,
+      );
+      expect(deletedSession.rows[0]).toMatchObject({
+        last_value: "1",
+        is_called: true,
+      });
       expect(
         await db.query.pendingActionTable.findFirst({
           where: eq(schema.pendingActionTable.id, fixture.actionId),
@@ -1006,6 +1756,7 @@ describe("instance local-factor policy API", () => {
           .where(eq(schema.outboxTable.kind, "pending_action.decided")),
       ).toHaveLength(0);
       expect(auditFailure).not.toHaveBeenCalled();
+      expect(publication).not.toHaveBeenCalled();
     } finally {
       await db.execute(
         sql`DROP TRIGGER IF EXISTS fail_totp_pending_action_outbox ON outbox`,
@@ -1013,7 +1764,236 @@ describe("instance local-factor policy API", () => {
       await db.execute(
         sql`DROP FUNCTION IF EXISTS fail_totp_pending_action_outbox()`,
       );
+      await db.execute(
+        sql`DROP TRIGGER IF EXISTS observe_totp_session_delete ON session`,
+      );
+      await db.execute(
+        sql`DROP FUNCTION IF EXISTS observe_totp_session_delete()`,
+      );
+      await db.execute(
+        sql`DROP SEQUENCE IF EXISTS totp_session_delete_observed`,
+      );
       auditFailure.mockRestore();
+      publication.mockRestore();
+    }
+  });
+
+  it("discards native invalidation when rejected TOTP verification rolls back expired-session cleanup", async () => {
+    const fixture = await prepareTotpEnrollmentFailureFixture(
+      "factor-totp-expired-session-hook-rollback",
+    );
+    const enrolled = await fixture.app.request(
+      "/api/auth/two-factor/verify-totp",
+      {
+        method: "POST",
+        headers: {
+          cookie: fixture.cookie,
+          "content-type": "application/json",
+          "x-forwarded-for": nextTotpTestIp(),
+        },
+        body: JSON.stringify({
+          code: await createOTP(fixture.rawSecret).totp(),
+        }),
+      },
+    );
+    expect(enrolled.status).toBe(200);
+    const sessionCookie = enrolled.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    if (!sessionCookie) throw new Error("step-up session cookie is missing");
+    const authenticatedSession = await auth.api.getSession({
+      headers: new Headers({ cookie: sessionCookie }),
+      query: { disableCookieCache: true, disableRefresh: true },
+    });
+    if (
+      !authenticatedSession ||
+      authenticatedSession.user.id !== fixture.user.id
+    ) {
+      throw new Error("enrolled actor session could not be resolved");
+    }
+    const [originalSession] = await db
+      .select({
+        id: schema.sessionTable.id,
+        expiresAt: schema.sessionTable.expiresAt,
+      })
+      .from(schema.sessionTable)
+      .where(
+        and(
+          eq(schema.sessionTable.userId, fixture.user.id),
+          eq(schema.sessionTable.id, authenticatedSession.session.id),
+          gt(schema.sessionTable.expiresAt, dbClockUtc()),
+        ),
+      )
+      .limit(1);
+    if (!originalSession)
+      throw new Error("original live session was not found");
+
+    const [target] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-totp-expired-session-target",
+        name: "Expired Session Target",
+        email: "factor-totp-expired-session-target@example.test",
+        role: "user",
+        twoFactorEnabled: true,
+      })
+      .returning();
+    if (!target) throw new Error("expired-session target was not created");
+    const verificationNote = "Verify expired-session cleanup rollback.";
+    const challengeResponse = await csrfRequest(
+      fixture.app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target.id,
+          verificationNote,
+        }),
+      },
+      sessionCookie,
+    );
+    expect(challengeResponse.status).toBe(200);
+    const binding = (await challengeResponse.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+
+    let publication: { mockRestore(): void } | undefined;
+    let verifyTOTP: { mockRestore(): void } | undefined;
+    let publicationCalls = 0;
+    let providerRejected = false;
+    try {
+      await db.execute(sql`
+        CREATE SEQUENCE step_up_expired_session_delete_observed START 1
+      `);
+      await db.execute(sql`
+        CREATE FUNCTION observe_step_up_expired_session_delete() RETURNS trigger
+        LANGUAGE plpgsql AS $$
+        BEGIN
+          IF OLD.user_id = 'factor-totp-expired-session-hook-rollback' THEN
+            PERFORM nextval('step_up_expired_session_delete_observed');
+          END IF;
+          RETURN OLD;
+        END;
+        $$
+      `);
+      await db.execute(sql`
+        CREATE TRIGGER observe_step_up_expired_session_delete
+        BEFORE DELETE ON session
+        FOR EACH ROW EXECUTE FUNCTION observe_step_up_expired_session_delete()
+      `);
+
+      publication = vi
+        .spyOn(ws, "invalidateNativeAuthorization")
+        .mockImplementation(async () => {
+          publicationCalls += 1;
+        });
+      const originalVerifyTOTP = auth.api.verifyTOTP;
+      let providerCalls = 0;
+      verifyTOTP = vi
+        .spyOn(auth.api, "verifyTOTP")
+        .mockImplementation(async (options) => {
+          providerCalls += 1;
+          const executor = currentTotpEnrollmentTransaction();
+          const expired = await executor
+            .update(schema.sessionTable)
+            .set({
+              expiresAt: sql`(${dbClockUtc()} - interval '1 minute')`,
+            })
+            .where(
+              and(
+                eq(schema.sessionTable.id, originalSession.id),
+                eq(schema.sessionTable.userId, fixture.user.id),
+                gt(schema.sessionTable.expiresAt, dbClockUtc()),
+              ),
+            )
+            .returning({ id: schema.sessionTable.id });
+          expect(expired).toHaveLength(1);
+          try {
+            return await originalVerifyTOTP(options);
+          } catch (error) {
+            providerRejected = true;
+            throw error;
+          }
+        });
+
+      const proof = await csrfRequest(
+        fixture.app,
+        "/api/me/step-up",
+        {
+          method: "POST",
+          headers: {
+            cookie: sessionCookie,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "operation",
+            operation: "mfa_reset",
+            userId: target.id,
+            verificationNote,
+            challengeId: binding.challengeId,
+            nonce: binding.nonce,
+            method: "totp",
+            code: await createOTP(fixture.rawSecret).totp(),
+          }),
+        },
+        sessionCookie,
+      );
+      expect(proof.status).toBe(403);
+      expect(providerCalls).toBe(1);
+      expect(providerRejected).toBe(true);
+
+      const deleteAttempts = await db.execute<{
+        last_value: string;
+        is_called: boolean;
+      }>(sql`
+        SELECT last_value::text, is_called
+        FROM step_up_expired_session_delete_observed
+      `);
+      expect(deleteAttempts.rows[0]).toMatchObject({
+        last_value: "1",
+        is_called: true,
+      });
+      const [restoredSession] = await db
+        .select({
+          id: schema.sessionTable.id,
+          expiresAt: schema.sessionTable.expiresAt,
+        })
+        .from(schema.sessionTable)
+        .where(
+          and(
+            eq(schema.sessionTable.id, originalSession.id),
+            gt(schema.sessionTable.expiresAt, dbClockUtc()),
+          ),
+        )
+        .limit(1);
+      expect(restoredSession).toEqual(originalSession);
+      const storedChallenge = await db.query.stepUpConfirmationTable.findFirst({
+        where: eq(schema.stepUpConfirmationTable.id, binding.challengeId),
+      });
+      expect(storedChallenge?.state).toBe("challenge");
+      const challengeExpired = await db.execute<{ expired: boolean }>(sql`
+        SELECT challenge_expires_at <= clock_timestamp() AS expired
+        FROM step_up_confirmation WHERE id = ${binding.challengeId}
+      `);
+      expect(challengeExpired.rows[0]?.expired).toBe(true);
+      expect(publicationCalls).toBe(0);
+    } finally {
+      verifyTOTP?.mockRestore();
+      publication?.mockRestore();
+      await db.execute(
+        sql`DROP TRIGGER IF EXISTS observe_step_up_expired_session_delete ON session`,
+      );
+      await db.execute(
+        sql`DROP FUNCTION IF EXISTS observe_step_up_expired_session_delete()`,
+      );
+      await db.execute(
+        sql`DROP SEQUENCE IF EXISTS step_up_expired_session_delete_observed`,
+      );
     }
   });
 

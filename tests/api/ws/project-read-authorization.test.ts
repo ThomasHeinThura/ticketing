@@ -1,38 +1,53 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  rows: [] as unknown[],
+  rows: [] as Array<{ workspaceId: string; organisationId: string | null }>,
   resolveIdentity: vi.fn(),
   evaluateProjectRead: vi.fn(),
+  findReachableLiveProject: vi.fn(),
 }));
 
-vi.mock("../../../apps/api/src/database", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("../../../apps/api/src/database")>();
-  const chain = {
-    select: () => chain,
-    from: () => chain,
-    where: () => chain,
-    limit: async () => mocks.rows,
-  };
-  return { ...actual, default: chain };
-});
 vi.mock("../../../apps/api/src/permissions/resolve-identity", () => ({
   resolveIdentity: mocks.resolveIdentity,
 }));
 vi.mock("../../../apps/api/src/utils/has-project-reach", () => ({
   evaluateProjectRead: mocks.evaluateProjectRead,
 }));
-vi.mock("../../../apps/api/src/utils/workspace-access-middleware", () => ({
-  reachableWorkspacePredicate: () => undefined,
+vi.mock("../../../apps/api/src/ws/repository", () => ({
+  findReachableLiveProject: mocks.findReachableLiveProject,
 }));
 
 import { authorizeProjectSocketRead } from "../../../apps/api/src/ws/project-read-authorization";
 
+const identity: ResolvedIdentity = {
+  userId: "u1",
+  personId: "person-1",
+  side: "staff",
+  organisationId: "org-staff",
+  portal: "agent",
+  credential: "session",
+  memberships: [{ scope: "workspace", scopeId: "ws-1", seesAll: false }],
+  teamIds: [],
+  reach: { kind: "membership" },
+  authority: [
+    {
+      roleKey: "member",
+      scope: "workspace",
+      scopeId: "ws-1",
+      rank: 40,
+      capabilities: ["project:read"],
+    },
+  ],
+};
+
 describe("authorizeProjectSocketRead decision inputs (#748)", () => {
   beforeEach(() => {
     mocks.rows = [{ workspaceId: "ws-1", organisationId: "org-customer" }];
-    mocks.resolveIdentity.mockReset().mockResolvedValue({ identity: true });
+    mocks.resolveIdentity.mockReset().mockResolvedValue(identity);
+    mocks.findReachableLiveProject
+      .mockReset()
+      .mockImplementation(async () => mocks.rows[0]);
     mocks.evaluateProjectRead
       .mockReset()
       .mockReturnValue({ reachable: true, capable: true });
@@ -42,8 +57,9 @@ describe("authorizeProjectSocketRead decision inputs (#748)", () => {
     await expect(
       authorizeProjectSocketRead({ userId: "u1" }, "p1"),
     ).resolves.toEqual({ projectId: "p1", workspaceId: "ws-1" });
+    expect(mocks.findReachableLiveProject).toHaveBeenCalledWith(identity, "p1");
     expect(mocks.evaluateProjectRead).toHaveBeenCalledWith(
-      { identity: true },
+      identity,
       "project:read",
       "project",
       {
@@ -104,6 +120,7 @@ describe("authorizeProjectSocketRead decision inputs (#748)", () => {
         capabilities: ["project:read", "work_item:read"],
       },
     });
+    expect(mocks.findReachableLiveProject).toHaveBeenCalledWith(identity, "p1");
   });
 
   it("never reaches the capability check for a missing project or identity", async () => {
@@ -113,9 +130,11 @@ describe("authorizeProjectSocketRead decision inputs (#748)", () => {
     ).resolves.toBeNull();
     mocks.rows = [{ workspaceId: "ws-1", organisationId: null }];
     mocks.resolveIdentity.mockResolvedValue(null);
+    mocks.findReachableLiveProject.mockClear();
     await expect(
       authorizeProjectSocketRead({ userId: "u1" }, "p1"),
     ).resolves.toBeNull();
     expect(mocks.evaluateProjectRead).not.toHaveBeenCalled();
+    expect(mocks.findReachableLiveProject).not.toHaveBeenCalled();
   });
 });

@@ -1,9 +1,75 @@
-import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import { policyShadowEnabled } from "../permissions/shadow-config";
+import {
+  evaluateProjectRead,
+  projectCapabilityRefused,
+  resolveCallerIdentity,
+} from "../utils/has-project-reach";
+import { isCustomerPrincipal } from "../utils/is-customer-principal";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { cannedResponsePolicies } from "./policy";
+import {
+  findCannedResponseWorkItem,
+  findCannedResponseWorkspaceId,
+} from "./repository";
+
+export function requireCannedResponseListReach() {
+  return async (c: Context, next: Next) => {
+    const userId = c.get("userId");
+    if (!userId) throw new HTTPException(401, { message: "Unauthorized" });
+    const workItemKey = c.req.query("workItemKey");
+    if (!workItemKey || workItemKey.includes("\u0000")) {
+      throw new HTTPException(400, { message: "Invalid work item key" });
+    }
+    const identity = await resolveCallerIdentity(c, userId);
+    if (!identity) throw new HTTPException(401, { message: "Unauthorized" });
+    const target = await findCannedResponseWorkItem(identity, workItemKey);
+    if (!target)
+      throw new HTTPException(404, { message: "Work item not found" });
+    c.set("workspaceId", target.workspaceId);
+    c.set("workspaceIdSource", "row");
+    c.set("workItemId", target.id);
+    c.set("projectId", target.projectId);
+    c.set("policyScopeResource", "work_item");
+    if (policyShadowEnabled) {
+      c.set("projectReachFacts", {
+        projectId: target.projectId,
+        workspaceId: target.workspaceId,
+        organisationId: target.organisationId,
+        workItemId: target.id,
+        ancestorProjectIds: [],
+        ownerTeamId: null,
+      });
+    }
+    const policy = cannedResponsePolicies["GET /api/canned-responses"];
+    const decision = evaluateProjectRead(
+      identity,
+      policy.capability,
+      policy.scope,
+      {
+        projectId: target.projectId,
+        workspaceId: target.workspaceId,
+        organisationId: target.organisationId,
+        workItemId: target.id,
+        ancestorProjectIds: [],
+        ownerTeamId: null,
+      },
+    );
+    if (!decision?.reachable)
+      throw new HTTPException(404, { message: "Work item not found" });
+    if (
+      projectCapabilityRefused(decision, { isApiKey: Boolean(c.get("apiKey")) })
+    ) {
+      throw new HTTPException(403, { message: "Insufficient permissions" });
+    }
+    if (await isCustomerPrincipal(userId, target.workspaceId)) {
+      throw new HTTPException(403, { message: "Insufficient permissions" });
+    }
+    return next();
+  };
+}
 
 /**
  * `PATCH|DELETE /api/canned-responses/{id}` middleware -- resolves the row's own
@@ -26,11 +92,9 @@ export function requireCannedResponseReach(idKey = "id") {
     }
     rejectNulByte(id, "Canned response id");
 
-    const [row] = await db
-      .select({ workspaceId: schema.cannedResponseTable.workspaceId })
-      .from(schema.cannedResponseTable)
-      .where(eq(schema.cannedResponseTable.id, id))
-      .limit(1);
+    const identity = await resolveCallerIdentity(c, userId);
+    if (!identity) throw new HTTPException(401, { message: "Unauthorized" });
+    const row = await findCannedResponseWorkspaceId(identity, id);
 
     if (!row) {
       throw new HTTPException(404, { message: "Canned response not found" });
