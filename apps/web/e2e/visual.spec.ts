@@ -1111,3 +1111,323 @@ test("project backlog screen @visual", async ({ page }) => {
     includeAA: true,
   });
 });
+
+test("work-item table screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/work?layout=table");
+  await expect(
+    page.getByText("Customer cannot reset their password"),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("work-item-table.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("agent workspace home screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent");
+  await expect(
+    page.getByRole("heading", { name: "Workspace home" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("agent-workspace-home.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("agent inbox screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/inbox");
+  await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+  await expect(page).toHaveScreenshot("agent-inbox.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("agent my work screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/my-work");
+  await expect(page.getByRole("heading", { name: "My work" })).toBeVisible();
+  await expect(page).toHaveScreenshot("agent-my-work.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("agent global search screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/search");
+  await expect(
+    page.getByRole("heading", { name: "Global search" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("agent-global-search.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("project overview screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help");
+  await expect(
+    page.getByRole("heading", { name: "Project overview" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("project-overview.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("profile settings general screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/profile");
+  await expect(
+    page.getByRole("heading", { name: "Profile settings" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("profile-settings-general.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("profile settings appearance screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/profile/appearance");
+  await expect(page.getByRole("heading", { name: "Appearance" })).toBeVisible();
+  await expect(page).toHaveScreenshot("profile-settings-appearance.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("workspace settings general screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings");
+  await expect(
+    page.getByRole("heading", { name: "Workspace settings" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("workspace-settings-general.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("workspace settings members screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/members");
+  await expect(
+    page.getByRole("heading", { name: "Workspace members" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("workspace-settings-members.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("workspace settings states screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/states");
+  await expect(
+    page.getByRole("heading", { name: "Workspace states" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("workspace-settings-states.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("workspace settings labels screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/labels");
+  await expect(
+    page.getByRole("heading", { name: "Workspace labels" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("workspace-settings-labels.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("workspace settings canned responses screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/canned-responses");
+  await expect(
+    page.getByRole("heading", { name: "Canned responses" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot(
+    "workspace-settings-canned-responses.png",
+    {
+      animations: "disabled",
+      caret: "hide",
+      fullPage: true,
+      scale: "css",
+      maxDiffPixels: 0,
+      threshold: 0,
+      includeAA: true,
+    },
+  );
+});
+
+test("workspace settings danger screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/danger");
+  await expect(
+    page.getByRole("heading", { name: "Workspace danger zone" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("workspace-settings-danger.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("project settings general screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/settings");
+  await expect(
+    page.getByRole("heading", { name: "Project settings" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("project-settings-general.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("project settings members screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/settings/members");
+  await expect(
+    page.getByRole("heading", { name: "Project members" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("project-settings-members.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("project settings states screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/settings/states");
+  await expect(
+    page.getByRole("heading", { name: "Project states" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("project-settings-states.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("project settings labels screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/settings/labels");
+  await expect(
+    page.getByRole("heading", { name: "Project labels" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("project-settings-labels.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("project settings danger screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/settings/danger");
+  await expect(
+    page.getByRole("heading", { name: "Project danger zone" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("project-settings-danger.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});

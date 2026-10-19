@@ -288,6 +288,100 @@ export function parseProjectBacklogSearchFromQueryString(
   });
 }
 
+export type AgentInboxFilter = "all" | "unread";
+export type AgentInboxSearch = {
+  filter?: Exclude<AgentInboxFilter, "all">;
+};
+
+export function parseAgentInboxSearch(raw: unknown): AgentInboxSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return value.filter === "unread" ? { filter: "unread" } : {};
+}
+
+export function parseAgentInboxSearchFromQueryString(
+  queryString: string,
+): AgentInboxSearch {
+  const params = new URLSearchParams(queryString);
+  return parseAgentInboxSearch({ filter: params.get("filter") ?? undefined });
+}
+
+export type AgentMyWorkLens = "assigned" | "created" | "watching";
+export type AgentMyWorkSearch = {
+  lens?: Exclude<AgentMyWorkLens, "assigned">;
+  q?: string;
+  item?: string;
+};
+
+export function parseAgentMyWorkSearch(raw: unknown): AgentMyWorkSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const { item } = parseWorkItemQueryState(raw);
+  const q =
+    typeof value.q === "string" && value.q.trim()
+      ? value.q.trim().slice(0, 200)
+      : undefined;
+  return {
+    ...(value.lens === "created" || value.lens === "watching"
+      ? { lens: value.lens }
+      : {}),
+    ...(q ? { q } : {}),
+    ...(item ? { item } : {}),
+  };
+}
+
+export function parseAgentMyWorkSearchFromQueryString(
+  queryString: string,
+): AgentMyWorkSearch {
+  const params = new URLSearchParams(queryString);
+  return parseAgentMyWorkSearch({
+    lens: params.get("lens") ?? undefined,
+    q: params.get("q") ?? undefined,
+    item: params.get("item") ?? undefined,
+  });
+}
+
+export type AgentGlobalSearchScope = "all" | "work-items" | "projects";
+export type AgentGlobalSearch = {
+  q?: string;
+  scope?: Exclude<AgentGlobalSearchScope, "all">;
+};
+
+export function parseAgentGlobalSearch(raw: unknown): AgentGlobalSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const q =
+    typeof value.q === "string" && value.q.trim()
+      ? value.q.trim().slice(0, 200)
+      : undefined;
+  return {
+    ...(q ? { q } : {}),
+    ...(value.scope === "work-items" || value.scope === "projects"
+      ? { scope: value.scope }
+      : {}),
+  };
+}
+
+export function parseAgentGlobalSearchFromQueryString(
+  queryString: string,
+): AgentGlobalSearch {
+  const params = new URLSearchParams(queryString);
+  return parseAgentGlobalSearch({
+    q: params.get("q") ?? undefined,
+    scope: params.get("scope") ?? undefined,
+  });
+}
+
+export type SettingsTextFilterSearch = {
+  q?: string;
+};
+
+export function parseSettingsTextFilterSearch(
+  raw: unknown,
+): SettingsTextFilterSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return typeof value.q === "string" && value.q.trim()
+    ? { q: value.q.trim().slice(0, 200) }
+    : {};
+}
+
 export function parseGodModeUsersSearch(raw: unknown): GodModeUsersSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
   return {
@@ -669,6 +763,114 @@ export const routes = {
     path: "/agent/settings/profile/pending-actions/$id" as const,
     build: (params: { id: string }) =>
       `/agent/settings/profile/pending-actions/${encodeURIComponent(params.id)}`,
+  },
+  agentHome: {
+    path: "/agent" as const,
+    build: () => "/agent",
+  },
+  agentInbox: {
+    path: "/agent/inbox" as const,
+    build: (search: AgentInboxSearch = {}) => {
+      const resolved = parseAgentInboxSearch(search);
+      return resolved.filter === "unread"
+        ? "/agent/inbox?filter=unread"
+        : "/agent/inbox";
+    },
+  },
+  agentMyWork: {
+    path: "/agent/my-work" as const,
+    build: (search: AgentMyWorkSearch = {}) => {
+      const resolved = parseAgentMyWorkSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.lens) query.set("lens", resolved.lens);
+      if (resolved.q) query.set("q", resolved.q);
+      if (resolved.item) query.set("item", resolved.item);
+      const suffix = query.toString();
+      return suffix ? `/agent/my-work?${suffix}` : "/agent/my-work";
+    },
+  },
+  agentSearch: {
+    path: "/agent/search" as const,
+    build: (search: AgentGlobalSearch = {}) => {
+      const resolved = parseAgentGlobalSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.q) query.set("q", resolved.q);
+      if (resolved.scope) query.set("scope", resolved.scope);
+      const suffix = query.toString();
+      return suffix ? `/agent/search?${suffix}` : "/agent/search";
+    },
+  },
+  projectOverview: {
+    path: "/agent/projects/$projectKey" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}`,
+  },
+  profileSettings: {
+    path: "/agent/settings/profile" as const,
+    build: () => "/agent/settings/profile",
+  },
+  profileAppearance: {
+    path: "/agent/settings/profile/appearance" as const,
+    build: () => "/agent/settings/profile/appearance",
+  },
+  workspaceSettings: {
+    path: "/agent/settings" as const,
+    build: () => "/agent/settings",
+  },
+  workspaceMembers: {
+    path: "/agent/settings/members" as const,
+    build: (search: SettingsTextFilterSearch = {}) => {
+      const resolved = parseSettingsTextFilterSearch(search);
+      return resolved.q
+        ? `/agent/settings/members?q=${encodeURIComponent(resolved.q)}`
+        : "/agent/settings/members";
+    },
+  },
+  workspaceStates: {
+    path: "/agent/settings/states" as const,
+    build: () => "/agent/settings/states",
+  },
+  workspaceLabels: {
+    path: "/agent/settings/labels" as const,
+    build: () => "/agent/settings/labels",
+  },
+  workspaceCannedResponses: {
+    path: "/agent/settings/canned-responses" as const,
+    build: (search: SettingsTextFilterSearch = {}) => {
+      const resolved = parseSettingsTextFilterSearch(search);
+      return resolved.q
+        ? `/agent/settings/canned-responses?q=${encodeURIComponent(resolved.q)}`
+        : "/agent/settings/canned-responses";
+    },
+  },
+  workspaceDangerZone: {
+    path: "/agent/settings/danger" as const,
+    build: () => "/agent/settings/danger",
+  },
+  projectSettings: {
+    path: "/agent/projects/$projectKey/settings" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings`,
+  },
+  projectMembers: {
+    path: "/agent/projects/$projectKey/settings/members" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/members`,
+  },
+  projectStates: {
+    path: "/agent/projects/$projectKey/settings/states" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/states`,
+  },
+  projectLabels: {
+    path: "/agent/projects/$projectKey/settings/labels" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/labels`,
+  },
+  projectDangerZone: {
+    path: "/agent/projects/$projectKey/settings/danger" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/danger`,
   },
 };
 
