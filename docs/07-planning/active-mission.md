@@ -13,65 +13,55 @@ belongs in the conductor's queue (`docs/07-planning/integration-execution-queue.
 
 ---
 
-## Current mission — Integration Freeze and SIT Consolidation
+## Current mission — PR Consolidation, Integration Freeze, and Verified Main
 
-**Authorized by:** Thomas, decision log 2026-10-09 (Integration Freeze; Conductor Coordination
-& Delivery; Workflow and agent-policy restructure).
+**Authorized by:** Thomas, orchestrator directive 2026-10-19 (Antigravity Orchestrator Directive;
+PR Consolidation and Verified Main).
 
-**Active mode:** Integration freeze, then Release and SIT verification. Policy maintenance runs
-alongside as its own bounded task. Feature development is **inactive**.
+**Active mode:** Integration freeze, PR consolidation, verification of accepted `main`, then HOLD.
+Policy maintenance runs alongside as this bounded bootstrap task. Feature development is **inactive**.
 
 **Sequence:**
 
-1. Freeze new feature scope.
-2. Integrate valid existing work onto accepted `main` (conflict resolution, security
-   remediation, regression fixes, acceptance repairs).
-3. Verify accepted `main` at the required gates.
-4. Publish the accepted artifact through GHCR, GitHub Releases, tags and GitHub Packages
-   where applicable.
-5. Deploy the exact published digest to SIT and verify complete workflows and recovery.
-6. Complete the independent audit.
-7. Report to Thomas and **enter Hold** — await the next owner roadmap.
+1. Freeze the starting PR inventory.
+2. Repair and integrate existing PR functionality onto accepted `main` (Carrier C, component PRs,
+   query-ownership and activity contracts).
+3. Retire verified predecessor, duplicate, and diagnostic PRs with clear evidence.
+4. Verify accepted `main` at the required candidate gates.
+5. Report completion to Thomas and **enter Hold** — await the next owner instruction.
 
-**In scope:** functionality that already exists on a branch or PR, and the integration,
-acceptance, security, correctness, performance and accessibility fixes needed to verify it
-against approved contracts.
+**In scope:** functionality that already exists on a branch or pull request in the frozen starting
+inventory recorded in the decision log, and the integration, acceptance, security, correctness,
+performance and accessibility fixes needed to verify it against approved contracts.
 
 **Out of scope:** any unimplemented roadmap item; automatic completion of P4–P7; a missing
-product decision treated as an acceptance fix; Docker Hub publication; production deployment;
+product decision treated as an acceptance fix; release publication through GHCR, GitHub Releases,
+tags or Docker Hub; persistent SIT, UAT or production deployment; external identity provider or
+notification channel activation; broad recovery exercises; formal P1–P7 stage finalization audits;
 a new release path, version exception or tag scheme.
 
-**Environments:** local and disposable runtimes for verification; SIT for runtime acceptance.
-No production.
+**Environments:** local and disposable runtimes for verification. No persistent SIT deployment,
+UAT or production.
 
-**Conductor:** the single session Thomas designates (decision log). It owns the queue,
-dependency graph, shared resources, migration allocation, merge order, release coordination
-and the one continuation mechanism. A policy maintainer Thomas assigns owns only its policy
-candidate and its handoff.
+**Conductor:** the Antigravity session Thomas designates (decision log 2026-10-19). It owns the
+queue, dependency graph, shared resources, migration allocation, merge order, and verification.
 
-**Model assignment for this mission** (decision log 2026-10-09, "Model tiers by
-availability"): use whichever model in the tier is available. **Sol tier** (security and
-critical review, phase finalizer, final audit): GPT-6 / GPT-6.1 Sol or a fresh Claude Opus
-context. **Luna tier** (implementation, ordinary review): GPT-6 Luna, Claude Sonnet or Claude
-Haiku. A Sol-tier model may fill a Luna-tier role when no Luna-tier model is available, never
-the reverse. The conductor is the session Thomas designates. Every role is a separate, independent
-context, at the review depth and counts the workflow requires, labelled with the model that
-actually produced it. Reviews completed under earlier assignments stay valid for what they
-covered. See
+**Model assignment for this mission** (decision log 2026-10-19):
+- Orchestrator and difficult cross-module diagnosis: **Gemini 4 Argon**
+- Bounded implementation, test repair and ordinary review: **Gemini 3.8 Flash**, in separate contexts
+- Critical/security review: fresh **Gemini 4 Argon** or available **Claude Opus** context
+- Higher-risk implementation when necessary: Argon or Opus, with a different independent reviewer
+
+Every role is a separate, independent context, at the review depth and counts the workflow requires,
+labelled with the model that actually produced it. Reviews completed under earlier assignments stay
+valid for what they covered. See
 [agent-workflow.md § Model policy](../04-engineering/agent-workflow.md#model-policy).
 
-**Stop condition:** final integrated SIT acceptance plus independent audit are recorded and
-reported. The conductor then sets every remaining queue item to a waiting or terminal state
-and stops. It does not start new roadmap work.
-
-**Continuation — 2026-10-15** (decision log, the 2026-10-15 continuation entry): the alpha.4 prerelease is a completed checkpoint, not the stop
-condition. In scope now are the remaining approved units of the historical integration train
-named in that entry, the authorized laptop loopback hardening and the disposition-ledger
-correction. Then one combined signed prerelease is deployed to the laptop SIT at the hostnames
-that entry names (HTTPS 443, loopback only), with its recovery and workflow proof and a fresh
-independent audit. The historical train closes only when every selected unit is integrated
-and verified, proven equivalent, or deferred by Thomas. The stop condition above then applies
-to this continuation. Unit state lives in the queue.
+**Stop condition:** all starting PRs and necessary successors have a valid terminal disposition
+(merged, absorbed/superseded, or diagnostic-retired), required integration and candidate checks pass
+on accepted `main`, and the mission enters **HOLD — awaiting Thomas's instruction**. The conductor
+does not automatically proceed to release publication, persistent SIT deployment, recovery exercises,
+or the next roadmap stage.
 
 **Formal stage closure:** an accepted integrated slice is not P0–P7 completion. Stage closure
 keeps its own [stage gate](../04-engineering/definition-of-done.md#stage-completion) and is not
