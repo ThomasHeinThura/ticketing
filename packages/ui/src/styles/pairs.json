@@ -2035,6 +2035,17 @@
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/project/project-engagement-settings.tsx:ProjectEngagementSettings",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -3314,6 +3325,17 @@
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/project/project-engagement-settings.tsx:ProjectEngagementSettings",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -3404,7 +3426,10 @@
       "packages/ui/src/components/sheet.tsx::SheetDescription::SheetPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[1]/div[1]/div[5]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/project/default-comment-visibility-setting.tsx::DefaultCommentVisibilitySetting::div[0]/div[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/components/project/default-comment-visibility-setting.tsx::DefaultCommentVisibilitySetting::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -4348,6 +4373,39 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
           "jsx:div[0]/div[1]/div[1]/DefaultCommentVisibilitySetting[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
         ],
         "backdropLayers": []
       }
@@ -4440,7 +4498,10 @@
       "packages/ui/src/components/sheet.tsx::SheetDescription::SheetPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[1]/div[1]/div[5]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/project/default-comment-visibility-setting.tsx::DefaultCommentVisibilitySetting::div[0]/div[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/components/project/default-comment-visibility-setting.tsx::DefaultCommentVisibilitySetting::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -5384,6 +5445,39 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
           "jsx:div[0]/div[1]/div[1]/DefaultCommentVisibilitySetting[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
         ],
         "backdropLayers": []
       }
@@ -9367,6 +9461,17 @@
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/project/project-engagement-settings.tsx:ProjectEngagementSettings",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -11895,6 +12000,17 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/project/project-engagement-settings.tsx:ProjectEngagementSettings",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -17741,7 +17857,11 @@
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx::CustomRoleEditor::div[0]/div[1]/Button[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx::CustomRoleEditor::div[0]/div[1]/Button[0]::hover:text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
-      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
+      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#1"
     ],
     "occurrences": [
       {
@@ -18016,6 +18136,50 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx:RouteComponent",
           "jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/FormMessage[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#1",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
         ],
         "backdropLayers": []
       }
@@ -18049,7 +18213,11 @@
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx::CustomRoleEditor::div[0]/div[1]/Button[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx::CustomRoleEditor::div[0]/div[1]/Button[0]::hover:text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
-      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
+      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#0",
+      "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#1"
     ],
     "occurrences": [
       {
@@ -18324,6 +18492,50 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx:RouteComponent",
           "jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/FormMessage[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[3]/p[0]::text-destructive#1",
+        "usage": "apps/web/src/components/project/project-engagement-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+          "jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
         ],
         "backdropLayers": []
       }
@@ -39258,6 +39470,21 @@
         "backdropLayers": [
           "bg-popover"
         ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/project/project-engagement-settings.tsx:ProjectEngagementSettings",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
       }
     ]
   },
@@ -40350,6 +40577,21 @@
           "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
           "apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
           "SelectPopup->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/project/project-engagement-settings.tsx:ProjectEngagementSettings",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
         ],
         "backdropLayers": [
           "bg-popover"
