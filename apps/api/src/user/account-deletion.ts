@@ -109,3 +109,13 @@ export function formatBlockedWorkspacesMessage(names: string[]) {
 
   return `You are the only owner of ${list}. Transfer ownership or delete ${names.length === 1 ? "it" : "them"} before deleting your account.`;
 }
+
+export function formatOtherAccessMessage(names: string[]) {
+  const quoted = names.map((name) => `"${name}"`);
+  const list =
+    quoted.length === 1
+      ? quoted[0]
+      : `${quoted.slice(0, -1).join(", ")} and ${quoted[quoted.length - 1]}`;
+
+  return `Other people still have access to ${list}. Transfer ${names.length === 1 ? "it" : "them"} or remove ${names.length === 1 ? "it" : "them"} before deleting your account.`;
+}
