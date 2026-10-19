@@ -1,3 +1,29 @@
+### 2026-10-19 · Authorize P0/P1 completion, Option A security hardening, Option C product decisions (D1–D6), and local/OrbStack VM verification
+
+**Decisions (Thomas, 2026-10-19, Antigravity Orchestrator Directive — Complete P0 and P1, Then HOLD, plus follow-up confirmation):**
+- **Mission authorization and stopping boundary:**
+  > "I am Thomas, the project owner. I authorize this orchestrator to resume from HOLD and complete P0 foundation verification and P1 core work management. Deliver a working, integrated P0/P1 product—not merely an empty PR queue, passing isolated tests, or another planning document. Implement missing approved P1 functionality, correct genuine defects, merge through the protected process, demonstrate complete workflows, and obtain the applicable stage acceptance. Do not start P2–P7 development automatically. After completing this mission, report and enter HOLD again."
+  > "confirm and approve both 1 and 2, before that clean volumn in the orbstack and clean all which can clean. after features and P1 and P0 finished and main can docker compose up and you can also testing in new vm in orb. and test all ui ux and features."
+- **Option C product decisions approved (D1–D6):**
+  - **D1 — `VW-23` (`POST /api/work-items/export` bound and delivery):** Streamed CSV response, hard cap of 10,000 rows per export (matching `PG6` realistic dataset scale), 30s query timeout, and rate limit of 5 exports/minute/user. If total matches exceed 10,000, return `422 export_limit_exceeded` with total count so the user narrows filters.
+  - **D2 — `#348` (priority on work-item creation):** `work_item:create` allows initial priority selection during creation (`POST /api/work-items`); changing priority after creation requires `work_item:set_priority`.
+  - **D3 — `#205` (soft-deleted project one-hop child reach):** Enforce project live/reach check (`deleted_at IS NULL`) across all one-hop child routes (comments, activity, time entries, labels, relations, assets), returning `404` to regular users while preserving data for the 30-day restore window.
+  - **D4 — `#811` / `#773` (`time-and-cost.md` valuation, midnight split, and timezone fallback):** (1) `TC-17` snapshots the applied rate on `time_entry` at creation/stop so historical cost never retroactively mutates when rate cards change; (2) the server splits a running timer at UTC or user-profile timezone midnight on stop; (3) timer timezone falls back to workspace default timezone, then `UTC`.
+  - **D5 — `#693` (request-type deletion and `/portal` home default):** Soft-archive request types (`is_active = false`) when submissions exist (preventing broken historical references); `/portal` home displays search, service catalogue categories, and the user's recent open requests.
+  - **D6 — `#694` (`X1` staff private visibility on customer requests):** Both the requester and authorized triage/staff can set `private` (requester + staff only) vs `organisation` visibility, but staff can never downgrade a `private` request to `organisation` without requester consent.
+- **Execution cadence and low-token batching:** Deliver in 5 coherent batches (Batch 0: Policy & Control-Plane Sync; Batch 1: P0/P1 Security, Tenancy & Deletion Hardening; Batch 2: Unified `/agent` Navigation & Work Layouts; Batch 3: Addressable Side Pane, Full Bulk Toolbar, Backlog & Saved Views; Batch 4: Agent Core Screens & P1 Settings; Batch 5: E2E Journey Proofs, `docker compose up`, Disposable OrbStack VM & UI/UX Verification, and Stage Finalizer), avoiding micro-slice PR churn.
+- **Model assignments retained:** Gemini 4 Argon (orchestrator, difficult cross-module diagnosis, and critical/security review alongside available Claude Opus) and Gemini 3.8 Flash (bounded implementation, test repair, and ordinary review in separate contexts).
+
+**Source:** Direct instructions received from Thomas (project owner) in Antigravity session `7f3cadd1-1c59-4287-a4b4-a9e5f447a82b` on 2026-10-19. No relay.
+
+**Recorded by:** Antigravity orchestrator session `7f3cadd1-1c59-4287-a4b4-a9e5f447a82b`, on branch `agy/p0-p1-mission-and-decisions`.
+
+**Supersedes:**
+- **2026-10-19 "Antigravity orchestrator takeover, Gemini model assignments, and PR-consolidation-then-Hold stopping boundary":** supersedes the PR-consolidation-only stopping boundary and authorizes P0/P1 completion, Option A security hardening, Option C product decisions (D1–D6), local `docker compose up`, and disposable OrbStack VM verification before entering Hold; retains model assignments and takeover governance.
+- **2026-10-15 "Continue the remaining #589 integration after alpha.4; laptop SIT hostnames and loopback":** supersedes the hold on export resource limits (`VW-23` / F3) and request-type deletion (#693) with approved decisions D1 and D5.
+
+**Reversal:** A new explicit owner directive recorded in this log.
+
 ### 2026-10-19 · Antigravity orchestrator takeover, Gemini model assignments, and PR-consolidation-then-Hold stopping boundary
 
 **Decisions (Thomas, 2026-10-19 Antigravity Orchestrator Directive):**
