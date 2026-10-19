@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
+import { configureNotifyScheduler } from "@/query-client/notify-scheduler";
 import { installJSDOMLayoutStubs } from "./jsdom-layout";
 import { installJSDOMLocalStorage } from "./jsdom-local-storage";
 
@@ -15,6 +16,9 @@ installJSDOMLocalStorage(testGlobal.jsdom.window);
 installJSDOMLayoutStubs(
   globalThis as unknown as Parameters<typeof installJSDOMLayoutStubs>[0],
 );
+
+// Same notification ordering as production (see query-client/notify-scheduler).
+configureNotifyScheduler();
 
 // Testing Library registers its automatic cleanup only when test globals are
 // enabled, and this suite runs without them. Unmount every rendered tree after

@@ -245,6 +245,7 @@ Saving a view uses the routes in [search and saved views](search-and-saved-views
 | Filter references a deleted label | Chip shows "(deleted)" and can be removed |
 | Layout disabled by feature flag | The switcher hides it; a URL requesting it falls back to board with a toast |
 | Very long title | Truncated with ellipsis, full text in tooltip and detail |
+| Cross-column drop onto a column with unloaded cards | The card moves to the new state and is ranked against the cards loaded in that column only, so it may not sit at the exact slot among all cards until "Load more" has loaded them or the next rank. A known limit; placing by slot among all cards needs a server-side rule |
 
 ## Out of scope
 
