@@ -486,3 +486,20 @@ Method:
 - **Parents:** first = `d5b35a8d` (prior branch head including rebind note), second = `90b102ee` (main tip).
 - **Conflict resolution:** Confirmed clean alignment on `visual-screens.json` and `visual.spec.ts` preserving both `#778` board and `#769` saved-view test definitions without modifications to security boundaries.
 - **Verdict:** CLEAR
+
+## Mechanical rebind after main moved to c5be52554704dd266c257c7c34efae3df253b2f5
+
+This section establishes that `ca94d900a516b27e9b54a328d862a8bb5deaaf6c` is a mechanical rebind of `cbafdef035bbf166c2ea87b01f6047628e16856e`.
+
+**Reviewed head:** `ca94d900a516b27e9b54a328d862a8bb5deaaf6c`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** c5be52554704dd266c257c7c34efae3df253b2f5 (accepted main with #781)
+**Previous reviewed head:** cbafdef035bbf166c2ea87b01f6047628e16856e
+
+Method:
+- **Parents:** first = `5db12a0c` (prior branch head including rebind note), second = `c5be5255` (main tip). Clean merge commit.
+- **Merge-tree equality:** Clean merge with zero conflicts.
+- **Overlap:** files changed by PR do not intersect files changed on main (0 files overlap).
+- **PR content:** byte-identical to previous reviewed head.
+
+**Verdict:** CLEAR
