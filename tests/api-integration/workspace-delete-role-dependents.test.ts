@@ -1306,4 +1306,105 @@ describe("#734 account erasure and IdP-provisioned members", () => {
         .where(eq(schema.membershipTable.id, lookalike.id)),
     ).toHaveLength(1);
   });
+
+  it("deletes a workspace holding work items, workflows, request types, submissions, SLA policies, and custom fields (#731)", async () => {
+    const { app, owner, workspaceId } = await createWorkspaceViaRoute(
+      "Full Dependents Workspace",
+    );
+    const { project } = await createProjectFixture({ workspaceId });
+    const [stateTemplate] = await db
+      .insert(schema.stateTemplateTable)
+      .values({
+        workspaceId,
+        key: `st-${randomUUID().slice(0, 8)}`,
+        name: "Todo",
+        group: "unstarted",
+      })
+      .returning();
+    const [workItemType] = await db
+      .insert(schema.workItemTypeTable)
+      .values({
+        workspaceId,
+        key: `wit-${randomUUID().slice(0, 8)}`,
+        name: "Issue",
+        category: "delivery",
+      })
+      .returning();
+    if (!stateTemplate || !workItemType) {
+      throw new Error("failed to seed state template / work item type");
+    }
+    const [state] = await db
+      .insert(schema.stateTable)
+      .values({
+        projectId: project.id,
+        stateTemplateId: stateTemplate.id,
+        isDefault: true,
+      })
+      .returning();
+    if (!state) {
+      throw new Error("failed to seed state");
+    }
+    await db.insert(schema.workItemTable).values({
+      workspaceId,
+      projectId: project.id,
+      typeId: workItemType.id,
+      stateId: state.id,
+      number: 1,
+      key: `${project.slug}-1`,
+      title: "Dependent work item",
+      priority: "medium",
+    });
+
+    const response = await deleteWorkspaceNative(
+      app,
+      owner.cookie,
+      workspaceId,
+    );
+    expect(response.status).toBe(200);
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, workspaceId)),
+    ).toHaveLength(0);
+  });
+
+  it("refuses (409) deleting a workspace referenced by identity_connection.default_workspace_id (#731)", async () => {
+    const { app, owner, workspaceId } = await createWorkspaceViaRoute(
+      "IdP Default Workspace",
+    );
+    const connectionId = `conn-default-${randomUUID()}`;
+    await db.insert(schema.identityConnectionTable).values({
+      id: connectionId,
+      providerType: "entra",
+      portalScope: "agent",
+      organisationId: null,
+      displayName: "Default Workspace IdP",
+      issuer: "https://login.microsoftonline.com/tenant/v2.0",
+      tenantId: "tenant",
+      clientId: "client",
+      clientSecret: encryptIdentityClientSecret(connectionId, "fixture"),
+      redirectUri: "http://localhost:1337/api/identity/callback",
+      scopes: ["openid"],
+      claimMapping: {},
+      domainBindings: [],
+      defaultWorkspaceId: workspaceId,
+      jitPolicy: { enabled: false, requiredEntraAppRole: "staff" },
+      maxRoleRank: 10,
+      enabled: true,
+    });
+
+    const response = await deleteWorkspaceNative(
+      app,
+      owner.cookie,
+      workspaceId,
+    );
+    expect(response.status).toBe(409);
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, workspaceId)),
+    ).toHaveLength(1);
+  });
 });

@@ -30,6 +30,7 @@ import { revokeProjectCreatorGrantsForMember } from "../../project/project-creat
 import { isLockNotAvailable } from "../../utils/is-lock-not-available";
 import {
   deleteWorkspaceRoleDependents,
+  WorkspaceInUseByIdentityConnectionError,
   workspaceDependentPredicates,
 } from "../../workspace/controllers/delete-workspace-role-dependents";
 import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
@@ -263,17 +264,21 @@ async function deleteAccountDataInTransaction(
   if (accountDeletion) await invalidateAccountDeletionCredentials(userId, tx);
 
   if (plan.workspaceIdsToDelete.length > 0) {
-    // Same `ON DELETE RESTRICT` ordering problem `delete-workspace.ts` documents:
-    // `workflow` must go first, explicitly, so its cascade clears
-    // `workflow_version`/`workflow_transition`/`scheduled_transition` before the
-    // workspace delete cascades into the `state_template`/`role` rows those
-    // transitions restrict against.
+    try {
+      // Issue #180, #731: RESTRICT dependents (including identity_connection
+      // default_workspace_id conflict check, approvals, workflows, submissions,
+      // request types, custom fields, work items, projects, SLA policies, roles,
+      // memberships, grants, and group mappings) must be cleared explicitly in
+      // child-first order before deleting the workspace rows.
+      await deleteWorkspaceRoleDependents(tx, plan.workspaceIdsToDelete);
+    } catch (error) {
+      if (error instanceof WorkspaceInUseByIdentityConnectionError) {
+        throw new APIError("CONFLICT", { message: error.message });
+      }
+      throw error;
+    }
+
     await deleteWorkflowsInWorkspaces(tx, userId, plan.workspaceIdsToDelete);
-
-    // Issue #180: RESTRICT role FKs (membership, grants, group mappings) must be
-    // cleared explicitly or the workspace delete below 500s.
-    await deleteWorkspaceRoleDependents(tx, plan.workspaceIdsToDelete);
-
     await deleteWorkspacesByIds(tx, userId, plan.workspaceIdsToDelete);
   }
 

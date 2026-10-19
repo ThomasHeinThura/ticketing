@@ -1266,12 +1266,12 @@ describe("API integration: workspace RBAC enforcement", () => {
   });
 
   describe("resource coverage: project:create / update / delete", () => {
-    it("allows a member to create a project", async () => {
+    it("blocks a member from creating a project and allows an admin (#708)", async () => {
       const member = await createWorkspaceMember({ role: "member" });
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
 
-      const response = await app.request("/api/project", {
+      const denied = await app.request("/api/project", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -1281,7 +1281,21 @@ describe("API integration: workspace RBAC enforcement", () => {
           icon: "Folder",
         }),
       });
-      expect(response.status).toBe(200);
+      expect(denied.status).toBe(403);
+
+      const admin = await createWorkspaceMember({ role: "admin" });
+      mockAuthenticatedSession(admin.user);
+      const allowed = await app.request("/api/project", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Admin-made",
+          workspaceId: admin.workspace.id,
+          slug: "ADM",
+          icon: "Folder",
+        }),
+      });
+      expect(allowed.status).toBe(200);
     });
 
     it("blocks a viewer from creating a project", async () => {

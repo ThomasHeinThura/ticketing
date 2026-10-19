@@ -2,7 +2,10 @@ import { and, eq } from "drizzle-orm";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
 import { lockWorkspaceRoleAssignment } from "../workspace-role-assignment.repository";
-import { deleteWorkspaceRoleDependents } from "./delete-workspace-role-dependents";
+import {
+  acquireWorkspaceDeletionProvisioningLock,
+  deleteWorkspaceRoleDependents,
+} from "./delete-workspace-role-dependents";
 
 /**
  * Delete a workspace.
@@ -27,6 +30,7 @@ import { deleteWorkspaceRoleDependents } from "./delete-workspace-role-dependent
 async function deleteWorkspace(workspaceId: string, sessionId: string) {
   return withWorkspaceDeletionAccessLifecycle(workspaceId, async (tx) => {
     await lockWorkspaceRoleAssignment(tx, workspaceId);
+    await acquireWorkspaceDeletionProvisioningLock(tx);
     await tx
       .update(schema.sessionTable)
       .set({ activeOrganizationId: null, activeTeamId: null })
@@ -37,21 +41,11 @@ async function deleteWorkspace(workspaceId: string, sessionId: string) {
         ),
       );
 
-    // `workflow_transition`'s FKs to `state_template`/`role` are `ON DELETE RESTRICT`
-    // (it must not silently lose which state/role a transition names out from under a
-    // still-live workflow) -- which blocks Postgres's own cascade ordering when the
-    // workspace itself is deleted, because nothing else ever deletes `workflow` first.
-    // Deleting it explicitly, here, lets the `workflow` -> `workflow_version` ->
-    // `workflow_transition` / `scheduled_transition` cascade clear before the
-    // `state_template`/`role` rows it restricted against are themselves cascade-deleted
-    // by the workspace delete below.
-    await tx
-      .delete(schema.workflowTable)
-      .where(eq(schema.workflowTable.workspaceId, workspaceId));
-
-    // `membership`/`membership_grant`/group-mapping role FKs are `ON DELETE RESTRICT`
-    // and would 500 the cascade below once any of them references a workspace-owned
-    // role (issue #180). Remove them explicitly, in dependency order, first.
+    // Clear all workspace-owned `ON DELETE RESTRICT` dependents in child-first
+    // order (including approvals, workflows, submissions, request types, custom
+    // fields, work items, projects, SLA policies, types, state templates, roles,
+    // and identity-connection default_workspace_id conflict check) before deleting
+    // the workspace row (#180, #731).
     await deleteWorkspaceRoleDependents(tx, [workspaceId]);
 
     const [deleted] = await tx

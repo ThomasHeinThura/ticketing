@@ -1,10 +1,68 @@
-import { and, eq, inArray, or, type SQL } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, or, type SQL, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { type DatabaseInstance, schema } from "../../database";
+import {
+  customFieldTable,
+  customFieldTypeVisibilityTable,
+  customFieldValueTable,
+} from "../../database/migration-schema";
+import { isLockNotAvailable } from "../../utils/is-lock-not-available";
 
 type WorkspaceDeletionTransaction = Parameters<
   Parameters<DatabaseInstance["transaction"]>[0]
 >[0];
+
+const WORKSPACE_DELETE_LOCK_TIMEOUT_MS = 3_000;
+
+export class WorkspaceInUseByIdentityConnectionError extends Error {
+  readonly workspaceIds: readonly string[];
+
+  constructor(workspaceIds: readonly string[]) {
+    super(
+      "Cannot delete workspace while an identity connection still uses it as default_workspace_id",
+    );
+    this.name = "WorkspaceInUseByIdentityConnectionError";
+    this.workspaceIds = workspaceIds;
+  }
+}
+
+export class WorkspaceDeleteLockBusyError extends Error {
+  constructor() {
+    super(
+      "Could not delete workspace right now because workspace access is being updated; please retry.",
+    );
+    this.name = "WorkspaceDeleteLockBusyError";
+  }
+}
+
+/**
+ * Serialize workspace deletion against concurrent OIDC/SCIM provisioning and workspace-admin
+ * reach writers using the same canonical table-lock order (`person, membership_grant, membership`)
+ * and bounded wait (`3000ms`) that account erasure uses (#731).
+ */
+export async function acquireWorkspaceDeletionProvisioningLock(
+  tx: WorkspaceDeletionTransaction,
+): Promise<void> {
+  const priorLockTimeout = (
+    await tx.execute(sql`SELECT current_setting('lock_timeout') AS value`)
+  ).rows[0]?.value;
+  await tx.execute(
+    sql`SELECT set_config('lock_timeout', ${`${WORKSPACE_DELETE_LOCK_TIMEOUT_MS}ms`}, true)`,
+  );
+  try {
+    await tx.execute(
+      sql`LOCK TABLE person, membership_grant, membership IN SHARE ROW EXCLUSIVE MODE`,
+    );
+  } catch (error) {
+    if (isLockNotAvailable(error)) {
+      throw new WorkspaceDeleteLockBusyError();
+    }
+    throw error;
+  }
+  await tx.execute(
+    sql`SELECT set_config('lock_timeout', ${String(priorLockTimeout ?? "0")}, true)`,
+  );
+}
 
 /**
  * THE one definition of which `membership` and `membership_grant` rows belong to a workspace
@@ -89,43 +147,49 @@ export function workspaceDependentPredicates(
     membershipWhere,
     grantWhere,
     workspaceRoleIds,
+    projectIds,
     inWorkspaceScope,
   };
 }
 
 /**
- * Explicitly remove every row that holds a RESTRICT reference to a role owned by
+ * Explicitly remove every row that holds a RESTRICT reference to a role or entity owned by
  * the workspace(s) being deleted, or that is scoped to the workspace or one of its
- * projects, BEFORE the workspace row itself is deleted (issue #180).
- *
- * Why this exists: `role.workspace_id` is `ON DELETE CASCADE`, but `membership.role_id`,
- * `membership_grant.role_id`, `oidc_group_mapping.role_id` and
- * `scim_group_mapping.role_id` are deliberately `ON DELETE RESTRICT` (a single role
- * delete must never silently strip people's authority). Postgres therefore refuses the
- * cascade as soon as any membership references a workspace-owned role -- a 500 on the
- * route. Workspace deletion is the one place where that authority is meant to go, so
- * it is removed here, explicitly, in dependency order. The RESTRICT constraints stay.
- *
- * Reversal path: switch those FKs to `ON DELETE CASCADE` in a migration, then delete
- * this helper and its two call sites (`delete-workspace.ts`, `delete-account-data.ts`).
- *
- * Delete order (children first):
- *   1. `scim_group_member`   -- RESTRICT to `membership_grant` / `scim_group_mapping`
- *   2. `membership_grant`    -- RESTRICT to `role` / `*_group_mapping`
- *   3. `oidc_group_mapping`, `scim_group_mapping` -- RESTRICT to `role`
- *   4. `membership`          -- RESTRICT to `role`
- * Only rows that belong to the given workspaces are touched: a row qualifies when its
- * role is owned by one of them, or its scope is one of them / one of their projects.
- * Rows of other workspaces -- including the same person's memberships elsewhere --
- * are untouched.
+ * projects, BEFORE the workspace row itself is deleted (issues #180, #731).
  */
 export async function deleteWorkspaceRoleDependents(
   tx: WorkspaceDeletionTransaction,
   workspaceIds: readonly string[],
 ): Promise<void> {
   if (workspaceIds.length === 0) return;
-  const { oidcMappingIds, scimMappingIds, membershipWhere, grantWhere } =
-    workspaceDependentPredicates(tx, workspaceIds);
+  const ids = [...workspaceIds];
+
+  // Refuse cleanly (409) when an instance-scoped `identity_connection` still points its
+  // `default_workspace_id` at one of the workspaces being deleted (#731).
+  const inUseByIdentityConnections = await tx
+    .select({
+      workspaceId: schema.identityConnectionTable.defaultWorkspaceId,
+    })
+    .from(schema.identityConnectionTable)
+    .where(inArray(schema.identityConnectionTable.defaultWorkspaceId, ids));
+  const referencedWorkspaceIds = [
+    ...new Set(
+      inUseByIdentityConnections
+        .map((row) => row.workspaceId)
+        .filter((id): id is string => typeof id === "string"),
+    ),
+  ];
+  if (referencedWorkspaceIds.length > 0) {
+    throw new WorkspaceInUseByIdentityConnectionError(referencedWorkspaceIds);
+  }
+
+  const {
+    oidcMappingIds,
+    scimMappingIds,
+    membershipWhere,
+    grantWhere,
+    projectIds,
+  } = workspaceDependentPredicates(tx, ids);
   const grantIds = tx
     .select({ id: schema.membershipGrantTable.id })
     .from(schema.membershipGrantTable)
@@ -175,4 +239,137 @@ export async function deleteWorkspaceRoleDependents(
   // 4. Memberships: those holding a workspace-owned role, plus any scoped to the
   // workspace or its projects.
   await tx.delete(schema.membershipTable).where(membershipWhere);
+
+  // 5. Approvals (`approval.transition_id` is ON DELETE RESTRICT to `workflow_transition`,
+  // and `approval.work_item_id` is ON DELETE RESTRICT to `work_item`).
+  await tx
+    .delete(schema.approvalTable)
+    .where(inArray(schema.approvalTable.workspaceId, ids));
+
+  // 6. Workflows (`workflow_transition` restricts `state_template` and `role`).
+  await tx
+    .delete(schema.workflowTable)
+    .where(inArray(schema.workflowTable.workspaceId, ids));
+
+  // 7. Submissions and request types (`submission` restricts `work_item` and
+  // `request_type_version`; `request_type_version` and `request_type` restrict
+  // `project`, `work_item_type`, and `sla_policy`).
+  const workspaceRequestTypeIds = tx
+    .select({ id: schema.requestTypeTable.id })
+    .from(schema.requestTypeTable)
+    .where(inArray(schema.requestTypeTable.workspaceId, ids));
+  const workspaceWorkItemIds = tx
+    .select({ id: schema.workItemTable.id })
+    .from(schema.workItemTable)
+    .where(inArray(schema.workItemTable.workspaceId, ids));
+  await tx
+    .delete(schema.submissionTable)
+    .where(
+      or(
+        inArray(schema.submissionTable.requestTypeId, workspaceRequestTypeIds),
+        inArray(schema.submissionTable.workItemId, workspaceWorkItemIds),
+      ),
+    );
+  await tx
+    .delete(schema.requestTypeVersionTable)
+    .where(inArray(schema.requestTypeVersionTable.workspaceId, ids));
+  await tx
+    .delete(schema.requestTypeTable)
+    .where(inArray(schema.requestTypeTable.workspaceId, ids));
+
+  // 8. Custom field values, type visibilities, and custom fields (`custom_field_value`
+  // restricts `custom_field` and `project`; `custom_field_type_visibility` restricts
+  // `work_item_type`).
+  const workspaceCustomFieldIds = tx
+    .select({ id: customFieldTable.id })
+    .from(customFieldTable)
+    .where(inArray(customFieldTable.workspaceId, ids));
+  const workspaceWorkItemTypeIds = tx
+    .select({ id: schema.workItemTypeTable.id })
+    .from(schema.workItemTypeTable)
+    .where(inArray(schema.workItemTypeTable.workspaceId, ids));
+  await tx
+    .delete(customFieldValueTable)
+    .where(
+      or(
+        inArray(customFieldValueTable.projectId, projectIds),
+        inArray(customFieldValueTable.customFieldId, workspaceCustomFieldIds),
+      ),
+    );
+  await tx
+    .delete(customFieldTypeVisibilityTable)
+    .where(
+      or(
+        inArray(
+          customFieldTypeVisibilityTable.workItemTypeId,
+          workspaceWorkItemTypeIds,
+        ),
+        inArray(
+          customFieldTypeVisibilityTable.customFieldId,
+          workspaceCustomFieldIds,
+        ),
+      ),
+    );
+  await tx
+    .delete(customFieldTable)
+    .where(inArray(customFieldTable.workspaceId, ids));
+
+  // 9. Work items and projects (`work_item.parent_id` self-FK and `project.parent_id`
+  // self-FK are ON DELETE RESTRICT; `work_item` restricts `state`, `work_item_type`,
+  // and `sla_policy_version`; `project` restricts `sla_policy`; `state` restricts
+  // `state_template`).
+  await tx
+    .update(schema.workItemTable)
+    .set({ parentId: null })
+    .where(
+      and(
+        inArray(schema.workItemTable.workspaceId, ids),
+        isNotNull(schema.workItemTable.parentId),
+      ),
+    );
+  await tx
+    .delete(schema.workItemTable)
+    .where(inArray(schema.workItemTable.workspaceId, ids));
+  await tx
+    .delete(schema.projectTable)
+    .where(inArray(schema.projectTable.workspaceId, ids));
+
+  // 10. SLA goals, policy versions, and policies (`sla_goal` restricts
+  // `sla_policy_version` and `work_item_type`; `sla_policy.active_version_id`
+  // restricts `sla_policy_version`; `sla_policy_version` restricts `sla_policy`
+  // and `service_calendar`).
+  await tx
+    .delete(schema.slaGoalTable)
+    .where(inArray(schema.slaGoalTable.workspaceId, ids));
+  await tx
+    .update(schema.slaPolicyTable)
+    .set({ activeVersionId: null })
+    .where(
+      and(
+        inArray(schema.slaPolicyTable.workspaceId, ids),
+        isNotNull(schema.slaPolicyTable.activeVersionId),
+      ),
+    );
+  await tx
+    .delete(schema.slaPolicyVersionTable)
+    .where(inArray(schema.slaPolicyVersionTable.workspaceId, ids));
+  await tx
+    .delete(schema.slaPolicyTable)
+    .where(inArray(schema.slaPolicyTable.workspaceId, ids));
+
+  // 11. Work item types, state templates, and workspace-scoped roles.
+  await tx
+    .delete(schema.workItemTypeTable)
+    .where(inArray(schema.workItemTypeTable.workspaceId, ids));
+  await tx
+    .delete(schema.stateTemplateTable)
+    .where(inArray(schema.stateTemplateTable.workspaceId, ids));
+  await tx
+    .delete(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.scope, "workspace"),
+        inArray(schema.roleTable.workspaceId, ids),
+      ),
+    );
 }

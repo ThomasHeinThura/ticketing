@@ -23,11 +23,7 @@ import {
   listReachOf,
   requireReachFilteredList,
 } from "../utils/reach-filtered-list";
-import {
-  assertCallerHasCapability,
-  capabilityCredential,
-  requireWorkspaceCapability,
-} from "../utils/require-workspace-capability";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import addDocumentLinkCtrl from "./controllers/add-document-link";
@@ -156,7 +152,7 @@ const createProjectRoute = createRoute({
     "Create a project in a workspace. The slug becomes the prefix of its task identifiers.",
   middleware: [
     workspaceAccess.fromBody(),
-    requireWorkspacePermission({ project: ["create"] }),
+    requireWorkspaceCapability("project:create"),
   ] as const,
   request: {
     body: {
@@ -877,20 +873,6 @@ const project = apiRouter<
       organisationId,
     } = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
-    // Binding a project to a customer organisation needs the STRICT `project:create`
-    // capability (owner/admin/manager). The route's own legacy check also admits `member`;
-    // creating an internal project (no organisation) keeps that behaviour. Checked before any
-    // organisation lookup so a refused caller learns nothing about organisation ids.
-    if (organisationId != null) {
-      await assertCallerHasCapability(
-        workspaceId,
-        c.get("userId"),
-        "project:create",
-        capabilityCredential(
-          c.get("apiKey") as Parameters<typeof capabilityCredential>[0],
-        ),
-      );
-    }
     assertManagedServiceConfiguration({
       kind,
       supportLevel,

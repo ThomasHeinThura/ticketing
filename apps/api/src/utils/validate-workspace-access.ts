@@ -4,6 +4,7 @@ import {
   listEnabledApiKeysOfUser,
   listWorkspaceMembershipRows,
 } from "./access-lookups.repository";
+import { isCustomerSidePerson } from "./is-customer-principal";
 
 export async function validateWorkspaceAccess(
   userId: string,
@@ -18,6 +19,12 @@ export async function validateWorkspaceAccess(
         message: "Invalid API key for this workspace",
       });
     }
+  }
+
+  if (await isCustomerSidePerson(userId)) {
+    throw new HTTPException(403, {
+      message: "Insufficient permissions",
+    });
   }
 
   const user = await findUserRole(userId);

@@ -1,11 +1,14 @@
+import type { JsonValue } from "@taskdesk/domain";
 import { and, count, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import {
   commentTable,
   commentVersionTable,
   workItemTable,
 } from "../../database/schema";
+import type { ApiKey } from "../../openapi";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
 import {
   isUnambiguousMembership,
@@ -38,6 +41,7 @@ export async function updateComment(
   workspaceId: string,
   actorId: string,
   newBody: unknown,
+  apiKey?: ApiKey,
 ) {
   return db.transaction(async (tx) => {
     const [locked] = await tx
@@ -137,6 +141,19 @@ export async function updateComment(
     if (!updated) {
       throw new HTTPException(500, { message: "Failed to update comment" });
     }
+
+    await appendAuditLog(tx, {
+      actorId,
+      actorType: apiKey ? "api_key" : "person",
+      apiKeyId: apiKey?.id ?? null,
+      workspaceId,
+      projectId: workItem.projectId,
+      action: "comment.updated",
+      entityType: "comment",
+      entityId: updated.id,
+      before: { body: (locked.body ?? null) as JsonValue },
+      after: { body: (updated.body ?? null) as JsonValue },
+    });
 
     return updated;
   });

@@ -819,4 +819,89 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
       expect(await countRules(project.id)).toBe(1);
     });
   });
+
+  describe("one-hop child routes on soft-deleted projects (#205 / D3) and comment audit_log (#682)", () => {
+    it("freezes activity/comment, time-entry, label, and task-relation routes (404) when the project is soft-deleted, and audits live comment mutations (#205, #682)", async () => {
+      const member = await createWorkspaceMember({ role: "admin" });
+      const { project, columns } = await createProjectFixture({
+        workspaceId: member.workspace.id,
+      });
+      await grantProjectManageAccess(member.user.id, project.id);
+      await grantWorkItemProjectAccess(member.user.id, project.id);
+      mockAuthenticatedSession(member.user);
+
+      const [task] = await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "One-hop parent task",
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning();
+      if (!task) throw new Error("failed to seed task");
+
+      // Create a comment while live (#682 audit check).
+      const createdComment = await jsonRequest("/activity/comment", "post", {
+        taskId: task.id,
+        comment: "Initial live comment",
+      });
+      expect(createdComment.status).toBe(200);
+      const commentRow = (await createdComment.json()) as { id: string };
+
+      const updatedComment = await jsonRequest("/activity/comment", "put", {
+        activityId: commentRow.id,
+        comment: "Edited live comment",
+      });
+      expect(updatedComment.status).toBe(200);
+
+      const commentAudits = await db
+        .select({ action: schema.auditLogTable.action })
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.entityId, commentRow.id));
+      expect(commentAudits.map((r) => r.action)).toEqual([
+        "work_item.commented",
+        "comment.updated",
+      ]);
+
+      // Seed a time entry and a task label while live.
+      const createdTime = await jsonRequest("/time-entry", "post", {
+        taskId: task.id,
+        startTime: new Date(Date.now() - 60_000).toISOString(),
+        endTime: new Date().toISOString(),
+        description: "Live entry",
+      });
+      expect(createdTime.status).toBe(200);
+      const timeRow = (await createdTime.json()) as { id: string };
+
+      await softDeleteProject(project.id);
+
+      // All one-hop child routes now answer 404 while the project is soft-deleted.
+      expect((await getRequest(`/activity/${task.id}`)).status).toBe(404);
+      expect(
+        (
+          await jsonRequest("/activity/comment", "put", {
+            activityId: commentRow.id,
+            comment: "Should fail",
+          })
+        ).status,
+      ).toBe(404);
+      expect(
+        (
+          await jsonRequest("/activity/comment", "delete", {
+            activityId: commentRow.id,
+          })
+        ).status,
+      ).toBe(404);
+      expect((await getRequest(`/time-entry/task/${task.id}`)).status).toBe(
+        404,
+      );
+      expect((await getRequest(`/time-entry/${timeRow.id}`)).status).toBe(404);
+      expect((await getRequest(`/label/task/${task.id}`)).status).toBe(404);
+      expect((await getRequest(`/task-relation/${task.id}`)).status).toBe(404);
+    });
+  });
 });

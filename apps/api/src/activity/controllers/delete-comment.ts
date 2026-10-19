@@ -1,11 +1,13 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { publishEvent } from "../../events";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
 import {
   deleteOwnComment,
   findOwnComment,
+  findProjectWorkspaceId,
   lockTaskAndAssertProjectLive,
 } from "../repository";
 
@@ -25,11 +27,25 @@ async function deleteComment(
       identity,
       existing.taskId,
     );
+    const project = await findProjectWorkspaceId(tx, identity, task.projectId);
     const deletedComment = await deleteOwnComment(tx, identity, userId, id);
     if (!deletedComment)
       throw new HTTPException(404, {
         message: "Comment not found or you are not the author",
       });
+
+    await appendAuditLog(tx, {
+      actorId: userId,
+      actorType: identity.credential === "api_key" ? "api_key" : "person",
+      workspaceId: project?.workspaceId ?? null,
+      projectId: task.projectId,
+      action: "comment.deleted",
+      entityType: "comment",
+      entityId: deletedComment.id,
+      before: { content: existing.content ?? null },
+      after: null,
+    });
+
     return { deletedComment, projectId: task.projectId };
   });
   await publishEvent("comment.deleted", {

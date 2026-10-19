@@ -83,12 +83,13 @@ export async function findActiveApiKeyByHash(hashedKey: string) {
   return apiKey;
 }
 
-/** The key owner's banned flag and person-active flag, or `undefined`. */
+/** The key owner's banned flag, person-active flag, and person side, or `undefined`. */
 export async function findApiKeyOwnerStatus(ownerId: string) {
   const [owner] = await db
     .select({
       banned: schema.userTable.banned,
       personActive: schema.personTable.active,
+      personSide: schema.personTable.side,
     })
     .from(schema.userTable)
     .leftJoin(
@@ -288,6 +289,7 @@ export async function findWorkspaceReachableAsset(
     .where(
       and(
         eq(schema.assetTable.id, assetId),
+        isNull(schema.projectTable.deletedAt),
         reachableWorkspacePredicate(
           schema.projectTable.workspaceId,
           userId,

@@ -158,7 +158,7 @@ Borrowed from OpenProject's journal design.
 
 ## Access
 
-- `AU-10` Workspace administrators see audit rows for their workspace, filtered to their project reach: rows that are not project-scoped, plus rows for projects the reader can reach — a project-scoped `membership` for their person, or the per-workspace `sees_all` grant (#319/#334). They never see rows for projects outside their reach (#344; decision log 2026-09-23).
+- `AU-10` Workspace administrators see audit rows for their workspace, filtered to their project reach: rows that are not project-scoped, plus rows for projects the reader can reach — a project-scoped `membership` for their person, or the per-workspace `sees_all` grant (#319/#334). They never see rows for projects outside their reach (#344; decision log 2026-09-23). Soft-deleting a project freezes its one-hop child routes (`project.deleted_at IS NULL` returning `404` to ordinary callers while preserving underlying rows for the 30-day restore window; decision log 2026-10-19 D3 / #205).
 - `AU-11` Instance administrators see everything.
 - `AU-12` Customers never see the audit log. They see the public portion of `activity` on
   their own requests.
@@ -233,6 +233,7 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | `request_type.created` · `request_type.updated` · `request_type.published` · `request_type.unpublished` | Request-type lifecycle. Record safe request type/workspace identifiers and a closed changed-field list; never store the form schema, labels, customer answers, or raw request body. Audit-only; no outbox event. |
 | `submission.claimed` | A triager claims a submission; record submission reference and the actor id. Audit-only; no outbox event. |
 | `submission.duplicate` | A triager links a submission to a same-organisation work item; record submission reference and linked work-item id/key. Audit-only; no outbox event. |
+| `comment.updated` · `comment.deleted` | Comment edit (`CA-17`) and soft-deletion/tombstone (`CA-18`); creation uses `work_item.commented` ([events.md](../01-architecture/events.md)) |
 | `invitation.sent` · `invitation.redeemed` · `invitation.revoked` | Invitations |
 | `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |
 | `feature_flag.changed` | Any level |

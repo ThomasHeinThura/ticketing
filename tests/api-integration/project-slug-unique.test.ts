@@ -52,7 +52,7 @@ describe("API integration: project.slug uniqueness (#261 F1)", () => {
 
   it("cleanly rejects (409) a second workspace's project reusing a slug already taken by an unrelated workspace's project", async () => {
     // Step 1: the "attacker" workspace claims a slug for their own project.
-    const attacker = await createWorkspaceMember();
+    const attacker = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(attacker.user);
     const { app: attackerApp } = createApp();
 
@@ -67,7 +67,7 @@ describe("API integration: project.slug uniqueness (#261 F1)", () => {
     // Step 2: an entirely unrelated "victim" workspace tries to slug their OWN project
     // identically. Before the fix, this 200'd -- the collision was only discovered later,
     // permanently, on the victim's first work-item create.
-    const victim = await createWorkspaceMember();
+    const victim = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(victim.user);
     const { app: victimApp } = createApp();
 
@@ -91,7 +91,7 @@ describe("API integration: project.slug uniqueness (#261 F1)", () => {
   });
 
   it("lets the same workspace's later create pick a different, real slug and succeed", async () => {
-    const attacker = await createWorkspaceMember();
+    const attacker = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(attacker.user);
     const { app: attackerApp } = createApp();
     await createProjectRequest(attackerApp, {
@@ -101,7 +101,7 @@ describe("API integration: project.slug uniqueness (#261 F1)", () => {
       slug: "ACME",
     });
 
-    const victim = await createWorkspaceMember();
+    const victim = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(victim.user);
     const { app: victimApp } = createApp();
 
@@ -120,7 +120,7 @@ describe("API integration: project.slug uniqueness (#261 F1)", () => {
   });
 
   it("rejects (409) updating a project's slug to one already taken by a project in a different workspace", async () => {
-    const first = await createWorkspaceMember();
+    const first = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(first.user);
     const { app: firstApp } = createApp();
     await createProjectRequest(firstApp, {

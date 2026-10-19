@@ -191,7 +191,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     expect(rename.status).toBe(200);
 
     // Victim, an entirely unrelated workspace, tries to claim the now-live-free slug.
-    const victim = await createWorkspaceMember();
+    const victim = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(victim.user);
     const { app: victimApp } = createApp();
 
@@ -297,7 +297,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     expect(claim?.projectId).toBe(attackerProject.id);
 
     // Victim, unrelated workspace, later tries to take the now-orphan-free slug.
-    const victim = await createWorkspaceMember();
+    const victim = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(victim.user);
     const { app: victimApp } = createApp();
 
@@ -370,7 +370,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     // 5th create (the exact number the attacker chose). With the fix, the victim never
     // gets a project at all: the detonation is defused at the front door, not survived
     // items 1-4 and hit at item 5.
-    const victim = await createWorkspaceMember();
+    const victim = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(victim.user);
     const { app: victimApp } = createApp();
 
@@ -395,7 +395,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     // ran (its own comment states this limitation explicitly). This reproduces that
     // residual case directly: a `work_item_key_claim` row for a key this project is
     // about to generate already exists, claimed by some OTHER (unrelated) work item.
-    const holder = await createWorkspaceMember();
+    const holder = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(holder.user);
     const { app } = createApp();
 
