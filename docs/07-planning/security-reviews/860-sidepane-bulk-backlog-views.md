@@ -1,5 +1,6 @@
 # Security review — PR #860 (`agy/batch3-sidepane-bulk-backlog-views`)
 
+**Reviewed head:** `0dfdd406524d24c9d37d2d130843721c0351b6fc`
 - **Pull request:** `#860` (`feat(web,api): add work-item side pane, bulk edit, backlog and view layouts`)
 - **Reviewed candidate SHA:** `0dfdd406524d24c9d37d2d130843721c0351b6fc`
 - **Comparison base (`main`):** `ba51c25305a5d47144968f68f7f7d360d445d409`
