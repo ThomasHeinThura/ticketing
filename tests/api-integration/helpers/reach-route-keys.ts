@@ -74,6 +74,7 @@ export const READ_ROUTE_KEYS = [
  * `task-target-reach.test.ts`.
  */
 export const OTHER_COVERED_ROUTE_KEYS = [
+  "GET /api/canned-responses",
   "POST /api/work-items/search",
   ...TASK_TARGET_WORK_ITEM_ROUTE_KEYS,
 ] as const;

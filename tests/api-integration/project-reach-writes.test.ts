@@ -281,6 +281,9 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
       expect(o.state).toBe(m.state);
       expect(o.workItemId).toBeNull();
       expect(o.workItems).toBe(a.baseline);
+      // #743: the failed attempts released their claim, identically for both.
+      expect(m.claimedBy).toBeNull();
+      expect(o.claimedBy).toBeNull();
     });
 
     it("the staff member who reaches the second project accepts into it; the requester cannot, and neither can they reach the first", async () => {

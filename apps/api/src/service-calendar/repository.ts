@@ -22,6 +22,7 @@ import { enqueueOutboxEvent } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { withWorkspaceDeletionAccessLifecycle } from "../pending-action/workspace-access-invalidation";
+import { ServiceCalendarVersionConflictError } from "./errors";
 
 type CalendarActor = {
   actorId: string;
@@ -31,8 +32,67 @@ type CalendarActor = {
 
 type CalendarTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export function getCalendarWorkspace(id: string) {
-  return db
+type MaterializedCalendar = Omit<
+  typeof serviceCalendarTable.$inferSelect,
+  "windows" | "holidays"
+> & { windows: JsonValue; holidays: JsonValue };
+
+/**
+ * CAL-9: the single definition of "in use", shared by the deletion request
+ * (service-calendar route) and its approval recheck.
+ */
+export async function assertCalendarUnused(
+  tx: Pick<typeof db, "select">,
+  workspaceId: string,
+  calendarId: string,
+) {
+  const [projectReference] = await tx
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.workspaceId, workspaceId),
+        eq(projectTable.serviceCalendarId, calendarId),
+      ),
+    )
+    .limit(1);
+  const [policyReference] = await tx
+    .select({ id: slaPolicyVersionTable.id })
+    .from(slaPolicyVersionTable)
+    .where(
+      and(
+        eq(slaPolicyVersionTable.workspaceId, workspaceId),
+        eq(slaPolicyVersionTable.calendarId, calendarId),
+      ),
+    )
+    .limit(1);
+  if (projectReference || policyReference) {
+    throw new HTTPException(409, { message: "service_calendar_in_use" });
+  }
+}
+
+function materializeCalendarRows(
+  rows: (typeof serviceCalendarTable.$inferSelect)[],
+): MaterializedCalendar[] {
+  return rows.map((row) => ({
+    ...row,
+    windows: row.windows as JsonValue,
+    holidays: row.holidays as JsonValue,
+  }));
+}
+
+function materializeCalendar(
+  row: typeof serviceCalendarTable.$inferSelect,
+): MaterializedCalendar {
+  return {
+    ...row,
+    windows: row.windows as JsonValue,
+    holidays: row.holidays as JsonValue,
+  };
+}
+
+export async function getCalendarWorkspace(id: string) {
+  return await db
     .select({ workspaceId: serviceCalendarTable.workspaceId })
     .from(serviceCalendarTable)
     .where(eq(serviceCalendarTable.id, id))
@@ -312,7 +372,9 @@ export async function listCalendars(
         : asc(serviceCalendarTable.id),
     )
     .limit(options.limit);
-  const data = cursor?.direction === "before" ? rows.reverse() : rows;
+  const data = materializeCalendarRows(
+    cursor?.direction === "before" ? rows.reverse() : rows,
+  );
   const [count] = await db
     .select({ total: sql<number>`count(*)::int` })
     .from(serviceCalendarTable)
@@ -358,14 +420,16 @@ export async function listCalendars(
     meta: { total: count?.total ?? 0 },
   };
 }
-export const getCalendar = async (id: string, workspaceId: string) =>
-  (
+export const getCalendar = async (id: string, workspaceId: string) => {
+  const row = (
     await db
       .select()
       .from(serviceCalendarTable)
       .where(eq(serviceCalendarTable.id, id))
       .limit(1)
   ).find((row) => row.workspaceId === workspaceId);
+  return row ? materializeCalendar(row) : undefined;
+};
 export async function createCalendar(input: {
   workspaceId: string;
   name: string;
@@ -404,20 +468,8 @@ export async function createCalendar(input: {
   if (outcome.auditFailed) {
     await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
   }
-  return outcome.row;
+  return materializeCalendar(outcome.row);
 }
-export class ServiceCalendarVersionConflictError extends Error {
-  constructor(
-    public readonly assertedVersion: number,
-    public readonly currentVersion: number,
-  ) {
-    super(
-      `Version mismatch: expected version ${assertedVersion}, but the calendar is now at version ${currentVersion}`,
-    );
-    this.name = "ServiceCalendarVersionConflictError";
-  }
-}
-
 export async function updateCalendar(
   id: string,
   workspaceId: string,
@@ -487,7 +539,12 @@ export async function updateCalendar(
   if (outcome?.auditFailed) {
     await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
   }
-  return outcome?.value;
+  return outcome?.value
+    ? {
+        before: materializeCalendar(outcome.value.before),
+        row: materializeCalendar(outcome.value.row),
+      }
+    : undefined;
 }
 
 export async function importCalendarHolidays(
@@ -573,5 +630,7 @@ export async function importCalendarHolidays(
   );
   if (outcome?.auditFailed)
     await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
-  return outcome?.value;
+  return outcome?.value
+    ? { ...outcome.value, row: materializeCalendar(outcome.value.row) }
+    : undefined;
 }

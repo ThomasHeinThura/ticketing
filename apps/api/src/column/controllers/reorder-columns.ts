@@ -1,10 +1,15 @@
-import { and, eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import {
+  ColumnReorderScopeError,
+  listProjectColumnsOrdered,
+  updateColumnPositionInProject,
+} from "../repository";
 
 async function reorderColumns(
+  identity: ResolvedIdentity,
   projectId: string,
   columns: Array<{ id: string; position: number }>,
 ) {
@@ -14,28 +19,26 @@ async function reorderColumns(
   // Checked once, up front, before any of the per-column writes below.
   await getProjectWorkspaceId(projectId);
 
-  for (const col of columns) {
-    const [updated] = await db
-      .update(columnTable)
-      .set({ position: col.position })
-      .where(
-        and(eq(columnTable.id, col.id), eq(columnTable.projectId, projectId)),
-      )
-      .returning({ id: columnTable.id });
-
-    if (!updated) {
-      throw new HTTPException(400, {
-        message: `Column ${col.id} does not belong to this project`,
-      });
+  try {
+    return await db.transaction(async (tx) => {
+      for (const column of columns) {
+        const updated = await updateColumnPositionInProject(
+          identity,
+          projectId,
+          column.id,
+          column.position,
+          tx,
+        );
+        if (!updated) throw new ColumnReorderScopeError(column.id);
+      }
+      return await listProjectColumnsOrdered(identity, projectId, tx);
+    });
+  } catch (error) {
+    if (error instanceof ColumnReorderScopeError) {
+      throw new HTTPException(400, { message: error.message });
     }
+    throw error;
   }
-
-  const updated = await db.query.columnTable.findMany({
-    where: eq(columnTable.projectId, projectId),
-    orderBy: (columns, { asc }) => [asc(columns.position)],
-  });
-
-  return updated;
 }
 
 export default reorderColumns;

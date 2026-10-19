@@ -5,11 +5,20 @@
  * route are NOT covered here -- see this PR's own body.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { eq, inArray } from "drizzle-orm";
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { subscribeToEvent } from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
+import {
+  deleteReadableNotifications,
+  listVisibleNotificationRows,
+  markOwnReadableNotificationRead,
+  markReadableNotificationsRead,
+} from "../../apps/api/src/notification/inbox.repository";
+import { findCurrentNotificationResources } from "../../apps/api/src/notification/repository";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -31,6 +40,18 @@ import {
 type RecordedEvent = { type: string; data: unknown };
 let recordedEvents: RecordedEvent[] = [];
 let eventSubscribersInitialized = false;
+
+function expectRowsById<T extends { id: string }>(
+  actual: readonly T[],
+  expected: readonly T[],
+) {
+  const compareRows = (left: T, right: T) =>
+    left.id.localeCompare(right.id) ||
+    JSON.stringify(left).localeCompare(JSON.stringify(right));
+  expect([...actual].sort(compareRows)).toEqual(
+    [...expected].sort(compareRows),
+  );
+}
 
 function initEventSubscribers() {
   if (eventSubscribersInitialized) return;
@@ -88,6 +109,76 @@ async function makeDefaultState(workspaceId: string, projectId: string) {
 }
 
 async function addCustomerIdentity(organisationId: string) {
+  let [customerRole] = await db
+    .select({
+      id: schema.roleTable.id,
+      capabilities: schema.roleTable.capabilities,
+      rank: schema.roleTable.rank,
+      isSystem: schema.roleTable.isSystem,
+      workspaceId: schema.roleTable.workspaceId,
+    })
+    .from(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.scope, "organisation"),
+        eq(schema.roleTable.key, BUILT_IN_ROLES.customer.key),
+        isNull(schema.roleTable.workspaceId),
+      ),
+    )
+    .limit(1);
+  if (!customerRole) {
+    [customerRole] = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: BUILT_IN_ROLES.customer.scope,
+        workspaceId: null,
+        key: BUILT_IN_ROLES.customer.key,
+        name: "Customer",
+        rank: BUILT_IN_ROLES.customer.rank,
+        capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+        isSystem: true,
+        isEditable: false,
+      })
+      .onConflictDoNothing()
+      .returning({
+        id: schema.roleTable.id,
+        capabilities: schema.roleTable.capabilities,
+        rank: schema.roleTable.rank,
+        isSystem: schema.roleTable.isSystem,
+        workspaceId: schema.roleTable.workspaceId,
+      });
+  }
+  if (!customerRole) {
+    [customerRole] = await db
+      .select({
+        id: schema.roleTable.id,
+        capabilities: schema.roleTable.capabilities,
+        rank: schema.roleTable.rank,
+        isSystem: schema.roleTable.isSystem,
+        workspaceId: schema.roleTable.workspaceId,
+      })
+      .from(schema.roleTable)
+      .where(
+        and(
+          eq(schema.roleTable.scope, "organisation"),
+          eq(schema.roleTable.key, BUILT_IN_ROLES.customer.key),
+          isNull(schema.roleTable.workspaceId),
+        ),
+      )
+      .limit(1);
+  }
+  if (
+    !customerRole ||
+    customerRole.rank !== BUILT_IN_ROLES.customer.rank ||
+    customerRole.isSystem !== true ||
+    customerRole.workspaceId !== null ||
+    JSON.stringify(customerRole.capabilities) !==
+      JSON.stringify(BUILT_IN_ROLES.customer.capabilities)
+  ) {
+    throw new Error(
+      "addCustomerIdentity: canonical customer role is unavailable",
+    );
+  }
   const user = await db
     .insert(schema.userTable)
     .values({
@@ -105,13 +196,26 @@ async function addCustomerIdentity(organisationId: string) {
       userId: user.id,
       organisationId,
       side: "customer",
+      active: true,
+      isPlaceholder: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
     .returning()
     .then(([row]) => row);
   if (!person) throw new Error("addCustomerIdentity: no person row");
-  return { user, person };
+  const [membership] = await db
+    .insert(schema.membershipTable)
+    .values({
+      personId: person.id,
+      scope: "organisation",
+      scopeId: organisationId,
+      roleId: customerRole.id,
+      seesAll: false,
+    })
+    .returning();
+  if (!membership) throw new Error("addCustomerIdentity: no membership row");
+  return { user, person, membership };
 }
 
 async function addWorkspaceMember(workspaceId: string, role: string) {
@@ -174,6 +278,34 @@ async function setupWorkItem(role: "member" | "admin" | "viewer" = "member") {
   });
   const workItem = (await created.json()) as { key: string; id: string };
   return { creator, project, app, workItem };
+}
+
+async function plantNativeNotification(input: {
+  userId: string;
+  personId: string;
+  resourceType: "work_item" | "comment";
+  resourceId: string;
+  kind: string;
+  createdAt?: Date;
+  title?: string;
+  content?: string;
+}) {
+  const [row] = await db
+    .insert(schema.notificationTable)
+    .values({
+      userId: input.userId,
+      personId: input.personId,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      kind: input.kind,
+      type: "info",
+      title: input.title ?? "Native resource notice",
+      content: input.content ?? "Current reach controls this row",
+      ...(input.createdAt ? { createdAt: input.createdAt } : {}),
+    })
+    .returning();
+  if (!row) throw new Error("plantNativeNotification: no row returned");
+  return row;
 }
 
 function postComment(
@@ -346,6 +478,911 @@ describe("API integration: work-item comments (#27)", () => {
     if (!event) throw new Error("expected one recorded event");
     expect(event.type).toBe("work_item.commented");
     expect((event.data as { visibility: string }).visibility).toBe("internal");
+  });
+
+  it("#580 B1: filters native work-item/comment inbox rows before pagination and every mutation", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const [actorPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, creator.user.id));
+    if (!actorPerson) throw new Error("expected creator person");
+    const commentResponse = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "public",
+    });
+    expect(commentResponse.status).toBe(200);
+    const comment = (await commentResponse.json()) as { id: string };
+    const reachableItem = await plantNativeNotification({
+      userId: creator.user.id,
+      personId: actorPerson.id,
+      resourceType: "work_item",
+      resourceId: workItem.id,
+      kind: "work_item.assigned",
+      createdAt: new Date("2020-01-01T00:00:00Z"),
+    });
+    const reachableComment = await plantNativeNotification({
+      userId: creator.user.id,
+      personId: actorPerson.id,
+      resourceType: "comment",
+      resourceId: comment.id,
+      kind: "work_item.mentioned",
+    });
+    const mismatchUser = await addWorkspaceMember(
+      creator.workspace.id,
+      "member",
+    );
+    const [mismatchPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, mismatchUser.id));
+    if (!mismatchPerson) throw new Error("expected mismatch person");
+    for (let index = 0; index < 55; index += 1) {
+      await plantNativeNotification({
+        userId: creator.user.id,
+        personId: mismatchPerson.id,
+        resourceType: "work_item",
+        resourceId: workItem.id,
+        kind: "work_item.assigned",
+      });
+    }
+
+    const listBefore = await app.request("/api/notification");
+    expect(listBefore.status).toBe(200);
+    const listedBefore = (await listBefore.json()) as Array<{ id: string }>;
+    expect(listedBefore.map(({ id }) => id)).toContain(reachableItem.id);
+    expect(listedBefore.map(({ id }) => id)).toContain(reachableComment.id);
+    expect(listedBefore).toHaveLength(2);
+    const keyAllowedRows = await listVisibleNotificationRows({
+      userId: creator.user.id,
+      credentialCanReadTask: false,
+      credential: {
+        apiKey: {
+          id: `notification-key-read-${randomUUID()}`,
+          userId: creator.user.id,
+          enabled: true,
+          permissions: { work_item: ["read"] },
+        },
+      },
+    });
+    expect(keyAllowedRows.map(({ notification }) => notification.id)).toContain(
+      reachableItem.id,
+    );
+    expect(keyAllowedRows.map(({ notification }) => notification.id)).toContain(
+      reachableComment.id,
+    );
+    const keyClampedRows = await listVisibleNotificationRows({
+      userId: creator.user.id,
+      credentialCanReadTask: false,
+      credential: {
+        apiKey: {
+          id: `notification-key-${randomUUID()}`,
+          userId: creator.user.id,
+          enabled: true,
+          permissions: {},
+        },
+      },
+    });
+    expect(
+      keyClampedRows.map(({ notification }) => notification.id),
+    ).not.toContain(reachableItem.id);
+    expect(
+      keyClampedRows.map(({ notification }) => notification.id),
+    ).not.toContain(reachableComment.id);
+
+    await db
+      .update(schema.commentTable)
+      .set({ deletedAt: new Date(), body: null })
+      .where(eq(schema.commentTable.id, comment.id));
+    const listAfterTombstone = await app.request("/api/notification");
+    const listedAfterTombstone = (await listAfterTombstone.json()) as Array<{
+      id: string;
+    }>;
+    expect(listedAfterTombstone.map(({ id }) => id)).toEqual([
+      reachableItem.id,
+    ]);
+    const hiddenCommentRead = await app.request(
+      `/api/notification/${reachableComment.id}/read`,
+      { method: "PATCH" },
+    );
+    expect(hiddenCommentRead.status).toBe(404);
+    await app.request("/api/notification/read-all", { method: "PATCH" });
+    const commentAfterReadAll = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, reachableComment.id))
+      .then(([row]) => row);
+    expect(commentAfterReadAll?.isRead).toBe(false);
+    await app.request("/api/notification/clear-all", { method: "DELETE" });
+    expect(
+      await db
+        .select({ id: schema.notificationTable.id })
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.id, reachableItem.id)),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select({ id: schema.notificationTable.id })
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.id, reachableComment.id)),
+    ).toHaveLength(1);
+
+    const revoked = await plantNativeNotification({
+      userId: creator.user.id,
+      personId: actorPerson.id,
+      resourceType: "work_item",
+      resourceId: workItem.id,
+      kind: "work_item.assigned",
+    });
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, actorPerson.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, project.id),
+        ),
+      );
+    const listAfterRevocation = await app.request("/api/notification");
+    expect(
+      ((await listAfterRevocation.json()) as Array<{ id: string }>).map(
+        ({ id }) => id,
+      ),
+    ).not.toContain(revoked.id);
+    const revokedRead = await app.request(
+      `/api/notification/${revoked.id}/read`,
+      { method: "PATCH" },
+    );
+    expect(revokedRead.status).toBe(404);
+    await app.request("/api/notification/read-all", { method: "PATCH" });
+    await app.request("/api/notification/clear-all", { method: "DELETE" });
+    const revokedRow = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, revoked.id))
+      .then(([row]) => row);
+    expect(revokedRow?.isRead).toBe(false);
+  });
+
+  it("#580 B1: applies customer comment visibility and private-item audience on current reach", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const organisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `b1-customer-${randomUUID()}`,
+        name: "B1 customer organisation",
+        isInternal: false,
+        active: true,
+        portalAccess: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+      .then(([row]) => row);
+    const foreignOrganisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `b1-foreign-${randomUUID()}`,
+        name: "B1 foreign organisation",
+        isInternal: false,
+        active: true,
+        portalAccess: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!organisation || !foreignOrganisation)
+      throw new Error("expected customer organisations");
+    const requester = await addCustomerIdentity(organisation.id);
+    const participant = await addCustomerIdentity(organisation.id);
+    const nonparticipant = await addCustomerIdentity(organisation.id);
+    const foreign = await addCustomerIdentity(foreignOrganisation.id);
+    const [author] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, creator.user.id));
+    if (!author) throw new Error("expected staff author");
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: organisation.id })
+      .where(eq(schema.projectTable.id, project.id));
+    await db
+      .update(schema.workItemTable)
+      .set({
+        requesterId: requester.person.id,
+        customerVisibility: "private",
+      })
+      .where(eq(schema.workItemTable.id, workItem.id));
+    await db.insert(schema.requestParticipantTable).values({
+      workItemId: workItem.id,
+      personId: participant.person.id,
+      addedBy: author.id,
+      createdAt: new Date(),
+    });
+    const publicResponse = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "public",
+    });
+    const internalResponse = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    expect(publicResponse.status).toBe(200);
+    expect(internalResponse.status).toBe(200);
+    const publicComment = (await publicResponse.json()) as { id: string };
+    const internalComment = (await internalResponse.json()) as { id: string };
+
+    const plantForCustomer = async (
+      person: typeof requester.person,
+      userId: string,
+      resourceType: "work_item" | "comment",
+      resourceId: string,
+      kind: string,
+    ) =>
+      plantNativeNotification({
+        userId,
+        personId: person.id,
+        resourceType,
+        resourceId,
+        kind,
+      });
+    const people = [requester, participant, nonparticipant, foreign];
+    const notifications = new Map<string, string[]>();
+    for (const person of people) {
+      const itemRow = await plantForCustomer(
+        person.person,
+        person.user.id,
+        "work_item",
+        workItem.id,
+        "work_item.assigned",
+      );
+      const publicRow = await plantForCustomer(
+        person.person,
+        person.user.id,
+        "comment",
+        publicComment.id,
+        "work_item.mentioned",
+      );
+      const internalRow = await plantForCustomer(
+        person.person,
+        person.user.id,
+        "comment",
+        internalComment.id,
+        "work_item.mentioned",
+      );
+      notifications.set(person.user.id, [
+        itemRow.id,
+        publicRow.id,
+        internalRow.id,
+      ]);
+    }
+    for (const person of [requester, participant]) {
+      const rows = await listVisibleNotificationRows({
+        userId: person.user.id,
+        credentialCanReadTask: false,
+      });
+      const ids = rows.map(({ notification }) => notification.id);
+      expect(ids).not.toContain(notifications.get(person.user.id)?.[0]);
+      expect(ids).toContain(notifications.get(person.user.id)?.[1]);
+      expect(ids).not.toContain(notifications.get(person.user.id)?.[2]);
+    }
+    for (const person of [nonparticipant, foreign]) {
+      const rows = await listVisibleNotificationRows({
+        userId: person.user.id,
+        credentialCanReadTask: false,
+      });
+      const ids = rows.map(({ notification }) => notification.id);
+      expect(ids).not.toContain(notifications.get(person.user.id)?.[0]);
+      expect(ids).not.toContain(notifications.get(person.user.id)?.[1]);
+      expect(ids).not.toContain(notifications.get(person.user.id)?.[2]);
+    }
+
+    const requesterMentionId = notifications.get(requester.user.id)?.[1];
+    const nonparticipantMentionId = notifications.get(
+      nonparticipant.user.id,
+    )?.[1];
+    const requesterAssignmentId = notifications.get(requester.user.id)?.[0];
+    if (
+      !requesterMentionId ||
+      !nonparticipantMentionId ||
+      !requesterAssignmentId
+    )
+      throw new Error("expected private-audience notification fixtures");
+    const requesterRead = await markOwnReadableNotificationRead(
+      requesterMentionId,
+      requester.user.id,
+    );
+    expect(requesterRead?.isRead).toBe(true);
+    const [requesterAfterRead] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, requesterMentionId));
+    expect(requesterAfterRead?.isRead).toBe(true);
+
+    const nonparticipantRead = await markOwnReadableNotificationRead(
+      nonparticipantMentionId,
+      nonparticipant.user.id,
+    );
+    expect(nonparticipantRead).toBeUndefined();
+    const [nonparticipantAfterRead] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, nonparticipantMentionId));
+    expect(nonparticipantAfterRead?.isRead).toBe(false);
+
+    expect(
+      await markOwnReadableNotificationRead(
+        requesterAssignmentId,
+        requester.user.id,
+      ),
+    ).toBeUndefined();
+    const [assignmentAfterDirect] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, requesterAssignmentId));
+    expect(assignmentAfterDirect?.isRead).toBe(false);
+    await markReadableNotificationsRead(requester.user.id);
+    const [assignmentAfterBulkRead] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, requesterAssignmentId));
+    expect(assignmentAfterBulkRead?.isRead).toBe(false);
+    await deleteReadableNotifications(requester.user.id);
+    const [assignmentAfterClear] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, requesterAssignmentId));
+    expect(assignmentAfterClear?.isRead).toBe(false);
+  });
+
+  it("#580 S3: uses the serving project organisation for customer inbox reach", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const makeCustomerOrganisation = async (prefix: string) => {
+      const [organisation] = await db
+        .insert(schema.organisationTable)
+        .values({
+          key: `${prefix}-${randomUUID()}`,
+          name: prefix,
+          isInternal: false,
+          active: true,
+          portalAccess: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      if (!organisation) throw new Error("expected customer organisation");
+      return organisation;
+    };
+    const customerOrganisation = await makeCustomerOrganisation("serving");
+    const foreignOrganisation = await makeCustomerOrganisation("foreign");
+    const customer = await addCustomerIdentity(customerOrganisation.id);
+    const foreign = await addCustomerIdentity(foreignOrganisation.id);
+    const [workspace] = await db
+      .select({ organisationId: schema.workspaceTable.organisationId })
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, creator.workspace.id));
+    expect(workspace?.organisationId).not.toBe(customerOrganisation.id);
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: customerOrganisation.id })
+      .where(eq(schema.projectTable.id, project.id));
+    await db
+      .update(schema.workItemTable)
+      .set({ customerVisibility: "organisation" })
+      .where(eq(schema.workItemTable.id, workItem.id));
+
+    const publicResponse = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "public",
+    });
+    const internalResponse = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    expect(publicResponse.status).toBe(200);
+    expect(internalResponse.status).toBe(200);
+    const publicComment = (await publicResponse.json()) as { id: string };
+    const internalComment = (await internalResponse.json()) as { id: string };
+
+    const plantFor = (
+      identity: typeof customer,
+      resourceType: "work_item" | "comment",
+      resourceId: string,
+      kind: string,
+    ) =>
+      plantNativeNotification({
+        userId: identity.user.id,
+        personId: identity.person.id,
+        resourceType,
+        resourceId,
+        kind,
+      });
+    const customerAssigned = await plantFor(
+      customer,
+      "work_item",
+      workItem.id,
+      "work_item.assigned",
+    );
+    const customerUnassigned = await plantFor(
+      customer,
+      "work_item",
+      workItem.id,
+      "work_item.unassigned",
+    );
+    const customerComment = await plantFor(
+      customer,
+      "comment",
+      publicComment.id,
+      "work_item.commented",
+    );
+    const customerTransition = await plantNativeNotification({
+      userId: customer.user.id,
+      personId: customer.person.id,
+      resourceType: "work_item",
+      resourceId: workItem.id,
+      kind: "work_item.transitioned",
+      title: "Your request has an update",
+      content: "There is a new update to your request.",
+    });
+    const customerMention = await plantFor(
+      customer,
+      "comment",
+      publicComment.id,
+      "work_item.mentioned",
+    );
+    const customerInternal = await plantFor(
+      customer,
+      "comment",
+      internalComment.id,
+      "work_item.commented",
+    );
+    const missingResource = await plantFor(
+      customer,
+      "work_item",
+      `missing-${randomUUID()}`,
+      "work_item.assigned",
+    );
+    const foreignItem = await plantFor(
+      foreign,
+      "work_item",
+      workItem.id,
+      "work_item.assigned",
+    );
+    const unknownCustomerEvent = await plantFor(
+      customer,
+      "work_item",
+      workItem.id,
+      "work_item.private_activity",
+    );
+
+    mockAuthenticatedSession(customer.user, { portal: "customer" });
+    const agentHostList = await app.request("/api/notification");
+    expect(agentHostList.status).toBe(401);
+
+    const customerRows = await listVisibleNotificationRows({
+      userId: customer.user.id,
+      credentialCanReadTask: false,
+    });
+    const customerIds = customerRows.map(({ notification }) => notification.id);
+    expect(
+      customerRows.find(
+        ({ notification }) => notification.id === customerTransition.id,
+      )?.notification,
+    ).toMatchObject({
+      title: "Your request has an update",
+      content: "There is a new update to your request.",
+    });
+    expect(customerIds).not.toContain(customerAssigned.id);
+    expect(customerIds).not.toContain(customerUnassigned.id);
+    expect(customerIds).toContain(customerComment.id);
+    expect(customerIds).toContain(customerTransition.id);
+    expect(customerIds).toContain(customerMention.id);
+    expect(customerIds).not.toContain(customerInternal.id);
+    expect(customerIds).not.toContain(missingResource.id);
+    expect(customerIds).not.toContain(unknownCustomerEvent.id);
+
+    expect(
+      await resolveIdentity({
+        userId: customer.user.id,
+        credential: "session",
+      }),
+    ).not.toBeNull();
+    await db
+      .delete(schema.membershipTable)
+      .where(eq(schema.membershipTable.id, customer.membership.id));
+    expect(
+      await resolveIdentity({
+        userId: customer.user.id,
+        credential: "session",
+      }),
+    ).toBeNull();
+    expect(
+      await listVisibleNotificationRows({
+        userId: customer.user.id,
+        credentialCanReadTask: false,
+      }),
+    ).toHaveLength(0);
+    expect(
+      await markOwnReadableNotificationRead(
+        customerMention.id,
+        customer.user.id,
+      ),
+    ).toBeUndefined();
+    const [mentionAfterRevocation] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, customerMention.id));
+    expect(mentionAfterRevocation?.isRead).toBe(false);
+    await markReadableNotificationsRead(customer.user.id);
+    const bulkAfterRevocation = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [
+          customerComment.id,
+          customerTransition.id,
+          customerMention.id,
+          customerAssigned.id,
+          customerInternal.id,
+        ]),
+      );
+    expectRowsById(
+      bulkAfterRevocation,
+      [
+        customerComment,
+        customerTransition,
+        customerMention,
+        customerAssigned,
+        customerInternal,
+      ].map(({ id }) => ({ id, isRead: false })),
+    );
+    await deleteReadableNotifications(customer.user.id);
+    const retainedAfterClear = await db
+      .select({ id: schema.notificationTable.id })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [
+          customerComment.id,
+          customerTransition.id,
+          customerMention.id,
+          customerAssigned.id,
+          customerInternal.id,
+        ]),
+      );
+    expectRowsById(
+      retainedAfterClear,
+      [
+        customerComment.id,
+        customerTransition.id,
+        customerMention.id,
+        customerAssigned.id,
+        customerInternal.id,
+      ].map((id) => ({ id })),
+    );
+    const [restoredMembership] = await db
+      .insert(schema.membershipTable)
+      .values({
+        personId: customer.person.id,
+        scope: customer.membership.scope,
+        scopeId: customer.membership.scopeId,
+        roleId: customer.membership.roleId,
+        seesAll: customer.membership.seesAll,
+      })
+      .returning();
+    expect(restoredMembership).toBeDefined();
+    expect(
+      await resolveIdentity({
+        userId: customer.user.id,
+        credential: "session",
+      }),
+    ).not.toBeNull();
+    expect(
+      (
+        await listVisibleNotificationRows({
+          userId: customer.user.id,
+          credentialCanReadTask: false,
+        })
+      ).map(({ notification }) => notification.id),
+    ).toContain(customerComment.id);
+
+    const foreignRows = await listVisibleNotificationRows({
+      userId: foreign.user.id,
+      credentialCanReadTask: false,
+    });
+    expect(
+      foreignRows.map(({ notification }) => notification.id),
+    ).not.toContain(foreignItem.id);
+
+    const directRead = await markOwnReadableNotificationRead(
+      customerTransition.id,
+      customer.user.id,
+    );
+    expect(directRead?.isRead).toBe(true);
+    const [transitionAfterDirectRead] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, customerTransition.id));
+    expect(transitionAfterDirectRead?.isRead).toBe(true);
+
+    for (const forbidden of [customerAssigned, customerUnassigned]) {
+      expect(
+        await markOwnReadableNotificationRead(forbidden.id, customer.user.id),
+      ).toBeUndefined();
+    }
+    const forbiddenRows = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [
+          customerAssigned.id,
+          customerUnassigned.id,
+        ]),
+      );
+    expectRowsById(forbiddenRows, [
+      { id: customerAssigned.id, isRead: false },
+      { id: customerUnassigned.id, isRead: false },
+    ]);
+
+    const refusedDirectRead = await markOwnReadableNotificationRead(
+      foreignItem.id,
+      foreign.user.id,
+    );
+    expect(refusedDirectRead).toBeUndefined();
+    const [foreignAfterRefusal] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, foreignItem.id));
+    expect(foreignAfterRefusal?.isRead).toBe(false);
+
+    const customerBulkComment = await plantFor(
+      customer,
+      "comment",
+      publicComment.id,
+      "work_item.mentioned",
+    );
+    const customerBulkTransition = await plantNativeNotification({
+      userId: customer.user.id,
+      personId: customer.person.id,
+      resourceType: "work_item",
+      resourceId: workItem.id,
+      kind: "work_item.transitioned",
+      title: "Your request has an update",
+      content: "There is a new update to your request.",
+    });
+    await markReadableNotificationsRead(customer.user.id);
+    const afterBulkRead = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [
+          customerComment.id,
+          customerMention.id,
+          customerBulkComment.id,
+          customerBulkTransition.id,
+          customerInternal.id,
+          missingResource.id,
+          customerAssigned.id,
+          customerUnassigned.id,
+          unknownCustomerEvent.id,
+        ]),
+      );
+    expectRowsById(afterBulkRead, [
+      { id: customerComment.id, isRead: true },
+      { id: customerMention.id, isRead: true },
+      { id: customerBulkComment.id, isRead: true },
+      { id: customerBulkTransition.id, isRead: true },
+      { id: customerInternal.id, isRead: false },
+      { id: missingResource.id, isRead: false },
+      { id: customerAssigned.id, isRead: false },
+      { id: customerUnassigned.id, isRead: false },
+      { id: unknownCustomerEvent.id, isRead: false },
+    ]);
+
+    const clearItem = await plantFor(
+      customer,
+      "work_item",
+      workItem.id,
+      "work_item.assigned",
+    );
+    const clearInternal = await plantFor(
+      customer,
+      "comment",
+      internalComment.id,
+      "work_item.mentioned",
+    );
+    const clearTransition = await plantNativeNotification({
+      userId: customer.user.id,
+      personId: customer.person.id,
+      resourceType: "work_item",
+      resourceId: workItem.id,
+      kind: "work_item.transitioned",
+      title: "Your request has an update",
+      content: "There is a new update to your request.",
+    });
+    await deleteReadableNotifications(customer.user.id);
+    const afterClear = await db
+      .select({ id: schema.notificationTable.id })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [
+          clearItem.id,
+          clearInternal.id,
+          clearTransition.id,
+        ]),
+      );
+    expectRowsById(afterClear, [
+      { id: clearItem.id },
+      { id: clearInternal.id },
+    ]);
+
+    await db
+      .update(schema.organisationTable)
+      .set({ active: false })
+      .where(eq(schema.organisationTable.id, customerOrganisation.id));
+    const inactiveCustomerRows = await listVisibleNotificationRows({
+      userId: customer.user.id,
+      credentialCanReadTask: false,
+    });
+    expect(inactiveCustomerRows).toHaveLength(0);
+  });
+
+  it("scopes native fact reads, content and inbox mutations to canonical project reach", async () => {
+    const actor = await setupWorkItem("member");
+    const foreign = await setupWorkItem("admin");
+    const identity = await resolveIdentity({
+      userId: actor.creator.user.id,
+      credential: "session",
+    });
+    expect(identity).not.toBeNull();
+    if (!identity) throw new Error("expected canonical inbox identity");
+
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, actor.creator.user.id))
+      .limit(1);
+    if (!person) throw new Error("expected actor person");
+    const malformedProjectRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "project",
+          workspaceId: actor.creator.workspace.id,
+          key: `notification-foreign-project-${randomUUID()}`,
+          name: "Foreign project role",
+          rank: 1,
+          capabilities: ["work_item:read"],
+        })
+        .returning(),
+      "foreign project role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "project",
+      scopeId: foreign.project.id,
+      roleId: malformedProjectRole.id,
+    });
+
+    const malformedWorkspaceRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: actor.creator.workspace.id,
+          key: `notification-foreign-workspace-${randomUUID()}`,
+          name: "Foreign workspace sees_all role",
+          rank: 1,
+          capabilities: ["work_item:read"],
+        })
+        .returning(),
+      "foreign workspace sees_all role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "workspace",
+      scopeId: foreign.creator.workspace.id,
+      roleId: malformedWorkspaceRole.id,
+      seesAll: true,
+    });
+
+    const ownNotice = await plantNativeNotification({
+      userId: actor.creator.user.id,
+      personId: person.id,
+      resourceType: "work_item",
+      resourceId: actor.workItem.id,
+      kind: "work_item.assigned",
+      title: "Own item notice",
+    });
+    const foreignNotice = await plantNativeNotification({
+      userId: actor.creator.user.id,
+      personId: person.id,
+      resourceType: "work_item",
+      resourceId: foreign.workItem.id,
+      kind: "work_item.assigned",
+      title: "Foreign item secret",
+      content: "Foreign item body must not be loaded",
+    });
+
+    const currentFacts = await db.transaction((tx) =>
+      findCurrentNotificationResources(tx, identity, [
+        {
+          resourceType: "work_item",
+          resourceId: actor.workItem.id,
+          eventKind: "work_item.assigned",
+        },
+        {
+          resourceType: "work_item",
+          resourceId: foreign.workItem.id,
+          eventKind: "work_item.assigned",
+        },
+      ]),
+    );
+    expect(currentFacts.has(`work_item\u0000${actor.workItem.id}`)).toBe(true);
+    expect(currentFacts.has(`work_item\u0000${foreign.workItem.id}`)).toBe(
+      false,
+    );
+
+    const listed = await listVisibleNotificationRows({
+      userId: actor.creator.user.id,
+      credentialCanReadTask: false,
+    });
+    expect(listed.map(({ notification }) => notification.id)).toContain(
+      ownNotice.id,
+    );
+    expect(listed.map(({ notification }) => notification.id)).not.toContain(
+      foreignNotice.id,
+    );
+    expect(
+      await markOwnReadableNotificationRead(
+        foreignNotice.id,
+        actor.creator.user.id,
+      ),
+    ).toBeUndefined();
+    const [foreignAfterDirect] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, foreignNotice.id));
+    expect(foreignAfterDirect?.isRead).toBe(false);
+
+    await markReadableNotificationsRead(actor.creator.user.id);
+    const mutationState = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(
+        inArray(schema.notificationTable.id, [ownNotice.id, foreignNotice.id]),
+      );
+    const expectedMutationState = [
+      { id: ownNotice.id, isRead: true },
+      { id: foreignNotice.id, isRead: false },
+    ];
+    expectRowsById(mutationState, expectedMutationState);
+    await deleteReadableNotifications(actor.creator.user.id);
+    const retainedForeign = await db
+      .select({
+        id: schema.notificationTable.id,
+        isRead: schema.notificationTable.isRead,
+      })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, foreignNotice.id));
+    expect(retainedForeign).toEqual([{ id: foreignNotice.id, isRead: false }]);
+    const deletedOwn = await db
+      .select({ id: schema.notificationTable.id })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, ownNotice.id));
+    expect(deletedOwn).toEqual([]);
   });
 
   it("CA-12: adds an accessible mention as watcher without unmuting and fans out to that person", async () => {

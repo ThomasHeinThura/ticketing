@@ -8,11 +8,11 @@
  * zero hash, which is correct today (nothing has ever purged) and will need a real
  * anchor lookup added when `audit-purge` lands, not before.
  */
-import { canonicalRowHash, type JsonValue, ZERO_HASH } from "@taskdesk/domain";
-import { sql } from "drizzle-orm";
-import type db from "../database";
+import { canonicalRowHash, ZERO_HASH } from "@taskdesk/domain";
+import type { Executor } from "../database/executor";
+import { listAuditChainRows } from "./repository";
 
-type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbOrTx = Executor;
 
 export interface AuditChainBreak {
   id: string;
@@ -26,28 +26,6 @@ export interface VerifyAuditChainResult {
   ok: boolean;
   rowsChecked: number;
   firstBreak: AuditChainBreak | null;
-}
-
-interface AuditLogChainRow {
-  [key: string]: unknown;
-  id: string;
-  seq: string;
-  actor_id: string | null;
-  actor_type: string;
-  api_key_id: string | null;
-  impersonator_id: string | null;
-  actor_ip: string | null;
-  user_agent: string | null;
-  trace_id: string | null;
-  workspace_id: string | null;
-  action: string;
-  entity_type: string;
-  entity_id: string;
-  before: JsonValue | null;
-  after: JsonValue | null;
-  created_at_iso: string;
-  prev_hash: string;
-  row_hash: string;
 }
 
 /**
@@ -81,23 +59,12 @@ interface AuditLogChainRow {
 export async function verifyAuditChain(
   dbOrTx: DbOrTx,
 ): Promise<VerifyAuditChainResult> {
-  const result = await dbOrTx.execute<AuditLogChainRow>(
-    sql`
-      SELECT
-        id, seq, actor_id, actor_type, api_key_id, impersonator_id, actor_ip,
-        user_agent, trace_id, workspace_id, action, entity_type, entity_id,
-        before, after,
-        to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at_iso,
-        prev_hash, row_hash
-      FROM audit_log
-      ORDER BY seq ASC
-    `,
-  );
+  const rows = await listAuditChainRows(dbOrTx);
 
   let expectedPrevHash = ZERO_HASH;
   let rowsChecked = 0;
 
-  for (const row of result.rows) {
+  for (const row of rows) {
     const seq = BigInt(row.seq);
 
     if (row.prev_hash !== expectedPrevHash) {

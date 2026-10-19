@@ -14,6 +14,7 @@ import {
   lockApproval,
   lockApprovalsForWorkItemTransition,
   lockLiveWorkItem,
+  resolveApprovalIdentity,
 } from "../../apps/api/src/approval/repository";
 import db, { schema } from "../../apps/api/src/database";
 import {
@@ -22,6 +23,8 @@ import {
   createApproval,
   decide,
   request,
+  restoreProjectMembership,
+  revokeProjectMembership,
 } from "./helpers/approval-fixtures";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -68,29 +71,49 @@ describe("approvals: 0120 tenant runtime checks (S3)", () => {
     const a = await buildTenant("a");
     const b = await buildTenant("b");
     const approval = await createApproval(a);
-    expect(await listApprovalRows(a.workItem.id, a.workspaceId)).toHaveLength(
-      1,
-    );
-    expect(await listApprovalRows(a.workItem.id, b.workspaceId)).toEqual([]);
+    const identity = await resolveApprovalIdentity(a.requester.user.id);
     expect(
-      await listApprovalsForWorkItemTransition(a.workItem.id, b.workspaceId),
+      await listApprovalRows(identity, a.workItem.id, a.workspaceId),
+    ).toHaveLength(1);
+    expect(
+      await listApprovalRows(identity, a.workItem.id, b.workspaceId),
+    ).toEqual([]);
+    expect(
+      await listApprovalsForWorkItemTransition(
+        identity,
+        a.workItem.id,
+        b.workspaceId,
+      ),
     ).toEqual([]);
     await db.transaction(async (tx) => {
       expect(
-        await lockApproval(tx, approval.id, a.workItem.id, b.workspaceId),
+        await lockApproval(
+          tx,
+          identity,
+          approval.id,
+          a.workItem.id,
+          b.workspaceId,
+        ),
       ).toBeNull();
       expect(
         await lockApprovalsForWorkItemTransition(
           tx,
+          identity,
           a.workItem.id,
           b.workspaceId,
         ),
       ).toEqual([]);
       expect(
-        await lockApproval(tx, approval.id, a.workItem.id, a.workspaceId),
+        await lockApproval(
+          tx,
+          identity,
+          approval.id,
+          a.workItem.id,
+          a.workspaceId,
+        ),
       ).not.toBeNull();
       expect(
-        await lockLiveWorkItem(tx, b.workspaceId, a.workItem.id),
+        await lockLiveWorkItem(tx, identity, b.workspaceId, a.workItem.id),
       ).toBeNull();
     });
   });
@@ -237,18 +260,15 @@ describe("approvals: 0120 tenant runtime checks (S3)", () => {
     expect(asOutsider.status).toBe(404);
     expect((await approvalRows(a.workItem.id))[0]?.state).toBe("pending");
 
-    // Lost membership/reach before deciding.
-    await db
-      .update(schema.workItemTable)
-      .set({ customerVisibility: "private" })
-      .where(eq(schema.workItemTable.id, a.workItem.id));
+    // Revoke current project reach before deciding.
+    const approverMembership = await revokeProjectMembership(
+      a.approverPerson.id,
+      a.project.id,
+    );
     const reachLost = await decide(a, a.approver, approval.id);
     expect(reachLost.status, await reachLost.clone().text()).toBe(403);
     expect((await approvalRows(a.workItem.id))[0]?.state).toBe("pending");
-    await db
-      .update(schema.workItemTable)
-      .set({ customerVisibility: "organisation" })
-      .where(eq(schema.workItemTable.id, a.workItem.id));
+    await restoreProjectMembership(approverMembership);
 
     // Expired.
     await db

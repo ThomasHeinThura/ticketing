@@ -1,9 +1,12 @@
-import { eq, sql } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { columnTable } from "../../database/schema";
 import { VIRTUAL_STATUSES } from "../../task/validate-task-fields";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import {
+  getMaxColumnPosition,
+  insertColumn,
+  listColumnIdsBySlug,
+} from "../repository";
 
 export function toSlug(name: string): string {
   const slug = name
@@ -17,12 +20,14 @@ export function toSlug(name: string): string {
 }
 
 async function createColumn({
+  identity,
   projectId,
   name,
   icon,
   color,
   isFinal,
 }: {
+  identity: ResolvedIdentity;
   projectId: string;
   name: string;
   icon?: string;
@@ -48,12 +53,7 @@ async function createColumn({
     });
   }
 
-  const existing = await db
-    .select({ id: columnTable.id })
-    .from(columnTable)
-    .where(
-      sql`${columnTable.projectId} = ${projectId} AND ${columnTable.slug} = ${slug}`,
-    );
+  const existing = await listColumnIdsBySlug(identity, projectId, slug);
 
   if (existing.length > 0) {
     throw new HTTPException(409, {
@@ -61,27 +61,19 @@ async function createColumn({
     });
   }
 
-  const [maxPos] = await db
-    .select({
-      maxPosition: sql<number>`COALESCE(MAX(${columnTable.position}), -1)`,
-    })
-    .from(columnTable)
-    .where(eq(columnTable.projectId, projectId));
+  const maxPos = await getMaxColumnPosition(identity, projectId);
 
   const position = (maxPos?.maxPosition ?? -1) + 1;
 
-  const [created] = await db
-    .insert(columnTable)
-    .values({
-      projectId,
-      name,
-      slug,
-      position,
-      icon: icon || null,
-      color: color || null,
-      isFinal: isFinal ?? false,
-    })
-    .returning();
+  const created = await insertColumn(identity, {
+    projectId,
+    name,
+    slug,
+    position,
+    icon: icon || null,
+    color: color || null,
+    isFinal: isFinal ?? false,
+  });
 
   if (!created) {
     throw new HTTPException(500, { message: "Failed to create column" });

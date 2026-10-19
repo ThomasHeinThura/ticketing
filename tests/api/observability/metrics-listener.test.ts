@@ -91,6 +91,7 @@ describe("internal metrics listener", () => {
     });
     const port = await freePort();
     const listener = createMetricsListener({
+      hostname: "127.0.0.1",
       testPort: port,
       readCurrentTokenDigest: async () => null,
       renderMetrics: () => "metrics\n",
@@ -111,6 +112,7 @@ describe("internal metrics listener", () => {
     let expositions = 0;
     const listener = createMetricsListener(
       {
+        hostname: "127.0.0.1",
         testPort: port,
         readCurrentTokenDigest: async () => {
           reads += 1;
@@ -176,6 +178,7 @@ describe("internal metrics listener", () => {
     const token = makeToken(43);
     let expositions = 0;
     const listener = createMetricsListener({
+      hostname: "127.0.0.1",
       testPort: port,
       readCurrentTokenDigest: async () => {
         throw new Error("database password and stack must not be returned");
@@ -203,10 +206,11 @@ describe("internal metrics listener", () => {
   it("rejects a bind collision and allows a stopped listener port to be reclaimed", async () => {
     const port = await freePort();
     const occupied: Server = createServer();
-    occupied.listen(port, "0.0.0.0");
+    occupied.listen(port, "127.0.0.1");
     await once(occupied, "listening");
 
     const listener = createMetricsListener({
+      hostname: "127.0.0.1",
       testPort: port,
       readCurrentTokenDigest: async () => null,
       renderMetrics: () => "",
@@ -231,6 +235,7 @@ describe("internal metrics listener", () => {
     const token = makeToken(44);
     let reads = 0;
     const listener = createMetricsListener({
+      hostname: "127.0.0.1",
       testPort: port,
       readCurrentTokenDigest: async () => {
         reads += 1;

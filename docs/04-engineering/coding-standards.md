@@ -116,8 +116,57 @@ export async function transitionWorkItem(c: Context) {
 }
 ```
 
-**Repositories own queries.** `db.select()` outside `*/repository.ts` is a lint error, so
-an unscoped query cannot creep into a controller.
+**Repositories own queries.** Controllers, middleware and services never build a query. A
+repository call that can return cross-organisation data receives the resolved identity and
+applies the caller's reach in the statement predicate. An additional workspace or project id
+must be checked against that identity; an id alone is not authoritative scope. Repository
+location alone does not guarantee scoping. The ownership rule and conventions are under
+[Query ownership](#query-ownership-issue-580) below. `check:queries` (issue #580) is planned
+but not currently wired, and will enforce query locations rather than tenant-predicate semantics.
+
+### Query ownership (issue #580)
+
+- **Where queries may live.** Drizzle/SQL statements are written only in these places, and
+  the final `check:queries` enumerates them exactly, with no wildcard over `database/`, no
+  per-site allowlist and no baseline:
+  1. repository modules, recognised by their own name: `**/repository.ts`,
+     `**/*.repository.ts` and `**/repository/**` (this includes feature repositories that
+     happen to sit under `database/`, for example
+     `apps/api/src/database/repositories/notification-delivery.repository.ts`);
+  2. the persistence infrastructure, an explicit list of files under `apps/api/src/database/`:
+     `schema.ts`, `relations.ts`, `index.ts`, `executor.ts`, `resolve-database-url.ts`,
+     `wait-for-database.ts`, `prepare-database-startup.ts`, `migration-schema.ts`,
+     `migrate-membership-provenance.ts`, `ensure-application-role.ts`,
+     `assert-application-role-is-not-privileged.ts`,
+     `assert-no-migration-url-in-api-process.ts`, `append-only-tables.ts` and
+     `scram-sha-256.ts`.
+  A new file under `database/` is not allowed to query until it is either named as a
+  repository or added to that list in a reviewed change. Controllers, middleware, services,
+  routes and scheduler code call repository functions. Startup SQL outside `database/` (for
+  example `utils/migrate-*`) moves into the list above or into a repository.
+- **Transactions.** A service may open `db.transaction(...)` as orchestration. Every statement
+  inside it goes through a repository function that accepts the handle. Opening a transaction is
+  not query construction; running a statement outside a repository is.
+- **Executor.** `Executor` (`apps/api/src/database/executor.ts`) is the shared connection or a
+  transaction handle. A repository function that always runs inside a caller's transaction takes
+  `executor: Executor` as its first parameter. A function that is callable both inside and
+  outside a transaction takes `executor?: Executor` as its last parameter and resolves it with
+  `executorOrDefault(executor)`. A function that never joins a transaction may use the shared
+  connection directly. A repository never opens, commits or rolls back a transaction it was
+  handed.
+- **Tenant scoping.** A repository query that can return cross-organisation data uses the
+  resolved identity and applies the caller's reach in the statement predicate. An additional
+  workspace or project id is checked against that identity and also appears in the predicate;
+  supplying an id alone does not prove the caller's reach. `forIdentity(identity)` remains the
+  accepted illustration/convention for scoped repositories, without claiming a literal fluent
+  API or universal `ScopedQuery` type guarantee is implemented. See [multi-tenancy](../01-architecture/multi-tenancy.md#query-scoping)
+  and the [security model](../01-architecture/security-model.md#5-secrets-never-serialise-queries-are-never-unscoped).
+- **Results.** Repository functions await their statement and return rows, DTOs or scalars,
+  never an un-awaited query builder, so a caller cannot keep composing the statement.
+- **Raw SQL and fragments.** Raw `execute`/`sql` statements follow the same rule. SQL fragment
+  helpers (for example a project-scope predicate) live in repository modules and are composed
+  there.
+- **Out of scope.** `apps/api/scripts/**` (dev and seed tooling, not shipped in the image).
 
 **Domain is pure.** No Drizzle import, no Hono import, no `Date.now()` — pass `now` in.
 This is what makes it testable.

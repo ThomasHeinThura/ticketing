@@ -1,20 +1,24 @@
-import { and, eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, projectTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   assertAssignableUserAndLockMembership,
   filterAssignableUsers,
 } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
-import { lockProjectAndAssertLiveForTaskNumber } from "../assert-task-project-live";
+import { lockProjectAndAssertLiveForTaskNumberForIdentity } from "../assert-task-project-live";
+import {
+  findColumnBySlugForIdentity,
+  findProjectById,
+  insertTask,
+} from "../repository";
 import {
   coercePriority,
   coerceStatus,
   getValidTaskStatuses,
 } from "../validate-task-fields";
-import { claimTaskNumber } from "./claim-task-numbers";
+import { claimTaskNumberForIdentity } from "./claim-task-numbers";
 
 export type ImportTask = {
   title: string;
@@ -27,21 +31,19 @@ export type ImportTask = {
 };
 
 async function importTasks(
+  identity: ResolvedIdentity,
   projectId: string,
   tasksToImport: ImportTask[],
   currentUserId?: string,
 ) {
   const project = await db.transaction(async (tx) => {
-    await lockProjectAndAssertLiveForTaskNumber(
+    await lockProjectAndAssertLiveForTaskNumberForIdentity(
       tx,
       projectId,
+      identity,
       "Project not found",
     );
-    const [liveProject] = await tx
-      .select()
-      .from(projectTable)
-      .where(eq(projectTable.id, projectId))
-      .limit(1);
+    const liveProject = await findProjectById(tx, identity, projectId);
 
     if (!liveProject) {
       throw new HTTPException(404, { message: "Project not found" });
@@ -59,9 +61,10 @@ async function importTasks(
   ];
   if (assigneeIds.some((assigneeId) => assigneeId.includes("\u0000"))) {
     await db.transaction(async (tx) => {
-      await lockProjectAndAssertLiveForTaskNumber(
+      await lockProjectAndAssertLiveForTaskNumberForIdentity(
         tx,
         projectId,
+        identity,
         "Project not found",
       );
       for (const assigneeId of assigneeIds) {
@@ -77,7 +80,7 @@ async function importTasks(
     project.workspaceId,
   );
 
-  const validStatuses = await getValidTaskStatuses(projectId);
+  const validStatuses = await getValidTaskStatuses(identity, projectId, db);
 
   const results = [];
 
@@ -103,17 +106,18 @@ async function importTasks(
       );
       const warnings = [statusWarning, priorityWarning].filter(Boolean);
 
-      const column = await db.query.columnTable.findFirst({
-        where: and(
-          eq(columnTable.projectId, projectId),
-          eq(columnTable.slug, status),
-        ),
-      });
+      const column = await findColumnBySlugForIdentity(
+        db,
+        identity,
+        projectId,
+        status,
+      );
 
       const createdTask = await db.transaction(async (tx) => {
-        await lockProjectAndAssertLiveForTaskNumber(
+        await lockProjectAndAssertLiveForTaskNumberForIdentity(
           tx,
           projectId,
+          identity,
           "Project not found",
         );
         if (assigneeId) {
@@ -123,23 +127,24 @@ async function importTasks(
             tx,
           );
         }
-        const taskNumber = await claimTaskNumber(projectId, tx);
+        const taskNumber = await claimTaskNumberForIdentity(
+          identity,
+          projectId,
+          tx,
+        );
 
-        const [task] = await tx
-          .insert(taskTable)
-          .values({
-            projectId,
-            userId: assigneeId,
-            title: taskData.title,
-            status,
-            columnId: column?.id ?? null,
-            startDate: taskData.startDate ? new Date(taskData.startDate) : null,
-            dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-            description: taskData.description || "",
-            priority,
-            number: taskNumber,
-          })
-          .returning();
+        const task = await insertTask(tx, identity, {
+          projectId,
+          userId: assigneeId,
+          title: taskData.title,
+          status,
+          columnId: column?.id ?? null,
+          startDate: taskData.startDate ? new Date(taskData.startDate) : null,
+          dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
+          description: taskData.description || "",
+          priority,
+          number: taskNumber,
+        });
 
         return task;
       });
