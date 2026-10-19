@@ -63,16 +63,16 @@ describe("native activity fetchers", () => {
     });
   });
 
-  it("uses native comment update and workspace-scoped canned response routes", async () => {
+  it("uses native comment update and work-item-scoped canned response routes", async () => {
     const body = { type: "doc", content: [{ type: "paragraph" }] };
     await updateWorkItemComment({ id: "comment-1", body });
-    await listCannedResponses("workspace-1");
+    await listCannedResponses("SUP-123");
     expect(mocks.patchComment).toHaveBeenCalledWith({
       param: { id: "comment-1" },
       json: { body },
     });
     expect(mocks.listCanned).toHaveBeenCalledWith({
-      query: { workspaceId: "workspace-1" },
+      query: { workItemKey: "SUP-123" },
     });
   });
 

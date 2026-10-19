@@ -1,1 +1,18 @@
-[]
+[
+	{
+		"operation": "GET /canned-responses",
+		"rule": "new-required-request-parameter",
+		"fingerprint": "37225a236da8",
+		"pr": 807,
+		"reason": "Intentional pre-stable CA19 canned-response scoping change removes workspace-wide listing; this exact finding is reviewed with the contract correction in PR #807.",
+		"decision": "decision-log 2026-10-16 GitHub prerelease classification; Thomas-approved CA19 #807"
+	},
+	{
+		"operation": "GET /canned-responses",
+		"rule": "request-parameter-removed",
+		"fingerprint": "c23172869ba9",
+		"pr": 807,
+		"reason": "Intentional pre-stable CA19 canned-response scoping change removes workspaceId; this exact finding is reviewed with the contract correction in PR #807.",
+		"decision": "decision-log 2026-10-16 GitHub prerelease classification; Thomas-approved CA19 #807"
+	}
+]

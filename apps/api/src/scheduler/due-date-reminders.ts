@@ -1,15 +1,10 @@
-import { and, between, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
-import db from "../database";
-import {
-  columnTable,
-  taskReminderSentTable,
-  taskTable,
-  userNotificationPreferenceTable,
-} from "../database/schema";
 import createNotification from "../notification/controllers/create-notification";
 import { REMINDER_WINDOW_MINUTES } from "./reminder-timing";
-
-type ReminderType = "configured_before" | "overdue";
+import {
+  insertReminderSent,
+  listTasksNeedingReminder,
+  type ReminderType,
+} from "./repository";
 
 const MINUTE_MS = 60 * 1000;
 
@@ -37,47 +32,7 @@ async function getTasksNeedingReminder(
   windowEnd: Date,
   reminderType: ReminderType,
 ) {
-  const results = await db
-    .select({
-      id: taskTable.id,
-      title: taskTable.title,
-      userId: taskTable.userId,
-      dueDate: taskTable.dueDate,
-      projectId: taskTable.projectId,
-      leadTimeMinutes:
-        userNotificationPreferenceTable.dueDateReminderLeadTimeMinutes,
-    })
-    .from(taskTable)
-    .leftJoin(columnTable, eq(taskTable.columnId, columnTable.id))
-    .leftJoin(
-      userNotificationPreferenceTable,
-      eq(userNotificationPreferenceTable.userId, taskTable.userId),
-    )
-    .leftJoin(
-      taskReminderSentTable,
-      and(
-        eq(taskReminderSentTable.taskId, taskTable.id),
-        eq(taskReminderSentTable.reminderType, reminderType),
-      ),
-    )
-    .where(
-      and(
-        isNotNull(taskTable.userId),
-        isNotNull(taskTable.dueDate),
-        reminderType === "configured_before"
-          ? sql`${taskTable.dueDate} - (COALESCE(${userNotificationPreferenceTable.dueDateReminderLeadTimeMinutes}, 1440) * interval '1 minute') BETWEEN ${windowStart.toISOString()} AND ${windowEnd.toISOString()}`
-          : between(taskTable.dueDate, windowStart, windowEnd),
-        isNull(taskReminderSentTable.id),
-        or(
-          isNull(userNotificationPreferenceTable.id),
-          eq(userNotificationPreferenceTable.dueDateReminderEnabled, true),
-        ),
-        // Exclude tasks in final columns (completed); include tasks with no column
-        or(isNull(columnTable.isFinal), eq(columnTable.isFinal, false)),
-      ),
-    );
-
-  return results;
+  return listTasksNeedingReminder(windowStart, windowEnd, reminderType);
 }
 
 async function processReminder(
@@ -96,19 +51,7 @@ async function processReminder(
 
   // Insert sent record first; if it already exists, skip notification
   try {
-    const [inserted] = await db
-      .insert(taskReminderSentTable)
-      .values({
-        taskId: task.id,
-        reminderType,
-      })
-      .onConflictDoNothing({
-        target: [
-          taskReminderSentTable.taskId,
-          taskReminderSentTable.reminderType,
-        ],
-      })
-      .returning();
+    const inserted = await insertReminderSent(task.id, reminderType);
 
     if (!inserted) return;
   } catch (error) {

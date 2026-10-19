@@ -7,17 +7,19 @@ import {
   validateApprovalRequest,
 } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq, inArray, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
-import db, { schema } from "../database";
+import db, { type schema } from "../database";
 import { eventScope } from "../events/outbox";
 import { enqueueNotificationEvent } from "../notification/fanout";
 import { resolveApprovalEventRecipients } from "../notification/recipient-resolvers";
-import { dbClockUtc } from "../utils/db-time";
 import { recordWorkItemActivity } from "../work-item/activity";
 import {
+  closePendingApprovalRowsForTransition,
+  findApprovalActorPerson,
+  findApprovalWorkspaceOrganisation,
   hasWorkItemReach,
+  insertApprovalForRequest,
   isActiveInstanceAdmin,
   isCabTeamMember,
   loadApprovalActorName,
@@ -28,6 +30,8 @@ import {
   lockLiveWorkItem,
   resolveApprovalFeatureFlag,
   resolveApprovalIdentityIfActive,
+  updateApprovalDecision,
+  updateApprovalWithdrawal,
 } from "./repository";
 
 type ActorType = "person" | "api_key";
@@ -59,13 +63,14 @@ export async function createApproval(input: {
   expiresAt?: Date;
 }) {
   const now = new Date();
-  const target = await loadApprovalTargetByKey(input.targetKey);
+  const target = await loadApprovalTargetByKey(input.identity, input.targetKey);
   if (!(await hasWorkItemReach(input.identity, target))) {
     throw new HTTPException(404, { message: "Work item not found" });
   }
   if (
     !(
       await resolveApprovalFeatureFlag({
+        identity: input.identity,
         workspaceId: target.workspaceId,
         projectId: target.projectId,
       })
@@ -74,6 +79,7 @@ export async function createApproval(input: {
     throw new HTTPException(404, { message: "Approval requests are disabled" });
   }
   const { approver, type, expiryDays } = await loadApprovalRequestFacts(
+    input.identity,
     target.workItemId,
     target.workspaceId,
     input.approverId,
@@ -93,7 +99,12 @@ export async function createApproval(input: {
   }
   if (
     input.kind === "cab" &&
-    !(await isCabTeamMember(approver.userId, target.workspaceId))
+    !(await isCabTeamMember(
+      input.identity,
+      approver.userId,
+      target.workspaceId,
+      target.workItemId,
+    ))
   ) {
     throw new HTTPException(422, {
       message: "CAB approver must be a member of a CAB team in this workspace",
@@ -134,13 +145,14 @@ export async function createApproval(input: {
   const created = await db.transaction(async (tx) => {
     const lockedItem = await lockLiveWorkItem(
       tx,
+      input.identity,
       target.workspaceId,
       target.workItemId,
     );
     if (!lockedItem)
       throw new HTTPException(404, { message: "Work item not found" });
 
-    const transition = await loadTransitionForWorkItem(tx, {
+    const transition = await loadTransitionForWorkItem(tx, input.identity, {
       workItemId: target.workItemId,
       workspaceId: lockedItem.workspaceId,
       transitionId: input.transitionId,
@@ -148,26 +160,18 @@ export async function createApproval(input: {
     if (!transition)
       throw new HTTPException(422, { message: "Transition not found" });
 
-    const [row] = await tx
-      .insert(schema.approvalTable)
-      .values({
-        id,
-        // Anchored from the loaded, locked work item, never from the request.
-        workspaceId: lockedItem.workspaceId,
-        workItemId: target.workItemId,
-        transitionId: input.transitionId,
-        kind: input.kind,
-        requestedBy: input.identity.personId,
-        approverId: input.approverId,
-        state: "pending",
-        // Stamped by the database clock after the work-item lock is held, so it is ordered
-        // against the activity row of a transition that ran under that same lock.
-        createdAt: dbClockUtc(),
-        expiresAt:
-          input.expiresAt ??
-          sql`(${dbClockUtc()} + make_interval(days => ${expiryDays}::int))`,
-      })
-      .returning();
+    const row = await insertApprovalForRequest(tx, input.identity, {
+      id,
+      // Anchored from the loaded, locked work item, never from the request.
+      workspaceId: lockedItem.workspaceId,
+      workItemId: target.workItemId,
+      transitionId: input.transitionId,
+      kind: input.kind,
+      requestedBy: input.identity.personId,
+      approverId: input.approverId,
+      expiryDays,
+      expiresAt: input.expiresAt,
+    });
     if (!row) throw new Error("Approval request did not persist");
 
     const eventId = createId();
@@ -238,6 +242,7 @@ export async function decideApproval(input: {
   return db.transaction(async (tx) => {
     const lockedItem = await lockLiveWorkItem(
       tx,
+      input.identity,
       input.target.workspaceId,
       input.target.workItemId,
     );
@@ -245,6 +250,7 @@ export async function decideApproval(input: {
       throw new HTTPException(404, { message: "Approval not found" });
     const row = await lockApproval(
       tx,
+      input.identity,
       input.approvalId,
       input.target.workItemId,
       input.target.workspaceId,
@@ -273,21 +279,13 @@ export async function decideApproval(input: {
       });
     }
     const now = new Date();
-    const [updated] = await tx
-      .update(schema.approvalTable)
-      .set({
-        state: decision.nextState,
-        decidedAt: now,
-        decisionNote: input.note,
-      })
-      .where(
-        and(
-          eq(schema.approvalTable.id, row.id),
-          eq(schema.approvalTable.workspaceId, input.target.workspaceId),
-          eq(schema.approvalTable.state, "pending"),
-        ),
-      )
-      .returning();
+    const updated = await updateApprovalDecision(tx, input.identity, {
+      id: row.id,
+      workspaceId: input.target.workspaceId,
+      state: decision.nextState,
+      decidedAt: now,
+      decisionNote: input.note,
+    });
     if (!updated)
       throw new HTTPException(409, {
         message: "Approval is no longer pending",
@@ -365,16 +363,20 @@ export async function withdrawApproval(input: {
   return db.transaction(async (tx) => {
     const lockedItem = await lockLiveWorkItem(
       tx,
+      input.identity,
       input.target.workspaceId,
       input.target.workItemId,
+      input.isInstanceAdmin,
     );
     if (!lockedItem)
       throw new HTTPException(404, { message: "Approval not found" });
     const row = await lockApproval(
       tx,
+      input.identity,
       input.approvalId,
       input.target.workItemId,
       input.target.workspaceId,
+      input.isInstanceAdmin,
     );
     if (!row) throw new HTTPException(404, { message: "Approval not found" });
     let isInstanceAdmin = false;
@@ -397,17 +399,12 @@ export async function withdrawApproval(input: {
       });
     }
     const now = new Date();
-    const [updated] = await tx
-      .update(schema.approvalTable)
-      .set({ state: "withdrawn", decidedAt: now })
-      .where(
-        and(
-          eq(schema.approvalTable.id, row.id),
-          eq(schema.approvalTable.workspaceId, input.target.workspaceId),
-          eq(schema.approvalTable.state, "pending"),
-        ),
-      )
-      .returning();
+    const updated = await updateApprovalWithdrawal(tx, input.identity, {
+      id: row.id,
+      workspaceId: input.target.workspaceId,
+      decidedAt: now,
+      allowInstanceAdmin: input.isInstanceAdmin,
+    });
     if (!updated)
       throw new HTTPException(409, {
         message: "Approval is no longer pending",
@@ -466,6 +463,7 @@ export async function withdrawApproval(input: {
 export async function closePendingApprovalsOnTransition(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   input: {
+    identity: ResolvedIdentity;
     workspaceId: string;
     projectId: string;
     workItemId: string;
@@ -475,44 +473,17 @@ export async function closePendingApprovalsOnTransition(
     actorType: "person" | "api_key" | "automation" | "system";
   },
 ) {
-  const closed = await tx
-    .update(schema.approvalTable)
-    .set({ state: "expired", decidedAt: dbClockUtc() })
-    .where(
-      and(
-        eq(schema.approvalTable.workspaceId, input.workspaceId),
-        eq(schema.approvalTable.workItemId, input.workItemId),
-        eq(schema.approvalTable.transitionId, input.transitionId),
-        eq(schema.approvalTable.state, "pending"),
-      ),
-    )
-    .returning({
-      id: schema.approvalTable.id,
-      kind: schema.approvalTable.kind,
-      approverId: schema.approvalTable.approverId,
-    });
+  const closed = await closePendingApprovalRowsForTransition(
+    tx,
+    input.identity,
+    input,
+  );
   if (closed.length === 0) return closed;
   // The transition route's actor is a user id; approval audit rows carry the person id.
-  const [actorPerson] = input.actorId
-    ? await tx
-        .select({ id: schema.personTable.id })
-        .from(schema.personTable)
-        .where(eq(schema.personTable.userId, input.actorId))
-        .limit(1)
-    : [];
-  const [workspace] = await tx
-    .select({ organisationId: schema.workspaceTable.organisationId })
-    .from(schema.workspaceTable)
-    .where(eq(schema.workspaceTable.id, input.workspaceId))
-    .limit(1);
-  await tx.delete(schema.notificationTable).where(
-    and(
-      eq(schema.notificationTable.resourceType, "approval"),
-      inArray(
-        schema.notificationTable.resourceId,
-        closed.map(({ id }) => id),
-      ),
-    ),
+  const actorPerson = await findApprovalActorPerson(tx, input.actorId);
+  const workspace = await findApprovalWorkspaceOrganisation(
+    tx,
+    input.workspaceId,
   );
   for (const approval of closed) {
     await appendAuditLog(tx, {

@@ -9,10 +9,16 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  findWorkItemAttachment,
+  listWorkItemAttachments,
+} from "../../apps/api/src/attachment/repository";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import { apiKeyCapabilitySubset } from "../../apps/api/src/utils/require-api-key-permission-scope";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
-import { mockAuthenticatedSession } from "./helpers/auth";
+import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -23,6 +29,7 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 import { raceProjectArchive } from "./helpers/race-soft-delete";
+import { makeApiKey, setAmbientHeaders } from "./helpers/reach-world";
 
 const originalAgentUrl = process.env.TASKDESK_AGENT_URL;
 
@@ -152,7 +159,195 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     delete process.env.TASKDESK_STORAGE_DRIVER;
   });
 
+  it("scopes direct attachment repository reads to the resolved project reach", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const { app } = createApp();
+    mockAuthenticatedSession(creator);
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    if (!item) throw new Error("fixture work item missing");
+    const row = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: workspace.id,
+          organisationId: project.organisationId,
+          workItemId: item.id,
+          objectKey: `scope/${randomUUID()}`,
+          filename: "reachable.txt",
+          mimeType: "text/plain",
+          size: 1,
+          state: "ready",
+          customerVisible: false,
+          uploadedBy: null,
+        })
+        .returning(),
+      "scoped attachment",
+    );
+    await db.insert(schema.attachmentTable).values({
+      workspaceId: workspace.id,
+      organisationId: project.organisationId,
+      workItemId: item.id,
+      objectKey: `scope/${randomUUID()}`,
+      filename: "deleted-control.txt",
+      mimeType: "text/plain",
+      size: 1,
+      state: "deleted",
+      customerVisible: false,
+      uploadedBy: null,
+      deletedAt: new Date(),
+    });
+    // Same workspace, deliberately unreachable project: grant only long enough to create
+    // a real work item, then revoke it before resolving the tested identity.
+    const sameWorkspaceProject = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    await makeDefaultState(workspace.id, sameWorkspaceProject.project.id);
+    await grantWorkItemProjectAccess(
+      creator.id,
+      sameWorkspaceProject.project.id,
+    );
+    const { key: hiddenKey } = await createWorkItem(
+      app,
+      sameWorkspaceProject.project.id,
+      type.id,
+    );
+    const [hiddenItem] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, hiddenKey));
+    if (!hiddenItem) throw new Error("unreached work item fixture missing");
+    const hiddenRow = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: workspace.id,
+          organisationId: sameWorkspaceProject.project.organisationId,
+          workItemId: hiddenItem.id,
+          objectKey: `scope/${randomUUID()}`,
+          filename: "unreached.txt",
+          mimeType: "text/plain",
+          size: 1,
+          state: "ready",
+          customerVisible: true,
+          uploadedBy: null,
+        })
+        .returning(),
+      "unreached attachment",
+    );
+    const [creatorPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, creator.id));
+    if (!creatorPerson) throw new Error("creator person fixture missing");
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, creatorPerson.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, sameWorkspaceProject.project.id),
+        ),
+      );
+    // A second organisation/workspace supplies a real foreign parent and row.
+    const foreign = await setupProject();
+    const foreignOrganisation = requireRow(
+      await db
+        .insert(schema.organisationTable)
+        .values({
+          key: `scope-foreign-${randomUUID()}`,
+          name: "Scope Foreign Customer",
+        })
+        .returning(),
+      "foreign customer organisation",
+    );
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: foreignOrganisation.id })
+      .where(eq(schema.projectTable.id, foreign.project.id));
+    mockAuthenticatedSession(foreign.creator);
+    const { key: foreignKey } = await createWorkItem(
+      app,
+      foreign.project.id,
+      foreign.type.id,
+    );
+    const [foreignItem] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, foreignKey));
+    if (!foreignItem) throw new Error("foreign work item fixture missing");
+    const foreignRow = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: foreign.workspace.id,
+          organisationId: foreignOrganisation.id,
+          workItemId: foreignItem.id,
+          objectKey: `scope/${randomUUID()}`,
+          filename: "foreign.txt",
+          mimeType: "text/plain",
+          size: 1,
+          state: "ready",
+          customerVisible: true,
+          uploadedBy: null,
+        })
+        .returning(),
+      "foreign attachment",
+    );
+    mockAuthenticatedSession(creator);
+    const identity = await resolveIdentity({
+      userId: creator.id,
+      credential: "session",
+    });
+    expect(identity).not.toBeNull();
+    const visible = await listWorkItemAttachments(db, identity, item.id);
+    expect(visible.map((entry) => entry.filename)).toContain("reachable.txt");
+    expect(visible.map((entry) => entry.filename)).not.toContain(
+      "deleted-control.txt",
+    );
+    expect(visible.map((entry) => entry.filename)).not.toContain(
+      "unreached.txt",
+    );
+    expect(visible.map((entry) => entry.filename)).not.toContain("foreign.txt");
+    expect(await listWorkItemAttachments(db, null, item.id)).toEqual([]);
+    expect(await listWorkItemAttachments(db, identity, randomUUID())).toEqual(
+      [],
+    );
+    expect(
+      await findWorkItemAttachment(db, identity, {
+        id: row.id,
+        workspaceId: workspace.id,
+        workItemId: randomUUID(),
+      }),
+    ).toEqual([]);
+    expect(
+      await findWorkItemAttachment(db, null, {
+        id: row.id,
+        workspaceId: workspace.id,
+        workItemId: item.id,
+      }),
+    ).toEqual([]);
+    expect(
+      await findWorkItemAttachment(db, identity, {
+        id: hiddenRow.id,
+        workspaceId: workspace.id,
+        workItemId: hiddenItem.id,
+      }),
+    ).toEqual([]);
+    expect(
+      await findWorkItemAttachment(db, identity, {
+        id: foreignRow.id,
+        workspaceId: foreign.workspace.id,
+        workItemId: foreignItem.id,
+      }),
+    ).toEqual([]);
+  });
+
   afterEach(async () => {
+    setAmbientHeaders({});
     if (originalRoot === undefined) {
       delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
     } else {
@@ -160,6 +355,94 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     }
     restoreAgentUrl();
     await rm(root, { recursive: true, force: true });
+  });
+
+  it("keeps attachment list API keys inside both stored scope and owner reach", async () => {
+    const { creator, project, type } = await setupProject();
+    const { app } = createApp();
+    mockAuthenticatedSession(creator);
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    if (!item) throw new Error("fixture work item missing");
+    await db.insert(schema.attachmentTable).values({
+      workspaceId: item.workspaceId,
+      organisationId: project.organisationId,
+      workItemId: item.id,
+      objectKey: `scope/${randomUUID()}`,
+      filename: "api-key-readable.txt",
+      mimeType: "text/plain",
+      size: 1,
+      state: "ready",
+      customerVisible: false,
+      uploadedBy: null,
+    });
+    mockAnonymousSession();
+    const readableKey = await makeApiKey(creator.id, { work_item: ["read"] });
+    const requestWithApiKey = (url: string, key: string) => {
+      const headers = new Headers({ "x-api-key": key });
+      expect(headers.get("x-api-key")).toBe(key);
+      return app.request(url, { headers });
+    };
+    const [storedReadableKey] = await db
+      .select()
+      .from(schema.apikeyTable)
+      .where(eq(schema.apikeyTable.userId, creator.id))
+      .orderBy(schema.apikeyTable.createdAt);
+    if (!storedReadableKey) throw new Error("stored API key fixture missing");
+    const storedPermissions = storedReadableKey.permissions
+      ? (JSON.parse(storedReadableKey.permissions) as Record<string, string[]>)
+      : null;
+    const keyIdentity = await resolveIdentity({
+      userId: creator.id,
+      credential: "api_key",
+      apiKey: {
+        enabled: storedReadableKey.enabled === true,
+        ownerUserId: storedReadableKey.userId ?? "",
+        capabilities: apiKeyCapabilitySubset({
+          permissions: storedPermissions,
+        }),
+      },
+    });
+    expect(
+      (await listWorkItemAttachments(db, keyIdentity, item.id)).map(
+        ({ filename }) => filename,
+      ),
+    ).toContain("api-key-readable.txt");
+    const positive = await requestWithApiKey(
+      `/api/work-items/${key}/attachments`,
+      readableKey,
+    );
+    expect(positive.status, await positive.clone().text()).toBe(200);
+    expect(await positive.json()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ filename: "api-key-readable.txt" }),
+      ]),
+    );
+    const insufficientScopeKey = await makeApiKey(creator.id, {});
+    const insufficientStoredScope = await requestWithApiKey(
+      `/api/work-items/${key}/attachments`,
+      insufficientScopeKey,
+    );
+    expect(insufficientStoredScope.status).toBe(403);
+    expect(await insufficientStoredScope.text()).not.toContain(
+      "api-key-readable.txt",
+    );
+
+    // This owner has workspace membership but no project membership: even a key whose
+    // stored scope names work_item:read cannot exceed the owner's current project reach.
+    const nonOwner = await createWorkspaceMember({ role: "member" });
+    const keyWithoutOwnerReach = await makeApiKey(nonOwner.user.id, {
+      work_item: ["read"],
+    });
+    const ownerCeiling = await requestWithApiKey(
+      `/api/work-items/${key}/attachments`,
+      keyWithoutOwnerReach,
+    );
+    expect(ownerCeiling.status).toBe(404);
+    expect(await ownerCeiling.text()).not.toContain("api-key-readable.txt");
   });
 
   it("AT-2: presigns, uploads and completes a genuine PNG, and it appears in the work item's list", async () => {

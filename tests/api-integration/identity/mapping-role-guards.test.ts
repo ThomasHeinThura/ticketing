@@ -1,3 +1,5 @@
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import {
@@ -122,8 +124,10 @@ async function seed() {
       workspaceId: null,
       key: "customer",
       name: "Customer",
-      rank: 0,
-      capabilities: [],
+      rank: BUILT_IN_ROLES.customer.rank,
+      capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+      isSystem: true,
+      isEditable: false,
     },
     {
       id: ROLE.notCustomer,
@@ -192,6 +196,41 @@ describe("IdP mapping role guards (IP-2, IP-3, IP-21)", () => {
       expect(await validateScimMappingRole(tx, scimAgent(ROLE.member))).toBe(
         true,
       );
+    });
+  });
+
+  it("requires the exact persisted built-in Customer role shape", async () => {
+    const canonical = {
+      rank: BUILT_IN_ROLES.customer.rank,
+      capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+      isSystem: true,
+      isEditable: false,
+    };
+    await db.transaction(async (tx) => {
+      for (const invalid of [
+        { rank: canonical.rank - 1 },
+        { capabilities: [] },
+        { isSystem: false },
+        { isEditable: true },
+      ]) {
+        await tx
+          .update(schema.roleTable)
+          .set({ ...canonical, ...invalid })
+          .where(eq(schema.roleTable.id, ROLE.customer));
+        expect(
+          await validateOidcMappingRole(tx, oidcCustomer(ROLE.customer)),
+        ).toBe(false);
+        expect(
+          await validateScimMappingRole(tx, scimCustomer(ROLE.customer)),
+        ).toBe(false);
+      }
+      await tx
+        .update(schema.roleTable)
+        .set(canonical)
+        .where(eq(schema.roleTable.id, ROLE.customer));
+      expect(
+        await validateOidcMappingRole(tx, oidcCustomer(ROLE.customer)),
+      ).toBe(true);
     });
   });
 

@@ -1,7 +1,5 @@
-import { and, eq, isNull, or } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
-import db, { schema } from "../database";
-import { getActiveStaffPerson } from "../instance/users/repository";
+import db from "../database";
 import { submissionRefParam } from "../intake/schema";
 import {
   apiRouter,
@@ -12,6 +10,7 @@ import {
   z,
 } from "../openapi";
 import { createAttachmentDownloadUrl } from "../storage";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { requirePublicAppOrigin } from "../utils/request-origin";
 import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
@@ -24,6 +23,12 @@ import downloadAttachment from "./controllers/download-attachment";
 import listWorkItemAttachments from "./controllers/list-work-item-attachments";
 import presignAttachment from "./controllers/presign-attachment";
 import { presignSubmissionAttachment } from "./controllers/presign-submission-attachment";
+import {
+  findAttachmentAuditActor,
+  findSubmissionAttachmentContent,
+  listPortalSubmissionAttachments,
+  listStaffSubmissionAttachments,
+} from "./repository";
 import { requireAttachmentReach } from "./require-attachment-reach";
 import { requireSubmissionAttachmentReach } from "./require-submission-attachment-reach";
 import {
@@ -353,7 +358,8 @@ const attachment = apiRouter<
   })
   .openapi(listWorkItemAttachmentsRoute, async (c) => {
     const workItemId = c.get("workItemId") as string;
-    const rows = await listWorkItemAttachments(workItemId);
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    const rows = await listWorkItemAttachments(identity, workItemId);
     return c.json(rows.map(toAttachmentResponse), 200);
   })
   .openapi(completeAttachmentRoute, async (c) => {
@@ -371,6 +377,7 @@ const attachment = apiRouter<
       workItemId,
       actorId,
       actorType,
+      identity: await resolveCallerIdentity(c, c.get("userId")),
     });
     return c.json(toAttachmentResponse(result), 200);
   })
@@ -389,6 +396,7 @@ const attachment = apiRouter<
       actorType,
       apiKeyId: apiKey?.id ?? null,
       apiBaseUrl: requirePublicAppOrigin(c.get("appPublicOrigin")),
+      identity: await resolveCallerIdentity(c, c.get("userId")),
     });
 
     return c.redirect(downloadUrl, 302);
@@ -407,6 +415,7 @@ const attachment = apiRouter<
       userId,
       actorId,
       actorType,
+      identity: await resolveCallerIdentity(c, userId),
     });
     return c.json(toAttachmentResponse(result), 200);
   })
@@ -432,6 +441,7 @@ const attachment = apiRouter<
       submissionWorkItemId: c.get("submissionWorkItemId"),
       requesterId: c.get("requesterId"),
       workspaceId: c.get("workspaceId"),
+      identity: await resolveCallerIdentity(c, c.get("userId")),
     });
     // Customer-facing: the declared shape only, so no storage key reaches the wire.
     return c.json(
@@ -444,44 +454,28 @@ const attachment = apiRouter<
     );
   })
   .openapi(portalSubmissionListRoute, async (c) => {
-    const parents = [
-      eq(schema.attachmentTable.submissionId, c.get("submissionId")),
-      ...(c.get("submissionWorkItemId")
-        ? [
-            eq(
-              schema.attachmentTable.workItemId,
-              c.get("submissionWorkItemId") as string,
-            ),
-          ]
-        : []),
-    ];
-    const rows = await db
-      .select({
-        id: schema.attachmentTable.id,
-        filename: schema.attachmentTable.filename,
-        mimeType: schema.attachmentTable.mimeType,
-        size: schema.attachmentTable.size,
-        submissionFieldKey: schema.attachmentTable.submissionFieldKey,
-        state: schema.attachmentTable.state,
-        createdAt: schema.attachmentTable.createdAt,
-      })
-      .from(schema.attachmentTable)
-      .where(
-        and(
-          or(...parents),
-          eq(schema.attachmentTable.customerVisible, true),
-          isNull(schema.attachmentTable.deletedAt),
-        ),
-      )
-      .orderBy(schema.attachmentTable.createdAt);
+    const rows = await listPortalSubmissionAttachments(
+      db,
+      await resolveCallerIdentity(c, c.get("userId")),
+      {
+        submissionId: c.get("submissionId"),
+        workItemId: c.get("submissionWorkItemId"),
+      },
+    );
     return c.json(rows, 200);
   })
   .openapi(portalSubmissionDownloadRoute, async (c) => {
-    const [row] = await db
-      .select()
-      .from(schema.attachmentTable)
-      .where(eq(schema.attachmentTable.id, c.req.valid("param").id))
-      .limit(1);
+    const [row] = await findSubmissionAttachmentContent(
+      db,
+      await resolveCallerIdentity(c, c.get("userId")),
+      {
+        id: c.req.valid("param").id,
+        workspaceId: c.get("workspaceId"),
+        submissionId: c.get("submissionId"),
+        linkedWorkItemId: c.get("submissionWorkItemId"),
+        portal: true,
+      },
+    );
     if (!row) throw new Error("Authorized submission attachment disappeared");
     const downloadUrl = await createAttachmentDownloadUrl(
       row.objectKey,
@@ -499,39 +493,28 @@ const attachment = apiRouter<
     return c.redirect(downloadUrl, 302);
   })
   .openapi(staffSubmissionListRoute, async (c) => {
-    const parents = [
-      eq(schema.attachmentTable.submissionId, c.get("submissionId")),
-      ...(c.get("submissionWorkItemId")
-        ? [
-            eq(
-              schema.attachmentTable.workItemId,
-              c.get("submissionWorkItemId") as string,
-            ),
-          ]
-        : []),
-    ];
-    const rows = await db
-      .select({
-        id: schema.attachmentTable.id,
-        filename: schema.attachmentTable.filename,
-        mimeType: schema.attachmentTable.mimeType,
-        size: schema.attachmentTable.size,
-        submissionFieldKey: schema.attachmentTable.submissionFieldKey,
-        state: schema.attachmentTable.state,
-        customerVisible: schema.attachmentTable.customerVisible,
-        createdAt: schema.attachmentTable.createdAt,
-      })
-      .from(schema.attachmentTable)
-      .where(and(or(...parents), isNull(schema.attachmentTable.deletedAt)))
-      .orderBy(schema.attachmentTable.createdAt);
+    const rows = await listStaffSubmissionAttachments(
+      db,
+      await resolveCallerIdentity(c, c.get("userId")),
+      {
+        submissionId: c.get("submissionId"),
+        workItemId: c.get("submissionWorkItemId"),
+      },
+    );
     return c.json(rows, 200);
   })
   .openapi(staffSubmissionDownloadRoute, async (c) => {
-    const [row] = await db
-      .select()
-      .from(schema.attachmentTable)
-      .where(eq(schema.attachmentTable.id, c.req.valid("param").id))
-      .limit(1);
+    const [row] = await findSubmissionAttachmentContent(
+      db,
+      await resolveCallerIdentity(c, c.get("userId")),
+      {
+        id: c.req.valid("param").id,
+        workspaceId: c.get("workspaceId"),
+        submissionId: c.get("submissionId"),
+        linkedWorkItemId: c.get("submissionWorkItemId"),
+        portal: false,
+      },
+    );
     if (!row) throw new Error("Authorized submission attachment disappeared");
     const downloadUrl = await createAttachmentDownloadUrl(
       row.objectKey,
@@ -542,7 +525,7 @@ const attachment = apiRouter<
     const apiKey = c.get("apiKey");
     const [staffPerson] = apiKey
       ? [null]
-      : await getActiveStaffPerson(c.get("userId"));
+      : await findAttachmentAuditActor(c.get("userId"));
     await appendAuditLog(db, {
       actorId: staffPerson?.id ?? c.get("userId"),
       actorType: apiKey ? "api_key" : "person",

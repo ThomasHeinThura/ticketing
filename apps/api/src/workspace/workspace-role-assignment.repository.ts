@@ -1,11 +1,7 @@
 import { sql } from "drizzle-orm";
-import type { DatabaseInstance } from "../../database";
-import { WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE } from "./workspace-membership-lock";
-import { WORKSPACE_ROLE_LOCK_NAMESPACE } from "./workspace-role-lock";
-
-type WorkspaceTransaction = Parameters<
-  Parameters<DatabaseInstance["transaction"]>[0]
->[0];
+import type { Transaction } from "../database/executor";
+import { WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE } from "./controllers/workspace-membership-lock";
+import { WORKSPACE_ROLE_LOCK_NAMESPACE } from "./controllers/workspace-role-lock";
 
 /**
  * Serialize every native transaction that assigns or removes a
@@ -23,7 +19,7 @@ type WorkspaceTransaction = Parameters<
  * cannot form a reverse-order deadlock with this pair.
  */
 export async function lockWorkspaceRoleAssignment(
-  tx: WorkspaceTransaction,
+  tx: Transaction,
   workspaceId: string,
 ): Promise<void> {
   await tx.execute(

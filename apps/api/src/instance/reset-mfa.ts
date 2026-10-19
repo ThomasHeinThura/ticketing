@@ -79,8 +79,7 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
     impersonatedBy?: string | null;
   } | null;
   if (
-    !session ||
-    session.portal !== "agent" ||
+    session?.portal !== "agent" ||
     session.impersonatedBy ||
     !(await isCurrentInstanceAdmin(c.get("userId")))
   ) {
@@ -169,14 +168,24 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
       await tx
         .delete(schema.apikeyTable)
         .where(eq(schema.apikeyTable.referenceId, id));
-      await tx.insert(schema.notificationTable).values({
-        userId: id,
-        type: "security_alert",
-        title: "Two-factor authentication reset",
-        content:
-          "An instance administrator reset your authenticator factor. Sign in and enroll a new factor before using protected features if instance policy requires it.",
-        eventData: { kind: "mfa_reset" },
-      });
+      const [targetPerson] = await tx
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, id))
+        .limit(1);
+      if (targetPerson) {
+        await tx.insert(schema.notificationTable).values({
+          userId: id,
+          personId: targetPerson.id,
+          resourceType: "person",
+          resourceId: targetPerson.id,
+          type: "security_alert",
+          title: "Two-factor authentication reset",
+          content:
+            "An instance administrator reset your authenticator factor. Sign in and enroll a new factor before using protected features if instance policy requires it.",
+          eventData: { kind: "mfa_reset" },
+        });
+      }
       await appendStepUpAudit(tx, {
         action: "auth.step_up_consumed",
         actorId: c.get("userId"),
