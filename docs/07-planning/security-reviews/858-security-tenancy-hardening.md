@@ -1,5 +1,6 @@
 # PR #858 — P0/P1 Security, Tenancy, Soft-Delete Reach, Comment Audit & Portal Auth Hardening
 
+**Reviewed head:** `67ee082f72390a0b45066812963773f15ff91b99`
 **Reviewed head:** `4a2d007b363ff0ea761a7667aef95bfa54e09f6a`
 **Reviewed head:** `b06a045e4c68c4b6d789f7a029fa01ac5fc64291`
 Accepted comparison base (`main`): `0350c48d344e5db8780bb87e9008edcab71f6727`.
@@ -7,6 +8,24 @@ Accepted comparison base (`main`): `0350c48d344e5db8780bb87e9008edcab71f6727`.
 ---
 
 ## 1. Independent Security & Critical Review (`2e8ff9ca-0b25-46a3-80d0-e542fa6c85db` — `Gemini 4 Argon`)
+
+### Delta Independent Security & Critical Review — PR #858 (`67ee082f72390a0b45066812963773f15ff91b99`)
+
+- **Exact candidate SHA reviewed:** `67ee082f72390a0b45066812963773f15ff91b99`
+- **Prior reviewed code SHA:** `4a2d007b363ff0ea761a7667aef95bfa54e09f6a`
+- **Comparison base (`main`):** `0350c48d344e5db8780bb87e9008edcab71f6727`
+- **Role:** Independent Security & Critical Reviewer (fresh context; did not author, direct, or remediate the change)
+- **Model:** `Gemini 4 Argon`
+- **Files inspected in delta (`4a2d007b..67ee082f`):**
+  - `tests/api-integration/global-setup.ts`
+  - `tests/api-integration/helpers/database.ts`
+  - `tests/api-integration/project-archive-freeze-legacy.test.ts`
+- **Delta Verification:**
+  1. `tests/api-integration/global-setup.ts`: Configures ephemeral `postgres:18-alpine` testcontainer with `-c fsync=off -c synchronous_commit=off -c full_page_writes=off -c max_connections=200` and drains `getDatabasePool().end()` before `container.stop({ timeout: 5_000 })`. Strictly scoped to ephemeral testcontainers; touches no production configuration or runtime image.
+  2. `tests/api-integration/helpers/database.ts`: Caches `ensuredDatabaseConnectionString` and locks all `public` tables in alphabetical order (`LOCK TABLE ... IN ACCESS EXCLUSIVE MODE NOWAIT`) before truncating non-empty tables plus `activity`, `audit_log`, and `submission` with `RESTART IDENTITY CASCADE`, preserving cross-test isolation and deadlock prevention.
+  3. `tests/api-integration/project-archive-freeze-legacy.test.ts`: Updates 3 soft-deleted project 404 message assertions (`"Source task not found"` and `"Time entry not found"`) to match D3 (`#205`) middleware reach masking.
+- **Blocking findings:** None.
+- **Verdict:** `APPROVED` (for exact candidate SHA `67ee082f72390a0b45066812963773f15ff91b99`)
 
 ### Updated Independent Security & Critical Review — PR #858 (`4a2d007b363ff0ea761a7667aef95bfa54e09f6a`)
 
@@ -50,10 +69,11 @@ Accepted comparison base (`main`): `0350c48d344e5db8780bb87e9008edcab71f6727`.
 
 ## 2. Independent Standard Review (`696b1cd0-e418-4ea6-a28c-31ff78313f7c` — `Gemini 3.8 Flash`)
 
-- **Exact candidate SHA reviewed:** `4a2d007b363ff0ea761a7667aef95bfa54e09f6a` (after initial review of `b06a045e4c68c4b6d789f7a029fa01ac5fc64291`)
+- **Exact candidate SHA reviewed:** `67ee082f72390a0b45066812963773f15ff91b99` (after prior reviews of `4a2d007b363ff0ea761a7667aef95bfa54e09f6a` and `b06a045e4c68c4b6d789f7a029fa01ac5fc64291`)
 - **Model:** `Gemini 3.8 Flash`
 - **Remediation verified:**
   - Unanchored table references (`customFieldTypeVisibilityTable`, `customFieldValueTable`) removed from `apps/api/src/workspace/controllers/delete-workspace-role-dependents.ts`; `tests/api/database/unanchored-tables-unreferenced.test.ts` passes 2/2 and `CI - fast/unit + component` passes.
   - Explicit `.for("update")` row lock added to `identityConnectionTable` query in `deleteWorkspaceRoleDependents`.
-- **Blocking findings:** None on `4a2d007b363ff0ea761a7667aef95bfa54e09f6a`.
+  - Ephemeral Postgres testcontainer flags (`fsync=off`, `synchronous_commit=off`, `full_page_writes=off`, `max_connections=200`), pool teardown (`getDatabasePool().end()`), `ensuredDatabaseConnectionString` caching, dirty-table-only truncation under full alphabetical `ACCESS EXCLUSIVE MODE NOWAIT` locks (`database-reset-locks.test.ts` passes 3/3), and D3 (`#205`) soft-deleted project 404 message assertions (`project-archive-freeze-legacy.test.ts` passes 20/20).
+- **Blocking findings:** None on `67ee082f72390a0b45066812963773f15ff91b99`.
 - **Verdict:** `APPROVED`
