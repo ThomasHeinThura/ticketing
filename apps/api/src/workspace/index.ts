@@ -36,6 +36,10 @@ import createWorkspaceCtrl, {
 import createWorkspaceRoleCtrl from "./controllers/create-workspace-role";
 import deleteWorkspaceCtrl from "./controllers/delete-workspace";
 import deleteWorkspaceRoleCtrl from "./controllers/delete-workspace-role";
+import {
+  WorkspaceDeleteLockBusyError,
+  WorkspaceInUseByIdentityConnectionError,
+} from "./controllers/delete-workspace-role-dependents";
 import getUserWorkspacesCtrl from "./controllers/get-user-workspaces";
 import getWorkspaceDetailCtrl from "./controllers/get-workspace-detail";
 import getWorkspaceInvitationsCtrl from "./controllers/get-workspace-invitations";
@@ -304,6 +308,9 @@ const deleteWorkspaceRoute = createRoute({
       "An API key or impersonation session (session_required), no workspace access, or missing organization:delete permission",
     ),
     404: errorResponse("Workspace not found"),
+    409: errorResponse(
+      "Workspace is still referenced as an identity connection default_workspace_id, or workspace access is currently locked",
+    ),
   },
 });
 
@@ -869,15 +876,25 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     }
   })
   .openapi(deleteWorkspaceRoute, async (c) => {
-    const deleted = await deleteWorkspaceCtrl(
-      c.get("workspaceId"),
-      requireSessionId(c),
-    );
-    if (!deleted) {
-      throw new HTTPException(404, { message: "Workspace not found" });
+    try {
+      const deleted = await deleteWorkspaceCtrl(
+        c.get("workspaceId"),
+        requireSessionId(c),
+      );
+      if (!deleted) {
+        throw new HTTPException(404, { message: "Workspace not found" });
+      }
+      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
+      return c.json(deleted, 200);
+    } catch (error) {
+      if (
+        error instanceof WorkspaceInUseByIdentityConnectionError ||
+        error instanceof WorkspaceDeleteLockBusyError
+      ) {
+        throw new HTTPException(409, { message: error.message });
+      }
+      throw error;
     }
-    void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
-    return c.json(deleted, 200);
   })
   .openapi(activateWorkspaceRoute, async (c) => {
     const activated = await activateWorkspaceCtrl(

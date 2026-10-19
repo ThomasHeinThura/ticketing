@@ -219,6 +219,7 @@ export async function findTimeEntryMutationTarget(
             .where(
               and(
                 eq(taskTable.id, timeEntryTable.taskId),
+                isNull(projectTable.deletedAt),
                 currentProjectReachPredicate(
                   identity,
                   projectTable.id,

@@ -109,14 +109,18 @@ specified in [settings-hierarchy.md](settings-hierarchy.md#profile-settings-rout
 - `VW-20` Sortable by any column. Multi-column sort with modifier-click.
 - `VW-21` Column widths are draggable and persist.
 - `VW-22` Inline editing where the field type allows.
-- `VW-23` Export the current view to CSV (or XLSX), respecting filters and column choice,
+- `VW-23` Export the current view to CSV, respecting filters and column choice,
   through `POST /api/work-items/export` with `work_item:export` — a server-side route with a
   policy, because a bulk-egress path with no declared capability is the class of hole the
   route-coverage test exists to prevent. Exports are audited (`work_item.exported`).
   `work_item:export` is the capability [rbac.md](../01-architecture/rbac.md) defines for
   exporting "a view or list"; `report:export` guards report exports and does not apply.
-  **The route does not exist on `main` yet.** Its row bound and delivery contract are an
-  open question below, which blocks `VW-23` only.
+  Per owner decision D1 (2026-10-19; [decision log](../07-planning/decision-log.md)), the
+  response streams CSV (`text/csv; charset=utf-8`) in paginated cursor batches without
+  buffering the full dataset in memory, with a hard cap of **10,000 rows** per export (if
+  the filtered match count exceeds 10,000, the route returns `422` with code
+  `export_limit_exceeded` and the total count so the user narrows their filter), a **30-second**
+  query timeout, and a rate limit of **5 exports per minute per user**.
 - `VW-24` Virtualised rows and columns.
 
 **Calendar**
@@ -203,7 +207,7 @@ the reason is available on hover.
 | Inline edit of other fields | `VW-22` | `work_item:update` | `PATCH /api/work-items/{key}` |
 | Calendar date drag; Timeline bar and edge drag; date editor | `VW-26`, `VW-29`, `VW-30` | `work_item:update` | `PATCH /api/work-items/{key}` (P5) |
 | Bulk action bar | `VW-3` | The capability of each operation, checked per item; the route itself declares `work_item:read` | `POST /api/work-items/bulk` |
-| Export | `VW-23` | `work_item:export` | `POST /api/work-items/export` — **not on `main`** |
+| Export | `VW-23` | `work_item:export` | `POST /api/work-items/export` |
 | Save as a view | Saving | `saved_view:create`; sharing per `SV-15`–`SV-18` | `POST /api/views` |
 
 ## Screens
@@ -229,7 +233,7 @@ columns determine which fields are requested.
 | `POST /api/work-items/{key}/assign` | `work_item:assign` (or self-target with `work_item:update`) | `VW-13`, `VW-17` |
 | `PATCH /api/work-items/{key}` | `work_item:update`; `priority` also needs `work_item:set_priority` | `VW-13`, `VW-22`, `VW-26`, `VW-29` |
 | `POST /api/work-items/bulk` | `work_item:read` at the route, per-operation capability inside | `VW-3` |
-| `POST /api/work-items/export` | `work_item:export`, audited `work_item.exported` | `VW-23` — **not implemented; see Open questions** |
+| `POST /api/work-items/export` | `work_item:export`, audited `work_item.exported` | `VW-23` (streamed CSV, 10,000-row cap, 30s timeout, 5/min/user rate limit) |
 
 Layout and density use `/api/me/settings` (see above); column and width choices have no route yet.
 Saving a view uses the routes in [search and saved views](search-and-saved-views.md).
@@ -294,7 +298,7 @@ Integration:
 - `VW-10` "permissions: a caller without work_item:rank is refused 403" —
   `tests/api-integration/work-item-rank.test.ts`.
 - `VW-23` "export without work_item:export is 403" and "export writes work_item.exported" —
-  owed with the route, once the open question below is settled.
+  owed with `POST /api/work-items/export`.
 
 Web route tests (PR #688, branch `codex/nav-url-state-successor`): `board.test.tsx` ("lets
 the URL layout win over the remembered and profile layouts"), `backlog.test.tsx` and
@@ -311,12 +315,8 @@ dropped frames during drag.
 
 ## Open questions
 
-- **`VW-23` export bound and delivery** — owner: Thomas, before `POST /api/work-items/export`
-  is built. The capability (`work_item:export`), the route and the audit action are decided
-  above; what is not is how the server bounds a large export: a maximum row count, whether
-  the response streams, and any rate or time limit. The route must not accumulate every
-  reachable match in memory, so none of these is invented here. **This blocks `VW-23` only.**
-  Every other rule in this spec is unaffected.
+*(None — `VW-23` export bound and delivery resolved by owner decision D1 on 2026-10-19; see
+[decision log](../07-planning/decision-log.md).)*
 
 ## Related
 

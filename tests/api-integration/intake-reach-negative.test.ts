@@ -112,10 +112,8 @@ describe("IQ-3: a submission reference is not a credential", () => {
       `http://portal.localhost:5174/api/portal/submissions/${ref}`,
       { headers: { host: "portal.localhost:5174" } },
     );
-    // intake-queue.md says 404 for a bare reference; the shared authentication middleware
-    // answers 401 before the route runs. Either way the reference grants nothing and no
-    // submission data is returned. Reported to the orchestrator as a spec/behaviour gap.
-    expect(anonymous.status).toBe(401);
+    // intake-queue.md IQ-3: a bare submission reference without a session returns 404.
+    expect(anonymous.status).toBe(404);
     expect(await anonymous.text()).not.toContain("Cannot sign in");
 
     for (const who of [sameOrgOther, foreign]) {

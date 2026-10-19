@@ -43,9 +43,8 @@ function taskReach(
       .where(
         and(
           eq(taskTable.id, taskId),
-          ...(requireLive
-            ? [isNull(projectTable.deletedAt), isNull(projectTable.archivedAt)]
-            : []),
+          isNull(projectTable.deletedAt),
+          ...(requireLive ? [isNull(projectTable.archivedAt)] : []),
           currentProjectReachPredicate(
             identity,
             projectTable.id,

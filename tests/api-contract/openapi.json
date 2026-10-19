@@ -19078,6 +19078,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Workspace is still referenced as an identity connection default_workspace_id, or workspace access is currently locked",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }

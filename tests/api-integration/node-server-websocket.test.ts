@@ -1891,7 +1891,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
   });
 
   it("preserves legacy task project reach masking, window fanout, and shutdown", async () => {
-    const member = await createWorkspaceMember();
+    const member = await createWorkspaceMember({ role: "admin" });
     const stranger = await createWorkspaceMember();
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,

@@ -9,6 +9,7 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = resolve(currentDir, "../../../apps/api/drizzle");
 
 let migrationPromise: Promise<void> | null = null;
+let ensuredDatabaseConnectionString: string | null = null;
 
 function getDatabaseName(connectionString: string) {
   return new URL(connectionString).pathname.replace(/^\//, "");
@@ -41,6 +42,10 @@ async function ensureTestDatabaseExists() {
     );
   }
 
+  if (ensuredDatabaseConnectionString === connectionString) {
+    return;
+  }
+
   const adminClient = new Client({
     connectionString: getAdminDatabaseUrl(connectionString),
   });
@@ -58,6 +63,7 @@ async function ensureTestDatabaseExists() {
         `CREATE DATABASE ${quoteIdentifier(databaseName)}`,
       );
     }
+    ensuredDatabaseConnectionString = connectionString;
   } finally {
     await adminClient.end();
   }
@@ -88,16 +94,32 @@ export async function ensureTestDatabaseMigrated() {
 // object in apps/api/src/database misses any table that is not exported from
 // the index.ts registry (for example task_reminder_sent). It used to name
 // mcp_oauth_state too; #6 dropped that table in migration 0048.
-async function listPublicTableNames(): Promise<string[]> {
-  const result = await db.execute<{ table_name: string }>(sql`
-    SELECT table_name
-    FROM information_schema.tables
-    WHERE table_schema = 'public'
-      AND table_type = 'BASE TABLE'
-    ORDER BY table_name
+async function listPublicTables(): Promise<{
+  allTableNames: string[];
+  dirtyTableNames: string[];
+}> {
+  const result = await db.execute<{
+    table_name: string;
+    needs_truncate: boolean;
+  }>(sql`
+    SELECT
+      c.relname AS table_name,
+      (
+        pg_relation_size(c.oid) > 0
+        OR c.relname IN ('activity', 'audit_log', 'submission')
+      ) AS needs_truncate
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relkind = 'r'
+    ORDER BY c.relname
   `);
 
-  return result.rows.map((row) => row.table_name);
+  const allTableNames = result.rows.map((row) => row.table_name);
+  const dirtyTableNames = result.rows
+    .filter((row) => row.needs_truncate)
+    .map((row) => row.table_name);
+  return { allTableNames, dirtyTableNames };
 }
 
 function hasPostgresSqlState(error: unknown, expectedState: string) {
@@ -119,11 +141,12 @@ export async function resetTestDatabase(options?: {
   }) => void | Promise<void>;
 }) {
   await ensureTestDatabaseExists();
-  let tableNames = await listPublicTableNames();
+  let { allTableNames: tableNames, dirtyTableNames } = await listPublicTables();
 
   if (tableNames.length === 0) {
+    migrationPromise = null;
     await ensureTestDatabaseMigrated();
-    tableNames = await listPublicTableNames();
+    ({ allTableNames: tableNames, dirtyTableNames } = await listPublicTables());
   }
 
   if (tableNames.length === 0) {
@@ -133,6 +156,11 @@ export async function resetTestDatabase(options?: {
   }
 
   const formattedTableNames = tableNames.map(quoteIdentifier).join(", ");
+  const formattedDirtyTableNames = (
+    dirtyTableNames.length > 0 ? dirtyTableNames : tableNames
+  )
+    .map(quoteIdentifier)
+    .join(", ");
 
   // Take the same all-table locks TRUNCATE needs, but NOWAIT. Otherwise a test reset can
   // hold locks on early tables while waiting for a reader of a later table, as that reader
@@ -160,7 +188,7 @@ export async function resetTestDatabase(options?: {
         // driven by FK metadata.
         await tx.execute(
           sql.raw(
-            `TRUNCATE TABLE ${formattedTableNames} RESTART IDENTITY CASCADE`,
+            `TRUNCATE TABLE ${formattedDirtyTableNames} RESTART IDENTITY CASCADE`,
           ),
         );
       });

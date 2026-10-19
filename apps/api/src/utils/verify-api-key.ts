@@ -42,7 +42,10 @@ async function apiKeyOwnerIsActive(ownerId: string): Promise<boolean> {
   if (!ownerId) return false;
   const owner = await findApiKeyOwnerStatus(ownerId);
   return (
-    owner !== undefined && owner.banned !== true && owner.personActive === true
+    owner !== undefined &&
+    owner.banned !== true &&
+    owner.personActive === true &&
+    owner.personSide === "staff"
   );
 }
 

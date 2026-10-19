@@ -112,6 +112,7 @@ export async function findTaskWithWorkspace(
     .where(
       and(
         eq(taskTable.id, taskId),
+        isNull(projectTable.deletedAt),
         currentProjectReachPredicate(
           identity,
           projectTable.id,
@@ -145,6 +146,7 @@ export async function findTaskInWorkspace(
       and(
         eq(taskTable.id, taskId),
         eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.deletedAt),
         currentProjectReachPredicate(
           identity,
           projectTable.id,
@@ -208,6 +210,7 @@ export async function insertTaskLabelOnConflictDoNothing(
           and(
             eq(taskTable.id, values.taskId),
             eq(projectTable.workspaceId, values.workspaceId),
+            isNull(projectTable.deletedAt),
             currentProjectReachPredicate(
               identity,
               projectTable.id,

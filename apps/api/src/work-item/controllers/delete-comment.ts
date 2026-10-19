@@ -1,7 +1,10 @@
+import type { JsonValue } from "@taskdesk/domain";
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { commentTable, workItemTable } from "../../database/schema";
+import type { ApiKey } from "../../openapi";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
 import {
   isUnambiguousMembership,
@@ -27,6 +30,7 @@ export async function deleteComment(
   commentId: string,
   workspaceId: string,
   actorId: string,
+  apiKey?: ApiKey,
 ) {
   return db.transaction(async (tx) => {
     const [locked] = await tx
@@ -108,6 +112,25 @@ export async function deleteComment(
     if (!deleted) {
       throw new HTTPException(500, { message: "Failed to delete comment" });
     }
+
+    await appendAuditLog(tx, {
+      actorId,
+      actorType: apiKey ? "api_key" : "person",
+      apiKeyId: apiKey?.id ?? null,
+      workspaceId,
+      projectId: workItem.projectId,
+      action: "comment.deleted",
+      entityType: "comment",
+      entityId: deleted.id,
+      before: {
+        body: (locked.body ?? null) as JsonValue,
+        deletedAt: null,
+      },
+      after: {
+        body: null,
+        deletedAt: deleted.deletedAt?.toISOString() ?? null,
+      },
+    });
 
     return deleted;
   });

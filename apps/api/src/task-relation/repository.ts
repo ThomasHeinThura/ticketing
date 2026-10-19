@@ -39,6 +39,7 @@ function currentTaskReach(
       .where(
         and(
           taskIdPredicate,
+          isNull(projectTable.deletedAt),
           currentProjectReachPredicate(
             identity,
             projectTable.id,
@@ -66,6 +67,7 @@ export async function findTaskReachRow(
     .where(
       and(
         eq(taskTable.id, taskId),
+        isNull(projectTable.deletedAt),
         currentProjectReachPredicate(
           identity,
           projectTable.id,
@@ -101,6 +103,7 @@ function relationEndpointReach(
         and(
           eq(relation.id, relationId),
           eq(task.id, endpoint),
+          isNull(project.deletedAt),
           currentProjectReachPredicate(
             identity,
             project.id,
@@ -163,6 +166,7 @@ export async function findTaskInWorkspace(
       and(
         eq(taskTable.id, taskId),
         eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.deletedAt),
         currentProjectReachPredicate(
           identity,
           projectTable.id,
@@ -493,6 +497,7 @@ export async function listTaskSummariesInWorkspace(
       and(
         inArray(taskTable.id, taskIds),
         eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.deletedAt),
         currentProjectReachPredicate(
           identity,
           projectTable.id,

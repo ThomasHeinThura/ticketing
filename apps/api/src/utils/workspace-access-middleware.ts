@@ -765,9 +765,7 @@ async function lookupWorkspaceId(
             and(
               eq(schema.taskTable.id, id),
               reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
+              isNull(schema.projectTable.deletedAt),
             ),
           )
           .limit(1);
@@ -824,9 +822,7 @@ async function lookupWorkspaceId(
             and(
               eq(schema.timeEntryTable.id, id),
               reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
+              isNull(schema.projectTable.deletedAt),
             ),
           )
           .limit(1);
@@ -869,9 +865,7 @@ async function lookupWorkspaceId(
             and(
               eq(schema.taskActivityTable.id, id),
               reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
+              isNull(schema.projectTable.deletedAt),
             ),
           )
           .limit(1);
@@ -915,9 +909,7 @@ async function lookupWorkspaceId(
               eq(schema.taskActivityTable.id, id),
               eq(schema.taskActivityTable.type, "comment"),
               reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
+              isNull(schema.projectTable.deletedAt),
             ),
           )
           .limit(1);
@@ -955,9 +947,7 @@ async function lookupWorkspaceId(
             and(
               eq(schema.columnTable.id, id),
               reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
+              isNull(schema.projectTable.deletedAt),
             ),
           )
           .limit(1);
@@ -994,9 +984,7 @@ async function lookupWorkspaceId(
             and(
               eq(schema.workflowRuleTable.id, id),
               reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
+              isNull(schema.projectTable.deletedAt),
             ),
           )
           .limit(1);

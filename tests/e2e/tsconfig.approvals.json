@@ -1,6 +1,7 @@
 {
   "extends": "../../apps/api/tsconfig.tests.json",
   "compilerOptions": {
+    "typeRoots": ["../../apps/api/node_modules/@types"],
     "paths": {
       "@taskdesk/permissions": ["../../packages/permissions/src/index.ts"],
       "@taskdesk/domain": ["../../packages/domain/src/index.ts"],

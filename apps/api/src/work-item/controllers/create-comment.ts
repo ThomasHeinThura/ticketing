@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
+import type { JsonValue } from "@taskdesk/domain";
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import {
   commentTable,
@@ -195,6 +197,23 @@ export async function createComment(
           resolveRecipients: resolveMentionEventRecipient,
         });
       }
+
+      await appendAuditLog(tx, {
+        actorId,
+        actorType,
+        apiKeyId: apiKey?.id ?? null,
+        workspaceId,
+        projectId: locked.projectId,
+        action: "work_item.commented",
+        entityType: "comment",
+        entityId: row.id,
+        before: null,
+        after: {
+          workItemId,
+          visibility: row.visibility,
+          body: (row.body ?? null) as JsonValue,
+        },
+      });
 
       const realtimeEvent = await recordWorkItemEvent(tx, {
         kind: "work_item.commented",

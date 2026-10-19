@@ -1682,13 +1682,24 @@ const workItem = apiRouter<
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const { body } = c.req.valid("json");
-    const updated = await updateComment(id, workspaceId, c.get("userId"), body);
+    const updated = await updateComment(
+      id,
+      workspaceId,
+      c.get("userId"),
+      body,
+      c.get("apiKey"),
+    );
     return c.json(updated, 200);
   })
   .openapi(deleteCommentRoute, async (c) => {
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const deleted = await deleteComment(id, workspaceId, c.get("userId"));
+    const deleted = await deleteComment(
+      id,
+      workspaceId,
+      c.get("userId"),
+      c.get("apiKey"),
+    );
     return c.json(deleted, 200);
   });
 

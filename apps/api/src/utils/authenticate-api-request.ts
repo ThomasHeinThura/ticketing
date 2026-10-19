@@ -131,6 +131,12 @@ export async function authenticateApiRequest(c: Context): Promise<void> {
   c.set("userEmail", sessionResult?.user?.email ?? "");
 
   if (!sessionResult?.user) {
+    if (
+      c.req.path === "/api/portal/submissions" ||
+      c.req.path.startsWith("/api/portal/submissions/")
+    ) {
+      throw new HTTPException(404, { message: "Not found" });
+    }
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 }

@@ -1,5 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { publishEvent } from "../../events";
 import createNotification from "../../notification/controllers/create-notification";
@@ -32,6 +33,22 @@ async function createComment(
       lockedTask.projectId,
     );
     if (!project) throw new HTTPException(404, { message: "Task not found" });
+
+    await appendAuditLog(tx, {
+      actorId: userId,
+      actorType: identity.credential === "api_key" ? "api_key" : "person",
+      workspaceId: project.workspaceId,
+      projectId: lockedTask.projectId,
+      action: "work_item.commented",
+      entityType: "comment",
+      entityId: activity.id,
+      before: null,
+      after: {
+        taskId,
+        content: activity.content ?? null,
+      },
+    });
+
     return {
       activity,
       task: {

@@ -130,7 +130,10 @@ async function createProject(
     icon: "Folder",
     slug: `p-${randomUUID().slice(0, 8)}`,
   });
-  return { status: response.status, id: response.json.id as string };
+  return {
+    status: response.status,
+    id: ((response.json as { id?: string } | null)?.id ?? "") as string,
+  };
 }
 
 async function projectStatus(world: World, actor: Actor, projectId: string) {
@@ -351,7 +354,7 @@ describe("a project's creator holds a project-lead membership", () => {
     });
   });
 
-  it("a member (who may create internal projects) gets the same", async () => {
+  it("a member is refused (403) on project creation and receives no creator grant (#708)", async () => {
     const world = await newWorld();
     const member = await addMember(world, "member");
     const slug = `mm-${randomUUID().slice(0, 8)}`;
@@ -362,13 +365,8 @@ describe("a project's creator holds a project-lead membership", () => {
       "/api/project",
       { workspaceId: world.workspaceId, name: "P", icon: "Folder", slug },
     );
-    expect(response.status).toBe(200);
-    const projectId = response.json.id as string;
-    await expectCreatorGrantWritten(world, member, projectId);
-    // A member's workspace role does not hold `project:update`, and the route's capability
-    // gate still reads the workspace role: the grant gives REACH (read, list, work items), not
-    // a capability the workspace role lacks.
-    await exerciseProject(world, member, projectId, slug, 403);
+    expect(response.status).toBe(403);
+    expect(await creatorGrants(await personIdOf(member.user.id))).toEqual([]);
   });
 
   it("an owner is unaffected: created_by is set, but no project grant, membership or grant audit is written", async () => {
@@ -397,7 +395,7 @@ describe("a project's creator holds a project-lead membership", () => {
     expect(await projectStatus(world, admin, adminProject.id)).toBe(200);
   });
 
-  it("a custom role holding only project:create gets the same reach on the project it creates", async () => {
+  it("a legacy custom workspace_role without a built-in project:create capability is refused (403) (#708)", async () => {
     const world = await newWorld();
     await db.insert(schema.workspaceRoleTable).values({
       workspaceId: world.workspaceId,
@@ -414,9 +412,8 @@ describe("a project's creator holds a project-lead membership", () => {
     );
     expect(added.status).toBe(200);
     const project = await createProject(world, actor);
-    expect(project.status).toBe(200);
-    await expectCreatorGrantWritten(world, actor, project.id);
-    expect(await projectStatus(world, actor, project.id)).toBe(200);
+    expect(project.status).toBe(403);
+    expect(await creatorGrants(await personIdOf(actor.user.id))).toEqual([]);
   });
 
   it("the grant reaches only the creator: another member and another manager stay at 404", async () => {
@@ -560,7 +557,7 @@ describe("a project's creator holds a project-lead membership", () => {
 
   it("promoting a creator to admin revokes their creator grant (audited, same transaction); other role changes keep it", async () => {
     const world = await newWorld();
-    const member = await addMember(world, "member");
+    const member = await addManager(world);
     const project = await createProject(world, member);
     expect(project.status).toBe(200);
     const personId = await personIdOf(member.user.id);

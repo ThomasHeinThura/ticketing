@@ -716,8 +716,8 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     const deletedExisting = await createRelation(targetTask.id);
     expect(deletedMissing.status).toBe(404);
     expect(deletedExisting.status).toBe(404);
-    expect(await deletedMissing.text()).toBe("Task not found");
-    expect(await deletedExisting.text()).toBe("Task not found");
+    expect(await deletedMissing.text()).toBe("Source task not found");
+    expect(await deletedExisting.text()).toBe("Source task not found");
   });
 
   it("does not reveal foreign destination existence when the source is archived", async () => {
@@ -898,7 +898,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       .where(eq(schema.projectTable.id, project.id));
     const deletedResponse = await relateTaskToItself();
     expect(deletedResponse.status).toBe(404);
-    expect(await deletedResponse.text()).toBe("Task not found");
+    expect(await deletedResponse.text()).toBe("Source task not found");
   });
 
   it("rechecks source liveness when archive wins during destination preflight", async () => {
@@ -1303,10 +1303,13 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       .update(schema.projectTable)
       .set({ archivedAt: null, deletedAt: new Date() })
       .where(eq(schema.projectTable.id, project.id));
-    for (const send of [createInvalidInterval, updateInvalidInterval]) {
+    for (const [send, expectedMessage] of [
+      [createInvalidInterval, "Task not found"],
+      [updateInvalidInterval, "Time entry not found"],
+    ] as const) {
       const deletedResponse = await send();
       expect(deletedResponse.status).toBe(404);
-      expect(await deletedResponse.text()).toBe("Task not found");
+      expect(await deletedResponse.text()).toBe(expectedMessage);
     }
   });
 

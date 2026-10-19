@@ -244,16 +244,39 @@ describe("API integration: project customer-organisation binding", () => {
       },
     );
 
-    it("still lets a member create an internal project (no organisationId), as before", async () => {
-      const member = await memberWithRole("member");
-      mockAuthenticatedSession(member.user);
-      const omitted = await createProjectRequest(member.workspace.id);
-      expect(omitted.status).toBe(200);
-      expect(((await omitted.json()) as ProjectRow).organisationId).toBeNull();
-      const explicitNull = await createProjectRequest(member.workspace.id, {
-        organisationId: null,
-      });
-      expect(explicitNull.status).toBe(200);
+    it.each(["member", "lead", "viewer"])(
+      "refuses %s (403) on creating an internal project (no organisationId) (#708)",
+      async (role) => {
+        const caller = await memberWithRole(role);
+        mockAuthenticatedSession(caller.user);
+        const omitted = await createProjectRequest(caller.workspace.id);
+        expect(omitted.status).toBe(403);
+        const explicitNull = await createProjectRequest(caller.workspace.id, {
+          organisationId: null,
+        });
+        expect(explicitNull.status).toBe(403);
+        await expect(
+          db.select().from(schema.projectTable),
+        ).resolves.toHaveLength(0);
+      },
+    );
+
+    it("refuses a customer-side person (403) on organisation list and project creation even if a workspace_member row exists (#708)", async () => {
+      const caller = await memberWithRole("admin");
+      await db
+        .update(schema.personTable)
+        .set({ side: "customer" })
+        .where(eq(schema.personTable.userId, caller.user.id));
+      mockAuthenticatedSession(caller.user);
+      const { app } = createApp();
+
+      const list = await app.request(
+        `/api/project/organisations?workspaceId=${caller.workspace.id}`,
+      );
+      expect(list.status).toBe(403);
+
+      const created = await createProjectRequest(caller.workspace.id);
+      expect(created.status).toBe(403);
     });
   });
 
