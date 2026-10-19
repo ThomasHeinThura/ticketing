@@ -270,3 +270,17 @@ Method:
 - **Parents:** first = `836a0576` (prior branch head including rebind note), second = `b2beb460` (main tip with #768). Clean merge commit.
 - **Merge-tree equality:** Clean merge with pairs.json contrast occurrence alignment for AlertDescription in project-layout.tsx and task-layout.tsx.
 - **Verdict:** CLEAR
+
+## Mechanical rebind after main moved to 29823775a6c117e335552309191d8bb7fbb700ec
+
+This section establishes that `887490856915e88b6c9df4e86192a69e28dbb479` is a mechanical rebind of `83ee815e0df0aac543baef521f7de7d4fa1affc2` following the landing of PR #769 (#714) onto main.
+
+**Reviewed head:** `887490856915e88b6c9df4e86192a69e28dbb479`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 29823775a6c117e335552309191d8bb7fbb700ec (accepted main with #769)
+**Previous reviewed head:** 83ee815e0df0aac543baef521f7de7d4fa1affc2
+
+Method:
+- **Parents:** first = `f89c9c5e` (prior branch head including rebind note), second = `29823775` (main tip with #769). Clean merge commit.
+- **Merge-tree equality:** Clean merge with pairs.json contrast occurrence alignment.
+- **Verdict:** CLEAR
