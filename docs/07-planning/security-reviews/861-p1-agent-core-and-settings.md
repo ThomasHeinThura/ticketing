@@ -1,12 +1,12 @@
 # Security review — PR #861 (P1 agent core destinations, project overview, and canonical settings routes)
 
-- **PR:** #861
-- **Reviewed head:** `b97af570e5cce39778ad07c81a2fef053e3356a5`
-- **Reviewed tree:** `cfd3f8c79ca302351584c418288875a61b64cf10`
-- **Comparison base:** `98c950853bd0a6a12f1379282909100e7c85772d` (`main`)
-- **Reviewer:** Independent Critical & Security Reviewer (`Gemini 4 Argon`)
-- **Date:** 2026-10-19
-- **Verdict:** `PASS`
+**PR:** #861
+**Reviewed head:** `b97af570e5cce39778ad07c81a2fef053e3356a5`
+**Reviewed tree:** `cfd3f8c79ca302351584c418288875a61b64cf10`
+**Comparison base:** `98c950853bd0a6a12f1379282909100e7c85772d` (`main`)
+**Reviewer:** Independent Critical & Security Reviewer (`Gemini 4 Argon`)
+**Date:** 2026-10-19
+**Verdict:** `PASS`
 
 ## Scope
 
