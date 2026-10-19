@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatBlockedWorkspacesMessage,
+  formatOtherAccessMessage,
   hasOwnerRole,
   planAccountDeletion,
   type WorkspaceMembershipSummary,
@@ -112,6 +113,20 @@ describe("formatBlockedWorkspacesMessage", () => {
   it("joins several workspaces", () => {
     expect(formatBlockedWorkspacesMessage(["Acme", "Globex", "Initech"])).toBe(
       'You are the only owner of "Acme", "Globex" and "Initech". Transfer ownership or delete them before deleting your account.',
+    );
+  });
+});
+
+describe("formatOtherAccessMessage", () => {
+  it("names one workspace and says what to do", () => {
+    expect(formatOtherAccessMessage(["Acme"])).toBe(
+      'Other people still have access to "Acme". Transfer it or remove it before deleting your account.',
+    );
+  });
+
+  it("lists several workspaces", () => {
+    expect(formatOtherAccessMessage(["A", "B", "C"])).toBe(
+      'Other people still have access to "A", "B" and "C". Transfer them or remove them before deleting your account.',
     );
   });
 });
