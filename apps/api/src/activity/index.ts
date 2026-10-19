@@ -1,10 +1,15 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { subscribeToEvent } from "../events";
+import type { BaseVariables } from "../openapi";
 import {
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createActivity, {
@@ -22,6 +27,19 @@ import {
   taskIdParam,
   updateCommentBody,
 } from "./schema";
+
+async function requestIdentity(
+  c: Context<{ Variables: BaseVariables }>,
+): Promise<ResolvedIdentity> {
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  const identity = await resolveRequestIdentity({
+    userId: c.get("userId"),
+    apiKey: c.get("apiKey"),
+    impersonatedBy: session?.impersonatedBy,
+  });
+  if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+  return identity;
+}
 
 const getActivitiesRoute = createRoute({
   method: "get",
@@ -165,7 +183,14 @@ const activity = apiRouter()
   .openapi(createActivityRoute, async (c) => {
     const { taskId, message, type, eventData } = c.req.valid("json");
     return c.json(
-      await createActivity(taskId, type, c.get("userId"), message, eventData),
+      await createActivity(
+        await requestIdentity(c),
+        taskId,
+        type,
+        c.get("userId"),
+        message,
+        eventData,
+      ),
       200,
     );
   })

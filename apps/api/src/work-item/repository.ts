@@ -1,3 +1,4 @@
+import type { JsonValue } from "@taskdesk/domain";
 import {
   and,
   asc,
@@ -29,6 +30,14 @@ import {
 type Executor =
   | Pick<typeof db, "select">
   | Pick<Parameters<Parameters<typeof db.transaction>[0]>[0], "select">;
+
+type MaterializedCommentVersionPageRow = Omit<
+  Pick<
+    typeof commentVersionTable.$inferSelect,
+    "id" | "number" | "body" | "editedBy" | "createdAt"
+  >,
+  "body"
+> & { body: JsonValue };
 
 export type WorkItemMentionContext = {
   id: string;
@@ -76,7 +85,7 @@ export async function listCommentVersionPageQuery(
   commentId: string,
   after: { number: number; id: string } | undefined,
   limit: number,
-) {
+): Promise<MaterializedCommentVersionPageRow[]> {
   const conditions: SQL[] = [eq(commentVersionTable.commentId, commentId)];
   if (after) {
     const continuation = or(
@@ -88,7 +97,7 @@ export async function listCommentVersionPageQuery(
     );
     if (continuation) conditions.push(continuation);
   }
-  return executor
+  const rows = await executor
     .select({
       id: commentVersionTable.id,
       number: commentVersionTable.number,
@@ -100,6 +109,12 @@ export async function listCommentVersionPageQuery(
     .where(and(...conditions))
     .orderBy(asc(commentVersionTable.number), asc(commentVersionTable.id))
     .limit(limit);
+  return rows.map(
+    (row): MaterializedCommentVersionPageRow => ({
+      ...row,
+      body: row.body as JsonValue,
+    }),
+  );
 }
 
 export async function findWorkItemMentionContextQuery(

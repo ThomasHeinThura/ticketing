@@ -1,18 +1,16 @@
-import { and, eq, inArray } from "drizzle-orm";
 import db from "../database";
-import { pendingActionTable } from "../database/schema";
+import type { pendingActionTable } from "../database/schema";
 import { invalidatePendingActionForReason } from "./credential-invalidation";
 import {
   lockPendingActionLifecycle,
   reportPendingActionAuditFailures,
 } from "./lifecycle-invalidation";
 import { evaluateActionRequiredAccess } from "./required-access";
+import { listWorkspacePendingDeletionActions } from "./workspace-access-invalidation.repository";
 
 type PendingActionTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
 >[0];
-
-const WORKSPACE_DELETION_TARGETS = ["service_calendar", "saved_view"] as const;
 
 type AccessSnapshot = {
   row: typeof pendingActionTable.$inferSelect;
@@ -38,17 +36,10 @@ export async function captureWorkspaceDeletionAccessForWorkspaces(
 ): Promise<AccessSnapshot[]> {
   const uniqueWorkspaceIds = [...new Set(workspaceIds)].sort();
   if (uniqueWorkspaceIds.length === 0) return [];
-  const rows = await tx
-    .select()
-    .from(pendingActionTable)
-    .where(
-      and(
-        inArray(pendingActionTable.workspaceId, uniqueWorkspaceIds),
-        eq(pendingActionTable.state, "pending"),
-        inArray(pendingActionTable.targetType, [...WORKSPACE_DELETION_TARGETS]),
-      ),
-    )
-    .orderBy(pendingActionTable.id);
+  const rows = await listWorkspacePendingDeletionActions(
+    tx,
+    uniqueWorkspaceIds,
+  );
 
   const snapshots: AccessSnapshot[] = [];
   for (const row of rows) {

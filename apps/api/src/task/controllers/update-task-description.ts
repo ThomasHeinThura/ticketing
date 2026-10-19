@@ -1,29 +1,31 @@
-import { eq, sql } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import createNotification from "../../notification/controllers/create-notification";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
 import { parseMentionIds } from "../../utils/parse-mentions";
-import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
+import { findUserName, updateTaskRow } from "../repository";
 
 async function updateTaskDescription({
+  identity,
   id,
   description,
   currentUserId,
 }: {
+  identity: ResolvedIdentity;
   id: string;
   description: string;
   currentUserId: string;
 }) {
   const { existingTask, updatedTask } = await db.transaction(async (tx) => {
-    const existingTask = await lockTaskAndAssertProjectLive(tx, id);
-    const [updatedTask] = await tx
-      .update(taskTable)
-      .set({ description, version: sql`${taskTable.version} + 1` })
-      .where(eq(taskTable.id, id))
-      .returning();
+    const existingTask = await lockTaskAndAssertProjectLiveForIdentity(
+      tx,
+      id,
+      identity,
+    );
+    const updatedTask = await updateTaskRow(tx, identity, id, { description });
     return { existingTask, updatedTask };
   });
 
@@ -55,10 +57,11 @@ async function updateTaskDescription({
   );
 
   if (newlyMentioned.length > 0) {
-    const [editor] = await db
-      .select({ name: userTable.name })
-      .from(userTable)
-      .where(eq(userTable.id, currentUserId));
+    const editor = await findUserName(
+      identity,
+      currentUserId,
+      existingTask.projectId,
+    );
 
     for (const mentionedId of newlyMentioned) {
       await createNotification({

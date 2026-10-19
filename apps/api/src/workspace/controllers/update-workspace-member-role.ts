@@ -7,13 +7,13 @@ import {
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
 import { syncWorkspaceAdminReach } from "../workspace-admin-reach";
+import { lockWorkspaceRoleAssignment } from "../workspace-role-assignment.repository";
 import {
   CannotChangeOwnerRoleHereError,
   MemberNotFoundError,
   OwnerRoleNotAssignableHereError,
   WorkspaceRoleNotFoundError,
 } from "./workspace-membership-errors";
-import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 /**
  * Change a member's assigned role.

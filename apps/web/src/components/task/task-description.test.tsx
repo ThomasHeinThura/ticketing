@@ -1,8 +1,41 @@
-import { fireEvent, render, waitFor } from "@testing-library/react";
-import { Extension } from "@tiptap/core";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { type Editor, Extension } from "@tiptap/core";
 import TaskItem from "@tiptap/extension-task-item";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import TaskDescription from "./task-description";
+
+const trackedEditors = new Map<Editor, Promise<void>>();
+
+vi.mock("@tiptap/react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tiptap/react")>();
+  return {
+    ...actual,
+    useEditor: (...args: Parameters<typeof actual.useEditor>) => {
+      const editor = actual.useEditor(...args);
+      if (editor && !trackedEditors.has(editor)) {
+        let resolveDestroyed!: () => void;
+        const destroyed = new Promise<void>((resolve) => {
+          resolveDestroyed = resolve;
+        });
+        trackedEditors.set(editor, destroyed);
+        if (editor.isDestroyed) {
+          resolveDestroyed();
+        } else {
+          editor.on("destroy", resolveDestroyed);
+        }
+      }
+      return editor;
+    },
+  };
+});
+
+afterEach(async () => {
+  // Tiptap React intentionally defers Editor.destroy after unmount. Keep the
+  // JSDOM window alive until each real editor emits its destroy event.
+  cleanup();
+  await Promise.all(trackedEditors.values());
+  trackedEditors.clear();
+});
 
 const mocks = vi.hoisted(() => ({
   t: (key: string) => key,

@@ -15,6 +15,7 @@ import {
 } from "../database/schema";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import { PolicyVersionConflictError } from "./errors";
 import {
   type PolicyGoalCandidate,
   type PolicyGoalInput,
@@ -39,12 +40,12 @@ type PolicyGoalRow = typeof slaGoalTable.$inferSelect;
  * The columns the work-item SLA read evaluates. Lives with the SLA repository because
  * `work-item/repository.ts` (the database-read centralisation) is not part of this slice.
  */
-export function getWorkItemSlaSourceQuery(
+export async function getWorkItemSlaSourceQuery(
   executor: Pick<typeof db, "select">,
   key: string,
   workspaceId: string,
 ) {
-  return executor
+  return await executor
     .select({
       id: workItemTable.id,
       key: workItemTable.key,
@@ -67,11 +68,11 @@ export function getWorkItemSlaSourceQuery(
     .limit(1);
 }
 
-export function getPinnedVersionForEvaluation(
+export async function getPinnedVersionForEvaluation(
   policyVersionId: string,
   workspaceId: string,
 ) {
-  return db
+  return await db
     .select({
       id: slaPolicyVersionTable.id,
       calendarId: slaPolicyVersionTable.calendarId,
@@ -88,11 +89,11 @@ export function getPinnedVersionForEvaluation(
     .limit(1);
 }
 
-export function getCalendarForEvaluation(
+export async function getCalendarForEvaluation(
   calendarId: string,
   workspaceId: string,
 ) {
-  return db
+  const rows = await db
     .select({
       timezone: serviceCalendarTable.timezone,
       windows: serviceCalendarTable.windows,
@@ -106,10 +107,24 @@ export function getCalendarForEvaluation(
       ),
     )
     .limit(1);
+  type CalendarEvaluationRow = Omit<
+    (typeof rows)[number],
+    "windows" | "holidays"
+  > & { windows: JsonValue; holidays: JsonValue };
+  return rows.map(
+    (row): CalendarEvaluationRow => ({
+      ...row,
+      windows: row.windows as JsonValue,
+      holidays: row.holidays as JsonValue,
+    }),
+  );
 }
 
-export function listGoalsForEvaluation(workspaceId: string, versionId: string) {
-  return db
+export async function listGoalsForEvaluation(
+  workspaceId: string,
+  versionId: string,
+) {
+  return await db
     .select({
       metric: slaGoalTable.metric,
       workItemTypeId: slaGoalTable.workItemTypeId,
@@ -125,8 +140,8 @@ export function listGoalsForEvaluation(workspaceId: string, versionId: string) {
     );
 }
 
-export function getPolicyWorkspace(id: string) {
-  return db
+export async function getPolicyWorkspace(id: string) {
+  return await db
     .select({ workspaceId: slaPolicyTable.workspaceId })
     .from(slaPolicyTable)
     .where(eq(slaPolicyTable.id, id))
@@ -325,16 +340,6 @@ export async function getPolicy(id: string, workspaceId: string) {
     )
     .limit(1);
   return policy ? loadPolicyResult(workspaceId, policy) : undefined;
-}
-
-export class PolicyVersionConflictError extends Error {
-  constructor(
-    public readonly assertedVersion: number,
-    public readonly currentVersion: number,
-  ) {
-    super("SLA policy version conflict");
-    this.name = "PolicyVersionConflictError";
-  }
 }
 
 function decodeCursor(cursor: string, workspaceId: string) {

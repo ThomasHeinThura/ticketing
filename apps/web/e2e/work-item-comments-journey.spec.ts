@@ -2,7 +2,13 @@ import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import {
+  expect,
+  type Locator,
+  type Page,
+  type Request,
+  test,
+} from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
@@ -39,21 +45,86 @@ async function createAdminWorkspace(
   email: string,
   password: string,
 ) {
-  await page.goto(new URL("/auth/sign-up", origin).toString());
-  await page.getByLabel("Full name").fill("Disposable Comments Admin");
-  await page.getByLabel("Email").fill(email);
-  await page.locator('input[autocomplete="new-password"]').fill(password);
-  const signUpPromise = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname === "/api/auth/sign-up/email" &&
-      response.request().method() === "POST",
-  );
-  await page.getByRole("button", { name: "Create account" }).click();
-  expect((await signUpPromise).status()).toBe(200);
-  await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
-  await page.getByLabel("Workspace name").fill("Disposable Comments Workspace");
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/workspace\//);
+  await test.step("Setup diagnostic: sign-up page navigation", async () => {
+    console.info("Setup diagnostic begin: sign-up page navigation");
+    await page.goto(new URL("/auth/sign-up", origin).toString());
+    console.info("Setup diagnostic completed: sign-up page navigation");
+  });
+  await test.step("Setup diagnostic: full-name field entry", async () => {
+    console.info("Setup diagnostic begin: full-name field entry");
+    await page.getByLabel("Full name").fill("Disposable Comments Admin");
+    console.info("Setup diagnostic completed: full-name field entry");
+  });
+  await test.step("Setup diagnostic: sign-up email field entry", async () => {
+    console.info("Setup diagnostic begin: sign-up email field entry");
+    await page.getByLabel("Email").fill(email);
+    console.info("Setup diagnostic completed: sign-up email field entry");
+  });
+  await test.step("Setup diagnostic: sign-up password field entry", async () => {
+    console.info("Setup diagnostic begin: sign-up password field entry");
+    await page.locator('input[autocomplete="new-password"]').fill(password);
+    console.info("Setup diagnostic completed: sign-up password field entry");
+  });
+  const signUpListener =
+    await test.step("Setup diagnostic: sign-up response listener registration", async () => {
+      console.info(
+        "Setup diagnostic begin: sign-up response listener registration",
+      );
+      const pendingResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === "/api/auth/sign-up/email" &&
+          response.request().method() === "POST",
+      );
+      console.info(
+        "Setup diagnostic completed: sign-up response listener registration",
+      );
+      return { pendingResponse };
+    });
+  await test.step("Setup diagnostic: create-account button click", async () => {
+    console.info("Setup diagnostic begin: create-account button click");
+    await page.getByRole("button", { name: "Create account" }).click();
+    console.info("Setup diagnostic completed: create-account button click");
+  });
+  const signUpResponse =
+    await test.step("Setup diagnostic: sign-up response wait", async () => {
+      console.info("Setup diagnostic begin: sign-up response wait");
+      const response = await signUpListener.pendingResponse;
+      console.info("Setup diagnostic completed: sign-up response wait");
+      return response;
+    });
+  await test.step("Setup diagnostic: sign-up response status assertion", async () => {
+    console.info("Setup diagnostic begin: sign-up response status assertion");
+    expect(signUpResponse.status()).toBe(200);
+    console.info(
+      "Setup diagnostic completed: sign-up response status assertion",
+    );
+  });
+  await test.step("Setup diagnostic: onboarding navigation assertion", async () => {
+    console.info("Setup diagnostic begin: onboarding navigation assertion");
+    await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
+    console.info("Setup diagnostic completed: onboarding navigation assertion");
+  });
+  await test.step("Setup diagnostic: workspace-name field entry", async () => {
+    console.info("Setup diagnostic begin: workspace-name field entry");
+    await page
+      .getByLabel("Workspace name")
+      .fill("Disposable Comments Workspace");
+    console.info("Setup diagnostic completed: workspace-name field entry");
+  });
+  await test.step("Setup diagnostic: create-workspace button click", async () => {
+    console.info("Setup diagnostic begin: create-workspace button click");
+    await page.getByRole("button", { name: "Create workspace" }).click();
+    console.info("Setup diagnostic completed: create-workspace button click");
+  });
+  await test.step("Setup diagnostic: workspace-dashboard navigation assertion", async () => {
+    console.info(
+      "Setup diagnostic begin: workspace-dashboard navigation assertion",
+    );
+    await expect(page).toHaveURL(/\/dashboard\/workspace\//);
+    console.info(
+      "Setup diagnostic completed: workspace-dashboard navigation assertion",
+    );
+  });
 }
 
 async function signInThroughUi(
@@ -62,17 +133,53 @@ async function signInThroughUi(
   email: string,
   password: string,
 ) {
-  await page.goto("about:blank");
-  const signOut = await page.request.post(
-    new URL("/api/auth/sign-out", origin).toString(),
-    { headers: { Origin: origin }, data: {} },
-  );
-  expect(signOut.status()).toBe(200);
-  await page.goto(new URL("/auth/sign-in", origin).toString());
-  await page.getByLabel("Email").fill(email);
-  await page.locator('input[autocomplete="current-password"]').fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard(?:\/|\?|$)/);
+  await test.step("Setup diagnostic: blank-page navigation", async () => {
+    console.info("Setup diagnostic begin: blank-page navigation");
+    await page.goto("about:blank");
+    console.info("Setup diagnostic completed: blank-page navigation");
+  });
+  const signOut =
+    await test.step("Setup diagnostic: sign-out request", async () => {
+      console.info("Setup diagnostic begin: sign-out request");
+      const response = await page.request.post(
+        new URL("/api/auth/sign-out", origin).toString(),
+        { headers: { Origin: origin }, data: {} },
+      );
+      console.info("Setup diagnostic completed: sign-out request");
+      return response;
+    });
+  await test.step("Setup diagnostic: sign-out response status assertion", async () => {
+    console.info("Setup diagnostic begin: sign-out response status assertion");
+    expect(signOut.status()).toBe(200);
+    console.info(
+      "Setup diagnostic completed: sign-out response status assertion",
+    );
+  });
+  await test.step("Setup diagnostic: sign-in page navigation", async () => {
+    console.info("Setup diagnostic begin: sign-in page navigation");
+    await page.goto(new URL("/auth/sign-in", origin).toString());
+    console.info("Setup diagnostic completed: sign-in page navigation");
+  });
+  await test.step("Setup diagnostic: sign-in email field entry", async () => {
+    console.info("Setup diagnostic begin: sign-in email field entry");
+    await page.getByLabel("Email").fill(email);
+    console.info("Setup diagnostic completed: sign-in email field entry");
+  });
+  await test.step("Setup diagnostic: sign-in password field entry", async () => {
+    console.info("Setup diagnostic begin: sign-in password field entry");
+    await page.locator('input[autocomplete="current-password"]').fill(password);
+    console.info("Setup diagnostic completed: sign-in password field entry");
+  });
+  await test.step("Setup diagnostic: sign-in button click", async () => {
+    console.info("Setup diagnostic begin: sign-in button click");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    console.info("Setup diagnostic completed: sign-in button click");
+  });
+  await test.step("Setup diagnostic: dashboard navigation assertion", async () => {
+    console.info("Setup diagnostic begin: dashboard navigation assertion");
+    await expect(page).toHaveURL(/\/dashboard(?:\/|\?|$)/);
+    console.info("Setup diagnostic completed: dashboard navigation assertion");
+  });
 }
 
 async function csrfHeaders(page: Page, origin: string) {
@@ -606,5 +713,233 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       ).toContainText("Public only");
       await expect(commentRow).toBeVisible();
     });
+  });
+});
+
+test("CA-19/20 inserts an item-scoped canned response as an editable comment draft", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  await withMfaCsrfApp(async ({ origin, email, password, fixtureDir }) => {
+    await test.step("CA19 phase: workspace setup and sign-in", async () => {
+      console.info("CA19 phase begin: workspace setup and sign-in");
+      await createAdminWorkspace(page, origin, email, password);
+      await signInThroughUi(page, origin, email, password);
+      console.info("CA19 phase completed: workspace setup and sign-in");
+    });
+    const item = await test.step("CA19 phase: work-item setup", async () => {
+      console.info("CA19 phase begin: work-item setup");
+      const result = await setupWorkItem(page, origin);
+      console.info("CA19 phase completed: work-item setup");
+      return result;
+    });
+
+    const responseName = "CA-19 composer response";
+    const originalText = `Thanks for reporting this. ${item.key} is under review.`;
+    const editedText = `${originalText} We will follow up shortly.`;
+    const created =
+      await test.step("CA19 phase: canned-response API create", async () => {
+        console.info("CA19 phase begin: canned-response API create");
+        const response = await page.request.post(
+          new URL("/api/canned-responses", origin).toString(),
+          {
+            headers: await csrfHeaders(page, origin),
+            data: {
+              workspaceId: item.workspaceId,
+              name: responseName,
+              body: {
+                type: "doc",
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [{ type: "text", text: originalText }],
+                  },
+                ],
+              },
+              visibilityDefault: "internal",
+            },
+          },
+        );
+        console.info("CA19 phase completed: canned-response API create");
+        return response;
+      });
+    const cannedResponse =
+      await test.step("CA19 phase: validate canned-response API create", async () => {
+        console.info("CA19 phase begin: validate canned-response API create");
+        const createdText = await created.text();
+        expect(created.status(), createdText).toBe(200);
+        const result = JSON.parse(createdText) as { id: string };
+        expect(result.id).toBeTruthy();
+        console.info(
+          "CA19 phase completed: validate canned-response API create",
+        );
+        return result;
+      });
+
+    const itemUrl = new URL(
+      `/agent/work-items/${encodeURIComponent(item.key)}`,
+      origin,
+    ).toString();
+    const cannedListRequest = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.origin === origin &&
+        url.pathname === "/api/canned-responses" &&
+        response.request().method() === "GET"
+      );
+    });
+    const activity = page.getByTestId("work-item-activity");
+    const composer = commentEditor(activity);
+    await test.step("CA19 phase: item navigation and scoped snippet fetch", async () => {
+      console.info(
+        "CA19 phase begin: item navigation and scoped snippet fetch",
+      );
+      await page.goto(itemUrl);
+      await expect(activity).toBeVisible();
+      await expect(composer).toBeVisible();
+      const listResponse = await cannedListRequest;
+      expect(new URL(listResponse.url()).searchParams.get("workItemKey")).toBe(
+        item.key,
+      );
+      expect(listResponse.status()).toBe(200);
+      const listedResponses = (await listResponse.json()) as Array<{
+        id: string;
+        name: string;
+        body: unknown;
+        visibilityDefault: string;
+      }>;
+      expect(listedResponses).toContainEqual(
+        expect.objectContaining({
+          id: cannedResponse.id,
+          name: responseName,
+          body: expect.objectContaining({ type: "doc" }),
+          visibilityDefault: "internal",
+        }),
+      );
+      console.info(
+        "CA19 phase completed: item navigation and scoped snippet fetch",
+      );
+    });
+
+    const commentPath = `/api/work-items/${encodeURIComponent(item.key)}/comments`;
+    const commentPosts: Request[] = [];
+    const recordCommentPost = (request: Request) => {
+      if (
+        new URL(request.url()).pathname === commentPath &&
+        request.method() === "POST"
+      ) {
+        commentPosts.push(request);
+      }
+    };
+    page.on("request", recordCommentPost);
+    try {
+      await test.step("CA19 phase: insert, edit, and verify no automatic send", async () => {
+        console.info(
+          "CA19 phase begin: insert, edit, and verify no automatic send",
+        );
+        const responseSelect = page.getByRole("combobox", {
+          name: "Canned response",
+        });
+        await expect(responseSelect).toBeVisible();
+        await responseSelect.click();
+        await page
+          .getByRole("option", { name: responseName, exact: true })
+          .click();
+        await expect(composer).toContainText(originalText);
+        await expect(page.locator("#comment-visibility")).toContainText(
+          "Internal",
+        );
+
+        await composer.fill(editedText);
+        await expect(composer).toContainText(editedText);
+        expect(commentPosts).toHaveLength(0);
+
+        const beforeSend = await page.request.get(
+          new URL(
+            `/api/work-items/${encodeURIComponent(item.key)}/activity`,
+            origin,
+          ).toString(),
+          { headers: { Origin: origin } },
+        );
+        expect(beforeSend.status()).toBe(200);
+        const beforeSendActivity = (await beforeSend.json()) as {
+          data: Array<{ kind?: string; body?: unknown }>;
+        };
+        expect(
+          beforeSendActivity.data.some(
+            (row) =>
+              row.kind === "comment" &&
+              JSON.stringify(row.body).includes(originalText),
+          ),
+        ).toBe(false);
+
+        const screenshotPath = resolve(
+          fixtureDir,
+          "canned-response-composer.png",
+        );
+        await activity.screenshot({ path: screenshotPath });
+        console.info(
+          "CA19 phase completed: insert, edit, and verify no automatic send",
+        );
+      });
+
+      await test.step("CA19 phase: send and verify durable comment", async () => {
+        console.info("CA19 phase begin: send and verify durable comment");
+        const postedResponse = page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname === commentPath &&
+            response.request().method() === "POST",
+        );
+        await activity.getByRole("button", { name: "Send comment" }).click();
+        const commentResponse = await postedResponse;
+        expect(commentResponse.status()).toBe(200);
+        const postedComment = (await commentResponse.json()) as {
+          id: string;
+          body: unknown;
+          visibility: string;
+        };
+        expect(postedComment.id).toBeTruthy();
+        expect(postedComment.visibility).toBe("internal");
+        expect(JSON.stringify(postedComment.body)).toContain(editedText);
+        expect(commentPosts).toHaveLength(1);
+
+        const persistedResponse = await page.request.get(
+          new URL(
+            `/api/work-items/${encodeURIComponent(item.key)}/activity`,
+            origin,
+          ).toString(),
+          { headers: { Origin: origin } },
+        );
+        expect(persistedResponse.status()).toBe(200);
+        const persistedActivity = (await persistedResponse.json()) as {
+          data: Array<{
+            id: string;
+            kind?: string;
+            body?: unknown;
+            visibility: string;
+          }>;
+        };
+        expect(persistedActivity.data).toContainEqual(
+          expect.objectContaining({
+            id: postedComment.id,
+            kind: "comment",
+            body: postedComment.body,
+            visibility: "internal",
+          }),
+        );
+        expect(
+          persistedActivity.data.filter(
+            (row) =>
+              row.kind === "comment" &&
+              JSON.stringify(row.body).includes(originalText),
+          ),
+        ).toHaveLength(1);
+        console.info("CA19 phase completed: send and verify durable comment");
+      });
+    } finally {
+      page.off("request", recordCommentPost);
+    }
   });
 });

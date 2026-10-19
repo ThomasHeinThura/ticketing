@@ -92,6 +92,7 @@ const FULL_LIST = [
   "apps/api/src/middleware/**",
   "apps/api/src/plugins/**",
   "apps/api/src/auth*",
+  "apps/api/src/auth/**",
   "apps/api/src/webhooks/**",
   "packages/permissions/**",
   "packages/plugins-contracts/**",
@@ -136,6 +137,118 @@ function shrinkScenario() {
 }
 
 describe("GPT-F1 — security-review scope is the union of merge base and HEAD", () => {
+  it("requires review for nested auth-only changes against the canonical scope", () => {
+    const dir = scratchDir("canonical-auth-directory-scope");
+    initRepo(dir);
+    installCheckers(dir);
+    installFromRepo(dir, ".github/pull_request_template.md");
+    installFromRepo(dir, "docs/04-engineering/ci-cd.md");
+    installFromRepo(dir, "docs/07-planning/decision-log.md");
+    const base = commit(dir, "chore: bootstrap the canonical security scope");
+    setOriginMain(dir, base);
+
+    write(
+      dir,
+      "apps/api/src/auth/repository.ts",
+      "export const changed = true;\n",
+    );
+    write(
+      dir,
+      "apps/api/src/auth/step-up-service.ts",
+      "export const changed = true;\n",
+    );
+    commit(dir, "test: change only nested auth sources");
+
+    const scope = evaluateInRepo(
+      dir,
+      `import { readSecurityReviewScope } from "./scripts/ci/lib/security-paths.mjs";
+       const s = await readSecurityReviewScope();
+       console.log(JSON.stringify({
+         repository: s.matches("apps/api/src/auth/repository.ts"),
+         stepUp: s.matches("apps/api/src/auth/step-up-service.ts"),
+         authSource: s.matches("apps/api/src/auth.ts"),
+         changedPaths: (await import("node:child_process")).execFileSync(
+           "git", ["diff", "--name-only", "origin/main...HEAD"], { encoding: "utf8" }
+         ).trim().split("\\n").sort(),
+       }));`,
+    );
+
+    assert.deepEqual(scope, {
+      repository: true,
+      stepUp: true,
+      authSource: true,
+      changedPaths: [
+        "apps/api/src/auth/repository.ts",
+        "apps/api/src/auth/step-up-service.ts",
+      ],
+    });
+
+    const body = bodyFile(completeBody());
+    const run = runChecker(dir, "check-pr-template.mjs", ["--body", body]);
+    assert.equal(
+      run.status,
+      1,
+      `check-pr-template exited ${run.status}; canonical nested-auth-only changes ` +
+        `must require security-review evidence.\n${run.output}`,
+    );
+    assert.match(run.output, /## Security review/);
+    assert.doesNotMatch(run.output, /no security-review path touched/);
+  });
+
+  it("keeps nested auth files in scope through a same-diff narrowing", () => {
+    const dir = scratchDir("auth-directory-scope-shrink");
+    initRepo(dir);
+    installCheckers(dir);
+    installFromRepo(dir, ".github/pull_request_template.md");
+    write(dir, "docs/04-engineering/ci-cd.md", ciCdWith(FULL_LIST));
+    write(dir, "docs/07-planning/decision-log.md", "# Decision log\n");
+    const base = commit(dir, "chore: bootstrap auth directory review scope");
+    setOriginMain(dir, base);
+
+    const narrowed = FULL_LIST.filter(
+      (glob) => glob !== "apps/api/src/auth/**",
+    );
+    write(dir, "docs/04-engineering/ci-cd.md", ciCdWith(narrowed));
+    write(
+      dir,
+      "apps/api/src/auth/repository.ts",
+      "export const changed = true;\n",
+    );
+    commit(dir, "test: narrow auth directory scope while changing nested auth");
+
+    const scope = evaluateInRepo(
+      dir,
+      `import { readSecurityReviewScope } from "./scripts/ci/lib/security-paths.mjs";
+       const s = await readSecurityReviewScope();
+       console.log(JSON.stringify({
+         currentSource: s.matchesCurrent("apps/api/src/auth.ts"),
+         currentNested: s.matchesCurrent("apps/api/src/auth/repository.ts"),
+         previousNested: s.matchesPrevious("apps/api/src/auth/repository.ts"),
+         unionNested: s.matches("apps/api/src/auth/repository.ts"),
+         removed: s.removed,
+       }));`,
+    );
+
+    assert.deepEqual(scope, {
+      currentSource: true,
+      currentNested: false,
+      previousNested: true,
+      unionNested: true,
+      removed: ["apps/api/src/auth/**"],
+    });
+
+    const body = bodyFile(completeBody());
+    const run = runChecker(dir, "check-pr-template.mjs", ["--body", body]);
+    assert.equal(
+      run.status,
+      1,
+      `check-pr-template exited ${run.status}; nested auth changes must require ` +
+        `security-review evidence even when the same diff narrows the scope.\n${run.output}`,
+    );
+    assert.match(run.output, /## Security review/);
+    assert.doesNotMatch(run.output, /no security-review path touched/);
+  });
+
   it("still requires the review when the same diff removes the globs that cover it", () => {
     const { dir } = shrinkScenario();
 

@@ -111,16 +111,38 @@ forged `X-Forwarded-For`, cross-origin WebSocket, CSRF on an elevated route.
 
 ### 5. Secrets never serialise; queries are never unscoped
 
-Response schemas are explicit; there is no `select *` to the wire. Every table read goes
-through a feature's `repository.ts` whose exports take an identity and return a
-phantom-typed `ScopedQuery` that **cannot execute without one** — a type error, not a lint
-warning; `check:queries` additionally fails the build on any `db.select()` outside a
-repository. RLS remains rejected as the *primary* control ([multi-tenancy.md](multi-tenancy.md)) — but
-as a **backstop** it is no longer deferred: a P0 prototype covers `work_item`, `comment` and
-`attachment`, and P0 closes with it either merged and measured or dropped with the reason in
-the decision log (decided 2026-09-06).
+Response schemas are explicit; there is no `select *` to the wire. A repository query that
+can return cross-organisation data takes the resolved identity and applies the caller's reach
+in the statement predicate. Any additional `workspaceId` or `projectId` narrows that scope and
+must be checked against the identity; an id alone does not establish reach. Keeping statements
+in named repositories is an ownership convention; it does not itself prove that a query is
+scoped. The planned `check:queries` gate (#580) is not currently wired, and its repository-
+location check will enforce query ownership rather than tenant predicate semantics. These
+explicit predicates remain required regardless of the gate. No universal `forIdentity`/
+`ScopedQuery` type guarantee is claimed. RLS remains rejected as the
+*primary* control ([multi-tenancy.md](multi-tenancy.md)) — but as a **backstop** it is no longer
+deferred: a P0 prototype covers `work_item`, `comment` and `attachment`, and P0 closes with it
+either merged and measured or dropped with the reason in the decision log (decided 2026-09-06).
 
 ---
+
+## Internal account-erasure safety summary
+
+For the authenticated account-deletion subject, the internal erasure planner may read a
+narrow summary of the subject's current persisted workspace memberships: own workspace IDs,
+own owner status, member/owner counts, and names of those currently joined workspaces used
+only in the existing conflict message. This lifecycle entitlement is bound to the actual
+authenticated deletion subject; it grants no general query exception or workspace access.
+It exposes no other members' identities or individual role rows.
+
+Safety counts must include every persisted membership relevant to the existing deletion
+checks, including when the subject has no usable canonical identity (for example, inactive
+or legacy memberships). Filtering through ordinary canonical reach must not omit a safety
+check or permit deletion of a workspace others still use. Preserve the existing ownership
+interpretation, transactional locks, two-pass recheck, refusal before invalidation/deletion,
+and existing conflict behavior. This does not authorize broader content reads, a new
+capability, or changes to account-deletion eligibility. Thomas approved this bounded summary
+on 2026-10-16; see the decision log.
 
 ## Reach, authority, and the 404 rule
 
@@ -267,6 +289,20 @@ The server is.
 | Defaults | Idle 12 h, absolute 30 days, concurrent 5 — configurable in God Mode within maxima of 7 days idle / 90 days absolute |
 | Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". The initial supported account class is a current local-password session with no enrolled or required second factor, after rechecking the current identity and verifying that password. SSO-only accounts require a validated IdP response with exact configured issuer/audience and single-use `state`/`nonce` bound to challenge/session/subject/connection, a `prompt=login` request, and signed `auth_time` satisfying `challenge.created_at - 60s <= auth_time <= callback_received_at + 60s` and `callback_received_at - auth_time <= 5min`; callback must precede challenge expiry. If policy requires MFA, fresh `amr`/`acr` evidence must satisfy the configured provider mapping or a real local factor; a static upstream-MFA flag is insufficient. Missing/untrustworthy evidence, changed subject/connection/session, or unavailable required verifier fails closed (`403 step_up_unavailable` or authentication failure), with no password/email-OTP fallback. `POST /api/me/step-up/challenges` and `POST /api/me/step-up` mint a single-use confirmation only after actual proof verification. It binds either to one existing pending-action id/payload hash or to one PA-15-registered operation (`metrics_token_rotate`, `mfa_reset`, `instance_admin_grant`, `identity_connection_create`, `identity_connection_configure`, `oidc_group_mapping_create`, `oidc_group_mapping_update`, `scim_admin_update`, `scim_token_rotate`, or `scim_token_revoke`) with its exact route, resource version and server-computed canonical request-binding hash; OIDC mapping bindings include the connection and mapping path ids as well as the validated request body. No session-wide window exists. The token is valid five minutes after issuance, hash-only at rest, and consumed atomically with its protected action. Existing pending-action tokens remain re-mintable while the action is pending. Operation challenges are limited to five per person/session/operation in a rolling 15-minute window, with one credential-verification attempt per challenge; failed proof or nonce expires the challenge. Identity connection creation/configuration, OIDC mapping changes and SCIM administration use distinct strict operation bindings; the identity-connection body and version contract is in [api-design.md](api-design.md#identity-connection-create-and-configuration-compare-and-set--pa-15). No other operation proof may be reused. Missing required verification support fails closed with `403 step_up_unavailable`. Current source includes the local Better Auth `twoFactor` plugin and TOTP/backup-code verifiers; fresh upstream SSO step-up remains unavailable. Integrated acceptance remains open. Details: [pending-actions.md](pending-actions.md) `PA-15` |
 | Elevated list | The single list in [RBAC](rbac.md) |
+
+The local pending-action and registered-operation challenge/proof producers acquire the
+pending-action lifecycle gate before their first row lock and retain one transaction through
+factor verification and final binding checks. Better Auth's local TOTP/backup-code adapter
+work runs on that transaction's backend through nested savepoints. Its session-delete native
+authorization effect queues with the child savepoint and publishes only after outer commit.
+A supported local-factor-policy PATCH acquires that same gate as its first transaction
+statement, before its existing required-role then singleton lock order. This serializes policy
+updates with final factor revalidation and proof issuance; it does not invalidate proofs that
+were issued before a later policy update.
+A successful verifier remains one-shot when final proof minting is denied or its savepoint
+fails; successful factor-side effects commit with the outer transaction and no token is
+returned. This is an implementation invariant for [PA-15](pending-actions.md#pa-15-step-up-is-single-use-and-bound-to-one-pending-action-or-one-explicitly-registered-operation),
+not a promise across outer transaction or connection failure.
 
 ## Impersonation
 

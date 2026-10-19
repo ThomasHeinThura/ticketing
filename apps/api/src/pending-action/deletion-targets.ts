@@ -7,10 +7,8 @@ import db, { schema } from "../database";
 import {
   pendingActionTable,
   personTable,
-  projectTable,
   savedViewTable,
   serviceCalendarTable,
-  slaPolicyVersionTable,
   userPreferenceTable,
   userTable,
 } from "../database/schema";
@@ -18,6 +16,7 @@ import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { policyRegistry } from "../policy-registry";
+import { assertCalendarUnused } from "../service-calendar/repository";
 import { dbNowUtc } from "../utils/db-time";
 import { lockPendingActionLifecycle } from "./lifecycle-invalidation";
 import {
@@ -1053,38 +1052,4 @@ async function invalidateServiceCalendarDeletion(
     auditFailure = true;
   }
   return { row: invalidated, auditFailure };
-}
-
-/**
- * CAL-9: the single definition of "in use", shared by the deletion request
- * (service-calendar route) and its approval recheck.
- */
-export async function assertCalendarUnused(
-  tx: Pick<typeof db, "select">,
-  workspaceId: string,
-  calendarId: string,
-) {
-  const [projectReference] = await tx
-    .select({ id: projectTable.id })
-    .from(projectTable)
-    .where(
-      and(
-        eq(projectTable.workspaceId, workspaceId),
-        eq(projectTable.serviceCalendarId, calendarId),
-      ),
-    )
-    .limit(1);
-  const [policyReference] = await tx
-    .select({ id: slaPolicyVersionTable.id })
-    .from(slaPolicyVersionTable)
-    .where(
-      and(
-        eq(slaPolicyVersionTable.workspaceId, workspaceId),
-        eq(slaPolicyVersionTable.calendarId, calendarId),
-      ),
-    )
-    .limit(1);
-  if (projectReference || policyReference) {
-    throw new HTTPException(409, { message: "service_calendar_in_use" });
-  }
 }

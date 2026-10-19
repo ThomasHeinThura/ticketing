@@ -3,25 +3,123 @@ import {
   evaluateApprovalWithdrawalDecision,
 } from "@taskdesk/domain";
 import {
-  CAPABILITY_NAMES,
   can,
   expandCapabilities,
   isKeyCredential,
   type ProjectReachFacts,
+  type ResolvedIdentity,
   reaches,
   resolveFeatureFlag,
 } from "@taskdesk/permissions";
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq, exists, inArray, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { type Executor, executorOrDefault } from "../database/executor";
+import {
+  currentInstanceAdminPredicate,
+  currentProjectReachPredicate,
+} from "../database/repositories/identity-scope.repository";
 import type { ApiKey } from "../openapi";
-import { resolveIdentity } from "../permissions/resolve-identity";
+import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { dbClockUtc } from "../utils/db-time";
-import { apiKeyHasCapabilityScope } from "../utils/require-api-key-permission-scope";
 
 const approverPerson = alias(schema.personTable, "approver_person");
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+function requestWorkItemVisibility(
+  identity: ResolvedIdentity,
+  executor: Executor,
+) {
+  if (identity.side === "staff") return sql`true`;
+
+  return or(
+    sql`${schema.workItemTable.customerVisibility} <> 'private'`,
+    eq(schema.workItemTable.requesterId, identity.personId),
+    exists(
+      executor
+        .select({ one: sql`1` })
+        .from(schema.requestParticipantTable)
+        .where(
+          and(
+            eq(
+              schema.requestParticipantTable.workItemId,
+              schema.workItemTable.id,
+            ),
+            eq(schema.requestParticipantTable.personId, identity.personId),
+          ),
+        ),
+    ),
+  );
+}
+
+function requestWorkItemScope(identity: ResolvedIdentity, executor: Executor) {
+  return and(
+    currentProjectReachPredicate(
+      identity,
+      schema.projectTable.id,
+      schema.projectTable.workspaceId,
+      schema.projectTable.organisationId,
+      executor,
+    ),
+    requestWorkItemVisibility(identity, executor),
+    isNull(schema.workItemTable.deletedAt),
+    isNull(schema.workItemTable.archivedAt),
+    isNull(schema.projectTable.deletedAt),
+  );
+}
+
+function requestWorkItemProjectScope(
+  identity: ResolvedIdentity,
+  projectId: string,
+  executor: Executor,
+) {
+  return and(
+    eq(schema.projectTable.id, projectId),
+    isNull(schema.projectTable.deletedAt),
+    currentProjectReachPredicate(
+      identity,
+      schema.projectTable.id,
+      schema.projectTable.workspaceId,
+      schema.projectTable.organisationId,
+      executor,
+    ),
+  );
+}
+
+export function approvalRequestScope(
+  identity: ResolvedIdentity,
+  executor: Executor,
+) {
+  return exists(
+    executor
+      .select({ one: sql`1` })
+      .from(schema.workItemTable)
+      .innerJoin(
+        schema.projectTable,
+        eq(schema.projectTable.id, schema.workItemTable.projectId),
+      )
+      .where(
+        and(
+          eq(schema.workItemTable.id, schema.approvalTable.workItemId),
+          eq(
+            schema.workItemTable.workspaceId,
+            schema.approvalTable.workspaceId,
+          ),
+          requestWorkItemScope(identity, executor),
+        ),
+      ),
+  );
+}
+
+export function approvalAdminScope(
+  identity: ResolvedIdentity,
+  executor: Executor,
+) {
+  return identity.credential === "session"
+    ? currentInstanceAdminPredicate(identity, executor)
+    : sql`false`;
+}
 
 export type DueApprovalRow = Awaited<
   ReturnType<typeof selectDueApprovalRows>
@@ -87,14 +185,65 @@ async function selectDueApprovalRows(tx: Transaction, limit: number) {
   );
 }
 
+/** State transitions for the existing bounded reminder-scan job only. */
+export async function expireDueApprovalRow(
+  tx: Transaction,
+  input: { id: string; workspaceId: string; decidedAt: Date },
+) {
+  const [row] = await tx
+    .update(schema.approvalTable)
+    .set({ state: "expired", decidedAt: input.decidedAt })
+    .where(
+      and(
+        eq(schema.approvalTable.id, input.id),
+        eq(schema.approvalTable.workspaceId, input.workspaceId),
+        eq(schema.approvalTable.state, "pending"),
+      ),
+    )
+    .returning({ id: schema.approvalTable.id });
+  return row ?? null;
+}
+
+export async function markDueApprovalReminderSent(
+  tx: Transaction,
+  input: {
+    id: string;
+    workspaceId: string;
+    reminder: "reminder_50" | "reminder_90";
+    sentAt: Date;
+  },
+) {
+  const [row] = await tx
+    .update(schema.approvalTable)
+    .set(
+      input.reminder === "reminder_50"
+        ? { reminder50SentAt: input.sentAt }
+        : { reminder90SentAt: input.sentAt },
+    )
+    .where(
+      and(
+        eq(schema.approvalTable.id, input.id),
+        eq(schema.approvalTable.workspaceId, input.workspaceId),
+        eq(schema.approvalTable.state, "pending"),
+      ),
+    )
+    .returning({ id: schema.approvalTable.id });
+  return row ?? null;
+}
+
 /** Lock one bounded batch and run each state/event writer inside the same transaction. */
-export async function withDueApprovalRows<T>(
+type DueApprovalRowResult = "expired" | "reminded" | "unchanged";
+
+export async function withDueApprovalRows(
   limit: number,
-  process: (tx: Transaction, row: DueApprovalRow) => Promise<T>,
-): Promise<T[]> {
+  process: (
+    tx: Transaction,
+    row: DueApprovalRow,
+  ) => Promise<DueApprovalRowResult>,
+): Promise<DueApprovalRowResult[]> {
   return db.transaction(async (tx) => {
     const rows = await selectDueApprovalRows(tx, limit);
-    const results: T[] = [];
+    const results: DueApprovalRowResult[] = [];
     for (const row of rows) results.push(await process(tx, row));
     return results;
   });
@@ -103,8 +252,10 @@ export async function withDueApprovalRows<T>(
 /** Lock a live work item by `(workspace_id, id)`: a work item of another workspace is never found. */
 export async function lockLiveWorkItem(
   tx: Transaction,
+  identity: ResolvedIdentity,
   workspaceId: string,
   workItemId: string,
+  allowInstanceAdmin = false,
 ) {
   const [row] = await tx
     .select({
@@ -114,34 +265,257 @@ export async function lockLiveWorkItem(
       archivedAt: schema.workItemTable.archivedAt,
     })
     .from(schema.workItemTable)
+    .innerJoin(
+      schema.projectTable,
+      eq(schema.projectTable.id, schema.workItemTable.projectId),
+    )
     .where(
       and(
         eq(schema.workItemTable.id, workItemId),
         eq(schema.workItemTable.workspaceId, workspaceId),
+        or(
+          requestWorkItemScope(identity, tx),
+          allowInstanceAdmin ? approvalAdminScope(identity, tx) : sql`false`,
+        ),
       ),
     )
-    .for("update");
+    .for("update", { of: schema.workItemTable });
   return row && !row.deletedAt && !row.archivedAt ? row : null;
 }
 
 export async function lockApproval(
   tx: Transaction,
+  identity: ResolvedIdentity,
   approvalId: string,
   workItemId: string,
   workspaceId: string,
+  allowInstanceAdmin = false,
 ) {
   const [row] = await tx
-    .select()
+    .select({
+      id: schema.approvalTable.id,
+      workspaceId: schema.approvalTable.workspaceId,
+      workItemId: schema.approvalTable.workItemId,
+      transitionId: schema.approvalTable.transitionId,
+      kind: schema.approvalTable.kind,
+      requestedBy: schema.approvalTable.requestedBy,
+      approverId: schema.approvalTable.approverId,
+      state: schema.approvalTable.state,
+      createdAt: schema.approvalTable.createdAt,
+      expiresAt: schema.approvalTable.expiresAt,
+      reminder50SentAt: schema.approvalTable.reminder50SentAt,
+      reminder90SentAt: schema.approvalTable.reminder90SentAt,
+      decidedAt: schema.approvalTable.decidedAt,
+      decisionNote: schema.approvalTable.decisionNote,
+    })
     .from(schema.approvalTable)
+    .innerJoin(
+      schema.workItemTable,
+      and(
+        eq(schema.workItemTable.id, schema.approvalTable.workItemId),
+        eq(schema.workItemTable.workspaceId, schema.approvalTable.workspaceId),
+      ),
+    )
+    .innerJoin(
+      schema.projectTable,
+      eq(schema.projectTable.id, schema.workItemTable.projectId),
+    )
     .where(
       and(
         eq(schema.approvalTable.id, approvalId),
         eq(schema.approvalTable.workItemId, workItemId),
         eq(schema.approvalTable.workspaceId, workspaceId),
+        or(
+          requestWorkItemScope(identity, tx),
+          allowInstanceAdmin ? approvalAdminScope(identity, tx) : sql`false`,
+        ),
       ),
     )
-    .for("update");
+    .for("update", { of: schema.approvalTable });
   return row ?? null;
+}
+
+export async function insertApprovalForRequest(
+  tx: Transaction,
+  identity: ResolvedIdentity,
+  input: {
+    id: string;
+    workItemId: string;
+    workspaceId: string;
+    transitionId: string;
+    kind: string;
+    requestedBy: string;
+    approverId: string;
+    expiryDays: number;
+    expiresAt?: Date;
+  },
+) {
+  const [row] = await tx
+    .insert(schema.approvalTable)
+    .select(
+      tx
+        .select({
+          id: sql`${input.id}`.as("id"),
+          workspaceId: schema.workItemTable.workspaceId,
+          workItemId: schema.workItemTable.id,
+          transitionId: sql`${input.transitionId}`.as("transitionId"),
+          kind: sql`${input.kind}`.as("kind"),
+          requestedBy: sql`${input.requestedBy}`.as("requestedBy"),
+          approverId: sql`${input.approverId}`.as("approverId"),
+          state: sql`'pending'`.as("state"),
+          createdAt: dbClockUtc().as("createdAt"),
+          expiresAt: input.expiresAt
+            ? sql`${sql.param(input.expiresAt, schema.approvalTable.expiresAt)}`.as(
+                "expiresAt",
+              )
+            : sql`(${dbClockUtc()} + make_interval(days => ${input.expiryDays}::int))`.as(
+                "expiresAt",
+              ),
+          reminder50SentAt: sql`NULL`.as("reminder50SentAt"),
+          reminder90SentAt: sql`NULL`.as("reminder90SentAt"),
+          decidedAt: sql`NULL`.as("decidedAt"),
+          decisionNote: sql`NULL`.as("decisionNote"),
+        })
+        .from(schema.workItemTable)
+        .innerJoin(
+          schema.projectTable,
+          eq(schema.projectTable.id, schema.workItemTable.projectId),
+        )
+        .where(
+          and(
+            eq(schema.workItemTable.id, input.workItemId),
+            eq(schema.workItemTable.workspaceId, input.workspaceId),
+            requestWorkItemScope(identity, tx),
+          ),
+        ),
+    )
+    .returning();
+  return row ?? null;
+}
+
+export async function updateApprovalDecision(
+  tx: Transaction,
+  identity: ResolvedIdentity,
+  input: {
+    id: string;
+    workspaceId: string;
+    state: string;
+    decidedAt: Date;
+    decisionNote: string | null;
+  },
+) {
+  const [row] = await tx
+    .update(schema.approvalTable)
+    .set({
+      state: input.state,
+      decidedAt: input.decidedAt,
+      decisionNote: input.decisionNote,
+    })
+    .where(
+      and(
+        eq(schema.approvalTable.id, input.id),
+        eq(schema.approvalTable.workspaceId, input.workspaceId),
+        eq(schema.approvalTable.approverId, identity.personId),
+        eq(schema.approvalTable.state, "pending"),
+        approvalRequestScope(identity, tx),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
+export async function updateApprovalWithdrawal(
+  tx: Transaction,
+  identity: ResolvedIdentity,
+  input: {
+    id: string;
+    workspaceId: string;
+    decidedAt: Date;
+    allowInstanceAdmin: boolean;
+  },
+) {
+  const [row] = await tx
+    .update(schema.approvalTable)
+    .set({ state: "withdrawn", decidedAt: input.decidedAt })
+    .where(
+      and(
+        eq(schema.approvalTable.id, input.id),
+        eq(schema.approvalTable.workspaceId, input.workspaceId),
+        eq(schema.approvalTable.state, "pending"),
+        or(
+          and(
+            eq(schema.approvalTable.requestedBy, identity.personId),
+            approvalRequestScope(identity, tx),
+          ),
+          input.allowInstanceAdmin
+            ? approvalAdminScope(identity, tx)
+            : sql`false`,
+        ),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
+export async function closePendingApprovalRowsForTransition(
+  tx: Transaction,
+  identity: ResolvedIdentity,
+  input: { workspaceId: string; workItemId: string; transitionId: string },
+) {
+  const closed = await tx
+    .update(schema.approvalTable)
+    .set({ state: "expired", decidedAt: dbClockUtc() })
+    .where(
+      and(
+        eq(schema.approvalTable.workspaceId, input.workspaceId),
+        eq(schema.approvalTable.workItemId, input.workItemId),
+        eq(schema.approvalTable.transitionId, input.transitionId),
+        eq(schema.approvalTable.state, "pending"),
+        approvalRequestScope(identity, tx),
+      ),
+    )
+    .returning({
+      id: schema.approvalTable.id,
+      kind: schema.approvalTable.kind,
+      approverId: schema.approvalTable.approverId,
+    });
+  if (closed.length > 0) {
+    await tx.delete(schema.notificationTable).where(
+      and(
+        eq(schema.notificationTable.resourceType, "approval"),
+        inArray(
+          schema.notificationTable.resourceId,
+          closed.map(({ id }) => id),
+        ),
+      ),
+    );
+  }
+  return closed;
+}
+
+export async function findApprovalActorPerson(
+  tx: Transaction,
+  userId: string | null,
+) {
+  if (!userId) return undefined;
+  const [person] = await tx
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  return person;
+}
+
+export async function findApprovalWorkspaceOrganisation(
+  tx: Transaction,
+  workspaceId: string,
+) {
+  const [workspace] = await tx
+    .select({ organisationId: schema.workspaceTable.organisationId })
+    .from(schema.workspaceTable)
+    .where(eq(schema.workspaceTable.id, workspaceId))
+    .limit(1);
+  return workspace;
 }
 
 export async function isActiveInstanceAdmin(
@@ -166,8 +540,16 @@ export async function isActiveInstanceAdmin(
   return admin !== undefined;
 }
 
-export async function resolveApprovalIdentity(userId: string, apiKey?: ApiKey) {
-  const identity = await resolveApprovalIdentityIfActive(userId, apiKey);
+export async function resolveApprovalIdentity(
+  userId: string,
+  apiKey?: ApiKey,
+  impersonatedBy?: string | null,
+) {
+  const identity = await resolveApprovalIdentityIfActive(
+    userId,
+    apiKey,
+    impersonatedBy,
+  );
   if (!identity) {
     throw new HTTPException(401, { message: "Authentication required" });
   }
@@ -177,23 +559,12 @@ export async function resolveApprovalIdentity(userId: string, apiKey?: ApiKey) {
 export async function resolveApprovalIdentityIfActive(
   userId: string,
   apiKey?: ApiKey,
+  impersonatedBy?: string | null,
 ) {
-  return resolveIdentity({
+  return resolveRequestIdentity({
     userId,
-    credential: apiKey ? "api_key" : "session",
-    apiKey: apiKey
-      ? {
-          enabled: apiKey.enabled,
-          ownerUserId: apiKey.userId,
-          // Better Auth stores key scopes as resource/action statements; project those
-          // statements onto the registered capability vocabulary before the canonical
-          // evaluator intersects them with the owner's current roles. Keep this mapping
-          // in the shared, validated scope helper instead of parsing it locally.
-          capabilities: CAPABILITY_NAMES.filter((capability) =>
-            apiKeyHasCapabilityScope(apiKey, capability),
-          ),
-        }
-      : undefined,
+    apiKey,
+    impersonatedBy,
   });
 }
 
@@ -203,16 +574,19 @@ export type ApprovalTarget = {
   title: string;
   workspaceId: string;
   projectId: string;
-  organisationId: string;
+  organisationId: string | null;
   requesterId: string | null;
   isPrivate: boolean;
   reachFacts: ProjectReachFacts;
 };
 
 export async function loadApprovalTargetByKey(
+  identity: ResolvedIdentity,
   key: string,
+  executor?: Executor,
 ): Promise<ApprovalTarget> {
-  const [row] = await db
+  const queryDb = executorOrDefault(executor);
+  const [row] = await queryDb
     .select({
       workItemId: schema.workItemTable.id,
       workItemKey: schema.workItemTable.key,
@@ -221,23 +595,20 @@ export async function loadApprovalTargetByKey(
       projectId: schema.workItemTable.projectId,
       requesterId: schema.workItemTable.requesterId,
       customerVisibility: schema.workItemTable.customerVisibility,
-      organisationId: schema.workspaceTable.organisationId,
+      organisationId: schema.projectTable.organisationId,
+      participantIds: sql<
+        string[]
+      >`ARRAY(SELECT rp.person_id FROM request_participant rp WHERE rp.work_item_id = ${schema.workItemTable.id})`,
     })
     .from(schema.workItemTable)
     .innerJoin(
       schema.projectTable,
       eq(schema.projectTable.id, schema.workItemTable.projectId),
     )
-    .innerJoin(
-      schema.workspaceTable,
-      eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
-    )
     .where(
       and(
         eq(schema.workItemTable.key, key),
-        isNull(schema.workItemTable.deletedAt),
-        isNull(schema.workItemTable.archivedAt),
-        isNull(schema.projectTable.deletedAt),
+        requestWorkItemScope(identity, queryDb),
       ),
     )
     .limit(1);
@@ -245,8 +616,14 @@ export async function loadApprovalTargetByKey(
   if (!row) throw new HTTPException(404, { message: "Work item not found" });
 
   const visibleToPersonIds =
-    row.customerVisibility === "private" && row.requesterId
-      ? [row.requesterId]
+    row.customerVisibility === "private"
+      ? [
+          ...new Set(
+            [row.requesterId, ...row.participantIds].filter(
+              (personId): personId is string => personId !== null,
+            ),
+          ),
+        ]
       : null;
   const reachFacts: ProjectReachFacts = {
     projectId: row.projectId,
@@ -270,6 +647,7 @@ export async function loadApprovalTargetByKey(
 /** Resolve the approval feature flag from persisted project/workspace/instance
  * settings. The pure hierarchy/default rules remain owned by permissions/features.ts. */
 export async function resolveApprovalFeatureFlag(input: {
+  identity: ResolvedIdentity;
   workspaceId: string;
   projectId: string;
 }) {
@@ -287,9 +665,18 @@ export async function resolveApprovalFeatureFlag(input: {
     db
       .select({ enabled: schema.workspaceFeatureFlagTable.enabled })
       .from(schema.workspaceFeatureFlagTable)
+      .innerJoin(
+        schema.projectTable,
+        eq(
+          schema.projectTable.workspaceId,
+          schema.workspaceFeatureFlagTable.workspaceId,
+        ),
+      )
       .where(
         and(
           eq(schema.workspaceFeatureFlagTable.workspaceId, input.workspaceId),
+          eq(schema.projectTable.id, input.projectId),
+          requestWorkItemProjectScope(input.identity, input.projectId, db),
           eq(schema.workspaceFeatureFlagTable.featureKey, "feature.approvals"),
         ),
       )
@@ -297,9 +684,14 @@ export async function resolveApprovalFeatureFlag(input: {
     db
       .select({ enabled: schema.projectFeatureFlagTable.enabled })
       .from(schema.projectFeatureFlagTable)
+      .innerJoin(
+        schema.projectTable,
+        eq(schema.projectTable.id, schema.projectFeatureFlagTable.projectId),
+      )
       .where(
         and(
           eq(schema.projectFeatureFlagTable.projectId, input.projectId),
+          requestWorkItemProjectScope(input.identity, input.projectId, db),
           eq(schema.projectFeatureFlagTable.featureKey, "feature.approvals"),
         ),
       )
@@ -324,10 +716,21 @@ export async function loadApprovalTargetByApprovalId(
   identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
   options: { currentInstanceAdmin?: boolean } = {},
 ) {
+  const allowAdmin =
+    options.currentInstanceAdmin && identity.credential === "session";
   const [row] = await db
     .select({
-      key: schema.workItemTable.key,
+      workItemId: schema.workItemTable.id,
+      workItemKey: schema.workItemTable.key,
+      title: schema.workItemTable.title,
       workspaceId: schema.approvalTable.workspaceId,
+      projectId: schema.workItemTable.projectId,
+      organisationId: schema.projectTable.organisationId,
+      requesterId: schema.workItemTable.requesterId,
+      customerVisibility: schema.workItemTable.customerVisibility,
+      participantIds: sql<
+        string[]
+      >`ARRAY(SELECT rp.person_id FROM request_participant rp WHERE rp.work_item_id = ${schema.workItemTable.id})`,
       requestedBy: schema.approvalTable.requestedBy,
       approverId: schema.approvalTable.approverId,
     })
@@ -343,39 +746,86 @@ export async function loadApprovalTargetByApprovalId(
       schema.projectTable,
       eq(schema.projectTable.id, schema.workItemTable.projectId),
     )
-    .where(eq(schema.approvalTable.id, id))
+    .where(
+      and(
+        eq(schema.approvalTable.id, id),
+        or(
+          requestWorkItemScope(identity, db),
+          eq(schema.approvalTable.requestedBy, identity.personId),
+          eq(schema.approvalTable.approverId, identity.personId),
+          allowAdmin ? currentInstanceAdminPredicate(identity, db) : sql`false`,
+        ),
+        isNull(schema.workItemTable.deletedAt),
+        isNull(schema.workItemTable.archivedAt),
+        isNull(schema.projectTable.deletedAt),
+      ),
+    )
     .limit(1);
   if (!row) return null;
-  const target = await loadApprovalTargetByKey(row.key);
-  if (target.workspaceId !== row.workspaceId) return null;
-  const related =
-    identity.personId === row.requestedBy ||
-    identity.personId === row.approverId;
-  // The dedicated admin-withdrawal route passes a verified current instance admin, whose
-  // authority is instance-wide; every query after this stays scoped to the approval's own
-  // workspace.
-  if (
-    !related &&
-    !options.currentInstanceAdmin &&
-    !(await hasWorkItemReach(identity, target))
-  ) {
-    return null;
-  }
-  return target;
+  const visibleToPersonIds =
+    row.customerVisibility === "private"
+      ? [
+          ...new Set(
+            [row.requesterId, ...row.participantIds].filter(
+              (personId): personId is string => personId !== null,
+            ),
+          ),
+        ]
+      : null;
+  const reachFacts: ProjectReachFacts = {
+    projectId: row.projectId,
+    workspaceId: row.workspaceId,
+    organisationId: row.organisationId,
+    visibleToPersonIds,
+  };
+  return {
+    workItemId: row.workItemId,
+    workItemKey: row.workItemKey,
+    title: row.title,
+    workspaceId: row.workspaceId,
+    projectId: row.projectId,
+    organisationId: row.organisationId,
+    requesterId: row.requesterId,
+    isPrivate: row.customerVisibility === "private",
+    reachFacts,
+  } satisfies ApprovalTarget;
 }
 
 /** The approval's kind and named approver, for the portal `addressed_approval` predicate. */
-export async function loadApprovalAddressing(id: string, workspaceId: string) {
+export async function loadApprovalAddressing(
+  id: string,
+  workspaceId: string,
+  identity: ResolvedIdentity,
+) {
   const [row] = await db
     .select({
       kind: schema.approvalTable.kind,
       approverId: schema.approvalTable.approverId,
     })
     .from(schema.approvalTable)
+    .innerJoin(
+      schema.workItemTable,
+      and(
+        eq(schema.workItemTable.id, schema.approvalTable.workItemId),
+        eq(schema.workItemTable.workspaceId, schema.approvalTable.workspaceId),
+      ),
+    )
+    .innerJoin(
+      schema.projectTable,
+      eq(schema.projectTable.id, schema.workItemTable.projectId),
+    )
     .where(
       and(
         eq(schema.approvalTable.id, id),
         eq(schema.approvalTable.workspaceId, workspaceId),
+        or(
+          eq(schema.approvalTable.approverId, identity.personId),
+          eq(schema.approvalTable.requestedBy, identity.personId),
+          requestWorkItemScope(identity, db),
+        ),
+        isNull(schema.workItemTable.deletedAt),
+        isNull(schema.workItemTable.archivedAt),
+        isNull(schema.projectTable.deletedAt),
       ),
     )
     .limit(1);
@@ -383,8 +833,10 @@ export async function loadApprovalAddressing(id: string, workspaceId: string) {
 }
 
 export async function listApprovalRows(
+  identity: ResolvedIdentity,
   workItemId: string,
   workspaceId: string,
+  allowInstanceAdmin = false,
 ) {
   return db
     .select({
@@ -431,6 +883,12 @@ export async function listApprovalRows(
       and(
         eq(schema.approvalTable.workItemId, workItemId),
         eq(schema.approvalTable.workspaceId, workspaceId),
+        or(
+          requestWorkItemScope(identity, db),
+          eq(schema.approvalTable.requestedBy, identity.personId),
+          eq(schema.approvalTable.approverId, identity.personId),
+          allowInstanceAdmin ? approvalAdminScope(identity, db) : sql`false`,
+        ),
         isNull(schema.workItemTable.deletedAt),
         isNull(schema.workItemTable.archivedAt),
         isNull(schema.projectTable.deletedAt),
@@ -460,6 +918,7 @@ function countingApprovalClause() {
 }
 
 export async function listApprovalsForWorkItemTransition(
+  identity: ResolvedIdentity,
   workItemId: string,
   workspaceId: string,
 ) {
@@ -479,6 +938,17 @@ export async function listApprovalsForWorkItemTransition(
     })
     .from(schema.approvalTable)
     .innerJoin(
+      schema.workItemTable,
+      and(
+        eq(schema.workItemTable.id, schema.approvalTable.workItemId),
+        eq(schema.workItemTable.workspaceId, schema.approvalTable.workspaceId),
+      ),
+    )
+    .innerJoin(
+      schema.projectTable,
+      eq(schema.projectTable.id, schema.workItemTable.projectId),
+    )
+    .innerJoin(
       approverPerson,
       eq(approverPerson.id, schema.approvalTable.approverId),
     )
@@ -486,6 +956,7 @@ export async function listApprovalsForWorkItemTransition(
       and(
         eq(schema.approvalTable.workItemId, workItemId),
         eq(schema.approvalTable.workspaceId, workspaceId),
+        requestWorkItemScope(identity, db),
         countingApprovalClause(),
       ),
     );
@@ -493,6 +964,7 @@ export async function listApprovalsForWorkItemTransition(
 
 export async function lockApprovalsForWorkItemTransition(
   tx: Transaction,
+  identity: ResolvedIdentity,
   workItemId: string,
   workspaceId: string,
 ) {
@@ -512,6 +984,17 @@ export async function lockApprovalsForWorkItemTransition(
     })
     .from(schema.approvalTable)
     .innerJoin(
+      schema.workItemTable,
+      and(
+        eq(schema.workItemTable.id, schema.approvalTable.workItemId),
+        eq(schema.workItemTable.workspaceId, schema.approvalTable.workspaceId),
+      ),
+    )
+    .innerJoin(
+      schema.projectTable,
+      eq(schema.projectTable.id, schema.workItemTable.projectId),
+    )
+    .innerJoin(
       approverPerson,
       eq(approverPerson.id, schema.approvalTable.approverId),
     )
@@ -519,20 +1002,21 @@ export async function lockApprovalsForWorkItemTransition(
       and(
         eq(schema.approvalTable.workItemId, workItemId),
         eq(schema.approvalTable.workspaceId, workspaceId),
+        requestWorkItemScope(identity, tx),
         countingApprovalClause(),
       ),
     )
-    .for("share");
+    .for("share", { of: schema.approvalTable });
 }
 
 export async function listApprovalsForPerson(
-  personId: string,
+  identity: ResolvedIdentity,
   options: { addressedOnly: boolean; pendingOnly?: boolean },
 ) {
   const clauses = [
     options.addressedOnly
-      ? eq(schema.approvalTable.approverId, personId)
-      : sql`(${schema.approvalTable.approverId} = ${personId} OR ${schema.approvalTable.requestedBy} = ${personId})`,
+      ? eq(schema.approvalTable.approverId, identity.personId)
+      : sql`(${schema.approvalTable.approverId} = ${identity.personId} OR ${schema.approvalTable.requestedBy} = ${identity.personId})`,
   ];
   if (options.pendingOnly) {
     clauses.push(eq(schema.approvalTable.state, "pending"));
@@ -583,6 +1067,11 @@ export async function listApprovalsForPerson(
     .where(
       and(
         ...clauses,
+        or(
+          requestWorkItemScope(identity, db),
+          eq(schema.approvalTable.requestedBy, identity.personId),
+          eq(schema.approvalTable.approverId, identity.personId),
+        ),
         isNull(schema.workItemTable.deletedAt),
         isNull(schema.workItemTable.archivedAt),
         isNull(schema.projectTable.deletedAt),
@@ -591,7 +1080,12 @@ export async function listApprovalsForPerson(
     .orderBy(schema.approvalTable.createdAt);
 }
 
-export async function isCabTeamMember(userId: string, workspaceId: string) {
+export async function isCabTeamMember(
+  identity: ResolvedIdentity,
+  userId: string,
+  workspaceId: string,
+  workItemId: string,
+) {
   const [row] = await db
     .select({ id: schema.teamMemberTable.id })
     .from(schema.teamMemberTable)
@@ -604,6 +1098,22 @@ export async function isCabTeamMember(userId: string, workspaceId: string) {
         eq(schema.teamMemberTable.userId, userId),
         eq(schema.teamTable.workspaceId, workspaceId),
         eq(schema.teamTable.isCab, true),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(schema.workItemTable)
+            .innerJoin(
+              schema.projectTable,
+              eq(schema.projectTable.id, schema.workItemTable.projectId),
+            )
+            .where(
+              and(
+                eq(schema.workItemTable.id, workItemId),
+                eq(schema.workItemTable.workspaceId, workspaceId),
+                requestWorkItemScope(identity, db),
+              ),
+            ),
+        ),
       ),
     )
     .limit(1);
@@ -620,6 +1130,7 @@ export async function loadApprovalActorName(personId: string): Promise<string> {
 }
 
 export async function loadApprovalRequestFacts(
+  identity: ResolvedIdentity,
   workItemId: string,
   workspaceId: string,
   approverId: string,
@@ -633,6 +1144,10 @@ export async function loadApprovalRequestFacts(
       })
       .from(schema.workItemTable)
       .innerJoin(
+        schema.projectTable,
+        eq(schema.projectTable.id, schema.workItemTable.projectId),
+      )
+      .innerJoin(
         schema.workItemTypeTable,
         eq(schema.workItemTypeTable.id, schema.workItemTable.typeId),
       )
@@ -640,6 +1155,7 @@ export async function loadApprovalRequestFacts(
         and(
           eq(schema.workItemTable.id, workItemId),
           eq(schema.workItemTable.workspaceId, workspaceId),
+          requestWorkItemScope(identity, db),
         ),
       )
       .limit(1),
@@ -676,6 +1192,7 @@ export async function loadApprovalRequestFacts(
  */
 export async function loadTransitionForWorkItem(
   tx: Transaction,
+  identity: ResolvedIdentity,
   input: {
     workItemId: string;
     workspaceId: string;
@@ -685,6 +1202,10 @@ export async function loadTransitionForWorkItem(
   const [row] = await tx
     .select({ id: schema.workflowTransitionTable.id })
     .from(schema.workItemTable)
+    .innerJoin(
+      schema.projectTable,
+      eq(schema.projectTable.id, schema.workItemTable.projectId),
+    )
     .innerJoin(
       schema.workItemTypeTable,
       eq(schema.workItemTypeTable.id, schema.workItemTable.typeId),
@@ -717,6 +1238,7 @@ export async function loadTransitionForWorkItem(
       and(
         eq(schema.workItemTable.id, input.workItemId),
         eq(schema.workItemTable.workspaceId, input.workspaceId),
+        requestWorkItemScope(identity, tx),
         eq(schema.workflowTransitionTable.id, input.transitionId),
         or(
           eq(schema.workflowTransitionTable.requiresApproval, true),
@@ -732,20 +1254,10 @@ export async function hasWorkItemReach(
   identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
   target: ApprovalTarget,
 ): Promise<boolean> {
-  let reachFacts = target.reachFacts;
-  if (target.isPrivate) {
-    const participants = await db
-      .select({ personId: schema.requestParticipantTable.personId })
-      .from(schema.requestParticipantTable)
-      .where(eq(schema.requestParticipantTable.workItemId, target.workItemId));
-    reachFacts = {
-      ...target.reachFacts,
-      visibleToPersonIds: [
-        ...(target.requesterId ? [target.requesterId] : []),
-        ...participants.map(({ personId }) => personId),
-      ],
-    };
-  }
+  const reachFacts =
+    identity.side === "staff"
+      ? { ...target.reachFacts, visibleToPersonIds: null }
+      : target.reachFacts;
   return reaches(identity, reachFacts);
 }
 
@@ -758,7 +1270,7 @@ export function hasApprovalCapability(
     workItemId: target.workItemId,
     workItemProjectId: target.projectId,
     workspaceId: target.workspaceId,
-    organisationId: target.organisationId,
+    organisationId: target.organisationId ?? undefined,
   });
 }
 
@@ -768,7 +1280,7 @@ export function hasPortalApprovalDecideCapability(
   target: ApprovalTarget,
 ): boolean {
   return can(identity, "approval:decide", "organisation", {
-    organisationId: target.organisationId,
+    organisationId: target.organisationId ?? undefined,
   });
 }
 

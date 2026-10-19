@@ -348,7 +348,7 @@ describe("approvals: scoping, sessions and notification rows", () => {
     const customer = await addCustomer(t);
     const identity = await resolveApprovalIdentityIfActive(customer.user.id);
     if (!identity) throw new Error("customer identity missing");
-    const target = await loadApprovalTargetByKey(t.key);
+    const target = await loadApprovalTargetByKey(identity, t.key);
     expect(hasPortalApprovalDecideCapability(identity, target)).toBe(true);
     const stripped = {
       ...identity,

@@ -1,12 +1,15 @@
 import { createId } from "@paralleldrive/cuid2";
-import { sql } from "drizzle-orm";
 import {
   type DbTransaction,
   type DomainEventEnvelope,
   enqueueOutboxEvent,
 } from "../events/outbox";
-import { dbNowUtc } from "../utils/db-time";
 import { notificationDedupeKey } from "./delivery-primitives";
+import {
+  insertEventInboxRow,
+  insertPendingDelivery,
+  lockRecipientPerson,
+} from "./fanout.repository";
 import { resolveNotificationPreference } from "./preferences";
 
 /** Recipient facts are resolved by the event-specific canonical repository. */
@@ -58,7 +61,7 @@ const RESOURCE_TYPES = new Set([
   "work_item",
   "comment",
   // `approval` rows are written only with the S3 recipient resolver, the 0120-anchored
-  // send-time eligibility and the approval inbox read predicate (`approval-reach.ts`).
+  // send-time eligibility and the approval inbox read predicate (`approval-reach.repository.ts`).
   "approval",
   "submission",
   "prerequisite",
@@ -116,30 +119,23 @@ export async function materializeNotificationFanout(
   }
 
   for (const candidate of distinct.values()) {
-    const person = await tx.execute(sql`
-      SELECT user_id AS "userId", active
-        FROM person
-       WHERE id = ${candidate.personId}
-       FOR SHARE
-    `);
-    const recipient = person.rows[0] as
-      | { userId: string | null; active: boolean }
-      | undefined;
+    const recipient = await lockRecipientPerson(tx, candidate.personId);
     // Person rows without a login are valid authorship/provenance records but have no
     // inbox principal. The current notification API is user-session-backed, so fail
     // closed for this batch rather than invent a recipient account or drop its person id.
     if (!recipient?.active || !recipient.userId) continue;
 
-    await tx.execute(sql`
-      INSERT INTO notification
-        (id, user_id, person_id, event_id, kind, title, body, content,
-         resource_type, resource_id, is_read, read_at, type)
-      VALUES
-        (${createId()}, ${recipient.userId}, ${candidate.personId}, ${event.id}, ${event.kind},
-         ${candidate.title}, ${candidate.body}, ${candidate.body}, ${candidate.resourceType},
-         ${candidate.resourceId}, false, NULL, 'info')
-      ON CONFLICT (event_id, person_id) WHERE event_id IS NOT NULL DO NOTHING
-    `);
+    await insertEventInboxRow(tx, {
+      id: createId(),
+      userId: recipient.userId,
+      personId: candidate.personId,
+      eventId: event.id,
+      eventKind: event.kind,
+      title: candidate.title,
+      body: candidate.body,
+      resourceType: candidate.resourceType,
+      resourceId: candidate.resourceId,
+    });
 
     if (!event.scope.workspaceId) continue;
     for (const channel of new Set(candidate.channels)) {
@@ -180,20 +176,23 @@ export async function materializeNotificationFanout(
         personId: candidate.personId,
         channel,
       });
-      // Explicit UTC wall-clock timestamps: the column defaults are now(), which a database
-      // session ahead of or behind UTC stores as its local wall clock, while the outbox
-      // convention (utils/db-time.ts) is the UTC wall clock.
-      await tx.execute(sql`
-        INSERT INTO notification_delivery
-          (id, event_id, recipient_person_id, channel, workspace_id, organisation_id,
-           dedupe_key, digest_id, state, attempts, next_attempt_at, created_at, updated_at)
-        VALUES
-          (${createId()}, ${event.id}, ${candidate.personId}, ${channel},
-           ${event.scope.workspaceId}, ${"organisationId" in event.scope ? (event.scope.organisationId ?? null) : null},
-           ${dedupeKey}, ${digestId}, 'pending', 0,
-           ${dbNowUtc()}, ${dbNowUtc()}, ${dbNowUtc()})
-        ON CONFLICT (event_id, recipient_person_id, channel) DO NOTHING
-      `);
+      // Explicit UTC wall-clock timestamps are written by the repository (see
+      // `insertPendingDelivery`): the column defaults are now(), which a database session
+      // ahead of or behind UTC stores as its local wall clock, while the outbox convention
+      // (utils/db-time.ts) is the UTC wall clock.
+      await insertPendingDelivery(tx, {
+        id: createId(),
+        eventId: event.id,
+        recipientPersonId: candidate.personId,
+        channel,
+        workspaceId: event.scope.workspaceId,
+        organisationId:
+          "organisationId" in event.scope
+            ? (event.scope.organisationId ?? null)
+            : null,
+        dedupeKey,
+        digestId,
+      });
     }
   }
 }
