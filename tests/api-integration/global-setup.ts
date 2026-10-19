@@ -32,11 +32,28 @@ export default async function setup() {
     .withDatabase("taskdesk_test")
     .withUsername("postgres")
     .withPassword("postgres")
+    .withCommand([
+      "postgres",
+      "-c",
+      "fsync=off",
+      "-c",
+      "synchronous_commit=off",
+      "-c",
+      "full_page_writes=off",
+      "-c",
+      "max_connections=200",
+    ])
     .start();
 
   process.env.TASKDESK_DATABASE_URL = container.getConnectionUri();
 
   return async () => {
-    await container.stop();
+    try {
+      const { getDatabasePool } = await import("../../apps/api/src/database");
+      await getDatabasePool().end();
+    } catch {
+      // Pool was already closed or never initialized in the main process.
+    }
+    await container.stop({ timeout: 5_000 });
   };
 }
