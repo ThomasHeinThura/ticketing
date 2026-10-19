@@ -575,9 +575,9 @@ describe("strict policy runtime enforcement against the production API graph", (
         body: JSON.stringify({ activityId: comment.id, comment: text }),
       });
 
-    // The legacy comment-edit route checks only reach and authorship, never the key's scope,
-    // and the owner holds comment:update_own. Only the strict evaluator's clamp can refuse an
-    // out-of-scope key here.
+    // The legacy comment-edit route checks reach and authorship; the strict evaluator also
+    // intersects the owner's current project authority with the key's stored subset. Only the
+    // strict evaluator's clamp can refuse this out-of-scope key.
     const outOfScope = await edit(
       await issueKey({ work_item: ["read"] }),
       "should not apply",
@@ -589,13 +589,18 @@ describe("strict policy runtime enforcement against the production API graph", (
       .where(eq(schema.taskActivityTable.id, comment.id));
     expect(afterDenied?.content).toBe("original");
 
-    // An API key carries no canonical capability subset, so the route's own project-capability
-    // check refuses it even in scope: the legacy edit route fails closed for keys.
+    // AK-3 permits an explicitly scoped key to use the owner's current capability. This key
+    // carries comment:update_own, and the owner authored the comment inside CA-17's edit window.
     const inScope = await edit(
       await issueKey({ comment: ["update_own"] }),
-      "should not apply either",
+      "updated by an explicitly scoped key",
     );
-    expect(inScope.status, await inScope.clone().text()).toBe(403);
+    expect(inScope.status, await inScope.clone().text()).toBe(200);
+    const [afterAllowed] = await db
+      .select({ content: schema.taskActivityTable.content })
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.id, comment.id));
+    expect(afterAllowed?.content).toBe("updated by an explicitly scoped key");
   });
 
   it("uses the addressed row's workspace and refuses a caller query hint for another workspace", async () => {

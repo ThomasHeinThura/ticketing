@@ -1267,13 +1267,36 @@ describe("#8 notification self-read shadow evidence", () => {
     await backfillPersons();
     fresh.mockUser(caller.user);
 
+    const [callerPerson] = await fresh.db
+      .select({ id: fresh.schema.personTable.id })
+      .from(fresh.schema.personTable)
+      .where(eq(fresh.schema.personTable.userId, caller.user.id));
+    const [otherPerson] = await fresh.db
+      .select({ id: fresh.schema.personTable.id })
+      .from(fresh.schema.personTable)
+      .where(eq(fresh.schema.personTable.userId, other.user.id));
+    if (!callerPerson || !otherPerson)
+      throw new Error("notification fixture needs canonical people");
+
     const [ownNotification] = await fresh.db
       .insert(fresh.schema.notificationTable)
-      .values({ userId: caller.user.id, type: "info", title: "Own" })
+      .values({
+        userId: caller.user.id,
+        personId: callerPerson.id,
+        type: "security_alert",
+        resourceType: "person",
+        resourceId: callerPerson.id,
+        eventData: { kind: "mfa_reset" },
+        title: "Own",
+      })
       .returning();
     await fresh.db.insert(fresh.schema.notificationTable).values({
       userId: other.user.id,
-      type: "info",
+      personId: otherPerson.id,
+      type: "security_alert",
+      resourceType: "person",
+      resourceId: otherPerson.id,
+      eventData: { kind: "mfa_reset" },
       title: "Other user's private notification",
     });
     if (!ownNotification)
@@ -1357,7 +1380,7 @@ describe("#8 notification self-read shadow evidence", () => {
         body: JSON.stringify({
           title,
           message: content,
-          type: "info",
+          type: "task_created",
           eventData,
           relatedEntityId: taskId,
           relatedEntityType: "task",
@@ -1393,7 +1416,7 @@ describe("#8 notification self-read shadow evidence", () => {
         userId: caller.user.id,
         title: "Private task notification",
         content: "Sensitive private task content",
-        type: "info",
+        type: "task_created",
         eventData: {
           taskTitle: "Private task notification",
           projectId: privateProject.id,
@@ -1414,7 +1437,7 @@ describe("#8 notification self-read shadow evidence", () => {
         body: JSON.stringify({
           title: "Unreachable task attempt",
           message: "Must not be stored",
-          type: "info",
+          type: "task_created",
           relatedEntityId: privateTask.id,
           relatedEntityType: "task",
         }),

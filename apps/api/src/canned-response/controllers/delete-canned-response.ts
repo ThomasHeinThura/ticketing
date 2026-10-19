@@ -1,18 +1,17 @@
-import { and, eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { cannedResponseTable } from "../../database/schema";
+import { deleteCannedResponseInWorkspace } from "../repository";
 
-export async function deleteCannedResponse(id: string, workspaceId: string) {
-  const [deleted] = await db
-    .delete(cannedResponseTable)
-    .where(
-      and(
-        eq(cannedResponseTable.id, id),
-        eq(cannedResponseTable.workspaceId, workspaceId),
-      ),
-    )
-    .returning();
+export async function deleteCannedResponse(
+  identity: ResolvedIdentity,
+  id: string,
+  workspaceId: string,
+) {
+  const deleted = await deleteCannedResponseInWorkspace(
+    identity,
+    id,
+    workspaceId,
+  );
 
   if (!deleted) {
     throw new HTTPException(404, { message: "Canned response not found" });

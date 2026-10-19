@@ -1,6 +1,12 @@
+import type { JsonValue } from "@taskdesk/domain";
 import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
+import {
+  type Executor,
+  executorOrDefault,
+  type Transaction,
+} from "../database/executor";
 import {
   personTable,
   projectTable,
@@ -10,9 +16,28 @@ import {
   userPreferenceTable,
 } from "../database/schema";
 
-export type SavedViewTransaction = Parameters<
-  Parameters<typeof db.transaction>[0]
->[0];
+export type SavedViewTransaction = Transaction;
+
+type MaterializedSavedView<T extends { query: unknown }> = Omit<T, "query"> & {
+  query: JsonValue;
+};
+
+function materializeSavedViews<T extends { query: unknown }>(
+  rows: T[],
+): MaterializedSavedView<T>[] {
+  return rows.map(
+    (row): MaterializedSavedView<T> => ({
+      ...row,
+      query: row.query as JsonValue,
+    }),
+  );
+}
+
+function materializeSavedView<T extends { query: unknown }>(
+  row: T | undefined,
+): MaterializedSavedView<T> | undefined {
+  return row ? { ...row, query: row.query as JsonValue } : undefined;
+}
 
 /** The live project's reach facts when it belongs to the workspace, else null. */
 export async function findProjectInWorkspace(
@@ -40,29 +65,9 @@ export async function teamMemberInWorkspace(
   teamId: string,
   userId: string,
   workspaceId: string,
+  executor?: Executor,
 ): Promise<boolean> {
-  const [membership] = await db
-    .select({ id: teamMemberTable.id })
-    .from(teamMemberTable)
-    .innerJoin(teamTable, eq(teamMemberTable.teamId, teamTable.id))
-    .where(
-      and(
-        eq(teamMemberTable.teamId, teamId),
-        eq(teamMemberTable.userId, userId),
-        eq(teamTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
-  return Boolean(membership);
-}
-
-export async function teamMemberInWorkspaceTransaction(
-  tx: SavedViewTransaction,
-  teamId: string,
-  userId: string,
-  workspaceId: string,
-): Promise<boolean> {
-  const [membership] = await tx
+  const [membership] = await executorOrDefault(executor)
     .select({ id: teamMemberTable.id })
     .from(teamMemberTable)
     .innerJoin(teamTable, eq(teamMemberTable.teamId, teamTable.id))
@@ -81,13 +86,15 @@ export async function insertSavedView(
   values: typeof savedViewTable.$inferInsert,
 ) {
   const [view] = await db.insert(savedViewTable).values(values).returning();
-  return view;
+  return materializeSavedView(view);
 }
 
 export async function findSavedViewById(id: string) {
-  return db.query.savedViewTable.findFirst({
-    where: (view, { eq }) => eq(view.id, id),
-  });
+  return materializeSavedView(
+    await db.query.savedViewTable.findFirst({
+      where: (view, { eq }) => eq(view.id, id),
+    }),
+  );
 }
 
 export async function lockSavedViewByIdInTransaction(
@@ -100,7 +107,7 @@ export async function lockSavedViewByIdInTransaction(
     .where(eq(savedViewTable.id, id))
     .for("update")
     .limit(1);
-  return view;
+  return materializeSavedView(view);
 }
 
 /** Workspace-scoped views always; project-scoped views only for a reachable project. */
@@ -159,7 +166,10 @@ export async function listSavedViewsForWorkspace(
     }),
   ]);
 
-  return { views, pinnedValue: preference?.value };
+  return {
+    views: materializeSavedViews(views),
+    pinnedValue: preference?.value as JsonValue | undefined,
+  };
 }
 
 export async function listShareableViewTeamsForWorkspace(
@@ -212,12 +222,18 @@ export async function updateSavedView(
     .set(values)
     .where(eq(savedViewTable.id, id))
     .returning();
-  return view;
+  return materializeSavedView(view);
 }
 
-export async function withSavedViewTransaction<T>(
-  work: (tx: SavedViewTransaction) => Promise<T>,
-): Promise<T> {
+type PinnedViewMutationResult = {
+  pinnedViewIds: string[];
+  wasPinned: boolean;
+  isPinned: boolean;
+};
+
+export async function withSavedViewTransaction(
+  work: (tx: SavedViewTransaction) => Promise<PinnedViewMutationResult>,
+): Promise<PinnedViewMutationResult> {
   return db.transaction(work);
 }
 

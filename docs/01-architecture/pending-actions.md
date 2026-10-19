@@ -231,6 +231,24 @@ thing that is hashed or executed.
   attempt accounting across API replicas. A rejected attempt never issues a proof or mutates
   the bound operation.
 
+  All four shared challenge-create and proof-issue entrypoints (pending action and registered
+  operation) first enter the pending-action lifecycle gate, then use that admitted transaction
+  through local password, TOTP or backup-code verification and final proof issuance. The
+  supported local-factor-policy PATCH joins the same gate as its first transaction statement,
+  before its existing required-role then singleton lock order. A policy update therefore
+  cannot commit between admitted final factor revalidation and proof issuance; it does not
+  retroactively invalidate proofs that were already issued.
+  verifier receives the admitted executor; Better Auth adapter transactions are nested
+  savepoints on that same backend. Provider effects, including native-authorization
+  invalidation from Better Auth's session-delete hook, queue on the child and commit only
+  with the outer transaction.
+  The proof path rechecks the original live session and current identity, factor and
+  authorization after verification, using a database wall-clock sample for the five-minute
+  expiry. A successful verifier remains one-shot if final revalidation denies the proof or
+  its later savepoint fails: the still-challenge row expires through the admitted outer
+  executor. Successful provider-side effects remain committed on either outcome; no proof is
+  issued. Failure of the outer transaction provides no persistence guarantee.
+
   Challenge requests are a strict discriminated union:
 
   ```json

@@ -30,6 +30,7 @@ import {
 } from "../identity/repository";
 import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
+import { withEnlistedLocalFactorVerification } from "../pending-action/credential-invalidation";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
 import {
@@ -45,6 +46,10 @@ import {
   getScimConnectionDetails,
   getUserFactorEnabled,
   getUserId,
+  hasLiveStepUpSession,
+  isCurrentInstanceAdminForStepUp,
+  type StepUpExecutor,
+  type VerifiedStepUpAuthentication,
 } from "./repository";
 import {
   appendPendingActionStepUpAudit,
@@ -1397,24 +1402,60 @@ const routes = apiRouter()
         );
     }
     let authenticatedPersonId = actor.factor.personId;
-    const verifyAuthentication = async () => {
+    const verifyAuthentication = async (
+      executor: StepUpExecutor,
+    ): Promise<VerifiedStepUpAuthentication | null> => {
       const proofInput = input as {
         method: "password" | "totp" | "backup_code";
         password?: string;
         code?: string;
       };
-      const currentFactor = await loadLocalFactorState(c.get("userId"));
+      const currentFactor = await loadLocalFactorState(
+        c.get("userId"),
+        executor,
+      );
       authenticatedPersonId = currentFactor.personId;
       if (proofInput.method === "password") {
         if (currentFactor.required || currentFactor.enabled) return null;
-        const [credential] = await getPasswordCredential(c.get("userId"));
+        const [credential] = await getPasswordCredential(
+          c.get("userId"),
+          executor,
+        );
         if (!credential?.password) return null;
-        return (await bcrypt.compare(
+        const passwordMatches = await bcrypt.compare(
           proofInput.password ?? "",
           credential.password,
-        ))
-          ? ("password" as const)
-          : null;
+        );
+        if (!passwordMatches) return null;
+        const verifiedPasswordHash = credential.password;
+        return {
+          authMethod: "password" as const,
+          revalidate: async (finalExecutor: StepUpExecutor) => {
+            const [currentCredential] = await getPasswordCredential(
+              c.get("userId"),
+              finalExecutor,
+            );
+            const currentPolicy = await loadLocalFactorState(
+              c.get("userId"),
+              finalExecutor,
+            );
+            return (
+              currentCredential?.password === verifiedPasswordHash &&
+              currentPolicy.personId === actor.factor.personId &&
+              !currentPolicy.required &&
+              !currentPolicy.enabled &&
+              (await hasLiveStepUpSession(
+                finalExecutor,
+                actor.session.id,
+                c.get("userId"),
+              )) &&
+              (await isCurrentInstanceAdminForStepUp(
+                c.get("userId"),
+                finalExecutor,
+              ))
+            );
+          },
+        };
       }
       if (
         currentFactor.personId !== actor.factor.personId ||
@@ -1423,19 +1464,46 @@ const routes = apiRouter()
         return null;
       try {
         if (proofInput.method === "totp") {
-          const result = await auth.api.verifyTOTP({
-            body: { code: proofInput.code ?? "", trustDevice: false },
-            headers: c.req.raw.headers,
-          });
-          return result.user.id === c.get("userId") ? ("totp" as const) : null;
+          const result = await withEnlistedLocalFactorVerification(async () =>
+            auth.api.verifyTOTP({
+              body: { code: proofInput.code ?? "", trustDevice: false },
+              headers: c.req.raw.headers,
+            }),
+          );
+          if (result.user.id !== c.get("userId")) return null;
+        } else {
+          const result = await withEnlistedLocalFactorVerification(async () =>
+            auth.api.verifyBackupCode({
+              body: { code: proofInput.code ?? "", disableSession: true },
+              headers: c.req.raw.headers,
+            }),
+          );
+          if (result.user.id !== c.get("userId")) return null;
         }
-        const result = await auth.api.verifyBackupCode({
-          body: { code: proofInput.code ?? "", disableSession: true },
-          headers: c.req.raw.headers,
-        });
-        return result.user.id === c.get("userId")
-          ? ("backup_code" as const)
-          : null;
+        const authMethod =
+          proofInput.method === "totp" ? "totp" : "backup_code";
+        return {
+          authMethod,
+          revalidate: async (finalExecutor: StepUpExecutor) => {
+            const currentFactor = await loadLocalFactorState(
+              c.get("userId"),
+              finalExecutor,
+            );
+            return (
+              currentFactor.personId === actor.factor.personId &&
+              currentFactor.enabled &&
+              (await hasLiveStepUpSession(
+                finalExecutor,
+                actor.session.id,
+                c.get("userId"),
+              )) &&
+              (await isCurrentInstanceAdminForStepUp(
+                c.get("userId"),
+                finalExecutor,
+              ))
+            );
+          },
+        };
       } catch {
         return null;
       }
@@ -1463,6 +1531,12 @@ const routes = apiRouter()
           sessionId: actor.session.id,
           userId: c.get("userId"),
           pendingActionId: input.pendingActionId,
+          expectedPendingAction: {
+            action: "delete",
+            targetType: "user",
+            confirmation: "typed_name_step_up",
+            routeKey: "POST /api/instance/users/{id}/deactivate",
+          },
         },
         verifyAuthentication,
       );

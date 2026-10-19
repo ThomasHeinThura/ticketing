@@ -16,13 +16,17 @@
  */
 import { createId } from "@paralleldrive/cuid2";
 import { canonicalRowHash, type JsonValue, ZERO_HASH } from "@taskdesk/domain";
-import { sql } from "drizzle-orm";
-import type db from "../database";
+import type { Executor } from "../database/executor";
 import { EVENT_KEYS } from "../events/event-keys";
 import { AUDIT_ACTIONS_NOT_YET_WIRED, AUDIT_ONLY_ACTIONS } from "./actions";
-import { AUDIT_CHAIN_LOCK_KEY } from "./lock";
+import {
+  insertAuditRow,
+  lockAuditChain,
+  readAuditChainHeadHash,
+  readDatabaseNow,
+} from "./repository";
 
-type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbOrTx = Executor;
 
 export type AuditActorType = "person" | "automation" | "system" | "api_key";
 
@@ -343,26 +347,16 @@ export async function appendAuditLog(
   return dbOrTx.transaction(async (tx) => {
     // Step 1: serialise. Single global key -- the chain is per-instance, not
     // per-tenant (data-model.md: "the chain is per-instance and strictly serial").
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${AUDIT_CHAIN_LOCK_KEY})`,
-    );
+    await lockAuditChain(tx);
 
     // Step 2: read the current head. `seq` (not `created_at`) is the tie-break-free
     // ordering signal -- see schema.ts's comment on `auditLogTable.seq`.
-    const headResult = await tx.execute<{ row_hash: string }>(
-      sql`SELECT row_hash FROM audit_log ORDER BY seq DESC LIMIT 1`,
-    );
-    const prevHash = headResult.rows[0]?.row_hash ?? ZERO_HASH;
+    const prevHash = (await readAuditChainHeadHash(tx)) ?? ZERO_HASH;
 
     // Step 3: one `now()` read, in both forms this function needs -- the hashable
     // ISO string, and the raw text this same instant will be inserted as (so the
     // INSERT below never calls `now()` again).
-    const nowResult = await tx.execute<{ now_iso: string; now_text: string }>(
-      sql`SELECT
-        to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS now_iso,
-        now()::text AS now_text`,
-    );
-    const nowRow = nowResult.rows[0];
+    const nowRow = await readDatabaseNow(tx);
     if (!nowRow) {
       throw new Error(
         "appendAuditLog: could not read the current timestamp from Postgres",
@@ -425,30 +419,27 @@ export async function appendAuditLog(
       normalizedBefore === null ? null : JSON.stringify(normalizedBefore);
     const afterJson =
       normalizedAfter === null ? null : JSON.stringify(normalizedAfter);
-    const insertResult = await tx.execute<{
-      id: string;
-      seq: string;
-    }>(
-      sql`
-        INSERT INTO audit_log (
-          id, actor_id, actor_type, api_key_id, impersonator_id, actor_ip, user_agent,
-          trace_id, workspace_id, project_id, organisation_id, action, entity_type,
-          entity_id, before, after, created_at, prev_hash, row_hash
-        ) VALUES (
-          ${id}, ${input.actorId}, ${input.actorType}, ${input.apiKeyId ?? null},
-          ${input.impersonatorId ?? null}, ${input.actorIp ?? null},
-          ${input.userAgent ?? null}, ${input.traceId ?? null},
-          ${input.workspaceId ?? null}, ${input.projectId ?? null},
-          ${input.organisationId ?? null},
-          ${input.action}, ${input.entityType}, ${input.entityId},
-          ${beforeJson}::jsonb, ${afterJson}::jsonb,
-          ${nowRow.now_text}::timestamptz, ${prevHash}, ${rowHash}
-        )
-        RETURNING id, seq
-      `,
-    );
-
-    const row = insertResult.rows[0];
+    const row = await insertAuditRow(tx, {
+      id,
+      actorId: input.actorId,
+      actorType: input.actorType,
+      apiKeyId: input.apiKeyId ?? null,
+      impersonatorId: input.impersonatorId ?? null,
+      actorIp: input.actorIp ?? null,
+      userAgent: input.userAgent ?? null,
+      traceId: input.traceId ?? null,
+      workspaceId: input.workspaceId ?? null,
+      projectId: input.projectId ?? null,
+      organisationId: input.organisationId ?? null,
+      action: input.action,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      beforeJson,
+      afterJson,
+      createdAtText: nowRow.now_text,
+      prevHash,
+      rowHash,
+    });
     if (!row) {
       throw new Error("appendAuditLog: insert into audit_log returned no row");
     }

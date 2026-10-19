@@ -5,13 +5,13 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
-  hasStableV2Tag,
+  githubRepositoryFromOrigin,
+  hasStableV2Release,
   isMissingBaseFileError,
   oasdiffAssetFor,
   oasdiffExitError,
   parseApprovedBreaks,
   parseApprovedRedoclyFindings,
-  parseLsRemoteTags,
   parseOasdiffBreakingJson,
   parseRedoclyReport,
   partitionApprovedBreaks,
@@ -334,64 +334,135 @@ test("unparseable oasdiff output fails closed", () => {
   );
 });
 
-test("a stable v2.0.0+ tag is detected", () => {
-  assert.equal(hasStableV2Tag(["v2.0.0"]), true);
-  assert.equal(hasStableV2Tag(["2.1.3"]), true);
-});
-
-test("a pre-release v2 tag does not count as stable", () => {
-  assert.equal(hasStableV2Tag(["v2.0.0-alpha.1"]), false);
-  assert.equal(hasStableV2Tag(["v2.0.0-rc.2"]), false);
-});
-
-test("a stable pre-2.0 tag does not count", () => {
-  assert.equal(hasStableV2Tag(["v1.9.9"]), false);
-});
-
-test("no tags at all is not a stable v2.0.0 release", () => {
-  assert.equal(hasStableV2Tag([]), false);
-});
-
-test("garbage tag names are not mistaken for a stable release", () => {
+test("release classification derives only a GitHub repository from origin", () => {
   assert.equal(
-    hasStableV2Tag(["latest", "v2", "release-2.0.0", "2.0", "v2.0.0.0"]),
-    false,
+    githubRepositoryFromOrigin("git@github.com:ThomasHeinThura/ticketing.git"),
+    "ThomasHeinThura/ticketing",
   );
+  assert.equal(
+    githubRepositoryFromOrigin("https://github.com/ThomasHeinThura/ticketing"),
+    "ThomasHeinThura/ticketing",
+  );
+  for (const remote of [
+    "https://example.com/owner/repo",
+    "https://github.com/owner/repo/extra",
+    "file:///tmp/repo",
+  ]) {
+    assert.throws(() => githubRepositoryFromOrigin(remote), /github.com/);
+  }
 });
 
-test("parseLsRemoteTags drops ^{} peeled refs and keeps the tag name", () => {
-  const output = [
-    "abc123\trefs/tags/v1.9.9",
-    "def456\trefs/tags/v2.0.0",
-    "def456\trefs/tags/v2.0.0^{}",
-    "",
-  ].join("\n");
-  assert.deepEqual(parseLsRemoteTags(output), ["v1.9.9", "v2.0.0"]);
+test("published stable v2 releases close the allowlist", () => {
+  assert.equal(hasStableV2Release("v2.0.0\tfalse\tfalse\n"), true);
+  assert.equal(hasStableV2Release("2.1.3\tfalse\tfalse\n"), true);
 });
 
-test("stableV2ReleaseExists is true when a stable v2 tag is on origin", async () => {
-  const runner = () => ({
-    status: 0,
-    stdout: "sha\trefs/tags/v2.0.0\n",
-    stderr: "",
-  });
+test("stable-shaped prereleases remain pre-stable and old releases do not count", () => {
+  assert.equal(hasStableV2Release("v2.0.1\tfalse\ttrue\n"), false);
+  assert.equal(hasStableV2Release("v2.0.0\ttrue\tfalse\n"), false);
+  assert.equal(hasStableV2Release("v1.9.9\tfalse\tfalse\n"), false);
+  assert.equal(hasStableV2Release("v2.0.0-alpha.1\tfalse\tfalse\n"), false);
+});
+
+test("empty release pages yield no stable release; malformed metadata fails closed", () => {
+  assert.equal(hasStableV2Release(""), false);
+  assert.throws(() => hasStableV2Release("v2.0.0\tfalse\n"), /malformed/);
+  assert.throws(() => hasStableV2Release("v2.0.0\tfalse\tnull\n"), /malformed/);
+  assert.throws(() => hasStableV2Release("null\tfalse\tfalse\n"), /malformed/);
+  assert.throws(() => hasStableV2Release("\tfalse\tfalse\n"), /malformed/);
+});
+
+test("stableV2ReleaseExists uses the origin repository and paginated releases endpoint", async () => {
+  const calls = [];
+  const ghHostEnvironmentVariable = ["GH", "HOST"].join("_");
+  const originalGhHost = process.env[ghHostEnvironmentVariable];
+  process.env[ghHostEnvironmentVariable] = "redirected.example";
+  const runner = (command, args) => {
+    calls.push([command, args]);
+    if (command === "gh")
+      assert.equal(
+        process.env[ghHostEnvironmentVariable],
+        "redirected.example",
+      );
+    if (command === "git")
+      return {
+        status: 0,
+        stdout: "git@github.com:owner/repo.git\n",
+        stderr: "",
+      };
+    return { status: 0, stdout: "v2.0.1\tfalse\ttrue\n", stderr: "" };
+  };
+  try {
+    assert.equal(await stableV2ReleaseExists(runner), false);
+    assert.deepEqual(calls, [
+      ["git", ["remote", "get-url", "origin"]],
+      [
+        "gh",
+        [
+          "api",
+          "--hostname",
+          "github.com",
+          "--paginate",
+          "--jq",
+          'if type != "array" then error("expected a release array") else .[] | if ((.tag_name|type) == "string" and (.draft|type) == "boolean" and (.prerelease|type) == "boolean") then [.tag_name, (.draft|tostring), (.prerelease|tostring)] | @tsv else error("invalid release metadata") end end',
+          "repos/owner/repo/releases",
+        ],
+      ],
+    ]);
+  } finally {
+    if (originalGhHost === undefined)
+      delete process.env[ghHostEnvironmentVariable];
+    else process.env[ghHostEnvironmentVariable] = originalGhHost;
+  }
+});
+
+test("stableV2ReleaseExists detects a release returned on a later paginated page", async () => {
+  const runner = (command) =>
+    command === "git"
+      ? { status: 0, stdout: "https://github.com/owner/repo", stderr: "" }
+      : {
+          status: 0,
+          stdout: "v1.9.9\tfalse\tfalse\nv2.0.1\tfalse\tfalse\n",
+          stderr: "",
+        };
   assert.equal(await stableV2ReleaseExists(runner), true);
 });
 
 test("stableV2ReleaseExists fails closed when the lookup exits non-zero", async () => {
-  const runner = () => ({
-    status: 128,
-    stdout: "",
-    stderr: "fatal: unable to access origin",
-  });
+  const runner = (command) =>
+    command === "git"
+      ? { status: 0, stdout: "https://github.com/owner/repo", stderr: "" }
+      : { status: 1, stdout: "", stderr: "gh: API rate limit" };
   await assert.rejects(() => stableV2ReleaseExists(runner));
 });
 
-test("stableV2ReleaseExists fails closed when the runner itself throws", async () => {
-  const runner = () => {
-    throw new Error("spawn git ENOENT");
-  };
-  await assert.rejects(() => stableV2ReleaseExists(runner));
+test("stableV2ReleaseExists fails closed when origin or lookup cannot be resolved", async () => {
+  await assert.rejects(() =>
+    stableV2ReleaseExists(() => {
+      throw new Error("spawn git ENOENT");
+    }),
+  );
+  await assert.rejects(() =>
+    stableV2ReleaseExists(() => ({
+      status: 0,
+      stdout: "https://example.com/owner/repo",
+      stderr: "",
+    })),
+  );
+  await assert.rejects(() =>
+    stableV2ReleaseExists((command) =>
+      command === "git"
+        ? { status: 0, stdout: "https://github.com/owner/repo", stderr: "" }
+        : { status: 0, stdout: "bad output", stderr: "" },
+    ),
+  );
+  await assert.rejects(() =>
+    stableV2ReleaseExists((command) =>
+      command === "git"
+        ? { status: 0, stdout: "https://github.com/owner/repo", stderr: "" }
+        : { status: null, stdout: "", stderr: "signal" },
+    ),
+  );
 });
 
 test("isMissingBaseFileError recognizes both of git show's 'missing path' messages", () => {

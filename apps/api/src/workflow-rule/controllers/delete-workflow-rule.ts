@@ -1,13 +1,10 @@
-import { eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { workflowRuleTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { deleteWorkflowRuleById, findWorkflowRuleById } from "../repository";
 
-async function deleteWorkflowRule(id: string) {
-  const existing = await db.query.workflowRuleTable.findFirst({
-    where: eq(workflowRuleTable.id, id),
-  });
+async function deleteWorkflowRule(identity: ResolvedIdentity, id: string) {
+  const existing = await findWorkflowRuleById(identity, id);
 
   if (!existing) {
     throw new HTTPException(404, { message: "Workflow rule not found" });
@@ -18,9 +15,10 @@ async function deleteWorkflowRule(id: string) {
   // rest of that project for its 30-day recovery window (#187, PR-16).
   await getProjectWorkspaceId(existing.projectId);
 
-  await db.delete(workflowRuleTable).where(eq(workflowRuleTable.id, id));
-
-  return existing;
+  const deleted = await deleteWorkflowRuleById(identity, id);
+  if (!deleted)
+    throw new HTTPException(404, { message: "Workflow rule not found" });
+  return deleted;
 }
 
 export default deleteWorkflowRule;

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { JsonValue } from "@taskdesk/domain";
 import { can } from "@taskdesk/permissions";
 import {
   and,
@@ -342,6 +343,15 @@ export async function searchWorkItems(input: {
   const [rows, totals] = await Promise.all([rowQuery, totalQuery]);
   const hasMore = rows.length > limit;
   const pageRows = rows.slice(0, limit);
+  type MaterializedSearchPageRow = Omit<
+    (typeof pageRows)[number]["workItem"],
+    "description"
+  > & {
+    description: JsonValue | null;
+    stateName: (typeof pageRows)[number]["stateName"];
+    stateCategory: (typeof pageRows)[number]["stateCategory"];
+    assigneeName: (typeof pageRows)[number]["assigneeName"] | null;
+  };
   const last = pageRows.at(-1)?.workItem;
   const value = last
     ? field === "key"
@@ -374,12 +384,15 @@ export async function searchWorkItems(input: {
         ).toString("base64url")
       : null;
   return {
-    data: pageRows.map((row) => ({
-      ...row.workItem,
-      stateName: row.stateName,
-      stateCategory: row.stateCategory,
-      assigneeName: row.assigneeWorkspaceMemberId ? row.assigneeName : null,
-    })),
+    data: pageRows.map(
+      (row): MaterializedSearchPageRow => ({
+        ...row.workItem,
+        description: row.workItem.description as JsonValue | null,
+        stateName: row.stateName,
+        stateCategory: row.stateCategory,
+        assigneeName: row.assigneeWorkspaceMemberId ? row.assigneeName : null,
+      }),
+    ),
     page: { nextCursor, hasMore },
     meta: { total: totals[0]?.total ?? 0 },
   };

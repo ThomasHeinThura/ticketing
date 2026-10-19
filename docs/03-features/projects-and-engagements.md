@@ -91,7 +91,12 @@ table further down.
 Project configuration and health are available at the existing project detail/update
 routes. Health is nullable RAG (`red | amber | green`) and can be read or changed at
 `GET /api/project/{id}/health` and `PATCH /api/project/{id}/health`; it is set by a person,
-not computed. Project create/update accept `kind`, `supportLevel`, and `serviceCalendarId`.
+not computed. Project create/update accept `kind`, `supportLevel`, and `serviceCalendarId`. Create
+requires `project:create`. On update, sending any of `kind`, `supportLevel` or
+`serviceCalendarId` (SLA and calendar assignment) requires the strict `project:manage_settings`
+capability (and the API-key scope, for a key), the same as `defaultCommentVisibility`; a
+caller holding only `project:update` (for example a lead) gets `403` and nothing is written.
+Health stays on `project:update`.
 
 **Customer organisation binding.** `project.organisation_id` is chosen at creation only
 (decision log 2026-10-13, "Recovered record: Bind customer-serving projects at creation").

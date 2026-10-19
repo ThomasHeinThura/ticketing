@@ -38,13 +38,32 @@ const CUSTOMER_PERSON: PersonFact = {
   organisationDeleted: false,
 };
 
+const CUSTOMER_MEMBERSHIP = {
+  scope: "organisation",
+  scopeId: "org-acme",
+  seesAll: false,
+  inheritedFrom: null,
+  roleId: "role-customer",
+  roleKey: BUILT_IN_ROLES.customer.key,
+  roleScope: BUILT_IN_ROLES.customer.scope,
+  roleWorkspaceId: null,
+  roleIsSystem: true,
+  scopeWorkspaceId: null,
+  scopeExists: true,
+  rank: BUILT_IN_ROLES.customer.rank,
+  capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+};
+
 function facts(overrides: Partial<IdentityFacts> = {}): IdentityFacts {
+  const person = overrides.person ?? STAFF_PERSON;
   return {
     userId: "user-1",
-    person: STAFF_PERSON,
+    person,
     banned: false,
     isInstanceAdmin: false,
     workspaceMemberships: [],
+    scopedRoleMemberships:
+      person.side === "customer" ? [CUSTOMER_MEMBERSHIP] : [],
     teamMemberships: [],
     credential: "session",
     ...overrides,
@@ -212,6 +231,7 @@ describe("resolveIdentityFromFacts — persisted scoped role memberships", () =>
     roleKey: "project-triager",
     roleScope: "project",
     roleWorkspaceId: "workspace-1",
+    roleIsSystem: false,
     scopeWorkspaceId: "workspace-1",
     scopeExists: true,
     rank: 30,
@@ -697,6 +717,27 @@ describe("resolveIdentityFromFacts — a portal (customer) session", () => {
       },
     ]);
     expect(identity?.memberships).toEqual([]);
+  });
+
+  it.each([
+    ["missing membership", []],
+    ["wrong organisation", [{ ...CUSTOMER_MEMBERSHIP, scopeId: "org-other" }]],
+    ["non-system role", [{ ...CUSTOMER_MEMBERSHIP, roleIsSystem: false }]],
+    ["wrong role", [{ ...CUSTOMER_MEMBERSHIP, roleKey: "custom-customer" }]],
+    [
+      "malformed capabilities",
+      [{ ...CUSTOMER_MEMBERSHIP, capabilities: null }],
+    ],
+    [
+      "ambiguous organisation memberships",
+      [CUSTOMER_MEMBERSHIP, CUSTOMER_MEMBERSHIP],
+    ],
+  ])("fails closed for %s", (_label, memberships) => {
+    expect(
+      resolveIdentityFromFacts(
+        facts({ person: CUSTOMER_PERSON, scopedRoleMemberships: memberships }),
+      ),
+    ).toBeNull();
   });
 
   it("never gains an agent role, even if a workspace_member row exists for this user", () => {

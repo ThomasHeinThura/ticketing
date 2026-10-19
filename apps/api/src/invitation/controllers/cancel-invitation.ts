@@ -1,5 +1,5 @@
-import { and, eq } from "drizzle-orm";
-import db, { schema } from "../../database";
+import { resolveIdentity } from "../../permissions/resolve-identity";
+import { cancelPendingInvitation, findInvitationStatus } from "../repository";
 import {
   InvitationNotFoundError,
   InvitationNotPendingError,
@@ -30,15 +30,15 @@ export type CanceledInvitation = {
  */
 async function cancelInvitation(
   invitationId: string,
+  callerId: string,
 ): Promise<CanceledInvitation> {
-  const [invitation] = await db
-    .select({
-      id: schema.invitationTable.id,
-      status: schema.invitationTable.status,
-    })
-    .from(schema.invitationTable)
-    .where(eq(schema.invitationTable.id, invitationId))
-    .limit(1);
+  const identity = await resolveIdentity({
+    userId: callerId,
+    credential: "session",
+  });
+  if (!identity) throw new InvitationNotFoundError();
+
+  const invitation = await findInvitationStatus(identity, invitationId);
   if (!invitation) {
     throw new InvitationNotFoundError();
   }
@@ -46,20 +46,13 @@ async function cancelInvitation(
     throw new InvitationNotPendingError();
   }
 
-  const [updated] = await db
-    .update(schema.invitationTable)
-    .set({ status: "canceled" })
-    .where(
-      and(
-        eq(schema.invitationTable.id, invitationId),
-        eq(schema.invitationTable.status, "pending"),
-      ),
-    )
-    .returning({ id: schema.invitationTable.id });
+  const updated = await cancelPendingInvitation(identity, invitationId);
 
   if (!updated) {
     // Lost the race to a concurrent accept/cancel/reject between the read
     // above and this write.
+    const current = await findInvitationStatus(identity, invitationId);
+    if (!current) throw new InvitationNotFoundError();
     throw new InvitationNotPendingError();
   }
 

@@ -1,19 +1,24 @@
-import { and, asc, eq, isNull, max, sql } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  assetTable,
-  columnTable,
-  projectTable,
-  taskTable,
-} from "../../database/schema";
+import type { Executor } from "../../database/executor";
 import { publishEvent } from "../../events";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { assertProjectStillLive } from "../../work-item/assert-work-item-live";
-import { lockLegacyTaskRow } from "../assert-task-project-live";
-import { claimTaskNumber } from "./claim-task-numbers";
+import {
+  findLiveUnarchivedProjectInWorkspace,
+  findMaxTaskPositionInStatusAndColumn,
+  findNotDeletedProjectInWorkspace,
+  findProjectFreezeState,
+  findProjectIdentity,
+  listColumnsForMove,
+  lockLiveProjectForMove,
+  lockTaskRowForIdentity,
+  moveTaskAndAssetsForIdentity,
+} from "../repository";
+import { claimTaskNumberForIdentity } from "./claim-task-numbers";
 
-type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbOrTx = Executor;
 
 function isSameProjectMove(
   sourceProjectId: string,
@@ -23,20 +28,17 @@ function isSameProjectMove(
 }
 
 async function resolveDestinationStatus(
+  identity: ResolvedIdentity,
   dbOrTx: DbOrTx,
   destinationProjectId: string,
   currentStatus: string,
   requestedStatus?: string,
 ) {
-  const destinationColumns = await dbOrTx
-    .select({
-      id: columnTable.id,
-      slug: columnTable.slug,
-      position: columnTable.position,
-    })
-    .from(columnTable)
-    .where(eq(columnTable.projectId, destinationProjectId))
-    .orderBy(asc(columnTable.position));
+  const destinationColumns = await listColumnsForMove(
+    dbOrTx,
+    identity,
+    destinationProjectId,
+  );
 
   const [firstColumn] = destinationColumns;
 
@@ -64,31 +66,31 @@ async function resolveDestinationStatus(
 }
 
 async function getNextTaskPosition(
+  identity: ResolvedIdentity,
   dbOrTx: DbOrTx,
   projectId: string,
   status: string,
   columnId: string,
 ) {
-  const [maxPositionResult] = await dbOrTx
-    .select({ maxPosition: max(taskTable.position) })
-    .from(taskTable)
-    .where(
-      and(
-        eq(taskTable.projectId, projectId),
-        eq(taskTable.status, status),
-        eq(taskTable.columnId, columnId),
-      ),
-    );
+  const maxPositionResult = await findMaxTaskPositionInStatusAndColumn(
+    dbOrTx,
+    identity,
+    projectId,
+    status,
+    columnId,
+  );
 
   return (maxPositionResult?.maxPosition ?? 0) + 1;
 }
 
 async function moveTask({
+  identity,
   taskId,
   destinationProjectId,
   destinationStatus,
   currentUserId,
 }: {
+  identity: ResolvedIdentity;
   taskId: string;
   destinationProjectId: string;
   destinationStatus?: string;
@@ -99,7 +101,10 @@ async function moveTask({
   // reached a raw `eq(projectTable.id, destinationProjectId)`-shaped query below
   // unvalidated and 500'd, the same class #281 fixed for path/query ids.
   const moveResult = await db.transaction(async (tx) => {
-    const lockedTask = await lockLegacyTaskRow(tx, taskId);
+    const lockedTask = await lockTaskRowForIdentity(tx, identity, taskId);
+    if (!lockedTask) {
+      throw new HTTPException(404, { message: "Task not found" });
+    }
     // Malformed destinations cannot be queried safely, but their validation still
     // follows an authoritative source liveness lock. Valid destinations retain the
     // existing source preflight and sorted-lock sequence below.
@@ -110,16 +115,11 @@ async function moveTask({
 
     // Reject frozen sources before touching a request-selected destination id.
     // These reads only establish reach; sorted row locks below recheck both rows.
-    const [sourcePreflight] = await tx
-      .select({
-        id: projectTable.id,
-        workspaceId: projectTable.workspaceId,
-        archivedAt: projectTable.archivedAt,
-        deletedAt: projectTable.deletedAt,
-      })
-      .from(projectTable)
-      .where(eq(projectTable.id, lockedTask.projectId))
-      .limit(1);
+    const sourcePreflight = await findProjectFreezeState(
+      tx,
+      identity,
+      lockedTask.projectId,
+    );
     if (
       !sourcePreflight ||
       sourcePreflight.archivedAt !== null ||
@@ -134,18 +134,12 @@ async function moveTask({
       });
     }
 
-    const [destinationPreflight] = await tx
-      .select({ id: projectTable.id })
-      .from(projectTable)
-      .where(
-        and(
-          eq(projectTable.id, destinationProjectId),
-          eq(projectTable.workspaceId, sourcePreflight.workspaceId),
-          isNull(projectTable.deletedAt),
-          isNull(projectTable.archivedAt),
-        ),
-      )
-      .limit(1);
+    const destinationPreflight = await findLiveUnarchivedProjectInWorkspace(
+      tx,
+      identity,
+      destinationProjectId,
+      sourcePreflight.workspaceId,
+    );
     if (!destinationPreflight) {
       // A plain source preflight may have gone stale while checking destination reach.
       await assertProjectStillLive(tx, lockedTask.projectId, "Task not found");
@@ -159,20 +153,17 @@ async function moveTask({
       ...new Set([lockedTask.projectId, destinationProjectId]),
     ].sort()) {
       const isDestination = projectId === destinationProjectId;
-      const [liveProject] = await tx
-        .select({ id: projectTable.id })
-        .from(projectTable)
-        .where(
-          and(
-            eq(projectTable.id, projectId),
-            isNull(projectTable.deletedAt),
-            isNull(projectTable.archivedAt),
-            ...(isDestination
-              ? [eq(projectTable.workspaceId, sourcePreflight.workspaceId)]
-              : []),
-          ),
-        )
-        .for(isDestination ? "update" : "share");
+      const liveProject = await lockLiveProjectForMove(
+        tx,
+        identity,
+        projectId,
+        {
+          mode: isDestination ? "update" : "share",
+          ...(isDestination
+            ? { workspaceId: sourcePreflight.workspaceId }
+            : {}),
+        },
+      );
       lockedProjectLiveness.set(projectId, liveProject !== undefined);
     }
     if (!lockedProjectLiveness.get(lockedTask.projectId)) {
@@ -182,48 +173,38 @@ async function moveTask({
       throw new HTTPException(404, { message: "Project not found" });
     }
 
-    const [sourceProject] = await tx
-      .select({
-        id: projectTable.id,
-        name: projectTable.name,
-        workspaceId: projectTable.workspaceId,
-      })
-      .from(projectTable)
-      .where(eq(projectTable.id, lockedTask.projectId))
-      .limit(1);
+    const sourceProject = await findProjectIdentity(
+      tx,
+      identity,
+      lockedTask.projectId,
+    );
     if (!sourceProject) {
       throw new HTTPException(404, { message: "Project not found" });
     }
 
     // S2 (review of PR #307): scope the destination lookup to the source's
     // current workspace so foreign and missing project ids remain indistinct.
-    const [destinationProject] = await tx
-      .select({
-        id: projectTable.id,
-        name: projectTable.name,
-      })
-      .from(projectTable)
-      .where(
-        and(
-          eq(projectTable.id, destinationProjectId),
-          eq(projectTable.workspaceId, sourceProject.workspaceId),
-          isNull(projectTable.deletedAt),
-        ),
-      )
-      .limit(1);
+    const destinationProject = await findNotDeletedProjectInWorkspace(
+      tx,
+      identity,
+      destinationProjectId,
+      sourceProject.workspaceId,
+    );
     if (!destinationProject) {
       throw new HTTPException(404, { message: "Project not found" });
     }
 
     const resolvedColumn = await resolveDestinationStatus(
+      identity,
       tx,
       destinationProjectId,
       lockedTask.status,
       destinationStatus,
     );
     const [nextTaskNumber, nextPosition] = await Promise.all([
-      claimTaskNumber(destinationProjectId, tx),
+      claimTaskNumberForIdentity(identity, destinationProjectId, tx),
       getNextTaskPosition(
+        identity,
         tx,
         destinationProjectId,
         resolvedColumn.slug,
@@ -231,29 +212,25 @@ async function moveTask({
       ),
     ]);
 
-    const [updatedTask] = await tx
-      .update(taskTable)
-      .set({
-        projectId: destinationProjectId,
+    const updatedTask = await moveTaskAndAssetsForIdentity(
+      tx,
+      identity,
+      taskId,
+      lockedTask.projectId,
+      destinationProjectId,
+      {
         status: resolvedColumn.slug,
         columnId: resolvedColumn.id,
         number: nextTaskNumber,
         position: nextPosition,
-        version: sql`${taskTable.version} + 1`,
-      })
-      .where(eq(taskTable.id, taskId))
-      .returning();
+      },
+    );
 
     if (!updatedTask) {
       throw new HTTPException(500, {
         message: "Failed to move task",
       });
     }
-
-    await tx
-      .update(assetTable)
-      .set({ projectId: destinationProjectId })
-      .where(eq(assetTable.taskId, taskId));
 
     return {
       movedTask: updatedTask,

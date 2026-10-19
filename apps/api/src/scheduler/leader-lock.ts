@@ -1,7 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { sql } from "drizzle-orm";
-import db from "../database";
-import { dbNowUtc } from "../utils/db-time";
+import { claimJobLease, releaseJobLease } from "./repository";
 
 const INSTANCE_ID = randomUUID();
 
@@ -41,28 +39,17 @@ export async function withJobLease<T>(
 ): Promise<T> {
   const ttl = `${leaseMs} milliseconds`;
 
-  const claimed = await db.execute(sql`
-    INSERT INTO job_lease ("name", "owner", "expires_at")
-    VALUES (${name}, ${INSTANCE_ID}, ${dbNowUtc()} + ${ttl}::interval)
-    ON CONFLICT ("name") DO UPDATE
-      SET "owner" = EXCLUDED."owner", "expires_at" = EXCLUDED."expires_at"
-      WHERE job_lease."expires_at" < ${dbNowUtc()}
-    RETURNING "name";
-  `);
+  const claimed = await claimJobLease(name, INSTANCE_ID, ttl);
 
-  if ((claimed.rowCount ?? 0) === 0) {
+  if (!claimed) {
     return whenHeldElsewhere();
   }
 
   try {
     return await run();
   } finally {
-    await db
-      .execute(
-        sql`DELETE FROM job_lease WHERE "name" = ${name} AND "owner" = ${INSTANCE_ID};`,
-      )
-      .catch((error) => {
-        console.error(`Failed to release the ${name} lease`, error);
-      });
+    await releaseJobLease(name, INSTANCE_ID).catch((error) => {
+      console.error(`Failed to release the ${name} lease`, error);
+    });
   }
 }

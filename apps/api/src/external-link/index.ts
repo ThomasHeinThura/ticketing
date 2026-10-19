@@ -1,6 +1,4 @@
-import { eq } from "drizzle-orm";
-import db from "../database";
-import { externalLinkTable } from "../database/schema";
+import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
   type BaseVariables,
@@ -8,7 +6,9 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { listExternalLinksByTask } from "./repository";
 import { externalLinkListSchema } from "./response";
 import { taskIdParam } from "./schema";
 
@@ -38,9 +38,11 @@ const externalLink = apiRouter<
 >().openapi(getExternalLinksByTaskRoute, async (c) => {
   const { taskId } = c.req.valid("param");
 
-  const links = await db.query.externalLinkTable.findMany({
-    where: eq(externalLinkTable.taskId, taskId),
-  });
+  const identity = await resolveCallerIdentity(c, c.get("userId"));
+  if (!identity) {
+    throw new HTTPException(404, { message: "Task not found" });
+  }
+  const links = await listExternalLinksByTask(identity, taskId);
 
   return c.json(
     links.map((link) => ({
