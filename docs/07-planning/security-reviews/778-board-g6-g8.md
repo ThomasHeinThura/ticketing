@@ -187,3 +187,20 @@ Method:
 - **PR content:** byte-identical to previous reviewed head.
 
 **Verdict:** CLEAR
+
+## Mechanical rebind after main moved to 47bcf4a985f39e32049e79435b6dfb0b970868f0
+
+This section establishes that `efa1d89a4af09314fa2ad0b01df35fcf32b192fe` is a mechanical rebind of `d7fda160e5fe167b35be4d3c2d51d8160244157f`.
+
+**Reviewed head:** `efa1d89a4af09314fa2ad0b01df35fcf32b192fe`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 47bcf4a985f39e32049e79435b6dfb0b970868f0 (accepted main)
+**Previous reviewed head:** d7fda160e5fe167b35be4d3c2d51d8160244157f
+
+Method:
+- **Parents:** first = `d8d74ccf` (prior branch head including rebind note), second = `47bcf4a9` (main tip). Clean merge commit.
+- **Merge-tree equality:** `git merge-tree --write-tree d8d74ccf 47bcf4a9` equals `efa1d89a^{tree}`. Clean merge, zero manual conflict resolution or edits.
+- **Overlap:** files changed by PR do not intersect files changed on main since merge base (0 files overlap).
+- **PR content:** byte-identical to previous reviewed head.
+
+**Verdict:** CLEAR
