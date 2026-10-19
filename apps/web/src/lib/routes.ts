@@ -9,8 +9,11 @@ export { generatedRouteMetadata } from "./generated-route-metadata";
 import { generatedRouteMetadata } from "./generated-route-metadata";
 import {
   appendWorkItemQueryState,
+  isWorkItemSearchSortField,
   parseWorkItemListSearch,
+  parseWorkItemQueryState,
   type WorkItemListSearch,
+  type WorkItemQueryState,
 } from "./work-item-list-search";
 
 export * from "./work-item-list-search";
@@ -116,6 +119,27 @@ export function godModeUserActionBinding(
 }
 
 export type PendingActionsSearch = { cursor?: string };
+export type SavedViewsSearch = { query?: string };
+/**
+ * The URL form of a saved view (`SV-19`): the view's context (`workspaceId`, `scope`,
+ * `scopeId`, `layout`) and its query properties as plain parameters, so a link fully encodes
+ * it. Every part is optional; a URL naming all four context parts is a complete snapshot.
+ */
+export type SavedViewUrlSearch = {
+  workspaceId?: string;
+  scope?: "workspace" | "project";
+  scopeId?: string;
+  layout?: string;
+} & WorkItemQueryState;
+
+const SAVED_VIEW_URL_LAYOUTS = [
+  "board",
+  "list",
+  "table",
+  "calendar",
+  "timeline",
+  "chart",
+] as const;
 
 export function parsePendingActionsSearch(raw: unknown): PendingActionsSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
@@ -126,6 +150,60 @@ export function parsePendingActionsSearch(raw: unknown): PendingActionsSearch {
       ? value.cursor
       : undefined;
   return { cursor };
+}
+
+export function parseSavedViewsSearch(raw: unknown): SavedViewsSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return {
+    ...(typeof value.query === "string" && value.query.trim()
+      ? { query: value.query.trim().slice(0, 200) }
+      : {}),
+  };
+}
+
+function boundedId(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 && value.length <= 200
+    ? value
+    : undefined;
+}
+
+/**
+ * Parses a saved view's URL. Total and bounded like every route parser: each property that is
+ * absent or invalid is simply omitted, and no default is added, so a link keeps meaning what
+ * it said. `position` is the list's rank order and is not a saved-view sort.
+ */
+export function parseSavedViewUrlSearch(raw: unknown): SavedViewUrlSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const { sort, ...rest } = parseWorkItemQueryState(value);
+  const workspaceId = boundedId(value.workspaceId);
+  const scopeId = boundedId(value.scopeId);
+  return {
+    ...(workspaceId ? { workspaceId } : {}),
+    ...(value.scope === "workspace" || value.scope === "project"
+      ? { scope: value.scope }
+      : {}),
+    ...(scopeId ? { scopeId } : {}),
+    ...((SAVED_VIEW_URL_LAYOUTS as readonly unknown[]).includes(value.layout)
+      ? { layout: value.layout as string }
+      : {}),
+    ...(isWorkItemSearchSortField(sort) ? { sort } : {}),
+    ...rest,
+  };
+}
+
+export function parseSavedViewUrlSearchFromQueryString(queryString: string) {
+  const params = new URLSearchParams(queryString);
+  return parseSavedViewUrlSearch({
+    workspaceId: params.get("workspaceId") ?? undefined,
+    scope: params.get("scope") ?? undefined,
+    scopeId: params.get("scopeId") ?? undefined,
+    layout: params.get("layout") ?? undefined,
+    filter: params.get("filter") ?? undefined,
+    filterMode: params.get("filterMode") ?? undefined,
+    sort: params.get("sort") ?? undefined,
+    dir: params.get("dir") ?? undefined,
+    columns: params.get("columns") ?? undefined,
+  });
 }
 
 export function parseGodModeUsersSearch(raw: unknown): GodModeUsersSearch {
@@ -398,6 +476,36 @@ export const routes = {
       if (resolved.activity) query.set("activity", resolved.activity);
       const suffix = query.toString();
       return `/agent/work-items/${encodeURIComponent(params.key)}${suffix ? `?${suffix}` : ""}`;
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "Saved views index", `/agent/views`. */
+  savedViews: {
+    path: "/agent/views" as const,
+    build: (search: SavedViewsSearch = {}) => {
+      const resolved = parseSavedViewsSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.query) query.set("query", resolved.query);
+      const suffix = query.toString();
+      return suffix ? `/agent/views?${suffix}` : "/agent/views";
+    },
+  },
+  /**
+   * `docs/02-design/screen-inventory.md` "Saved view", `/agent/views/{id}`. The query string
+   * encodes the whole view (`SV-19`), so the link can be shared with someone who cannot open
+   * the saved view itself.
+   */
+  savedView: {
+    path: "/agent/views/$id" as const,
+    build: (params: { id: string }, search: SavedViewUrlSearch = {}) => {
+      const resolved = parseSavedViewUrlSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.workspaceId) query.set("workspaceId", resolved.workspaceId);
+      if (resolved.scope) query.set("scope", resolved.scope);
+      if (resolved.scopeId) query.set("scopeId", resolved.scopeId);
+      if (resolved.layout) query.set("layout", resolved.layout);
+      appendWorkItemQueryState(query, resolved);
+      const suffix = query.toString();
+      return `/agent/views/${encodeURIComponent(params.id)}${suffix ? `?${suffix}` : ""}`;
     },
   },
   /** God Mode Users directory and its query-string-backed selection/filters. */
