@@ -9463,6 +9463,28 @@
         "backdropLayers": []
       },
       {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/project-layout.tsx:ProjectLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/task-layout.tsx:TaskLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
         "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
         "usage": "packages/ui/src/components/select.tsx",
         "surfaceContext": "caller-chain",
@@ -12001,6 +12023,28 @@
         "chain": [
           "apps/web/src/components/saved-view/saved-view-editor.tsx:SavedViewEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/project-layout.tsx:ProjectLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/task-layout.tsx:TaskLayout",
+          "Layout->apps/web/src/components/common/layout.tsx:default"
         ],
         "backdropLayers": []
       },
