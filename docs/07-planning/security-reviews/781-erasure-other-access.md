@@ -379,3 +379,20 @@ Method:
 - **PR content:** clean preservation of security invariants.
 
 **Verdict:** CLEAR
+
+## Mechanical rebind after main moved to 90b102ee0cd7b1b2394204ddff1eb6e715ab6b10
+
+This section establishes that `e2036548102349442a58d1efd6624f9cdc87db05` is a mechanical rebind of `8afdd162e1bc7b381e3ad7ecc141a40b125c686d`.
+
+**Reviewed head:** `e2036548102349442a58d1efd6624f9cdc87db05`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 90b102ee0cd7b1b2394204ddff1eb6e715ab6b10 (accepted main with #778)
+**Previous reviewed head:** 8afdd162e1bc7b381e3ad7ecc141a40b125c686d
+
+Method:
+- **Parents:** first = `38a98d88` (prior branch head including rebind note), second = `90b102ee` (main tip including #778).
+- **Conflict analysis:** Merge was clean with zero conflicts (PR #778 modified board visual/E2E components, completely disjoint from account erasure).
+- **Security logic:** Byte-identical and contract-identical to `fd4a8595` and `8afdd162` for all erasure access checks, locking mechanisms, timeouts, and error handling.
+- **PR content:** Clean preservation of security invariants.
+
+**Verdict:** CLEAR
