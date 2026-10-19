@@ -472,3 +472,17 @@ Method:
 - **PR content:** byte-identical to previous reviewed head.
 
 **Verdict:** CLEAR
+
+## Mechanical rebind after main moved to 90b102ee0cd7b1b2394204ddff1eb6e715ab6b10
+
+This section establishes that `cbafdef035bbf166c2ea87b01f6047628e16856e` is a mechanical rebind of `4f1de5ca6acd6a3217a82d9392bce1747996a514`.
+
+**Reviewed head:** `cbafdef035bbf166c2ea87b01f6047628e16856e`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 90b102ee0cd7b1b2394204ddff1eb6e715ab6b10 (accepted main with #772 and #778)
+**Previous reviewed head:** 4f1de5ca6acd6a3217a82d9392bce1747996a514
+
+Method:
+- **Parents:** first = `d5b35a8d` (prior branch head including rebind note), second = `90b102ee` (main tip).
+- **Conflict resolution:** Confirmed clean alignment on `visual-screens.json` and `visual.spec.ts` preserving both `#778` board and `#769` saved-view test definitions without modifications to security boundaries.
+- **Verdict:** CLEAR
