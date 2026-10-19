@@ -1,8 +1,17 @@
-import { and, eq } from "drizzle-orm";
-import db, { schema } from "../../database";
+import db from "../../database";
+import { resolveIdentity } from "../../permissions/resolve-identity";
 import { WorkspaceRoleNotFoundError } from "../../workspace/controllers/workspace-membership-errors";
-import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
 import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
+import { lockWorkspaceRoleAssignment } from "../../workspace/workspace-role-assignment.repository";
+import {
+  findInvitationForAccept,
+  findInvitationRecipientMatch,
+  findInvitationWorkspaceId,
+  findWorkspaceMemberUserId,
+  findWorkspaceRoleId,
+  insertWorkspaceMember,
+  markInvitationAccepted,
+} from "../repository";
 import {
   AlreadyWorkspaceMemberError,
   InvitationExpiredError,
@@ -10,6 +19,7 @@ import {
   InvitationNotPendingError,
   NotInvitationRecipientError,
 } from "./invitation-action-errors";
+import { refuseRecipientInvitationTransition } from "./recipient-transition-refusal";
 
 export type AcceptedInvitation = {
   invitation: {
@@ -53,36 +63,38 @@ export type AcceptedInvitation = {
 async function acceptInvitation(
   invitationId: string,
   callerId: string,
-  callerEmail: string,
 ): Promise<AcceptedInvitation> {
-  const [pre] = await db
-    .select({ workspaceId: schema.invitationTable.workspaceId })
-    .from(schema.invitationTable)
-    .where(eq(schema.invitationTable.id, invitationId))
-    .limit(1);
+  const identity = await resolveIdentity({
+    userId: callerId,
+    credential: "session",
+  });
+  if (!identity) throw new NotInvitationRecipientError();
+
+  const pre = await findInvitationWorkspaceId(identity, invitationId);
   if (!pre) {
-    throw new InvitationNotFoundError();
+    const recipientMatch = await findInvitationRecipientMatch(
+      identity,
+      invitationId,
+    );
+    if (recipientMatch === undefined) throw new InvitationNotFoundError();
+    throw new NotInvitationRecipientError();
   }
 
   return db.transaction(async (tx) => {
     await lockWorkspaceRoleAssignment(tx, pre.workspaceId);
 
-    const [invitation] = await tx
-      .select({
-        id: schema.invitationTable.id,
-        workspaceId: schema.invitationTable.workspaceId,
-        email: schema.invitationTable.email,
-        role: schema.invitationTable.role,
-        status: schema.invitationTable.status,
-        expiresAt: schema.invitationTable.expiresAt,
-      })
-      .from(schema.invitationTable)
-      .where(eq(schema.invitationTable.id, invitationId))
-      .limit(1);
+    const invitation = await findInvitationForAccept(
+      tx,
+      identity,
+      invitationId,
+    );
     if (!invitation) {
-      throw new InvitationNotFoundError();
-    }
-    if (invitation.email.toLowerCase() !== callerEmail.toLowerCase()) {
+      const recipientMatch = await findInvitationRecipientMatch(
+        identity,
+        invitationId,
+        tx,
+      );
+      if (recipientMatch === undefined) throw new InvitationNotFoundError();
       throw new NotInvitationRecipientError();
     }
     if (invitation.status !== "pending") {
@@ -96,42 +108,28 @@ async function acceptInvitation(
     // below, not before it -- a check-then-write outside the lock is exactly
     // the race shape `workspace-membership-lock.ts` documents for every other
     // membership write.
-    const [existingMember] = await tx
-      .select({ userId: schema.workspaceUserTable.userId })
-      .from(schema.workspaceUserTable)
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, invitation.workspaceId),
-          eq(schema.workspaceUserTable.userId, callerId),
-        ),
-      )
-      .limit(1);
+    const existingMember = await findWorkspaceMemberUserId(
+      tx,
+      invitation.workspaceId,
+      callerId,
+    );
     if (existingMember) {
       throw new AlreadyWorkspaceMemberError();
     }
 
     const role = invitation.role ?? "member";
-    const [roleRow] = await tx
-      .select({ id: schema.workspaceRoleTable.id })
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, invitation.workspaceId),
-          eq(schema.workspaceRoleTable.role, role),
-        ),
-      )
-      .limit(1);
+    const roleRow = await findWorkspaceRoleId(tx, invitation.workspaceId, role);
     if (!roleRow) {
       throw new WorkspaceRoleNotFoundError(role);
     }
     const now = new Date();
 
-    await tx
-      .update(schema.invitationTable)
-      .set({ status: "accepted" })
-      .where(eq(schema.invitationTable.id, invitationId));
+    const accepted = await markInvitationAccepted(tx, identity, invitationId);
+    if (!accepted) {
+      await refuseRecipientInvitationTransition(identity, invitationId, tx);
+    }
 
-    await tx.insert(schema.workspaceUserTable).values({
+    await insertWorkspaceMember(tx, {
       workspaceId: invitation.workspaceId,
       userId: callerId,
       role,

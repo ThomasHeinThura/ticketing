@@ -1,6 +1,11 @@
-import { and, eq, isNull } from "drizzle-orm";
-import db, { schema } from "../database";
+import type db from "../database";
+import { executorOrDefault } from "../database/executor";
 import { DEFAULT_STATE_GROUP } from "./default-state-templates";
+import {
+  findAnyProjectState,
+  insertProjectStateRows,
+  listActiveStateTemplates,
+} from "./seed-defaults.repository";
 
 /** `state_template.group`'s own fixed ordering (ADR 0011), used only to give a freshly
  * seeded project's `state` rows a stable, readable `position` -- the columns a project
@@ -36,26 +41,14 @@ const GROUP_ORDER = [
 export async function seedProjectStates(
   projectId: string,
   workspaceId: string,
-  dbOrTx: Pick<typeof db, "select" | "insert"> = db,
+  dbOrTx: Pick<typeof db, "select" | "insert"> = executorOrDefault(),
 ): Promise<void> {
-  const existing = await dbOrTx
-    .select({ id: schema.stateTable.id })
-    .from(schema.stateTable)
-    .where(eq(schema.stateTable.projectId, projectId))
-    .limit(1);
+  const existing = await findAnyProjectState(dbOrTx, projectId);
   if (existing.length > 0) {
     return;
   }
 
-  const templates = await dbOrTx
-    .select()
-    .from(schema.stateTemplateTable)
-    .where(
-      and(
-        eq(schema.stateTemplateTable.workspaceId, workspaceId),
-        isNull(schema.stateTemplateTable.archivedAt),
-      ),
-    );
+  const templates = await listActiveStateTemplates(dbOrTx, workspaceId);
   if (templates.length === 0) {
     // Nothing to adopt yet -- a workspace with no templates at all (should not happen
     // once `seedWorkspaceDefaults` has run, but this function makes no assumption about
@@ -75,7 +68,8 @@ export async function seedProjectStates(
     ordered.find((template) => template.group === DEFAULT_STATE_GROUP) ??
     ordered[0];
 
-  await dbOrTx.insert(schema.stateTable).values(
+  await insertProjectStateRows(
+    dbOrTx,
     ordered.map((template, index) => ({
       projectId,
       stateTemplateId: template.id,

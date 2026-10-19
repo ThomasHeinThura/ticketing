@@ -12,6 +12,7 @@ import { publishEvent } from "../../events";
 import { enqueueNotificationEvent } from "../../notification/fanout";
 import { resolveMentionEventRecipient } from "../../notification/recipient-resolvers";
 import type { ApiKey } from "../../openapi";
+import { dbNowUtc } from "../../utils/db-time";
 import { parseNativeMentionPersonIds } from "../../utils/parse-native-mentions";
 import {
   assertCallerHasCapability,
@@ -107,6 +108,11 @@ export async function createComment(
           actorType,
           body: input.body,
           visibility: input.visibility,
+          // `comment.created_at` is a UTC wall clock in a `timestamp without time zone`
+          // column, read back as UTC and compared with the 15-minute edit window (CA-17). Its
+          // `DEFAULT now()` would store the session's local wall clock (#631).
+          createdAt: dbNowUtc(),
+          updatedAt: dbNowUtc(),
         })
         .returning();
 

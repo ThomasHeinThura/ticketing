@@ -12,6 +12,7 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import {
   listReachOf,
   requireReachContext,
@@ -154,6 +155,7 @@ const portalSubmissionResponseSchema = z.object({
     }),
   ),
 });
+type PortalSubmissionResponse = z.infer<typeof portalSubmissionResponseSchema>;
 const portalSubmissionListResponseSchema = z.object({
   submissions: z.array(
     z.object({
@@ -210,7 +212,7 @@ function parseCollectionLimit(value?: string) {
 
 function requestTypeResponse(
   row: Awaited<ReturnType<typeof createRequestType>>,
-) {
+): z.infer<typeof savedRequestTypeSchema> {
   return {
     ...row,
     formSchema: row.formSchema as Record<string, unknown>,
@@ -260,7 +262,9 @@ async function submissionReach(c: IntakeContext, next: Next) {
     throw new HTTPException(400, {
       message: "Submission reference is required",
     });
-  const row = await findSubmission(ref);
+  const identity = await resolveCallerIdentity(c, c.get("userId"));
+  if (!identity) return notFound("Submission not found");
+  const row = await findSubmission(ref, undefined, undefined, identity);
   try {
     await validateWorkspaceAccess(
       c.get("userId"),
@@ -472,6 +476,30 @@ const unpublishRoute = createRoute({
     404: errorResponse("Request type not found"),
   },
 });
+const portalCatalogueResponseSchema = z.object({
+  defaultCustomerVisibility: z.enum(["private", "organisation"]),
+  requestTypes: z.array(
+    z.object({
+      key: z.string(),
+      name: z.string(),
+      description: z.string().nullable(),
+      icon: z.string().nullable(),
+      group: z.string(),
+      position: z.number(),
+      forcePrivate: z.boolean(),
+      formSchema: z.unknown(),
+      version: z.number(),
+    }),
+  ),
+});
+const portalCatalogueDetailResponseSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  formSchema: z.unknown(),
+  version: z.number(),
+});
+
 const catalogueRoute = createRoute({
   method: "get",
   operationId: "getPortalCatalogue",
@@ -481,25 +509,7 @@ const catalogueRoute = createRoute({
   middleware: [portalOrganisation] as const,
   request: { query: searchQuery },
   responses: {
-    200: jsonResponse(
-      "Visible catalogue",
-      z.object({
-        defaultCustomerVisibility: z.enum(["private", "organisation"]),
-        requestTypes: z.array(
-          z.object({
-            key: z.string(),
-            name: z.string(),
-            description: z.string().nullable(),
-            icon: z.string().nullable(),
-            group: z.string(),
-            position: z.number(),
-            forcePrivate: z.boolean(),
-            formSchema: z.unknown(),
-            version: z.number(),
-          }),
-        ),
-      }),
-    ),
+    200: jsonResponse("Visible catalogue", portalCatalogueResponseSchema),
   },
 });
 const catalogueDetailRoute = createRoute({
@@ -513,13 +523,7 @@ const catalogueDetailRoute = createRoute({
   responses: {
     200: jsonResponse(
       "Versioned request form",
-      z.object({
-        key: z.string(),
-        name: z.string(),
-        description: z.string().nullable(),
-        formSchema: z.unknown(),
-        version: z.number(),
-      }),
+      portalCatalogueDetailResponseSchema,
     ),
     404: errorResponse("Request type not found"),
   },
@@ -930,26 +934,24 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
       .from(schema.organisationTable)
       .where(eq(schema.organisationTable.id, identity.organisationId))
       .limit(1);
-    return c.json(
-      {
-        defaultCustomerVisibility:
-          organisation?.defaultCustomerVisibility === "private"
-            ? ("private" as const)
-            : ("organisation" as const),
-        requestTypes: rows.map(({ type, version }) => ({
-          key: type.key,
-          name: type.name,
-          description: type.description,
-          icon: type.icon,
-          group: type.group,
-          position: type.position,
-          forcePrivate: type.forcePrivate,
-          formSchema: version.formSchema,
-          version: version.number,
-        })),
-      },
-      200,
-    );
+    const response: z.infer<typeof portalCatalogueResponseSchema> = {
+      defaultCustomerVisibility:
+        organisation?.defaultCustomerVisibility === "private"
+          ? ("private" as const)
+          : ("organisation" as const),
+      requestTypes: rows.map(({ type, version }) => ({
+        key: type.key,
+        name: type.name,
+        description: type.description,
+        icon: type.icon,
+        group: type.group,
+        position: type.position,
+        forcePrivate: type.forcePrivate,
+        formSchema: version.formSchema,
+        version: version.number,
+      })),
+    };
+    return c.json(response, 200);
   })
   .openapi(catalogueDetailRoute, async (c) => {
     const identity = await portalIdentity(c.get("userId"));
@@ -957,16 +959,14 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
       (row) => row.type.key === c.req.valid("param").key,
     );
     if (!found) notFound("Request type not found");
-    return c.json(
-      {
-        key: found.type.key,
-        name: found.type.name,
-        description: found.type.description,
-        formSchema: found.version.formSchema,
-        version: found.version.number,
-      },
-      200,
-    );
+    const response: z.infer<typeof portalCatalogueDetailResponseSchema> = {
+      key: found.type.key,
+      name: found.type.name,
+      description: found.type.description,
+      formSchema: found.version.formSchema,
+      version: found.version.number,
+    };
+    return c.json(response, 200);
   })
   .openapi(createSubmissionRoute, async (c) => {
     const body = c.req.valid("json");
@@ -1027,11 +1027,13 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
     );
   })
   .openapi(submissionDetailRoute, async (c) => {
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity) return notFound("Submission not found");
     const detail = await findSubmission(
       c.req.valid("param").ref,
       c.get("workspaceId"),
       undefined,
-      listReachOf(c),
+      identity,
     );
     return c.json(
       {
@@ -1190,10 +1192,18 @@ const portalDetailRouter = apiRouter<IntakeVariables>().openapi(
   portalDetailRoute,
   async (c) => {
     const identity = await portalIdentity(c.get("userId"));
-    return c.json(
-      await findPortalSubmission(c.req.valid("param").ref, identity.personId),
-      200,
+    const detail = await findPortalSubmission(
+      c.req.valid("param").ref,
+      identity.personId,
     );
+    const response: PortalSubmissionResponse = {
+      ...detail,
+      submission: {
+        ...detail.submission,
+        formData: detail.submission.formData as Record<string, unknown>,
+      },
+    };
+    return c.json(response, 200);
   },
 );
 

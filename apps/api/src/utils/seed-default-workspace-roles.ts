@@ -1,7 +1,11 @@
 import { DEFAULT_ROLE_NAMES, defaultRolePayloads } from "@taskdesk/permissions";
-import { and, eq, inArray, sql } from "drizzle-orm";
-import db, { schema } from "../database";
+import db, { type schema } from "../database";
 import { listAllWorkspaceIds, listWorkspaceRoleKeys } from "./repository";
+import {
+  healSystemRoleRows,
+  insertDefaultWorkspaceRoleRows,
+  workspaceRoleTableExists,
+} from "./seed-defaults.repository";
 
 /**
  * Backfill the editable default roles (viewer/member/admin) for every
@@ -35,17 +39,7 @@ import { listAllWorkspaceIds, listWorkspaceRoleKeys } from "./repository";
  */
 export async function seedDefaultWorkspaceRoles() {
   try {
-    const tableExists = await db.execute(sql`
-      SELECT EXISTS (
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_name = 'workspace_role'
-      ) AS exists;
-    `);
-
-    const exists =
-      tableExists.rows[0]?.exists === true ||
-      tableExists.rows[0]?.exists === "t";
+    const exists = await workspaceRoleTableExists();
     if (!exists) {
       console.log(
         "🛈 workspace_role table does not exist; skipping default-role seed.",
@@ -59,19 +53,9 @@ export async function seedDefaultWorkspaceRoles() {
     // match the one genuine row per workspace for each of these three names -- see this
     // function's own doc comment and migration `0068`'s own comment for why a plain
     // migration-time backfill is not enough on its own.
-    const healed = await db
-      .update(schema.workspaceRoleTable)
-      .set({ isSystem: true })
-      .where(
-        and(
-          inArray(
-            schema.workspaceRoleTable.role,
-            DEFAULT_ROLE_NAMES as unknown as string[],
-          ),
-          eq(schema.workspaceRoleTable.isSystem, false),
-        ),
-      )
-      .returning({ id: schema.workspaceRoleTable.id });
+    const healed = await healSystemRoleRows(
+      DEFAULT_ROLE_NAMES as unknown as string[],
+    );
     if (healed.length > 0) {
       console.log(
         `✅ Self-healed is_system = true on ${healed.length} existing default workspace role row(s) (issue #318).`,
@@ -126,15 +110,7 @@ export async function seedDefaultWorkspaceRoles() {
     // headroom even for instances with tens of thousands of workspaces.
     const BATCH_SIZE = 1000;
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      await db
-        .insert(schema.workspaceRoleTable)
-        .values(rows.slice(i, i + BATCH_SIZE))
-        .onConflictDoNothing({
-          target: [
-            schema.workspaceRoleTable.workspaceId,
-            schema.workspaceRoleTable.role,
-          ],
-        });
+      await insertDefaultWorkspaceRoleRows(rows.slice(i, i + BATCH_SIZE));
     }
     console.log(
       `✅ Seeded ${rows.length} default workspace role row(s) across ${workspaceIds.length} workspace(s).`,

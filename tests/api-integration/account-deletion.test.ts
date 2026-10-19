@@ -72,8 +72,106 @@ describe("API integration: account deletion", () => {
       .select()
       .from(schema.workspaceTable)
       .where(eq(schema.workspaceTable.id, owner.workspace.id));
+    const memberships = await db
+      .select({ userId: schema.workspaceUserTable.userId })
+      .from(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.workspaceId, owner.workspace.id));
 
     expect(workspaces).toHaveLength(1);
+    expect(memberships.map((row) => row.userId)).toContain(owner.user.id);
+  });
+
+  it("keeps the named owner refusal for a subject with no canonical person", async () => {
+    const originalOwner = await createWorkspaceMember({
+      role: "owner",
+      workspaceName: "Unlinked Owner Workspace",
+    });
+    await db
+      .delete(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.userId, originalOwner.user.id));
+    const subject = await addMember(originalOwner.workspace.id, "owner");
+    await addMember(originalOwner.workspace.id, "member");
+
+    await expect(deleteAccountData(subject.id)).rejects.toThrow(
+      /only owner of "Unlinked Owner Workspace"/,
+    );
+
+    const workspaces = await db
+      .select({ id: schema.workspaceTable.id })
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, originalOwner.workspace.id));
+    const subjectMembership = await db
+      .select({ userId: schema.workspaceUserTable.userId })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, originalOwner.workspace.id),
+          eq(schema.workspaceUserTable.userId, subject.id),
+        ),
+      );
+    const subjectPerson = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, subject.id));
+
+    expect(workspaces).toHaveLength(1);
+    expect(subjectMembership).toEqual([{ userId: subject.id }]);
+    expect(subjectPerson).toHaveLength(0);
+  });
+
+  it("refuses erasure when duplicate subject owner rows hide the last real owner", async () => {
+    const originalOwner = await createWorkspaceMember({
+      role: "owner",
+      workspaceName: "Duplicate Subject Owner Rows",
+    });
+    await db
+      .delete(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.userId, originalOwner.user.id));
+    const subject = await addMember(originalOwner.workspace.id, "owner");
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: originalOwner.workspace.id,
+      userId: subject.id,
+      role: "owner",
+      joinedAt: new Date(),
+    });
+    const other = await addMember(originalOwner.workspace.id, "member");
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: originalOwner.workspace.id,
+      userId: other.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+
+    await expect(deleteAccountData(subject.id)).rejects.toThrow(
+      /only owner of "Duplicate Subject Owner Rows"/,
+    );
+
+    const workspace = await db
+      .select({ id: schema.workspaceTable.id })
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, originalOwner.workspace.id));
+    const subjectRows = await db
+      .select({ id: schema.workspaceUserTable.id })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, originalOwner.workspace.id),
+          eq(schema.workspaceUserTable.userId, subject.id),
+        ),
+      );
+    const otherRows = await db
+      .select({ id: schema.workspaceUserTable.id })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, originalOwner.workspace.id),
+          eq(schema.workspaceUserTable.userId, other.id),
+        ),
+      );
+
+    expect(workspace).toHaveLength(1);
+    expect(subjectRows).toHaveLength(2);
+    expect(otherRows).toHaveLength(2);
   });
 
   it("refuses when the only OTHER 'owner' is a role merely NAMED \"owner,x\" -- ownerCount must be exact", async () => {

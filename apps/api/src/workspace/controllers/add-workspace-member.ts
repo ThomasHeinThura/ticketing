@@ -2,13 +2,13 @@ import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { roleGrantsOwner } from "../../utils/workspace-member-roles";
 import { syncWorkspaceAdminReach } from "../workspace-admin-reach";
+import { lockWorkspaceRoleAssignment } from "../workspace-role-assignment.repository";
 import {
   OwnerRoleNotAssignableHereError,
   TargetUserNotFoundError,
   UserAlreadyMemberError,
   WorkspaceRoleNotFoundError,
 } from "./workspace-membership-errors";
-import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 export type AddWorkspaceMemberInput = {
   workspaceId: string;

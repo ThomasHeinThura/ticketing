@@ -92,5 +92,16 @@ describe("API-key permission scope intersection", () => {
         permissions: { work_item: ["update"], malformed: null as never },
       }),
     ).toEqual([]);
+    // A malformed ACTION anywhere (not only a malformed resource) voids the whole projection,
+    // even when other resources are valid and listed before or after it (#750).
+    for (const permissions of [
+      { project: ["read"], work_item: [1] },
+      { work_item: [1], project: ["read"] },
+      { project: ["read"], work_item: ["read", {}] },
+      { project: ["read"], work_item: "read" },
+    ])
+      expect(
+        apiKeyCapabilitySubset({ permissions: permissions as never }),
+      ).toEqual([]);
   });
 });

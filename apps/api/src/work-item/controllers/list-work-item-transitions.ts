@@ -6,6 +6,7 @@ import {
   resolveStateTemplateForProject,
   type TransitionOfferContext,
 } from "@taskdesk/domain";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { listApprovalsForWorkItemTransition } from "../../approval/repository";
 import {
   buildGuardContext,
@@ -54,6 +55,7 @@ export type WorkItemTransitionOffer = {
  */
 export async function listWorkItemTransitions(
   workItemId: string,
+  identity: ResolvedIdentity,
   personId: string | null,
   personSide: string | null = null,
 ): Promise<WorkItemTransitionOffer[]> {
@@ -80,6 +82,7 @@ export async function listWorkItemTransitions(
   )
     ? (
         await listApprovalsForWorkItemTransition(
+          identity,
           ctx.workItem.id,
           ctx.workItem.workspaceId,
         )

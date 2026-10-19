@@ -43,6 +43,15 @@ function actorType(apiKey: unknown): "person" | "api_key" {
   return apiKey ? "api_key" : "person";
 }
 
+async function requestApprovalIdentity(c: Context) {
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  return resolveApprovalIdentity(
+    c.get("userId"),
+    c.get("apiKey"),
+    session?.impersonatedBy,
+  );
+}
+
 function responseRow(row: {
   id: string;
   workItemId: string;
@@ -93,8 +102,8 @@ async function formatApproval(
   viewer: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
   knownTarget?: Awaited<ReturnType<typeof loadApprovalTargetByKey>>,
 ) {
-  const target =
-    knownTarget ?? (await loadApprovalTargetByKey(row.workItemKey));
+  const target = knownTarget;
+  if (!target) throw new Error("Approval formatting requires a scoped target");
   const approverIdentity = row.approverUserId
     ? row.approverUserId === viewer.userId
       ? viewer
@@ -124,7 +133,8 @@ async function formatReachableApprovals(
 ) {
   const formatted = await Promise.all(
     rows.map(async (row) => {
-      const target = await loadApprovalTargetByKey(row.workItemKey);
+      const target = await loadApprovalTargetByApprovalId(row.id, viewer);
+      if (!target) return null;
       if (target.workspaceId !== row.workspaceId) return null;
       return formatApproval(row, viewer, target);
     }),
@@ -145,7 +155,12 @@ async function withdrawApprovalForIdentity(input: {
   );
   if (!target) throw new HTTPException(404, { message: "Approval not found" });
   const row = (
-    await listApprovalRows(target.workItemId, target.workspaceId)
+    await listApprovalRows(
+      input.identity,
+      target.workItemId,
+      target.workspaceId,
+      input.allowInstanceAdmin,
+    )
   ).find((item) => item.id === input.id);
   if (!row) throw new HTTPException(404, { message: "Approval not found" });
   const withdrawal = await canWithdrawApproval(row, input.identity, target, {
@@ -161,7 +176,12 @@ async function withdrawApprovalForIdentity(input: {
     isInstanceAdmin: input.allowInstanceAdmin,
   });
   const fresh = (
-    await listApprovalRows(target.workItemId, target.workspaceId)
+    await listApprovalRows(
+      input.identity,
+      target.workItemId,
+      target.workspaceId,
+      input.allowInstanceAdmin,
+    )
   ).find((item) => item.id === updated.id);
   if (!fresh) throw new Error("Withdrawn approval could not be reloaded");
   return formatApproval(fresh, input.identity, target);
@@ -354,11 +374,11 @@ const decidePortalApprovalRoute = createRoute({
 function approvalRouter() {
   return apiRouter()
     .openapi(listWorkItemApprovalsRoute, async (c) => {
-      const identity = await resolveApprovalIdentity(
-        c.get("userId"),
-        c.get("apiKey"),
+      const identity = await requestApprovalIdentity(c);
+      const target = await loadApprovalTargetByKey(
+        identity,
+        c.req.valid("param").key,
       );
-      const target = await loadApprovalTargetByKey(c.req.valid("param").key);
       if (!(await hasWorkItemReach(identity, target))) {
         throw new HTTPException(404, { message: "Work item not found" });
       }
@@ -369,6 +389,7 @@ function approvalRouter() {
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
       const rows = await listApprovalRows(
+        identity,
         target.workItemId,
         target.workspaceId,
       );
@@ -386,13 +407,13 @@ function approvalRouter() {
       return c.json({ approvals }, 200);
     })
     .openapi(createWorkItemApprovalRoute, async (c) => {
-      const identity = await resolveApprovalIdentity(
-        c.get("userId"),
-        c.get("apiKey"),
-      );
+      const identity = await requestApprovalIdentity(c);
       if (identity.side !== "staff")
         throw new HTTPException(403, { message: "Staff only" });
-      const target = await loadApprovalTargetByKey(c.req.valid("param").key);
+      const target = await loadApprovalTargetByKey(
+        identity,
+        c.req.valid("param").key,
+      );
       if (!(await hasWorkItemReach(identity, target))) {
         throw new HTTPException(404, { message: "Work item not found" });
       }
@@ -426,6 +447,7 @@ function approvalRouter() {
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
       });
       const rows = await listApprovalRows(
+        identity,
         target.workItemId,
         target.workspaceId,
       );
@@ -434,10 +456,7 @@ function approvalRouter() {
       return c.json(await formatApproval(created, identity, target), 200);
     })
     .openapi(decideApprovalRoute, async (c) => {
-      const identity = await resolveApprovalIdentity(
-        c.get("userId"),
-        c.get("apiKey"),
-      );
+      const identity = await requestApprovalIdentity(c);
       const id = c.req.valid("param").id;
       const target = await loadApprovalTargetByApprovalId(id, identity);
       if (!target)
@@ -452,12 +471,17 @@ function approvalRouter() {
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
       const row = (
-        await listApprovalRows(target.workItemId, target.workspaceId)
+        await listApprovalRows(identity, target.workItemId, target.workspaceId)
       ).find((item) => item.id === id);
       if (!row) throw new HTTPException(404, { message: "Approval not found" });
       const isCabMember =
         row.kind === "cab"
-          ? await isCabTeamMember(identity.userId, target.workspaceId)
+          ? await isCabTeamMember(
+              identity,
+              identity.userId,
+              target.workspaceId,
+              target.workItemId,
+            )
           : false;
       if (
         row.kind === "cab" &&
@@ -480,16 +504,13 @@ function approvalRouter() {
         target,
       });
       const fresh = (
-        await listApprovalRows(target.workItemId, target.workspaceId)
+        await listApprovalRows(identity, target.workItemId, target.workspaceId)
       ).find((item) => item.id === updated.id);
       if (!fresh) throw new Error("Decided approval could not be reloaded");
       return c.json(await formatApproval(fresh, identity, target), 200);
     })
     .openapi(withdrawApprovalRoute, async (c) => {
-      const identity = await resolveApprovalIdentity(
-        c.get("userId"),
-        c.get("apiKey"),
-      );
+      const identity = await requestApprovalIdentity(c);
       const approval = await withdrawApprovalForIdentity({
         id: c.req.valid("param").id,
         identity,
@@ -504,7 +525,12 @@ function approvalRouter() {
         throw new HTTPException(403, {
           message: "Instance administrator session required",
         });
-      const identity = await resolveApprovalIdentity(userId);
+      const identity = await resolveApprovalIdentity(
+        userId,
+        undefined,
+        (c.get("session") as { impersonatedBy?: string | null } | null)
+          ?.impersonatedBy,
+      );
       const approval = await withdrawApprovalForIdentity({
         id: c.req.valid("param").id,
         identity,
@@ -514,11 +540,8 @@ function approvalRouter() {
       return c.json(approval, 200);
     })
     .openapi(listMyApprovalsRoute, async (c) => {
-      const identity = await resolveApprovalIdentity(
-        c.get("userId"),
-        c.get("apiKey"),
-      );
-      const rows = await listApprovalsForPerson(identity.personId, {
+      const identity = await requestApprovalIdentity(c);
+      const rows = await listApprovalsForPerson(identity, {
         addressedOnly: true,
         pendingOnly: true,
       });
@@ -526,15 +549,12 @@ function approvalRouter() {
       return c.json({ approvals }, 200);
     })
     .openapi(listPortalApprovalsRoute, async (c) => {
-      const identity = await resolveApprovalIdentity(
-        c.get("userId"),
-        c.get("apiKey"),
-      );
+      const identity = await requestApprovalIdentity(c);
       if (identity.side !== "customer")
         throw new HTTPException(403, {
           message: "Customer portal identity required",
         });
-      const rows = await listApprovalsForPerson(identity.personId, {
+      const rows = await listApprovalsForPerson(identity, {
         addressedOnly: true,
         pendingOnly: true,
       });
@@ -545,10 +565,7 @@ function approvalRouter() {
       return c.json({ approvals }, 200);
     })
     .openapi(decidePortalApprovalRoute, async (c) => {
-      const identity = await resolveApprovalIdentity(
-        c.get("userId"),
-        c.get("apiKey"),
-      );
+      const identity = await requestApprovalIdentity(c);
       if (identity.side !== "customer")
         throw new HTTPException(403, {
           message: "Customer portal identity required",
@@ -558,7 +575,7 @@ function approvalRouter() {
       if (!target)
         throw new HTTPException(404, { message: "Approval not found" });
       const row = (
-        await listApprovalRows(target.workItemId, target.workspaceId)
+        await listApprovalRows(identity, target.workItemId, target.workspaceId)
       ).find((item) => item.id === id);
       if (row?.kind !== "customer" || row.approverId !== identity.personId) {
         throw new HTTPException(403, {
@@ -581,7 +598,7 @@ function approvalRouter() {
         target,
       });
       const fresh = (
-        await listApprovalRows(target.workItemId, target.workspaceId)
+        await listApprovalRows(identity, target.workItemId, target.workspaceId)
       ).find((item) => item.id === updated.id);
       if (!fresh) throw new Error("Decided approval could not be reloaded");
       return c.json(await formatApproval(fresh, identity, target), 200);

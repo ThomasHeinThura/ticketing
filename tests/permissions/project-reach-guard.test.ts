@@ -111,8 +111,6 @@ function findDerivedProjectLookupProblems(
  * A stale entry, or one that also carries the declaration, fails.
  */
 const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
-  "GET /api/canned-responses":
-    "workspace-level reply templates; no project, task or work-item rows",
   "GET /api/project/organisations":
     "customer organisations (project:create picker); organisation rows, not project rows",
   "GET /api/request-types":

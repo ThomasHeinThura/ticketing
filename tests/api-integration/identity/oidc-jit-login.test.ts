@@ -1,5 +1,5 @@
 import { BUILT_IN_ROLES, defaultRolePayloads } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
@@ -69,21 +69,44 @@ const CUSTOMER_ORG_ID = "jit-login-customer-org";
 const CUSTOMER_ROLE_ID = "jit-login-customer-role";
 const PORTAL_HOST = "portal.localhost:5174";
 
+function resetEntraTokenValidatorMock() {
+  vi.mocked(validateEntraIdToken).mockImplementation(
+    (_token, _jwks, expectation) => ({
+      ok: true,
+      claims: {
+        iss: expectation.issuer,
+        tid: expectation.tenantId,
+        oid: SUBJECT,
+        email: "jit-first-login@example.test",
+        email_verified: true,
+        name: "JIT First Login",
+        acct: 0,
+        roles: ["TaskDesk.User"],
+      },
+    }),
+  );
+}
+
 beforeEach(async () => {
   vi.clearAllMocks();
+  // The setup's restoreAllMocks does not reset this module-level vi.fn implementation.
+  resetEntraTokenValidatorMock();
   await resetTestDatabase();
   await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
   process.env.TASKDESK_ENCRYPTION_KEY = ENCRYPTION_KEY;
   delete process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS;
 });
 
-async function creator(organisationId: string) {
+async function creator(organisationId: string, suffix = "") {
+  const id = suffix ? `jit-login-creator-${suffix}` : "jit-login-creator";
   const [user] = await db
     .insert(schema.userTable)
     .values({
-      id: "jit-login-creator",
+      id,
       name: "Creator",
-      email: "jit-creator@example.test",
+      email: suffix
+        ? `jit-creator-${suffix}@example.test`
+        : "jit-creator@example.test",
     })
     .returning();
   const [person] = await db
@@ -145,30 +168,72 @@ async function seedAgent(connectionId: string) {
   };
 }
 
-async function seedCustomer(connectionId: string) {
+async function ensureCanonicalCustomerRole() {
+  const matches = await db
+    .select()
+    .from(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.scope, BUILT_IN_ROLES.customer.scope),
+        eq(schema.roleTable.key, BUILT_IN_ROLES.customer.key),
+        isNull(schema.roleTable.workspaceId),
+      ),
+    )
+    .limit(2);
+  if (matches.length > 1)
+    throw new Error("customer built-in role is ambiguous");
+  const current = matches[0];
+  if (current) {
+    if (
+      current.scope !== BUILT_IN_ROLES.customer.scope ||
+      current.workspaceId !== null ||
+      current.key !== BUILT_IN_ROLES.customer.key ||
+      current.rank !== BUILT_IN_ROLES.customer.rank ||
+      JSON.stringify(current.capabilities) !==
+        JSON.stringify(BUILT_IN_ROLES.customer.capabilities) ||
+      current.isSystem !== true ||
+      current.isEditable !== false
+    )
+      throw new Error("existing customer built-in role is not canonical");
+    return current.id;
+  }
+  const [created] = await db
+    .insert(schema.roleTable)
+    .values({
+      id: CUSTOMER_ROLE_ID,
+      scope: BUILT_IN_ROLES.customer.scope,
+      workspaceId: null,
+      key: BUILT_IN_ROLES.customer.key,
+      name: "Customer",
+      rank: BUILT_IN_ROLES.customer.rank,
+      capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+      isSystem: true,
+      isEditable: false,
+    })
+    .returning();
+  if (!created) throw new Error("customer built-in role insert failed");
+  return created.id;
+}
+
+async function seedCustomer(connectionId: string, suffix?: string) {
+  const organisationId = suffix
+    ? `${CUSTOMER_ORG_ID}-${suffix}`
+    : CUSTOMER_ORG_ID;
+  const roleId = await ensureCanonicalCustomerRole();
   const internal = await ensureInternalOrganisation();
   await db.insert(schema.organisationTable).values({
-    id: CUSTOMER_ORG_ID,
-    key: "jit-login-customer",
+    id: organisationId,
+    key: `jit-login-customer${suffix ? `-${suffix}` : ""}`,
     name: "JIT Customer",
     isInternal: false,
     portalAccess: true,
   });
-  await db.insert(schema.roleTable).values({
-    id: CUSTOMER_ROLE_ID,
-    scope: "organisation",
-    workspaceId: null,
-    key: "customer",
-    name: "Customer",
-    rank: 0,
-    capabilities: [],
-  });
-  const createdBy = await creator(internal.id);
+  const createdBy = await creator(internal.id, suffix ?? "");
   await db.insert(schema.identityConnectionTable).values({
     id: connectionId,
     providerType: "entra",
     portalScope: "customer",
-    organisationId: CUSTOMER_ORG_ID,
+    organisationId,
     defaultWorkspaceId: null,
     displayName: "JIT customer",
     issuer: ISSUER,
@@ -181,7 +246,7 @@ async function seedCustomer(connectionId: string) {
     domainBindings: [],
     jitPolicy: {
       enabled: true,
-      default_role_id: CUSTOMER_ROLE_ID,
+      default_role_id: roleId,
       required_entra_app_role: "TaskDesk.User",
     },
     maxRoleRank: null,
@@ -191,8 +256,8 @@ async function seedCustomer(connectionId: string) {
   });
   return {
     scope: "organisation" as const,
-    scopeId: CUSTOMER_ORG_ID,
-    roleId: CUSTOMER_ROLE_ID,
+    scopeId: organisationId,
+    roleId,
   };
 }
 
@@ -231,6 +296,7 @@ async function expectJitIdentity(
     scopeId: string;
     roleId: string;
   },
+  expectedSubject = SUBJECT,
 ) {
   const [identity] = await db
     .select()
@@ -238,7 +304,7 @@ async function expectJitIdentity(
     .where(eq(schema.externalIdentityTable.identityConnectionId, connectionId));
   expect(identity).toMatchObject({
     issuer: ISSUER,
-    subject: SUBJECT,
+    subject: expectedSubject,
     provisionedVia: "jit",
     active: true,
   });
@@ -257,7 +323,7 @@ async function expectJitIdentity(
     .from(schema.accountTable)
     .where(eq(schema.accountTable.userId, identity?.userId ?? ""));
   expect(account?.providerId).toBe(`taskdesk-entra:${connectionId}`);
-  expect(account?.accountId).toBe(identityAccountId(ISSUER, SUBJECT));
+  expect(account?.accountId).toBe(identityAccountId(ISSUER, expectedSubject));
   expect(account?.accountId).not.toContain("\u0000");
   const [grant] = await db
     .select()
@@ -310,19 +376,222 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("/");
     await expectJitIdentity("jit-customer-connection", "customer", target);
+    expect(
+      response.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("__Host-tdk_portal_session=")),
+    ).toBe(true);
+  });
+
+  it("refuses JIT customer admission when its configured customer role is tampered", async () => {
+    const attemptConnectionId = "jit-tampered-customer-role-connection";
+    const attemptedSubject = "jit-tampered-customer-subject";
+    const unrelatedTarget = await seedCustomer(
+      "jit-unrelated-customer-session-connection",
+    );
+    const unrelatedResponse = await signIn(
+      "jit-unrelated-customer-session-connection",
+      "customer",
+    );
+    expect(unrelatedResponse.status).toBe(302);
+    await expectJitIdentity(
+      "jit-unrelated-customer-session-connection",
+      "customer",
+      unrelatedTarget,
+    );
+    const unrelatedIdentity = await db.query.externalIdentityTable.findFirst({
+      where: eq(
+        schema.externalIdentityTable.identityConnectionId,
+        "jit-unrelated-customer-session-connection",
+      ),
+    });
+    expect(unrelatedIdentity?.userId).toBeTruthy();
+
+    const target = await seedCustomer(attemptConnectionId, "tampered");
+    // The built-in customer role is global for (scope, null workspace, key), so both
+    // connections intentionally share it. The unrelated session below is only checked for
+    // persistence after tampering; this does not claim the now-tampered role remains usable.
+    expect(target.roleId).toBe(unrelatedTarget.roleId);
+    vi.mocked(validateEntraIdToken).mockImplementation(
+      (_token, _jwks, expectation) => ({
+        ok: true,
+        claims: {
+          iss: expectation.issuer,
+          tid: expectation.tenantId,
+          oid: attemptedSubject,
+          email: "jit-tampered-customer@example.test",
+          email_verified: true,
+          name: "Tampered Customer",
+          acct: 0,
+          roles: ["TaskDesk.User"],
+        },
+      }),
+    );
+    const initialResponse = await signIn(attemptConnectionId, "customer");
+    expect(initialResponse.status).toBe(302);
+    await expectJitIdentity(
+      attemptConnectionId,
+      "customer",
+      target,
+      attemptedSubject,
+    );
+    const attemptedIdentity = await db.query.externalIdentityTable.findFirst({
+      where: and(
+        eq(
+          schema.externalIdentityTable.identityConnectionId,
+          attemptConnectionId,
+        ),
+        eq(schema.externalIdentityTable.subject, attemptedSubject),
+      ),
+    });
+    expect(attemptedIdentity?.userId).toBeTruthy();
+    expect(attemptedIdentity?.userId).not.toBe(unrelatedIdentity?.userId);
+    await db
+      .delete(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, attemptedIdentity?.userId ?? ""));
+    expect(
+      await db.query.sessionTable.findFirst({
+        where: eq(schema.sessionTable.userId, attemptedIdentity?.userId ?? ""),
+      }),
+    ).toBeUndefined();
+
+    await db
+      .update(schema.roleTable)
+      .set({
+        rank: 0,
+        capabilities: [],
+        isSystem: false,
+        isEditable: true,
+      })
+      .where(eq(schema.roleTable.id, target.roleId));
+    expect(
+      await db.query.roleTable.findFirst({
+        where: eq(schema.roleTable.id, target.roleId),
+      }),
+    ).toMatchObject({
+      rank: 0,
+      capabilities: [],
+      isSystem: false,
+      isEditable: true,
+    });
+    vi.mocked(validateEntraIdToken).mockClear();
+
+    const response = await signIn(attemptConnectionId, "customer");
+    expect(response.headers.get("location")).toContain("identity_error");
+    expect(validateEntraIdToken).toHaveBeenCalled();
+    expect(
+      await db.query.roleTable.findFirst({
+        where: eq(schema.roleTable.id, target.roleId),
+      }),
+    ).toMatchObject({
+      rank: 0,
+      capabilities: [],
+      isSystem: false,
+      isEditable: true,
+    });
+    expect(
+      await db.query.externalIdentityTable.findFirst({
+        where: and(
+          eq(
+            schema.externalIdentityTable.identityConnectionId,
+            attemptConnectionId,
+          ),
+          eq(schema.externalIdentityTable.subject, attemptedSubject),
+        ),
+      }),
+    ).toMatchObject({
+      userId: attemptedIdentity?.userId,
+      subject: attemptedSubject,
+    });
+    expect(
+      response.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("__Host-tdk_portal_session=")),
+    ).toBe(false);
+    expect(
+      await db.query.sessionTable.findFirst({
+        where: and(
+          eq(schema.sessionTable.portal, "customer"),
+          eq(schema.sessionTable.userId, attemptedIdentity?.userId ?? ""),
+        ),
+      }),
+    ).toBeUndefined();
+    expect(
+      await db.query.sessionTable.findFirst({
+        where: and(
+          eq(schema.sessionTable.portal, "customer"),
+          eq(schema.sessionTable.userId, unrelatedIdentity?.userId ?? ""),
+        ),
+      }),
+    ).toMatchObject({
+      userId: unrelatedIdentity?.userId,
+      portal: "customer",
+    });
+    const [targetPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, attemptedIdentity?.userId ?? ""));
+    const [unrelatedPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, unrelatedIdentity?.userId ?? ""));
+    const [retiredTargetGrant] = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(schema.membershipGrantTable.personId, targetPerson?.id ?? ""),
+          eq(schema.membershipGrantTable.sourceKind, "jit_default"),
+        ),
+      );
+    expect(retiredTargetGrant).toMatchObject({
+      roleId: target.roleId,
+      revokedAt: expect.any(Date),
+      revocationReason: "mapping_changed",
+    });
+    const [unrelatedGrant] = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(schema.membershipGrantTable.personId, unrelatedPerson?.id ?? ""),
+          eq(schema.membershipGrantTable.sourceKind, "jit_default"),
+        ),
+      );
+    expect(unrelatedGrant).toMatchObject({
+      roleId: unrelatedTarget.roleId,
+      revokedAt: null,
+    });
+  });
+
+  it("resets the OIDC validator's default principal between tests", () => {
+    expect(
+      validateEntraIdToken("opaque-test-id-token", null, {
+        issuer: ISSUER,
+        tenantId: TENANT_ID,
+        clientId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        nonce: "fixture-nonce",
+      }),
+    ).toMatchObject({
+      ok: true,
+      claims: {
+        oid: SUBJECT,
+        email: "jit-first-login@example.test",
+        roles: ["TaskDesk.User"],
+      },
+    });
   });
 
   it("denies mixed native/projected view admission and retires the OIDC grant on failed admission", async () => {
-    await seedAgent("jit-admission-retention-connection");
+    const connectionId = "jit-admission-retention-connection";
+    const target = await seedAgent(connectionId);
     await db
       .update(schema.roleTable)
       .set({ capabilities: [...BUILT_IN_ROLES.manager.capabilities] })
       .where(eq(schema.roleTable.id, AGENT_ROLE_ID));
-    const admitted = await signIn(
-      "jit-admission-retention-connection",
-      "agent",
-    );
+    const admitted = await signIn(connectionId, "agent");
     expect(admitted.status).toBe(302);
+    await expectJitIdentity(connectionId, "agent", target);
     const sessionCookie = admitted.headers
       .getSetCookie()
       .find((value) => value.startsWith("__Host-tdk_agent_session="))
@@ -333,10 +602,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
       .select()
       .from(schema.externalIdentityTable)
       .where(
-        eq(
-          schema.externalIdentityTable.identityConnectionId,
-          "jit-admission-retention-connection",
-        ),
+        eq(schema.externalIdentityTable.identityConnectionId, connectionId),
       );
     expect(identity?.userId).toBeTruthy();
     expect(identity?.personId).toBeTruthy();
@@ -413,7 +679,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
         },
       }),
     );
-    const refused = await signIn("jit-admission-retention-connection", "agent");
+    const refused = await signIn(connectionId, "agent");
     expect(refused.headers.get("location")).toContain("identity_error");
 
     const [admissionFailure] = await db
@@ -421,10 +687,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
       .from(schema.provisioningEventTable)
       .where(
         and(
-          eq(
-            schema.provisioningEventTable.identityConnectionId,
-            "jit-admission-retention-connection",
-          ),
+          eq(schema.provisioningEventTable.identityConnectionId, connectionId),
           eq(schema.provisioningEventTable.kind, "auth.failed"),
         ),
       );
@@ -444,6 +707,25 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
       revocationReason: "admission_failed",
       revokedAt: expect.any(Date),
     });
+    const [identityAfterFailure] = await db
+      .select()
+      .from(schema.externalIdentityTable)
+      .where(
+        eq(schema.externalIdentityTable.identityConnectionId, connectionId),
+      );
+    expect(identityAfterFailure).toMatchObject({
+      id: identity?.id,
+      userId: identity?.userId,
+      issuer: ISSUER,
+      subject: SUBJECT,
+    });
+    const [accountAfterFailure] = await db
+      .select()
+      .from(schema.accountTable)
+      .where(eq(schema.accountTable.userId, identity?.userId ?? ""));
+    expect(accountAfterFailure?.accountId).toBe(
+      identityAccountId(ISSUER, SUBJECT),
+    );
     expect(
       await db.query.workspaceUserTable.findFirst({
         where: and(
@@ -484,10 +766,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
         },
       }),
     );
-    const restored = await signIn(
-      "jit-admission-retention-connection",
-      "agent",
-    );
+    const restored = await signIn(connectionId, "agent");
     expect(restored.status).toBe(302);
     expect(await db.query.pendingActionTable.findFirst()).toBeUndefined();
   });

@@ -152,9 +152,9 @@ function WorkItemActivity({
   const { data: people } = useGetActiveWorkspaceUsers(workspaceId);
   const activity = useGetWorkItemActivity({ key: workItemKey });
   const cannedResponses = useQuery({
-    queryKey: ["canned-responses", workspaceId],
-    queryFn: () => listCannedResponses(workspaceId),
-    enabled: Boolean(workspaceId),
+    queryKey: ["canned-responses", workItemKey],
+    queryFn: () => listCannedResponses(workItemKey),
+    enabled: Boolean(workItemKey),
   });
   const queryClient = useQueryClient();
   const createComment = useCreateWorkItemComment();

@@ -71,8 +71,19 @@ async function acquireMetricsPortLease() {
     await new Promise((resolveLease, rejectLease) => {
       const onError = (error) => rejectLease(error);
       server.once("error", onError);
-      server.listen(metricsPort, "0.0.0.0", () => {
+      server.listen(metricsPort, "127.0.0.1", () => {
         server.off("error", onError);
+        const address = server.address();
+        if (
+          !address ||
+          typeof address === "string" ||
+          address.address !== "127.0.0.1"
+        ) {
+          server.close(() =>
+            rejectLease(new Error("Fixture metrics lease bound unexpectedly")),
+          );
+          return;
+        }
         resolveLease();
       });
     });

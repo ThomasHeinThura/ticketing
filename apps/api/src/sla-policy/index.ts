@@ -12,12 +12,12 @@ import { requireApiKeyPermissionScope } from "../utils/require-api-key-permissio
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { PolicyVersionConflictError } from "./errors";
 import {
   createPolicy,
   getPolicy,
   getPolicyWorkspace,
   listPolicies,
-  PolicyVersionConflictError,
   publishPolicy,
   updatePolicy,
 } from "./repository";
