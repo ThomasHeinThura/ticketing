@@ -1,7 +1,8 @@
 import { and, eq, exists, isNull, ne, or } from "drizzle-orm";
 import db, { schema } from "../database";
+import type { Executor } from "../database/executor";
 import { notificationTable, projectTable } from "../database/schema";
-import { projectReachPredicate } from "./task-reach";
+import { projectReachPredicate } from "./task-reach.repository";
 
 /**
  * Current-reach read predicate for inbox rows with `resource_type = 'approval'` (pre-wiring
@@ -12,10 +13,13 @@ import { projectReachPredicate } from "./task-reach";
  * private item is visible to that person, and the user still has staff project reach.
  * Anything else, including a customer recipient, is not readable: it fails closed.
  */
-function reachableApprovalNotificationPredicate(userId: string) {
+function reachableApprovalNotificationPredicate(
+  userId: string,
+  executor: Executor,
+) {
   const person = schema.personTable;
   return exists(
-    db
+    executor
       .select({ id: schema.approvalTable.id })
       .from(schema.approvalTable)
       .innerJoin(
@@ -42,7 +46,7 @@ function reachableApprovalNotificationPredicate(userId: string) {
             eq(schema.approvalTable.approverId, notificationTable.personId),
             eq(schema.approvalTable.requestedBy, notificationTable.personId),
             exists(
-              db
+              executor
                 .select({ id: schema.watcherTable.personId })
                 .from(schema.watcherTable)
                 .where(
@@ -60,7 +64,7 @@ function reachableApprovalNotificationPredicate(userId: string) {
             ne(schema.workItemTable.customerVisibility, "private"),
             eq(schema.workItemTable.requesterId, notificationTable.personId),
             exists(
-              db
+              executor
                 .select({ id: schema.requestParticipantTable.personId })
                 .from(schema.requestParticipantTable)
                 .where(
@@ -78,7 +82,7 @@ function reachableApprovalNotificationPredicate(userId: string) {
             ),
           ),
           exists(
-            db
+            executor
               .select({ id: person.id })
               .from(person)
               .where(
@@ -90,17 +94,20 @@ function reachableApprovalNotificationPredicate(userId: string) {
                 ),
               ),
           ),
-          projectReachPredicate(userId),
+          projectReachPredicate(userId, executor),
         ),
       ),
   );
 }
 
 /** Rows of any other type pass; `approval` rows need current reach. Used by every inbox read path. */
-export function approvalNotificationReadable(userId: string) {
+export function approvalNotificationReadable(
+  userId: string,
+  executor: Executor = db,
+) {
   return or(
     isNull(notificationTable.resourceType),
     ne(notificationTable.resourceType, "approval"),
-    reachableApprovalNotificationPredicate(userId),
+    reachableApprovalNotificationPredicate(userId, executor),
   );
 }

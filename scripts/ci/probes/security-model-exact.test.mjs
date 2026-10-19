@@ -175,6 +175,18 @@ describe("the accepted list is read from the merge base", () => {
     assert.equal(runForModel(dir, "GPT-6 Sol").status, 0);
   });
 
+  it("accepts Gemini 4 Argon when the merge base lists it", () => {
+    const dir = reviewedScenario({
+      baseModels: ["GPT-6 Sol", OPUS, "Gemini 4 Argon"],
+    });
+    const result = runForModel(dir, "Gemini 4 Argon");
+    assert.equal(
+      result.status,
+      0,
+      `Gemini 4 Argon with valid evidence must pass when listed at merge base:\n${result.output}`,
+    );
+  });
+
   it("rejects a model the merge base no longer lists", () => {
     const dir = reviewedScenario({ baseModels: [OPUS] });
     const result = runForModel(dir, "GPT-6 Sol");
@@ -217,6 +229,22 @@ describe("the accepted list is read from the merge base", () => {
         assert.equal(result.status, 0, result.output);
         return;
       }
+      assert.equal(result.status, 1, result.output);
+      assert.match(result.output, /must be exactly one of/);
+    });
+  }
+
+  for (const nearMiss of [
+    "Gemini 4 Argon (gemini-4-argon)",
+    "gemini-4-argon",
+    "Gemini 4",
+    "Gemini-4-Argon",
+  ]) {
+    it(`rejects the Gemini near miss ${JSON.stringify(nearMiss)}`, () => {
+      const dir = reviewedScenario({
+        baseModels: ["GPT-6 Sol", OPUS, "Gemini 4 Argon"],
+      });
+      const result = runForModel(dir, nearMiss);
       assert.equal(result.status, 1, result.output);
       assert.match(result.output, /must be exactly one of/);
     });

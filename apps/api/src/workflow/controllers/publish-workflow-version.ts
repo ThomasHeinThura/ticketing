@@ -1,12 +1,14 @@
-import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
+import type { ResolveIdentityInput } from "../../permissions/resolve-identity";
+import { resolveIdentity } from "../../permissions/resolve-identity";
 import {
-  personTable,
-  workflowTable,
-  workflowTransitionTable,
-  workflowVersionTable,
-} from "../../database/schema";
+  findWorkflowVersion,
+  hasCompleteWorkflowProjectReach,
+  listVersionTransitions,
+  setActiveWorkflowVersion,
+  stampVersionPublished,
+} from "../repository";
 
 /**
  * Publishes `number` for `workflowId`: stamps `published_at`/`published_by` on that
@@ -16,50 +18,72 @@ import {
  * version" route to enforce it against.
  */
 async function publishWorkflowVersion(
+  identityInput: ResolveIdentityInput,
   workflowId: string,
   number: number,
-  userId: string,
 ) {
-  const [version] = await db
-    .select()
-    .from(workflowVersionTable)
-    .where(
-      and(
-        eq(workflowVersionTable.workflowId, workflowId),
-        eq(workflowVersionTable.number, number),
-      ),
-    )
-    .limit(1);
-
-  if (!version) {
-    throw new HTTPException(404, { message: "Workflow version not found" });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await db.transaction(
+        async (tx) => {
+          const identity = await resolveIdentity(identityInput, tx);
+          if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+          const version = await findWorkflowVersion(
+            identity,
+            workflowId,
+            number,
+            tx,
+          );
+          if (!version) {
+            throw new HTTPException(404, {
+              message: "Workflow version not found",
+            });
+          }
+          if (
+            !(await hasCompleteWorkflowProjectReach(identity, workflowId, tx))
+          ) {
+            throw new HTTPException(403, {
+              message: "Workflow project access required",
+            });
+          }
+          const published = await stampVersionPublished(
+            tx,
+            version.id,
+            identity.personId,
+          );
+          if (!published)
+            throw new HTTPException(404, {
+              message: "Workflow version not found",
+            });
+          await setActiveWorkflowVersion(tx, workflowId, version.id);
+          const transitions = await listVersionTransitions(
+            identity,
+            version.id,
+            tx,
+          );
+          return { ...published, transitions };
+        },
+        { isolationLevel: "serializable" },
+      );
+    } catch (error) {
+      let current: unknown = error;
+      let serializationFailure = false;
+      for (
+        let depth = 0;
+        depth < 5 && current && typeof current === "object";
+        depth += 1
+      ) {
+        const value = current as { code?: unknown; cause?: unknown };
+        if (value.code === "40001") {
+          serializationFailure = true;
+          break;
+        }
+        current = value.cause;
+      }
+      if (!serializationFailure || attempt === 2) throw error;
+    }
   }
-
-  const [caller] = await db
-    .select({ id: personTable.id })
-    .from(personTable)
-    .where(eq(personTable.userId, userId))
-    .limit(1);
-
-  return db.transaction(async (tx) => {
-    const [published] = await tx
-      .update(workflowVersionTable)
-      .set({ publishedAt: new Date(), publishedBy: caller?.id ?? null })
-      .where(eq(workflowVersionTable.id, version.id))
-      .returning();
-
-    await tx
-      .update(workflowTable)
-      .set({ activeVersionId: version.id })
-      .where(eq(workflowTable.id, workflowId));
-
-    const transitions = await tx
-      .select()
-      .from(workflowTransitionTable)
-      .where(eq(workflowTransitionTable.versionId, version.id));
-
-    return { ...published, transitions };
-  });
+  throw new Error("Workflow publication transaction exhausted its retries");
 }
 
 export default publishWorkflowVersion;

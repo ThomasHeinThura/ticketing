@@ -1,9 +1,11 @@
+import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import deleteWorkflowRule from "./controllers/delete-workflow-rule";
@@ -91,14 +93,24 @@ const deleteWorkflowRuleRoute = createRoute({
 });
 
 const workflowRule = apiRouter()
-  .openapi(getWorkflowRulesRoute, async (c) =>
-    c.json(await getWorkflowRules(c.req.valid("param").projectId), 200),
-  )
+  .openapi(getWorkflowRulesRoute, async (c) => {
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity)
+      throw new HTTPException(404, { message: "Project not found" });
+    return c.json(
+      await getWorkflowRules(identity, c.req.valid("param").projectId),
+      200,
+    );
+  })
   .openapi(upsertWorkflowRuleRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const { integrationType, eventType, columnId } = c.req.valid("json");
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity)
+      throw new HTTPException(404, { message: "Project not found" });
     return c.json(
       await upsertWorkflowRule({
+        identity,
         projectId,
         integrationType,
         eventType,
@@ -107,8 +119,14 @@ const workflowRule = apiRouter()
       200,
     );
   })
-  .openapi(deleteWorkflowRuleRoute, async (c) =>
-    c.json(await deleteWorkflowRule(c.req.valid("param").id), 200),
-  );
+  .openapi(deleteWorkflowRuleRoute, async (c) => {
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity)
+      throw new HTTPException(404, { message: "Workflow rule not found" });
+    return c.json(
+      await deleteWorkflowRule(identity, c.req.valid("param").id),
+      200,
+    );
+  });
 
 export default workflowRule;

@@ -1,3 +1,4 @@
+import { HTTPException } from "hono/http-exception";
 import { activitySchema } from "../activity/response";
 import {
   apiRouter,
@@ -5,6 +6,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createComment from "./controllers/create-comment";
@@ -127,9 +129,16 @@ const deleteTaskCommentRoute = createRoute({
 });
 
 const comment = apiRouter()
-  .openapi(getTaskCommentsRoute, async (c) =>
-    c.json(await getComments(c.req.valid("param").taskId), 200),
-  )
+  .openapi(getTaskCommentsRoute, async (c) => {
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity) {
+      throw new HTTPException(404, { message: "Task not found" });
+    }
+    return c.json(
+      await getComments(identity, c.req.valid("param").taskId),
+      200,
+    );
+  })
   .openapi(createTaskCommentRoute, async (c) => {
     const { taskId } = c.req.valid("param");
     const { content, externalUserName, externalSource } = c.req.valid("json");

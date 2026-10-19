@@ -48,14 +48,26 @@ What does not change: omission stays detectable in the application — see
 ### Query scoping
 
 Every query that can return cross-organisation data passes through a scoped repository
-helper that takes the resolved identity:
+function that takes the resolved identity and applies the caller's reach in the statement
+predicate. A workspace or project id may further narrow the query, but the repository must
+check it against that identity; the id alone is not authoritative scope.
 
 ```ts
-const items = await workItems.forIdentity(identity).inProject(projectId).list(filter);
+const items = await listWorkItemsInProject(identity, projectId, filter);
 ```
 
-A lint rule forbids calling `db.select().from(workItem)` outside
-`apps/api/src/*/repository.ts`, so ad-hoc unscoped queries cannot creep into controllers.
+The accepted `workItems.forIdentity(identity).inProject(projectId)` shape illustrates this
+resolved-identity scoping convention. It does not claim that a literal fluent API or a
+universal phantom type is implemented or proven for every repository. The required behavior
+is that the repository derives and applies the authorized scope from the resolved identity;
+any additional tenant id is checked against that scope. See
+[coding-standards.md](../04-engineering/coding-standards.md).
+
+The planned `check:queries` gate (issue #580) will forbid building statements such as
+`db.select().from(workItem)` outside repository modules once it is wired. This check enforces
+query ownership, not tenant-predicate correctness; the tenant-scope contract is defined in
+[coding standards](../04-engineering/coding-standards.md#query-ownership-issue-580). The gate
+is not currently wired.
 
 ### The 404 rule
 

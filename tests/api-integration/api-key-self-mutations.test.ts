@@ -42,9 +42,23 @@ describe("API-key access to self-only writes", () => {
       updatedAt: now,
     });
 
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, member.user.id));
+    expect(person).toBeDefined();
     const [existingNotification] = await db
       .insert(schema.notificationTable)
-      .values({ userId: member.user.id, type: "info", isRead: false })
+      .values({
+        userId: member.user.id,
+        personId: person?.id,
+        type: "security_alert",
+        resourceType: "person",
+        resourceId: person?.id,
+        eventData: { kind: "mfa_reset" },
+        title: "Two-factor authentication reset",
+        isRead: false,
+      })
       .returning();
     expect(existingNotification).toBeDefined();
 

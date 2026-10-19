@@ -11,16 +11,13 @@ import {
 } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import db from "../../database";
-import { isLockNotAvailable } from "../../utils/is-lock-not-available";
+import type { Executor, Transaction } from "../../database/executor";
 import {
   membershipGrantTable,
   membershipTable,
   personTable,
   projectTable,
-  userTable,
-  workflowTable,
   workspaceTable,
-  workspaceUserTable,
 } from "../../database/schema";
 import {
   AccountDeletionRetryError,
@@ -30,76 +27,33 @@ import {
   requestAccountDeletionRetry,
 } from "../../pending-action/credential-invalidation";
 import { revokeProjectCreatorGrantsForMember } from "../../project/project-creator-grant";
+import { isLockNotAvailable } from "../../utils/is-lock-not-available";
 import {
   deleteWorkspaceRoleDependents,
   workspaceDependentPredicates,
 } from "../../workspace/controllers/delete-workspace-role-dependents";
-import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
 import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
-
-type AccountDeletionTransaction = Parameters<
-  Parameters<typeof db.transaction>[0]
->[0];
+import { lockWorkspaceRoleAssignment } from "../../workspace/workspace-role-assignment.repository";
 
 import {
   formatBlockedWorkspacesMessage,
   formatOtherAccessMessage,
-  hasOwnerRole,
-  holdsOwnerExactly,
   planAccountDeletion,
   type WorkspaceMembershipSummary,
 } from "../account-deletion";
+import {
+  deleteUserMemberships,
+  deleteWorkflowsInWorkspaces,
+  deleteWorkspacesByIds,
+  listAccountErasureMembershipSummaries,
+  lockUserRow,
+} from "../repository";
 
 async function collectMemberships(
-  database: AccountDeletionTransaction | typeof db,
+  database: Executor,
   userId: string,
 ): Promise<WorkspaceMembershipSummary[]> {
-  const memberships = await database
-    .select({
-      workspaceId: workspaceUserTable.workspaceId,
-      role: workspaceUserTable.role,
-    })
-    .from(workspaceUserTable)
-    .where(eq(workspaceUserTable.userId, userId));
-
-  if (memberships.length === 0) {
-    return [];
-  }
-
-  const workspaceIds = memberships.map((membership) => membership.workspaceId);
-
-  const members = await database
-    .select({
-      workspaceId: workspaceUserTable.workspaceId,
-      workspaceName: workspaceTable.name,
-      role: workspaceUserTable.role,
-    })
-    .from(workspaceUserTable)
-    .innerJoin(
-      workspaceTable,
-      eq(workspaceUserTable.workspaceId, workspaceTable.id),
-    )
-    .where(inArray(workspaceUserTable.workspaceId, workspaceIds));
-
-  return memberships.map((membership) => {
-    const workspaceMembers = members.filter(
-      (member) => member.workspaceId === membership.workspaceId,
-    );
-
-    return {
-      workspaceId: membership.workspaceId,
-      workspaceName: workspaceMembers[0]?.workspaceName ?? "workspace",
-      isOwner: hasOwnerRole(membership.role),
-      memberCount: workspaceMembers.length,
-      // EXACT, not `hasOwnerRole`. Over-counting owners makes
-      // `ownerCount <= 1` false, which skips `planAccountDeletion`'s block and
-      // lets a sole owner orphan the workspace. `isOwner` above keeps the
-      // inclusive reading, deliberately -- see `holdsOwnerExactly`'s comment.
-      ownerCount: workspaceMembers.filter((member) =>
-        holdsOwnerExactly(member.role),
-      ).length,
-    };
-  });
+  return await listAccountErasureMembershipSummaries(database, userId);
 }
 
 /**
@@ -119,7 +73,7 @@ async function collectMemberships(
  * workspace deletes the project and its work items, so those people would lose access.
  */
 async function workspacesWithOtherAccess(
-  tx: AccountDeletionTransaction,
+  tx: Transaction,
   workspaceIds: readonly string[],
   userId: string,
 ): Promise<{ id: string; name: string }[]> {
@@ -214,7 +168,7 @@ export async function deleteAccountData(userId: string) {
 
 async function deleteAccountDataInTransaction(
   userId: string,
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: Transaction,
   accountDeletion: boolean,
 ) {
   const before = await collectMemberships(tx, userId);
@@ -223,11 +177,7 @@ async function deleteAccountDataInTransaction(
   ].sort()) {
     await lockWorkspaceRoleAssignment(tx, workspaceId);
   }
-  await tx
-    .select({ id: userTable.id })
-    .from(userTable)
-    .where(eq(userTable.id, userId))
-    .for("update");
+  await lockUserRow(tx, userId);
   const memberships = await collectMemberships(tx, userId);
   const beforeIds = before.map((row) => row.workspaceId).sort();
   const afterIds = memberships.map((row) => row.workspaceId).sort();
@@ -318,28 +268,17 @@ async function deleteAccountDataInTransaction(
     // `workflow_version`/`workflow_transition`/`scheduled_transition` before the
     // workspace delete cascades into the `state_template`/`role` rows those
     // transitions restrict against.
-    await tx
-      .delete(workflowTable)
-      .where(inArray(workflowTable.workspaceId, plan.workspaceIdsToDelete));
+    await deleteWorkflowsInWorkspaces(tx, userId, plan.workspaceIdsToDelete);
 
     // Issue #180: RESTRICT role FKs (membership, grants, group mappings) must be
     // cleared explicitly or the workspace delete below 500s.
     await deleteWorkspaceRoleDependents(tx, plan.workspaceIdsToDelete);
 
-    await tx
-      .delete(workspaceTable)
-      .where(inArray(workspaceTable.id, plan.workspaceIdsToDelete));
+    await deleteWorkspacesByIds(tx, userId, plan.workspaceIdsToDelete);
   }
 
   if (plan.workspaceIdsToLeave.length > 0) {
-    await tx
-      .delete(workspaceUserTable)
-      .where(
-        and(
-          eq(workspaceUserTable.userId, userId),
-          inArray(workspaceUserTable.workspaceId, plan.workspaceIdsToLeave),
-        ),
-      );
+    await deleteUserMemberships(tx, userId, plan.workspaceIdsToLeave);
     for (const workspaceId of plan.workspaceIdsToLeave) {
       await syncWorkspaceAdminReach(tx, workspaceId, userId);
       await revokeProjectCreatorGrantsForMember(tx, workspaceId, userId);

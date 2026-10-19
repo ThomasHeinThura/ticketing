@@ -3,7 +3,10 @@ import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
-import { projectReadDecision } from "./has-project-reach";
+import {
+  projectCapabilityRefused,
+  projectReadDecision,
+} from "./has-project-reach";
 import { isCustomerPrincipal } from "./is-customer-principal";
 
 /**
@@ -49,8 +52,10 @@ export async function assertWorkItemProjectReach(
     throw new HTTPException(404, { message: options.notFoundMessage });
   }
   if (
-    !decision.capable &&
-    !(options.deferApiKeyCapability === true && c.get("apiKey"))
+    projectCapabilityRefused(decision, {
+      deferApiKeyCapability: options.deferApiKeyCapability,
+      isApiKey: Boolean(c.get("apiKey")),
+    })
   ) {
     setShadowLegacyAuthorization(c, "denied");
     throw new HTTPException(403, { message: "Insufficient permissions" });

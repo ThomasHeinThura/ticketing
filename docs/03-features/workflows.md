@@ -93,8 +93,13 @@ Jira has this and charges for it. Plane and kaneo do not have it at all.
   remains interpretable after a change.
 - `WF-9` If a work item's concrete state maps to a template that the new version has no
   outbound transition from, it is *stuck*. The editor detects this before publishing —
-  checking every project whose work item types use this workflow, not just one — and
-  lists affected items.
+  checking every project in the workflow's workspace, including projects with no work
+  items and archived projects — and lists affected items. `work_item_type` is workspace-
+  scoped and no project-to-type adoption table exists, so WF-9's adopting-project set is
+  every project in that workspace. The caller must have access to every project in this
+  set for complete validation; otherwise validation returns a generic refusal with no
+  project or item details. Publishing applies the same complete-reach requirement and
+  must not silently validate or publish against only a reachable subset.
 
 **Notes**
 
@@ -152,6 +157,9 @@ the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.
   row whose item has already left `from_state_id`
   ([data-model.md](../01-architecture/data-model.md)) — the "pending until" pattern,
   fired by the scheduler and cancelled if the item leaves the state first.
+  Authoring checks the `set_assignee` payload shape only; an unknown person id may be
+  saved. At execution, the selected person must be eligible in the work item's active
+  project roster; if not, refuse the complete transition without applying any effect.
 - `set_field { field, value }` is held for this release. No field namespace or value
   validation has been defined. The legacy request shape remains documented for wire
   compatibility, but any new version containing it is refused with HTTP 400 before

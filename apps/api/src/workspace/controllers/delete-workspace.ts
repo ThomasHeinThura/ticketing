@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
+import { lockWorkspaceRoleAssignment } from "../workspace-role-assignment.repository";
 import { deleteWorkspaceRoleDependents } from "./delete-workspace-role-dependents";
-import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 /**
  * Delete a workspace.

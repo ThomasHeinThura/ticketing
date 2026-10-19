@@ -1,13 +1,14 @@
-import { eq, sql } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { columnTable, taskTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import {
+  countTasksInColumn,
+  deleteColumnById,
+  findColumnById,
+} from "../repository";
 
-async function deleteColumn(id: string) {
-  const existing = await db.query.columnTable.findFirst({
-    where: eq(columnTable.id, id),
-  });
+async function deleteColumn(identity: ResolvedIdentity, id: string) {
+  const existing = await findColumnById(identity, id);
 
   if (!existing) {
     throw new HTTPException(404, { message: "Column not found" });
@@ -18,10 +19,7 @@ async function deleteColumn(id: string) {
   // project (#187); the workspace id itself isn't needed here.
   await getProjectWorkspaceId(existing.projectId);
 
-  const [taskCount] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(taskTable)
-    .where(eq(taskTable.columnId, id));
+  const taskCount = await countTasksInColumn(identity, id);
 
   if (taskCount && taskCount.count > 0) {
     throw new HTTPException(409, {
@@ -30,9 +28,9 @@ async function deleteColumn(id: string) {
     });
   }
 
-  await db.delete(columnTable).where(eq(columnTable.id, id));
-
-  return existing;
+  const deleted = await deleteColumnById(identity, id);
+  if (!deleted) throw new HTTPException(404, { message: "Column not found" });
+  return deleted;
 }
 
 export default deleteColumn;

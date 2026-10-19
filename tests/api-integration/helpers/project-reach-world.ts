@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
-import { expect } from "vitest";
+import { and, eq } from "drizzle-orm";
+import { expect, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { mockAuthenticatedSession } from "./auth";
 import {
@@ -169,6 +169,26 @@ export async function seedProjectRows(
     description: "d",
     priority: "medium",
     status: "to-do",
+  });
+  const createdActivity = await vi.waitFor(async () => {
+    const [activity] = await db
+      .select()
+      .from(schema.taskActivityTable)
+      .where(
+        and(
+          eq(schema.taskActivityTable.taskId, task.id),
+          eq(schema.taskActivityTable.type, "created"),
+          eq(schema.taskActivityTable.userId, world.projectAdmin.user.id),
+        ),
+      )
+      .limit(1);
+    if (!activity) throw new Error("task.created activity has not persisted");
+    return activity;
+  });
+  expect(createdActivity).toMatchObject({
+    taskId: task.id,
+    type: "created",
+    userId: world.projectAdmin.user.id,
   });
   return {
     projectId,

@@ -1,7 +1,7 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { cannedResponseTable } from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import { insertCannedResponse } from "../repository";
 
 export type CreateCannedResponseInput = {
   workspaceId: string;
@@ -17,18 +17,18 @@ export type CreateCannedResponseInput = {
  * as a clean 409 rather than the raw constraint-violation 500, matching this codebase's
  * own convention (`create-work-item.ts`'s `work_item_key_claim_pkey` handling).
  */
-export async function createCannedResponse(input: CreateCannedResponseInput) {
+export async function createCannedResponse(
+  identity: ResolvedIdentity,
+  input: CreateCannedResponseInput,
+) {
   try {
-    const [created] = await db
-      .insert(cannedResponseTable)
-      .values({
-        workspaceId: input.workspaceId,
-        name: input.name,
-        body: input.body,
-        visibilityDefault: input.visibilityDefault ?? "internal",
-        createdBy: input.createdBy,
-      })
-      .returning();
+    const created = await insertCannedResponse(identity, {
+      workspaceId: input.workspaceId,
+      name: input.name,
+      body: input.body,
+      visibilityDefault: input.visibilityDefault ?? "internal",
+      createdBy: input.createdBy,
+    });
 
     if (!created) {
       throw new HTTPException(500, {
