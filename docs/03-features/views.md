@@ -67,11 +67,9 @@ person across devices and browsers. The routes, key mapping, whitelist, policy a
 specified in [settings-hierarchy.md](settings-hierarchy.md#profile-settings-routes)
 (`GET`/`PATCH /api/me/settings`, `ST-12`–`ST-17`); this section does not repeat them.
 
-- `VW-2` is the settings key `layout.<projectId>` (`board` or `list` in P1). The route exists on
-  `main`, but the web read/write of the layout
-  (`apps/web/src/lib/project-layout-preference.ts`, PR #688) is **not on `main` yet**. When it
-  lands it must read and write through the route, keep `localStorage` only as a first-paint
-  cache, write an existing local value to the server once, and still let the URL layout win.
+- `VW-2` is the settings key `layout.<projectId>` (`board`, `list` or `table` in P1). It reads and
+  writes through `GET`/`PATCH /api/me/settings`, keeps `localStorage` as a first-paint cache,
+  writes an existing local value to the server once, and always lets the URL layout win.
 - `VW-6` is the settings key `density` (`comfortable` or `compact`), one value per person, not
   per project, and is persisted server-side. The `user-preferences` store's `compactMode` flag
   is the first-paint cache.

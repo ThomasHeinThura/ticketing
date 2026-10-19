@@ -183,6 +183,9 @@
           "rankTasks": {
             "type": "boolean"
           },
+          "exportTasks": {
+            "type": "boolean"
+          },
           "manageProjectSettings": {
             "type": "boolean"
           },
@@ -20549,6 +20552,141 @@
           },
           "422": {
             "description": "Unsupported entity, unavailable filter field, or unreadable field",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/export": {
+      "post": {
+        "operationId": "exportWorkItems",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Export work items as CSV",
+        "description": "Streamed CSV export of reachable work items matching a structured filter (`VW-23`, D1). Enforces a 10,000-row hard cap (`422 export_limit_exceeded`), 30-second query timeout, and 5 exports/minute/user rate limit (`429`). Audited as `work_item.exported`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "query": {
+                    "type": "object",
+                    "properties": {
+                      "entity": {
+                        "type": "string"
+                      },
+                      "filter": {},
+                      "sort": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "order": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "field",
+                            "order"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 1
+                      },
+                      "columns": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "entity"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "query"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Streamed CSV file",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or over-limit export request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:export permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found or unreachable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unsupported entity, unavailable filter field, or export_limit_exceeded (>10,000 rows)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Export rate limit exceeded (5 exports per minute per user)",
             "content": {
               "text/plain": {
                 "schema": {

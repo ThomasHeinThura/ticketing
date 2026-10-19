@@ -1,0 +1,93 @@
+import { describe, expect, it } from "vitest";
+import {
+  checkAndRecordExportRateLimit,
+  collectExportPages,
+  EXPORT_MAX_ROWS,
+  EXPORT_RATE_LIMIT_MAX,
+  exportColumns,
+  resetWorkItemExportRateLimitsForTest,
+  workItemsCsv,
+  workItemsCsvHeader,
+  workItemsCsvRows,
+} from "../../apps/api/src/work-item/search/csv";
+
+describe("work item CSV export", () => {
+  it("uses chosen columns and quotes commas, quotes, and line breaks", () => {
+    expect(
+      exportColumns({ entity: "work_item", columns: ["key", "title"] }),
+    ).toEqual(["key", "title"]);
+    const rows = [
+      {
+        key: "OPS-1",
+        title: 'hello, "world"\nnext',
+        stateName: null,
+        assigneeName: null,
+        priority: null,
+        dueDate: null,
+      },
+    ];
+    expect(workItemsCsv(rows, ["key", "title"])).toBe(
+      '"Key","Title"\r\n"OPS-1","hello, ""world""\nnext"\r\n',
+    );
+    expect(
+      workItemsCsvHeader(["key", "title"]) +
+        workItemsCsvRows(rows, ["key", "title"]),
+    ).toBe('"Key","Title"\r\n"OPS-1","hello, ""world""\nnext"\r\n');
+    expect(workItemsCsvRows([], ["key", "title"])).toBe("");
+  });
+
+  it.each(["=1+1", "  =1+1", "\t@SUM(A1:A2)", "\n-2+3", "+cmd"])(
+    "prefixes formula-shaped cell %j as text",
+    (title) => {
+      const csv = workItemsCsv(
+        [
+          {
+            key: "OPS-1",
+            title,
+            stateName: null,
+            assigneeName: null,
+            priority: null,
+            dueDate: null,
+          },
+        ],
+        ["title"],
+      );
+      expect(csv).toContain(`"'${title.replaceAll('"', '""')}"`);
+    },
+  );
+
+  it("reads every result page without truncation", async () => {
+    const calls: (string | undefined)[] = [];
+    const result = await collectExportPages(async (cursor) => {
+      calls.push(cursor);
+      const first = cursor === undefined;
+      return {
+        data: Array.from({ length: first ? 200 : 1 }, (_, index) =>
+          first ? index : 200 + index,
+        ),
+        page: { hasMore: first, nextCursor: first ? "next" : null },
+        meta: { total: 201 },
+      };
+    });
+    expect(calls).toEqual([undefined, "next"]);
+    expect(result.total).toBe(201);
+    expect(result.rows).toHaveLength(201);
+    expect(result.rows[200]).toBe(200);
+  });
+
+  it("enforces the 10,000-row cap and 5 exports/min rate limit per user", () => {
+    expect(EXPORT_MAX_ROWS).toBe(10_000);
+    expect(EXPORT_RATE_LIMIT_MAX).toBe(5);
+    resetWorkItemExportRateLimitsForTest();
+
+    const now = 1_700_000_000_000;
+    for (let i = 0; i < EXPORT_RATE_LIMIT_MAX; i += 1) {
+      expect(checkAndRecordExportRateLimit("user-rate-1", now + i)).toBe(true);
+    }
+    expect(checkAndRecordExportRateLimit("user-rate-1", now + 100)).toBe(false);
+    expect(checkAndRecordExportRateLimit("user-rate-2", now + 100)).toBe(true);
+    expect(checkAndRecordExportRateLimit("user-rate-1", now + 60_001)).toBe(
+      true,
+    );
+  });
+});

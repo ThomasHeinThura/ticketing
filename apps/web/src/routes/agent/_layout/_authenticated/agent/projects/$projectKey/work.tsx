@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Alert, AlertDescription, Button } from "@taskdesk/ui";
+import { Button } from "@taskdesk/ui";
 import { ListFilter } from "lucide-react";
 import {
   lazy,
@@ -71,17 +71,22 @@ const WorkItemSelectionToggle = lazy(
 );
 
 import {
+  projectLayoutSettingKey,
+  readProjectLayoutPreference,
+  writeProjectLayoutPreference,
+} from "@/lib/project-layout-preference";
+import {
   parseWorkItemListSearch,
   type WorkItemFilterMode,
   type WorkItemListSearch,
+  type WorkItemSearchColumn,
   type WorkItemSortDirection,
   type WorkItemSortField,
 } from "@/lib/routes";
 
 /**
- * `docs/02-design/screen-inventory.md` "Work — list" (P1), the first v2 work-item
- * screen -- decision log "2026-09-23 · P1's UI path: new v2 work-item screens on the new
- * API" (PR #300). Read-only: create/edit/delete are separate, later slices.
+ * `docs/02-design/screen-inventory.md` "Work — list", "Work — board", and "Work — table" (P1),
+ * the v2 work-item screens on the v2 API (`VW-1`, `VW-2`, `VW-19`).
  *
  * `{projectKey}` is the project's `slug` (`work_item.key`'s own prefix,
  * `docs/01-architecture/data-model.md`), not its id -- the API has no
@@ -160,6 +165,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     projectId: string;
     status: WorkItemRealtimeStatus;
   }>();
+  const [boardFilterError, setBoardFilterError] = useState<unknown>();
   // `assignTasks`, reported by the lazy selection toggle once capabilities are known. It only
   // decides which controls render; the server enforces each bulk write.
   const [canAssign, setCanAssign] = useState(false);
@@ -249,6 +255,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     );
   }, [project?.id, projectContext]);
 
+  const isTabularLayout = layout === "list" || layout === "table";
+
   const {
     data: workItemsResult,
     isLoading: isWorkItemsLoading,
@@ -266,7 +274,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     columns,
     sort,
     dir,
-    enabled: layout === "list",
+    enabled: isTabularLayout,
     realtimeStatus:
       realtimeStatus && realtimeStatus.projectId === project?.id
         ? realtimeStatus.status
@@ -284,6 +292,30 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     setRealtimeProjectId(project.id);
     setRealtimeStatus({ projectId: project.id, status: "connecting" });
   }, [project?.id]);
+
+  // Restore the user's last-used layout for this project (`VW-2`) when navigating to the
+  // work route without an explicit `?layout=` search parameter.
+  const restoredLayoutProjectIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!project?.id || restoredLayoutProjectIdRef.current === project.id)
+      return;
+    restoredLayoutProjectIdRef.current = project.id;
+    if (
+      typeof window !== "undefined" &&
+      !new URLSearchParams(window.location.search).has("layout")
+    ) {
+      const remembered = readProjectLayoutPreference(project.id);
+      if (remembered && remembered !== layout) {
+        navigate({
+          search: (prev: WorkItemListSearch) => ({
+            ...prev,
+            layout: remembered,
+          }),
+          replace: true,
+        });
+      }
+    }
+  }, [project?.id, layout, navigate]);
 
   const handleRealtimeAvailabilityChange = useCallback(
     (projectId: string, status: WorkItemRealtimeStatus) => {
@@ -333,8 +365,32 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     [navigate],
   );
 
+  const handleColumnsChange = useCallback(
+    (nextColumns: WorkItemSearchColumn[] | undefined) => {
+      navigate({
+        search: (prev: WorkItemListSearch) => ({
+          ...prev,
+          columns: nextColumns?.length ? nextColumns : undefined,
+        }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
+
   const handleLayoutChange = useCallback(
     (nextLayout: WorkItemListSearch["layout"]) => {
+      if (project?.id) {
+        writeProjectLayoutPreference(project.id, nextLayout);
+        const projectId = project.id;
+        void import("@/fetchers/user-settings/user-settings")
+          .then((m) =>
+            m.patchUserSettings({
+              [projectLayoutSettingKey(projectId)]: nextLayout,
+            }),
+          )
+          .catch(() => undefined);
+      }
       navigate({
         search: (prev: WorkItemListSearch) => ({
           ...prev,
@@ -343,7 +399,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         replace: true,
       });
     },
-    [navigate],
+    [navigate, project?.id],
   );
 
   const handleRetry = useCallback(() => {
@@ -361,7 +417,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     );
   }, []);
 
-  const visibleItems = layout === "list" ? workItemsResult?.items : undefined;
+  const visibleItems = isTabularLayout ? workItemsResult?.items : undefined;
   const handleSelectAll = useCallback(
     (checked: boolean) => {
       const keys = (visibleItems ?? [])
@@ -468,25 +524,31 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               >
                 {t("workItems:list.boardLayout")}
               </Button>
-            </fieldset>
-            {layout === "list" ? (
               <Button
-                ref={filterToggleRef}
-                variant={isFiltered ? "secondary" : "outline"}
+                variant={layout === "table" ? "secondary" : "outline"}
                 size="sm"
-                // A disclosure: expanded state only, and a controlled id only while it exists.
-                aria-expanded={isFilterOpen}
-                aria-controls={
-                  isFilterOpen ? "work-item-filter-controls" : undefined
-                }
-                onClick={toggleFilter}
+                aria-pressed={layout === "table"}
+                onClick={() => handleLayoutChange("table")}
               >
-                <ListFilter />
-                {isFiltered
-                  ? t("workItems:filter.toggleActive")
-                  : t("workItems:filter.toggle")}
+                {t("workItems:list.tableLayout")}
               </Button>
-            ) : null}
+            </fieldset>
+            <Button
+              ref={filterToggleRef}
+              variant={isFiltered ? "secondary" : "outline"}
+              size="sm"
+              // A disclosure: expanded state only, and a controlled id only while it exists.
+              aria-expanded={isFilterOpen}
+              aria-controls={
+                isFilterOpen ? "work-item-filter-controls" : undefined
+              }
+              onClick={toggleFilter}
+            >
+              <ListFilter />
+              {isFiltered
+                ? t("workItems:filter.toggleActive")
+                : t("workItems:filter.toggle")}
+            </Button>
             {project ? (
               <Suspense fallback={null}>
                 <WorkItemCreateTrigger
@@ -498,7 +560,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             ) : null}
           </div>
         </div>
-        {layout === "list" && isFilterOpen ? (
+        {isFilterOpen ? (
           <div id="work-item-filter-controls">
             <Suspense fallback={null}>
               <WorkItemListControls
@@ -506,23 +568,22 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                 onClose={toggleFilter}
                 filter={filter ?? ""}
                 mode={filterMode ?? "visual"}
-                workItemsError={workItemsError}
+                workItemsError={
+                  layout === "board" ? boardFilterError : workItemsError
+                }
                 onModeChange={handleFilterModeChange}
                 onApply={handleFilterApply}
+                columns={columns}
+                onColumnsChange={
+                  layout === "table" ? handleColumnsChange : undefined
+                }
+                workspaceId={workspace?.id}
+                projectSlug={project?.slug}
+                sort={sort}
+                dir={dir}
               />
             </Suspense>
           </div>
-        ) : null}
-        {layout === "board" && isFiltered ? (
-          <Alert
-            variant="warning"
-            role="status"
-            data-testid="board-filter-notice"
-          >
-            <AlertDescription>
-              {t("workItems:filter.boardNotice")}
-            </AlertDescription>
-          </Alert>
         ) : null}
         {createDialogLoad === "failed" ? (
           <div
@@ -556,7 +617,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             />
           </Suspense>
         ) : null}
-        {layout === "list" ? (
+        {isTabularLayout ? (
           <Suspense fallback={<WorkItemListLoading />}>
             <WorkItemsPanel
               project={project}
@@ -585,6 +646,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           <Suspense fallback={<WorkItemListLoading />}>
             <WorkItemBoardView
               project={project}
+              workspaceId={workspace?.id}
+              filter={filter}
               realtimeProjectId={realtimeProjectId}
               realtimeStatus={realtimeStatus}
               onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
@@ -592,6 +655,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               selectedKeys={selectedKeys}
               onSelectionChange={handleSelectionChange}
               onPruneSelection={pruneSelection}
+              onErrorChange={setBoardFilterError}
             />
           </Suspense>
         ) : (

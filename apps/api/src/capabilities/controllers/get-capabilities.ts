@@ -18,6 +18,7 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   // which grants members more than the permission matrix does (#708).
   transitionTasks: boolean;
   rankTasks: boolean;
+  exportTasks: boolean;
   manageProjectSettings: boolean;
   bindProjectOrganisation: boolean;
 };
@@ -39,6 +40,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     manageWorkspaceSettings,
     transitionTasks,
     rankTasks,
+    exportTasks,
     manageProjectSettings,
     bindProjectOrganisation,
   ] = await Promise.all([
@@ -72,6 +74,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasCanonicalCapability(c, "workspace:manage_settings"),
     hasCanonicalCapability(c, "work_item:transition"),
     hasCanonicalCapability(c, "work_item:rank"),
+    hasCanonicalCapability(c, "work_item:export"),
     hasCanonicalCapability(c, "project:manage_settings"),
     hasCanonicalCapability(c, "project:create"),
   ]);
@@ -94,6 +97,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     manageWorkspaceSettings,
     transitionTasks,
     rankTasks: agentOnly(rankTasks),
+    exportTasks: agentOnly(exportTasks),
     manageProjectSettings,
     bindProjectOrganisation,
   } as CapabilityMap;
@@ -106,6 +110,7 @@ async function hasCanonicalCapability(
     | "workspace:manage_settings"
     | "work_item:transition"
     | "work_item:rank"
+    | "work_item:export"
     | "project:manage_settings"
     | "project:create",
 ): Promise<boolean> {

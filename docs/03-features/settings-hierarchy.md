@@ -196,7 +196,7 @@ here for `VW-2` (layout) and `VW-6` (density).
   | Settings key | `scope` | `scope_id` | `key` | Value |
   | --- | --- | --- | --- | --- |
   | `density` | `global` | null | `density` | `"comfortable"` or `"compact"` |
-  | `layout.<projectId>` | `project` | the project id | `layout` | `"board"` or `"list"` |
+  | `layout.<projectId>` | `project` | the project id | `layout` | `"board"`, `"list"` or `"table"` |
 
   `theme` and `sidebar` are named in the Profile table above but have no specified value
   domain yet, so they are **not** whitelisted and a write of either is `422`. They are added by

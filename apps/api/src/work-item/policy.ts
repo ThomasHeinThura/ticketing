@@ -37,6 +37,12 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * work item mints no fresh authority.
  */
 export const workItemPolicies = {
+  "POST /api/work-items/export": {
+    capability: "work_item:export",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
   // Bounded structured search is workspace-addressed for scope validation, then each
   // candidate row is evaluated against the same work_item:read project reach as detail.
   "POST /api/work-items/search": {

@@ -22,6 +22,9 @@ const WorkItemListRealtime = lazy(
  */
 export default function WorkItemBoardView({
   project,
+  workspaceId,
+  filter,
+  onErrorChange,
   realtimeProjectId,
   realtimeStatus,
   onRealtimeAvailabilityChange,
@@ -30,7 +33,10 @@ export default function WorkItemBoardView({
   onSelectionChange,
   onPruneSelection,
 }: {
-  project: { id: string };
+  project: { id: string; slug?: string };
+  workspaceId?: string;
+  filter?: string;
+  onErrorChange?: (error: unknown) => void;
   realtimeProjectId: string | undefined;
   realtimeStatus:
     | { projectId: string; status: WorkItemRealtimeStatus }
@@ -53,6 +59,9 @@ export default function WorkItemBoardView({
       : "connecting";
   const items = useGetBoardWorkItems({
     projectId: project.id,
+    projectSlug: project.slug,
+    workspaceId,
+    filter,
     realtimeStatus: status,
   });
   const states = useGetProjectStates(project.id);
@@ -62,8 +71,12 @@ export default function WorkItemBoardView({
   );
   const isLoading = items.isLoading || states.isLoading;
   const isError = items.isError || states.isError;
-  const { refetch: refetchItems } = items;
+  const { refetch: refetchItems, error: itemsError } = items;
   const { refetch: refetchStates } = states;
+
+  useEffect(() => {
+    onErrorChange?.(itemsError);
+  }, [itemsError, onErrorChange]);
 
   // A selected item that has left the loaded set must not stay selected.
   useEffect(() => {

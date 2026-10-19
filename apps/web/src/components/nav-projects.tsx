@@ -65,10 +65,13 @@ export function NavProjects() {
   // alone — not the create+update+delete bundle.
   const canReorder = canUpdateProjects();
   const navigate = useNavigate();
-  const { workspaceId: currentWorkspaceId, projectId: currentProjectId } =
-    useParams({
-      strict: false,
-    });
+  const {
+    workspaceId: currentWorkspaceId,
+    projectId: currentProjectId,
+    projectKey: currentProjectKey,
+  } = useParams({
+    strict: false,
+  });
 
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
@@ -78,18 +81,18 @@ export function NavProjects() {
     null,
   );
 
-  const isCurrentProject = (projectId: string) => {
+  const isCurrentProject = (project: ProjectRecord) => {
     return (
-      currentProjectId === projectId && currentWorkspaceId === workspace?.id
+      currentProjectKey === project.slug ||
+      (currentProjectId === project.id && currentWorkspaceId === workspace?.id)
     );
   };
 
   const handleProjectClick = (project: ProjectRecord) => {
     navigate({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
+      to: "/agent/projects/$projectKey/work",
       params: {
-        workspaceId: workspace?.id || "",
-        projectId: project.id,
+        projectKey: project.slug,
       },
     });
   };
@@ -97,7 +100,7 @@ export function NavProjects() {
   const renderProjectContents = (project: ProjectRecord) => (
     <>
       <SidebarMenuButton
-        isActive={isCurrentProject(project.id)}
+        isActive={isCurrentProject(project)}
         size="default"
         className="h-8 gap-0 ps-3.5 text-sm hover:bg-transparent hover:text-sidebar-accent-foreground active:bg-transparent"
         onClick={() => handleProjectClick(project)}
@@ -135,7 +138,7 @@ export function NavProjects() {
             className="h-7 items-start cursor-pointer text-sm"
             onClick={() => {
               navigator.clipboard.writeText(
-                `${window.location.origin}/dashboard/workspace/${workspace?.id}/project/${project.id}`,
+                `${window.location.origin}/agent/projects/${encodeURIComponent(project.slug)}/work`,
               );
               toast.success(t("navigation:projectList.linkCopied"));
             }}

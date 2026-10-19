@@ -2406,7 +2406,17 @@
 			"emptyFilteredDescription": "Change or clear the filter to see more of this project's work items.",
 			"emptyFilteredTitle": "No work items match this filter",
 			"loadingMore": "Loading more…",
-			"loadMore": "Load more"
+			"loadMore": "Load more",
+			"columnsLabel": "Columns",
+			"exportCsv": "Export CSV",
+			"exportFailed": "Couldn't export work items. Try again.",
+			"exportingCsv": "Exporting…",
+			"exportLimitExceeded": "This export exceeds the 10,000-row limit. Narrow your filter and try again.",
+			"exportRateLimited": "Too many exports in a short time. Wait a moment and try again.",
+			"moveColumnLeft": "Move {{column}} left",
+			"moveColumnRight": "Move {{column}} right",
+			"resetColumns": "Reset columns",
+			"tableLayout": "Table"
 		},
 		"create": {
 			"cancel": "Cancel",

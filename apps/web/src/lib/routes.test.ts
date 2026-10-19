@@ -105,11 +105,19 @@ describe("routes.workItemList", () => {
     it("never throws on malformed input, and falls back per-field", () => {
       expect(
         parseWorkItemListSearch({
-          layout: "table", // not built yet -- falls back to list
+          layout: "calendar", // not built yet -- falls back to list
           sort: "not-a-real-field",
           dir: "sideways",
         }),
       ).toEqual(DEFAULT_WORK_ITEM_LIST_SEARCH);
+
+      expect(
+        parseWorkItemListSearch({
+          layout: "table",
+          sort: "priority",
+          dir: "desc",
+        }),
+      ).toEqual({ layout: "table", sort: "priority", dir: "desc" });
 
       expect(
         parseWorkItemListSearch({ sort: "priority", dir: "desc" }),
