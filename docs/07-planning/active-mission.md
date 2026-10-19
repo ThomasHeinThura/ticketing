@@ -13,35 +13,42 @@ belongs in the conductor's queue (`docs/07-planning/integration-execution-queue.
 
 ---
 
-## Current mission — PR Consolidation, Integration Freeze, and Verified Main
+## Current mission — Complete P0 and P1, Core Security Hardening, and Local/OrbStack VM Verification, Then HOLD
 
-**Authorized by:** Thomas, orchestrator directive 2026-10-19 (Antigravity Orchestrator Directive;
-PR Consolidation and Verified Main).
+**Authorized by:** Thomas, orchestrator directive 2026-10-19 (Antigravity Orchestrator Directive —
+Complete P0 and P1, Then HOLD, plus Option A/C and OrbStack VM verification confirmation).
 
-**Active mode:** Integration freeze, PR consolidation, verification of accepted `main`, then HOLD.
-Policy maintenance runs alongside as this bounded bootstrap task. Feature development is **inactive**.
+**Active mode:** Feature development (P0 foundation verification, P1 core work management, and
+Option A core security/tenancy hardening), followed by local `docker compose up` and disposable
+OrbStack VM verification, then HOLD.
 
 **Sequence:**
 
-1. Freeze the starting PR inventory.
-2. Repair and integrate existing PR functionality onto accepted `main` (Carrier C, component PRs,
-   query-ownership and activity contracts).
-3. Retire verified predecessor, duplicate, and diagnostic PRs with clear evidence.
-4. Verify accepted `main` at the required candidate gates.
-5. Report completion to Thomas and **enter Hold** — await the next owner instruction.
+1. **Batch 0:** Record mission authorization, Option C product decisions (D1–D6), and the compact
+   P0/P1 completion matrix on accepted `main`.
+2. **Batch 1:** P0/P1 security, tenancy, and deletion hardening (API-key project role clamp,
+   project creation permission gate, soft-delete and `RESTRICT` handling, comment audit logs,
+   portal unauthenticated concealment, and P1 pending-action deletion verification).
+3. **Batch 2:** Unify `/agent` navigation and finish `/agent/projects/{key}/work` layouts (Board
+   filtering `VW-1`, Table layout `VW-19`–`VW-24`, export route `VW-23`, layout/density server
+   preference sync `VW-2`/`VW-6`).
+4. **Batch 3:** Addressable side pane (`VW-4` `?item={key}`), complete bulk action toolbar (`VW-3`,
+   `WI-24`), v2 Backlog (`/agent/projects/{key}/backlog`), and saved-view layout rendering.
+5. **Batch 4:** Core P1 agent destinations (`/agent`, `/agent/inbox`, `/agent/my-work`,
+   `/agent/search`) and canonical `/agent/settings/*` and `/agent/projects/{key}/settings/*` routes.
+6. **Batch 5:** Integrated P0/P1 end-to-end journey verification, local `docker compose up` and
+   disposable OrbStack VM full UI/UX and backup/restore verification, independent Phase Finalizer
+   review, and **enter Hold**.
 
-**In scope:** functionality that already exists on a branch or pull request in the frozen starting
-inventory recorded in the decision log, and the integration, acceptance, security, correctness,
-performance and accessibility fixes needed to verify it against approved contracts.
+**In scope:** missing approved P0/P1 functionality, Option A core security/tenancy defect fixes,
+Option C approved decisions (D1–D6), and local/disposable OrbStack VM deployment and UI/UX testing.
 
-**Out of scope:** any unimplemented roadmap item; automatic completion of P4–P7; a missing
-product decision treated as an acceptance fix; release publication through GHCR, GitHub Releases,
-tags or Docker Hub; persistent SIT, UAT or production deployment; external identity provider or
-notification channel activation; broad recovery exercises; formal P1–P7 stage finalization audits;
-a new release path, version exception or tag scheme.
+**Out of scope:** automatic expansion into P2–P7 feature development; remote UAT or production
+deployment; external identity provider or notification channel activation; publishing a stable
+`2.0.0` release; retiring Planner or other external systems.
 
-**Environments:** local and disposable runtimes for verification. No persistent SIT deployment,
-UAT or production.
+**Environments:** local and disposable OrbStack VM runtimes for verification (`docker compose up`
+and isolated VM verification). No remote UAT or production changes.
 
 **Conductor:** the Antigravity session Thomas designates (decision log 2026-10-19). It owns the
 queue, dependency graph, shared resources, migration allocation, merge order, and verification.
@@ -57,12 +64,12 @@ labelled with the model that actually produced it. Reviews completed under earli
 valid for what they covered. See
 [agent-workflow.md § Model policy](../04-engineering/agent-workflow.md#model-policy).
 
-**Stop condition:** all starting PRs and necessary successors have a valid terminal disposition
-(merged, absorbed/superseded, or diagnostic-retired), required integration and candidate checks pass
-on accepted `main`, and the mission enters **HOLD — awaiting Thomas's instruction**. The conductor
-does not automatically proceed to release publication, persistent SIT deployment, recovery exercises,
-or the next roadmap stage.
+**Stop condition:** P0 invariants verified on the integrated product, P1 capability set and Option A
+security fixes merged and verified across the 8 required journeys (including `docker compose up`
+and disposable OrbStack VM UI/UX and backup/restore testing), Phase Finalizer verdict recorded, and
+the mission enters **HOLD — awaiting Thomas's instruction**.
 
-**Formal stage closure:** an accepted integrated slice is not P0–P7 completion. Stage closure
-keeps its own [stage gate](../04-engineering/definition-of-done.md#stage-completion) and is not
-automatic under this mission.
+**Formal stage closure:** stage closure keeps its own
+[stage gate](../04-engineering/definition-of-done.md#stage-completion) and truthful human-gate
+accounting.
+
