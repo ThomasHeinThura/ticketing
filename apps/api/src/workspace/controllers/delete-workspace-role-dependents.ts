@@ -1,11 +1,7 @@
 import { and, eq, inArray, isNotNull, or, type SQL, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { type DatabaseInstance, schema } from "../../database";
-import {
-  customFieldTable,
-  customFieldTypeVisibilityTable,
-  customFieldValueTable,
-} from "../../database/migration-schema";
+import { customFieldTable } from "../../database/migration-schema";
 import { isLockNotAvailable } from "../../utils/is-lock-not-available";
 
 type WorkspaceDeletionTransaction = Parameters<
@@ -171,7 +167,8 @@ export async function deleteWorkspaceRoleDependents(
       workspaceId: schema.identityConnectionTable.defaultWorkspaceId,
     })
     .from(schema.identityConnectionTable)
-    .where(inArray(schema.identityConnectionTable.defaultWorkspaceId, ids));
+    .where(inArray(schema.identityConnectionTable.defaultWorkspaceId, ids))
+    .for("update");
   const referencedWorkspaceIds = [
     ...new Set(
       inUseByIdentityConnections
@@ -183,13 +180,8 @@ export async function deleteWorkspaceRoleDependents(
     throw new WorkspaceInUseByIdentityConnectionError(referencedWorkspaceIds);
   }
 
-  const {
-    oidcMappingIds,
-    scimMappingIds,
-    membershipWhere,
-    grantWhere,
-    projectIds,
-  } = workspaceDependentPredicates(tx, ids);
+  const { oidcMappingIds, scimMappingIds, membershipWhere, grantWhere } =
+    workspaceDependentPredicates(tx, ids);
   const grantIds = tx
     .select({ id: schema.membershipGrantTable.id })
     .from(schema.membershipGrantTable)
@@ -277,39 +269,7 @@ export async function deleteWorkspaceRoleDependents(
     .delete(schema.requestTypeTable)
     .where(inArray(schema.requestTypeTable.workspaceId, ids));
 
-  // 8. Custom field values, type visibilities, and custom fields (`custom_field_value`
-  // restricts `custom_field` and `project`; `custom_field_type_visibility` restricts
-  // `work_item_type`).
-  const workspaceCustomFieldIds = tx
-    .select({ id: customFieldTable.id })
-    .from(customFieldTable)
-    .where(inArray(customFieldTable.workspaceId, ids));
-  const workspaceWorkItemTypeIds = tx
-    .select({ id: schema.workItemTypeTable.id })
-    .from(schema.workItemTypeTable)
-    .where(inArray(schema.workItemTypeTable.workspaceId, ids));
-  await tx
-    .delete(customFieldValueTable)
-    .where(
-      or(
-        inArray(customFieldValueTable.projectId, projectIds),
-        inArray(customFieldValueTable.customFieldId, workspaceCustomFieldIds),
-      ),
-    );
-  await tx
-    .delete(customFieldTypeVisibilityTable)
-    .where(
-      or(
-        inArray(
-          customFieldTypeVisibilityTable.workItemTypeId,
-          workspaceWorkItemTypeIds,
-        ),
-        inArray(
-          customFieldTypeVisibilityTable.customFieldId,
-          workspaceCustomFieldIds,
-        ),
-      ),
-    );
+  // 8. Custom fields scoped to the workspace.
   await tx
     .delete(customFieldTable)
     .where(inArray(customFieldTable.workspaceId, ids));
