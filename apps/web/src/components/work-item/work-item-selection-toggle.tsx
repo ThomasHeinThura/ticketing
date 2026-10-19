@@ -20,15 +20,26 @@ export default function WorkItemSelectionToggle({
   onCapabilityChange: (canAssign: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const { canAssignTasks, isCheckingPermissions } = useWorkspacePermission();
-  const canAssign = !isCheckingPermissions && canAssignTasks();
+  const {
+    canAssignTasks,
+    canSetPriorityTasks,
+    canTransitionTasks,
+    canDeleteTasks,
+    isCheckingPermissions,
+  } = useWorkspacePermission();
+  const canBulkAct =
+    !isCheckingPermissions &&
+    (canAssignTasks() ||
+      (canSetPriorityTasks?.() ?? false) ||
+      (canTransitionTasks?.() ?? false) ||
+      (canDeleteTasks?.() ?? false));
 
   useEffect(() => {
-    onCapabilityChange(canAssign);
+    onCapabilityChange(canBulkAct);
     return () => onCapabilityChange(false);
-  }, [canAssign, onCapabilityChange]);
+  }, [canBulkAct, onCapabilityChange]);
 
-  if (!canAssign) return null;
+  if (!canBulkAct) return null;
   return (
     <Button
       variant={selectionMode ? "secondary" : "outline"}

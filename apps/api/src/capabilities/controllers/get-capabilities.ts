@@ -19,6 +19,7 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   transitionTasks: boolean;
   rankTasks: boolean;
   exportTasks: boolean;
+  setPriorityTasks: boolean;
   manageProjectSettings: boolean;
   bindProjectOrganisation: boolean;
 };
@@ -41,6 +42,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     transitionTasks,
     rankTasks,
     exportTasks,
+    setPriorityTasks,
     manageProjectSettings,
     bindProjectOrganisation,
   ] = await Promise.all([
@@ -75,6 +77,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasCanonicalCapability(c, "work_item:transition"),
     hasCanonicalCapability(c, "work_item:rank"),
     hasCanonicalCapability(c, "work_item:export"),
+    hasCanonicalCapability(c, "work_item:set_priority"),
     hasCanonicalCapability(c, "project:manage_settings"),
     hasCanonicalCapability(c, "project:create"),
   ]);
@@ -98,6 +101,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     transitionTasks,
     rankTasks: agentOnly(rankTasks),
     exportTasks: agentOnly(exportTasks),
+    setPriorityTasks: agentOnly(setPriorityTasks),
     manageProjectSettings,
     bindProjectOrganisation,
   } as CapabilityMap;
@@ -111,6 +115,7 @@ async function hasCanonicalCapability(
     | "work_item:transition"
     | "work_item:rank"
     | "work_item:export"
+    | "work_item:set_priority"
     | "project:manage_settings"
     | "project:create",
 ): Promise<boolean> {

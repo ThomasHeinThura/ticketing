@@ -55,7 +55,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Work — table | `/agent/projects/{key}/work?layout=table` | route | P1 | ⬜ |
 | Work — calendar | `/agent/projects/{key}/work?layout=calendar` | route | P5 | ⬜ |
 | Work — timeline | `/agent/projects/{key}/work?layout=timeline` | route | P5 | ⬜ |
-| Backlog | `/agent/projects/{key}/backlog` | route | P1 | ⬜ |
+| Backlog | `/agent/projects/{key}/backlog` | route | P1 | 🟡 |
 | Cycles list | `/agent/projects/{key}/cycles` | route | P5 | ⬜ |
 | Cycle detail | `/agent/projects/{key}/cycles/{id}` | route | P5 | ⬜ |
 | Modules list | `/agent/projects/{key}/modules` | route | P5 | ⬜ |
@@ -69,9 +69,9 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Work item — full page | `/agent/work-items/{key}` | route | P1 | 🟡 |
-| Work item — side pane | `?item={key}` on any list | overlay | P1 | ⬜ |
+| Work item — side pane | `?item={key}` on any list | overlay | P1 | 🟡 |
 | Create work item | — | dialog | P1 | 🟡 |
-| Bulk edit | — | overlay | P1 | ⬜ |
+| Bulk edit | — | overlay | P1 | 🟡 |
 | Relations editor | — | section | P1 | ⬜ |
 | Approvals panel | — | section | P2 | ⬜ |
 | SLA panel | — | section | P2 | ⬜ |

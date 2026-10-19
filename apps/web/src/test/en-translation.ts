@@ -17,7 +17,14 @@ export function translate(
           : undefined,
       (en as Record<string, unknown>)[namespace],
     );
-  if (typeof value !== "string") throw new Error(`Missing en-US key ${key}`);
+  if (typeof value !== "string") {
+    if (typeof options.defaultValue === "string") {
+      return options.defaultValue.replace(/\{\{(\w+)\}\}/g, (_, name: string) =>
+        String(options[name] ?? ""),
+      );
+    }
+    throw new Error(`Missing en-US key ${key}`);
+  }
   return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) =>
     String(options[name] ?? ""),
   );

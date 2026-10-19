@@ -186,6 +186,9 @@
           "exportTasks": {
             "type": "boolean"
           },
+          "setPriorityTasks": {
+            "type": "boolean"
+          },
           "manageProjectSettings": {
             "type": "boolean"
           },
@@ -21806,7 +21809,7 @@
           "Work items"
         ],
         "summary": "Bulk work item operation",
-        "description": "Runs one operation (`delete` or `assign` -- see `controllers/bulk-work-items.ts` for why `WI-24`'s other bulk operations are deferred) over multiple work items, transactional PER ITEM (`WI-25`): a partial failure reports per-item reasons rather than rolling back the whole batch. `workspaceId` scopes the batch; every id is re-checked for reach the same way a single-item call would (`WI-25`: 'not found' and 'out of reach' share one reason).",
+        "description": "Runs one operation (`delete`, `assign`, `set_priority`, `archive`, or `transition`) over multiple work items, transactional PER ITEM (`WI-25`): a partial failure reports per-item reasons rather than rolling back the whole batch. `workspaceId` scopes the batch; every id is re-checked for reach and capability the same way a single-item call would (`WI-25`: 'not found' and 'out of reach' share one reason).",
         "requestBody": {
           "required": true,
           "content": {
@@ -21831,10 +21834,30 @@
                     "type": "string",
                     "enum": [
                       "delete",
-                      "assign"
+                      "assign",
+                      "set_priority",
+                      "archive",
+                      "transition"
                     ]
                   },
                   "assigneeId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "priority": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high",
+                      "urgent",
+                      null
+                    ]
+                  },
+                  "toStateTemplateId": {
                     "type": "string",
                     "minLength": 1
                   }
@@ -21873,7 +21896,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing the operation's own capability (work_item:delete or work_item:assign)",
+            "description": "No workspace access, or missing the operation's own capability (work_item:delete, work_item:assign, work_item:set_priority, work_item:update, or work_item:transition)",
             "content": {
               "text/plain": {
                 "schema": {

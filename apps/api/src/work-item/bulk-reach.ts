@@ -5,6 +5,13 @@ import { callerReach } from "../utils/caller-reach";
 
 export type BulkItemDecision = "ok" | "not_found" | "forbidden";
 
+export type BulkWorkItemCapability =
+  | "work_item:delete"
+  | "work_item:assign"
+  | "work_item:set_priority"
+  | "work_item:update"
+  | "work_item:transition";
+
 /**
  * Per-item authorisation for `POST /api/work-items/bulk`, whose request names many items and
  * so cannot use the single-item `requireWorkItemReach()` middleware. For each key it answers
@@ -12,14 +19,15 @@ export type BulkItemDecision = "ok" | "not_found" | "forbidden";
  * (`utils/caller-reach.ts`):
  *  - project REACH: a missing item, an item in another workspace and an unreachable item are
  *    all `not_found` (`WI-25`: one shared reason);
- *  - the operation's project-level CAPABILITY (`work_item:delete` / `work_item:assign`):
+ *  - the operation's project-level CAPABILITY (`work_item:delete` / `work_item:assign` /
+ *    `work_item:set_priority` / `work_item:update` / `work_item:transition`):
  *    reachable without it is `forbidden`.
  */
 export async function workItemBulkAuthoriser(
   c: Context,
   userId: string,
   workspaceId: string,
-  capability: "work_item:delete" | "work_item:assign",
+  capability: BulkWorkItemCapability,
 ): Promise<(key: string) => Promise<BulkItemDecision>> {
   const reach = await callerReach(c, userId);
   return async (key) => {

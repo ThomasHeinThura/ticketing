@@ -69,6 +69,9 @@ const WorkItemListControls = lazy(
 const WorkItemSelectionToggle = lazy(
   () => import("@/components/work-item/work-item-selection-toggle"),
 );
+const WorkItemSidePane = lazy(
+  () => import("@/components/work-item/work-item-side-pane"),
+);
 
 import {
   projectLayoutSettingKey,
@@ -109,7 +112,8 @@ function WorkItemsRouteComponent() {
 
 function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { t } = useTranslation();
-  const { layout, sort, dir, filter, filterMode, columns } = Route.useSearch();
+  const { layout, sort, dir, filter, filterMode, columns, item } =
+    Route.useSearch();
   const isFiltered = !!filter?.trim();
   const [isFilterOpen, setIsFilterOpen] = useState(isFiltered);
   // Focus moves into the editor only when the user opens it, never when the URL did.
@@ -402,6 +406,16 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     [navigate, project?.id],
   );
 
+  const handleCloseSidePane = useCallback(() => {
+    navigate({
+      search: (prev: WorkItemListSearch) => ({
+        ...prev,
+        item: undefined,
+      }),
+      replace: true,
+    });
+  }, [navigate]);
+
   const handleRetry = useCallback(() => {
     refetchProjects();
     if (project) refetchWorkItems();
@@ -477,7 +491,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
       />
       <div
         className={`flex h-full flex-col gap-4 overflow-y-auto p-6${
-          layout === "board" || isFilterOpen ? " w-full min-w-0" : ""
+          layout === "board" || isFilterOpen || item ? " w-full min-w-0" : ""
         }`}
       >
         <p className="sr-only" role="status" aria-live="polite">
@@ -675,6 +689,11 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             />
           </Suspense>
         )}
+        {item ? (
+          <Suspense fallback={null}>
+            <WorkItemSidePane itemKey={item} onClose={handleCloseSidePane} />
+          </Suspense>
+        ) : null}
         {project && isCreateOpenForProject && CreateDialogShell ? (
           <CreateDialogShell
             projectId={project.id}

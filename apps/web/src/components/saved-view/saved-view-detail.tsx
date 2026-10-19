@@ -5,12 +5,17 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { Alert, AlertDescription, Button } from "@taskdesk/ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { SavedViewEditor } from "@/components/saved-view/saved-view-editor";
 import WorkItemList from "@/components/work-item/work-item-list";
+
+const WorkItemSidePane = lazy(
+  () => import("@/components/work-item/work-item-side-pane"),
+);
+
 import {
   countSavedView,
   createSavedView,
@@ -176,16 +181,19 @@ export default function SavedViewDetail({
   const storedQueryExecutable = view
     ? isExecutableSavedViewQuery(view.query)
     : true;
-  const layoutIsList = effective.layout === "list";
+  const layoutIsSupported =
+    effective.layout === "list" ||
+    effective.layout === "table" ||
+    (effective.layout === "board" && effective.scope === "project");
   const isFallback = viewUnreadable && snapshotComplete;
   const canRun = Boolean(
     viewSettled &&
-      layoutIsList &&
+      layoutIsSupported &&
       effective.workspaceId &&
       ((view && storedQueryExecutable) || isFallback),
   );
   const unsupported = Boolean(
-    view && (!storedQueryExecutable || effective.layout !== "list"),
+    view && (!storedQueryExecutable || !layoutIsSupported),
   );
 
   const projectsQuery = useGetProjects(
@@ -210,7 +218,7 @@ export default function SavedViewDetail({
     savedViewSort(effective)?.field ?? "key";
   const dir: WorkItemSortDirection = savedViewSort(effective)?.order ?? "asc";
 
-  const { filterMode: _mode, ...runIdentity } = effective;
+  const { filterMode: _mode, item: _item, ...runIdentity } = effective;
   const results = useInfiniteQuery({
     queryKey: [
       "saved-view-run",
@@ -438,7 +446,7 @@ export default function SavedViewDetail({
           {t("layoutUnavailable")}
         </p>
       ) : null}
-      {!view && viewSettled && !layoutIsList && snapshotComplete ? (
+      {!view && viewSettled && !layoutIsSupported && snapshotComplete ? (
         <p
           role="alert"
           className="text-sm"
@@ -503,6 +511,14 @@ export default function SavedViewDetail({
           onRetry={() => void results.refetch()}
           columns={effective.columns}
         />
+      ) : null}
+      {search.item ? (
+        <Suspense fallback={null}>
+          <WorkItemSidePane
+            itemKey={search.item}
+            onClose={() => updateSearch({ item: undefined })}
+          />
+        </Suspense>
       ) : null}
       {results.hasNextPage ? (
         <Button

@@ -258,6 +258,33 @@ export function parseSavedViewUrlSearchFromQueryString(queryString: string) {
     sort: params.get("sort") ?? undefined,
     dir: params.get("dir") ?? undefined,
     columns: params.get("columns") ?? undefined,
+    item: params.get("item") ?? undefined,
+  });
+}
+
+export type ProjectBacklogSearch = {
+  filter?: string;
+  filterMode?: "visual" | "text";
+  item?: string;
+};
+
+export function parseProjectBacklogSearch(raw: unknown): ProjectBacklogSearch {
+  const { filter, filterMode, item } = parseWorkItemQueryState(raw);
+  return {
+    ...(filter ? { filter } : {}),
+    ...(filterMode ? { filterMode } : {}),
+    ...(item ? { item } : {}),
+  };
+}
+
+export function parseProjectBacklogSearchFromQueryString(
+  queryString: string,
+): ProjectBacklogSearch {
+  const params = new URLSearchParams(queryString);
+  return parseProjectBacklogSearch({
+    filter: params.get("filter") ?? undefined,
+    filterMode: params.get("filterMode") ?? undefined,
+    item: params.get("item") ?? undefined,
   });
 }
 
@@ -509,8 +536,26 @@ export const routes = {
         filter: resolved.filter,
         filterMode: resolved.filterMode,
         columns: resolved.columns,
+        item: resolved.item,
       });
       return `/agent/projects/${encodeURIComponent(params.projectKey)}/work?${query.toString()}`;
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "Backlog", `/agent/projects/{key}/backlog`. */
+  projectBacklog: {
+    path: "/agent/projects/$projectKey/backlog" as const,
+    build: (
+      params: { projectKey: string },
+      search: Partial<ProjectBacklogSearch> = {},
+    ) => {
+      const resolved = parseProjectBacklogSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.filter) query.set("filter", resolved.filter);
+      if (resolved.filterMode) query.set("filterMode", resolved.filterMode);
+      if (resolved.item) query.set("item", resolved.item);
+      const suffix = query.toString();
+      const base = `/agent/projects/${encodeURIComponent(params.projectKey)}/backlog`;
+      return suffix ? `${base}?${suffix}` : base;
     },
   },
   /**
@@ -644,5 +689,6 @@ export function parseWorkItemListSearchFromQueryString(
     filter: params.get("filter") ?? undefined,
     filterMode: params.get("filterMode") ?? undefined,
     columns: params.get("columns") ?? undefined,
+    item: params.get("item") ?? undefined,
   });
 }

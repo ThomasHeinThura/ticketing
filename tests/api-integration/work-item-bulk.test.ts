@@ -559,4 +559,61 @@ describe("API integration: bulk work item operations (#23 fourth slice)", () => 
       .where(eq(schema.auditLogTable.action, "bulk.performed"));
     expect(summaryRows).toHaveLength(1);
   });
+
+  it("supports bulk set_priority and archive per item with per-item and summary audit rows (WI-24..WI-27)", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const a = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Item A",
+      })
+    ).json()) as { key: string };
+    const b = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Item B",
+      })
+    ).json()) as { key: string };
+
+    const priorityResp = await bulkRequest(app, {
+      workspaceId: creator.workspace.id,
+      workItemKeys: [a.key, b.key],
+      operation: "set_priority",
+      priority: "urgent",
+    });
+    expect(priorityResp.status).toBe(200);
+    const priorityBody = (await priorityResp.json()) as {
+      succeeded: string[];
+      failed: Array<{ id: string; reason: string }>;
+    };
+    expect(priorityBody.succeeded).toEqual([a.key, b.key]);
+    expect(priorityBody.failed).toHaveLength(0);
+
+    const [rowAAfterPriority] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, a.key));
+    expect(rowAAfterPriority?.priority).toBe("urgent");
+
+    const archiveResp = await bulkRequest(app, {
+      workspaceId: creator.workspace.id,
+      workItemKeys: [a.key],
+      operation: "archive",
+    });
+    expect(archiveResp.status).toBe(200);
+    const archiveBody = (await archiveResp.json()) as {
+      succeeded: string[];
+      failed: Array<{ id: string; reason: string }>;
+    };
+    expect(archiveBody.succeeded).toEqual([a.key]);
+
+    const [rowAAfterArchive] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, a.key));
+    expect(rowAAfterArchive?.archivedAt).not.toBeNull();
+  });
 });

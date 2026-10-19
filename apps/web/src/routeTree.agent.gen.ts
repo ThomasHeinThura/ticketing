@@ -43,6 +43,7 @@ import { Route as LayoutAuthenticatedDashboardSettingsWorkspaceRouteImport } fro
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId'
 import { Route as LayoutAuthenticatedDashboardWorkspaceCreateRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/create'
 import { Route as LayoutAuthenticatedAgentGodModeAuthenticationIdRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/authentication/$id'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/backlog'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyWorkRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/work'
 import { Route as LayoutAuthenticatedAgentSettingsCalendarsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/calendars/$id'
 import { Route as LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions'
@@ -260,6 +261,12 @@ const LayoutAuthenticatedAgentGodModeAuthenticationIdRoute =
     path: '/$id',
     getParentRoute: () => LayoutAuthenticatedAgentGodModeAuthenticationRoute,
   } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport.update({
+    id: '/agent/projects/$projectKey/backlog',
+    path: '/agent/projects/$projectKey/backlog',
+    getParentRoute: () => LayoutAuthenticatedRoute,
+  } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute =
   LayoutAuthenticatedAgentProjectsProjectKeyWorkRouteImport.update({
     id: '/agent/projects/$projectKey/work',
@@ -461,6 +468,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/workspace/$workspaceId': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteWithChildren
   '/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/agent/god-mode/authentication/$id': typeof LayoutAuthenticatedAgentGodModeAuthenticationIdRoute
+  '/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
   '/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
   '/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
   '/agent/settings/profile/pending-actions': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
@@ -517,6 +525,7 @@ export interface FileRoutesByTo {
   '/dashboard/settings/workspace': typeof LayoutAuthenticatedDashboardSettingsWorkspaceRouteWithChildren
   '/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/agent/god-mode/authentication/$id': typeof LayoutAuthenticatedAgentGodModeAuthenticationIdRoute
+  '/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
   '/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
   '/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
   '/agent/settings/profile/pending-actions': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
@@ -578,6 +587,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/dashboard/workspace/$workspaceId': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteWithChildren
   '/_layout/_authenticated/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/_layout/_authenticated/agent/god-mode/authentication/$id': typeof LayoutAuthenticatedAgentGodModeAuthenticationIdRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
   '/_layout/_authenticated/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
   '/_layout/_authenticated/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
   '/_layout/_authenticated/agent/settings/profile/pending-actions': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
@@ -638,6 +648,7 @@ export interface FileRouteTypes {
     | '/dashboard/workspace/$workspaceId'
     | '/dashboard/workspace/create'
     | '/agent/god-mode/authentication/$id'
+    | '/agent/projects/$projectKey/backlog'
     | '/agent/projects/$projectKey/work'
     | '/agent/settings/calendars/$id'
     | '/agent/settings/profile/pending-actions'
@@ -694,6 +705,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings/workspace'
     | '/dashboard/workspace/create'
     | '/agent/god-mode/authentication/$id'
+    | '/agent/projects/$projectKey/backlog'
     | '/agent/projects/$projectKey/work'
     | '/agent/settings/calendars/$id'
     | '/agent/settings/profile/pending-actions'
@@ -754,6 +766,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId'
     | '/_layout/_authenticated/dashboard/workspace/create'
     | '/_layout/_authenticated/agent/god-mode/authentication/$id'
+    | '/_layout/_authenticated/agent/projects/$projectKey/backlog'
     | '/_layout/_authenticated/agent/projects/$projectKey/work'
     | '/_layout/_authenticated/agent/settings/calendars/$id'
     | '/_layout/_authenticated/agent/settings/profile/pending-actions'
@@ -1027,6 +1040,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/agent/god-mode/authentication/$id'
       preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationIdRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/backlog': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/backlog'
+      path: '/agent/projects/$projectKey/backlog'
+      fullPath: '/agent/projects/$projectKey/backlog'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport
+      parentRoute: typeof LayoutAuthenticatedRoute
     }
     '/_layout/_authenticated/agent/projects/$projectKey/work': {
       id: '/_layout/_authenticated/agent/projects/$projectKey/work'
@@ -1440,6 +1460,7 @@ interface LayoutAuthenticatedRouteChildren {
   LayoutAuthenticatedAgentSettingsRequestTypesRoute: typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
   LayoutAuthenticatedAgentSettingsSlaPoliciesRoute: typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   LayoutAuthenticatedAgentWorkItemsKeyRoute: typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
   LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
   LayoutAuthenticatedAgentSettingsProfilePendingActionsRoute: typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
 }
@@ -1467,6 +1488,8 @@ const LayoutAuthenticatedRouteChildren: LayoutAuthenticatedRouteChildren = {
     LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren,
   LayoutAuthenticatedAgentWorkItemsKeyRoute:
     LayoutAuthenticatedAgentWorkItemsKeyRoute,
+  LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute:
+    LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute,
   LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute:
     LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute,
   LayoutAuthenticatedAgentSettingsProfilePendingActionsRoute:

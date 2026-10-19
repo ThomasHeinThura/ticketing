@@ -11,7 +11,10 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import bulkAssignWorkItems from "@/fetchers/work-item/bulk-assign-work-items";
+import bulkAssignWorkItems, {
+  type BulkWorkItemsOperationInput,
+  bulkWorkItemsOperation,
+} from "@/fetchers/work-item/bulk-assign-work-items";
 import useGetAssignablePeople from "@/hooks/queries/work-item/use-get-assignable-people";
 import {
   classifyWorkItemWriteError,
@@ -23,14 +26,23 @@ type BulkResult = {
   failed: { key: string; reason: string }[];
 };
 
+type PriorityOption = "urgent" | "high" | "medium" | "low" | "none";
+
+const PRIORITY_OPTIONS: { value: PriorityOption; label: string }[] = [
+  { value: "urgent", label: "Urgent" },
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+  { value: "none", label: "No priority" },
+];
+
 /** The server words a per-item failure; "not found" is its single reason for both a
  * deleted item and one the caller can no longer reach (`WI-25`). */
 const NOT_FOUND_REASON = /not found/i;
 
 /**
- * The bulk action bar for a multi-selection (`VW-3`, `WI-24`): today only "assign", the one
- * bulk operation that has a single-item mechanism behind it. It is rendered only when the
- * caller holds the strict assign capability; the server still checks capability and reach for
+ * The bulk action bar for a multi-selection (`VW-3`, `WI-24`). Supports assign, set priority,
+ * archive, and delete over selected work items. The server checks capability and reach for
  * every item and answers per item (`WI-25`), so a partial result is a normal outcome.
  *
  * `onAssigned` receives only the keys the server confirmed, so a failed item stays selected for
@@ -52,11 +64,32 @@ export default function BulkAssignToolbar({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [assigneeId, setAssigneeId] = useState("");
+  const [priorityChoice, setPriorityChoice] = useState<PriorityOption | "">("");
   const [result, setResult] = useState<BulkResult>();
   const people = useGetAssignablePeople({ projectId, enabled: true });
   const chosenPerson = people.data?.find(
     (person) => person.personId === assigneeId,
   );
+  const chosenPriority = PRIORITY_OPTIONS.find(
+    (opt) => opt.value === priorityChoice,
+  );
+
+  const handleBulkResponse = (response: {
+    succeeded: string[];
+    failed: { id: string; reason: string }[];
+  }) => {
+    setResult({
+      succeeded: response.succeeded.length,
+      failed: response.failed.map((failure) => ({
+        key: failure.id,
+        reason: NOT_FOUND_REASON.test(failure.reason)
+          ? t("workItems:bulk.reasonGone")
+          : failure.reason,
+      })),
+    });
+    onAssigned(response.succeeded);
+  };
+
   const mutation = useMutation({
     mutationFn: () =>
       bulkAssignWorkItems({
@@ -64,23 +97,23 @@ export default function BulkAssignToolbar({
         workItemKeys: selectedKeys,
         assigneeId,
       }),
-    onSuccess: (response) => {
-      setResult({
-        succeeded: response.succeeded.length,
-        failed: response.failed.map((failure) => ({
-          key: failure.id,
-          reason: NOT_FOUND_REASON.test(failure.reason)
-            ? t("workItems:bulk.reasonGone")
-            : failure.reason,
-        })),
-      });
-      onAssigned(response.succeeded);
-    },
+    onSuccess: handleBulkResponse,
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ["work-items", projectId] }),
   });
-  const failure: WorkItemWriteFailure | undefined = mutation.error
-    ? classifyWorkItemWriteError(mutation.error)
+
+  const actionMutation = useMutation({
+    mutationFn: (input: BulkWorkItemsOperationInput) =>
+      bulkWorkItemsOperation(input),
+    onSuccess: handleBulkResponse,
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["work-items", projectId] }),
+  });
+
+  const isBusy = mutation.isPending || actionMutation.isPending;
+  const activeError = mutation.error ?? actionMutation.error;
+  const failure: WorkItemWriteFailure | undefined = activeError
+    ? classifyWorkItemWriteError(activeError)
     : undefined;
 
   return (
@@ -99,7 +132,7 @@ export default function BulkAssignToolbar({
         >
           <SelectTrigger
             aria-label={t("workItems:bulk.assigneeLabel")}
-            className="w-64"
+            className="w-56"
           >
             <SelectValue
               placeholder={
@@ -125,10 +158,7 @@ export default function BulkAssignToolbar({
         <Button
           size="sm"
           disabled={
-            !assigneeId ||
-            selectedKeys.length === 0 ||
-            mutation.isPending ||
-            people.isError
+            !assigneeId || selectedKeys.length === 0 || isBusy || people.isError
           }
           onClick={() => {
             setResult(undefined);
@@ -139,12 +169,86 @@ export default function BulkAssignToolbar({
             ? t("workItems:bulk.saving")
             : t("workItems:bulk.assign")}
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={mutation.isPending}
-          onClick={onClear}
+
+        <Select
+          value={priorityChoice}
+          onValueChange={(value) =>
+            setPriorityChoice((value as PriorityOption | null) ?? "")
+          }
         >
+          <SelectTrigger
+            aria-label={t("workItems:bulk.priorityLabel", {
+              defaultValue: "Set priority of selected work items",
+            })}
+            className="w-44"
+          >
+            <SelectValue
+              placeholder={t("workItems:bulk.priorityPlaceholder", {
+                defaultValue: "Choose priority",
+              })}
+            >
+              {chosenPriority?.label}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {PRIORITY_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!priorityChoice || selectedKeys.length === 0 || isBusy}
+          onClick={() => {
+            if (!priorityChoice) return;
+            setResult(undefined);
+            actionMutation.mutate({
+              workspaceId,
+              workItemKeys: selectedKeys,
+              operation: "set_priority",
+              priority: priorityChoice === "none" ? null : priorityChoice,
+            });
+          }}
+        >
+          {t("workItems:bulk.setPriority", { defaultValue: "Set priority" })}
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={selectedKeys.length === 0 || isBusy}
+          onClick={() => {
+            setResult(undefined);
+            actionMutation.mutate({
+              workspaceId,
+              workItemKeys: selectedKeys,
+              operation: "archive",
+            });
+          }}
+        >
+          {t("workItems:bulk.archive", { defaultValue: "Archive selected" })}
+        </Button>
+
+        <Button
+          size="sm"
+          variant="destructive"
+          disabled={selectedKeys.length === 0 || isBusy}
+          onClick={() => {
+            setResult(undefined);
+            actionMutation.mutate({
+              workspaceId,
+              workItemKeys: selectedKeys,
+              operation: "delete",
+            });
+          }}
+        >
+          {t("workItems:bulk.delete", { defaultValue: "Delete selected" })}
+        </Button>
+
+        <Button variant="outline" size="sm" disabled={isBusy} onClick={onClear}>
           {t("workItems:bulk.clear")}
         </Button>
       </div>

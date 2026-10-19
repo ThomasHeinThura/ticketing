@@ -766,3 +766,50 @@ describe("routes.savedViews", () => {
     expect(generatedRouteMetadata.agent).toContain(routes.savedViews.path);
   });
 });
+
+describe("routes.projectBacklog and ?item={key} side pane URL state (VW-4)", () => {
+  it("round-trips ?item={key} on routes.workItemList, routes.projectBacklog, and routes.savedView", () => {
+    const workUrl = routes.workItemList.build(
+      { projectKey: "PROJ" },
+      { layout: "list", sort: "key", dir: "asc", item: "PROJ-42" },
+    );
+    expect(workUrl).toContain("item=PROJ-42");
+    expect(
+      parseWorkItemListSearchFromQueryString(workUrl.split("?")[1] ?? ""),
+    ).toEqual({
+      layout: "list",
+      sort: "key",
+      dir: "asc",
+      item: "PROJ-42",
+    });
+
+    const backlogUrl = routes.projectBacklog.build(
+      { projectKey: "PROJ" },
+      { item: "PROJ-99", filter: "priority:high" },
+    );
+    expect(backlogUrl.startsWith("/agent/projects/PROJ/backlog?")).toBe(true);
+    expect(backlogUrl).toContain("item=PROJ-99");
+    expect(
+      parseWorkItemListSearchFromQueryString(backlogUrl.split("?")[1] ?? ""),
+    ).toEqual({
+      layout: "list",
+      sort: "key",
+      dir: "asc",
+      filter: "priority:high",
+      item: "PROJ-99",
+    });
+    expect(generatedRouteMetadata.agent).toContain(routes.projectBacklog.path);
+
+    const viewUrl = routes.savedView.build(
+      { id: "view-1" },
+      { workspaceId: "ws-1", item: "PROJ-7" },
+    );
+    expect(viewUrl).toContain("item=PROJ-7");
+    expect(
+      parseSavedViewUrlSearchFromQueryString(viewUrl.split("?")[1] ?? ""),
+    ).toEqual({
+      workspaceId: "ws-1",
+      item: "PROJ-7",
+    });
+  });
+});
