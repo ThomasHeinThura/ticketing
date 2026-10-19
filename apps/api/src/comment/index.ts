@@ -1,11 +1,15 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { activitySchema } from "../activity/response";
+import type { BaseVariables } from "../openapi";
 import {
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -20,6 +24,19 @@ import {
   taskIdParam,
   updateCommentBody,
 } from "./schema";
+
+async function requestIdentity(
+  c: Context<{ Variables: BaseVariables }>,
+): Promise<ResolvedIdentity> {
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  const identity = await resolveRequestIdentity({
+    userId: c.get("userId"),
+    apiKey: c.get("apiKey"),
+    impersonatedBy: session?.impersonatedBy,
+  });
+  if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+  return identity;
+}
 
 const getTaskCommentsRoute = createRoute({
   method: "get",
@@ -149,17 +166,38 @@ const comment = apiRouter()
         ? { userName: externalUserName, source: externalSource }
         : undefined;
     return c.json(
-      await createComment(taskId, c.get("userId"), content, external),
+      await createComment(
+        await requestIdentity(c),
+        taskId,
+        c.get("userId"),
+        content,
+        external,
+      ),
       200,
     );
   })
   .openapi(updateTaskCommentRoute, async (c) => {
     const { id } = c.req.valid("param");
     const { content } = c.req.valid("json");
-    return c.json(await updateComment(c.get("userId"), id, content), 200);
+    return c.json(
+      await updateComment(
+        await requestIdentity(c),
+        c.get("userId"),
+        id,
+        content,
+      ),
+      200,
+    );
   })
   .openapi(deleteTaskCommentRoute, async (c) =>
-    c.json(await deleteComment(c.get("userId"), c.req.valid("param").id), 200),
+    c.json(
+      await deleteComment(
+        await requestIdentity(c),
+        c.get("userId"),
+        c.req.valid("param").id,
+      ),
+      200,
+    ),
   );
 
 export default comment;

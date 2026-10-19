@@ -1,17 +1,34 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
+import type { BaseVariables } from "../openapi";
 import {
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { settingsSchema } from "./response";
 import { patchSettingsBody } from "./schema";
 import { getOwnSettings, patchOwnSettings } from "./service";
 import { SETTINGS_BODY_MAX_BYTES } from "./whitelist";
+
+async function requestIdentity(
+  c: Context<{ Variables: BaseVariables }>,
+): Promise<ResolvedIdentity> {
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  const identity = await resolveRequestIdentity({
+    userId: c.get("userId"),
+    apiKey: c.get("apiKey"),
+    impersonatedBy: session?.impersonatedBy,
+  });
+  if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+  return identity;
+}
 
 const getSettingsRoute = createRoute({
   method: "get",
@@ -61,14 +78,17 @@ const patchSettingsRoute = createRoute({
 
 const userPreference = apiRouter()
   .openapi(getSettingsRoute, async (c) => {
-    const result = await getOwnSettings(c.get("userId"));
+    const result = await getOwnSettings(await requestIdentity(c));
     // Only the caller's own rows were read; mark after the read succeeds so a failure
     // leaves the shadow comparison unknown.
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(result, 200);
   })
   .openapi(patchSettingsRoute, async (c) =>
-    c.json(await patchOwnSettings(c.get("userId"), c.req.valid("json")), 200),
+    c.json(
+      await patchOwnSettings(await requestIdentity(c), c.req.valid("json")),
+      200,
+    ),
   );
 
 export default userPreference;

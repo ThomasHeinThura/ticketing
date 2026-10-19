@@ -142,8 +142,17 @@ async function updateTask(
   });
 
   if (previousDescription !== description) {
-    deleteOrphanedAssets(previousDescription, description, {
-      taskId: id,
+    db.transaction(async (tx) => {
+      await lockTaskAndAssertProjectLiveForIdentity(tx, id, identity);
+      await deleteOrphanedAssets(
+        tx,
+        identity,
+        previousDescription,
+        description,
+        {
+          taskId: id,
+        },
+      );
     }).catch(() => {});
   }
 

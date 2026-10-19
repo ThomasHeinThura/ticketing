@@ -1,44 +1,25 @@
-import { and, eq, inArray, or } from "drizzle-orm";
-import db from "../../database";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import {
-  projectTable,
-  taskRelationTable,
-  taskTable,
-  userTable,
-} from "../../database/schema";
+  listRelationsOfTask,
+  listTaskSummariesInWorkspace,
+} from "../repository";
 
 async function getTaskRelations(
+  identity: ResolvedIdentity,
   taskId: string,
   workspaceId: string,
-  /** Whether the caller reaches the task's project; unreachable related tasks are dropped. */
   canReachTask: (task: {
     id: string;
     projectId: string;
     workspaceId: string;
   }) => Promise<boolean>,
 ) {
-  const relations = await db
-    .select({
-      id: taskRelationTable.id,
-      sourceTaskId: taskRelationTable.sourceTaskId,
-      targetTaskId: taskRelationTable.targetTaskId,
-      relationType: taskRelationTable.relationType,
-      createdAt: taskRelationTable.createdAt,
-    })
-    .from(taskRelationTable)
-    .where(
-      or(
-        eq(taskRelationTable.sourceTaskId, taskId),
-        eq(taskRelationTable.targetTaskId, taskId),
-      ),
-    );
-
-  const taskIds = new Set<string>();
-  for (const rel of relations) {
-    taskIds.add(rel.sourceTaskId);
-    taskIds.add(rel.targetTaskId);
-  }
-
+  const relations = await listRelationsOfTask(identity, taskId);
+  const taskIds = [
+    ...new Set(
+      relations.flatMap((rel) => [rel.sourceTaskId, rel.targetTaskId]),
+    ),
+  ];
   const tasks = new Map<
     string,
     {
@@ -53,38 +34,17 @@ async function getTaskRelations(
       assigneeName: string | null;
     }
   >();
-
-  if (taskIds.size > 0) {
-    const taskRows = await db
-      .select({
-        id: taskTable.id,
-        version: taskTable.version,
-        title: taskTable.title,
-        status: taskTable.status,
-        priority: taskTable.priority,
-        number: taskTable.number,
-        projectId: taskTable.projectId,
-        userId: taskTable.userId,
-        assigneeName: userTable.name,
-      })
-      .from(taskTable)
-      .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .leftJoin(userTable, eq(taskTable.userId, userTable.id))
-      .where(
-        and(
-          inArray(taskTable.id, [...taskIds]),
-          eq(projectTable.workspaceId, workspaceId),
-        ),
-      );
-
+  if (taskIds.length > 0) {
+    const taskRows = await listTaskSummariesInWorkspace(
+      identity,
+      taskIds,
+      workspaceId,
+    );
     for (const task of taskRows) {
-      // A related task outside the caller's project reach is omitted entirely, with its
-      // relation: its title, status, priority and assignee must not reach the caller.
       if (await canReachTask({ ...task, workspaceId }))
         tasks.set(task.id, task);
     }
   }
-
   return relations
     .filter((rel) => tasks.has(rel.sourceTaskId) && tasks.has(rel.targetTaskId))
     .map((rel) => ({

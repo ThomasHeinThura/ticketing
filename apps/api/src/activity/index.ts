@@ -178,7 +178,13 @@ const deleteCommentRoute = createRoute({
 
 const activity = apiRouter()
   .openapi(getActivitiesRoute, async (c) =>
-    c.json(await getActivities(c.req.valid("param").taskId), 200),
+    c.json(
+      await getActivities(
+        await requestIdentity(c),
+        c.req.valid("param").taskId,
+      ),
+      200,
+    ),
   )
   .openapi(createActivityRoute, async (c) => {
     const { taskId, message, type, eventData } = c.req.valid("json");
@@ -196,18 +202,35 @@ const activity = apiRouter()
   })
   .openapi(createCommentRoute, async (c) => {
     const { taskId, comment } = c.req.valid("json");
-    return c.json(await createComment(taskId, c.get("userId"), comment), 200);
+    return c.json(
+      await createComment(
+        await requestIdentity(c),
+        taskId,
+        c.get("userId"),
+        comment,
+      ),
+      200,
+    );
   })
   .openapi(updateCommentRoute, async (c) => {
     const { activityId, comment } = c.req.valid("json");
     return c.json(
-      await updateComment(c.get("userId"), activityId, comment),
+      await updateComment(
+        await requestIdentity(c),
+        c.get("userId"),
+        activityId,
+        comment,
+      ),
       200,
     );
   })
   .openapi(deleteCommentRoute, async (c) =>
     c.json(
-      await deleteComment(c.get("userId"), c.req.valid("json").activityId),
+      await deleteComment(
+        await requestIdentity(c),
+        c.get("userId"),
+        c.req.valid("json").activityId,
+      ),
       200,
     ),
   );
