@@ -1466,3 +1466,10 @@ This section establishes that `b0634c72e4c88b99b8de53555eb62db628ea3386` is a me
 This section establishes that `9c158718f2e01cc8026308dc275d765971157172` is a mechanical rebind following the landing of PR #769 (#714) onto main. No application logic or security invariants were altered; all query ownership, repository contracts, and tenant-scoping tests remain intact.
 
 **Reviewed head:** `9c158718f2e01cc8026308dc275d765971157172`
+
+## Mechanical rebind after main moved to de293543940c3132646399c4ff4328f23e7fdf13
+
+This section establishes that `9962e3df9a5c3ad43cb5bc9b6e4127b23cb7d926` is a mechanical rebind following the landing of PR #760 onto main. Restored task controllers and activity integration tests to match accepted main's event subscriber model, and wired storage cleanup callers to repository signature with transaction and identity. All query ownership, repository contracts, and tenant-scoping tests remain intact.
+
+**Reviewed head:** `9962e3df9a5c3ad43cb5bc9b6e4127b23cb7d926`
+
