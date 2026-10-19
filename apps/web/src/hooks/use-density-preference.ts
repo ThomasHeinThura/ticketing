@@ -40,7 +40,7 @@ function toDensity(compactMode: boolean): Density {
 // write queued for user A must never be sent (with B's session) or applied after B signs in.
 const writeStates = new Map<
   string,
-  { chain: Promise<unknown>; latest: number }
+  { chain: Promise<unknown>; latest: number; pending?: Density }
 >();
 let activeUserId: string | undefined;
 // How many mounted consumers vouch for each signed-in user. When the last one unmounts
@@ -88,6 +88,9 @@ function writeDensity(input: {
   const { userId, density, patchSettings, queryClient } = input;
   const state = writeStateFor(userId);
   const generation = ++state.latest;
+  // The newest write is in flight until it settles; the sync's push-local reconcile uses this
+  // to avoid re-sending a value that is already on its way.
+  state.pending = density;
   const storage = getPreferenceMarkerStorage();
   // Send-time check: the session cookie belongs to whoever is signed in NOW. A change made
   // by another user is dropped (it stays unsent under that user's marker) instead of being
@@ -98,6 +101,11 @@ function writeDensity(input: {
       : Promise.reject(new SupersededByUserChange());
   const result = state.chain.then(send, send);
   state.chain = result.catch(() => undefined);
+
+  const clearPending = () => {
+    if (generation === state.latest) state.pending = undefined;
+  };
+  result.then(clearPending, clearPending);
 
   result.then(
     () => {
@@ -219,6 +227,9 @@ export function useDensityPreferenceSync() {
           true,
         );
       } else if (action === "push-local") {
+        // An explicit change already queued this exact value: the dirty marker is only cleared
+        // when that write lands, so re-sending it here would duplicate the request.
+        if (writeStateFor(userId).pending === localDensity) return;
         writeDensity({
           userId,
           density: localDensity,
