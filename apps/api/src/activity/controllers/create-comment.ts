@@ -1,43 +1,40 @@
-import { eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskActivityTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import createNotification from "../../notification/controllers/create-notification";
-import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { parseMentionIds } from "../../utils/parse-mentions";
+import {
+  findProjectWorkspaceId,
+  findUserName,
+  insertCommentActivity,
+  lockTaskAndAssertProjectLive,
+} from "../repository";
 
 async function createComment(
+  identity: ResolvedIdentity,
   taskId: string,
   userId: string,
   content: string,
   external?: { userName: string; source: string },
 ) {
-  const { activity, taskContext } = await db.transaction(async (tx) => {
-    const lockedTask = await lockTaskAndAssertProjectLive(tx, taskId);
-    const [activity] = await tx
-      .insert(taskActivityTable)
-      .values({
-        taskId,
-        type: "comment",
-        userId,
-        content,
-        ...(external
-          ? {
-              externalUserName: external.userName,
-              externalSource: external.source,
-            }
-          : {}),
-      })
-      .returning();
-    const project = await tx.query.projectTable.findFirst({
-      columns: { workspaceId: true },
-      where: (project, { eq }) => eq(project.id, lockedTask.projectId),
+  const { activity, task } = await db.transaction(async (tx) => {
+    const lockedTask = await lockTaskAndAssertProjectLive(tx, identity, taskId);
+    const activity = await insertCommentActivity(tx, identity, {
+      taskId,
+      userId,
+      content,
+      external,
     });
+    const project = await findProjectWorkspaceId(
+      tx,
+      identity,
+      lockedTask.projectId,
+    );
     if (!project) throw new HTTPException(404, { message: "Task not found" });
     return {
       activity,
-      taskContext: {
+      task: {
         assigneeId: lockedTask.userId,
         projectId: lockedTask.projectId,
         title: lockedTask.title,
@@ -46,46 +43,29 @@ async function createComment(
     };
   });
 
-  if (!activity) {
-    throw new HTTPException(500, {
-      message: "Failed to create activity",
-    });
-  }
-
-  const [user] = await db
-    .select({ name: userTable.name })
-    .from(userTable)
-    .where(eq(userTable.id, userId));
-
-  const task = taskContext;
-
-  if (task) {
-    await publishEvent("comment.created", {
-      ...activity,
-      comment: `**${user?.name}** commented:\n> ${content}`,
-      projectId: task.projectId,
-    });
-  }
-
-  // Notify any workspace members @mentioned in the comment (not the author).
+  const user = await findUserName(userId);
+  await publishEvent("comment.created", {
+    ...activity,
+    comment: `**${user?.name}** commented:\n> ${content}`,
+    projectId: task.projectId,
+  });
   const mentionedIds = parseMentionIds(content).filter((id) => id !== userId);
   for (const mentionedId of mentionedIds) {
     await createNotification({
       userId: mentionedId,
       type: "task_mention",
       eventData: {
-        taskTitle: task?.title ?? null,
+        taskTitle: task.title,
         mentionerName: user?.name ?? null,
-        projectId: task?.projectId ?? null,
-        workspaceId: task?.workspaceId ?? null,
+        projectId: task.projectId,
+        workspaceId: task.workspaceId,
       },
       resourceId: taskId,
       resourceType: "task",
     });
   }
-
   if (
-    task?.assigneeId &&
+    task.assigneeId &&
     task.assigneeId !== userId &&
     !mentionedIds.includes(task.assigneeId)
   ) {
@@ -103,7 +83,6 @@ async function createComment(
       resourceType: "task",
     });
   }
-
   return activity;
 }
 

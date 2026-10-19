@@ -1,19 +1,16 @@
-import { desc, eq } from "drizzle-orm";
-import db from "../../database";
-import { taskActivityTable } from "../../database/schema";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { listTaskActivitiesNewestFirst } from "../repository";
 
-async function getActivitiesFromTaskId(taskId: string) {
-  const activities = await db.query.taskActivityTable.findMany({
-    where: eq(taskActivityTable.taskId, taskId),
-    orderBy: [desc(taskActivityTable.createdAt)],
-  });
-
-  activities.forEach((x) => {
-    if (x.content) {
-      x.content = x.content.replace(/\n+/g, "\n");
+async function getActivitiesFromTaskId(
+  identity: ResolvedIdentity,
+  taskId: string,
+) {
+  const activities = await listTaskActivitiesNewestFirst(identity, taskId);
+  activities.forEach((activity) => {
+    if (activity.content) {
+      activity.content = activity.content.replace(/\n+/g, "\n");
     }
   });
-
   return activities;
 }
 

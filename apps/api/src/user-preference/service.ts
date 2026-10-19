@@ -1,33 +1,23 @@
-import { reaches } from "@taskdesk/permissions";
-import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { type ResolvedIdentity, reaches } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
-import { resolveIdentity } from "../permissions/resolve-identity";
+import db from "../database";
+import {
+  deleteOwnSettingRow,
+  listLiveProjectReachFacts,
+  listOwnSettingAddresses,
+  listOwnSettingRows,
+  lockOwnSettingsWrites,
+  upsertOwnSettingRow,
+} from "./repository";
 import {
   layoutSettingKey,
   parseSettingKey,
   SETTINGS_MAX_KEYS_PER_REQUEST,
   SETTINGS_MAX_ROWS_PER_PERSON,
-  SETTINGS_WRITE_LOCK_NAMESPACE,
   type SettingTarget,
 } from "./whitelist";
 
-const { userPreferenceTable, projectTable, workspaceTable } = schema;
-
-type Identity = NonNullable<Awaited<ReturnType<typeof resolveIdentity>>>;
-
-async function resolveCaller(userId: string): Promise<Identity> {
-  // The rows are the caller's own, so the credential kind does not change reach: reach is the
-  // owner's current identity. Session-only enforcement for writes is the route's
-  // `requireSessionOnly()` middleware, applied before this runs.
-  const identity = await resolveIdentity({ userId, credential: "session" });
-  if (!identity) {
-    throw new HTTPException(403, {
-      message: "No organisation identity for this account",
-    });
-  }
-  return identity;
-}
+type Identity = ResolvedIdentity;
 
 /** The subset of `projectIds` that exist (not soft-deleted) and that the caller reaches. */
 async function reachableProjectIds(
@@ -35,20 +25,7 @@ async function reachableProjectIds(
   projectIds: readonly string[],
 ): Promise<Set<string>> {
   if (projectIds.length === 0) return new Set();
-  const projects = await db
-    .select({
-      id: projectTable.id,
-      workspaceId: projectTable.workspaceId,
-      organisationId: workspaceTable.organisationId,
-    })
-    .from(projectTable)
-    .innerJoin(workspaceTable, eq(workspaceTable.id, projectTable.workspaceId))
-    .where(
-      and(
-        inArray(projectTable.id, [...projectIds]),
-        isNull(projectTable.deletedAt),
-      ),
-    );
+  const projects = await listLiveProjectReachFacts(identity, projectIds);
   return new Set(
     projects
       .filter((project) =>
@@ -64,32 +41,8 @@ async function reachableProjectIds(
   );
 }
 
-const ownRowsFilter = (personId: string) =>
-  and(
-    eq(userPreferenceTable.personId, personId),
-    or(
-      and(
-        eq(userPreferenceTable.scope, "global"),
-        isNull(userPreferenceTable.scopeId),
-        eq(userPreferenceTable.key, "density"),
-      ),
-      and(
-        eq(userPreferenceTable.scope, "project"),
-        eq(userPreferenceTable.key, "layout"),
-      ),
-    ),
-  );
-
 async function readSettings(identity: Identity) {
-  const rows = await db
-    .select({
-      scope: userPreferenceTable.scope,
-      scopeId: userPreferenceTable.scopeId,
-      key: userPreferenceTable.key,
-      value: userPreferenceTable.value,
-    })
-    .from(userPreferenceTable)
-    .where(ownRowsFilter(identity.personId));
+  const rows = await listOwnSettingRows(identity.personId);
 
   const reachable = await reachableProjectIds(
     identity,
@@ -118,12 +71,12 @@ async function readSettings(identity: Identity) {
   return { settings };
 }
 
-export async function getOwnSettings(userId: string) {
-  return readSettings(await resolveCaller(userId));
+export async function getOwnSettings(identity: Identity) {
+  return readSettings(identity);
 }
 
 export async function patchOwnSettings(
-  userId: string,
+  identity: Identity,
   body: Record<string, unknown>,
 ) {
   const entries = Object.entries(body);
@@ -157,7 +110,6 @@ export async function patchOwnSettings(
     sets.push({ target, value: parsed.data });
   }
 
-  const identity = await resolveCaller(userId);
   // Reach is required to SET a layout. Clearing the caller's own row needs no reach, so a stale
   // row for a project the caller lost cannot get stuck; the result is the same whether or not
   // the row or the project existed, so it reveals nothing (ST-15).
@@ -173,34 +125,15 @@ export async function patchOwnSettings(
   await db.transaction(async (tx) => {
     // One person's settings writes are serialised so the row cap below is exact, not a soft
     // bound (ST-16). The lock is per person, released at commit/rollback.
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${SETTINGS_WRITE_LOCK_NAMESPACE}, hashtext(${identity.personId}))`,
-    );
+    await lockOwnSettingsWrites(tx, identity.personId);
 
     // Clears first, so a request that clears and sets is judged against the cap afterwards.
     for (const target of clears) {
-      await tx
-        .delete(userPreferenceTable)
-        .where(
-          and(
-            eq(userPreferenceTable.personId, identity.personId),
-            eq(userPreferenceTable.scope, target.scope),
-            eq(userPreferenceTable.key, target.rowKey),
-            target.scopeId === null
-              ? isNull(userPreferenceTable.scopeId)
-              : eq(userPreferenceTable.scopeId, target.scopeId),
-          ),
-        );
+      await deleteOwnSettingRow(tx, identity.personId, target);
     }
 
     // Row cap (ST-16). Replacing an existing row is always allowed.
-    const existing = await tx
-      .select({
-        scope: userPreferenceTable.scope,
-        scopeId: userPreferenceTable.scopeId,
-      })
-      .from(userPreferenceTable)
-      .where(ownRowsFilter(identity.personId));
+    const existing = await listOwnSettingAddresses(tx, identity.personId);
     const have = new Set(existing.map((r) => `${r.scope}:${r.scopeId ?? ""}`));
     const newRows = sets.filter(
       (s) => !have.has(`${s.target.scope}:${s.target.scopeId ?? ""}`),
@@ -213,42 +146,19 @@ export async function patchOwnSettings(
 
     const now = new Date();
     for (const { target, value } of sets) {
-      await tx
-        .insert(userPreferenceTable)
-        .values({
-          personId: identity.personId,
+      const row = await upsertOwnSettingRow(tx, identity, {
+        personId: identity.personId,
+        target: {
           scope: target.scope,
           scopeId: target.scopeId,
-          key: target.rowKey,
-          value,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target:
-            target.scopeId === null
-              ? [
-                  userPreferenceTable.personId,
-                  userPreferenceTable.scope,
-                  userPreferenceTable.key,
-                ]
-              : [
-                  userPreferenceTable.personId,
-                  userPreferenceTable.scope,
-                  userPreferenceTable.scopeId,
-                  userPreferenceTable.key,
-                ],
-          targetWhere:
-            target.scopeId === null
-              ? isNull(userPreferenceTable.scopeId)
-              : sqlNotNull(),
-          set: { value, updatedAt: now },
-        });
+          rowKey: target.rowKey,
+        },
+        value,
+        updatedAt: now,
+      });
+      if (!row) throw new HTTPException(404, { message: "Project not found" });
     }
   });
 
   return readSettings(identity);
-}
-
-function sqlNotNull() {
-  return isNotNull(userPreferenceTable.scopeId);
 }

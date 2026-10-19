@@ -1,8 +1,6 @@
-import { eq } from "drizzle-orm";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db from "../database";
-import { projectTable, taskRelationTable, taskTable } from "../database/schema";
 import {
   apiRouter,
   type BaseVariables,
@@ -10,6 +8,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { assertWorkItemProjectReach } from "../utils/assert-work-item-project-reach";
 import { callerReach } from "../utils/caller-reach";
 import { markReach } from "../utils/reach-mark";
@@ -20,6 +19,7 @@ import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createTaskRelation from "./controllers/create-task-relation";
 import deleteTaskRelation from "./controllers/delete-task-relation";
 import getTaskRelations from "./controllers/get-task-relations";
+import { findRelationEndpoints, findTaskReachRow } from "./repository";
 import {
   taskRelationSchema,
   taskRelationWithTasksListSchema,
@@ -30,22 +30,17 @@ import {
   taskRelationParam,
 } from "./schema";
 
-async function workspaceIdOfTask(taskId: string) {
-  return (await taskReachRow(taskId))?.workspaceId ?? null;
-}
-
-async function taskReachRow(taskId: string) {
-  const [task] = await db
-    .select({
-      workspaceId: projectTable.workspaceId,
-      projectId: taskTable.projectId,
-      taskId: taskTable.id,
-    })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(eq(taskTable.id, taskId))
-    .limit(1);
-  return task ?? null;
+async function requestIdentity(
+  c: Context<{ Variables: BaseVariables & { workspaceId: string } }>,
+): Promise<ResolvedIdentity> {
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  const identity = await resolveRequestIdentity({
+    userId: c.get("userId"),
+    apiKey: c.get("apiKey"),
+    impersonatedBy: session?.impersonatedBy,
+  });
+  if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+  return identity;
 }
 
 function requireUserId(c: Context) {
@@ -60,6 +55,7 @@ function requireUserId(c: Context) {
 // request rather than c.req.valid(), which is not populated yet.
 async function scopeToSourceTask(c: Context, next: Next) {
   const userId = requireUserId(c);
+  const identity = await requestIdentity(c);
 
   const body = (await c.req.json().catch(() => ({}))) as {
     sourceTaskId?: unknown;
@@ -74,10 +70,11 @@ async function scopeToSourceTask(c: Context, next: Next) {
   // 400, the same class #281 fixed for path/query ids.
   rejectNulByte(sourceTaskId, "Task id");
 
-  const workspaceId = await workspaceIdOfTask(sourceTaskId);
-  if (!workspaceId) {
+  const sourceTask = await findTaskReachRow(identity, sourceTaskId);
+  if (!sourceTask) {
     throw new HTTPException(404, { message: "Source task not found" });
   }
+  const workspaceId = sourceTask.workspaceId;
 
   // #290 follow-up: a source task that exists but is in a workspace the caller
   // can't reach used to leak a bare 403 here, distinguishable from the 404 just
@@ -97,24 +94,22 @@ async function scopeToSourceTask(c: Context, next: Next) {
   // the caller's request -- label it so shadow mode's evidence gate keeps it instead
   // of always nulling it.
   c.set("workspaceIdSource", "row");
-  const sourceTask = await taskReachRow(sourceTaskId);
-  if (sourceTask) {
-    await assertWorkItemProjectReach(
-      c,
-      userId,
-      {
-        projectId: sourceTask.projectId,
-        workspaceId: sourceTask.workspaceId,
-        workItemId: sourceTask.taskId,
-      },
-      { notFoundMessage: "Source task not found", deferApiKeyCapability: true },
-    );
-  }
+  await assertWorkItemProjectReach(
+    c,
+    userId,
+    {
+      projectId: sourceTask.projectId,
+      workspaceId: sourceTask.workspaceId,
+      workItemId: sourceTask.taskId,
+    },
+    { notFoundMessage: "Source task not found", deferApiKeyCapability: true },
+  );
   return next();
 }
 
 async function scopeToRelation(c: Context, next: Next) {
   const userId = requireUserId(c);
+  const identity = await requestIdentity(c);
 
   const id = c.req.param("id");
   // #281 sweep: this id reaches a raw `eq(taskRelationTable.id, ...)` query below,
@@ -122,22 +117,17 @@ async function scopeToRelation(c: Context, next: Next) {
   if (id) {
     rejectNulByte(id, "Task relation id");
   }
-  const [rel] = await db
-    .select({
-      sourceTaskId: taskRelationTable.sourceTaskId,
-      targetTaskId: taskRelationTable.targetTaskId,
-    })
-    .from(taskRelationTable)
-    .where(eq(taskRelationTable.id, id ?? ""))
-    .limit(1);
+  const rel = await findRelationEndpoints(identity, id ?? "");
   if (!rel) {
     throw new HTTPException(404, { message: "Task relation not found" });
   }
 
-  const workspaceId = await workspaceIdOfTask(rel.sourceTaskId);
-  if (!workspaceId) {
+  const relationSource = await findTaskReachRow(identity, rel.sourceTaskId);
+  const relationTarget = await findTaskReachRow(identity, rel.targetTaskId);
+  if (!relationSource || !relationTarget) {
     throw new HTTPException(404, { message: "Task not found" });
   }
+  const workspaceId = relationSource.workspaceId;
 
   // #290 follow-up: same class as `scopeToSourceTask` above -- a relation whose
   // source task is in a workspace the caller can't reach used to leak a bare 403,
@@ -157,39 +147,33 @@ async function scopeToRelation(c: Context, next: Next) {
   // never from the caller's request -- label it so shadow mode's evidence gate keeps
   // it instead of always nulling it.
   c.set("workspaceIdSource", "row");
-  const relationSource = await taskReachRow(rel.sourceTaskId);
-  if (relationSource) {
-    await assertWorkItemProjectReach(
-      c,
-      userId,
-      {
-        projectId: relationSource.projectId,
-        workspaceId: relationSource.workspaceId,
-        workItemId: relationSource.taskId,
-      },
-      {
-        notFoundMessage: "Task relation not found",
-        deferApiKeyCapability: true,
-      },
-    );
-  }
+  await assertWorkItemProjectReach(
+    c,
+    userId,
+    {
+      projectId: relationSource.projectId,
+      workspaceId: relationSource.workspaceId,
+      workItemId: relationSource.taskId,
+    },
+    {
+      notFoundMessage: "Task relation not found",
+      deferApiKeyCapability: true,
+    },
+  );
   // Removing a relation needs update on BOTH ends (`relations-and-hierarchy.md`).
-  const relationTarget = await taskReachRow(rel.targetTaskId);
-  if (relationTarget) {
-    await assertWorkItemProjectReach(
-      c,
-      userId,
-      {
-        projectId: relationTarget.projectId,
-        workspaceId: relationTarget.workspaceId,
-        workItemId: relationTarget.taskId,
-      },
-      {
-        notFoundMessage: "Task relation not found",
-        deferApiKeyCapability: true,
-      },
-    );
-  }
+  await assertWorkItemProjectReach(
+    c,
+    userId,
+    {
+      projectId: relationTarget.projectId,
+      workspaceId: relationTarget.workspaceId,
+      workItemId: relationTarget.taskId,
+    },
+    {
+      notFoundMessage: "Task relation not found",
+      deferApiKeyCapability: true,
+    },
+  );
   return next();
 }
 
@@ -273,8 +257,10 @@ const deleteTaskRelationRoute = createRoute({
 const taskRelation = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(getTaskRelationsRoute, async (c) => {
     const reach = await callerReach(c, c.get("userId"));
+    const identity = await requestIdentity(c);
     return c.json(
       await getTaskRelations(
+        identity,
         c.req.valid("param").taskId,
         c.get("workspaceId"),
         (task) => reach.reaches(task),
@@ -285,8 +271,10 @@ const taskRelation = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(createTaskRelationRoute, async (c) => {
     const { sourceTaskId, targetTaskId, relationType } = c.req.valid("json");
     const reach = await callerReach(c, c.get("userId"));
+    const identity = await requestIdentity(c);
     return c.json(
       await createTaskRelation({
+        identity,
         sourceTaskId,
         targetTaskId,
         relationType,
@@ -301,7 +289,11 @@ const taskRelation = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(deleteTaskRelationRoute, async (c) =>
     c.json(
-      await deleteTaskRelation(c.req.valid("param").id, c.get("userId")),
+      await deleteTaskRelation(
+        await requestIdentity(c),
+        c.req.valid("param").id,
+        c.get("userId"),
+      ),
       200,
     ),
   );

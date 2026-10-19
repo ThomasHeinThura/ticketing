@@ -1,9 +1,11 @@
+import type { BaseVariables } from "../openapi";
 import {
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -18,6 +20,19 @@ import {
   timeEntryParam,
   updateTimeEntryBody,
 } from "./schema";
+
+async function requestIdentity(
+  c: Context<{ Variables: BaseVariables }>,
+): Promise<ResolvedIdentity> {
+  const session = c.get("session") as { impersonatedBy?: string | null } | null;
+  const identity = await resolveRequestIdentity({
+    userId: c.get("userId"),
+    apiKey: c.get("apiKey"),
+    impersonatedBy: session?.impersonatedBy,
+  });
+  if (!identity) throw new HTTPException(403, { message: "Forbidden" });
+  return identity;
+}
 
 const getTaskTimeEntriesRoute = createRoute({
   method: "get",
@@ -130,16 +145,26 @@ const updateTimeEntryRoute = createRoute({
 
 const timeEntry = apiRouter()
   .openapi(getTaskTimeEntriesRoute, async (c) =>
-    c.json(await getTimeEntriesByTaskId(c.req.valid("param").taskId), 200),
+    c.json(
+      await getTimeEntriesByTaskId(
+        await requestIdentity(c),
+        c.req.valid("param").taskId,
+      ),
+      200,
+    ),
   )
   .openapi(getTimeEntryRoute, async (c) =>
-    c.json(await getTimeEntry(c.req.valid("param").id), 200),
+    c.json(
+      await getTimeEntry(await requestIdentity(c), c.req.valid("param").id),
+      200,
+    ),
   )
   .openapi(createTimeEntryRoute, async (c) => {
     const { taskId, startTime, endTime, description } = c.req.valid("json");
     return c.json(
       await createTimeEntry({
         taskId,
+        identity: await requestIdentity(c),
         userId: c.get("userId"),
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : undefined,
@@ -153,6 +178,7 @@ const timeEntry = apiRouter()
     const { startTime, endTime, description } = c.req.valid("json");
     return c.json(
       await updateTimeEntry({
+        identity: await requestIdentity(c),
         timeEntryId: id,
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : undefined,
@@ -163,3 +189,7 @@ const timeEntry = apiRouter()
   });
 
 export default timeEntry;
+
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";

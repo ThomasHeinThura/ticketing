@@ -1,14 +1,15 @@
-import { and, eq, inArray, like } from "drizzle-orm";
-import db from "../database";
-import {
-  assetTable,
-  taskActivityTable,
-  taskCommentTable,
-  taskTable,
-} from "../database/schema";
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { Executor } from "../database/executor";
 import { deleteStorageObject } from "./index";
+import {
+  deleteAssetsByIds,
+  findTaskDescriptionLike,
+  listTaskActivityContentsLike,
+  listTaskAssetObjectKeys,
+  listTaskAssetsByIds,
+  listTaskCommentContentsLike,
+} from "./repository";
 
-type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 const ASSET_URL_PATTERN = /\/api\/asset\/([a-z0-9]+)/gi;
 
 export function extractAssetIds(
@@ -42,85 +43,77 @@ export interface AssetCleanupScope {
 
 /**
  * Check whether an asset ID is still referenced in any content belonging to
- * the same task (description, comments, or activity comments).
+ * the same currently reachable task.
  */
 async function isAssetReferencedElsewhere(
+  executor: Executor,
+  identity: ResolvedIdentity,
   assetId: string,
   taskId: string,
 ): Promise<boolean> {
   const pattern = `%/api/asset/${assetId}%`;
 
-  const [taskRef] = await db
-    .select({ description: taskTable.description })
-    .from(taskTable)
-    .where(and(eq(taskTable.id, taskId), like(taskTable.description, pattern)))
-    .limit(1);
-
+  const taskRef = await findTaskDescriptionLike(
+    executor,
+    identity,
+    taskId,
+    pattern,
+  );
   if (contentReferencesAsset(taskRef?.description, assetId)) return true;
 
-  const commentRefs = await db
-    .select({ content: taskCommentTable.content })
-    .from(taskCommentTable)
-    .where(
-      and(
-        eq(taskCommentTable.taskId, taskId),
-        like(taskCommentTable.content, pattern),
-      ),
-    );
-
+  const commentRefs = await listTaskCommentContentsLike(
+    executor,
+    identity,
+    taskId,
+    pattern,
+  );
   if (commentRefs.some((ref) => contentReferencesAsset(ref.content, assetId))) {
     return true;
   }
 
-  const activityRefs = await db
-    .select({ content: taskActivityTable.content })
-    .from(taskActivityTable)
-    .where(
-      and(
-        eq(taskActivityTable.taskId, taskId),
-        like(taskActivityTable.content, pattern),
-      ),
-    );
-
-  if (
-    activityRefs.some((ref) => contentReferencesAsset(ref.content, assetId))
-  ) {
-    return true;
-  }
-
-  return false;
+  const activityRefs = await listTaskActivityContentsLike(
+    executor,
+    identity,
+    taskId,
+    pattern,
+  );
+  return activityRefs.some((ref) =>
+    contentReferencesAsset(ref.content, assetId),
+  );
 }
 
+/**
+ * Clean removed inline assets inside the caller's task/project-locked transaction.
+ * Every database statement is run by the supplied executor and rechecks current reach;
+ * successful object deletion still precedes deletion of its database row.
+ */
 export async function deleteOrphanedAssets(
+  executor: Executor,
+  identity: ResolvedIdentity,
   oldContent: string | null | undefined,
   newContent: string | null | undefined,
   scope: AssetCleanupScope,
 ): Promise<void> {
   const oldIds = extractAssetIds(oldContent);
   const newIds = extractAssetIds(newContent);
-
   const removedIds = [...oldIds].filter((id) => !newIds.has(id));
   if (removedIds.length === 0) return;
 
-  const assets = await db
-    .select({ id: assetTable.id, objectKey: assetTable.objectKey })
-    .from(assetTable)
-    .where(
-      and(
-        inArray(assetTable.id, removedIds),
-        eq(assetTable.taskId, scope.taskId),
-      ),
-    );
-
+  const assets = await listTaskAssetsByIds(
+    executor,
+    identity,
+    removedIds,
+    scope.taskId,
+  );
   const assetsToDelete: typeof assets = [];
   for (const asset of assets) {
     const stillReferenced = await isAssetReferencedElsewhere(
+      executor,
+      identity,
       asset.id,
       scope.taskId,
     );
-    if (!stillReferenced) {
-      assetsToDelete.push(asset);
-    }
+    if (!stillReferenced) assetsToDelete.push(asset);
   }
 
   if (assetsToDelete.length === 0) return;
@@ -128,26 +121,21 @@ export async function deleteOrphanedAssets(
   const deleteResults = await deleteS3Keys(
     assetsToDelete.map((asset) => asset.objectKey),
   );
-
   const deletedAssetIds = assetsToDelete
     .filter((_, index) => deleteResults[index]?.status === "fulfilled")
     .map((asset) => asset.id);
-
   if (deletedAssetIds.length === 0) return;
 
-  await db.delete(assetTable).where(inArray(assetTable.id, deletedAssetIds));
+  await deleteAssetsByIds(executor, identity, deletedAssetIds, scope.taskId);
 }
 
 export async function getTaskAssetKeys(
+  executor: Executor,
+  identity: ResolvedIdentity,
   taskId: string,
-  executor: DbOrTx = db,
 ): Promise<string[]> {
-  const assets = await executor
-    .select({ objectKey: assetTable.objectKey })
-    .from(assetTable)
-    .where(eq(assetTable.taskId, taskId));
-
-  return assets.map((a) => a.objectKey);
+  const assets = await listTaskAssetObjectKeys(executor, identity, taskId);
+  return assets.map((asset) => asset.objectKey);
 }
 
 export async function deleteS3Keys(
