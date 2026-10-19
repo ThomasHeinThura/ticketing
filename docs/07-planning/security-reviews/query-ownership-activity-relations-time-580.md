@@ -1473,3 +1473,9 @@ This section establishes that `9962e3df9a5c3ad43cb5bc9b6e4127b23cb7d926` is a me
 
 **Reviewed head:** `9962e3df9a5c3ad43cb5bc9b6e4127b23cb7d926`
 
+## Mechanical rebind after main moved to 281b5be04feee72dae80eb80caeec1e07b578c77
+
+This section establishes that `52834a1ae7085685e711306e25dc60d25784a2eb` is a mechanical rebind following the landing of PR #775 onto main. No application logic or security invariants were altered; all query ownership, repository contracts, and tenant-scoping tests remain intact.
+
+**Reviewed head:** `52834a1ae7085685e711306e25dc60d25784a2eb`
+
