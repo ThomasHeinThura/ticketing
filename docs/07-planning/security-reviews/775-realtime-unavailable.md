@@ -13,6 +13,7 @@ A Claude Sonnet 5.5 lane implemented the change. The reviewers below are fresh, 
 
 **Reviewed head:** `e34657b0fb65cc90034b3c0a4a6536ba1b84d710`
 **Reviewed head:** `d68ec9e2b465f78ef0201fc581ef5dec660ef849`
+**Reviewed head:** `d4989dfdbd2ecc55c53918e85b9f6ebc88469327`
 
 ## Context index
 
@@ -284,3 +285,18 @@ Method:
 - **Parents:** first = `f89c9c5e` (prior branch head including rebind note), second = `29823775` (main tip with #769). Clean merge commit.
 - **Merge-tree equality:** Clean merge with pairs.json contrast occurrence alignment.
 - **Verdict:** CLEAR
+
+## Mechanical rebind after main moved to de293543940c3132646399c4ff4328f23e7fdf13
+
+This section establishes that `d4989dfdbd2ecc55c53918e85b9f6ebc88469327` is a mechanical rebind of `887490856915e88b6c9df4e86192a69e28dbb479` following the landing of PR #760 (#716) onto main.
+
+**Reviewed head:** `d4989dfdbd2ecc55c53918e85b9f6ebc88469327`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** de293543940c3132646399c4ff4328f23e7fdf13 (accepted main with #760)
+**Previous reviewed head:** 887490856915e88b6c9df4e86192a69e28dbb479
+
+Method:
+- **Parents:** first = `078b635d` (prior branch head including rebind note), second = `de293543` (main tip with #760). Clean merge commit.
+- **Merge-tree equality:** Clean merge with pairs.json contrast occurrence alignment for AlertDescription and SelectValue.
+- **Verdict:** CLEAR
+
