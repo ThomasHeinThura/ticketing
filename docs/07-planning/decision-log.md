@@ -1,3 +1,40 @@
+### 2026-10-19 · Antigravity orchestrator takeover, Gemini model assignments, and PR-consolidation-then-Hold stopping boundary
+
+**Decisions (Thomas, 2026-10-19 Antigravity Orchestrator Directive):**
+- **Orchestrator takeover:** Antigravity parent session `545788f2-b48e-49a0-be8a-3b290c70bd42` is designated as the replacement orchestrator for `ThomasHeinThura/ticketing`, after confirming outgoing agents have relinquished ownership:
+  > "I am Thomas, the project owner. I designate this Antigravity session as the replacement orchestrator for ThomasHeinThura/ticketing, after confirming that the outgoing agents have relinquished ownership."
+- **Outgoing writer confirmation:** Outgoing conductor PRs (#854, #855 from `codex/...`) merged at `397a87ce`. Inspection of the local process table verified no active Codex, orchestrator, test runner, or conflicting background processes; running containers are idle/dormant; primary checkout uncommitted working tree was safely backed up to `/Users/heinthura/.codex/taskdesk-evidence/backup-primary-dirty-20261019/dirty-main.patch` and committed to branch `codex/backup-uncommitted-primary-checkout-8ddb9de8` without discarding any uncommitted work.
+- **Model assignments by role:**
+  > "My role assignment is:
+  > - Orchestrator and difficult cross-module diagnosis: **Gemini 4 Argon**
+  > - Bounded implementation, test repair and ordinary review: **Gemini 3.8 Flash**, in separate contexts
+  > - Critical/security review: **Fresh Gemini 4 Argon or available Claude Opus**
+  > - Higher-risk implementation when necessary: Argon or Opus, with a different independent reviewer"
+- **Security review allowlist admission:**
+  > "The supplied handoff records a merge-base security-review allowlist that does not yet include Gemini. Verify its current state. Make one coherent, minimal policy PR to record this takeover, the model assignments and the new PR-consolidation-then-Hold stop condition."
+  `Gemini 4 Argon` is admitted to the accepted security-review model block in `docs/04-engineering/agent-workflow.md` (`<!-- policy:security-review-models -->`).
+- **Mission stopping boundary (PR-consolidation-then-Hold):**
+  > "Your immediate objective is to finish the existing PR queue as quickly as correctness permits: review the actual work, repair genuine blockers, integrate all valid changes, retire verified duplicates and superseded PRs, and leave a verified main. Then report and wait for my next instruction."
+  > "Do not automatically proceed to release publication, persistent SIT deployment, recovery exercises, final stage audits, or another roadmap stage."
+- **Frozen starting PR inventory (13 open PRs):**
+  - #791: Carrier C integration (`codex/carrier-2026-10-15-c`)
+  - #760, #768, #769, #771, #772, #775, #778, #781: component work to reconcile with Carrier C and accepted `main`, absorb, and close as superseded
+  - #811, #773: mixed recovered query-ownership/activity source; separate completed work from decision-dependent items
+  - #589: historical integration train; absorb selected commitments, close superseded train
+  - #794: diagnostic-only; confirm stopped evidence and close without merging
+- **Held activities:** Release publication (GHCR, tags, GitHub Releases, Docker Hub), persistent SIT deployment, external identity/notification activation, recovery exercises, and formal P1–P7 final stage audits are held for subsequent owner direction and are not automatically continued.
+
+**Source:** Direct instruction received from Thomas (project owner) in Antigravity session `545788f2-b48e-49a0-be8a-3b290c70bd42` on 2026-10-19. No relay.
+
+**Recorded by:** Antigravity orchestrator session `545788f2-b48e-49a0-be8a-3b290c70bd42` (Gemini 3.8 Flash, conducting this bounded policy-maintenance bootstrap PR while Gemini 4 Argon serves the orchestrator/diagnosis role), on branch `agy/policy-gemini-admission`.
+
+**Supersedes:**
+- **2026-10-09 "Owner directive: Integration Freeze and SIT Consolidation":** supersedes the automatic continuation into release publication, SIT deployment, recovery exercises, and audit stages; retains freeze and consolidation on existing scope.
+- **2026-10-15 "Continue the remaining #589 integration after alpha.4; laptop SIT hostnames and loopback":** supersedes automatic continuation into laptop loopback SIT deployment, recovery/workflow proof, and audit; retains selective unit integration under Carrier C.
+- **2026-10-09 "Owner directive: model tiers by availability; no fixed GPT-6 Sol requirement":** applies the Conductor designation to Antigravity session `545788f2-b48e-49a0-be8a-3b290c70bd42`, and adds Gemini 4 Argon to Sol tier and Gemini 3.8 Flash to Luna tier; all other tier rules, truthful labelling, and review independence rules stand.
+
+**Reversal:** A new explicit owner directive recorded in this log.
+
 ### 2026-10-17 · Exact immutable #797 review-wrapper scan finding
 
 **Technical disposition (conductor; subject to independent ordinary and full Sol review):** the one local Gitleaks finding in publication commit `78c976c8198c6ed1702cfa3192ba6e98a0770b61`, this candidate's query-checker review note, line 971, matches the basename of its retained independent ordinary report. Equality against that actual evidence file and the committed wrapper line was checked. The matched text identifies a report and confers no access; it is not a credential. The report bodies and original wrapper remain unchanged.
