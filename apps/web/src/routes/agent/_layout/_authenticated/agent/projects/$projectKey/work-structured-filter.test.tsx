@@ -282,7 +282,7 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
     expect(state.controlsProps?.workItemsError).toBe(error);
   });
 
-  it("the board does not apply the filter and says so instead of looking unfiltered", async () => {
+  it("applies the filter on the board layout and exposes the filter controls (VW-1)", async () => {
     state.search = {
       layout: "board",
       sort: "key",
@@ -290,20 +290,34 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
       filter: "priority:high",
     };
     await renderRoute();
-    expect(screen.getByTestId("board-filter-notice")).toHaveTextContent(
-      translate("workItems:filter.boardNotice"),
-    );
-    expect(screen.queryByRole("button", { name: /^Filter/ })).toBeNull();
-    expect(screen.queryByTestId("controls")).toBeNull();
+    await screen.findByTestId("controls");
+    expect(screen.queryByTestId("board-filter-notice")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Filter (on)" }),
+    ).toBeInTheDocument();
+    expect(state.controlsProps).toMatchObject({
+      filter: "priority:high",
+      workspaceId: "ws_1",
+      projectSlug: "WLP",
+    });
   });
 
-  it("offers no export control (F3 hold)", async () => {
-    state.search = { layout: "list", sort: "key", dir: "asc", filter: "x" };
+  it("updates URL columns when column selection changes on list/table layout (VW-19)", async () => {
+    state.search = {
+      layout: "table",
+      sort: "key",
+      dir: "asc",
+      filter: "priority:high",
+    };
     await renderRoute();
     await screen.findByTestId("controls");
-    expect(
-      screen.queryByRole("button", { name: /export|download/i }),
-    ).toBeNull();
+    callControl("onColumnsChange", ["key", "state"]);
+    const { next, replace } = navigatedSearch();
+    expect(replace).toBe(true);
+    expect(next).toMatchObject({
+      layout: "table",
+      columns: ["key", "state"],
+    });
   });
 });
 

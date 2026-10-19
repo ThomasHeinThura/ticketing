@@ -6,12 +6,14 @@ const mocks = vi.hoisted(() => ({
   canReorder: false,
   dndContext: vi.fn(),
   sortable: vi.fn(),
+  navigate: vi.fn(),
 }));
 
 afterEach(() => {
   cleanup();
   mocks.dndContext.mockClear();
   mocks.sortable.mockClear();
+  mocks.navigate.mockClear();
   mocks.canReorder = false;
 });
 
@@ -87,7 +89,7 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mocks.navigate,
   useParams: () => ({ workspaceId: "workspace-1", projectId: "project-1" }),
 }));
 
@@ -95,9 +97,17 @@ vi.mock("@taskdesk/ui", () => {
   const passthrough = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   );
-  const button = ({ children }: { children: React.ReactNode }) => (
+  const button = ({
+    children,
+    onClick,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+  }) => (
     // ui-exempt: test double for shared design-system button components.
-    <button type="button">{children}</button>
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
   );
   return {
     AlertDialog: passthrough,
@@ -159,6 +169,7 @@ vi.mock("@/hooks/queries/project/use-get-projects", () => ({
     data: [
       {
         id: "project-1",
+        slug: "VIS",
         name: "Visible Project",
         workspaceId: "workspace-1",
       },
@@ -185,6 +196,15 @@ vi.mock("./shared/modals/create-project-modal", () => ({
 }));
 
 describe("NavProjects drag-and-drop setup", () => {
+  it("navigates to the v2 /agent/projects/$projectKey/work route when a project is clicked", () => {
+    render(<NavProjects />);
+    screen.getByText("Visible Project").click();
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/agent/projects/$projectKey/work",
+      params: { projectKey: "VIS" },
+    });
+  });
+
   it("does not mount sortable infrastructure when project reordering is unavailable", () => {
     render(<NavProjects />);
 

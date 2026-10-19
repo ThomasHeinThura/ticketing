@@ -1,12 +1,15 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import {
   membershipTable,
   personTable,
   workItemTable,
 } from "../database/schema";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
+import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import {
   type ApiKey,
   apiRouter,
@@ -117,6 +120,14 @@ import {
   workItemKeyParam,
   workspaceIdParam,
 } from "./schema";
+import {
+  checkAndRecordExportRateLimit,
+  EXPORT_MAX_ROWS,
+  EXPORT_QUERY_TIMEOUT_MS,
+  exportColumns,
+  workItemsCsvHeader,
+  workItemsCsvRows,
+} from "./search/csv";
 import {
   SEARCH_BODY_MAX_BYTES,
   validateWorkItemSearchQuery,
@@ -367,6 +378,106 @@ const searchWorkItemsRoute = createRoute({
     404: errorResponse("Workspace not found or unreachable"),
     422: errorResponse(
       "Unsupported entity, unavailable filter field, or unreadable field",
+    ),
+  },
+});
+
+async function withExportTimeout<T>(
+  promise: Promise<T>,
+  deadlineMs: number,
+): Promise<T> {
+  const remainingMs = Math.max(1, deadlineMs - Date.now());
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(
+            new HTTPException(422, {
+              message: "Export query timed out after 30 seconds",
+            }),
+          );
+        }, remainingMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+const exportWorkItemsRoute = createRoute({
+  method: "post",
+  operationId: "exportWorkItems",
+  path: "/work-items/export",
+  tags: ["Work items"],
+  summary: "Export work items as CSV",
+  description:
+    "Streamed CSV export of reachable work items matching a structured filter (`VW-23`, D1). " +
+    "Enforces a 10,000-row hard cap (`422 export_limit_exceeded`), 30-second query timeout, " +
+    "and 5 exports/minute/user rate limit (`429`). Audited as `work_item.exported`.",
+  middleware: [
+    async (c, next) => {
+      const body = await c.req.raw.clone().arrayBuffer();
+      if (body.byteLength > SEARCH_BODY_MAX_BYTES)
+        throw new HTTPException(400, {
+          message: "Request body exceeds 32 KiB",
+        });
+      await next();
+    },
+    async (c, next) => {
+      try {
+        await workspaceAccess.fromBody("workspaceId")(c, next);
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 403)
+          throw new HTTPException(404, { message: "Workspace not found" });
+        throw error;
+      }
+    },
+    requireWorkspaceCapability("work_item:export"),
+  ] as const,
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              workspaceId: z.string().min(1),
+              query: z
+                .object({
+                  entity: z.string(),
+                  filter: z.unknown().optional(),
+                  sort: z
+                    .array(
+                      z
+                        .object({ field: z.string(), order: z.string() })
+                        .strict(),
+                    )
+                    .max(1)
+                    .optional(),
+                  columns: z.array(z.string()).optional(),
+                })
+                .strict(),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Streamed CSV file",
+      content: { "text/csv": { schema: z.string() } },
+    },
+    400: errorResponse("Malformed or over-limit export request"),
+    403: errorResponse("Missing work_item:export permission"),
+    404: errorResponse("Workspace not found or unreachable"),
+    422: errorResponse(
+      "Unsupported entity, unavailable filter field, or export_limit_exceeded (>10,000 rows)",
+    ),
+    429: errorResponse(
+      "Export rate limit exceeded (5 exports per minute per user)",
     ),
   },
 });
@@ -1118,6 +1229,138 @@ const workItem = apiRouter<
         cursor: body.cursor ?? undefined,
       });
     return c.json(result, 200);
+  })
+  .openapi(exportWorkItemsRoute, async (c) => {
+    const userId = c.get("userId");
+    if (!checkAndRecordExportRateLimit(userId)) {
+      return c.json(
+        {
+          code: "rate_limited",
+          message:
+            "Too many exports requested. Please wait a minute before trying again.",
+        },
+        429,
+      );
+    }
+
+    const body = c.req.valid("json");
+    const query = validateWorkItemSearchQuery(body.query);
+    const columns = exportColumns(query);
+    const workspaceId = c.get("workspaceId");
+    const apiKey = c.get("apiKey");
+    const session = c.get("session") as
+      | { impersonatedBy?: string | null }
+      | null
+      | undefined;
+    const deadline = Date.now() + EXPORT_QUERY_TIMEOUT_MS;
+    const firstPage = await withExportTimeout(
+      searchWorkItems({
+        userId,
+        apiKey,
+        impersonatedBy: session?.impersonatedBy,
+        workspaceId,
+        query,
+        limit: 200,
+      }),
+      deadline,
+    );
+
+    if (firstPage.meta.total > EXPORT_MAX_ROWS) {
+      return c.json(
+        {
+          code: "export_limit_exceeded",
+          message: `Export matches ${firstPage.meta.total.toLocaleString()} items, which exceeds the ${EXPORT_MAX_ROWS.toLocaleString()}-row limit. Narrow your filters and try again.`,
+          total: firstPage.meta.total,
+          limit: EXPORT_MAX_ROWS,
+        },
+        422,
+      );
+    }
+
+    const { actorId, actorType } = resolveActor(userId, apiKey);
+    try {
+      await appendAuditLog(db, {
+        actorId,
+        actorType,
+        apiKeyId: apiKey?.id ?? null,
+        impersonatorId: session?.impersonatedBy ?? null,
+        workspaceId,
+        action: "work_item.exported",
+        entityType: "work_item_view",
+        entityId: "workspace",
+        after: { format: "csv", count: firstPage.meta.total, columns },
+      });
+    } catch {
+      recordAuditWriteFailure("mutation");
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    }
+
+    const toExportRows = (rows: typeof firstPage.data) =>
+      rows.map((row) => ({
+        key: row.key,
+        title: row.title,
+        stateName: row.stateName,
+        assigneeName: row.assigneeName,
+        priority: row.priority,
+        dueDate: row.dueDate?.toISOString().slice(0, 10) ?? null,
+      }));
+
+    const encoder = new TextEncoder();
+    let cursor = firstPage.page.hasMore
+      ? (firstPage.page.nextCursor ?? undefined)
+      : undefined;
+    if (firstPage.page.hasMore && !cursor) {
+      throw new Error("Export pagination ended without a cursor");
+    }
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(workItemsCsvHeader(columns)));
+        const firstChunk = workItemsCsvRows(
+          toExportRows(firstPage.data),
+          columns,
+        );
+        if (firstChunk) controller.enqueue(encoder.encode(firstChunk));
+        if (!cursor) controller.close();
+      },
+      async pull(controller) {
+        if (!cursor) {
+          controller.close();
+          return;
+        }
+        const page = await withExportTimeout(
+          searchWorkItems({
+            userId,
+            apiKey,
+            impersonatedBy: session?.impersonatedBy,
+            workspaceId,
+            query,
+            limit: 200,
+            cursor,
+          }),
+          deadline,
+        );
+        const chunk = workItemsCsvRows(toExportRows(page.data), columns);
+        if (chunk) controller.enqueue(encoder.encode(chunk));
+        cursor = page.page.hasMore
+          ? (page.page.nextCursor ?? undefined)
+          : undefined;
+        if (page.page.hasMore && !cursor) {
+          throw new Error("Export pagination ended without a cursor");
+        }
+        if (!cursor || page.data.length === 0) {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": 'attachment; filename="work-items.csv"',
+      },
+    });
   })
   .openapi(getWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");

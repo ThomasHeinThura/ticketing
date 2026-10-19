@@ -204,7 +204,7 @@ describe("API integration: GET/PATCH /api/me/settings (settings-hierarchy.md ST-
     ["empty layout project id", { "layout.": "board" }],
     ["value outside the enum", { density: "tight" }],
     ["non-string value", { density: { a: 1 } }],
-    ["layout outside the enum", { "layout.p1": "table" }],
+    ["layout outside the enum", { "layout.p1": "calendar" }],
     ["empty object", {}],
   ])("rejects %s with 422 and writes nothing", async (_name, body) => {
     const member = await createWorkspaceMember({ role: "owner" });

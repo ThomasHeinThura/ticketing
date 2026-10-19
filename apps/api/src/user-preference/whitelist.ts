@@ -7,13 +7,13 @@ import { z } from "../openapi";
  * | settings key         | scope     | scope_id   | key       | value                          |
  * | -------------------- | --------- | ---------- | --------- | ------------------------------ |
  * | `density`            | `global`  | null       | `density` | `comfortable` or `compact`     |
- * | `layout.<projectId>` | `project` | project id | `layout`  | `board` or `list`              |
+ * | `layout.<projectId>` | `project` | project id | `layout`  | `board`, `list` or `table`     |
  *
  * `theme` and `sidebar` are named by the spec but have no specified value domain, so they are
  * not whitelisted. Adding a key is a spec change first, then a change here.
  */
 export const DENSITY_SCHEMA = z.enum(["comfortable", "compact"]);
-export const LAYOUT_SCHEMA = z.enum(["board", "list"]);
+export const LAYOUT_SCHEMA = z.enum(["board", "list", "table"]);
 
 export type SettingTarget =
   | {

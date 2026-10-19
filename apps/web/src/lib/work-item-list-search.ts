@@ -48,11 +48,8 @@ export type WorkItemFilterMode = "visual" | "text";
 export const WORK_ITEM_FILTER_URL_MAX_LENGTH = 8192;
 
 // The screen inventory names three `layout` values on this one route
-// (`/agent/projects/{key}/work?layout=board|list|table`). `list` and `board` are built;
-// table is a separate, not-yet-built P1 row in `docs/02-design/screen-inventory.md`.
-// `layout` is parsed from the URL, so a bookmark naming a not-yet-built layout degrades
-// to `list` instead of 404ing and starts working once that layout ships.
-export const WORK_ITEM_LIST_LAYOUTS = ["list", "board"] as const;
+// (`/agent/projects/{key}/work?layout=board|list|table`).
+export const WORK_ITEM_LIST_LAYOUTS = ["list", "board", "table"] as const;
 export type WorkItemListLayout = (typeof WORK_ITEM_LIST_LAYOUTS)[number];
 
 /** The query properties a work-item search shares with a saved view. Each is optional. */

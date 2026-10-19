@@ -266,25 +266,129 @@ test("a filter that matches nothing says so and keeps the filter visible", async
   ).toBeVisible();
 });
 
-test("the work list offers no export control (F3 hold)", async ({ page }) => {
+test("the work list gates Export CSV on exportTasks capability and exports the filtered query (D1)", async ({
+  page,
+}) => {
   await installPerformanceApiFixture(page);
   await mockSearch(page);
   await page.goto(`${WORK_LIST_PATH}&filter=priority%3Ahigh`);
   await expect(page.getByTestId("work-item-list-populated")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /export|download/i }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("work-item-export-csv")).toHaveCount(0);
+
+  let exportRequestBody: unknown;
+  await page.route("**/api/capabilities*", async (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        manageProjects: false,
+        manageProjectSettings: false,
+        createProjects: false,
+        updateProjects: false,
+        deleteProjects: false,
+        updateTasks: true,
+        createTasks: true,
+        deleteTasks: true,
+        assignTasks: true,
+        exportTasks: true,
+        createLabels: false,
+        updateLabels: false,
+        deleteLabels: false,
+        manageWorkspace: false,
+        deleteWorkspace: false,
+        inviteUsers: false,
+        manageTeam: false,
+        removeMembers: false,
+        createPublicComments: true,
+        createInternalComments: true,
+      }),
+    }),
+  );
+  await page.route("**/api/work-items/export", async (route) => {
+    exportRequestBody = route.request().postDataJSON();
+    return route.fulfill({
+      status: 200,
+      contentType: "text/csv; charset=utf-8",
+      body: "key,title\r\nWLP-1,Matching high priority item\r\n",
+    });
+  });
+
+  await page.reload();
+  const exportBtn = page.getByTestId("work-item-export-csv");
+  await expect(exportBtn).toBeVisible();
+  await exportBtn.click();
+  await expect
+    .poll(() => exportRequestBody)
+    .toMatchObject({
+      workspaceId: "ws-g11",
+      query: {
+        entity: "work_item",
+        filter: {
+          op: "and",
+          clauses: [
+            { field: "project", op: "eq", value: "WLP" },
+            { field: "priority", op: "eq", value: "high" },
+          ],
+        },
+      },
+    });
 });
 
-test("the board says it does not apply a URL filter instead of looking unfiltered", async ({
+test("table layout allows showing, hiding and reordering columns in the URL (VW-19)", async ({
   page,
 }) => {
   await installPerformanceApiFixture(page);
   await mockSearch(page);
   await page.goto(
+    "/agent/projects/WLP/work?layout=table&columns=%5B%22key%22%2C%22title%22%2C%22priority%22%5D&filter=priority%3Ahigh",
+  );
+  const columnControls = page.getByTestId("work-item-column-controls");
+  await expect(columnControls).toBeVisible();
+  await columnControls.getByRole("button", { name: "Move Title left" }).click();
+  await expect(page).toHaveURL(/columns=%5B%22title%22%2C%22key%22/u);
+});
+
+test("the board applies a URL filter across its state columns and exposes the filter editor (VW-1)", async ({
+  page,
+}) => {
+  await installPerformanceApiFixture(page);
+  await page.route("**/api/projects/project-g11/states", async (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: "state-g11",
+          name: "Backlog",
+          category: "backlog",
+          position: "1.0000000000",
+          isInitial: true,
+          isTerminal: false,
+        },
+      ]),
+    }),
+  );
+  const requests = await mockSearch(page);
+  await page.goto(
     "/agent/projects/WLP/work?layout=board&filter=priority%3Ahigh",
   );
-  await expect(page.getByTestId("board-filter-notice")).toBeVisible();
+  await expect(
+    page.getByRole("form", { name: "Work item filters" }),
+  ).toBeVisible();
+  await expect(page.getByText("Matching high priority item")).toBeVisible();
+  expect(requests.at(-1)).toMatchObject({
+    workspaceId: "ws-g11",
+    query: {
+      entity: "work_item",
+      filter: {
+        op: "and",
+        clauses: [
+          { field: "project", op: "eq", value: "WLP" },
+          { field: "priority", op: "eq", value: "high" },
+        ],
+      },
+    },
+  });
 });
 
 for (const mode of ["visual", "text"] as const) {

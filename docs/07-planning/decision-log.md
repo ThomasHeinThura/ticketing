@@ -1,3 +1,22 @@
+### 2026-10-19 · Local CI gate verification during GitHub Actions degradation
+
+**Decisions (Thomas, 2026-10-19, Antigravity Orchestrator Chat Directive with `githubstatus.com` evidence):**
+- **Local execution of all required CI gates instead of waiting on degraded GitHub Actions runners:**
+  > "check again some say workflow is finish but some say workflow cannot stop, if possible stop workflow and try again."
+  > "here is information. and running Started 57m 27s ago. that CI checking is too long for each. check and /plan and look into /goal and /teamwork-preview and go. check and make sure P0 and P1 need to finish tonight."
+  > "found cause. plase don't depend on github CI. just do by all yourself." *(accompanied by screenshot of `githubstatus.com`: "Degraded availability for GitHub Actions, GitHub Pages and Webhooks — Incident with GitHub Actions, GitHub Pages and Webhooks, Oct 19, 15:56 UTC")*
+- **Operational procedure while GitHub Actions is degraded:**
+  - Every required quality, security, permission, integration, and browser gate (`static`, `unit + component`, `build`, `registers`, `route policy coverage + permission matrix`, `gate checkers + red probes`, `contract - OpenAPI drift`, `CI matches ci-cd.md`, `supply chain`, `helm lint + template`, `domain coverage (90%)`, `integration - Postgres 18`, and Playwright E2E/a11y/visual/performance where in scope) is executed and verified locally on the exact candidate SHA before merge. No gate is skipped or weakened.
+  - Because GitHub's ruleset evaluator blocks merges if a triggered GitHub Actions workflow creates `queued` or `in_progress` Check Runs that hang on degraded hosted runners, candidate commits include `[skip ci]` on the final commit and the conductor publishes the 18 locally verified commit statuses (`POST /repos/ThomasHeinThura/ticketing/statuses/{sha}`) on the exact candidate SHA after local verification and independent review completion.
+
+**Source:** Direct instruction and `githubstatus.com` incident screenshot received from Thomas (project owner) in Antigravity session `7f3cadd1-1c59-4287-a4b4-a9e5f447a82b` on 2026-10-19. No relay.
+
+**Recorded by:** Antigravity orchestrator session `7f3cadd1-1c59-4287-a4b4-a9e5f447a82b`, on branch `agy/batch2-agent-nav-and-work-layouts`.
+
+**Supersedes:** Supplements the 2026-10-19 P0/P1 completion directive for CI execution mechanics during the GitHub Actions outage; all review tiers, security-review requirements, and quality gates remain mandatory and unwaived.
+
+**Reversal:** Restoration of normal GitHub Actions availability or a new owner directive in this log.
+
 ### 2026-10-19 · Authorize P0/P1 completion, Option A security hardening, Option C product decisions (D1–D6), and local/OrbStack VM verification
 
 **Decisions (Thomas, 2026-10-19, Antigravity Orchestrator Directive — Complete P0 and P1, Then HOLD, plus follow-up confirmation):**

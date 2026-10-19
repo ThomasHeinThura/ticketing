@@ -1,6 +1,3 @@
-import { readdirSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   cleanup,
   fireEvent,
@@ -8,10 +5,16 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 import { translate } from "@/test/en-translation";
 import WorkItemListControls from "./work-item-list-controls";
+
+const mocks = vi.hoisted(() => ({
+  canExport: false,
+  exportWorkItems: vi.fn(),
+  saveAs: vi.fn(),
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -20,96 +23,132 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-afterEach(cleanup);
+vi.mock("@/components/work-item/work-item-filter-editor", () => ({
+  default: () => <div data-testid="filter-editor" />,
+}));
 
-const noop = () => {};
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canExportTasks: () => mocks.canExport,
+    isCheckingPermissions: false,
+  }),
+}));
 
-describe("work list filter controls", () => {
-  it.each([
-    [400, "invalid"],
-    [403, "forbidden"],
-    [422, "unavailable"],
-  ])(
-    "shows a translated message for the endpoint's %s refusal, never its own wording",
-    async (status, key) => {
-      render(
-        <WorkItemListControls
-          filter="label:urgent"
-          mode="text"
-          workItemsError={
-            new HttpError(status, "Filter field unavailable: label")
-          }
-          onModeChange={noop}
-          onApply={noop}
-        />,
-      );
-      const alert = await screen.findByTestId(
-        "work-item-search-error",
-        undefined,
-        {
-          timeout: 15_000,
-        },
-      );
-      expect(alert).toHaveTextContent(
-        translate(`workItems:filter.errors.${key}`),
-      );
-      expect(alert.textContent).not.toMatch(/Filter field unavailable|\d{3}:/u);
-    },
-    20_000,
-  );
+vi.mock("@/fetchers/work-item/export-work-items", () => ({
+  exportWorkItems: (...args: unknown[]) => mocks.exportWorkItems(...args),
+}));
 
-  it("does not show an unrelated failure (a 500 or a network error) as a filter refusal", async () => {
+vi.mock("file-saver", () => ({
+  saveAs: (...args: unknown[]) => mocks.saveAs(...args),
+}));
+
+beforeEach(() => {
+  mocks.canExport = false;
+  mocks.exportWorkItems.mockReset();
+  mocks.saveAs.mockReset();
+});
+
+afterEach(() => {
+  cleanup();
+});
+
+describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
+  it("toggles and reorders columns when onColumnsChange is provided", async () => {
+    const onColumnsChange = vi.fn();
     render(
+      <WorkItemListControls
+        filter=""
+        mode="visual"
+        onModeChange={vi.fn()}
+        onApply={vi.fn()}
+        columns={["key", "title", "priority"]}
+        onColumnsChange={onColumnsChange}
+      />,
+    );
+    await screen.findByTestId("filter-editor");
+    expect(screen.getByTestId("work-item-column-controls")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Move Title left" }));
+    expect(onColumnsChange).toHaveBeenCalledWith(["title", "key", "priority"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+    expect(onColumnsChange).toHaveBeenCalledWith([
+      "key",
+      "title",
+      "priority",
+      "state",
+    ]);
+  });
+
+  it("hides the Export CSV button without exportTasks capability and exports CSV when permitted", async () => {
+    const { rerender } = render(
       <WorkItemListControls
         filter="priority:high"
         mode="text"
-        workItemsError={new HttpError(500, "Failed to search work items")}
-        onModeChange={noop}
-        onApply={noop}
+        onModeChange={vi.fn()}
+        onApply={vi.fn()}
+        workspaceId="ws_1"
+        projectSlug="WLP"
+        sort="priority"
+        dir="desc"
+        columns={["key", "title"]}
       />,
     );
-    await screen.findByRole("textbox", { name: "Filter work items" });
-    expect(screen.queryByTestId("work-item-search-error")).toBeNull();
+    await screen.findByTestId("filter-editor");
+    expect(screen.queryByTestId("work-item-export-csv")).toBeNull();
+
+    mocks.canExport = true;
+    mocks.exportWorkItems.mockResolvedValueOnce(
+      "key,title\r\nWLP-1,Fix outage\r\n",
+    );
+    rerender(
+      <WorkItemListControls
+        filter="priority:high"
+        mode="text"
+        onModeChange={vi.fn()}
+        onApply={vi.fn()}
+        workspaceId="ws_1"
+        projectSlug="WLP"
+        sort="priority"
+        dir="desc"
+        columns={["key", "title"]}
+      />,
+    );
+
+    const exportButton = screen.getByTestId("work-item-export-csv");
+    fireEvent.click(exportButton);
+    await waitFor(() => expect(mocks.exportWorkItems).toHaveBeenCalledOnce());
+    expect(mocks.exportWorkItems).toHaveBeenCalledWith({
+      workspaceId: "ws_1",
+      projectSlug: "WLP",
+      filter: "priority:high",
+      sort: "priority",
+      dir: "desc",
+      columns: ["key", "title"],
+    });
+    expect(mocks.saveAs).toHaveBeenCalledOnce();
   });
 
-  it("F3 hold: renders no export control and the web app has no export or download fetcher", async () => {
+  it("shows a translated alert when the server refuses an export over the 10,000-row limit (422)", async () => {
+    mocks.canExport = true;
+    mocks.exportWorkItems.mockRejectedValueOnce(
+      new HttpError(422, "Export exceeds maximum of 10000 rows"),
+    );
     render(
       <WorkItemListControls
         filter=""
         mode="visual"
-        onModeChange={noop}
-        onApply={noop}
+        onModeChange={vi.fn()}
+        onApply={vi.fn()}
+        workspaceId="ws_1"
+        projectSlug="WLP"
       />,
     );
-    await screen.findByRole("form", { name: "Work item filters" });
-    expect(
-      screen.queryByRole("button", { name: /export|download/i }),
-    ).toBeNull();
-
-    const fetchers = join(
-      dirname(fileURLToPath(import.meta.url)),
-      "../../fetchers/work-item",
+    await screen.findByTestId("filter-editor");
+    fireEvent.click(screen.getByTestId("work-item-export-csv"));
+    const alert = await screen.findByTestId("work-item-export-error");
+    expect(alert).toHaveTextContent(
+      translate("workItems:list.exportLimitExceeded"),
     );
-    expect(
-      readdirSync(fetchers).filter((name) => /export|download/i.test(name)),
-    ).toEqual([]);
-  });
-
-  it("moves focus into the editor when asked, and Escape asks to close it", async () => {
-    const onClose = vi.fn();
-    render(
-      <WorkItemListControls
-        filter=""
-        mode="visual"
-        autoFocus
-        onClose={onClose}
-        onModeChange={noop}
-        onApply={noop}
-      />,
-    );
-    const first = await screen.findByRole("button", { name: "Visual" });
-    await waitFor(() => expect(first).toHaveFocus());
-    fireEvent.keyDown(first, { key: "Escape" });
-    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

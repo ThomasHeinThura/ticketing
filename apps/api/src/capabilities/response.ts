@@ -23,6 +23,7 @@ export const capabilitiesResponseSchema = z
     manageWorkspaceSettings: z.boolean(),
     transitionTasks: z.boolean(),
     rankTasks: z.boolean(),
+    exportTasks: z.boolean().optional(),
     manageProjectSettings: z.boolean(),
     bindProjectOrganisation: z.boolean().openapi({
       description:

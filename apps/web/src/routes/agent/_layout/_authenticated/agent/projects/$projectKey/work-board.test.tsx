@@ -138,7 +138,9 @@ async function renderRoute() {
   const Component = Route.options.component as () => React.JSX.Element;
   const view = render(<Component />);
   // The layouts are lazy chunks: wait for whichever one this URL selects.
-  await screen.findByTestId(state.search.layout === "list" ? "panel" : "board");
+  await screen.findByTestId(
+    state.search.layout === "board" ? "board" : "panel",
+  );
   return view;
 }
 
@@ -147,6 +149,7 @@ async function enterSelectionMode() {
 }
 
 beforeEach(() => {
+  window.localStorage.clear();
   state.search = { layout: "board", sort: "key", dir: "asc" };
   state.canAssign = false;
   state.listItems = [row("WLP-1"), row("WLP-2")];
@@ -183,7 +186,15 @@ describe("work route layouts", () => {
     expect(state.listEnabled).toBe(true);
   });
 
-  it("the layout toggle reports its state and writes the layout to the URL", async () => {
+  it("table layout renders the panel and fetches the list", async () => {
+    state.search = { layout: "table", sort: "key", dir: "asc" };
+    await renderRoute();
+    expect(screen.getByTestId("panel")).toBeInTheDocument();
+    expect(screen.queryByTestId("board")).toBeNull();
+    expect(state.listEnabled).toBe(true);
+  });
+
+  it("the layout toggle reports its state, persists the per-project preference (VW-2), and writes the layout to the URL", async () => {
     await renderRoute();
     expect(screen.getByRole("button", { name: "Board" })).toHaveAttribute(
       "aria-pressed",
@@ -193,11 +204,16 @@ describe("work route layouts", () => {
       "aria-pressed",
       "false",
     );
-    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    expect(screen.getByRole("button", { name: "Table" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Table" }));
     const update = state.navigate.mock.calls[0]?.[0] as {
       search: (prev: Record<string, string>) => Record<string, string>;
     };
-    expect(update.search(state.search)).toMatchObject({ layout: "list" });
+    expect(update.search(state.search)).toMatchObject({ layout: "table" });
+    expect(window.localStorage.getItem("taskdesk.layout.proj_1")).toBe("table");
   });
 });
 

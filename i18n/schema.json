@@ -3514,9 +3514,6 @@
 								"readOnly": {
 									"type": "string"
 								},
-								"manageSettingsRequired": {
-									"type": "string"
-								},
 								"failure": {
 									"type": "object",
 									"additionalProperties": false,
@@ -3544,6 +3541,9 @@
 										"notFound",
 										"generic"
 									]
+								},
+								"manageSettingsRequired": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -3572,8 +3572,8 @@
 								"retry",
 								"loadError",
 								"readOnly",
-								"manageSettingsRequired",
-								"failure"
+								"failure",
+								"manageSettingsRequired"
 							]
 						},
 						"importExportTasks": {
@@ -5605,6 +5605,9 @@
 						},
 						"backToBoard": {
 							"type": "string"
+						},
+						"savedViews": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -5613,7 +5616,8 @@
 						"members",
 						"invitations",
 						"more",
-						"backToBoard"
+						"backToBoard",
+						"savedViews"
 					]
 				},
 				"projectList": {
@@ -9570,6 +9574,48 @@
 						},
 						"boardLayout": {
 							"type": "string"
+						},
+						"tableLayout": {
+							"type": "string"
+						},
+						"columnsLabel": {
+							"type": "string"
+						},
+						"moveColumnLeft": {
+							"type": "string"
+						},
+						"moveColumnRight": {
+							"type": "string"
+						},
+						"resetColumns": {
+							"type": "string"
+						},
+						"exportCsv": {
+							"type": "string"
+						},
+						"exportingCsv": {
+							"type": "string"
+						},
+						"exportLimitExceeded": {
+							"type": "string"
+						},
+						"exportRateLimited": {
+							"type": "string"
+						},
+						"exportFailed": {
+							"type": "string"
+						},
+						"emptyFilteredTitle": {
+							"type": "string"
+						},
+						"emptyFilteredDescription": {
+							"type": "string"
+						},
+						"loadMore": {
+							"type": "string"
+						},
+						"loadingMore": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -9599,7 +9645,21 @@
 						"partialNoticeDescription",
 						"layoutGroup",
 						"listLayout",
-						"boardLayout"
+						"boardLayout",
+						"tableLayout",
+						"columnsLabel",
+						"moveColumnLeft",
+						"moveColumnRight",
+						"resetColumns",
+						"exportCsv",
+						"exportingCsv",
+						"exportLimitExceeded",
+						"exportRateLimited",
+						"exportFailed",
+						"emptyFilteredTitle",
+						"emptyFilteredDescription",
+						"loadMore",
+						"loadingMore"
 					]
 				},
 				"create": {
@@ -10477,9 +10537,248 @@
 						"modeOn",
 						"modeOff"
 					]
+				},
+				"filter": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"formLabel": {
+							"type": "string"
+						},
+						"modeGroup": {
+							"type": "string"
+						},
+						"modeVisual": {
+							"type": "string"
+						},
+						"modeText": {
+							"type": "string"
+						},
+						"apply": {
+							"type": "string"
+						},
+						"textLabel": {
+							"type": "string"
+						},
+						"textPlaceholder": {
+							"type": "string"
+						},
+						"invalidText": {
+							"type": "string"
+						},
+						"noFilters": {
+							"type": "string"
+						},
+						"addCondition": {
+							"type": "string"
+						},
+						"addGroup": {
+							"type": "string"
+						},
+						"removeGroup": {
+							"type": "string"
+						},
+						"removeFilter": {
+							"type": "string"
+						},
+						"match": {
+							"type": "string"
+						},
+						"matchAll": {
+							"type": "string"
+						},
+						"matchAny": {
+							"type": "string"
+						},
+						"groupOperator": {
+							"type": "string"
+						},
+						"field": {
+							"type": "string"
+						},
+						"fieldPlaceholder": {
+							"type": "string"
+						},
+						"operatorFor": {
+							"type": "string"
+						},
+						"valueFor": {
+							"type": "string"
+						},
+						"valuesFor": {
+							"type": "string"
+						},
+						"valuePlaceholder": {
+							"type": "string"
+						},
+						"listPlaceholder": {
+							"type": "string"
+						},
+						"datePlaceholder": {
+							"type": "string"
+						},
+						"fields": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"stateGroup": {
+									"type": "string"
+								},
+								"priority": {
+									"type": "string"
+								},
+								"assignee": {
+									"type": "string"
+								},
+								"watcher": {
+									"type": "string"
+								},
+								"dueDate": {
+									"type": "string"
+								},
+								"createdAt": {
+									"type": "string"
+								},
+								"project": {
+									"type": "string"
+								},
+								"type": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"stateGroup",
+								"priority",
+								"assignee",
+								"watcher",
+								"dueDate",
+								"createdAt",
+								"project",
+								"type"
+							]
+						},
+						"operators": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"eq": {
+									"type": "string"
+								},
+								"in": {
+									"type": "string"
+								},
+								"contains": {
+									"type": "string"
+								},
+								"lt": {
+									"type": "string"
+								},
+								"lte": {
+									"type": "string"
+								},
+								"gt": {
+									"type": "string"
+								},
+								"gte": {
+									"type": "string"
+								}
+							},
+							"required": ["eq", "in", "contains", "lt", "lte", "gt", "gte"]
+						},
+						"notRepresentable": {
+							"type": "string"
+						},
+						"cannotOpenVisually": {
+							"type": "string"
+						},
+						"unavailableField": {
+							"type": "string"
+						},
+						"unsupportedField": {
+							"type": "string"
+						},
+						"unavailableHint": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"boardNotice": {
+							"type": "string"
+						},
+						"toggle": {
+							"type": "string"
+						},
+						"toggleActive": {
+							"type": "string"
+						},
+						"errors": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"invalid": {
+									"type": "string"
+								},
+								"forbidden": {
+									"type": "string"
+								},
+								"unavailable": {
+									"type": "string"
+								}
+							},
+							"required": ["invalid", "forbidden", "unavailable"]
+						}
+					},
+					"required": [
+						"formLabel",
+						"modeGroup",
+						"modeVisual",
+						"modeText",
+						"apply",
+						"textLabel",
+						"textPlaceholder",
+						"invalidText",
+						"noFilters",
+						"addCondition",
+						"addGroup",
+						"removeGroup",
+						"removeFilter",
+						"match",
+						"matchAll",
+						"matchAny",
+						"groupOperator",
+						"field",
+						"fieldPlaceholder",
+						"operatorFor",
+						"valueFor",
+						"valuesFor",
+						"valuePlaceholder",
+						"listPlaceholder",
+						"datePlaceholder",
+						"fields",
+						"operators",
+						"notRepresentable",
+						"cannotOpenVisually",
+						"unavailableField",
+						"unsupportedField",
+						"unavailableHint",
+						"loading",
+						"boardNotice",
+						"toggle",
+						"toggleActive",
+						"errors"
+					]
 				}
 			},
-			"required": ["list", "create", "detail", "journey", "board", "bulk"]
+			"required": [
+				"list",
+				"create",
+				"detail",
+				"journey",
+				"board",
+				"bulk",
+				"filter"
+			]
 		},
 		"portal": {
 			"type": "object",
@@ -12856,6 +13155,353 @@
 				"usage"
 			]
 		},
+		"savedViews": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"title": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"search": {
+					"type": "string"
+				},
+				"createForm": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"create": {
+					"type": "string"
+				},
+				"creating": {
+					"type": "string"
+				},
+				"createError": {
+					"type": "string"
+				},
+				"createForbidden": {
+					"type": "string"
+				},
+				"loading": {
+					"type": "string"
+				},
+				"loadError": {
+					"type": "string"
+				},
+				"retry": {
+					"type": "string"
+				},
+				"empty": {
+					"type": "string"
+				},
+				"emptySearch": {
+					"type": "string"
+				},
+				"pinned": {
+					"type": "string"
+				},
+				"pin": {
+					"type": "string"
+				},
+				"unpin": {
+					"type": "string"
+				},
+				"pinNamed": {
+					"type": "string"
+				},
+				"unpinNamed": {
+					"type": "string"
+				},
+				"pinError": {
+					"type": "string"
+				},
+				"duplicate": {
+					"type": "string"
+				},
+				"duplicateNamed": {
+					"type": "string"
+				},
+				"duplicateError": {
+					"type": "string"
+				},
+				"requestDelete": {
+					"type": "string"
+				},
+				"requestDeleteNamed": {
+					"type": "string"
+				},
+				"requesting": {
+					"type": "string"
+				},
+				"deleteError": {
+					"type": "string"
+				},
+				"deleteForbidden": {
+					"type": "string"
+				},
+				"deleteAlreadyRequested": {
+					"type": "string"
+				},
+				"summary": {
+					"type": "string"
+				},
+				"count_one": {
+					"type": "string"
+				},
+				"count_zero": {
+					"type": "string"
+				},
+				"count_two": {
+					"type": "string"
+				},
+				"count_few": {
+					"type": "string"
+				},
+				"count_many": {
+					"type": "string"
+				},
+				"count_other": {
+					"type": "string"
+				},
+				"countLoading": {
+					"type": "string"
+				},
+				"visibility": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"label": {
+							"type": "string"
+						},
+						"private": {
+							"type": "string"
+						},
+						"team": {
+							"type": "string"
+						},
+						"workspace": {
+							"type": "string"
+						}
+					},
+					"required": ["label", "private", "team", "workspace"]
+				},
+				"team": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"label": {
+							"type": "string"
+						},
+						"placeholder": {
+							"type": "string"
+						},
+						"loadError": {
+							"type": "string"
+						}
+					},
+					"required": ["label", "placeholder", "loadError"]
+				},
+				"sharedViewName": {
+					"type": "string"
+				},
+				"loadingView": {
+					"type": "string"
+				},
+				"viewUnavailable": {
+					"type": "string"
+				},
+				"sharedLinkNotice": {
+					"type": "string"
+				},
+				"modifiedNotice": {
+					"type": "string"
+				},
+				"projectUnavailable": {
+					"type": "string"
+				},
+				"layoutUnavailable": {
+					"type": "string"
+				},
+				"clone": {
+					"type": "string"
+				},
+				"edit": {
+					"type": "string"
+				},
+				"cancelEdit": {
+					"type": "string"
+				},
+				"save": {
+					"type": "string"
+				},
+				"loadingMore": {
+					"type": "string"
+				},
+				"loadMore": {
+					"type": "string"
+				},
+				"saveError": {
+					"type": "string"
+				},
+				"forbidden": {
+					"type": "string"
+				},
+				"queryNotEditable": {
+					"type": "string"
+				},
+				"sort": {
+					"type": "string"
+				},
+				"directionLabel": {
+					"type": "string"
+				},
+				"direction": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"asc": {
+							"type": "string"
+						},
+						"desc": {
+							"type": "string"
+						}
+					},
+					"required": ["asc", "desc"]
+				},
+				"sortField": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"key": {
+							"type": "string"
+						},
+						"title": {
+							"type": "string"
+						},
+						"priority": {
+							"type": "string"
+						},
+						"dueDate": {
+							"type": "string"
+						}
+					},
+					"required": ["key", "title", "priority", "dueDate"]
+				},
+				"columns": {
+					"type": "string"
+				},
+				"columnName": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"key": {
+							"type": "string"
+						},
+						"title": {
+							"type": "string"
+						},
+						"state": {
+							"type": "string"
+						},
+						"assignee": {
+							"type": "string"
+						},
+						"priority": {
+							"type": "string"
+						},
+						"dueDate": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"key",
+						"title",
+						"state",
+						"assignee",
+						"priority",
+						"dueDate"
+					]
+				},
+				"errors": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"invalid": {
+							"type": "string"
+						},
+						"forbidden": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						}
+					},
+					"required": ["invalid", "forbidden", "unavailable"]
+				}
+			},
+			"required": [
+				"title",
+				"description",
+				"search",
+				"createForm",
+				"name",
+				"create",
+				"creating",
+				"createError",
+				"createForbidden",
+				"loading",
+				"loadError",
+				"retry",
+				"empty",
+				"emptySearch",
+				"pinned",
+				"pin",
+				"unpin",
+				"pinNamed",
+				"unpinNamed",
+				"pinError",
+				"duplicate",
+				"duplicateNamed",
+				"duplicateError",
+				"requestDelete",
+				"requestDeleteNamed",
+				"requesting",
+				"deleteError",
+				"deleteForbidden",
+				"deleteAlreadyRequested",
+				"summary",
+				"countLoading",
+				"visibility",
+				"team",
+				"sharedViewName",
+				"loadingView",
+				"viewUnavailable",
+				"sharedLinkNotice",
+				"modifiedNotice",
+				"projectUnavailable",
+				"layoutUnavailable",
+				"clone",
+				"edit",
+				"cancelEdit",
+				"save",
+				"loadingMore",
+				"loadMore",
+				"saveError",
+				"forbidden",
+				"queryNotEditable",
+				"sort",
+				"directionLabel",
+				"direction",
+				"sortField",
+				"columns",
+				"columnName",
+				"errors"
+			]
+		},
 		"identityConnections": {
 			"type": "object",
 			"additionalProperties": false,
@@ -14026,6 +14672,7 @@
 		"requestTypes",
 		"slaPolicies",
 		"serviceCalendars",
+		"savedViews",
 		"identityConnections"
 	]
 }
