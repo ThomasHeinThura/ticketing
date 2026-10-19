@@ -362,3 +362,20 @@ None. Both earlier non-blocking notes (timing-bound flake, `'0'` reset) are reso
 
 **Verdict:** CLEAR
 <!-- END REPORT (sha256 3d23c854264b480cf898022320c4406d24348fdd5e5268dce6db4ca27a457ffb) -->
+
+## Mechanical rebind after main moved to 9fecda429de7793c0f3d6058394c558903841a38
+
+This section establishes that `8afdd162e1bc7b381e3ad7ecc141a40b125c686d` is a mechanical rebind of `fd4a85954e85699cea03c5d255190790a24d1528`.
+
+**Reviewed head:** `8afdd162e1bc7b381e3ad7ecc141a40b125c686d`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 9fecda429de7793c0f3d6058394c558903841a38 (accepted main)
+**Previous reviewed head:** fd4a85954e85699cea03c5d255190790a24d1528
+
+Method:
+- **Parents:** first = `e96a7711` (prior branch head including security review note), second = `9fecda42` (main tip).
+- **Conflict resolution analysis:** `apps/api/src/user/controllers/delete-account-data.ts` had a mechanical conflict due to repository extractions that landed on `main` (`listAccountErasureMembershipSummaries`, `lockUserRow`, `deleteWorkflowsInWorkspaces`, `deleteWorkspacesByIds`, `deleteUserMemberships`). The resolution preserved the exact two-pass access check (`workspacesWithOtherAccess`), table locking in writer order with a 3s timeout (`ERASURE_LOCK_TIMEOUT_MS = 3000`), error mapping (`isLockNotAvailable`), and credential invalidation ordering.
+- **Security logic:** byte-identical and contract-identical to `fd4a8595` for all access checks, locking mechanisms, timeouts, and error handling.
+- **PR content:** clean preservation of security invariants.
+
+**Verdict:** CLEAR
