@@ -38,8 +38,10 @@ system that models time as money cannot express unbilled effort.
   `time_entry:delete_own` and `time_entry:delete_any`, respectively.
 - `TC-6` A timer is offered — start and stop — and its persisted running state survives a
   page reload. There is at most one running timer per person; the server caps it at 12 hours
-  through the stop handler and a sweeper. Manual entry is always available, because most
-  people log time at the end of the day.
+  through the stop handler and a sweeper. A running timer crossing midnight continues as a
+  single entry assigned to its start date. Day boundaries and timer date calculations follow
+  the user preference timezone, falling back to workspace timezone, then UTC. Manual entry is
+  always available, because most people log time at the end of the day.
 - `TC-7` Entries roll up to the work item, its parent chain, its cycle, its module and its
   project.
 
@@ -69,8 +71,10 @@ system that models time as money cannot express unbilled effort.
 - `TC-15` A budget belongs to a project, with a planned amount, a currency and a period.
 - `TC-16` Actuals are computed from time entries valued at their effective rates, plus cost
   entries.
-- `TC-17` A project shows planned versus actual versus committed, where committed includes
-  estimated remaining work valued at current rates.
+- `TC-17` A project shows planned versus actual versus committed. Committed includes
+  estimated remaining work valued at current rates, computed only when `estimate.system = 'time'`;
+  otherwise the project budget shows "committed: not available (estimates are in points)".
+  Unassigned remaining work is valued at the project default hourly rate.
 - `TC-18` When actual plus committed crosses 75% or 90% of planned, emit
   `budget.threshold_reached` with `budgetId`, `threshold`, and `currency` as defined in the
   [event catalogue](../01-architecture/events.md#projects-prerequisites-budgets). Notify only
