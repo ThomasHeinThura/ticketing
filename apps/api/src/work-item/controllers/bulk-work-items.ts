@@ -1,53 +1,78 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
-import type { ActivityActorType } from "../activity";
+import { projectTable, workItemTable } from "../../database/schema";
+import { publishEvent } from "../../events";
+import {
+  type ActivityActorType,
+  diffWorkItemFieldChanges,
+  type NewActivityInput,
+  recordWorkItemActivity,
+  resolveVisibility,
+} from "../activity";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+  projectNotDeletedClause,
+} from "../assert-work-item-live";
 import type { BulkItemDecision } from "../bulk-reach";
-import { type AssignWorkItemInput, assignWorkItem } from "./assign-work-item";
+import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import {
+  type AssignWorkItemInput,
+  assignWorkItem,
+  WorkItemAssigneeConflictError,
+} from "./assign-work-item";
 import { deleteWorkItem } from "./delete-work-item";
+import {
+  NoMatchingTransitionError,
+  SlaPauseConflictError,
+  TransitionBlockedError,
+  TransitionConflictError,
+  transitionWorkItem,
+} from "./transition-work-item";
 
-// #23's fourth slice: `POST /api/work-items/bulk` (`work_item:read` at the workspace
-// level per the spec's own route table, "then each item is re-checked against its own
-// capability; failures reported per WI-25").
+// `POST /api/work-items/bulk` (`work_item:read` at the workspace level per the spec's own
+// route table, "then each item is re-checked against its own capability; failures reported
+// per WI-25").
 //
-// SCOPE, a judgment call flagged in the PR body. `WI-24` names six-plus bulk operations
-// (change state, assign, set priority, add/remove label, archive, delete, plus
-// cycle/module behind `feature.cycles`). Of those, only TWO have any underlying
-// single-item mechanism already built in this codebase: assign (`assign-work-item.ts`,
-// #30) and delete (`delete-work-item.ts`, this same PR). State transition, label
-// add/remove and archive have NO route or write path anywhere yet -- building any of
-// them here would be inventing a whole separate mechanism this bounded task was not
-// asked for. Bulk `set_priority` is deliberately NOT included either, even though the
-// single-item PATCH route supports it: that route's `WI-7` version-checked write has no
-// per-item version in a bulk request to check against, and applying it unconditionally
-// would silently bypass the concurrency control every other write in this domain
-// respects -- narrower than guessing at a new "bulk ignores versions" rule.
-// So this endpoint supports exactly `"delete"` and `"assign"` today; the rest are
-// deferred, named explicitly here and in the PR body, not silently dropped.
+// Supported operations (`WI-24`-`WI-27`):
+// - `"delete"` (`work_item:delete`)
+// - `"assign"` (`work_item:assign`)
+// - `"set_priority"` (`work_item:set_priority`)
+// - `"archive"` (`work_item:update`, `WI-20`)
+// - `"transition"` (`work_item:transition`, `WI-26`)
+//
+// Label add/remove (`work_item_label` join table) and cycle/module (`feature.cycles`) are
+// outside P1 schema scope.
 //
 // PER-ITEM AUTHORIZATION: every id gets the SAME two decisions a single-item call gets, from
 // the same source (`../bulk-reach.ts` -> `utils/caller-reach.ts`): project REACH (an
 // unreachable or missing id answers the identical "not found", `WI-25`: "a failure reason
 // must not reveal whether an inaccessible work item exists") and the operation's
-// project-level CAPABILITY (`work_item:delete` / `work_item:assign`; reachable but not
-// permitted is reported per item as "Insufficient permissions"). The workspace-role check in
-// `index.ts`'s handler still runs once, first, with the key-aware credential.
+// project-level CAPABILITY (`work_item:delete` / `work_item:assign` /
+// `work_item:set_priority` / `work_item:update` / `work_item:transition`; reachable but not
+// permitted is reported per item as "Insufficient permissions").
 //
 // TRANSACTION SHAPE (`WI-25`): "transactional per item, not per batch: 47 of 50
 // succeeding reports 3 failures with reasons rather than rolling everything back."
-// `assignWorkItem`/`deleteWorkItem` each open their OWN transaction per call -- looping
-// over ids and awaiting each one gives exactly this shape for free, with no batch-level
-// transaction wrapping the loop.
 //
-// `WI-27`: "one audit row per item plus one summary row." The per-item audit rows
-// (`work_item.deleted`/`work_item.assigned`) are already written inside
-// `deleteWorkItem`/`assignWorkItem`; this module adds the one summary row
-// (`bulk.performed`, already in `audit/actions.ts`'s `AUDIT_ONLY_ACTIONS`) after the
-// loop finishes.
+// `WI-27`: "one audit row per item plus one summary row."
 
 export type BulkWorkItemOperation =
   | { operation: "delete" }
-  | { operation: "assign"; assigneeId: string };
+  | { operation: "assign"; assigneeId: string }
+  | {
+      operation: "set_priority";
+      priority: "low" | "medium" | "high" | "urgent" | null;
+    }
+  | { operation: "archive" }
+  | {
+      operation: "transition";
+      toStateTemplateId: string;
+      identity: ResolvedIdentity;
+    };
 
 export type BulkWorkItemFailure = { id: string; reason: string };
 
@@ -55,6 +80,267 @@ export type BulkWorkItemResult = {
   succeeded: string[];
   failed: BulkWorkItemFailure[];
 };
+
+async function setPriorityWorkItem(
+  key: string,
+  workspaceId: string,
+  actorId: string,
+  actorType: ActivityActorType,
+  priority: "low" | "medium" | "high" | "urgent" | null,
+): Promise<void> {
+  const { updated, activityRows, realtimeEvent } = await db.transaction(
+    async (tx) => {
+      const [locked] = await tx
+        .select()
+        .from(workItemTable)
+        .where(
+          and(
+            eq(workItemTable.key, key),
+            eq(workItemTable.workspaceId, workspaceId),
+            isNull(workItemTable.deletedAt),
+            isNull(workItemTable.archivedAt),
+          ),
+        )
+        .for("update");
+
+      assertWorkItemStillLive(locked);
+      await assertProjectStillLive(tx, locked.projectId);
+
+      const [updated] = await tx
+        .update(workItemTable)
+        .set({
+          priority,
+          version: sql`${workItemTable.version} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(workItemTable.id, locked.id),
+            isNull(workItemTable.deletedAt),
+            isNull(workItemTable.archivedAt),
+            projectNotDeletedClause,
+          ),
+        )
+        .returning();
+
+      if (!updated) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
+
+      const activityRows = diffWorkItemFieldChanges(
+        { priority: locked.priority },
+        { priority: updated.priority },
+        {
+          workspaceId: updated.workspaceId,
+          workItemId: updated.id,
+          actorId,
+          actorType,
+        },
+      );
+
+      if (activityRows.length > 0) {
+        await recordWorkItemActivity(tx, activityRows);
+      }
+
+      await appendAuditLog(tx, {
+        actorId,
+        actorType,
+        workspaceId,
+        projectId: updated.projectId,
+        action: "work_item.updated",
+        entityType: "work_item",
+        entityId: updated.id,
+        before: { priority: locked.priority },
+        after: { priority: updated.priority },
+      });
+
+      const visibleChanges = activityRows
+        .filter(
+          (row) => row.verb === "updated" && typeof row.field === "string",
+        )
+        .map((row) => ({
+          field: row.field,
+          from: row.oldValue,
+          to: row.newValue,
+          visibility: resolveVisibility(row),
+        }));
+      const realtimeEvent =
+        visibleChanges.length > 0
+          ? await recordWorkItemEvent(tx, {
+              kind: "work_item.updated",
+              workItemId: updated.id,
+              key: updated.key,
+              workspaceId: updated.workspaceId,
+              projectId: updated.projectId,
+              actorId,
+              actorType,
+              customerVisible: visibleChanges.some(
+                (change) => change.visibility === "public",
+              ),
+              payload: {
+                key: updated.key,
+                url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
+                changes: visibleChanges,
+              },
+            })
+          : undefined;
+
+      return { updated, activityRows, realtimeEvent };
+    },
+  );
+
+  if (activityRows.length > 0) {
+    const changes = activityRows
+      .filter(
+        (row: NewActivityInput): row is NewActivityInput & { field: string } =>
+          row.verb === "updated" && typeof row.field === "string",
+      )
+      .map((row) => ({
+        field: row.field,
+        from: row.oldValue,
+        to: row.newValue,
+        visibility: resolveVisibility(row),
+      }));
+
+    await publishEvent("work_item.updated", {
+      workItemId: updated.id,
+      key: updated.key,
+      workspaceId: updated.workspaceId,
+      projectId: updated.projectId,
+      changes,
+      actorId,
+      actorType,
+    });
+    if (realtimeEvent) {
+      await publishWorkItemHint(realtimeEvent, {
+        kind: "work_item.updated",
+        key: updated.key,
+        projectId: updated.projectId,
+        customerVisible: changes.some(
+          (change) => change.visibility === "public",
+        ),
+      });
+    }
+  }
+}
+
+async function archiveWorkItem(
+  key: string,
+  workspaceId: string,
+  actorId: string,
+  actorType: ActivityActorType,
+): Promise<void> {
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({
+        id: workItemTable.id,
+        projectId: workItemTable.projectId,
+        deletedAt: workItemTable.deletedAt,
+        archivedAt: workItemTable.archivedAt,
+      })
+      .from(workItemTable)
+      .where(
+        and(
+          eq(workItemTable.key, key),
+          eq(workItemTable.workspaceId, workspaceId),
+          isNull(workItemTable.deletedAt),
+          isNull(workItemTable.archivedAt),
+        ),
+      )
+      .limit(1)
+      .for("update");
+
+    assertWorkItemStillLive(locked);
+    await assertProjectStillLive(tx, locked.projectId);
+
+    const [archived] = await tx
+      .update(workItemTable)
+      .set({
+        archivedAt: now,
+        version: sql`${workItemTable.version} + 1`,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(workItemTable.id, locked.id),
+          isNull(workItemTable.deletedAt),
+          isNull(workItemTable.archivedAt),
+          projectNotDeletedClause,
+        ),
+      )
+      .returning();
+
+    if (!archived) {
+      throw new HTTPException(404, { message: "Work item not found" });
+    }
+
+    await recordWorkItemActivity(tx, [
+      {
+        workspaceId,
+        workItemId: archived.id,
+        actorId,
+        actorType,
+        verb: "archived",
+        field: null,
+        oldValue: null,
+        newValue: now.toISOString(),
+      },
+    ]);
+
+    await appendAuditLog(tx, {
+      actorId,
+      actorType,
+      workspaceId,
+      projectId: archived.projectId,
+      action: "work_item.updated",
+      entityType: "work_item",
+      entityId: archived.id,
+      before: { archivedAt: null },
+      after: { archivedAt: now.toISOString() },
+    });
+  });
+}
+
+async function transitionWorkItemByKey(
+  key: string,
+  workspaceId: string,
+  actorId: string,
+  actorType: ActivityActorType,
+  identity: ResolvedIdentity,
+  toStateTemplateId: string,
+): Promise<void> {
+  const [row] = await db
+    .select({
+      id: workItemTable.id,
+    })
+    .from(workItemTable)
+    .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
+    .where(
+      and(
+        eq(workItemTable.key, key),
+        eq(workItemTable.workspaceId, workspaceId),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!row) {
+    throw new HTTPException(404, { message: "Work item not found" });
+  }
+
+  await transitionWorkItem(
+    row.id,
+    identity,
+    identity.personId,
+    actorId,
+    actorType,
+    { toStateTemplateId },
+  );
+}
 
 async function runOne(
   id: string,
@@ -67,8 +353,27 @@ async function runOne(
     await deleteWorkItem(id, workspaceId, actorId, actorType);
     return;
   }
-  const input: AssignWorkItemInput = { assigneeId: op.assigneeId };
-  await assignWorkItem(id, workspaceId, actorId, actorType, null, input);
+  if (op.operation === "assign") {
+    const input: AssignWorkItemInput = { assigneeId: op.assigneeId };
+    await assignWorkItem(id, workspaceId, actorId, actorType, null, input);
+    return;
+  }
+  if (op.operation === "set_priority") {
+    await setPriorityWorkItem(id, workspaceId, actorId, actorType, op.priority);
+    return;
+  }
+  if (op.operation === "archive") {
+    await archiveWorkItem(id, workspaceId, actorId, actorType);
+    return;
+  }
+  await transitionWorkItemByKey(
+    id,
+    workspaceId,
+    actorId,
+    actorType,
+    op.identity,
+    op.toStateTemplateId,
+  );
 }
 
 export async function bulkWorkItems(
@@ -103,6 +408,14 @@ export async function bulkWorkItems(
       if (error instanceof HTTPException) {
         const body = error.message || (await error.getResponse().text());
         failed.push({ id: key, reason: body || "failed" });
+      } else if (
+        error instanceof WorkItemAssigneeConflictError ||
+        error instanceof NoMatchingTransitionError ||
+        error instanceof TransitionConflictError ||
+        error instanceof SlaPauseConflictError ||
+        error instanceof TransitionBlockedError
+      ) {
+        failed.push({ id: key, reason: error.message || "failed" });
       } else {
         failed.push({ id: key, reason: "failed" });
       }

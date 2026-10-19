@@ -24,6 +24,7 @@ export const capabilitiesResponseSchema = z
     transitionTasks: z.boolean(),
     rankTasks: z.boolean(),
     exportTasks: z.boolean().optional(),
+    setPriorityTasks: z.boolean().optional(),
     manageProjectSettings: z.boolean(),
     bindProjectOrganisation: z.boolean().openapi({
       description:

@@ -21,6 +21,7 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   transitionTasks?: boolean;
   rankTasks?: boolean;
   exportTasks?: boolean;
+  setPriorityTasks?: boolean;
   // Strict project:create (owner/admin/manager) -- the server rule for listing customer
   // organisations and binding a project to one. Never inferred from `createProjects`, which
   // follows the broader legacy statement (members hold it).
@@ -127,6 +128,7 @@ export function useWorkspacePermission(targetWorkspaceId?: string) {
       canTransitionTasks: () => can.transitionTasks === true,
       canRankTasks: () => can.rankTasks === true,
       canExportTasks: () => can.exportTasks === true,
+      canSetPriorityTasks: () => can.setPriorityTasks === true,
       canManageProjectSettings: () => can.manageProjectSettings === true,
       canBindProjectOrganisation: () => can.bindProjectOrganisation === true,
     };

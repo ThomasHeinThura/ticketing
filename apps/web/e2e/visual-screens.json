@@ -171,5 +171,12 @@
 		"applicationRoute": "/agent/views/$id",
 		"test": "saved view detail screen @visual",
 		"screenshot": "saved-view-detail.png"
+	},
+	{
+		"name": "project-backlog",
+		"inventoryRoute": "/agent/projects/{key}/backlog",
+		"applicationRoute": "/agent/projects/$projectKey/backlog",
+		"test": "project backlog screen @visual",
+		"screenshot": "project-backlog.png"
 	}
 ]

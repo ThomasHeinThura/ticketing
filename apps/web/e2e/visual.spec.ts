@@ -1094,3 +1094,20 @@ test("saved view detail screen @visual", async ({ page }) => {
     includeAA: true,
   });
 });
+
+test("project backlog screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/backlog");
+  await expect(
+    page.getByRole("heading", { name: "Help Desk · Backlog" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("project-backlog.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});

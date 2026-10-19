@@ -7,6 +7,7 @@ export const generatedRouteMetadata = {
     "/agent/god-mode/authentication",
     "/agent/god-mode/authentication/$id",
     "/agent/god-mode/users",
+    "/agent/projects/$projectKey/backlog",
     "/agent/projects/$projectKey/work",
     "/agent/settings/calendars",
     "/agent/settings/calendars/$id",

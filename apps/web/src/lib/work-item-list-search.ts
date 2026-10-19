@@ -59,6 +59,8 @@ export type WorkItemQueryState = {
   filter?: string;
   filterMode?: WorkItemFilterMode;
   columns?: WorkItemSearchColumn[];
+  /** Addressable side-pane selection (`VW-4`, `?item={key}`). */
+  item?: string;
 };
 
 export type WorkItemListSearch = {
@@ -68,6 +70,8 @@ export type WorkItemListSearch = {
   filter?: string;
   filterMode?: WorkItemFilterMode;
   columns?: WorkItemSearchColumn[];
+  /** Addressable side-pane selection (`VW-4`, `?item={key}`). */
+  item?: string;
 };
 
 export const DEFAULT_WORK_ITEM_LIST_SEARCH: Pick<
@@ -78,6 +82,17 @@ export const DEFAULT_WORK_ITEM_LIST_SEARCH: Pick<
   sort: "key",
   dir: "asc",
 };
+
+const WORK_ITEM_KEY_PATTERN = /^[A-Z][A-Z0-9]*-[1-9]\d*$/u;
+
+export function isValidWorkItemKeyParam(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= 64 &&
+    WORK_ITEM_KEY_PATTERN.test(value)
+  );
+}
 
 function isWorkItemSortField(value: unknown): value is WorkItemSortField {
   return (
@@ -164,6 +179,9 @@ export function parseWorkItemQueryState(raw: unknown): WorkItemQueryState {
       ? { filterMode: candidate.filterMode }
       : {}),
     ...(columns ? { columns } : {}),
+    ...(isValidWorkItemKeyParam(candidate.item)
+      ? { item: candidate.item }
+      : {}),
   };
 }
 
@@ -195,6 +213,7 @@ export function appendWorkItemQueryState(
   if (state.filter) query.set("filter", state.filter);
   if (state.filterMode) query.set("filterMode", state.filterMode);
   if (state.columns) query.set("columns", JSON.stringify(state.columns));
+  if (state.item) query.set("item", state.item);
 }
 
 /** The inverse direction, for a column-header sort toggle. */

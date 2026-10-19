@@ -475,9 +475,23 @@ export const bulkWorkItemsBody = z
       .min(1)
       .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
     workItemKeys: z.array(bulkWorkItemKey).min(1).max(MAX_BULK_WORK_ITEMS),
-    operation: z.enum(["delete", "assign"]),
+    operation: z.enum([
+      "delete",
+      "assign",
+      "set_priority",
+      "archive",
+      "transition",
+    ]),
     // Required by `.refine` below only when `operation === "assign"`.
     assigneeId: z
+      .string()
+      .min(1)
+      .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+      .optional(),
+    // Required by `.refine` below when `operation === "set_priority"` (`null` clears priority).
+    priority: z.enum(["low", "medium", "high", "urgent"]).nullable().optional(),
+    // Required by `.refine` below when `operation === "transition"` (`state_template.id`).
+    toStateTemplateId: z
       .string()
       .min(1)
       .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
@@ -487,6 +501,16 @@ export const bulkWorkItemsBody = z
     (body) =>
       body.operation !== "assign" || typeof body.assigneeId === "string",
     { message: 'assigneeId is required when operation is "assign"' },
+  )
+  .refine(
+    (body) => body.operation !== "set_priority" || body.priority !== undefined,
+    { message: 'priority is required when operation is "set_priority"' },
+  )
+  .refine(
+    (body) =>
+      body.operation !== "transition" ||
+      typeof body.toStateTemplateId === "string",
+    { message: 'toStateTemplateId is required when operation is "transition"' },
   );
 
 // `GET /api/work-items/{key}/activity` -- opaque cursor pagination, the same

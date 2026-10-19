@@ -869,12 +869,11 @@ const bulkWorkItemsRoute = createRoute({
   tags: ["Work items"],
   summary: "Bulk work item operation",
   description:
-    "Runs one operation (`delete` or `assign` -- see `controllers/bulk-work-items.ts` " +
-    "for why `WI-24`'s other bulk operations are deferred) over multiple work items, " +
-    "transactional PER ITEM (`WI-25`): a partial failure reports per-item reasons " +
-    "rather than rolling back the whole batch. `workspaceId` scopes the batch; every " +
-    "id is re-checked for reach the same way a single-item call would (`WI-25`: " +
-    "'not found' and 'out of reach' share one reason).",
+    "Runs one operation (`delete`, `assign`, `set_priority`, `archive`, or `transition`) " +
+    "over multiple work items, transactional PER ITEM (`WI-25`): a partial failure reports " +
+    "per-item reasons rather than rolling back the whole batch. `workspaceId` scopes the " +
+    "batch; every id is re-checked for reach and capability the same way a single-item call " +
+    "would (`WI-25`: 'not found' and 'out of reach' share one reason).",
   middleware: [] as const,
   request: {
     body: {
@@ -887,7 +886,7 @@ const bulkWorkItemsRoute = createRoute({
     400: errorResponse("Invalid body"),
     403: errorResponse(
       "No workspace access, or missing the operation's own capability " +
-        "(work_item:delete or work_item:assign)",
+        "(work_item:delete, work_item:assign, work_item:set_priority, work_item:update, or work_item:transition)",
     ),
   },
 });
@@ -1633,13 +1632,16 @@ const workItem = apiRouter<
     // the request body, which `assertCallerHasCapability`'s own contract note (see
     // `require-workspace-capability.ts`) says never to do -- it can only check
     // authority IN the workspace it is given, not whether that's the workspace the
-    // write actually lands in. Safe today ONLY because `deleteWorkItem`/
-    // `assignWorkItem` each independently re-filter every per-item write on this same
-    // `workspaceId` (a mismatched id just finds no row and 404s per item) -- this is
-    // a load-bearing invariant, not an incidental detail: any future change to this
-    // route or its two called controllers must keep that per-item re-filter.
-    const { workspaceId, workItemKeys, operation, assigneeId } =
-      c.req.valid("json");
+    // write actually lands in. Safe because every per-item controller independently
+    // re-filters on this same `workspaceId` (a mismatched id finds no row and 404s per item).
+    const {
+      workspaceId,
+      workItemKeys,
+      operation,
+      assigneeId,
+      priority,
+      toStateTemplateId,
+    } = c.req.valid("json");
     const userId = c.get("userId");
 
     // No path/param-scoped middleware resolved a workspace for this flat,
@@ -1648,6 +1650,21 @@ const workItem = apiRouter<
     // `require-work-item-reach.ts` and every `workspaceAccess.*` helper use underneath.
     await validateWorkspaceAccess(userId, workspaceId, c.get("apiKey")?.id);
 
+    if (await isCustomerPrincipal(userId, workspaceId)) {
+      throw new HTTPException(403, { message: "Insufficient permissions" });
+    }
+
+    const operationCapability =
+      operation === "delete"
+        ? "work_item:delete"
+        : operation === "assign"
+          ? "work_item:assign"
+          : operation === "set_priority"
+            ? "work_item:set_priority"
+            : operation === "archive"
+              ? "work_item:update"
+              : "work_item:transition";
+
     // Per-OPERATION capability, decided from the parsed body -- see `policy.ts`'s own
     // comment on this route for why a single declarative policy entry cannot express
     // this (the same reason `PATCH /api/work-items/{key}`'s `work_item:set_priority`
@@ -1655,7 +1672,7 @@ const workItem = apiRouter<
     await assertCallerHasCapability(
       workspaceId,
       userId,
-      operation === "delete" ? "work_item:delete" : "work_item:assign",
+      operationCapability,
       capabilityCredential(c.get("apiKey")),
     );
 
@@ -1664,22 +1681,44 @@ const workItem = apiRouter<
       c.get("apiKey"),
     );
 
+    let bulkOp: Parameters<typeof bulkWorkItems>[4];
+    if (operation === "delete") {
+      bulkOp = { operation: "delete" };
+    } else if (operation === "assign") {
+      bulkOp = { operation: "assign", assigneeId: assigneeId as string };
+    } else if (operation === "set_priority") {
+      bulkOp = {
+        operation: "set_priority",
+        priority: priority ?? null,
+      };
+    } else if (operation === "archive") {
+      bulkOp = { operation: "archive" };
+    } else {
+      const session = c.get("session") as {
+        impersonatedBy?: string | null;
+      } | null;
+      const identity = await resolveRequestIdentity({
+        userId,
+        apiKey: c.get("apiKey"),
+        impersonatedBy: session?.impersonatedBy,
+      });
+      if (!identity) {
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
+      bulkOp = {
+        operation: "transition",
+        toStateTemplateId: toStateTemplateId as string,
+        identity,
+      };
+    }
+
     const result = await bulkWorkItems(
       workspaceId,
       actorId,
       actorType,
       workItemKeys,
-      operation === "delete"
-        ? { operation: "delete" }
-        : // `assigneeId` is required by `bulkWorkItemsBody`'s own `.refine` whenever
-          // `operation === "assign"`, so this is never actually undefined here.
-          { operation: "assign", assigneeId: assigneeId as string },
-      await workItemBulkAuthoriser(
-        c,
-        userId,
-        workspaceId,
-        operation === "delete" ? "work_item:delete" : "work_item:assign",
-      ),
+      bulkOp,
+      await workItemBulkAuthoriser(c, userId, workspaceId, operationCapability),
     );
     return c.json(result, 200);
   })
