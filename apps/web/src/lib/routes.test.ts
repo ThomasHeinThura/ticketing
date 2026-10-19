@@ -4,6 +4,9 @@ import { projectViewRoutes } from "./project-view-routes";
 import {
   buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
+  parseAgentGlobalSearch,
+  parseAgentInboxSearch,
+  parseAgentMyWorkSearch,
   parseGeneratedRouteUrl,
   parseGodModeUsersSearch,
   parseIdentityConnectionEditorSearch,
@@ -18,6 +21,7 @@ import {
   parseSavedViewUrlSearch,
   parseSavedViewUrlSearchFromQueryString,
   parseServiceCalendarListSearchFromQueryString,
+  parseSettingsTextFilterSearch,
   parseSlaPolicyListSearch,
   parseWorkItemDetailSearch,
   parseWorkItemListSearch,
@@ -811,5 +815,104 @@ describe("routes.projectBacklog and ?item={key} side pane URL state (VW-4)", () 
       workspaceId: "ws-1",
       item: "PROJ-7",
     });
+  });
+});
+
+describe("P1 agent core, project overview, and settings routes", () => {
+  it("registers all 18 Batch 4 routes in generatedRouteMetadata.agent", () => {
+    const expectedPaths = [
+      routes.agentHome.path,
+      routes.agentInbox.path,
+      routes.agentMyWork.path,
+      routes.agentSearch.path,
+      routes.projectOverview.path,
+      routes.profileSettings.path,
+      routes.profileAppearance.path,
+      routes.workspaceSettings.path,
+      routes.workspaceMembers.path,
+      routes.workspaceStates.path,
+      routes.workspaceLabels.path,
+      routes.workspaceCannedResponses.path,
+      routes.workspaceDangerZone.path,
+      routes.projectSettings.path,
+      routes.projectMembers.path,
+      routes.projectStates.path,
+      routes.projectLabels.path,
+      routes.projectDangerZone.path,
+    ];
+    for (const path of expectedPaths) {
+      expect(generatedRouteMetadata.agent).toContain(path);
+    }
+  });
+
+  it("round-trips agentInbox, agentMyWork, agentSearch, and settings text filters", () => {
+    expect(routes.agentHome.build()).toBe("/agent");
+    expect(routes.agentInbox.build()).toBe("/agent/inbox");
+    expect(routes.agentInbox.build({ filter: "unread" })).toBe(
+      "/agent/inbox?filter=unread",
+    );
+    expect(parseAgentInboxSearch({ filter: "unread" })).toEqual({
+      filter: "unread",
+    });
+    expect(parseAgentInboxSearch({ filter: "invalid" })).toEqual({});
+
+    const myWorkUrl = routes.agentMyWork.build({
+      lens: "watching",
+      q: "reset",
+      item: "HELP-7",
+    });
+    expect(myWorkUrl).toBe("/agent/my-work?lens=watching&q=reset&item=HELP-7");
+    expect(
+      parseAgentMyWorkSearch({
+        lens: "watching",
+        q: "reset",
+        item: "HELP-7",
+      }),
+    ).toEqual({
+      lens: "watching",
+      q: "reset",
+      item: "HELP-7",
+    });
+
+    const searchUrl = routes.agentSearch.build({
+      q: "billing",
+      scope: "work-items",
+    });
+    expect(searchUrl).toBe("/agent/search?q=billing&scope=work-items");
+    expect(
+      parseAgentGlobalSearch({ q: "billing", scope: "work-items" }),
+    ).toEqual({
+      q: "billing",
+      scope: "work-items",
+    });
+
+    expect(routes.workspaceMembers.build({ q: "ada" })).toBe(
+      "/agent/settings/members?q=ada",
+    );
+    expect(routes.workspaceCannedResponses.build({ q: "reset" })).toBe(
+      "/agent/settings/canned-responses?q=reset",
+    );
+    expect(parseSettingsTextFilterSearch({ q: "ada" })).toEqual({ q: "ada" });
+  });
+
+  it("builds project overview and project settings URLs with encoded projectKey", () => {
+    expect(routes.projectOverview.build({ projectKey: "HELP" })).toBe(
+      "/agent/projects/HELP",
+    );
+    expect(routes.projectSettings.build({ projectKey: "HELP" })).toBe(
+      "/agent/projects/HELP/settings",
+    );
+    expect(routes.projectMembers.build({ projectKey: "HELP" })).toBe(
+      "/agent/projects/HELP/settings/members",
+    );
+    expect(routes.projectStates.build({ projectKey: "HELP" })).toBe(
+      "/agent/projects/HELP/settings/states",
+    );
+    expect(routes.projectLabels.build({ projectKey: "HELP" })).toBe(
+      "/agent/projects/HELP/settings/labels",
+    );
+    expect(routes.projectDangerZone.build({ projectKey: "HELP" })).toBe(
+      "/agent/projects/HELP/settings/danger",
+    );
   });
 });

@@ -36,12 +36,12 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | MFA challenge | `/auth/two-factor` | route | P0 | 🟡 |
 | MFA enrolment | `/dashboard/settings/account/security` | route | P0 | 🟡 |
 | Accept invitation | `/agent/invite` | route | P3 | ⬜ |
-| Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
-| Inbox | `/agent/inbox` | route | P1 | ⬜ |
-| My work | `/agent/my-work` | route | P1 | ⬜ |
-| Command palette | — | overlay | P1 | ⬜ |
-| Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | ⬜ |
-| Global search results | `/agent/search` | route | P1 | ⬜ |
+| Workspace home (default dashboard) | `/agent` | route | P1 | 🟡 |
+| Inbox | `/agent/inbox` | route | P1 | 🟡 |
+| My work | `/agent/my-work` | route | P1 | 🟡 |
+| Command palette | — | overlay | P1 | 🟡 |
+| Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | 🟡 |
+| Global search results | `/agent/search` | route | P1 | 🟡 |
 | Not found (agent origin) | `*` | route | P0 | ⬜ |
 | Error boundary | — | overlay | P0 | ⬜ |
 
@@ -49,10 +49,10 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Project overview | `/agent/projects/{key}` | route | P1 | ⬜ |
+| Project overview | `/agent/projects/{key}` | route | P1 | 🟡 |
 | Work — board | `/agent/projects/{key}/work?layout=board` | route | P1 | 🟡 |
 | Work — list | `/agent/projects/{key}/work?layout=list` | route | P1 | 🟡 |
-| Work — table | `/agent/projects/{key}/work?layout=table` | route | P1 | ⬜ |
+| Work — table | `/agent/projects/{key}/work?layout=table` | route | P1 | 🟡 |
 | Work — calendar | `/agent/projects/{key}/work?layout=calendar` | route | P5 | ⬜ |
 | Work — timeline | `/agent/projects/{key}/work?layout=timeline` | route | P5 | ⬜ |
 | Backlog | `/agent/projects/{key}/backlog` | route | P1 | 🟡 |
@@ -72,12 +72,12 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Work item — side pane | `?item={key}` on any list | overlay | P1 | 🟡 |
 | Create work item | — | dialog | P1 | 🟡 |
 | Bulk edit | — | overlay | P1 | 🟡 |
-| Relations editor | — | section | P1 | ⬜ |
+| Relations editor | — | section | P1 | 🟡 |
 | Approvals panel | — | section | P2 | ⬜ |
 | SLA panel | — | section | P2 | ⬜ |
 | Time entries | — | section | P5 | ⬜ |
-| Attachments | — | section | P1 | ⬜ |
-| Activity & comments | — | section | P1 | ⬜ |
+| Attachments | — | section | P1 | 🟡 |
+| Activity & comments | — | section | P1 | 🟡 |
 
 ## Agent — service desk
 
@@ -110,22 +110,22 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Profile — general | `/agent/settings/profile` | route | P1 | ⬜ |
-| Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | ⬜ |
+| Profile — general | `/agent/settings/profile` | route | P1 | 🟡 |
+| Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | 🟡 |
 | Profile — notifications | `/agent/settings/profile/notifications` | route | P4 | ⬜ |
 | Profile — security & sessions | `/agent/settings/profile/security` | route | P3 | ⬜ |
 | Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/agent/settings/profile/pending-actions` | route | P4 | 🟡 |
 | Profile — pending action detail | `/agent/settings/profile/pending-actions/{id}` | route | P4 | 🟡 |
 | Profile — API keys | `/agent/settings/profile/api-keys` | route | P4 | ⬜ |
-| Workspace — general | `/agent/settings` | route | P1 | ⬜ |
+| Workspace — general | `/agent/settings` | route | P1 | 🟡 |
 | Workspace — terminology | `/agent/settings/terminology` | route | P4 | ⬜ |
-| Workspace — members | `/agent/settings/members` | route | P1 | ⬜ |
+| Workspace — members | `/agent/settings/members` | route | P1 | 🟡 |
 | Workspace — teams | `/agent/settings/teams` | route | P4 | ⬜ |
 | Team detail | `/agent/settings/teams/{id}` | route | P4 | ⬜ |
 | **Workspace — roles** | `/agent/settings/roles` | route | P4 | ⬜ |
 | **Role editor** | `/agent/settings/roles/{id}` | route | P4 | ⬜ |
 | Workspace — work item types | `/agent/settings/work-item-types` | route | P2 | ⬜ |
-| Workspace — states | `/agent/settings/states` | route | P1 | ⬜ |
+| Workspace — states | `/agent/settings/states` | route | P1 | 🟡 |
 | Workspace — workflows | `/agent/settings/workflows` | route | P2 | ⬜ |
 | Workflow editor | `/agent/settings/workflows/{id}` | route | P2 | ⬜ |
 | Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | 🟡 |
@@ -136,8 +136,8 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ⬜ |
 | Custom field editor | `/agent/settings/custom-fields/{id}` | route | P4 | ⬜ |
 | Section manager (reorder sections, move fields between them — [custom-fields.md](../03-features/custom-fields.md)) | — | section | P4 | ⬜ |
-| Workspace — labels | `/agent/settings/labels` | route | P1 | ⬜ |
-| Workspace — canned responses | `/agent/settings/canned-responses` | route | P1 | ⬜ |
+| Workspace — labels | `/agent/settings/labels` | route | P1 | 🟡 |
+| Workspace — canned responses | `/agent/settings/canned-responses` | route | P1 | 🟡 |
 | Workspace — estimates | `/agent/settings/estimates` | route | P5 | ⬜ |
 | Workspace — rates | `/agent/settings/rates` | route | P5 | ⬜ |
 | Workspace — time activities | `/agent/settings/time-activities` | route | P5 | ⬜ |
@@ -147,16 +147,16 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Webhook editor | `/agent/settings/webhooks/{id}` | route | P4 | ⬜ |
 | Webhook delivery history | `/agent/settings/webhooks/{id}/deliveries` | route | P4 | ⬜ |
 | Workspace — import | `/agent/settings/import` | route | P6 | ⬜ |
-| Workspace — danger zone | `/agent/settings/danger` | route | P1 | ⬜ |
-| Project — general | `/agent/projects/{key}/settings` | route | P1 | ⬜ |
-| Project — members | `/agent/projects/{key}/settings/members` | route | P1 | ⬜ |
-| Project — states | `/agent/projects/{key}/settings/states` | route | P1 | ⬜ |
-| Project — labels | `/agent/projects/{key}/settings/labels` | route | P1 | ⬜ |
+| Workspace — danger zone | `/agent/settings/danger` | route | P1 | 🟡 |
+| Project — general | `/agent/projects/{key}/settings` | route | P1 | 🟡 |
+| Project — members | `/agent/projects/{key}/settings/members` | route | P1 | 🟡 |
+| Project — states | `/agent/projects/{key}/settings/states` | route | P1 | 🟡 |
+| Project — labels | `/agent/projects/{key}/settings/labels` | route | P1 | 🟡 |
 | Project — SLA & calendar | `/agent/projects/{key}/settings/sla` | route | P2 | ⬜ |
 | Project — features | `/agent/projects/{key}/settings/features` | route | P4 | ⬜ |
 | Project — automations | `/agent/projects/{key}/settings/automations` | route | P4 | ⬜ |
 | Project — budget | `/agent/projects/{key}/settings/budget` | route | P5 | ⬜ |
-| Project — danger zone | `/agent/projects/{key}/settings/danger` | route | P1 | ⬜ |
+| Project — danger zone | `/agent/projects/{key}/settings/danger` | route | P1 | 🟡 |
 
 ## Agent — God Mode
 

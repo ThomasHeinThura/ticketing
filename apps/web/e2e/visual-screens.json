@@ -178,5 +178,138 @@
 		"applicationRoute": "/agent/projects/$projectKey/backlog",
 		"test": "project backlog screen @visual",
 		"screenshot": "project-backlog.png"
+	},
+	{
+		"name": "work-item-table",
+		"inventoryRoute": "/agent/projects/{key}/work?layout=table",
+		"applicationRoute": "/agent/projects/$projectKey/work",
+		"test": "work-item table screen @visual",
+		"screenshot": "work-item-table.png"
+	},
+	{
+		"name": "agent-workspace-home",
+		"inventoryRoute": "/agent",
+		"applicationRoute": "/agent",
+		"test": "agent workspace home screen @visual",
+		"screenshot": "agent-workspace-home.png"
+	},
+	{
+		"name": "agent-inbox",
+		"inventoryRoute": "/agent/inbox",
+		"applicationRoute": "/agent/inbox",
+		"test": "agent inbox screen @visual",
+		"screenshot": "agent-inbox.png"
+	},
+	{
+		"name": "agent-my-work",
+		"inventoryRoute": "/agent/my-work",
+		"applicationRoute": "/agent/my-work",
+		"test": "agent my work screen @visual",
+		"screenshot": "agent-my-work.png"
+	},
+	{
+		"name": "agent-global-search",
+		"inventoryRoute": "/agent/search",
+		"applicationRoute": "/agent/search",
+		"test": "agent global search screen @visual",
+		"screenshot": "agent-global-search.png"
+	},
+	{
+		"name": "project-overview",
+		"inventoryRoute": "/agent/projects/{key}",
+		"applicationRoute": "/agent/projects/$projectKey",
+		"test": "project overview screen @visual",
+		"screenshot": "project-overview.png"
+	},
+	{
+		"name": "profile-settings-general",
+		"inventoryRoute": "/agent/settings/profile",
+		"applicationRoute": "/agent/settings/profile",
+		"test": "profile settings general screen @visual",
+		"screenshot": "profile-settings-general.png"
+	},
+	{
+		"name": "profile-settings-appearance",
+		"inventoryRoute": "/agent/settings/profile/appearance",
+		"applicationRoute": "/agent/settings/profile/appearance",
+		"test": "profile settings appearance screen @visual",
+		"screenshot": "profile-settings-appearance.png"
+	},
+	{
+		"name": "workspace-settings-general",
+		"inventoryRoute": "/agent/settings",
+		"applicationRoute": "/agent/settings",
+		"test": "workspace settings general screen @visual",
+		"screenshot": "workspace-settings-general.png"
+	},
+	{
+		"name": "workspace-settings-members",
+		"inventoryRoute": "/agent/settings/members",
+		"applicationRoute": "/agent/settings/members",
+		"test": "workspace settings members screen @visual",
+		"screenshot": "workspace-settings-members.png"
+	},
+	{
+		"name": "workspace-settings-states",
+		"inventoryRoute": "/agent/settings/states",
+		"applicationRoute": "/agent/settings/states",
+		"test": "workspace settings states screen @visual",
+		"screenshot": "workspace-settings-states.png"
+	},
+	{
+		"name": "workspace-settings-labels",
+		"inventoryRoute": "/agent/settings/labels",
+		"applicationRoute": "/agent/settings/labels",
+		"test": "workspace settings labels screen @visual",
+		"screenshot": "workspace-settings-labels.png"
+	},
+	{
+		"name": "workspace-settings-canned-responses",
+		"inventoryRoute": "/agent/settings/canned-responses",
+		"applicationRoute": "/agent/settings/canned-responses",
+		"test": "workspace settings canned responses screen @visual",
+		"screenshot": "workspace-settings-canned-responses.png"
+	},
+	{
+		"name": "workspace-settings-danger",
+		"inventoryRoute": "/agent/settings/danger",
+		"applicationRoute": "/agent/settings/danger",
+		"test": "workspace settings danger screen @visual",
+		"screenshot": "workspace-settings-danger.png"
+	},
+	{
+		"name": "project-settings-general",
+		"inventoryRoute": "/agent/projects/{key}/settings",
+		"applicationRoute": "/agent/projects/$projectKey/settings",
+		"test": "project settings general screen @visual",
+		"screenshot": "project-settings-general.png"
+	},
+	{
+		"name": "project-settings-members",
+		"inventoryRoute": "/agent/projects/{key}/settings/members",
+		"applicationRoute": "/agent/projects/$projectKey/settings/members",
+		"test": "project settings members screen @visual",
+		"screenshot": "project-settings-members.png"
+	},
+	{
+		"name": "project-settings-states",
+		"inventoryRoute": "/agent/projects/{key}/settings/states",
+		"applicationRoute": "/agent/projects/$projectKey/settings/states",
+		"test": "project settings states screen @visual",
+		"screenshot": "project-settings-states.png"
+	},
+	{
+		"name": "project-settings-labels",
+		"inventoryRoute": "/agent/projects/{key}/settings/labels",
+		"applicationRoute": "/agent/projects/$projectKey/settings/labels",
+		"test": "project settings labels screen @visual",
+		"screenshot": "project-settings-labels.png"
+	},
+	{
+		"name": "project-settings-danger",
+		"inventoryRoute": "/agent/projects/{key}/settings/danger",
+		"applicationRoute": "/agent/projects/$projectKey/settings/danger",
+		"test": "project settings danger screen @visual",
+		"screenshot": "project-settings-danger.png"
 	}
 ]
