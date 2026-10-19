@@ -303,3 +303,20 @@ Method:
 - **PR content:** byte-identical to previous reviewed head.
 
 **Verdict:** CLEAR
+
+## Mechanical rebind after main moved to 90b102ee0cd7b1b2394204ddff1eb6e715ab6b10
+
+This section establishes that `04d9da63e5f49061a93c2c6e2b0e6e985ceb5580` is a mechanical rebind of `0a30e101e6d979e1a698ddf756d2a4affbf0a23f`.
+
+**Reviewed head:** `04d9da63e5f49061a93c2c6e2b0e6e985ceb5580`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** 90b102ee0cd7b1b2394204ddff1eb6e715ab6b10 (accepted main with #772 and #778)
+**Previous reviewed head:** 0a30e101e6d979e1a698ddf756d2a4affbf0a23f
+
+Method:
+- **Parents:** first = `061d492f` (prior branch head including rebind note), second = `90b102ee` (main tip). Clean merge commit.
+- **Merge-tree equality:** Clean merge with zero conflicts.
+- **Overlap:** files changed by PR do not intersect files changed on main (0 files overlap).
+- **PR content:** byte-identical to previous reviewed head.
+
+**Verdict:** CLEAR
