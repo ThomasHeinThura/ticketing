@@ -168,6 +168,10 @@ export default function WorkItemBoard({
       }
       setNotice(result);
       return result;
+    } catch (error) {
+      // A write that throws past its own handling is a failed move too.
+      pendingFocus.current = undefined;
+      throw error;
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -319,6 +323,11 @@ export default function WorkItemBoard({
 
       // The item is now in the target state. Placing it next to the card it was dropped on is
       // a second write; if it fails the move itself still stands and is reported as such.
+      // Known limit: the neighbours come from the cards loaded in the target column. If the
+      // column has more cards than the loaded pages ("Load more"), the drop is ranked against
+      // the loaded ones only, so it can land among them rather than at the exact slot among all.
+      // The move itself is correct and the order is repaired by the next rank. A true fix needs
+      // the server to place a card by key; see views.md, Edge cases.
       const targetColumn = itemsByState.get(target.id) ?? [];
       if (canRank && targetColumn.length > 0) {
         const placeAt = targetItem
@@ -609,7 +618,11 @@ function BoardCard({
             href={routes.workItemDetail.build({ key: item.key })}
           >
             <span>{item.key}</span>
-            <span className="ml-2">{item.title}</span>
+            <span className="ml-2">
+              {item.unavailableFields.includes("title")
+                ? t("workItems:list.unavailable")
+                : item.title}
+            </span>
           </a>
         ) : (
           <Badge
@@ -624,9 +637,11 @@ function BoardCard({
       </div>
       <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
         <Badge variant="outline">
-          {item.priority
-            ? t(`workItems:list.priority.${item.priority}`)
-            : t("workItems:list.noPriority")}
+          {item.unavailableFields.includes("priority")
+            ? t("workItems:list.unavailable")
+            : item.priority
+              ? t(`workItems:list.priority.${item.priority}`)
+              : t("workItems:list.noPriority")}
         </Badge>
         <span>
           {item.assigneeName ??
