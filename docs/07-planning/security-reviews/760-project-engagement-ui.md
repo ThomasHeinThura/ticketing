@@ -337,3 +337,17 @@ Method:
 - **PR content:** byte-identical to previous reviewed head.
 
 **Verdict:** CLEAR
+
+## Mechanical rebind after main moved to b2beb4601a89cde3b24357cf07d5371c9677a8a7
+
+This section establishes that `72adf9ca8ef287c364811ffb31cc07f89ac3550f` is a mechanical rebind of `d64ee4fbebc53633109dcb39022a009915f52cb2` following the landing of PR #768 onto main.
+
+**Reviewed head:** `72adf9ca8ef287c364811ffb31cc07f89ac3550f`
+**Model / context:** Claude Opus 5.5 (claude-opus-5-5), fresh independent context
+**Main:** b2beb4601a89cde3b24357cf07d5371c9677a8a7 (accepted main with #768)
+**Previous reviewed head:** d64ee4fbebc53633109dcb39022a009915f52cb2
+
+Method:
+- **Parents:** first = `1fd44cc9` (prior branch head including rebind note), second = `b2beb460` (main tip with #768). Clean merge commit.
+- **Merge-tree equality:** Clean merge with pairs.json union resolution.
+- **Verdict:** CLEAR
