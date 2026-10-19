@@ -378,4 +378,56 @@ describe("useWorkspacePermission", () => {
     );
     expect(denied.result.current.canManageServiceCalendars()).toBe(false);
   });
+
+  it("exposes the saved-view audience capabilities from their exact canonical keys", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({
+          shareSavedViews: true,
+          manageWorkspaceSettings: false,
+        }),
+    });
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(result.current.canShareSavedViews()).toBe(true);
+    expect(result.current.canManageWorkspaceSettings()).toBe(false);
+  });
+
+  it("keeps the saved-view audience capabilities bound to the view's workspace, not the active one", async () => {
+    activeWorkspaceId.value = "active-workspace-A";
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({
+          shareSavedViews: false,
+          manageWorkspaceSettings: true,
+        }),
+    });
+    const { result } = renderHook(
+      () => useWorkspacePermission("view-workspace-B"),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() =>
+      expect(result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(capabilitiesGet).toHaveBeenCalledWith({
+      query: { workspaceId: "view-workspace-B" },
+    });
+    expect(result.current.canShareSavedViews()).toBe(false);
+    expect(result.current.canManageWorkspaceSettings()).toBe(true);
+  });
+
+  it("fails closed on the saved-view audience capabilities while loading", () => {
+    capabilitiesGet.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    expect(result.current.canShareSavedViews()).toBe(false);
+    expect(result.current.canManageWorkspaceSettings()).toBe(false);
+  });
 });
