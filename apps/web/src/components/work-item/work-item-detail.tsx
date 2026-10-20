@@ -162,6 +162,11 @@ function WorkItemDetail({
     </dl>
   );
 
+  // Everything editable sits under a provider keyed by the item: switching items (the side
+  // pane's ?item=, or the page's {key}) remounts the title, description and properties, so
+  // a pending edit flushes against the item it was typed on and no draft, debounce or
+  // conflict notice carries over to the next one.
+
   // Kaneo's task page main column (`task-details-content.tsx`): key, borderless title,
   // description editor, then supporting sections and the activity feed.
   const main = (
@@ -223,7 +228,7 @@ function WorkItemDetail({
     // Kaneo's task sheet (`task-details-sheet-body.tsx`): a compact properties strip that
     // stays put over the content, which scrolls on its own.
     return (
-      <WorkItemFeedbackProvider>
+      <WorkItemFeedbackProvider key={item.key}>
         <div
           className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
           data-testid="work-item-detail"
@@ -252,7 +257,7 @@ function WorkItemDetail({
   // Kaneo's task page (`task-layout.tsx`): content on the left, the Properties panel on
   // the right (above the content below `lg`).
   return (
-    <WorkItemFeedbackProvider>
+    <WorkItemFeedbackProvider key={item.key}>
       <div
         className="flex h-full min-h-0 flex-col bg-background lg:flex-row"
         data-testid="work-item-detail"

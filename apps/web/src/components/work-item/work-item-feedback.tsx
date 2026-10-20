@@ -29,11 +29,17 @@ export function WorkItemFeedbackProvider({
   children: ReactNode;
 }) {
   const [announcement, setAnnouncement] = useState("");
+  // A live region only speaks when its text changes, so a repeated message ("Changes
+  // saved." twice) alternates a zero-width space to be announced again.
+  const announce = (message: string) =>
+    setAnnouncement((previous) =>
+      previous === message ? `${message}\u200B` : message,
+    );
   const [conflict, setConflict] = useState(false);
   return (
     <WorkItemFeedbackContext.Provider
       value={{
-        announce: setAnnouncement,
+        announce,
         conflict,
         reportConflict: () => setConflict(true),
         clearConflict: () => setConflict(false),

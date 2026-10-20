@@ -36,8 +36,13 @@ export default function WorkItemTitle({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The text typed but not yet confirmed saved; null when the field matches the server.
   const unsaved = useRef<string | null>(null);
+  // The title of the save in flight: a blur right after the pause must not send it again.
+  const inFlight = useRef<string | null>(null);
 
   const update = useSaveWorkItemFields(item, {
+    onSettled: (fields) => {
+      if (inFlight.current === fields.title) inFlight.current = null;
+    },
     onError: async (error) => {
       if (isWorkItemAccessLost(error)) {
         onAccessLost();
@@ -68,6 +73,9 @@ export default function WorkItemTitle({
       setFailed(false);
       return;
     }
+    // Already on its way; its answer clears `unsaved`.
+    if (title === inFlight.current) return;
+    inFlight.current = title;
     update.mutate(
       { title },
       {

@@ -9,7 +9,11 @@ import {
 } from "@/lib/work-item-errors";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import { useWorkItemFeedback } from "./work-item-feedback";
-import { useSaveWorkItemFields, workItemDetailKey } from "./work-item-save";
+import {
+  isSameJson,
+  useSaveWorkItemFields,
+  workItemDetailKey,
+} from "./work-item-save";
 
 export const DESCRIPTION_SAVE_DELAY_MS = 1000;
 
@@ -46,15 +50,28 @@ export default function WorkItemDescription({
   const [shown, setShown] = useState<unknown>(item.description);
   // Bumped to remount the editor on the server's value after a conflict.
   const [generation, setGeneration] = useState(0);
+  // Whether the user has touched this editor instance. Tiptap reports updates of its own
+  // while it mounts (an empty document before the stored one is loaded); saving those
+  // would blank the description, so only changes after an interaction are edits.
+  const interacted = useRef(false);
+  const markInteracted = () => {
+    interacted.current = true;
+  };
   const [focused, setFocused] = useState(false);
   const [failed, setFailed] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The document typed but not yet confirmed saved.
   const unsaved = useRef<unknown>(NOTHING_SAVED);
-  // The serialised document of our last save, to recognise its echo in a refetch.
-  const lastSaved = useRef<string | null>(null);
+  // The document of our last save, to recognise its echo in a refetch.
+  const lastSaved = useRef<unknown>(NOTHING_SAVED);
+  // The document of the save in flight: a blur right after the pause must not resend it.
+  const inFlight = useRef<unknown>(NOTHING_SAVED);
 
   const update = useSaveWorkItemFields(item, {
+    onSettled: (fields) => {
+      if (inFlight.current === fields.description)
+        inFlight.current = NOTHING_SAVED;
+    },
     onError: async (error) => {
       if (isWorkItemAccessLost(error)) {
         onAccessLost();
@@ -62,7 +79,7 @@ export default function WorkItemDescription({
       }
       if (error instanceof WorkItemVersionConflictError) {
         unsaved.current = NOTHING_SAVED;
-        lastSaved.current = null;
+        lastSaved.current = NOTHING_SAVED;
         setFailed(false);
         reportConflict();
         await queryClient.refetchQueries({
@@ -72,6 +89,7 @@ export default function WorkItemDescription({
           workItemDetailKey(item.key),
         );
         setShown(latest ? latest.description : item.description);
+        interacted.current = false;
         setGeneration((current) => current + 1);
         return;
       }
@@ -80,13 +98,19 @@ export default function WorkItemDescription({
   });
 
   const save = (document: unknown) => {
-    const serialised = JSON.stringify(document);
-    if (serialised === JSON.stringify(item.description)) {
+    if (isSameJson(document, item.description)) {
       if (unsaved.current === document) unsaved.current = NOTHING_SAVED;
       setFailed(false);
       return;
     }
-    lastSaved.current = serialised;
+    // Already on its way; its answer clears `unsaved`.
+    if (
+      inFlight.current !== NOTHING_SAVED &&
+      isSameJson(document, inFlight.current)
+    )
+      return;
+    inFlight.current = document;
+    lastSaved.current = document;
     update.mutate(
       { description: document },
       {
@@ -116,7 +140,11 @@ export default function WorkItemDescription({
   useEffect(() => {
     if (focused || unsaved.current !== NOTHING_SAVED) return;
     // Our own save coming back: the editor already shows it (or newer text).
-    if (JSON.stringify(item.description) === lastSaved.current) return;
+    if (
+      lastSaved.current !== NOTHING_SAVED &&
+      isSameJson(item.description, lastSaved.current)
+    )
+      return;
     setShown(item.description);
   }, [item.description, focused]);
 
@@ -125,7 +153,14 @@ export default function WorkItemDescription({
     // biome-ignore lint/a11y/noStaticElementInteractions: focus tracking for the editor inside, not an interaction of its own
     <div
       className="flex flex-col gap-1"
-      onFocus={() => setFocused(true)}
+      onFocus={() => {
+        markInteracted();
+        setFocused(true);
+      }}
+      onPointerDown={markInteracted}
+      onKeyDown={markInteracted}
+      onPaste={markInteracted}
+      onDrop={markInteracted}
       onBlur={(event) => {
         if (event.currentTarget.contains(event.relatedTarget as Node | null))
           return;
@@ -138,6 +173,7 @@ export default function WorkItemDescription({
         value={typeof shown === "string" ? shown : ""}
         documentValue={isDocument ? shown : undefined}
         onDocumentChange={(document) => {
+          if (!interacted.current) return;
           unsaved.current = document;
           if (timer.current) clearTimeout(timer.current);
           timer.current = setTimeout(() => {

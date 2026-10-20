@@ -135,9 +135,12 @@ export function useSaveWorkItemFields(
   {
     onSuccess,
     onError,
+    onSettled,
   }: {
     onSuccess?: () => void;
     onError?: (error: unknown) => void;
+    /** Runs for every save, even after the caller unmounted, with what was sent. */
+    onSettled?: (fields: WorkItemFieldChange) => void;
   } = {},
 ) {
   const queryClient = useQueryClient();
@@ -168,5 +171,32 @@ export function useSaveWorkItemFields(
       void refresh();
     },
     onError,
+    onSettled: (_data, _error, fields) => onSettled?.(fields),
   });
+}
+
+/** Structural equality for JSON values that ignores object key order: Postgres `jsonb`
+ * does not keep the order a document was written in. */
+export function isSameJson(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || !a || !b) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return (
+      a.length === b.length && a.every((entry, i) => isSameJson(entry, b[i]))
+    );
+  }
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  // An undefined property is absent once serialised, so it is ignored on both sides.
+  const keys = (value: Record<string, unknown>) =>
+    Object.keys(value).filter((key) => value[key] !== undefined);
+  const leftKeys = keys(left);
+  const rightKeys = keys(right);
+  return (
+    leftKeys.length === rightKeys.length &&
+    leftKeys.every(
+      (key) => Object.hasOwn(right, key) && isSameJson(left[key], right[key]),
+    )
+  );
 }

@@ -158,6 +158,7 @@ describe("WorkItemDescription", () => {
   it("flushes a pending save on unmount", async () => {
     mocks.update.mockResolvedValue({ key: "HELP-7", version: 5 });
     const { editor, view } = setup();
+    fireEvent.focus(editor());
     fireEvent.change(editor(), { target: { value: "Quick edit" } });
     view.unmount();
     await act(async () => {
@@ -180,5 +181,51 @@ describe("WorkItemDescription", () => {
     fireEvent.change(editor(), { target: { value: "My text" } });
     fireEvent.blur(editor());
     await vi.waitFor(() => expect(editor().value).toBe("Their text"));
+  });
+
+  it("does not send the same document again when the editor blurs while its save is in flight", async () => {
+    mocks.update.mockImplementation(() => new Promise(() => {}));
+    const { editor } = setup();
+    fireEvent.focus(editor());
+    fireEvent.change(editor(), { target: { value: "Paused then left" } });
+    await act(async () => {
+      vi.advanceTimersByTime(DESCRIPTION_SAVE_DELAY_MS);
+    });
+    fireEvent.blur(editor());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("recognises its own save when the server returns the document with reordered keys", async () => {
+    mocks.update.mockResolvedValue({ key: "HELP-7", version: 5 });
+    const { editor, rerender } = setup();
+    fireEvent.focus(editor());
+    fireEvent.change(editor(), { target: { value: "Saved part" } });
+    await act(async () => {
+      vi.advanceTimersByTime(DESCRIPTION_SAVE_DELAY_MS);
+    });
+    fireEvent.change(editor(), { target: { value: "Saved part and more" } });
+    fireEvent.blur(editor());
+    // jsonb hands the document back with its keys in another order.
+    const reordered = {
+      content: [
+        { content: [{ text: "Saved part", type: "text" }], type: "paragraph" },
+      ],
+      type: "doc",
+    };
+    rerender(item({ description: reordered, version: 5 }));
+    expect(editor().value).toBe("Saved part and more");
+  });
+
+  it("ignores the editor's own updates before the user touches it", async () => {
+    const { editor } = setup();
+    // A change the editor reports with no focus, key or pointer from the user.
+    fireEvent.change(editor(), { target: { value: "" } });
+    await act(async () => {
+      vi.advanceTimersByTime(DESCRIPTION_SAVE_DELAY_MS * 2);
+    });
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 });

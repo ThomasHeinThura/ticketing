@@ -169,6 +169,46 @@ describe("WorkItemProperties", () => {
     expect(mocks.update.mock.calls[1]?.[0]).toMatchObject({ version: 5 });
   });
 
+  it("re-renders with the merged cache value and keeps saving with the newest version", async () => {
+    mocks.update
+      .mockResolvedValueOnce({ key: "HELP-7", version: 5, priority: "low" })
+      .mockResolvedValueOnce({ key: "HELP-7", version: 6, priority: "urgent" });
+    const current = item();
+    const { client, rerender } = renderProps(
+      <WorkItemProperties item={current} onAccessLost={vi.fn()} />,
+      current,
+    );
+    const detailKey = ["work-items", "detail", "HELP-7"];
+    fireEvent.click(screen.getByTestId("work-item-priority-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Low/ }));
+    await waitFor(() =>
+      expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
+        version: 5,
+        priority: "low",
+      }),
+    );
+    const merged = client.getQueryData<WorkItemDetailRow>(
+      detailKey,
+    ) as WorkItemDetailRow;
+    rerender(
+      <QueryClientProvider client={client}>
+        <WorkItemProperties item={merged} onAccessLost={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByTestId("work-item-priority-control")).toHaveTextContent(
+      "Low",
+    );
+    // A refetch that left before the save lands late with the old version.
+    client.setQueryData(detailKey, current);
+    fireEvent.click(screen.getByTestId("work-item-priority-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Urgent/ }));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
+    expect(mocks.update.mock.calls[1]?.[0]).toMatchObject({
+      version: 5,
+      priority: "urgent",
+    });
+  });
+
   it("keeps priority read-only without work_item:set_priority", () => {
     mocks.canSetPriority = false;
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);

@@ -188,4 +188,29 @@ describe("WorkItemTitle", () => {
     rerender(item({ title: "First", version: 5 }));
     expect(input().value).toBe("First and more");
   });
+
+  it("does not send the same title again when the field blurs while its save is in flight", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.update.mockImplementation(
+      () => new Promise((resolve) => (answer = resolve)),
+    );
+    const { input } = setup();
+    fireEvent.focus(input());
+    fireEvent.change(input(), { target: { value: "Paused then left" } });
+    await act(async () => {
+      vi.advanceTimersByTime(TITLE_SAVE_DELAY_MS);
+    });
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    fireEvent.blur(input());
+    await flushPromises();
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      answer({ key: "HELP-7", version: 5, title: "Paused then left" });
+    });
+    // Settled: a later change saves normally.
+    fireEvent.focus(input());
+    fireEvent.change(input(), { target: { value: "Changed again" } });
+    fireEvent.blur(input());
+    await vi.waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
+  });
 });
