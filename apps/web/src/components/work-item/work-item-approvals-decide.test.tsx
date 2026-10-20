@@ -46,8 +46,6 @@ vi.mock("@/hooks/mutations/approval/use-decide-approval", () => ({
 vi.mock("@/hooks/mutations/approval/use-withdraw-approval", () => ({
   default: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
 }));
-vi.mock("./request-approval", () => ({ default: () => null }));
-
 describe("WorkItemApprovals decisions", () => {
   beforeEach(() => {
     mocks.decide.mockReset();
@@ -71,10 +69,10 @@ describe("WorkItemApprovals decisions", () => {
         name: "workItems:detail.approvals.approve",
       }),
     );
-    expect(mocks.decide).toHaveBeenCalledWith({
-      id: "approval-1",
-      action: "approve",
-    });
+    expect(mocks.decide).toHaveBeenCalledWith(
+      { id: "approval-1", action: "approve" },
+      expect.anything(),
+    );
   });
 
   it("requires a note before rejecting", () => {

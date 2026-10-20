@@ -1922,17 +1922,6 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/work-item/request-approval.tsx:RequestApproval",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
           "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
@@ -3258,17 +3247,6 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/request-approval.tsx:RequestApproval",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -7324,8 +7302,6 @@
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#1",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#1",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/time[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#1",
@@ -9339,28 +9315,6 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/work-item/request-approval.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
-          "jsx:div[0]/WorkItemApprovals[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/components/work-item/request-approval.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
-          "jsx:div[0]/WorkItemApprovals[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/p[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
         "surfaceContext": "caller-chain",
@@ -10203,17 +10157,6 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/request-approval.tsx:RequestApproval",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -10598,8 +10541,6 @@
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#1",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#1",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/time[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#1",
@@ -12613,28 +12554,6 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/work-item/request-approval.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
-          "jsx:div[0]/WorkItemApprovals[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/components/work-item/request-approval.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
-          "jsx:div[0]/WorkItemApprovals[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/p[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
         "surfaceContext": "caller-chain",
@@ -13477,17 +13396,6 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
-          "Select->packages/ui/src/components/select.tsx:Select"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/request-approval.tsx:RequestApproval",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -34658,7 +34566,6 @@
     "surfaceContext": "nearest-opaque-ancestor",
     "occurrenceIds": [
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/p[0]::text-destructive-foreground#0",
-      "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-destructive-foreground#0",
       "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0"
     ],
@@ -34671,17 +34578,6 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
           "jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/p[0]>bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-destructive-foreground#0",
-        "usage": "apps/web/src/components/work-item/request-approval.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
-          "jsx:div[0]/WorkItemApprovals[0]"
         ],
         "backdropLayers": []
       },
@@ -34781,7 +34677,6 @@
     "surfaceContext": "nearest-opaque-ancestor",
     "occurrenceIds": [
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/p[0]::text-destructive-foreground#0",
-      "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-destructive-foreground#0",
       "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0"
     ],
@@ -34794,17 +34689,6 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
           "jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/p[0]>bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/work-item/request-approval.tsx::RequestApproval::form[0]/p[0]::text-destructive-foreground#0",
-        "usage": "apps/web/src/components/work-item/request-approval.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
-          "jsx:div[0]/WorkItemApprovals[0]"
         ],
         "backdropLayers": []
       },
@@ -40604,21 +40488,6 @@
         "chain": [
           "packages/ui/src/components/select.tsx:SelectItem",
           "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-          "apps/web/src/components/work-item/request-approval.tsx:RequestApproval",
-          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
-        ],
-        "backdropLayers": [
-          "bg-popover"
-        ]
-      },
-      {
-        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/select.tsx:SelectItem",
-          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
           "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
           "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
         ],
@@ -41776,21 +41645,6 @@
           "packages/ui/src/components/select.tsx:SelectItem",
           "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
           "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
-          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
-        ],
-        "backdropLayers": [
-          "bg-popover"
-        ]
-      },
-      {
-        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-        "usage": "packages/ui/src/components/select.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/select.tsx:SelectItem",
-          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-          "apps/web/src/components/work-item/request-approval.tsx:RequestApproval",
           "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
         ],
         "backdropLayers": [
