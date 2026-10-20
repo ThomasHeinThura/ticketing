@@ -1,7 +1,7 @@
 # Custom fields
 
 - **Stage:** P4
-- **Status:** ⬜
+- **Status:** ✅
 - **Feature flag:** always on
 - **Depends on:** work item types, RBAC
 
@@ -65,23 +65,32 @@ is data rather than a migration.
 - `CF-2` Visibility and requiredness are declared per work item type.
 - `CF-3` A field not applicable to a type is absent from the form — not disabled, absent.
 - `CF-4` A required field blocks creation and blocks any workflow transition into a
-  `started` or `completed` state group if empty.
+  `started` or `completed` state group if empty. The `cancelled` state group is
+  deliberately exempt — you may always abandon incomplete work.
 - `CF-5` Fields support a default value.
-- `CF-6` Fields support conditional visibility: show only when another field has a given
-  value.
+- `CF-6` Fields support single-level conditional visibility (`custom_field.visibility_condition jsonb`
+  with shape `{ field_key, op: 'eq'|'neq'|'in'|'is_set', value }`; a controlling field
+  may not itself be conditional): show only when another field has a given value,
+  evaluated both client-side and authoritatively server-side for `CF-4`.
 - `CF-7` Select options carry a stable key and an editable label, so renaming an option
   does not orphan existing values.
-- `CF-8` Deleting a field soft-deletes it — through a pending action, click-level
-  ([pending-actions.md](../01-architecture/pending-actions.md)). Values are retained and restorable for 30 days,
+- `CF-8` Deleting a field soft-deletes it (`custom_field.deleted_at`) — through a pending
+  action, click-level ([pending-actions.md](../01-architecture/pending-actions.md)). Values
+  are retained and restorable for 30 days via `POST /api/custom-fields/{id}/restore`,
   after which they are purged.
 - `CF-9` Changing a field's format is refused. Create a new field and migrate.
-- `CF-10` Fields are filterable, sortable and available as table columns.
-- `CF-11` Fields may be marked customer-visible, in which case they appear on the portal
-  request detail and can be collected by a request type form.
+- `CF-10` Fields are filterable (`cf.<key>` in the saved-view query DSL — see
+  [search-and-saved-views.md](search-and-saved-views.md)), sortable and available as table
+  columns.
+- `CF-11` Fields may be marked customer-visible (`custom_field.customer_visible`), in which
+  case they appear on the portal request detail and can be collected by a request type
+  form.
 
 ## Entities that support custom fields
 
-Work items in P4. Projects and people in P5.
+`custom_field.entity_type` is `'work_item'` in P4 (`custom_field_type_visibility` applies
+only when `entity_type = 'work_item'`). Projects and people (`'project'`, `'person'`) are
+added in P5.
 
 ## Permissions
 
@@ -108,14 +117,24 @@ unusable.
 
 ## API
 
+Workspace context for workspace-scoped routes without a path parameter is carried by
+`X-Workspace-Id` (or `?workspace=`), as defined in
+[api-design.md](../01-architecture/api-design.md).
+
 ```
-GET    /api/custom-fields                      workspace:read
-POST   /api/custom-fields                      custom_field:manage
-PATCH  /api/custom-fields/{id}                 custom_field:manage
-DELETE /api/custom-fields/{id}                 custom_field:manage
-POST   /api/custom-fields/reorder              custom_field:manage
-GET    /api/custom-field-sections              workspace:read
-POST   /api/custom-field-sections              custom_field:manage
+GET    /api/custom-fields                                workspace:read (workspace from X-Workspace-Id)
+POST   /api/custom-fields                                custom_field:manage
+PATCH  /api/custom-fields/{id}                           custom_field:manage
+DELETE /api/custom-fields/{id}                           custom_field:manage (pending action, CF-8)
+POST   /api/custom-fields/{id}/restore                   custom_field:manage
+PUT    /api/custom-fields/{id}/visibility                custom_field:manage
+GET    /api/custom-fields/{id}/non-compliant-items       workspace:read
+POST   /api/custom-fields/reorder                        custom_field:manage
+GET    /api/custom-field-sections                        workspace:read (workspace from X-Workspace-Id)
+POST   /api/custom-field-sections                        custom_field:manage
+PATCH  /api/custom-field-sections/{id}                   custom_field:manage
+DELETE /api/custom-field-sections/{id}                   custom_field:manage
+POST   /api/custom-field-sections/reorder                custom_field:manage
 ```
 
 Field values travel inside the work item payload, not as a separate endpoint, so a form
@@ -125,24 +144,28 @@ save is one request.
 
 | Case | Behaviour |
 | --- | --- |
-| Field made required while items are empty | Existing items keep the gap; the requirement applies on the next edit or transition. A report lists non-compliant items |
+| Field made required while items are empty | Existing items keep the gap; the requirement applies on the next edit or transition. A report (`GET /api/custom-fields/{id}/non-compliant-items`) lists non-compliant items |
 | Select option removed while in use | Refused. The option must be migrated first, and the editor shows how many items hold it |
 | Field deleted then restored | Values return |
-| Conditional field whose controller is deleted | Publish validation refuses the deletion |
+| Conditional field whose controller is deleted | The delete is refused with the list of fields whose condition references it |
 | 100 fields on one type | Allowed, warned about, sections collapse. The interface degrades gracefully but the warning is honest |
 | User-format field referencing someone off the roster | Value retained, rendered as "(not on this project)" |
 | Import supplies an unknown select option | The import reports it rather than silently creating one |
 
+## Out of scope
+
+- Formula and rollup fields (deferred beyond v2; see [Field formats](#field-formats))
+- Chained or multi-level conditional visibility (`CF-6` is strictly single-level)
+
 ## Testing
 
-Unit: per-type visibility resolution; conditional evaluation; required-field gating on
-transition.
+- `custom-field-visibility.spec.ts` (`CF-1`–`CF-3`, `CF-6`, `CF-11`) — unit & integration tests for per-type visibility resolution, single-level conditional evaluation, and customer-visible filtering.
+- `custom-field-transition-guard.spec.ts` (`CF-4`, `CF-5`, `CF-7`, `CF-9`, `CF-10`) — required-field gating on creation and `started`/`completed` transitions (`cancelled` exempt), option rename stability, and `cf.<key>` filter queries.
+- `custom-field-lifecycle.spec.ts` (`CF-8`) — soft-delete via pending action and 30-day restore round-trip.
 
-Integration: values scoped by entity permission; option removal refused while in use;
-soft-delete and restore round-trip.
+## Open questions
 
-E2E: define a field, make it required for one type, confirm the form changes for that type
-only and that the transition is blocked when empty.
+None.
 
 ## Related
 

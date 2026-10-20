@@ -424,7 +424,10 @@ seed_if_permitted() {
   [ "$MODE" = "local" ] || return 0
   if grep -q '"seed"' "$REPO_ROOT/package.json" 2>/dev/null; then
     say "seeding demo data"
-    pnpm seed minimal || warn "seeding failed — the stack is up regardless"
+    POSTGRES_HOST="${POSTGRES_HOST:-127.0.0.1}" pnpm seed minimal || warn "seeding failed — the stack is up regardless"
+    if [ -f "$REPO_ROOT/scripts/seed-sit-users.mjs" ]; then
+      POSTGRES_HOST="${POSTGRES_HOST:-127.0.0.1}" pnpm --filter @taskdesk/api exec tsx "$REPO_ROOT/scripts/seed-sit-users.mjs" || warn "SIT user seeding failed — the stack is up regardless"
+    fi
   else
     warn "no \`pnpm seed\` script yet — skipping demo data"
   fi

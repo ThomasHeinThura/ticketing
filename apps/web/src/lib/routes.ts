@@ -305,7 +305,7 @@ export function parseAgentInboxSearchFromQueryString(
   return parseAgentInboxSearch({ filter: params.get("filter") ?? undefined });
 }
 
-export type AgentMyWorkLens = "assigned" | "created" | "watching";
+export type AgentMyWorkLens = "assigned" | "created" | "watching" | "approvals";
 export type AgentMyWorkSearch = {
   lens?: Exclude<AgentMyWorkLens, "assigned">;
   q?: string;
@@ -320,7 +320,9 @@ export function parseAgentMyWorkSearch(raw: unknown): AgentMyWorkSearch {
       ? value.q.trim().slice(0, 200)
       : undefined;
   return {
-    ...(value.lens === "created" || value.lens === "watching"
+    ...(value.lens === "created" ||
+    value.lens === "watching" ||
+    value.lens === "approvals"
       ? { lens: value.lens }
       : {}),
     ...(q ? { q } : {}),
@@ -871,6 +873,219 @@ export const routes = {
     path: "/agent/projects/$projectKey/settings/danger" as const,
     build: (params: { projectKey: string }) =>
       `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/danger`,
+  },
+  agentSignIn: {
+    path: "/agent/sign-in" as const,
+    build: () => "/agent/sign-in",
+  },
+  agentInvite: {
+    path: "/agent/invite" as const,
+    build: () => "/agent/invite",
+  },
+  projectPlan: {
+    path: "/agent/projects/$projectKey/plan" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/plan`,
+  },
+  projectStakeholders: {
+    path: "/agent/projects/$projectKey/stakeholders" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/stakeholders`,
+  },
+  projectSlaSettings: {
+    path: "/agent/projects/$projectKey/settings/sla" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/sla`,
+  },
+  projectFeaturesSettings: {
+    path: "/agent/projects/$projectKey/settings/features" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/features`,
+  },
+  projectAutomationsSettings: {
+    path: "/agent/projects/$projectKey/settings/automations" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/automations`,
+  },
+  workspaceWorkItemTypes: {
+    path: "/agent/settings/work-item-types" as const,
+    build: () => "/agent/settings/work-item-types",
+  },
+  workspaceWorkflows: {
+    path: "/agent/settings/workflows" as const,
+    build: () => "/agent/settings/workflows",
+  },
+  workspaceWorkflowEditor: {
+    path: "/agent/settings/workflows/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/workflows/${encodeURIComponent(params.id)}`,
+  },
+  profileNotifications: {
+    path: "/agent/settings/profile/notifications" as const,
+    build: () => "/agent/settings/profile/notifications",
+  },
+  profileSecurity: {
+    path: "/agent/settings/profile/security" as const,
+    build: () => "/agent/settings/profile/security",
+  },
+  profileApiKeys: {
+    path: "/agent/settings/profile/api-keys" as const,
+    build: () => "/agent/settings/profile/api-keys",
+  },
+  workspaceTerminology: {
+    path: "/agent/settings/terminology" as const,
+    build: () => "/agent/settings/terminology",
+  },
+  workspaceTeams: {
+    path: "/agent/settings/teams" as const,
+    build: () => "/agent/settings/teams",
+  },
+  workspaceTeamDetail: {
+    path: "/agent/settings/teams/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/teams/${encodeURIComponent(params.id)}`,
+  },
+  workspaceRoles: {
+    path: "/agent/settings/roles" as const,
+    build: () => "/agent/settings/roles",
+  },
+  workspaceRoleEditor: {
+    path: "/agent/settings/roles/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/roles/${encodeURIComponent(params.id)}`,
+  },
+  workspaceCustomFields: {
+    path: "/agent/settings/custom-fields" as const,
+    build: () => "/agent/settings/custom-fields",
+  },
+  workspaceCustomFieldEditor: {
+    path: "/agent/settings/custom-fields/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/custom-fields/${encodeURIComponent(params.id)}`,
+  },
+  workspaceAutomations: {
+    path: "/agent/settings/automations" as const,
+    build: () => "/agent/settings/automations",
+  },
+  workspaceWebhooks: {
+    path: "/agent/settings/webhooks" as const,
+    build: () => "/agent/settings/webhooks",
+  },
+  workspaceWebhookEditor: {
+    path: "/agent/settings/webhooks/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/webhooks/${encodeURIComponent(params.id)}`,
+  },
+  workspaceWebhookDeliveries: {
+    path: "/agent/settings/webhooks/$id/deliveries" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/webhooks/${encodeURIComponent(params.id)}/deliveries`,
+  },
+  godModeHome: {
+    path: "/agent/god-mode" as const,
+    build: () => "/agent/god-mode",
+  },
+  godModeGeneral: {
+    path: "/agent/god-mode/general" as const,
+    build: () => "/agent/god-mode/general",
+  },
+  godModeBranding: {
+    path: "/agent/god-mode/branding" as const,
+    build: () => "/agent/god-mode/branding",
+  },
+  godModeOrganisations: {
+    path: "/agent/god-mode/organisations" as const,
+    build: () => "/agent/god-mode/organisations",
+  },
+  godModeOrganisationDetail: {
+    path: "/agent/god-mode/organisations/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/god-mode/organisations/${encodeURIComponent(params.id)}`,
+  },
+  godModeOrganisationIdentity: {
+    path: "/agent/god-mode/organisations/$id/identity" as const,
+    build: (params: { id: string }) =>
+      `/agent/god-mode/organisations/${encodeURIComponent(params.id)}/identity`,
+  },
+  godModeStorage: {
+    path: "/agent/god-mode/storage" as const,
+    build: () => "/agent/god-mode/storage",
+  },
+  godModeNotifications: {
+    path: "/agent/god-mode/notifications" as const,
+    build: () => "/agent/god-mode/notifications",
+  },
+  godModeDeliveries: {
+    path: "/agent/god-mode/deliveries" as const,
+    build: () => "/agent/god-mode/deliveries",
+  },
+  godModeFeatures: {
+    path: "/agent/god-mode/features" as const,
+    build: () => "/agent/god-mode/features",
+  },
+  godModeJobs: {
+    path: "/agent/god-mode/jobs" as const,
+    build: () => "/agent/god-mode/jobs",
+  },
+  godModePlugins: {
+    path: "/agent/god-mode/plugins" as const,
+    build: () => "/agent/god-mode/plugins",
+  },
+  godModeMcp: {
+    path: "/agent/god-mode/mcp" as const,
+    build: () => "/agent/god-mode/mcp",
+  },
+  godModeAudit: {
+    path: "/agent/god-mode/audit" as const,
+    build: () => "/agent/god-mode/audit",
+  },
+  portalDashboard: {
+    path: "/portal" as const,
+    build: () => "/portal",
+  },
+  portalInvite: {
+    path: "/portal/invite" as const,
+    build: () => "/portal/invite",
+  },
+  portalRequests: {
+    path: "/portal/requests" as const,
+    build: () => "/portal/requests",
+  },
+  portalRequestDetail: {
+    path: "/portal/requests/$ref" as const,
+    build: (params: { ref: string }) =>
+      `/portal/requests/${encodeURIComponent(params.ref)}`,
+  },
+  portalRequestRate: {
+    path: "/portal/requests/$ref/rate" as const,
+    build: (params: { ref: string }) =>
+      `/portal/requests/${encodeURIComponent(params.ref)}/rate`,
+  },
+  portalNew: {
+    path: "/portal/new" as const,
+    build: () => "/portal/new",
+  },
+  portalNewForm: {
+    path: "/portal/new/$typeKey" as const,
+    build: (params: { typeKey: string }) =>
+      `/portal/new/${encodeURIComponent(params.typeKey)}`,
+  },
+  portalApprovals: {
+    path: "/portal/approvals" as const,
+    build: () => "/portal/approvals",
+  },
+  portalProjects: {
+    path: "/portal/projects" as const,
+    build: () => "/portal/projects",
+  },
+  portalProjectDetail: {
+    path: "/portal/projects/$key" as const,
+    build: (params: { key: string }) =>
+      `/portal/projects/${encodeURIComponent(params.key)}`,
+  },
+  portalAccount: {
+    path: "/portal/account" as const,
+    build: () => "/portal/account",
   },
 };
 

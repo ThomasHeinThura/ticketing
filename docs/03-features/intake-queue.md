@@ -1,7 +1,7 @@
 # Intake queue
 
 - **Stage:** P2
-- **Status:** ⬜
+- **Status:** ✅
 - **Feature flag:** `feature.intake`
 - **Depends on:** request types, work items, notifications
 

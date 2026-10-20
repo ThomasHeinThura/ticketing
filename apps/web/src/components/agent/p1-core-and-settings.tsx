@@ -45,12 +45,12 @@ function WorkspaceSettingsNav() {
     { label: "Request types", to: routes.requestTypes.path },
     { label: "Danger zone", to: routes.workspaceDangerZone.path },
   ] as const;
-
   return (
     <nav
       aria-label="Workspace settings sections"
       className="flex flex-wrap gap-2"
     >
+      {" "}
       {items.map((item) => (
         <Button
           key={item.to}
@@ -58,25 +58,25 @@ function WorkspaceSettingsNav() {
           size="sm"
           render={<Link to={item.to} />}
         >
-          {item.label}
+          {" "}
+          {item.label}{" "}
         </Button>
-      ))}
+      ))}{" "}
     </nav>
   );
 }
-
 function ProfileSettingsNav() {
   const items = [
     { label: "General", to: routes.profileSettings.path },
     { label: "Appearance", to: routes.profileAppearance.path },
     { label: "Pending actions", to: routes.pendingActions.path },
   ] as const;
-
   return (
     <nav
       aria-label="Profile settings sections"
       className="flex flex-wrap gap-2"
     >
+      {" "}
       {items.map((item) => (
         <Button
           key={item.to}
@@ -84,13 +84,13 @@ function ProfileSettingsNav() {
           size="sm"
           render={<Link to={item.to} />}
         >
-          {item.label}
+          {" "}
+          {item.label}{" "}
         </Button>
-      ))}
+      ))}{" "}
     </nav>
   );
 }
-
 function ProjectSettingsNav({ projectKey }: { projectKey: string }) {
   const items = [
     { label: "General", to: routes.projectSettings.build({ projectKey }) },
@@ -102,12 +102,12 @@ function ProjectSettingsNav({ projectKey }: { projectKey: string }) {
       to: routes.projectDangerZone.build({ projectKey }),
     },
   ] as const;
-
   return (
     <nav
       aria-label="Project settings sections"
       className="flex flex-wrap gap-2"
     >
+      {" "}
       {items.map((item) => (
         <Button
           key={item.label}
@@ -115,109 +115,126 @@ function ProjectSettingsNav({ projectKey }: { projectKey: string }) {
           size="sm"
           render={<Link to={item.to as never} />}
         >
-          {item.label}
+          {" "}
+          {item.label}{" "}
         </Button>
-      ))}
+      ))}{" "}
     </nav>
   );
 }
-
 export function AgentWorkspaceHomeScreen() {
   const { data: workspace, isLoading: isWorkspaceLoading } =
     useActiveWorkspace();
   const { data: projects, isLoading: isProjectsLoading } = useGetProjects({
     workspaceId: workspace?.id ?? "",
   });
-
   if (isWorkspaceLoading || isProjectsLoading) {
     return (
       <main className="flex min-h-full w-full flex-col gap-5 p-6">
-        <PageTitle title="Workspace home" />
-        <Skeleton className="h-8 w-56" />
-        <Skeleton className="h-32 w-full" />
+        {" "}
+        <PageTitle title="Workspace home" /> <Skeleton className="h-8 w-56" />{" "}
+        <Skeleton className="h-32 w-full" />{" "}
       </main>
     );
   }
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Workspace home" />
+      {" "}
+      <PageTitle title="Workspace home" />{" "}
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Workspace home</h1>
+        {" "}
+        <h1 className="text-2xl font-semibold">Workspace home</h1>{" "}
         <p className="text-sm">
+          {" "}
           {workspace?.name ?? "Active workspace"} — jump to your work, inbox,
-          saved views, and active projects.
-        </p>
-      </header>
-
+          saved views, and active projects.{" "}
+        </p>{" "}
+      </header>{" "}
       <section aria-label="Quick destinations" className="flex flex-wrap gap-2">
+        {" "}
         <Button
           variant="outline"
           size="sm"
           render={<Link to={routes.agentMyWork.path} />}
         >
-          My work
-        </Button>
+          {" "}
+          My work{" "}
+        </Button>{" "}
         <Button
           variant="outline"
           size="sm"
           render={<Link to={routes.agentInbox.path} />}
         >
-          Inbox
-        </Button>
+          {" "}
+          Inbox{" "}
+        </Button>{" "}
         <Button
           variant="outline"
           size="sm"
           render={<Link to={routes.agentSearch.path} />}
         >
-          Global search
-        </Button>
+          {" "}
+          Global search{" "}
+        </Button>{" "}
         <Button
           variant="outline"
           size="sm"
           render={<Link to={routes.savedViews.path} />}
         >
-          Saved views
-        </Button>
+          {" "}
+          Saved views{" "}
+        </Button>{" "}
         <Button
           variant="outline"
           size="sm"
           render={<Link to={routes.intakeQueue.build()} />}
         >
-          Intake triage
-        </Button>
+          {" "}
+          Intake triage{" "}
+        </Button>{" "}
         <Button
           variant="outline"
           size="sm"
           render={<Link to={routes.workspaceSettings.path} />}
         >
-          Workspace settings
-        </Button>
-      </section>
-
+          {" "}
+          Workspace settings{" "}
+        </Button>{" "}
+      </section>{" "}
       <section aria-label="Projects" className="grid gap-4 md:grid-cols-2">
+        {" "}
         {(projects ?? []).length === 0 ? (
           <Card>
+            {" "}
             <CardHeader>
-              <CardTitle>No projects yet</CardTitle>
+              {" "}
+              <CardTitle>No projects yet</CardTitle>{" "}
               <CardDescription>
-                Create a project from the sidebar to start tracking work items.
-              </CardDescription>
-            </CardHeader>
+                {" "}
+                Create a project from the sidebar to start tracking work items.{" "}
+              </CardDescription>{" "}
+            </CardHeader>{" "}
           </Card>
         ) : (
           (projects ?? []).map((project) => (
             <Card key={project.id}>
+              {" "}
               <CardHeader>
+                {" "}
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-base">{project.name}</CardTitle>
-                  <Badge variant="outline">{project.slug.toUpperCase()}</Badge>
-                </div>
+                  {" "}
+                  <CardTitle className="text-base">{project.name}</CardTitle>{" "}
+                  <Badge variant="outline">
+                    {project.slug.toUpperCase()}
+                  </Badge>{" "}
+                </div>{" "}
                 <CardDescription>
-                  {project.description || "Project workspace"}
-                </CardDescription>
-              </CardHeader>
+                  {" "}
+                  {project.description || "Project workspace"}{" "}
+                </CardDescription>{" "}
+              </CardHeader>{" "}
               <CardContent className="flex flex-wrap gap-2">
+                {" "}
                 <Button
                   variant="outline"
                   size="sm"
@@ -228,8 +245,9 @@ export function AgentWorkspaceHomeScreen() {
                     />
                   }
                 >
-                  Overview
-                </Button>
+                  {" "}
+                  Overview{" "}
+                </Button>{" "}
                 <Button
                   variant="outline"
                   size="sm"
@@ -240,8 +258,9 @@ export function AgentWorkspaceHomeScreen() {
                     />
                   }
                 >
-                  Work items
-                </Button>
+                  {" "}
+                  Work items{" "}
+                </Button>{" "}
                 <Button
                   variant="outline"
                   size="sm"
@@ -252,8 +271,9 @@ export function AgentWorkspaceHomeScreen() {
                     />
                   }
                 >
-                  Backlog
-                </Button>
+                  {" "}
+                  Backlog{" "}
+                </Button>{" "}
                 <Button
                   variant="outline"
                   size="sm"
@@ -264,17 +284,17 @@ export function AgentWorkspaceHomeScreen() {
                     />
                   }
                 >
-                  Settings
-                </Button>
-              </CardContent>
+                  {" "}
+                  Settings{" "}
+                </Button>{" "}
+              </CardContent>{" "}
             </Card>
           ))
-        )}
-      </section>
+        )}{" "}
+      </section>{" "}
     </main>
   );
 }
-
 export function AgentInboxScreen({
   filter,
   onFilterChange,
@@ -291,21 +311,24 @@ export function AgentInboxScreen({
       unread: true,
     },
   ]);
-
   const visibleItems =
     filter === "unread" ? items.filter((item) => item.unread) : items;
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Inbox" />
+      {" "}
+      <PageTitle title="Inbox" />{" "}
       <header className="flex flex-wrap items-center justify-between gap-3">
+        {" "}
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Inbox</h1>
+          {" "}
+          <h1 className="text-2xl font-semibold">Inbox</h1>{" "}
           <p className="text-sm">
-            Notifications for assignments, mentions, and workflow updates.
-          </p>
-        </div>
+            {" "}
+            Notifications for assignments, mentions, and workflow updates.{" "}
+          </p>{" "}
+        </div>{" "}
         <div className="flex flex-wrap items-center gap-2">
+          {" "}
           <Button
             type="button"
             size="sm"
@@ -313,8 +336,9 @@ export function AgentInboxScreen({
             aria-pressed={filter === "all"}
             onClick={() => onFilterChange("all")}
           >
-            All notifications
-          </Button>
+            {" "}
+            All notifications{" "}
+          </Button>{" "}
           <Button
             type="button"
             size="sm"
@@ -322,8 +346,9 @@ export function AgentInboxScreen({
             aria-pressed={filter === "unread"}
             onClick={() => onFilterChange("unread")}
           >
-            Unread only
-          </Button>
+            {" "}
+            Unread only{" "}
+          </Button>{" "}
           <Button
             type="button"
             size="sm"
@@ -335,39 +360,48 @@ export function AgentInboxScreen({
               )
             }
           >
-            Mark all read
-          </Button>
-        </div>
-      </header>
-
+            {" "}
+            Mark all read{" "}
+          </Button>{" "}
+        </div>{" "}
+      </header>{" "}
       {visibleItems.length === 0 ? (
         <Card>
+          {" "}
           <CardHeader>
-            <CardTitle>Your inbox is clear</CardTitle>
+            {" "}
+            <CardTitle>Your inbox is clear</CardTitle>{" "}
             <CardDescription>
-              No notifications match the current filter.
-            </CardDescription>
-          </CardHeader>
+              {" "}
+              No notifications match the current filter.{" "}
+            </CardDescription>{" "}
+          </CardHeader>{" "}
         </Card>
       ) : (
         <section aria-label="Notifications" className="grid gap-3">
+          {" "}
           {visibleItems.map((item) => (
             <Card key={item.id}>
+              {" "}
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                {" "}
                 <div className="space-y-1">
+                  {" "}
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">{item.key}</Badge>
+                    {" "}
+                    <Badge variant="outline">{item.key}</Badge>{" "}
                     <Link
                       to={routes.workItemDetail.path}
                       params={{ key: item.key }}
                       className="font-medium text-sm hover:underline"
                     >
-                      {item.title}
-                    </Link>
-                    {item.unread ? <Badge>Unread</Badge> : null}
-                  </div>
-                  <p className="text-xs">{item.summary}</p>
-                </div>
+                      {" "}
+                      {item.title}{" "}
+                    </Link>{" "}
+                    {item.unread ? <Badge>Unread</Badge> : null}{" "}
+                  </div>{" "}
+                  <p className="text-xs">{item.summary}</p>{" "}
+                </div>{" "}
                 {item.unread ? (
                   <Button
                     type="button"
@@ -383,18 +417,18 @@ export function AgentInboxScreen({
                       )
                     }
                   >
-                    Mark read
+                    {" "}
+                    Mark read{" "}
                   </Button>
-                ) : null}
-              </CardContent>
+                ) : null}{" "}
+              </CardContent>{" "}
             </Card>
-          ))}
+          ))}{" "}
         </section>
-      )}
+      )}{" "}
     </main>
   );
 }
-
 export function AgentMyWorkScreen({
   search,
   onUpdateSearch,
@@ -409,13 +443,29 @@ export function AgentMyWorkScreen({
   });
   const firstProject = projects?.[0];
   const lens: AgentMyWorkLens = search.lens ?? "assigned";
-
+  const [approvals, setApprovals] = useState([
+    {
+      id: "appr-1",
+      workItemKey: "HELP-1",
+      title: "Production database firewall rule change",
+      requester: "Alex Rivera",
+      gate: "CAB Change Approval",
+      state: "pending" as "pending" | "approved" | "rejected",
+    },
+    {
+      id: "appr-2",
+      workItemKey: "HELP-2",
+      title: "Enterprise SSO production cutover",
+      requester: "Samira Khan",
+      gate: "Security Lead Sign-off",
+      state: "pending" as "pending" | "approved" | "rejected",
+    },
+  ]);
   const workItemsQuery = useQuery({
     queryKey: ["my-work-items", firstProject?.id],
     queryFn: () => getWorkItems(firstProject?.id ?? "", "key", "asc"),
     enabled: Boolean(firstProject?.id),
   });
-
   const allItems: WorkItemRow[] = workItemsQuery.data?.items ?? [];
   const filteredItems = allItems.filter((item) => {
     if (
@@ -431,24 +481,33 @@ export function AgentMyWorkScreen({
     }
     return true;
   });
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="My work" />
+      {" "}
+      <PageTitle title={lens === "approvals" ? "Approvals inbox" : "My work"} />{" "}
       <header className="flex flex-wrap items-center justify-between gap-3">
+        {" "}
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">My work</h1>
+          {" "}
+          <h1 className="text-2xl font-semibold">
+            {" "}
+            {lens === "approvals" ? "Approvals inbox" : "My work"}{" "}
+          </h1>{" "}
           <p className="text-sm">
-            Work items assigned to you, created by you, or watched across
-            projects.
-          </p>
-        </div>
+            {" "}
+            {lens === "approvals"
+              ? "Pending approval requests awaiting your decision."
+              : "Work items assigned to you, created by you, or watched across projects."}{" "}
+          </p>{" "}
+        </div>{" "}
         <div className="flex flex-wrap items-center gap-2">
+          {" "}
           {(
             [
               ["assigned", "Assigned to me"],
               ["created", "Created by me"],
               ["watching", "Watching"],
+              ["approvals", "Approvals inbox"],
             ] as const
           ).map(([value, label]) => (
             <Button
@@ -463,13 +522,14 @@ export function AgentMyWorkScreen({
                 })
               }
             >
-              {label}
+              {" "}
+              {label}{" "}
             </Button>
-          ))}
-        </div>
-      </header>
-
+          ))}{" "}
+        </div>{" "}
+      </header>{" "}
       <div className="max-w-md">
+        {" "}
         <Input
           aria-label="Filter my work"
           placeholder="Filter by key or title..."
@@ -477,63 +537,141 @@ export function AgentMyWorkScreen({
           onChange={(event) =>
             onUpdateSearch({ q: event.target.value || undefined })
           }
-        />
-      </div>
-
-      {workItemsQuery.isLoading ? (
+        />{" "}
+      </div>{" "}
+      {lens === "approvals" ? (
+        <section
+          aria-label="Approvals inbox"
+          data-testid="agent-approvals-inbox"
+          className="grid gap-3"
+        >
+          {" "}
+          {approvals.map((approval) => (
+            <Card key={approval.id}>
+              {" "}
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                {" "}
+                <div className="space-y-1">
+                  {" "}
+                  <div className="flex items-center gap-2">
+                    {" "}
+                    <Badge variant="outline">{approval.workItemKey}</Badge>{" "}
+                    <span className="font-medium text-sm">
+                      {approval.title}
+                    </span>{" "}
+                    <Badge variant="secondary">{approval.gate}</Badge>{" "}
+                    <Badge variant="outline">{approval.state}</Badge>{" "}
+                  </div>{" "}
+                  <p className="text-xs">
+                    {" "}
+                    Requested by {approval.requester}{" "}
+                  </p>{" "}
+                </div>{" "}
+                <div className="flex items-center gap-2">
+                  {" "}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={approval.state !== "pending"}
+                    onClick={() =>
+                      setApprovals((prev) =>
+                        prev.map((row) =>
+                          row.id === approval.id
+                            ? { ...row, state: "approved" }
+                            : row,
+                        ),
+                      )
+                    }
+                  >
+                    {" "}
+                    Approve{" "}
+                  </Button>{" "}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={approval.state !== "pending"}
+                    onClick={() =>
+                      setApprovals((prev) =>
+                        prev.map((row) =>
+                          row.id === approval.id
+                            ? { ...row, state: "rejected" }
+                            : row,
+                        ),
+                      )
+                    }
+                  >
+                    {" "}
+                    Reject{" "}
+                  </Button>{" "}
+                </div>{" "}
+              </CardContent>{" "}
+            </Card>
+          ))}{" "}
+        </section>
+      ) : workItemsQuery.isLoading ? (
         <Skeleton className="h-28 w-full" />
       ) : filteredItems.length === 0 ? (
         <Card>
+          {" "}
           <CardHeader>
-            <CardTitle>No matching work items</CardTitle>
+            {" "}
+            <CardTitle>No matching work items</CardTitle>{" "}
             <CardDescription>
-              No work items match the selected lens and filter.
-            </CardDescription>
-          </CardHeader>
+              {" "}
+              No work items match the selected lens and filter.{" "}
+            </CardDescription>{" "}
+          </CardHeader>{" "}
         </Card>
       ) : (
         <section aria-label="My work items" className="grid gap-3">
+          {" "}
           {filteredItems.map((item) => (
             <Card key={item.id}>
+              {" "}
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                {" "}
                 <div className="flex items-center gap-3">
-                  <Badge variant="outline">{item.key}</Badge>
+                  {" "}
+                  <Badge variant="outline">{item.key}</Badge>{" "}
                   <Link
                     to={routes.workItemDetail.path}
                     params={{ key: item.key }}
                     className="font-medium text-sm hover:underline"
                   >
-                    {item.title}
-                  </Link>
-                </div>
+                    {" "}
+                    {item.title}{" "}
+                  </Link>{" "}
+                </div>{" "}
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{item.stateName}</Badge>
-                  <Badge variant="outline">{item.priority}</Badge>
+                  {" "}
+                  <Badge variant="secondary">{item.stateName}</Badge>{" "}
+                  <Badge variant="outline">{item.priority}</Badge>{" "}
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     onClick={() => onUpdateSearch({ item: item.key })}
                   >
-                    Preview
-                  </Button>
-                </div>
-              </CardContent>
+                    {" "}
+                    Preview{" "}
+                  </Button>{" "}
+                </div>{" "}
+              </CardContent>{" "}
             </Card>
-          ))}
+          ))}{" "}
         </section>
-      )}
-
+      )}{" "}
       {search.item ? (
         <WorkItemSidePane
           itemKey={search.item}
           onClose={() => onUpdateSearch({ item: undefined })}
         />
-      ) : null}
+      ) : null}{" "}
     </main>
   );
 }
-
 export function AgentGlobalSearchScreen({
   search,
   onUpdateSearch,
@@ -548,13 +686,11 @@ export function AgentGlobalSearchScreen({
   const firstProject = projects?.[0];
   const scope: AgentGlobalSearchScope = search.scope ?? "all";
   const queryText = (search.q ?? "").toLowerCase();
-
   const workItemsQuery = useQuery({
     queryKey: ["global-search-work-items", firstProject?.id],
     queryFn: () => getWorkItems(firstProject?.id ?? "", "key", "asc"),
     enabled: Boolean(firstProject?.id),
   });
-
   const matchingProjects =
     scope === "work-items"
       ? []
@@ -565,7 +701,6 @@ export function AgentGlobalSearchScreen({
                 .includes(queryText)
             : true,
         );
-
   const matchingWorkItems =
     scope === "projects"
       ? []
@@ -574,18 +709,20 @@ export function AgentGlobalSearchScreen({
             ? `${item.key} ${item.title}`.toLowerCase().includes(queryText)
             : true,
         );
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Global search" />
+      {" "}
+      <PageTitle title="Global search" />{" "}
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Global search</h1>
+        {" "}
+        <h1 className="text-2xl font-semibold">Global search</h1>{" "}
         <p className="text-sm">
-          Search work items and projects across your active workspace.
-        </p>
-      </header>
-
+          {" "}
+          Search work items and projects across your active workspace.{" "}
+        </p>{" "}
+      </header>{" "}
       <div className="flex flex-wrap items-center gap-3">
+        {" "}
         <Input
           aria-label="Search workspace"
           placeholder="Search by key, title, or project..."
@@ -594,8 +731,9 @@ export function AgentGlobalSearchScreen({
           onChange={(event) =>
             onUpdateSearch({ q: event.target.value || undefined })
           }
-        />
+        />{" "}
         <div className="flex flex-wrap gap-2">
+          {" "}
           {(
             [
               ["all", "All results"],
@@ -610,69 +748,78 @@ export function AgentGlobalSearchScreen({
               variant={scope === value ? "secondary" : "outline"}
               aria-pressed={scope === value}
               onClick={() =>
-                onUpdateSearch({
-                  scope: value === "all" ? undefined : value,
-                })
+                onUpdateSearch({ scope: value === "all" ? undefined : value })
               }
             >
-              {label}
+              {" "}
+              {label}{" "}
             </Button>
-          ))}
-        </div>
-      </div>
-
+          ))}{" "}
+        </div>{" "}
+      </div>{" "}
       <section aria-label="Search results" className="grid gap-4">
+        {" "}
         {matchingProjects.map((project) => (
           <Card key={`project-${project.id}`}>
+            {" "}
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+              {" "}
               <div className="flex items-center gap-2">
-                <Badge variant="outline">Project</Badge>
+                {" "}
+                <Badge variant="outline">Project</Badge>{" "}
                 <Link
                   to={routes.projectOverview.path}
                   params={{ projectKey: project.slug }}
                   className="font-medium text-sm hover:underline"
                 >
-                  {project.name}
-                </Link>
-              </div>
-              <Badge variant="secondary">{project.slug.toUpperCase()}</Badge>
-            </CardContent>
+                  {" "}
+                  {project.name}{" "}
+                </Link>{" "}
+              </div>{" "}
+              <Badge variant="secondary">
+                {project.slug.toUpperCase()}
+              </Badge>{" "}
+            </CardContent>{" "}
           </Card>
-        ))}
-
+        ))}{" "}
         {matchingWorkItems.map((item) => (
           <Card key={`item-${item.id}`}>
+            {" "}
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+              {" "}
               <div className="flex items-center gap-2">
-                <Badge variant="outline">{item.key}</Badge>
+                {" "}
+                <Badge variant="outline">{item.key}</Badge>{" "}
                 <Link
                   to={routes.workItemDetail.path}
                   params={{ key: item.key }}
                   className="font-medium text-sm hover:underline"
                 >
-                  {item.title}
-                </Link>
-              </div>
-              <Badge variant="secondary">{item.stateName}</Badge>
-            </CardContent>
+                  {" "}
+                  {item.title}{" "}
+                </Link>{" "}
+              </div>{" "}
+              <Badge variant="secondary">{item.stateName}</Badge>{" "}
+            </CardContent>{" "}
           </Card>
-        ))}
-
+        ))}{" "}
         {matchingProjects.length === 0 && matchingWorkItems.length === 0 ? (
           <Card>
+            {" "}
             <CardHeader>
-              <CardTitle>No results found</CardTitle>
+              {" "}
+              <CardTitle>No results found</CardTitle>{" "}
               <CardDescription>
-                Try another search term or broaden the selected scope.
-              </CardDescription>
-            </CardHeader>
+                {" "}
+                Try another search term or broaden the selected scope.{" "}
+              </CardDescription>{" "}
+            </CardHeader>{" "}
           </Card>
-        ) : null}
-      </section>
+        ) : null}{" "}
+      </section>{" "}
     </main>
   );
 }
-
 export function ProjectOverviewScreen({ projectKey }: { projectKey: string }) {
   const { data: workspace } = useActiveWorkspace();
   const { data: projects, isLoading } = useGetProjects({
@@ -681,34 +828,40 @@ export function ProjectOverviewScreen({ projectKey }: { projectKey: string }) {
   const project = projects?.find(
     (entry) => entry.slug.toLowerCase() === projectKey.toLowerCase(),
   );
-
   if (isLoading) {
     return (
       <main className="flex min-h-full w-full flex-col gap-5 p-6">
-        <PageTitle title="Project overview" />
-        <Skeleton className="h-8 w-56" />
-        <Skeleton className="h-32 w-full" />
+        {" "}
+        <PageTitle title="Project overview" /> <Skeleton className="h-8 w-56" />{" "}
+        <Skeleton className="h-32 w-full" />{" "}
       </main>
     );
   }
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title={`${project?.name ?? projectKey} — Overview`} />
+      {" "}
+      <PageTitle title={`${project?.name ?? projectKey} — Overview`} />{" "}
       <header className="flex flex-wrap items-center justify-between gap-3">
+        {" "}
         <div className="space-y-1">
+          {" "}
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">Project overview</h1>
+            {" "}
+            <h1 className="text-2xl font-semibold">Project overview</h1>{" "}
             <Badge variant="outline">
-              {(project?.slug ?? projectKey).toUpperCase()}
-            </Badge>
-          </div>
+              {" "}
+              {(project?.slug ?? projectKey).toUpperCase()}{" "}
+            </Badge>{" "}
+          </div>{" "}
           <p className="text-sm">
-            {project?.name ?? projectKey} —{" "}
-            {project?.description || "Service desk and project work summary."}
-          </p>
-        </div>
+            {" "}
+            {project?.name ?? projectKey} —{""}{" "}
+            {project?.description ||
+              "Service desk and project work summary."}{" "}
+          </p>{" "}
+        </div>{" "}
         <div className="flex flex-wrap gap-2">
+          {" "}
           <Button
             variant="outline"
             size="sm"
@@ -719,8 +872,9 @@ export function ProjectOverviewScreen({ projectKey }: { projectKey: string }) {
               />
             }
           >
-            Work items
-          </Button>
+            {" "}
+            Work items{" "}
+          </Button>{" "}
           <Button
             variant="outline"
             size="sm"
@@ -728,8 +882,9 @@ export function ProjectOverviewScreen({ projectKey }: { projectKey: string }) {
               <Link to={routes.projectBacklog.path} params={{ projectKey }} />
             }
           >
-            Backlog
-          </Button>
+            {" "}
+            Backlog{" "}
+          </Button>{" "}
           <Button
             variant="outline"
             size="sm"
@@ -737,75 +892,96 @@ export function ProjectOverviewScreen({ projectKey }: { projectKey: string }) {
               <Link to={routes.projectSettings.path} params={{ projectKey }} />
             }
           >
-            Project settings
-          </Button>
-        </div>
-      </header>
-
+            {" "}
+            Project settings{" "}
+          </Button>{" "}
+        </div>{" "}
+      </header>{" "}
       <div className="grid gap-4 md:grid-cols-3">
+        {" "}
         <Card>
+          {" "}
           <CardHeader>
-            <CardTitle className="text-base">Project key</CardTitle>
-            <CardDescription>Identifier prefix for work items</CardDescription>
-          </CardHeader>
+            {" "}
+            <CardTitle className="text-base">Project key</CardTitle>{" "}
+            <CardDescription>
+              Identifier prefix for work items
+            </CardDescription>{" "}
+          </CardHeader>{" "}
           <CardContent>
+            {" "}
             <p className="font-mono text-lg font-semibold">
-              {(project?.slug ?? projectKey).toUpperCase()}
-            </p>
-          </CardContent>
-        </Card>
+              {" "}
+              {(project?.slug ?? projectKey).toUpperCase()}{" "}
+            </p>{" "}
+          </CardContent>{" "}
+        </Card>{" "}
         <Card>
+          {" "}
           <CardHeader>
-            <CardTitle className="text-base">Total items</CardTitle>
-            <CardDescription>Tracked in this project</CardDescription>
-          </CardHeader>
+            {" "}
+            <CardTitle className="text-base">Total items</CardTitle>{" "}
+            <CardDescription>Tracked in this project</CardDescription>{" "}
+          </CardHeader>{" "}
           <CardContent>
+            {" "}
             <p className="text-lg font-semibold">
-              {project?.statistics?.totalTasks ?? 1}
-            </p>
-          </CardContent>
-        </Card>
+              {" "}
+              {project?.statistics?.totalTasks ?? 1}{" "}
+            </p>{" "}
+          </CardContent>{" "}
+        </Card>{" "}
         <Card>
+          {" "}
           <CardHeader>
-            <CardTitle className="text-base">Completion</CardTitle>
-            <CardDescription>Completed work ratio</CardDescription>
-          </CardHeader>
+            {" "}
+            <CardTitle className="text-base">Completion</CardTitle>{" "}
+            <CardDescription>Completed work ratio</CardDescription>{" "}
+          </CardHeader>{" "}
           <CardContent>
+            {" "}
             <p className="text-lg font-semibold">
-              {project?.statistics?.completionPercentage ?? 0}%
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+              {" "}
+              {project?.statistics?.completionPercentage ?? 0}%{" "}
+            </p>{" "}
+          </CardContent>{" "}
+        </Card>{" "}
+      </div>{" "}
     </main>
   );
 }
-
 export function ProfileGeneralSettingsScreen() {
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState(user?.name ?? "Ada Example");
   const [saved, setSaved] = useState(false);
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Profile settings" />
+      {" "}
+      <PageTitle title="Profile settings" />{" "}
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Profile settings</h1>
+        {" "}
+        <h1 className="text-2xl font-semibold">Profile settings</h1>{" "}
         <p className="text-sm">
-          Manage your personal display name and account identity.
-        </p>
-      </header>
-      <ProfileSettingsNav />
+          {" "}
+          Manage your personal display name and account identity.{" "}
+        </p>{" "}
+      </header>{" "}
+      <ProfileSettingsNav />{" "}
       <Card>
+        {" "}
         <CardHeader>
-          <CardTitle>Personal information</CardTitle>
+          {" "}
+          <CardTitle>Personal information</CardTitle>{" "}
           <CardDescription>
-            Displayed on work items, comments, and activity entries.
-          </CardDescription>
-        </CardHeader>
+            {" "}
+            Displayed on work items, comments, and activity entries.{" "}
+          </CardDescription>{" "}
+        </CardHeader>{" "}
         <CardContent className="space-y-4">
+          {" "}
           <div className="space-y-2 max-w-md">
-            <Label htmlFor="profile-display-name">Display name</Label>
+            {" "}
+            <Label htmlFor="profile-display-name">Display name</Label>{" "}
             <Input
               id="profile-display-name"
               value={displayName}
@@ -813,47 +989,56 @@ export function ProfileGeneralSettingsScreen() {
                 setDisplayName(event.target.value);
                 setSaved(false);
               }}
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <div className="space-y-2 max-w-md">
-            <Label htmlFor="profile-email">Email address</Label>
+            {" "}
+            <Label htmlFor="profile-email">Email address</Label>{" "}
             <Input
               id="profile-email"
               value={user?.email ?? "ada@example.test"}
               disabled
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <div className="flex items-center gap-3">
+            {" "}
             <Button type="button" size="sm" onClick={() => setSaved(true)}>
-              Save profile
-            </Button>
-            {saved ? <Badge variant="secondary">Saved</Badge> : null}
-          </div>
-        </CardContent>
-      </Card>
+              {" "}
+              Save profile{" "}
+            </Button>{" "}
+            {saved ? <Badge variant="secondary">Saved</Badge> : null}{" "}
+          </div>{" "}
+        </CardContent>{" "}
+      </Card>{" "}
     </main>
   );
 }
-
 export function ProfileAppearanceSettingsScreen() {
   const { theme, setTheme } = useUserPreferencesStore();
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Appearance" />
+      {" "}
+      <PageTitle title="Appearance" />{" "}
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Appearance</h1>
-        <p className="text-sm">Choose how TaskDesk looks on this device.</p>
-      </header>
-      <ProfileSettingsNav />
+        {" "}
+        <h1 className="text-2xl font-semibold">Appearance</h1>{" "}
+        <p className="text-sm">
+          Choose how TaskDesk looks on this device.
+        </p>{" "}
+      </header>{" "}
+      <ProfileSettingsNav />{" "}
       <Card>
+        {" "}
         <CardHeader>
-          <CardTitle>Theme preference</CardTitle>
+          {" "}
+          <CardTitle>Theme preference</CardTitle>{" "}
           <CardDescription>
-            Select light, dark, or system colour mode.
-          </CardDescription>
-        </CardHeader>
+            {" "}
+            Select light, dark, or system colour mode.{" "}
+          </CardDescription>{" "}
+        </CardHeader>{" "}
         <CardContent className="flex flex-wrap gap-2">
+          {" "}
           {(
             [
               ["light", "Light"],
@@ -869,15 +1054,15 @@ export function ProfileAppearanceSettingsScreen() {
               aria-pressed={theme === mode}
               onClick={() => setTheme(mode)}
             >
-              {label}
+              {" "}
+              {label}{" "}
             </Button>
-          ))}
-        </CardContent>
-      </Card>
+          ))}{" "}
+        </CardContent>{" "}
+      </Card>{" "}
     </main>
   );
 }
-
 export function WorkspaceGeneralSettingsScreen() {
   const { data: workspace } = useActiveWorkspace();
   const [name, setName] = useState(workspace?.name ?? "Northstar Support");
@@ -885,27 +1070,34 @@ export function WorkspaceGeneralSettingsScreen() {
     workspace?.description ?? "Primary service desk workspace",
   );
   const [saved, setSaved] = useState(false);
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Workspace settings" />
+      {" "}
+      <PageTitle title="Workspace settings" />{" "}
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Workspace settings</h1>
+        {" "}
+        <h1 className="text-2xl font-semibold">Workspace settings</h1>{" "}
         <p className="text-sm">
-          Configure workspace identity, members, states, labels, and templates.
-        </p>
-      </header>
-      <WorkspaceSettingsNav />
+          {" "}
+          Configure workspace identity, members, states, labels, and templates.{" "}
+        </p>{" "}
+      </header>{" "}
+      <WorkspaceSettingsNav />{" "}
       <Card>
+        {" "}
         <CardHeader>
-          <CardTitle>General details</CardTitle>
+          {" "}
+          <CardTitle>General details</CardTitle>{" "}
           <CardDescription>
-            Workspace name and summary shown across projects.
-          </CardDescription>
-        </CardHeader>
+            {" "}
+            Workspace name and summary shown across projects.{" "}
+          </CardDescription>{" "}
+        </CardHeader>{" "}
         <CardContent className="space-y-4">
+          {" "}
           <div className="space-y-2 max-w-md">
-            <Label htmlFor="workspace-name-input">Workspace name</Label>
+            {" "}
+            <Label htmlFor="workspace-name-input">Workspace name</Label>{" "}
             <Input
               id="workspace-name-input"
               value={name}
@@ -913,10 +1105,11 @@ export function WorkspaceGeneralSettingsScreen() {
                 setName(event.target.value);
                 setSaved(false);
               }}
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <div className="space-y-2 max-w-md">
-            <Label htmlFor="workspace-description-input">Description</Label>
+            {" "}
+            <Label htmlFor="workspace-description-input">Description</Label>{" "}
             <Input
               id="workspace-description-input"
               value={description}
@@ -924,20 +1117,21 @@ export function WorkspaceGeneralSettingsScreen() {
                 setDescription(event.target.value);
                 setSaved(false);
               }}
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <div className="flex items-center gap-3">
+            {" "}
             <Button type="button" size="sm" onClick={() => setSaved(true)}>
-              Save workspace settings
-            </Button>
-            {saved ? <Badge variant="secondary">Saved</Badge> : null}
-          </div>
-        </CardContent>
-      </Card>
+              {" "}
+              Save workspace settings{" "}
+            </Button>{" "}
+            {saved ? <Badge variant="secondary">Saved</Badge> : null}{" "}
+          </div>{" "}
+        </CardContent>{" "}
+      </Card>{" "}
     </main>
   );
 }
-
 export function WorkspaceMembersSettingsScreen({
   query,
   onQueryChange,
@@ -949,7 +1143,6 @@ export function WorkspaceMembersSettingsScreen({
   const { data: members } = useGetWorkspaceMembers({
     workspaceId: workspace?.id ?? "",
   });
-
   const filtered = (members ?? []).filter((member) =>
     query
       ? `${member.name ?? ""} ${member.email ?? ""}`
@@ -957,55 +1150,65 @@ export function WorkspaceMembersSettingsScreen({
           .includes(query.toLowerCase())
       : true,
   );
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Workspace members" />
+      {" "}
+      <PageTitle title="Workspace members" />{" "}
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Workspace members</h1>
+        {" "}
+        <h1 className="text-2xl font-semibold">Workspace members</h1>{" "}
         <p className="text-sm">
-          People with access to this workspace and their assigned roles.
-        </p>
-      </header>
-      <WorkspaceSettingsNav />
+          {" "}
+          People with access to this workspace and their assigned roles.{" "}
+        </p>{" "}
+      </header>{" "}
+      <WorkspaceSettingsNav />{" "}
       <div className="max-w-md">
+        {" "}
         <Input
           aria-label="Filter workspace members"
           placeholder="Filter members by name or email..."
           value={query ?? ""}
           onChange={(event) => onQueryChange(event.target.value || undefined)}
-        />
-      </div>
+        />{" "}
+      </div>{" "}
       <section aria-label="Members list" className="grid gap-3">
+        {" "}
         {filtered.length === 0 ? (
           <Card>
+            {" "}
             <CardHeader>
-              <CardTitle>No matching members</CardTitle>
+              {" "}
+              <CardTitle>No matching members</CardTitle>{" "}
               <CardDescription>
-                No workspace members match the current filter.
-              </CardDescription>
-            </CardHeader>
+                {" "}
+                No workspace members match the current filter.{" "}
+              </CardDescription>{" "}
+            </CardHeader>{" "}
           </Card>
         ) : (
           filtered.map((member) => (
             <Card key={member.id}>
+              {" "}
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                {" "}
                 <div className="space-y-0.5">
+                  {" "}
                   <p className="font-medium text-sm">
-                    {member.name || member.email}
-                  </p>
-                  <p className="text-xs">{member.email}</p>
-                </div>
-                <Badge variant="outline">{member.role ?? "member"}</Badge>
-              </CardContent>
+                    {" "}
+                    {member.name || member.email}{" "}
+                  </p>{" "}
+                  <p className="text-xs">{member.email}</p>{" "}
+                </div>{" "}
+                <Badge variant="outline">{member.role ?? "member"}</Badge>{" "}
+              </CardContent>{" "}
             </Card>
           ))
-        )}
-      </section>
+        )}{" "}
+      </section>{" "}
     </main>
   );
 }
-
 export function WorkspaceStatesSettingsScreen() {
   const categories = [
     {
@@ -1030,69 +1233,81 @@ export function WorkspaceStatesSettingsScreen() {
       description: "Closed without implementation.",
     },
   ] as const;
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Workspace states" />
+      {" "}
+      <PageTitle title="Workspace states" />{" "}
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Workspace states</h1>
+        {" "}
+        <h1 className="text-2xl font-semibold">Workspace states</h1>{" "}
         <p className="text-sm">
+          {" "}
           Canonical state templates and status categories shared across
-          projects.
-        </p>
-      </header>
-      <WorkspaceSettingsNav />
+          projects.{" "}
+        </p>{" "}
+      </header>{" "}
+      <WorkspaceSettingsNav />{" "}
       <section aria-label="State templates" className="grid gap-3">
+        {" "}
         {categories.map((state) => (
           <Card key={state.group}>
+            {" "}
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+              {" "}
               <div className="space-y-0.5">
-                <p className="font-medium text-sm">{state.name}</p>
-                <p className="text-xs">{state.description}</p>
-              </div>
-              <Badge variant="outline">{state.group}</Badge>
-            </CardContent>
+                {" "}
+                <p className="font-medium text-sm">{state.name}</p>{" "}
+                <p className="text-xs">{state.description}</p>{" "}
+              </div>{" "}
+              <Badge variant="outline">{state.group}</Badge>{" "}
+            </CardContent>{" "}
           </Card>
-        ))}
-      </section>
+        ))}{" "}
+      </section>{" "}
     </main>
   );
 }
-
 export function WorkspaceLabelsSettingsScreen() {
   const [labels, setLabels] = useState([
     { id: "lbl-incident", name: "incident", category: "Service desk" },
     { id: "lbl-security", name: "security", category: "Governance" },
   ]);
   const [newLabelName, setNewLabelName] = useState("");
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Workspace labels" />
+      {" "}
+      <PageTitle title="Workspace labels" />{" "}
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Workspace labels</h1>
+        {" "}
+        <h1 className="text-2xl font-semibold">Workspace labels</h1>{" "}
         <p className="text-sm">
-          Shared labels available across all projects in this workspace.
-        </p>
-      </header>
-      <WorkspaceSettingsNav />
+          {" "}
+          Shared labels available across all projects in this workspace.{" "}
+        </p>{" "}
+      </header>{" "}
+      <WorkspaceSettingsNav />{" "}
       <Card>
+        {" "}
         <CardHeader>
-          <CardTitle className="text-base">Create label</CardTitle>
+          {" "}
+          <CardTitle className="text-base">Create label</CardTitle>{" "}
           <CardDescription>
-            Add a reusable label for categorizing work items.
-          </CardDescription>
-        </CardHeader>
+            {" "}
+            Add a reusable label for categorizing work items.{" "}
+          </CardDescription>{" "}
+        </CardHeader>{" "}
         <CardContent className="flex flex-wrap items-end gap-2">
+          {" "}
           <div className="space-y-1">
-            <Label htmlFor="new-workspace-label">Label name</Label>
+            {" "}
+            <Label htmlFor="new-workspace-label">Label name</Label>{" "}
             <Input
               id="new-workspace-label"
               placeholder="e.g. billing"
               value={newLabelName}
               onChange={(event) => setNewLabelName(event.target.value)}
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <Button
             type="button"
             size="sm"
@@ -1111,24 +1326,27 @@ export function WorkspaceLabelsSettingsScreen() {
               setNewLabelName("");
             }}
           >
-            Add label
-          </Button>
-        </CardContent>
-      </Card>
+            {" "}
+            Add label{" "}
+          </Button>{" "}
+        </CardContent>{" "}
+      </Card>{" "}
       <section aria-label="Workspace labels list" className="grid gap-3">
+        {" "}
         {labels.map((label) => (
           <Card key={label.id}>
+            {" "}
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-              <Badge variant="outline">{label.name}</Badge>
-              <span className="text-xs">{label.category}</span>
-            </CardContent>
+              {" "}
+              <Badge variant="outline">{label.name}</Badge>{" "}
+              <span className="text-xs">{label.category}</span>{" "}
+            </CardContent>{" "}
           </Card>
-        ))}
-      </section>
+        ))}{" "}
+      </section>{" "}
     </main>
   );
 }
-
 export function WorkspaceCannedResponsesSettingsScreen({
   query,
   onQueryChange,
@@ -1150,57 +1368,65 @@ export function WorkspaceCannedResponsesSettingsScreen({
   ]);
   const [newTitle, setNewTitle] = useState("");
   const [newBody, setNewBody] = useState("");
-
   const visible = templates.filter((item) =>
     query
       ? `${item.title} ${item.body}`.toLowerCase().includes(query.toLowerCase())
       : true,
   );
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Canned responses" />
+      {" "}
+      <PageTitle title="Canned responses" />{" "}
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Canned responses</h1>
+        {" "}
+        <h1 className="text-2xl font-semibold">Canned responses</h1>{" "}
         <p className="text-sm">
-          Reusable reply templates for common service desk conversations.
-        </p>
-      </header>
-      <WorkspaceSettingsNav />
+          {" "}
+          Reusable reply templates for common service desk conversations.{" "}
+        </p>{" "}
+      </header>{" "}
+      <WorkspaceSettingsNav />{" "}
       <div className="max-w-md">
+        {" "}
         <Input
           aria-label="Filter canned responses"
           placeholder="Search canned responses..."
           value={query ?? ""}
           onChange={(event) => onQueryChange(event.target.value || undefined)}
-        />
-      </div>
+        />{" "}
+      </div>{" "}
       <Card>
+        {" "}
         <CardHeader>
-          <CardTitle className="text-base">New canned response</CardTitle>
+          {" "}
+          <CardTitle className="text-base">New canned response</CardTitle>{" "}
           <CardDescription>
-            Create a standard reply agents can insert into comments.
-          </CardDescription>
-        </CardHeader>
+            {" "}
+            Create a standard reply agents can insert into comments.{" "}
+          </CardDescription>{" "}
+        </CardHeader>{" "}
         <CardContent className="space-y-3">
+          {" "}
           <div className="space-y-1 max-w-md">
-            <Label htmlFor="canned-title">Template title</Label>
+            {" "}
+            <Label htmlFor="canned-title">Template title</Label>{" "}
             <Input
               id="canned-title"
               value={newTitle}
               onChange={(event) => setNewTitle(event.target.value)}
               placeholder="e.g. Verification complete"
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <div className="space-y-1 max-w-xl">
-            <Label htmlFor="canned-body">Response text</Label>
+            {" "}
+            <Label htmlFor="canned-body">Response text</Label>{" "}
             <Input
               id="canned-body"
               value={newBody}
               onChange={(event) => setNewBody(event.target.value)}
               placeholder="Write the reusable message..."
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <Button
             type="button"
             size="sm"
@@ -1218,91 +1444,107 @@ export function WorkspaceCannedResponsesSettingsScreen({
               setNewBody("");
             }}
           >
-            Save canned response
-          </Button>
-        </CardContent>
-      </Card>
+            {" "}
+            Save canned response{" "}
+          </Button>{" "}
+        </CardContent>{" "}
+      </Card>{" "}
       <section aria-label="Canned response templates" className="grid gap-3">
+        {" "}
         {visible.map((item) => (
           <Card key={item.id}>
+            {" "}
             <CardHeader>
-              <CardTitle className="text-base">{item.title}</CardTitle>
-              <CardDescription>{item.body}</CardDescription>
-            </CardHeader>
+              {" "}
+              <CardTitle className="text-base">{item.title}</CardTitle>{" "}
+              <CardDescription>{item.body}</CardDescription>{" "}
+            </CardHeader>{" "}
           </Card>
-        ))}
-      </section>
+        ))}{" "}
+      </section>{" "}
     </main>
   );
 }
-
 export function WorkspaceDangerZoneSettingsScreen() {
   const { data: workspace } = useActiveWorkspace();
   const [confirmation, setConfirmation] = useState("");
   const slug = workspace?.slug ?? "northstar-support";
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Workspace danger zone" />
+      {" "}
+      <PageTitle title="Workspace danger zone" />{" "}
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Workspace danger zone</h1>
+        {" "}
+        <h1 className="text-2xl font-semibold">Workspace danger zone</h1>{" "}
         <p className="text-sm">
+          {" "}
           Irreversible workspace lifecycle actions governed by pending-action
-          approval.
-        </p>
-      </header>
-      <WorkspaceSettingsNav />
+          approval.{" "}
+        </p>{" "}
+      </header>{" "}
+      <WorkspaceSettingsNav />{" "}
       <Card>
+        {" "}
         <CardHeader>
-          <CardTitle>Pending-action protection</CardTitle>
+          {" "}
+          <CardTitle>Pending-action protection</CardTitle>{" "}
           <CardDescription>
+            {" "}
             Deleting a workspace creates a pending action and schedules soft
-            deletion with a 30-day retention window before purge.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+            deletion with a 30-day retention window before purge.{" "}
+          </CardDescription>{" "}
+        </CardHeader>{" "}
+      </Card>{" "}
       <Card>
+        {" "}
         <CardHeader>
-          <CardTitle>Delete workspace</CardTitle>
+          {" "}
+          <CardTitle>Delete workspace</CardTitle>{" "}
           <CardDescription>
-            Type {slug} to enable workspace deletion.
-          </CardDescription>
-        </CardHeader>
+            {" "}
+            Type {slug} to enable workspace deletion.{" "}
+          </CardDescription>{" "}
+        </CardHeader>{" "}
         <CardContent className="space-y-4 max-w-md">
+          {" "}
           <div className="space-y-2">
+            {" "}
             <Label htmlFor="confirm-workspace-slug">
-              Confirm workspace slug
-            </Label>
+              {" "}
+              Confirm workspace slug{" "}
+            </Label>{" "}
             <Input
               id="confirm-workspace-slug"
               value={confirmation}
               onChange={(event) => setConfirmation(event.target.value)}
               placeholder={slug}
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <div className="flex flex-wrap gap-2">
+            {" "}
             <Button
               type="button"
               variant="destructive"
               size="sm"
               disabled={confirmation.trim() !== slug}
             >
-              Request workspace deletion
-            </Button>
+              {" "}
+              Request workspace deletion{" "}
+            </Button>{" "}
             <Button
               variant="outline"
               size="sm"
               render={<Link to={routes.pendingActions.path} />}
             >
-              View pending actions
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              {" "}
+              View pending actions{" "}
+            </Button>{" "}
+          </div>{" "}
+        </CardContent>{" "}
+      </Card>{" "}
     </main>
   );
 }
-
 export function ProjectGeneralSettingsScreen({
   projectKey,
 }: {
@@ -1320,30 +1562,38 @@ export function ProjectGeneralSettingsScreen({
     project?.description ?? "Customer support work",
   );
   const [saved, setSaved] = useState(false);
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Project settings" />
+      {" "}
+      <PageTitle title="Project settings" />{" "}
       <header className="space-y-1">
+        {" "}
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold">Project settings</h1>
-          <Badge variant="outline">{projectKey.toUpperCase()}</Badge>
-        </div>
+          {" "}
+          <h1 className="text-2xl font-semibold">Project settings</h1>{" "}
+          <Badge variant="outline">{projectKey.toUpperCase()}</Badge>{" "}
+        </div>{" "}
         <p className="text-sm">
-          Configure project details, members, workflow states, and labels.
-        </p>
-      </header>
-      <ProjectSettingsNav projectKey={projectKey} />
+          {" "}
+          Configure project details, members, workflow states, and labels.{" "}
+        </p>{" "}
+      </header>{" "}
+      <ProjectSettingsNav projectKey={projectKey} />{" "}
       <Card>
+        {" "}
         <CardHeader>
-          <CardTitle>General details</CardTitle>
+          {" "}
+          <CardTitle>General details</CardTitle>{" "}
           <CardDescription>
-            Project name, key prefix, and description.
-          </CardDescription>
-        </CardHeader>
+            {" "}
+            Project name, key prefix, and description.{" "}
+          </CardDescription>{" "}
+        </CardHeader>{" "}
         <CardContent className="space-y-4 max-w-md">
+          {" "}
           <div className="space-y-2">
-            <Label htmlFor="project-settings-name">Project name</Label>
+            {" "}
+            <Label htmlFor="project-settings-name">Project name</Label>{" "}
             <Input
               id="project-settings-name"
               value={name}
@@ -1351,18 +1601,20 @@ export function ProjectGeneralSettingsScreen({
                 setName(event.target.value);
                 setSaved(false);
               }}
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <div className="space-y-2">
-            <Label htmlFor="project-settings-key">Project key</Label>
+            {" "}
+            <Label htmlFor="project-settings-key">Project key</Label>{" "}
             <Input
               id="project-settings-key"
               value={projectKey.toUpperCase()}
               disabled
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <div className="space-y-2">
-            <Label htmlFor="project-settings-description">Description</Label>
+            {" "}
+            <Label htmlFor="project-settings-description">Description</Label>{" "}
             <Input
               id="project-settings-description"
               value={description}
@@ -1370,20 +1622,21 @@ export function ProjectGeneralSettingsScreen({
                 setDescription(event.target.value);
                 setSaved(false);
               }}
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <div className="flex items-center gap-3">
+            {" "}
             <Button type="button" size="sm" onClick={() => setSaved(true)}>
-              Save project settings
-            </Button>
-            {saved ? <Badge variant="secondary">Saved</Badge> : null}
-          </div>
-        </CardContent>
-      </Card>
+              {" "}
+              Save project settings{" "}
+            </Button>{" "}
+            {saved ? <Badge variant="secondary">Saved</Badge> : null}{" "}
+          </div>{" "}
+        </CardContent>{" "}
+      </Card>{" "}
     </main>
   );
 }
-
 export function ProjectMembersSettingsScreen({
   projectKey,
 }: {
@@ -1393,50 +1646,60 @@ export function ProjectMembersSettingsScreen({
   const { data: members } = useGetWorkspaceMembers({
     workspaceId: workspace?.id ?? "",
   });
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Project members" />
+      {" "}
+      <PageTitle title="Project members" />{" "}
       <header className="space-y-1">
+        {" "}
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold">Project members</h1>
-          <Badge variant="outline">{projectKey.toUpperCase()}</Badge>
-        </div>
+          {" "}
+          <h1 className="text-2xl font-semibold">Project members</h1>{" "}
+          <Badge variant="outline">{projectKey.toUpperCase()}</Badge>{" "}
+        </div>{" "}
         <p className="text-sm">
-          People with reach and role assignments in this project.
-        </p>
-      </header>
-      <ProjectSettingsNav projectKey={projectKey} />
+          {" "}
+          People with reach and role assignments in this project.{" "}
+        </p>{" "}
+      </header>{" "}
+      <ProjectSettingsNav projectKey={projectKey} />{" "}
       <section aria-label="Project members list" className="grid gap-3">
+        {" "}
         {(members ?? []).length === 0 ? (
           <Card>
+            {" "}
             <CardHeader>
-              <CardTitle>No project members</CardTitle>
+              {" "}
+              <CardTitle>No project members</CardTitle>{" "}
               <CardDescription>
-                Grant project membership from workspace members.
-              </CardDescription>
-            </CardHeader>
+                {" "}
+                Grant project membership from workspace members.{" "}
+              </CardDescription>{" "}
+            </CardHeader>{" "}
           </Card>
         ) : (
           (members ?? []).map((member) => (
             <Card key={member.id}>
+              {" "}
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                {" "}
                 <div className="space-y-0.5">
+                  {" "}
                   <p className="font-medium text-sm">
-                    {member.name || member.email}
-                  </p>
-                  <p className="text-xs">{member.email}</p>
-                </div>
-                <Badge variant="outline">{member.role ?? "lead"}</Badge>
-              </CardContent>
+                    {" "}
+                    {member.name || member.email}{" "}
+                  </p>{" "}
+                  <p className="text-xs">{member.email}</p>{" "}
+                </div>{" "}
+                <Badge variant="outline">{member.role ?? "lead"}</Badge>{" "}
+              </CardContent>{" "}
             </Card>
           ))
-        )}
-      </section>
+        )}{" "}
+      </section>{" "}
     </main>
   );
 }
-
 export function ProjectStatesSettingsScreen({
   projectKey,
 }: {
@@ -1449,7 +1712,6 @@ export function ProjectStatesSettingsScreen({
   const project = projects?.find(
     (entry) => entry.slug.toLowerCase() === projectKey.toLowerCase(),
   );
-
   const statesQuery = useQuery({
     queryKey: ["project-states-settings", project?.id],
     queryFn: async () => {
@@ -1461,52 +1723,60 @@ export function ProjectStatesSettingsScreen({
     },
     enabled: Boolean(project?.id),
   });
-
   const states = statesQuery.data ?? [];
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Project states" />
+      {" "}
+      <PageTitle title="Project states" />{" "}
       <header className="space-y-1">
+        {" "}
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold">Project states</h1>
-          <Badge variant="outline">{projectKey.toUpperCase()}</Badge>
-        </div>
+          {" "}
+          <h1 className="text-2xl font-semibold">Project states</h1>{" "}
+          <Badge variant="outline">{projectKey.toUpperCase()}</Badge>{" "}
+        </div>{" "}
         <p className="text-sm">
-          Workflow states enabled for work items in this project.
-        </p>
-      </header>
-      <ProjectSettingsNav projectKey={projectKey} />
+          {" "}
+          Workflow states enabled for work items in this project.{" "}
+        </p>{" "}
+      </header>{" "}
+      <ProjectSettingsNav projectKey={projectKey} />{" "}
       <section aria-label="Project states list" className="grid gap-3">
+        {" "}
         {states.length === 0 ? (
           <Card>
+            {" "}
             <CardHeader>
-              <CardTitle>Default workflow states active</CardTitle>
+              {" "}
+              <CardTitle>Default workflow states active</CardTitle>{" "}
               <CardDescription>
-                Backlog, In progress, and Done are configured for this project.
-              </CardDescription>
-            </CardHeader>
+                {" "}
+                Backlog, In progress, and Done are configured for this project.{" "}
+              </CardDescription>{" "}
+            </CardHeader>{" "}
           </Card>
         ) : (
           states.map((state) => (
             <Card key={state.id}>
+              {" "}
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                {" "}
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{state.name}</span>
+                  {" "}
+                  <span className="font-medium text-sm">{state.name}</span>{" "}
                   {state.isDefault ? (
                     <Badge variant="secondary">Default</Badge>
-                  ) : null}
-                </div>
-                <Badge variant="outline">{state.group}</Badge>
-              </CardContent>
+                  ) : null}{" "}
+                </div>{" "}
+                <Badge variant="outline">{state.group}</Badge>{" "}
+              </CardContent>{" "}
             </Card>
           ))
-        )}
-      </section>
+        )}{" "}
+      </section>{" "}
     </main>
   );
 }
-
 export function ProjectLabelsSettingsScreen({
   projectKey,
 }: {
@@ -1521,37 +1791,45 @@ export function ProjectLabelsSettingsScreen({
     },
   ]);
   const [newName, setNewName] = useState("");
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Project labels" />
+      {" "}
+      <PageTitle title="Project labels" />{" "}
       <header className="space-y-1">
+        {" "}
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold">Project labels</h1>
-          <Badge variant="outline">{projectKey.toUpperCase()}</Badge>
-        </div>
+          {" "}
+          <h1 className="text-2xl font-semibold">Project labels</h1>{" "}
+          <Badge variant="outline">{projectKey.toUpperCase()}</Badge>{" "}
+        </div>{" "}
         <p className="text-sm">
-          Labels scoped to this project alongside inherited workspace labels.
-        </p>
-      </header>
-      <ProjectSettingsNav projectKey={projectKey} />
+          {" "}
+          Labels scoped to this project alongside inherited workspace labels.{" "}
+        </p>{" "}
+      </header>{" "}
+      <ProjectSettingsNav projectKey={projectKey} />{" "}
       <Card>
+        {" "}
         <CardHeader>
-          <CardTitle className="text-base">Add project label</CardTitle>
+          {" "}
+          <CardTitle className="text-base">Add project label</CardTitle>{" "}
           <CardDescription>
-            Create a label specific to {projectKey.toUpperCase()}.
-          </CardDescription>
-        </CardHeader>
+            {" "}
+            Create a label specific to {projectKey.toUpperCase()}.{" "}
+          </CardDescription>{" "}
+        </CardHeader>{" "}
         <CardContent className="flex flex-wrap items-end gap-2">
+          {" "}
           <div className="space-y-1">
-            <Label htmlFor="new-project-label">Label name</Label>
+            {" "}
+            <Label htmlFor="new-project-label">Label name</Label>{" "}
             <Input
               id="new-project-label"
               value={newName}
               onChange={(event) => setNewName(event.target.value)}
               placeholder="e.g. regression"
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <Button
             type="button"
             size="sm"
@@ -1570,24 +1848,27 @@ export function ProjectLabelsSettingsScreen({
               setNewName("");
             }}
           >
-            Create project label
-          </Button>
-        </CardContent>
-      </Card>
+            {" "}
+            Create project label{" "}
+          </Button>{" "}
+        </CardContent>{" "}
+      </Card>{" "}
       <section aria-label="Project labels list" className="grid gap-3">
+        {" "}
         {labels.map((label) => (
           <Card key={label.id}>
+            {" "}
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-              <Badge variant="outline">{label.name}</Badge>
-              <span className="text-xs">{label.scope}</span>
-            </CardContent>
+              {" "}
+              <Badge variant="outline">{label.name}</Badge>{" "}
+              <span className="text-xs">{label.scope}</span>{" "}
+            </CardContent>{" "}
           </Card>
-        ))}
-      </section>
+        ))}{" "}
+      </section>{" "}
     </main>
   );
 }
-
 export function ProjectDangerZoneSettingsScreen({
   projectKey,
 }: {
@@ -1595,61 +1876,76 @@ export function ProjectDangerZoneSettingsScreen({
 }) {
   const [confirmation, setConfirmation] = useState("");
   const upperKey = projectKey.toUpperCase();
-
   return (
     <main className="flex min-h-full w-full flex-col gap-6 p-6">
-      <PageTitle title="Project danger zone" />
+      {" "}
+      <PageTitle title="Project danger zone" />{" "}
       <header className="space-y-1">
+        {" "}
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold">Project danger zone</h1>
-          <Badge variant="outline">{upperKey}</Badge>
-        </div>
-        <p className="text-sm">Archive or request deletion for this project.</p>
-      </header>
-      <ProjectSettingsNav projectKey={projectKey} />
+          {" "}
+          <h1 className="text-2xl font-semibold">Project danger zone</h1>{" "}
+          <Badge variant="outline">{upperKey}</Badge>{" "}
+        </div>{" "}
+        <p className="text-sm">
+          Archive or request deletion for this project.
+        </p>{" "}
+      </header>{" "}
+      <ProjectSettingsNav projectKey={projectKey} />{" "}
       <Card>
+        {" "}
         <CardHeader>
-          <CardTitle>Archive project</CardTitle>
+          {" "}
+          <CardTitle>Archive project</CardTitle>{" "}
           <CardDescription>
+            {" "}
             Archiving freezes all work items, comments, and time entries in
-            read-only mode.
-          </CardDescription>
-        </CardHeader>
+            read-only mode.{" "}
+          </CardDescription>{" "}
+        </CardHeader>{" "}
         <CardContent>
+          {" "}
           <Button type="button" variant="outline" size="sm">
-            Archive project
-          </Button>
-        </CardContent>
-      </Card>
-      <Separator />
+            {" "}
+            Archive project{" "}
+          </Button>{" "}
+        </CardContent>{" "}
+      </Card>{" "}
+      <Separator />{" "}
       <Card>
+        {" "}
         <CardHeader>
-          <CardTitle>Delete project</CardTitle>
+          {" "}
+          <CardTitle>Delete project</CardTitle>{" "}
           <CardDescription>
+            {" "}
             Type {upperKey} to request project deletion with a 30-day recovery
-            window.
-          </CardDescription>
-        </CardHeader>
+            window.{" "}
+          </CardDescription>{" "}
+        </CardHeader>{" "}
         <CardContent className="space-y-4 max-w-md">
+          {" "}
           <div className="space-y-2">
-            <Label htmlFor="confirm-project-key">Confirm project key</Label>
+            {" "}
+            <Label htmlFor="confirm-project-key">Confirm project key</Label>{" "}
             <Input
               id="confirm-project-key"
               value={confirmation}
               onChange={(event) => setConfirmation(event.target.value)}
               placeholder={upperKey}
-            />
-          </div>
+            />{" "}
+          </div>{" "}
           <Button
             type="button"
             variant="destructive"
             size="sm"
             disabled={confirmation.trim().toUpperCase() !== upperKey}
           >
-            Request project deletion
-          </Button>
-        </CardContent>
-      </Card>
+            {" "}
+            Request project deletion{" "}
+          </Button>{" "}
+        </CardContent>{" "}
+      </Card>{" "}
     </main>
   );
 }

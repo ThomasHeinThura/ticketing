@@ -102,8 +102,15 @@ function SessionRouteError({ error }: ErrorComponentProps) {
 export const Route = createFileRoute("/_layout/_authenticated")({
   errorComponent: SessionRouteError,
   beforeLoad: async ({ location }) => {
+    if (
+      location.pathname === "/agent/sign-in" ||
+      location.pathname === "/agent/invite"
+    ) {
+      return { session: null, sessionError: false };
+    }
     const checkFactors =
-      location.pathname !== "/dashboard/settings/account/security";
+      location.pathname !== "/dashboard/settings/account/security" &&
+      location.pathname !== "/agent/settings/profile/security";
     let factorsRequest: Promise<Response | null> | null = null;
     if (checkFactors) {
       // Start the independent enforcement read alongside session refresh. Its

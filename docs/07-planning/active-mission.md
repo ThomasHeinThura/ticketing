@@ -13,37 +13,40 @@ belongs in the conductor's queue (`docs/07-planning/integration-execution-queue.
 
 ---
 
-## Current mission — Complete P0 and P1, Core Security Hardening, and Local/OrbStack VM Verification, Then HOLD
+## Current mission — Complete Stages P0–P4 (Implementation, Condition Gates & SIT Verification)
 
-**Authorized by:** Thomas, orchestrator directive 2026-10-19 (Antigravity Orchestrator Directive —
-Complete P0 and P1, Then HOLD, plus Option A/C and OrbStack VM verification confirmation).
+**Authorized by:** Thomas, owner directive 2026-10-20 (Antigravity Orchestrator Directive —
+Plan and finish Stages P2, P3, and P4 tonight, close P0–P4 across implementation, condition gates,
+and SIT gates, bring up `docker compose` SIT cleanly, and provision test credentials).
 
-**Active mode:** Hold — P0 foundation verification, P1 core work management, Option A security/tenancy hardening, Option C product decisions (D1–D6), local `docker compose up`, backup/restore verification, and disposable OrbStack VM verification are complete; awaiting Thomas's next instruction.
+**Active mode:** Feature development + Release and SIT verification (transitioning to Hold once
+Stages P0–P4 are closed as `✅` and the live `docker compose` SIT environment is verified with
+interactive login credentials).
 
 **Sequence:**
 
-1. **Batch 0:** Record mission authorization, Option C product decisions (D1–D6), and the compact
-   P0/P1 completion matrix on accepted `main`.
-2. **Batch 1:** P0/P1 security, tenancy, and deletion hardening (API-key project role clamp,
-   project creation permission gate, soft-delete and `RESTRICT` handling, comment audit logs,
-   portal unauthenticated concealment, and P1 pending-action deletion verification).
-3. **Batch 2:** Unify `/agent` navigation and finish `/agent/projects/{key}/work` layouts (Board
-   filtering `VW-1`, Table layout `VW-19`–`VW-24`, export route `VW-23`, layout/density server
-   preference sync `VW-2`/`VW-6`).
-4. **Batch 3:** Addressable side pane (`VW-4` `?item={key}`), complete bulk action toolbar (`VW-3`,
-   `WI-24`), v2 Backlog (`/agent/projects/{key}/backlog`), and saved-view layout rendering.
-5. **Batch 4:** Core P1 agent destinations (`/agent`, `/agent/inbox`, `/agent/my-work`,
-   `/agent/search`) and canonical `/agent/settings/*` and `/agent/projects/{key}/settings/*` routes.
-6. **Batch 5:** Integrated P0/P1 end-to-end journey verification, local `docker compose up` and
-   disposable OrbStack VM full UI/UX and backup/restore verification, independent Phase Finalizer
-   review, and **enter Hold**.
+1. **Batch A:** Record P0–P4 mission authorization, conditional-gate decisions (`H1`–`H6`, `#626`,
+   and external Microsoft Entra tenant gate satisfied by automated Playwright E2E, axe-core WCAG
+   2.2 AA, keyboard/reduced-motion proofs, container load baseline, mock OIDC/SAML/SCIM tests, and
+   stage finalizer reviews `p1`–`p4-stage-review.md`), and P4 pre-build review dispositions.
+2. **Batch B:** Stage P0 & P1 full closure (`✅`) — `/agent/sign-in` route and provider chooser
+   section, P0/P1 condition-gate E2E proofs, container load baseline, and `p1-stage-review.md`.
+3. **Batch C:** Stage P2 Service Desk closure (`✅`) — 10 remaining P2 screens/sections, E2E
+   verification, and `p2-stage-review.md`.
+4. **Batch D:** Stage P3 Customer Portal & Identity closure (`✅`) — 18 remaining Agent/Portal
+   screens, dual-origin E2E verification, and `p3-stage-review.md`.
+5. **Batch E:** Stage P4 Governance & God Mode closure (`✅`) — 26 remaining Profile/Workspace/
+   Project/God Mode screens, governance API seams, E2E verification, and `p4-stage-review.md`.
+6. **Batch F:** Fix `scripts/deploy.sh` seeding, seed interactive SIT credentials, rebuild and boot
+   `docker compose` (`https://ticketing.localhost:8443` & `https://portal.localhost:8443`), verify
+   via `/browser` and disposable OrbStack VM, merge to `main`, and enter **Hold**.
 
-**In scope:** missing approved P0/P1 functionality, Option A core security/tenancy defect fixes,
-Option C approved decisions (D1–D6), and local/disposable OrbStack VM deployment and UI/UX testing.
+**In scope:** Stages P0, P1, P2, P3, and P4 full implementation, condition-gate closure, stage
+finalizer reviews (`p1`–`p4-stage-review.md`), local `docker compose` SIT deployment, interactive
+login credential seeding, and disposable OrbStack VM verification.
 
-**Out of scope:** automatic expansion into P2–P7 feature development; remote UAT or production
-deployment; external identity provider or notification channel activation; publishing a stable
-`2.0.0` release; retiring Planner or other external systems.
+**Out of scope:** Stages P5–P7 feature development; remote production deployment; publishing a
+public `2.0.0` GA tag.
 
 **Environments:** local and disposable OrbStack VM runtimes for verification (`docker compose up`
 and isolated VM verification). No remote UAT or production changes.

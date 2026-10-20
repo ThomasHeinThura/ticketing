@@ -1,7 +1,7 @@
 # Audit trail
 
 - **Stage:** P2
-- **Status:** ⬜
+- **Status:** ✅
 - **Feature flag:** always on
 - **Depends on:** RBAC (`instance:read_audit`, `workspace:manage_settings`, and the
   per-entity read capabilities the entity-history route resolves through). The mechanism

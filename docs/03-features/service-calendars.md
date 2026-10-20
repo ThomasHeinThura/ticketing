@@ -1,7 +1,7 @@
 # Service calendars
 
 - **Stage:** P2
-- **Status:** 🟡
+- **Status:** ✅
 - **Feature flag:** `feature.sla`
 - **Depends on:** nothing
 

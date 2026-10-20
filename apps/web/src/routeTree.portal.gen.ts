@@ -10,13 +10,30 @@
 
 import { Route as rootRouteImport } from './routes/portal/__root'
 import { Route as IndexRouteImport } from './routes/portal/index'
+import { Route as SplatRouteImport } from './routes/portal/$'
 import { Route as CatalogueRouteImport } from './routes/portal/catalogue'
+import { Route as PortalRouteImport } from './routes/portal/portal'
 import { Route as SignInRouteImport } from './routes/portal/sign-in'
+import { Route as PortalAccountRouteImport } from './routes/portal/portal/account'
+import { Route as PortalApprovalsRouteImport } from './routes/portal/portal/approvals'
+import { Route as PortalInviteRouteImport } from './routes/portal/portal/invite'
+import { Route as PortalNewRouteImport } from './routes/portal/portal/new'
+import { Route as PortalProjectsRouteImport } from './routes/portal/portal/projects'
+import { Route as PortalRequestsRouteImport } from './routes/portal/portal/requests'
 import { Route as SubmissionsRefRouteImport } from './routes/portal/submissions/$ref'
+import { Route as PortalNewTypeKeyRouteImport } from './routes/portal/portal/new/$typeKey'
+import { Route as PortalProjectsKeyRouteImport } from './routes/portal/portal/projects/$key'
+import { Route as PortalRequestsRefRouteImport } from './routes/portal/portal/requests/$ref'
+import { Route as PortalRequestsRefRateRouteImport } from './routes/portal/portal/requests/$ref/rate'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogueRoute = CatalogueRouteImport.update({
@@ -24,47 +41,189 @@ const CatalogueRoute = CatalogueRouteImport.update({
   path: '/catalogue',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalRoute = PortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PortalAccountRoute = PortalAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalApprovalsRoute = PortalApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalInviteRoute = PortalInviteRouteImport.update({
+  id: '/invite',
+  path: '/invite',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalNewRoute = PortalNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalProjectsRoute = PortalProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalRequestsRoute = PortalRequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
+  getParentRoute: () => PortalRoute,
 } as any)
 const SubmissionsRefRoute = SubmissionsRefRouteImport.update({
   id: '/submissions/$ref',
   path: '/submissions/$ref',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalNewTypeKeyRoute = PortalNewTypeKeyRouteImport.update({
+  id: '/$typeKey',
+  path: '/$typeKey',
+  getParentRoute: () => PortalNewRoute,
+} as any)
+const PortalProjectsKeyRoute = PortalProjectsKeyRouteImport.update({
+  id: '/$key',
+  path: '/$key',
+  getParentRoute: () => PortalProjectsRoute,
+} as any)
+const PortalRequestsRefRoute = PortalRequestsRefRouteImport.update({
+  id: '/$ref',
+  path: '/$ref',
+  getParentRoute: () => PortalRequestsRoute,
+} as any)
+const PortalRequestsRefRateRoute = PortalRequestsRefRateRouteImport.update({
+  id: '/rate',
+  path: '/rate',
+  getParentRoute: () => PortalRequestsRefRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/catalogue': typeof CatalogueRoute
+  '/portal': typeof PortalRouteWithChildren
   '/sign-in': typeof SignInRoute
+  '/portal/account': typeof PortalAccountRoute
+  '/portal/approvals': typeof PortalApprovalsRoute
+  '/portal/invite': typeof PortalInviteRoute
+  '/portal/new': typeof PortalNewRouteWithChildren
+  '/portal/projects': typeof PortalProjectsRouteWithChildren
+  '/portal/requests': typeof PortalRequestsRouteWithChildren
   '/submissions/$ref': typeof SubmissionsRefRoute
+  '/portal/new/$typeKey': typeof PortalNewTypeKeyRoute
+  '/portal/projects/$key': typeof PortalProjectsKeyRoute
+  '/portal/requests/$ref': typeof PortalRequestsRefRouteWithChildren
+  '/portal/requests/$ref/rate': typeof PortalRequestsRefRateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/catalogue': typeof CatalogueRoute
+  '/portal': typeof PortalRouteWithChildren
   '/sign-in': typeof SignInRoute
+  '/portal/account': typeof PortalAccountRoute
+  '/portal/approvals': typeof PortalApprovalsRoute
+  '/portal/invite': typeof PortalInviteRoute
+  '/portal/new': typeof PortalNewRouteWithChildren
+  '/portal/projects': typeof PortalProjectsRouteWithChildren
+  '/portal/requests': typeof PortalRequestsRouteWithChildren
   '/submissions/$ref': typeof SubmissionsRefRoute
+  '/portal/new/$typeKey': typeof PortalNewTypeKeyRoute
+  '/portal/projects/$key': typeof PortalProjectsKeyRoute
+  '/portal/requests/$ref': typeof PortalRequestsRefRouteWithChildren
+  '/portal/requests/$ref/rate': typeof PortalRequestsRefRateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/catalogue': typeof CatalogueRoute
+  '/portal': typeof PortalRouteWithChildren
   '/sign-in': typeof SignInRoute
+  '/portal/account': typeof PortalAccountRoute
+  '/portal/approvals': typeof PortalApprovalsRoute
+  '/portal/invite': typeof PortalInviteRoute
+  '/portal/new': typeof PortalNewRouteWithChildren
+  '/portal/projects': typeof PortalProjectsRouteWithChildren
+  '/portal/requests': typeof PortalRequestsRouteWithChildren
   '/submissions/$ref': typeof SubmissionsRefRoute
+  '/portal/new/$typeKey': typeof PortalNewTypeKeyRoute
+  '/portal/projects/$key': typeof PortalProjectsKeyRoute
+  '/portal/requests/$ref': typeof PortalRequestsRefRouteWithChildren
+  '/portal/requests/$ref/rate': typeof PortalRequestsRefRateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/catalogue' | '/sign-in' | '/submissions/$ref'
+  fullPaths:
+    | '/'
+    | '/$'
+    | '/catalogue'
+    | '/portal'
+    | '/sign-in'
+    | '/portal/account'
+    | '/portal/approvals'
+    | '/portal/invite'
+    | '/portal/new'
+    | '/portal/projects'
+    | '/portal/requests'
+    | '/submissions/$ref'
+    | '/portal/new/$typeKey'
+    | '/portal/projects/$key'
+    | '/portal/requests/$ref'
+    | '/portal/requests/$ref/rate'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/catalogue' | '/sign-in' | '/submissions/$ref'
-  id: '__root__' | '/' | '/catalogue' | '/sign-in' | '/submissions/$ref'
+  to:
+    | '/'
+    | '/$'
+    | '/catalogue'
+    | '/portal'
+    | '/sign-in'
+    | '/portal/account'
+    | '/portal/approvals'
+    | '/portal/invite'
+    | '/portal/new'
+    | '/portal/projects'
+    | '/portal/requests'
+    | '/submissions/$ref'
+    | '/portal/new/$typeKey'
+    | '/portal/projects/$key'
+    | '/portal/requests/$ref'
+    | '/portal/requests/$ref/rate'
+  id:
+    | '__root__'
+    | '/'
+    | '/$'
+    | '/catalogue'
+    | '/portal'
+    | '/sign-in'
+    | '/portal/account'
+    | '/portal/approvals'
+    | '/portal/invite'
+    | '/portal/new'
+    | '/portal/projects'
+    | '/portal/requests'
+    | '/submissions/$ref'
+    | '/portal/new/$typeKey'
+    | '/portal/projects/$key'
+    | '/portal/requests/$ref'
+    | '/portal/requests/$ref/rate'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SplatRoute: typeof SplatRoute
   CatalogueRoute: typeof CatalogueRoute
+  PortalRoute: typeof PortalRouteWithChildren
   SignInRoute: typeof SignInRoute
   SubmissionsRefRoute: typeof SubmissionsRefRoute
 }
@@ -78,11 +237,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/catalogue': {
       id: '/catalogue'
       path: '/catalogue'
       fullPath: '/catalogue'
       preLoaderRoute: typeof CatalogueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in': {
@@ -92,6 +265,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/account': {
+      id: '/portal/account'
+      path: '/account'
+      fullPath: '/portal/account'
+      preLoaderRoute: typeof PortalAccountRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/approvals': {
+      id: '/portal/approvals'
+      path: '/approvals'
+      fullPath: '/portal/approvals'
+      preLoaderRoute: typeof PortalApprovalsRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/invite': {
+      id: '/portal/invite'
+      path: '/invite'
+      fullPath: '/portal/invite'
+      preLoaderRoute: typeof PortalInviteRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/new': {
+      id: '/portal/new'
+      path: '/new'
+      fullPath: '/portal/new'
+      preLoaderRoute: typeof PortalNewRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/projects': {
+      id: '/portal/projects'
+      path: '/projects'
+      fullPath: '/portal/projects'
+      preLoaderRoute: typeof PortalProjectsRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/requests': {
+      id: '/portal/requests'
+      path: '/requests'
+      fullPath: '/portal/requests'
+      preLoaderRoute: typeof PortalRequestsRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/submissions/$ref': {
       id: '/submissions/$ref'
       path: '/submissions/$ref'
@@ -99,12 +314,110 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SubmissionsRefRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/new/$typeKey': {
+      id: '/portal/new/$typeKey'
+      path: '/$typeKey'
+      fullPath: '/portal/new/$typeKey'
+      preLoaderRoute: typeof PortalNewTypeKeyRouteImport
+      parentRoute: typeof PortalNewRoute
+    }
+    '/portal/projects/$key': {
+      id: '/portal/projects/$key'
+      path: '/$key'
+      fullPath: '/portal/projects/$key'
+      preLoaderRoute: typeof PortalProjectsKeyRouteImport
+      parentRoute: typeof PortalProjectsRoute
+    }
+    '/portal/requests/$ref': {
+      id: '/portal/requests/$ref'
+      path: '/$ref'
+      fullPath: '/portal/requests/$ref'
+      preLoaderRoute: typeof PortalRequestsRefRouteImport
+      parentRoute: typeof PortalRequestsRoute
+    }
+    '/portal/requests/$ref/rate': {
+      id: '/portal/requests/$ref/rate'
+      path: '/rate'
+      fullPath: '/portal/requests/$ref/rate'
+      preLoaderRoute: typeof PortalRequestsRefRateRouteImport
+      parentRoute: typeof PortalRequestsRefRoute
+    }
   }
 }
 
+interface PortalNewRouteChildren {
+  PortalNewTypeKeyRoute: typeof PortalNewTypeKeyRoute
+}
+
+const PortalNewRouteChildren: PortalNewRouteChildren = {
+  PortalNewTypeKeyRoute: PortalNewTypeKeyRoute,
+}
+
+const PortalNewRouteWithChildren = PortalNewRoute._addFileChildren(
+  PortalNewRouteChildren,
+)
+
+interface PortalProjectsRouteChildren {
+  PortalProjectsKeyRoute: typeof PortalProjectsKeyRoute
+}
+
+const PortalProjectsRouteChildren: PortalProjectsRouteChildren = {
+  PortalProjectsKeyRoute: PortalProjectsKeyRoute,
+}
+
+const PortalProjectsRouteWithChildren = PortalProjectsRoute._addFileChildren(
+  PortalProjectsRouteChildren,
+)
+
+interface PortalRequestsRefRouteChildren {
+  PortalRequestsRefRateRoute: typeof PortalRequestsRefRateRoute
+}
+
+const PortalRequestsRefRouteChildren: PortalRequestsRefRouteChildren = {
+  PortalRequestsRefRateRoute: PortalRequestsRefRateRoute,
+}
+
+const PortalRequestsRefRouteWithChildren =
+  PortalRequestsRefRoute._addFileChildren(PortalRequestsRefRouteChildren)
+
+interface PortalRequestsRouteChildren {
+  PortalRequestsRefRoute: typeof PortalRequestsRefRouteWithChildren
+}
+
+const PortalRequestsRouteChildren: PortalRequestsRouteChildren = {
+  PortalRequestsRefRoute: PortalRequestsRefRouteWithChildren,
+}
+
+const PortalRequestsRouteWithChildren = PortalRequestsRoute._addFileChildren(
+  PortalRequestsRouteChildren,
+)
+
+interface PortalRouteChildren {
+  PortalAccountRoute: typeof PortalAccountRoute
+  PortalApprovalsRoute: typeof PortalApprovalsRoute
+  PortalInviteRoute: typeof PortalInviteRoute
+  PortalNewRoute: typeof PortalNewRouteWithChildren
+  PortalProjectsRoute: typeof PortalProjectsRouteWithChildren
+  PortalRequestsRoute: typeof PortalRequestsRouteWithChildren
+}
+
+const PortalRouteChildren: PortalRouteChildren = {
+  PortalAccountRoute: PortalAccountRoute,
+  PortalApprovalsRoute: PortalApprovalsRoute,
+  PortalInviteRoute: PortalInviteRoute,
+  PortalNewRoute: PortalNewRouteWithChildren,
+  PortalProjectsRoute: PortalProjectsRouteWithChildren,
+  PortalRequestsRoute: PortalRequestsRouteWithChildren,
+}
+
+const PortalRouteWithChildren =
+  PortalRoute._addFileChildren(PortalRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SplatRoute: SplatRoute,
   CatalogueRoute: CatalogueRoute,
+  PortalRoute: PortalRouteWithChildren,
   SignInRoute: SignInRoute,
   SubmissionsRefRoute: SubmissionsRefRoute,
 }

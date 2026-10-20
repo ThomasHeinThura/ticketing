@@ -28,6 +28,7 @@ import WorkItemActivity, { type ActivityFilter } from "./work-item-activity";
 import WorkItemApprovals from "./work-item-approvals";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 import WorkItemJourney from "./work-item-journey";
+import WorkItemSlaPanel from "./work-item-sla";
 
 export type WorkItemDetailProps = {
   item: WorkItemDetailRow | undefined;
@@ -262,6 +263,10 @@ function WorkItemDetail({
       <Separator />
 
       <WorkItemApprovals workItemKey={workItemKey} />
+
+      <Separator />
+
+      <WorkItemSlaPanel workItemKey={workItemKey} />
 
       <Separator />
 
