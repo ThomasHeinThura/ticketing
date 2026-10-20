@@ -5629,6 +5629,9 @@
 						},
 						"godMode": {
 							"type": "string"
+						},
+						"pendingActions": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -5645,7 +5648,8 @@
 						"settings",
 						"workItem",
 						"search",
-						"godMode"
+						"godMode",
+						"pendingActions"
 					]
 				},
 				"projectList": {

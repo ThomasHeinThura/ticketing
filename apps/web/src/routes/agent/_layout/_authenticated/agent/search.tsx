@@ -1,25 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AgentGlobalSearchScreen } from "@/components/agent/p1-core-and-settings";
-import { type AgentGlobalSearch, parseAgentGlobalSearch } from "@/lib/routes";
+import { WorkspaceSearchRedirect } from "@/components/agent/kaneo-redirects";
+import { parseAgentGlobalSearch } from "@/lib/routes";
 
+// The real search screen is kaneo's /dashboard/workspace/{id}/search.
 export const Route = createFileRoute("/_layout/_authenticated/agent/search")({
   validateSearch: parseAgentGlobalSearch,
-  component: GlobalSearchRouteComponent,
+  component: WorkspaceSearchRedirect,
 });
-
-function GlobalSearchRouteComponent() {
-  const search = Route.useSearch();
-  const navigate = Route.useNavigate();
-  return (
-    <AgentGlobalSearchScreen
-      search={search}
-      onUpdateSearch={(patch) =>
-        void navigate({
-          search: (prev: AgentGlobalSearch) =>
-            parseAgentGlobalSearch({ ...prev, ...patch }),
-          replace: true,
-        })
-      }
-    />
-  );
-}

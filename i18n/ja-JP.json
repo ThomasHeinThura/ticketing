@@ -1396,7 +1396,8 @@
 			"search": "Search",
 			"settings": "Settings",
 			"triage": "Triage",
-			"workItem": "Work item"
+			"workItem": "Work item",
+			"pendingActions": "Pending actions"
 		},
 		"projectList": {
 			"viewProject": "プロジェクトを表示",

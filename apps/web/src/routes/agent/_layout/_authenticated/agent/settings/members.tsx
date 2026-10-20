@@ -1,26 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { WorkspaceMembersSettingsScreen } from "@/components/agent/p1-core-and-settings";
-import { parseSettingsTextFilterSearch } from "@/lib/routes";
+import { createFileRoute } from "@tanstack/react-router";
+import { WorkspaceMembersRedirect } from "@/components/agent/kaneo-redirects";
 
+// The real members screen is kaneo's /dashboard/workspace/{id}/members.
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/settings/members",
 )({
-  validateSearch: parseSettingsTextFilterSearch,
-  component: WorkspaceMembersRoute,
+  component: WorkspaceMembersRedirect,
 });
-
-function WorkspaceMembersRoute() {
-  const { q } = Route.useSearch();
-  const navigate = useNavigate({ from: Route.fullPath });
-  return (
-    <WorkspaceMembersSettingsScreen
-      query={q}
-      onQueryChange={(next) =>
-        void navigate({
-          search: next ? { q: next } : {},
-          replace: true,
-        })
-      }
-    />
-  );
-}

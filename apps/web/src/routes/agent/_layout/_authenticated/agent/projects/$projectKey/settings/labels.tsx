@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ProjectLabelsSettingsScreen } from "@/components/agent/p1-core-and-settings";
+import { ProjectSettingsRedirect } from "@/components/agent/kaneo-redirects";
 
+// The real screen is kaneo's project settings (/dashboard/settings/projects/{id}/general).
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/projects/$projectKey/settings/labels",
 )({
-  component: ProjectLabelsRoute,
+  component: RouteComponent,
 });
 
-function ProjectLabelsRoute() {
+function RouteComponent() {
   const { projectKey } = Route.useParams();
-  return <ProjectLabelsSettingsScreen projectKey={projectKey} />;
+  return <ProjectSettingsRedirect projectKey={projectKey} section="general" />;
 }
