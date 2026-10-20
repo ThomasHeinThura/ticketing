@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemDetailRow } from "@/types/work-item";
@@ -73,10 +74,9 @@ vi.mock("./work-item-properties", () => ({
     onAccessLost: () => void;
   }>) => (
     <div data-testid="work-item-properties" data-compact={String(!!compact)}>
-      {/* ui-exempt: test double standing in for a property control's access-loss path */}
-      <button type="button" onClick={onAccessLost}>
+      <Button type="button" onClick={onAccessLost}>
         properties
-      </button>
+      </Button>
       {children}
     </div>
   ),
