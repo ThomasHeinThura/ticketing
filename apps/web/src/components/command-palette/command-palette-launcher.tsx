@@ -9,10 +9,12 @@ import {
 import { shortcuts } from "@/constants/shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { waitsForPrimaryContent } from "@/lib/after-primary-content";
+import { markPaletteWarm } from "@/lib/palette-warm";
 import type { CommandPaletteIntent, CommandPaletteRequest } from "./index";
 
 const CommandPalette = lazy(async () => {
   const module = await import("./index");
+  markPaletteWarm();
   return { default: module.CommandPalette };
 });
 
