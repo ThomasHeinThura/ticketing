@@ -10,12 +10,12 @@ behaves at the edges, and how it is tested.
 | Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
 | [Work items](work-items.md) | P1 | 🟡 | kaneo, Plane, v1 |
-| [Views and layouts](views.md) | P1 | ⬜ | kaneo |
-| [Projects and engagements](projects-and-engagements.md) | P1 | ⬜ | v1, OpenProject |
-| [Relations and hierarchy](relations-and-hierarchy.md) | P1 | ⬜ | OpenProject |
+| [Views and layouts](views.md) | P1 | 🟡 | kaneo |
+| [Projects and engagements](projects-and-engagements.md) | P1 | 🟡 | v1, OpenProject |
+| [Relations and hierarchy](relations-and-hierarchy.md) | P1 | 🟡 | OpenProject |
 | [Comments and activity](comments-and-activity.md) | P1 | 🟡 | kaneo, JSM |
-| [Attachments](attachments.md) | P1 | ⬜ | kaneo |
-| [Search and saved views](search-and-saved-views.md) | P1 | ⬜ | kaneo, JSM |
+| [Attachments](attachments.md) | P1 | 🟡 | kaneo |
+| [Search and saved views](search-and-saved-views.md) | P1 | 🟡 | kaneo, JSM |
 | [Assignment](assignment.md) | P1 (the rule *engine* ports with `packages/domain` in P2) | 🟡 | v1 |
 
 ## Service desk

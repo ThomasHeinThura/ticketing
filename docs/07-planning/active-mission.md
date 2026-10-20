@@ -18,9 +18,7 @@ belongs in the conductor's queue (`docs/07-planning/integration-execution-queue.
 **Authorized by:** Thomas, orchestrator directive 2026-10-19 (Antigravity Orchestrator Directive —
 Complete P0 and P1, Then HOLD, plus Option A/C and OrbStack VM verification confirmation).
 
-**Active mode:** Feature development (P0 foundation verification, P1 core work management, and
-Option A core security/tenancy hardening), followed by local `docker compose up` and disposable
-OrbStack VM verification, then HOLD.
+**Active mode:** Hold — P0 foundation verification, P1 core work management, Option A security/tenancy hardening, Option C product decisions (D1–D6), local `docker compose up`, backup/restore verification, and disposable OrbStack VM verification are complete; awaiting Thomas's next instruction.
 
 **Sequence:**
 

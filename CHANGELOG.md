@@ -57,6 +57,25 @@ This file starts recording real entries from the first change merged in
 this file as the promise of where product-facing entries will live once there is a product
 to log.
 
+### Added
+
+- **Stage P1 core work management & canonical `/agent` workspace (#859, #860, #861, #862).**
+  - Unified `/agent` navigation: home workspace overview (`/agent`), personal notification inbox (`/agent/inbox`), personal cross-project assigned work items (`/agent/my-work`), and global search (`/agent/search`).
+  - Project overview (`/agent/projects/{key}`) and project work surface (`/agent/projects/{key}/work`) supporting List, Board (with full URL filter support `VW-1`), and Table (`VW-19`–`VW-24` with column visibility, sorting, and server-synced `layout.<projectId>` preference `VW-2`).
+  - Streamed CSV work-item export (`POST /api/work-items/export`, `VW-23`) with a 10,000-row cap (`422 export_limit_exceeded`), 30-second query timeout, and per-user rate limit (5 exports/minute).
+  - Addressable work-item side pane (`?item={key}`, `VW-4`), full bulk action toolbar (assign, state transition, priority, labels, archive, and delete via `VW-3` / `WI-24`), and canonical project backlog ranking view (`/agent/projects/{key}/backlog`, `WI-11`–`WI-12`).
+  - Canonical profile settings (`/agent/settings/profile`, `/agent/settings/profile/appearance`), workspace settings (`/agent/settings/general`, `members`, `labels`, `saved-views`, `danger`), and project settings (`/agent/projects/{key}/settings/general`, `statuses`, `labels`, `danger`) with slug/key-confirmed pending-action deletion guards.
+  - Automated backup and restore scripts (`scripts/backup.sh` and `scripts/restore.sh`) covering PostgreSQL custom dumps (`pg_dump -Fc` + `pg_restore --list`), `taskdesk_taskdesk-data` attachment volume archives, SHA-256 verification, and 6-step application restore.
+
+### Security
+
+- **Stage P0/P1 tenancy, reach, and deletion hardening (#857, #858).**
+  - Enforced API-key project role clamp (`#724`) so project-scoped API keys cannot exceed their bound project role.
+  - Enforced `project:create` capability gate on project creation (`#708`).
+  - Enforced workspace and project soft-delete reach guards across one-hop child routes (`#205`, `#731`), returning `404` on soft-deleted parent projects while preserving data for the 30-day restore window.
+  - Added immutable audit trail entries on work-item comment creation, update, and deletion (`#682`).
+  - Enforced unauthenticated `404` concealment across customer portal API routes (`#683`).
+
 ### Fixed
 
 - **Installer re-run (#623, `f4f6b011`, merged 2026-10-10, not yet in a release).** A
