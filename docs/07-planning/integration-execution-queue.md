@@ -1,3 +1,15 @@
+## Stage P0 & P1 5-Batch Completion Queue Finished; Entering HOLD — 2026-10-20 01:00 UTC
+
+| Owner / batch | Current state and evidence | Next action / boundary |
+| --- | --- | --- |
+| Conductor / Starting PR Inventory (13 PRs) | **DONE** — `main` consolidated at `10ff9b063d78a1864c9d7e159d1a5cc14f2b67ae`. 9 component PRs merged (#772, #778, #781, #768, #769, #760, #775, #811, #771) + policy PR #856 merged; 4 PRs closed without merging (#589, #773, #791, #794). | Preserve Carrier C worktree at `/Users/heinthura/.codex/worktrees/carrier1/Ticketing.v2`. |
+| Conductor / **Batch 0** (Policy, Decisions D1–D6 & Control-Plane Sync) | **DONE** — merged via PR #857 (`0350c48d`). Recorded P0/P1 completion directive, Option A security hardening, Option C product decisions (D1–D6), and P0/P1 completion matrix. Closed `#724`. | Completed. |
+| Conductor / **Batch 1** (P0/P1 Security, Tenancy & Deletion Hardening) | **DONE** — merged via PR #858 (`4195ef45`). Enforced API-key project role clamp (#724), `project:create` capability gate (#708), workspace/project soft-delete & one-hop child `404` (#731, #205), comment audit rows (#682), and portal unauthenticated `404` (#683). Closed `#708`, `#205`, `#683`, `#682`, `#731`. | Completed. |
+| Conductor / **Batch 2** (Unified `/agent` Navigation & Work Views) | **DONE** — merged via PR #859 (`ba51c253`). Unified `/agent/projects/{key}/work` navigation, Board filtering (`VW-1`), Table layout (`VW-19`–`VW-24`), streamed CSV export (`POST /api/work-items/export`, `VW-23` / D1), and `layout.<projectId>` preference sync (`VW-2`). Closed `#684`, `#685`, `#686`. | Completed. |
+| Conductor / **Batch 3** (Side Pane, Full Bulk Toolbar, Backlog & Saved Views) | **DONE** — merged via PR #860 (`98c95085`). Added `?item={key}` addressable side pane (`VW-4`), full bulk toolbar (`VW-3`, `WI-24`), `/agent/projects/{key}/backlog` v2 route (`WI-11`–`WI-12`), and saved-view `board`/`table` rendering. Closed `#687`, `#688`, `#689`, `#690`. | Completed. |
+| Conductor / **Batch 4** (Agent Core Screens & P1 Settings) | **DONE** — merged via PR #861 (`a716e6ba`). Added `/agent`, `/agent/inbox`, `/agent/my-work`, `/agent/search`, `/agent/projects/{key}`, `/agent/settings/*`, and `/agent/projects/{key}/settings/*` with slug/key-confirmed pending-action Danger Zone guards. Closed `#691`, `#693`, `#694`, `#706`. | Completed. |
+| Conductor / **Batch 5** (E2E Journeys, `docker compose up`, Disposable OrbStack VM & Stage Finalizer) | **DONE** — PR #862 (`agy/batch5-p0-p1-e2e-and-orbstack-sit`). Added `scripts/backup.sh` & `scripts/restore.sh` and `apps/web/e2e/p0-p1-journeys.spec.ts` (`8/8 passed`); verified local `docker compose` (`scripts/deploy.sh local`), non-empty attachment + DB backup/restore, and disposable OrbStack VM (`taskdesk-sit-vm`) SIT probes; obtained independent Phase Finalizer reviews. | **HOLD** — awaiting Thomas's instruction. |
+
 ## PR Consolidation Complete (`10ff9b06`); 5-Batch P0/P1 Completion Queue Active — 2026-10-19 13:05 UTC
 
 | Owner / batch | Current state and evidence | Next action / boundary |
