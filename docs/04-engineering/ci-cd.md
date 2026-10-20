@@ -301,19 +301,11 @@ The network itself must inspect as a local bridge network with this run's owners
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
-The **security review** is a required section of `.github/pull_request_template.md`
-(the template is specified in [definition-of-done.md](definition-of-done.md#the-pull-request-template)).
-CI checks it non-empty, naming exactly one **accepted security-review model**, whenever the
-diff touches **any** of the paths below. The accepted models are the list in
-[agent-workflow.md § Model policy](agent-workflow.md#model-policy) **as it stands on the merge
-base** (`scripts/ci/lib/review-models.mjs`): a pull request cannot add a model and approve
-itself with it. Without a list at the merge base, only `GPT-6 Sol` is accepted, as before the
-list existed. This list of paths is the authoritative scope; [sdlc.md](sdlc.md) and
-[security-model.md](../01-architecture/security-model.md) cite it and do not restate it:
-
-The optional sampled big review is outside this per-PR status-check gate. It does not
-satisfy or delay the required security review; when a sample is selected, follow the packet
-process in [agent-workflow.md](agent-workflow.md#model-policy).
+The `## Security` section of `.github/pull_request_template.md` may not be "n/a" when the
+diff touches **any** of the paths below, or changes a file that declares a Hono router
+(`check:pr-template`, [workflow.md § Pull requests](workflow.md#pull-requests)). The scope is the
+union of this list at the merge base and at HEAD, so a pull request cannot shrink it to escape
+it. This list is the authoritative scope:
 
 ```
 apps/api/src/**/policy.ts            packages/permissions/**
@@ -553,7 +545,7 @@ it checked authorship.
 **Updated 2026-09-15.** This paragraph used to end "Thomas confirms the authority at the
 merge button" — that was the actual, if informal, control: Thomas was the one merging, so
 he was the last human able to catch a fabricated waiver before it landed. Since merge
-execution is now delegated (see [`AGENTS.md`](../../AGENTS.md#how-work-reaches-main-and-who-may-merge)),
+execution is now delegated (see [workflow.md](workflow.md#the-loop)),
 that check no longer exists by default. **A candidate whose `## Gates` table cites any
 waived gate is excluded from the delegation** — it always needs Thomas's own action to
 merge, never the orchestrator alone. Found by independent Opus review, 2026-09-15; tracked

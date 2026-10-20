@@ -22,6 +22,28 @@ If kaneo has no equivalent — SLA badges, approval panels, the request catalogu
 it from kaneo's primitives and follow its conventions. A new component should be
 indistinguishable in style from one that came with the system.
 
+### Integrate, don't add (2026-10-20)
+
+v2 broke this rule once. #863 shipped about 10k lines of standalone screens outside kaneo's
+layout, filled with hardcoded data, next to kaneo screens that already did the job. Never again:
+
+- **Extend before you create.** If kaneo already has a screen for the job (projects, board,
+  list, task detail, members, settings, account security, API keys, roles), the v2 capability
+  goes into that screen as a tab, section, panel, column or menu item. A new route may
+  *mount* kaneo's component. It never re-implements it.
+- **Every agent page lives in kaneo's shell:** `components/common/layout.tsx` (AppSidebar +
+  SidebarInset) and, for settings, `settings-layout.tsx` / `SettingsSidebar`. No page renders
+  a bare `<main>`.
+- **A new surface reuses kaneo's composition.** Use `Layout.Header` with a breadcrumb, then a
+  `Table` or card list, then the dialogs. Copy the nearest kaneo page, don't invent a layout.
+- **No mock data.** A screen without an API is not in navigation.
+- **Proof** is a before/after screenshot next to the kaneo original. Thomas reviews it.
+
+The kaneo reference is the kaneo-origin code in this repository: `components/common/`,
+`kanban-board/`, `list-view/`, `task/`, `settings/`, and the `/dashboard/*` route files.
+Upstream is [usekaneo/kaneo](https://github.com/usekaneo/kaneo). There is no local
+`../kaneo` checkout.
+
 ---
 
 ## 2. Calm by default

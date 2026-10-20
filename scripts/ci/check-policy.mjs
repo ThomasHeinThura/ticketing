@@ -1,19 +1,12 @@
 #!/usr/bin/env node
 /**
- * check:policy — the agent operating policy stays coherent and loadable.
+ * check:policy — the agent policy stays short, linked and free of live state.
  *
- * The policy is split on purpose (AGENTS.md § Authority): AGENTS.md is the entry point, the
- * active mission is the only home for current scope, agent-workflow.md is the only home for
- * the execution workflow and the model policy, CLAUDE.md is a provider adapter. Prose cannot
- * keep that split from drifting back into copies, live dashboards and dead links — the
- * restructure that introduced this check found all three (docs/07-planning/
- * workflow-policy-audit-2026-10-09.md). So the properties that matter are executable:
+ * AGENTS.md is the entry point, docs/04-engineering/workflow.md the one workflow, CLAUDE.md
+ * a provider note. Checked here:
  *
- *   1. Every relative link and #anchor in the policy files resolves.
+ *   1. Every relative link and #anchor in those files resolves.
  *   2. The entry files carry no live state: no 40-character SHA, no PR/issue number.
- *   3. The active mission exists, and AGENTS.md's startup order reads it before the workflow.
- *   4. agent-workflow.md carries exactly one well-formed security-review model block — the
- *      list the PR-template check reads from the merge base (lib/review-models.mjs).
  *
  * Fails closed: a policy file that cannot be read is a failure, not a skip.
  */
@@ -22,21 +15,13 @@ import { realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { exists, finish, readText, repoRoot, violation } from "./lib/repo.mjs";
-import {
-  parseSecurityReviewModels,
-  ReviewModelsUnavailableError,
-} from "./lib/review-models.mjs";
 
 const NAME = "check:policy";
 
 export const POLICY_FILES = [
   "AGENTS.md",
   "CLAUDE.md",
-  "docs/07-planning/active-mission.md",
-  "docs/04-engineering/agent-workflow.md",
-  "docs/04-engineering/definition-of-done.md",
-  "docs/04-engineering/sdlc.md",
-  "docs/04-engineering/error-fix-loop.md",
+  "docs/04-engineering/workflow.md",
   "docs/04-engineering/ci-cd.md",
 ];
 
@@ -44,8 +29,7 @@ export const POLICY_FILES = [
 export const NO_LIVE_STATE_FILES = [
   "AGENTS.md",
   "CLAUDE.md",
-  "docs/07-planning/active-mission.md",
-  "docs/04-engineering/agent-workflow.md",
+  "docs/04-engineering/workflow.md",
 ];
 
 /** GitHub's heading-anchor slug, close enough for the ASCII headings these files use. */
@@ -127,12 +111,7 @@ async function main() {
   for (const relative of POLICY_FILES) {
     const absolute = path.join(repoRoot, relative);
     if (!(await exists(absolute))) {
-      failures.push(
-        violation(
-          relative,
-          "policy file is missing; the startup order points at it.",
-        ),
-      );
+      failures.push(violation(relative, "policy file is missing."));
       continue;
     }
     sources.set(relative, await readText(absolute));
@@ -188,47 +167,10 @@ async function main() {
     }
   }
 
-  // 3 · startup order
-  const agents = sources.get("AGENTS.md");
-  if (agents !== undefined) {
-    const order = /## Read in this order([\s\S]*?)\n## /.exec(`${agents}\n## `);
-    const section = order ? order[1] : "";
-    const mission = section.indexOf("active-mission.md");
-    const workflow = section.indexOf("agent-workflow.md");
-    if (mission === -1 || workflow === -1 || mission > workflow) {
-      failures.push(
-        violation(
-          "AGENTS.md § Read in this order",
-          "must name docs/07-planning/active-mission.md before docs/04-engineering/agent-workflow.md.",
-        ),
-      );
-    }
-  }
-
-  // 4 · the security-review model block
-  const workflow = sources.get("docs/04-engineering/agent-workflow.md");
-  if (workflow !== undefined) {
-    try {
-      if (parseSecurityReviewModels(workflow) === null) {
-        failures.push(
-          violation(
-            "docs/04-engineering/agent-workflow.md",
-            "has no `<!-- policy:security-review-models -->` block; the PR-template check reads it from the merge base.",
-          ),
-        );
-      }
-    } catch (error) {
-      if (!(error instanceof ReviewModelsUnavailableError)) throw error;
-      failures.push(
-        violation("docs/04-engineering/agent-workflow.md", error.message),
-      );
-    }
-  }
-
   finish({
     name: NAME,
     failures,
-    ok: `${sources.size} policy file(s) coherent: links, live state, startup order, model block`,
+    ok: `${sources.size} policy file(s) coherent: links, live state`,
   });
 }
 

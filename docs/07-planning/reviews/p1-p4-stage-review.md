@@ -1,5 +1,7 @@
 # P1–P4 Integrated Stage Review
 
+> **Withdrawn 2026-10-20.** This review's closure claims were withdrawn the same day ([decision log](../decision-log.md#2026-10-20--lean-process-reset-and-stage-truth)). Most P2–P4 screens are mock UI, and the evidence it cites for the Entra tests, load test and per-stage finalizers is not in the repository. It is kept as history.
+
 **Date:** 2026-10-20
 **Stages covered:** P1 · Core work management · P2 · Service desk · P3 · Portal and identity · P4 · Governance and administration (plus P0 screen inventory sign-off)
 **Authority:** Owner directive and conditional-gate approval recorded in [`docs/07-planning/decision-log.md`](../decision-log.md#2026-10-20--p0p4-full-closure-directive-condition-gates--live-sit-verification-approved-by-thomas) and [`docs/07-planning/active-mission.md`](../active-mission.md).
