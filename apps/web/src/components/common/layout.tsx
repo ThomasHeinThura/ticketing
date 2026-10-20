@@ -50,13 +50,18 @@ function LayoutContent({ children, className }: ContentProps) {
   );
 }
 
+// Once the sidebar has mounted after a first paint, later pages show it straight away.
+let sidebarReady = false;
+
 function Layout({ children, className }: LayoutProps) {
   const { sidebarDefaultOpen } = useUserPreferencesStore();
   // The page paints first; the sidebar mounts once the main thread is idle (G11).
-  const [showSidebar, setShowSidebar] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(sidebarReady);
   useEffect(() => {
+    if (sidebarReady) return;
     let cancelled = false;
     void afterFirstPaint().then(() => {
+      sidebarReady = true;
       if (!cancelled) setShowSidebar(true);
     });
     return () => {
