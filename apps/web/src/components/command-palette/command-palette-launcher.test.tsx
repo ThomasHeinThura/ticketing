@@ -5,7 +5,8 @@ import CommandPaletteLauncher from "./command-palette-launcher";
 
 const mocks = vi.hoisted(() => ({
   moduleLoaded: vi.fn(),
-  paletteWarm: vi.fn(),
+  sidebarShown: vi.fn(),
+  sidebarShownPromise: undefined as Promise<void> | undefined,
   registered: undefined as
     | {
         modifierShortcuts?: Record<string, Record<string, () => void>>;
@@ -32,8 +33,11 @@ vi.mock("./index", () => {
   };
 });
 
-vi.mock("@/lib/palette-warm", () => ({
-  markPaletteWarm: mocks.paletteWarm,
+vi.mock("@/lib/sidebar-shown", () => ({
+  whenSidebarShown: () => {
+    mocks.sidebarShown();
+    return mocks.sidebarShownPromise ?? Promise.resolve();
+  },
 }));
 
 vi.mock("@/hooks/use-keyboard-shortcuts", () => ({
@@ -45,6 +49,7 @@ vi.mock("@/hooks/use-keyboard-shortcuts", () => ({
 
 afterEach(() => {
   cleanup();
+  mocks.sidebarShownPromise = undefined;
   vi.unstubAllGlobals();
   vi.clearAllMocks();
   document.querySelector("[data-primary-content-ready]")?.remove();
@@ -97,10 +102,11 @@ describe("CommandPaletteLauncher warm mount", () => {
       document.body.append(content);
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    // The download starts with the primary content and marks the palette warm, which the
-    // sidebar waits for on this screen; only the mount waits for frames and idle time.
-    await waitFor(() => expect(mocks.paletteWarm).toHaveBeenCalled());
-    expect(mocks.moduleLoaded).toHaveBeenCalled();
+    // The download starts with the primary content; on this screen the mount waits for the
+    // sidebar to render, then for paint frames and idle time.
+    await waitFor(() => expect(mocks.moduleLoaded).toHaveBeenCalled());
+    expect(mocks.sidebarShown).toHaveBeenCalled();
+    await act(async () => {});
     expect(frames).toHaveLength(1);
     runNextFrame(frames);
     expect(frames).toHaveLength(1);
@@ -138,6 +144,7 @@ describe("CommandPaletteLauncher warm mount", () => {
     content.dataset.primaryContentReady = "true";
     document.body.append(content);
     render(<CommandPaletteLauncher />);
+    await act(async () => {}); // the sidebar has rendered
     runNextFrame(frames);
     runNextFrame(frames);
 
@@ -159,7 +166,27 @@ describe("CommandPaletteLauncher warm mount", () => {
     );
   });
 
-  it("cancels an outstanding idle callback on unmount", () => {
+  it("on the work list, mounts only after the sidebar has rendered", async () => {
+    window.history.replaceState({}, "", "/agent/projects/OPS/work");
+    const frames = mockFrames();
+    let sidebarRendered: () => void = () => {};
+    mocks.sidebarShownPromise = new Promise<void>((resolve) => {
+      sidebarRendered = resolve;
+    });
+    const content = document.createElement("div");
+    content.dataset.primaryContentReady = "true";
+    document.body.append(content);
+    render(<CommandPaletteLauncher />);
+    await act(async () => {});
+    // No mount is scheduled while the sidebar renders.
+    expect(mocks.sidebarShown).toHaveBeenCalled();
+    expect(frames).toHaveLength(0);
+
+    await act(async () => sidebarRendered());
+    expect(frames).toHaveLength(1);
+  });
+
+  it("cancels an outstanding idle callback on unmount", async () => {
     const frames = mockFrames();
     const cancelIdleCallback = vi.fn();
     vi.stubGlobal("requestIdleCallback", () => 9);
@@ -169,6 +196,7 @@ describe("CommandPaletteLauncher warm mount", () => {
     content.dataset.primaryContentReady = "true";
     document.body.append(content);
     const { unmount } = render(<CommandPaletteLauncher />);
+    await act(async () => {}); // the sidebar has rendered
     runNextFrame(frames);
     runNextFrame(frames);
 

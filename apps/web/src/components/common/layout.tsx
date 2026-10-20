@@ -1,12 +1,9 @@
 import { SidebarInset, SidebarProvider } from "@taskdesk/ui";
 import type React from "react";
 import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
-import {
-  afterPrimaryContent,
-  waitsForPrimaryContent,
-} from "@/lib/after-primary-content";
+import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { cn } from "@/lib/cn";
-import { whenPaletteWarm } from "@/lib/palette-warm";
+import { markSidebarShown } from "@/lib/sidebar-shown";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 // The sidebar (workspace switcher, navigation, projects, notifications) loads beside the
@@ -54,6 +51,12 @@ function LayoutContent({ children, className }: ContentProps) {
   );
 }
 
+/** Renders with the sidebar (inside its Suspense boundary) and reports it shown. */
+function SidebarShown() {
+  useEffect(() => markSidebarShown(), []);
+  return null;
+}
+
 // Once the sidebar has mounted after a first paint, later pages show it straight away.
 let sidebarReady = false;
 
@@ -65,22 +68,14 @@ function Layout({ children, className }: LayoutProps) {
   useEffect(() => {
     if (sidebarReady) return;
     const abort = new AbortController();
-    afterPrimaryContent({ signal: abort.signal })
-      // On the work list and boards the palette warms first; the sidebar's downloads would
-      // otherwise compete with it on a slow connection (G11).
-      .then(() =>
-        waitsForPrimaryContent(window.location.pathname)
-          ? whenPaletteWarm()
-          : undefined,
-      )
-      .then(
-        () => {
-          if (abort.signal.aborted) return;
-          sidebarReady = true;
-          setShowSidebar(true);
-        },
-        () => {},
-      );
+    afterPrimaryContent({ signal: abort.signal }).then(
+      () => {
+        if (abort.signal.aborted) return;
+        sidebarReady = true;
+        setShowSidebar(true);
+      },
+      () => {},
+    );
     return () => abort.abort();
   }, []);
   const placeholder = sidebarDefaultOpen ? (
@@ -109,6 +104,7 @@ function Layout({ children, className }: LayoutProps) {
         {showSidebar ? (
           <Suspense fallback={placeholder}>
             <AppSidebar />
+            <SidebarShown />
           </Suspense>
         ) : (
           placeholder
