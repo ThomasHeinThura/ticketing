@@ -46,8 +46,6 @@ vi.mock("@/hooks/mutations/approval/use-decide-approval", () => ({
   default: () => ({ mutate: () => {}, isPending: false, isError: false }),
 }));
 
-vi.mock("./request-approval", () => ({ default: () => null }));
-
 vi.mock("@/hooks/mutations/approval/use-withdraw-approval", () => ({
   default: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
 }));

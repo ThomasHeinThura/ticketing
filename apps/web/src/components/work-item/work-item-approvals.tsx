@@ -18,7 +18,6 @@ import useGetMyApprovals from "@/hooks/queries/approval/use-get-my-approvals";
 import useGetWorkItemApprovals from "@/hooks/queries/approval/use-get-work-item-approvals";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
-import RequestApproval from "./request-approval";
 
 const STATE_BADGE_VARIANT = {
   pending: "warning",
@@ -56,13 +55,7 @@ function withdrawErrorKey(error: unknown) {
  *
  * Four states: loading (skeleton), error (retryable alert), empty, ready.
  */
-function WorkItemApprovals({
-  workItemKey,
-  projectId,
-}: {
-  workItemKey: string;
-  projectId?: string;
-}) {
+function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isInstanceAdmin =
@@ -110,9 +103,7 @@ function WorkItemApprovals({
       >
         {t("workItems:detail.approvals.heading")}
       </h2>
-      <div>
-        <RequestApproval workItemKey={workItemKey} projectId={projectId} />
-      </div>
+
       <p
         role="status"
         className="sr-only"
@@ -146,7 +137,7 @@ function WorkItemApprovals({
           <AlertDescription>
             <p>
               {decide.error instanceof HttpError && decide.error.status === 409
-                ? t("workItems:detail.approvals.withdrawConflict")
+                ? t("workItems:detail.approvals.decideConflict")
                 : decide.error instanceof Error && decide.error.message
                   ? decide.error.message
                   : t("workItems:detail.approvals.decideFailed")}
@@ -263,6 +254,7 @@ function WorkItemApprovals({
                                 setRejectingId(null);
                                 setRejectNote("");
                               },
+                              onSettled: () => headingRef.current?.focus(),
                             },
                           )
                         }
@@ -272,7 +264,10 @@ function WorkItemApprovals({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setRejectingId(null)}
+                        onClick={() => {
+                          setRejectingId(null);
+                          headingRef.current?.focus();
+                        }}
                       >
                         {t("common:actions.cancel")}
                       </Button>
@@ -284,7 +279,10 @@ function WorkItemApprovals({
                       size="sm"
                       disabled={decide.isPending}
                       onClick={() =>
-                        decide.mutate({ id: approval.id, action: "approve" })
+                        decide.mutate(
+                          { id: approval.id, action: "approve" },
+                          { onSettled: () => headingRef.current?.focus() },
+                        )
                       }
                     >
                       {t("workItems:detail.approvals.approve")}

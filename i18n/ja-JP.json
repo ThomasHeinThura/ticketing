@@ -2378,16 +2378,9 @@
 				"confirmReject": "Reject with note",
 				"decideErrorTitle": "The decision was not recorded",
 				"decideFailed": "The decision could not be recorded.",
-				"forTransition": "For the move to",
-				"kindLabel": "Approval type",
-				"nothingToRequest": "No transition on this item is waiting for an approval.",
-				"pickApprover": "Choose an approver",
-				"pickTransition": "Choose a state",
 				"reject": "Reject",
 				"rejectNote": "Why are you rejecting this?",
-				"request": "Request approval",
-				"requestFailed": "The approval could not be requested.",
-				"sendRequest": "Send request"
+				"decideConflict": "This approval was already decided, withdrawn or expired. The list now shows its current state."
 			},
 			"attachments": {
 				"add": "Add file",
