@@ -12,9 +12,18 @@ import { waitsForPrimaryContent } from "@/lib/after-primary-content";
 import { markPaletteWarm } from "@/lib/palette-warm";
 import type { CommandPaletteIntent, CommandPaletteRequest } from "./index";
 
+let paletteModule: Promise<typeof import("./index")> | undefined;
+/** One download of the palette module, shared by the warm-up prefetch and the lazy mount. */
+function loadPaletteModule() {
+  paletteModule ??= import("./index").then((module) => {
+    markPaletteWarm();
+    return module;
+  });
+  return paletteModule;
+}
+
 const CommandPalette = lazy(async () => {
-  const module = await import("./index");
-  markPaletteWarm();
+  const module = await loadPaletteModule();
   return { default: module.CommandPalette };
 });
 
@@ -104,6 +113,8 @@ export default function CommandPaletteLauncher() {
         secondFrame !== undefined
       )
         return;
+      // Start the download now; only the mount waits for frames and idle time.
+      void loadPaletteModule().catch(() => {});
       firstFrame = requestAnimationFrame(() => {
         if (cancelled || requestedRef.current) return;
         secondFrame = requestAnimationFrame(() => {

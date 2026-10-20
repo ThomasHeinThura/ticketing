@@ -5,6 +5,7 @@ import CommandPaletteLauncher from "./command-palette-launcher";
 
 const mocks = vi.hoisted(() => ({
   moduleLoaded: vi.fn(),
+  paletteWarm: vi.fn(),
   registered: undefined as
     | {
         modifierShortcuts?: Record<string, Record<string, () => void>>;
@@ -30,6 +31,10 @@ vi.mock("./index", () => {
     ),
   };
 });
+
+vi.mock("@/lib/palette-warm", () => ({
+  markPaletteWarm: mocks.paletteWarm,
+}));
 
 vi.mock("@/hooks/use-keyboard-shortcuts", () => ({
   getModifierKeyText: () => "Ctrl",
@@ -66,7 +71,7 @@ function runNextFrame(frames: FrameRequestCallback[]) {
 }
 
 describe("CommandPaletteLauncher warm mount", () => {
-  it("waits for primary content, paint frames, and browser idle before importing", async () => {
+  it("downloads at primary content and mounts after paint frames and browser idle", async () => {
     window.history.replaceState({}, "", "/agent/projects/OPS/work");
     const frames = mockFrames();
     const idleCallbacks = new Map<number, () => void>();
@@ -92,11 +97,15 @@ describe("CommandPaletteLauncher warm mount", () => {
       document.body.append(content);
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
+    // The download starts with the primary content and marks the palette warm, which the
+    // sidebar waits for on this screen; only the mount waits for frames and idle time.
+    await waitFor(() => expect(mocks.paletteWarm).toHaveBeenCalled());
+    expect(mocks.moduleLoaded).toHaveBeenCalled();
     expect(frames).toHaveLength(1);
     runNextFrame(frames);
     expect(frames).toHaveLength(1);
     runNextFrame(frames);
-    expect(mocks.moduleLoaded).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("palette-instance")).toBeNull();
     expect(idleCallbacks.size).toBe(1);
 
     act(() => idleCallbacks.get(1)?.());
