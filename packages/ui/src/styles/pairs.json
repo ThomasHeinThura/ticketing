@@ -4472,6 +4472,28 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
+          "apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
+          "jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
+          "jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/settings/settings-shell.tsx:SettingsShell",
           "jsx:div[0]/div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
         ],
@@ -4496,6 +4518,39 @@
         "chain": [
           "apps/web/src/components/settings/settings-shell.tsx:SettingsShell",
           "jsx:div[0]/div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
         ],
         "backdropLayers": []
       }
@@ -5544,6 +5599,28 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
+          "apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
+          "jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
+          "jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/settings/settings-shell.tsx:SettingsShell",
           "jsx:div[0]/div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
         ],
@@ -5568,6 +5645,39 @@
         "chain": [
           "apps/web/src/components/settings/settings-shell.tsx:SettingsShell",
           "jsx:div[0]/div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
         ],
         "backdropLayers": []
       }
@@ -30782,6 +30892,28 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
+          "apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
+          "jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
+          "jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/settings/settings-shell.tsx:SettingsShell",
           "jsx:div[0]/div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
         ],
@@ -30806,6 +30938,39 @@
         "chain": [
           "apps/web/src/components/settings/settings-shell.tsx:SettingsShell",
           "jsx:div[0]/div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
         ],
         "backdropLayers": []
       }
@@ -30968,6 +31133,28 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
+          "apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
+          "jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
+          "jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/settings/settings-shell.tsx:SettingsShell",
           "jsx:div[0]/div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
         ],
@@ -30992,6 +31179,39 @@
         "chain": [
           "apps/web/src/components/settings/settings-shell.tsx:SettingsShell",
           "jsx:div[0]/div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+        "usage": "packages/ui/src/components/tabs.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/my-work.tsx:MyWork",
+          "jsx:div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
         ],
         "backdropLayers": []
       }

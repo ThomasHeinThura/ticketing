@@ -1483,6 +1483,25 @@
 				"openTask": "선택한 작업 열기",
 				"quickSelectNumber": "번호로 옵션 선택"
 			}
+		},
+		"inbox": {
+			"all": "All",
+			"emptyUnread": "You're all caught up.",
+			"loadError": "Notifications could not be loaded.",
+			"unread": "Unread ({{count}})"
+		},
+		"myWork": {
+			"approvals": "Approvals",
+			"approvalsEmpty": "No approvals are waiting for you.",
+			"approvalsError": "Approvals could not be loaded.",
+			"assigned": "Assigned to me",
+			"columnExpires": "Expires",
+			"columnItem": "Work item",
+			"columnKind": "Kind",
+			"columnRequestedBy": "Requested by",
+			"kindCab": "CAB",
+			"kindCustomer": "Customer",
+			"watching": "Watching"
 		}
 	},
 	"notifications": {

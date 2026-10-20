@@ -454,6 +454,15 @@ async function installAuthenticatedFixture(page: Page) {
         page: { hasMore: false, nextCursor: null },
         meta: { total: 1 },
       };
+    } else if (path.endsWith("/api/work-items/search")) {
+      // My work's cross-project read (`assignee = @me`).
+      body = {
+        data: [workItem],
+        page: { hasMore: false, nextCursor: null },
+        meta: { total: 1 },
+      };
+    } else if (path.endsWith("/api/me/approvals")) {
+      body = { approvals: [] };
     } else if (path.endsWith("/api/views/visual-view")) {
       body = visualSavedView;
     } else if (path.endsWith("/api/views")) {
@@ -1215,6 +1224,9 @@ test("agent my work screen @visual", async ({ page }) => {
     page.getByRole("button", { name: "Help Desk", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "My work" })).toBeVisible();
+  await expect(
+    page.getByText("Customer cannot reset their password"),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("agent-my-work.png", {
     animations: "disabled",
     caret: "hide",
@@ -1251,9 +1263,11 @@ test("project overview screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Help Desk", exact: true }),
   ).toBeVisible();
+  // A project opens on its work view (the list, with the realtime notice).
   await expect(
-    page.getByRole("heading", { name: "Project overview" }),
+    page.getByText("Customer cannot reset their password"),
   ).toBeVisible();
+  await expect(page.getByTestId("realtime-unavailable")).toBeVisible();
   await expect(page).toHaveScreenshot("project-overview.png", {
     animations: "disabled",
     caret: "hide",

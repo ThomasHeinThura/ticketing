@@ -305,7 +305,7 @@ export function parseAgentInboxSearchFromQueryString(
   return parseAgentInboxSearch({ filter: params.get("filter") ?? undefined });
 }
 
-export type AgentMyWorkLens = "assigned" | "created" | "watching";
+export type AgentMyWorkLens = "assigned" | "watching" | "approvals";
 export type AgentMyWorkSearch = {
   lens?: Exclude<AgentMyWorkLens, "assigned">;
   q?: string;
@@ -320,7 +320,7 @@ export function parseAgentMyWorkSearch(raw: unknown): AgentMyWorkSearch {
       ? value.q.trim().slice(0, 200)
       : undefined;
   return {
-    ...(value.lens === "created" || value.lens === "watching"
+    ...(value.lens === "watching" || value.lens === "approvals"
       ? { lens: value.lens }
       : {}),
     ...(q ? { q } : {}),

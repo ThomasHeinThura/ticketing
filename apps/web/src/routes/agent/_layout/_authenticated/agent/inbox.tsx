@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AgentInboxScreen } from "@/components/agent/p1-core-and-settings";
+import NotificationInbox from "@/components/notification/notification-inbox";
 import { parseAgentInboxSearch } from "@/lib/routes";
 
 export const Route = createFileRoute("/_layout/_authenticated/agent/inbox")({
@@ -11,7 +11,7 @@ function AgentInboxRoute() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   return (
-    <AgentInboxScreen
+    <NotificationInbox
       filter={search.filter ?? "all"}
       onFilterChange={(next) =>
         void navigate({

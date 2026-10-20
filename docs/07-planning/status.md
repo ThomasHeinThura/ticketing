@@ -31,8 +31,8 @@ The SIT seed accounts it added were kept.
   The seeded data is in `work_item`.
 - **Duplicates.** About 15 destinations exist in both `/dashboard/*` and `/agent/*`, and the
   `/agent` copy is often the mock.
-- **Mock screens.** `components/agent/p1-core-and-settings.tsx` (from #861) still backs
-  Inbox and several `/agent/settings` pages with hardcoded data.
+- **Mock screens:** none left once #868 lands. Inbox and My work read the real API, and the
+  mock settings URLs open kaneo's pages.
 - **SIT seed** has accounts, Acme, two published request types and intake enabled, but no
   seeded submissions or realistic work-item volume yet.
 
