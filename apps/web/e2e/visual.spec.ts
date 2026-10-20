@@ -1101,6 +1101,10 @@ test("project backlog screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Help Desk · Backlog" }),
   ).toBeVisible();
+  // "Create work item" renders once capabilities load; wait so the screenshot does not race it.
+  await expect(
+    page.getByRole("button", { name: "Create work item" }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("project-backlog.png", {
     animations: "disabled",
     caret: "hide",
