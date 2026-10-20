@@ -360,7 +360,17 @@ async function upsertScopedMembership(
   `);
 }
 
-export async function runSitUserSeed() {
+/**
+ * Seeds the SIT login accounts (published test passwords, an owner with `sees_all`) and marks
+ * instance setup complete. It must never touch a real database, so it refuses unless the
+ * caller passes `--sit` explicitly; `scripts/deploy.sh` does so only in `local` mode.
+ */
+export async function runSitUserSeed(argv: readonly string[] = process.argv) {
+  if (!argv.includes("--sit")) {
+    throw new Error(
+      "seed-sit-users refuses to run without --sit: it publishes test passwords and completes instance setup. Use it only on a local SIT database.",
+    );
+  }
   config();
   const now = new Date();
 
