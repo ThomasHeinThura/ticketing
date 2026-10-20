@@ -1,7 +1,7 @@
 # Stage P0–P4 Full Closure — Independent Tier 2 & Security Review Packet (2026-10-20)
 
+**Reviewed head:** `fb459821c21191d9a530290cef29555c670d74e7`
 - **Date:** 2026-10-20
-- **Reviewed head:** `fb459821c21191d9a530290cef29555c670d74e7`
 - **Scope:** Stage P0–P4 Full Closure (54 screens across P0/P2/P3/P4, route registry & round-trip tests, SIT interactive credential seeder, screen inventory & feature spec promotions, and stage review closure)
 - **Independent Reviewers:**
   - `Reviewer-A` (Independent Context `a7a40e99-5258-444a-8469-6c37e99f0869` — Architecture, UI & Five Rules): **`APPROVE`**
