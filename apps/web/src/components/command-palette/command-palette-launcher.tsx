@@ -19,7 +19,10 @@ const CommandPalette = lazy(async () => {
 let nextRequestId = 0;
 
 type IdleWindow = Window & {
-  requestIdleCallback?: (callback: () => void) => number;
+  requestIdleCallback?: (
+    callback: () => void,
+    options?: { timeout?: number },
+  ) => number;
   cancelIdleCallback?: (handle: number) => void;
 };
 
@@ -107,10 +110,15 @@ export default function CommandPaletteLauncher() {
             setKeepMounted(true);
             return;
           }
-          idleMountRef.current = idleWindow.requestIdleCallback(() => {
-            idleMountRef.current = undefined;
-            if (!cancelled) setKeepMounted(true);
-          });
+          // Bounded: the sidebar mounts in the same idle window and can keep the main thread
+          // busy on a slow machine, which must not leave the palette cold.
+          idleMountRef.current = idleWindow.requestIdleCallback(
+            () => {
+              idleMountRef.current = undefined;
+              if (!cancelled) setKeepMounted(true);
+            },
+            { timeout: 1_000 },
+          );
         });
       });
     };

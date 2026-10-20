@@ -114,11 +114,16 @@ describe("CommandPaletteLauncher warm mount", () => {
     window.history.replaceState({}, "", "/agent/projects/OPS/work");
     const frames = mockFrames();
     let idleCallback: (() => void) | undefined;
+    let idleOptions: { timeout?: number } | undefined;
     const cancelIdleCallback = vi.fn();
-    vi.stubGlobal("requestIdleCallback", (callback: () => void) => {
-      idleCallback = callback;
-      return 7;
-    });
+    vi.stubGlobal(
+      "requestIdleCallback",
+      (callback: () => void, options?: { timeout?: number }) => {
+        idleCallback = callback;
+        idleOptions = options;
+        return 7;
+      },
+    );
     vi.stubGlobal("cancelIdleCallback", cancelIdleCallback);
     const content = document.createElement("div");
     content.dataset.primaryContentReady = "true";
@@ -135,6 +140,8 @@ describe("CommandPaletteLauncher warm mount", () => {
 
     expect(cancelIdleCallback).toHaveBeenCalledWith(7);
     expect(idleCallback).toBeTypeOf("function");
+    // The warm-up is bounded, so a busy main thread cannot leave the palette cold.
+    expect(idleOptions).toEqual({ timeout: 1_000 });
     await waitFor(() =>
       expect(screen.getByTestId("palette-instance")).toHaveAttribute(
         "data-open",
