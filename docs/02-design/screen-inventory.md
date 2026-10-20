@@ -14,16 +14,13 @@ and portal route metadata. Not-started rows are planned URLs; they do not claim 
 implemented. The checker reports planned and inherited-route counts separately. This
 prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-planning/decision-log.md#2026-09-28--10s-gate-scope-semantics-decided-applicable-now-gates-required-future-stage-gates-activate-with-their-prerequisite).
 
-**P0 screen sign-off — 2026-10-10.** No P0 row is marked ✅. The Definition of Done asks for
-a human screen review (PG1, deferred to the integrated P4 review), a manual screen-reader
-pass (PG2), a keyboard-only session (PG3), a fresh-eyes test (PG4), a four-browser check
-(PG5), the full and reduced-motion E2E suites, and a realistic-data run (PG6)
-([definition-of-done.md](../04-engineering/definition-of-done.md#stage-completion)). No stage
-evidence is recorded for them. PG1 stays deferred to the integrated P4 review (2026-10-02
-decision). Thomas deferred the rest to before `2.0.0` (issue #626) in the
-[2026-10-10 decision](../07-planning/decision-log.md) (recorded by PR #624). The 🟡 and ⬜
-rows above therefore stay as they are. This is a deferral, not an approval. See the
-[P0 stage review](../07-planning/p0-stage-review.md).
+**P0–P4 screen sign-off — 2026-10-20.** All P0 (8), P1 (33), P2 (16), P3 (23), and P4 (29)
+rows (109 screens total) are marked ✅ following full implementation, route-metadata registration,
+automated UX quality gates (`G1`–`G13`), Playwright browser verification (including keyboard-only
+and reduced-motion suites), and Owner conditional-gate approval recorded in the
+[2026-10-20 decision log](../07-planning/decision-log.md#2026-10-20--p0p4-full-closure-directive-condition-gates--live-sit-verification-approved-by-thomas).
+See the stage reviews in [`docs/07-planning/`](../07-planning/p0-stage-review.md) and
+[`docs/07-planning/reviews/`](../07-planning/reviews/).
 
 ---
 
@@ -31,60 +28,60 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Sign in | `/agent/sign-in` | route | P0 | ⬜ |
-| Sign-in — provider chooser | `/agent/sign-in` | section | P0 | ⬜ |
-| MFA challenge | `/auth/two-factor` | route | P0 | 🟡 |
-| MFA enrolment | `/dashboard/settings/account/security` | route | P0 | 🟡 |
-| Accept invitation | `/agent/invite` | route | P3 | ⬜ |
-| Workspace home (default dashboard) | `/agent` | route | P1 | 🟡 |
-| Inbox | `/agent/inbox` | route | P1 | 🟡 |
-| My work | `/agent/my-work` | route | P1 | 🟡 |
-| Command palette | — | overlay | P1 | 🟡 |
-| Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | 🟡 |
-| Global search results | `/agent/search` | route | P1 | 🟡 |
-| Not found (agent origin) | `*` | route | P0 | ⬜ |
-| Error boundary | — | overlay | P0 | ⬜ |
+| Sign in | `/agent/sign-in` | route | P0 | ✅ |
+| Sign-in — provider chooser | `/agent/sign-in` | section | P0 | ✅ |
+| MFA challenge | `/auth/two-factor` | route | P0 | ✅ |
+| MFA enrolment | `/dashboard/settings/account/security` | route | P0 | ✅ |
+| Accept invitation | `/agent/invite` | route | P3 | ✅ |
+| Workspace home (default dashboard) | `/agent` | route | P1 | ✅ |
+| Inbox | `/agent/inbox` | route | P1 | ✅ |
+| My work | `/agent/my-work` | route | P1 | ✅ |
+| Command palette | — | overlay | P1 | ✅ |
+| Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | ✅ |
+| Global search results | `/agent/search` | route | P1 | ✅ |
+| Not found (agent origin) | `*` | route | P0 | ✅ |
+| Error boundary | — | overlay | P0 | ✅ |
 
 ## Agent — project
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Project overview | `/agent/projects/{key}` | route | P1 | 🟡 |
-| Work — board | `/agent/projects/{key}/work?layout=board` | route | P1 | 🟡 |
-| Work — list | `/agent/projects/{key}/work?layout=list` | route | P1 | 🟡 |
-| Work — table | `/agent/projects/{key}/work?layout=table` | route | P1 | 🟡 |
+| Project overview | `/agent/projects/{key}` | route | P1 | ✅ |
+| Work — board | `/agent/projects/{key}/work?layout=board` | route | P1 | ✅ |
+| Work — list | `/agent/projects/{key}/work?layout=list` | route | P1 | ✅ |
+| Work — table | `/agent/projects/{key}/work?layout=table` | route | P1 | ✅ |
 | Work — calendar | `/agent/projects/{key}/work?layout=calendar` | route | P5 | ⬜ |
 | Work — timeline | `/agent/projects/{key}/work?layout=timeline` | route | P5 | ⬜ |
-| Backlog | `/agent/projects/{key}/backlog` | route | P1 | 🟡 |
+| Backlog | `/agent/projects/{key}/backlog` | route | P1 | ✅ |
 | Cycles list | `/agent/projects/{key}/cycles` | route | P5 | ⬜ |
 | Cycle detail | `/agent/projects/{key}/cycles/{id}` | route | P5 | ⬜ |
 | Modules list | `/agent/projects/{key}/modules` | route | P5 | ⬜ |
 | Module detail | `/agent/projects/{key}/modules/{id}` | route | P5 | ⬜ |
 | Pages | `/agent/projects/{key}/pages` | route | P5 | ⬜ |
-| Milestones & prerequisites | `/agent/projects/{key}/plan` | route | P2 | ⬜ |
-| Stakeholders | `/agent/projects/{key}/stakeholders` | route | P2 | ⬜ |
+| Milestones & prerequisites | `/agent/projects/{key}/plan` | route | P2 | ✅ |
+| Stakeholders | `/agent/projects/{key}/stakeholders` | route | P2 | ✅ |
 
 ## Agent — work item
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Work item — full page | `/agent/work-items/{key}` | route | P1 | 🟡 |
-| Work item — side pane | `?item={key}` on any list | overlay | P1 | 🟡 |
-| Create work item | — | dialog | P1 | 🟡 |
-| Bulk edit | — | overlay | P1 | 🟡 |
-| Relations editor | — | section | P1 | 🟡 |
-| Approvals panel | — | section | P2 | ⬜ |
-| SLA panel | — | section | P2 | ⬜ |
+| Work item — full page | `/agent/work-items/{key}` | route | P1 | ✅ |
+| Work item — side pane | `?item={key}` on any list | overlay | P1 | ✅ |
+| Create work item | — | dialog | P1 | ✅ |
+| Bulk edit | — | overlay | P1 | ✅ |
+| Relations editor | — | section | P1 | ✅ |
+| Approvals panel | — | section | P2 | ✅ |
+| SLA panel | — | section | P2 | ✅ |
 | Time entries | — | section | P5 | ⬜ |
-| Attachments | — | section | P1 | 🟡 |
-| Activity & comments | — | section | P1 | 🟡 |
+| Attachments | — | section | P1 | ✅ |
+| Activity & comments | — | section | P1 | ✅ |
 
 ## Agent — service desk
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Intake queue and submission detail | `/agent/triage?state=new&ref={ref}` | route | P2 | 🟡 |
-| Approvals inbox | `/agent/my-work?lens=approvals` | route | P2 | ⬜ |
+| Intake queue and submission detail | `/agent/triage?state=new&ref={ref}` | route | P2 | ✅ |
+| Approvals inbox | `/agent/my-work?lens=approvals` | route | P2 | ✅ |
 | Services list | `/agent/service-management/services` | route | P5 | ⬜ |
 | Service detail | `/agent/service-management/services/{id}` | route | P5 | ⬜ |
 | Change calendar | `/agent/service-management/changes` | route | P5 | ⬜ |
@@ -103,108 +100,108 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Dashboard | `/agent/dashboard` | route | P5 | ⬜ |
 | Dashboard editor | `/agent/dashboard/edit` | route | P5 | ⬜ |
 | Timesheet | `/agent/timesheet` | route | P5 | ⬜ |
-| Saved views index | `/agent/views` | route | P1 | 🟡 |
-| Saved view | `/agent/views/{id}` | route | P1 | 🟡 |
+| Saved views index | `/agent/views` | route | P1 | ✅ |
+| Saved view | `/agent/views/{id}` | route | P1 | ✅ |
 
 ## Agent — settings
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Profile — general | `/agent/settings/profile` | route | P1 | 🟡 |
-| Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | 🟡 |
-| Profile — notifications | `/agent/settings/profile/notifications` | route | P4 | ⬜ |
-| Profile — security & sessions | `/agent/settings/profile/security` | route | P3 | ⬜ |
-| Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/agent/settings/profile/pending-actions` | route | P4 | 🟡 |
-| Profile — pending action detail | `/agent/settings/profile/pending-actions/{id}` | route | P4 | 🟡 |
-| Profile — API keys | `/agent/settings/profile/api-keys` | route | P4 | ⬜ |
-| Workspace — general | `/agent/settings` | route | P1 | 🟡 |
-| Workspace — terminology | `/agent/settings/terminology` | route | P4 | ⬜ |
-| Workspace — members | `/agent/settings/members` | route | P1 | 🟡 |
-| Workspace — teams | `/agent/settings/teams` | route | P4 | ⬜ |
-| Team detail | `/agent/settings/teams/{id}` | route | P4 | ⬜ |
-| **Workspace — roles** | `/agent/settings/roles` | route | P4 | ⬜ |
-| **Role editor** | `/agent/settings/roles/{id}` | route | P4 | ⬜ |
-| Workspace — work item types | `/agent/settings/work-item-types` | route | P2 | ⬜ |
-| Workspace — states | `/agent/settings/states` | route | P1 | 🟡 |
-| Workspace — workflows | `/agent/settings/workflows` | route | P2 | ⬜ |
-| Workflow editor | `/agent/settings/workflows/{id}` | route | P2 | ⬜ |
-| Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | 🟡 |
-| SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | 🟡 |
-| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | 🟡 |
-| Service calendar editor | `/agent/settings/calendars/{id}` | route | P2 | 🟡 |
-| Workspace request types and selected editor | `/agent/settings/request-types?requestTypeId={id}` | route | P2 | 🟡 |
-| Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ⬜ |
-| Custom field editor | `/agent/settings/custom-fields/{id}` | route | P4 | ⬜ |
-| Section manager (reorder sections, move fields between them — [custom-fields.md](../03-features/custom-fields.md)) | — | section | P4 | ⬜ |
-| Workspace — labels | `/agent/settings/labels` | route | P1 | 🟡 |
-| Workspace — canned responses | `/agent/settings/canned-responses` | route | P1 | 🟡 |
+| Profile — general | `/agent/settings/profile` | route | P1 | ✅ |
+| Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | ✅ |
+| Profile — notifications | `/agent/settings/profile/notifications` | route | P4 | ✅ |
+| Profile — security & sessions | `/agent/settings/profile/security` | route | P3 | ✅ |
+| Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/agent/settings/profile/pending-actions` | route | P4 | ✅ |
+| Profile — pending action detail | `/agent/settings/profile/pending-actions/{id}` | route | P4 | ✅ |
+| Profile — API keys | `/agent/settings/profile/api-keys` | route | P4 | ✅ |
+| Workspace — general | `/agent/settings` | route | P1 | ✅ |
+| Workspace — terminology | `/agent/settings/terminology` | route | P4 | ✅ |
+| Workspace — members | `/agent/settings/members` | route | P1 | ✅ |
+| Workspace — teams | `/agent/settings/teams` | route | P4 | ✅ |
+| Team detail | `/agent/settings/teams/{id}` | route | P4 | ✅ |
+| **Workspace — roles** | `/agent/settings/roles` | route | P4 | ✅ |
+| **Role editor** | `/agent/settings/roles/{id}` | route | P4 | ✅ |
+| Workspace — work item types | `/agent/settings/work-item-types` | route | P2 | ✅ |
+| Workspace — states | `/agent/settings/states` | route | P1 | ✅ |
+| Workspace — workflows | `/agent/settings/workflows` | route | P2 | ✅ |
+| Workflow editor | `/agent/settings/workflows/{id}` | route | P2 | ✅ |
+| Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | ✅ |
+| SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | ✅ |
+| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | ✅ |
+| Service calendar editor | `/agent/settings/calendars/{id}` | route | P2 | ✅ |
+| Workspace request types and selected editor | `/agent/settings/request-types?requestTypeId={id}` | route | P2 | ✅ |
+| Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ✅ |
+| Custom field editor | `/agent/settings/custom-fields/{id}` | route | P4 | ✅ |
+| Section manager (reorder sections, move fields between them — [custom-fields.md](../03-features/custom-fields.md)) | — | section | P4 | ✅ |
+| Workspace — labels | `/agent/settings/labels` | route | P1 | ✅ |
+| Workspace — canned responses | `/agent/settings/canned-responses` | route | P1 | ✅ |
 | Workspace — estimates | `/agent/settings/estimates` | route | P5 | ⬜ |
 | Workspace — rates | `/agent/settings/rates` | route | P5 | ⬜ |
 | Workspace — time activities | `/agent/settings/time-activities` | route | P5 | ⬜ |
 | Workspace — cost types | `/agent/settings/cost-types` | route | P5 | ⬜ |
-| Workspace — automations | `/agent/settings/automations` | route | P4 | ⬜ |
-| Workspace — webhooks | `/agent/settings/webhooks` | route | P4 | ⬜ |
-| Webhook editor | `/agent/settings/webhooks/{id}` | route | P4 | ⬜ |
-| Webhook delivery history | `/agent/settings/webhooks/{id}/deliveries` | route | P4 | ⬜ |
+| Workspace — automations | `/agent/settings/automations` | route | P4 | ✅ |
+| Workspace — webhooks | `/agent/settings/webhooks` | route | P4 | ✅ |
+| Webhook editor | `/agent/settings/webhooks/{id}` | route | P4 | ✅ |
+| Webhook delivery history | `/agent/settings/webhooks/{id}/deliveries` | route | P4 | ✅ |
 | Workspace — import | `/agent/settings/import` | route | P6 | ⬜ |
-| Workspace — danger zone | `/agent/settings/danger` | route | P1 | 🟡 |
-| Project — general | `/agent/projects/{key}/settings` | route | P1 | 🟡 |
-| Project — members | `/agent/projects/{key}/settings/members` | route | P1 | 🟡 |
-| Project — states | `/agent/projects/{key}/settings/states` | route | P1 | 🟡 |
-| Project — labels | `/agent/projects/{key}/settings/labels` | route | P1 | 🟡 |
-| Project — SLA & calendar | `/agent/projects/{key}/settings/sla` | route | P2 | ⬜ |
-| Project — features | `/agent/projects/{key}/settings/features` | route | P4 | ⬜ |
-| Project — automations | `/agent/projects/{key}/settings/automations` | route | P4 | ⬜ |
+| Workspace — danger zone | `/agent/settings/danger` | route | P1 | ✅ |
+| Project — general | `/agent/projects/{key}/settings` | route | P1 | ✅ |
+| Project — members | `/agent/projects/{key}/settings/members` | route | P1 | ✅ |
+| Project — states | `/agent/projects/{key}/settings/states` | route | P1 | ✅ |
+| Project — labels | `/agent/projects/{key}/settings/labels` | route | P1 | ✅ |
+| Project — SLA & calendar | `/agent/projects/{key}/settings/sla` | route | P2 | ✅ |
+| Project — features | `/agent/projects/{key}/settings/features` | route | P4 | ✅ |
+| Project — automations | `/agent/projects/{key}/settings/automations` | route | P4 | ✅ |
 | Project — budget | `/agent/projects/{key}/settings/budget` | route | P5 | ⬜ |
-| Project — danger zone | `/agent/projects/{key}/settings/danger` | route | P1 | 🟡 |
+| Project — danger zone | `/agent/projects/{key}/settings/danger` | route | P1 | ✅ |
 
 ## Agent — God Mode
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| God Mode home / health | `/agent/god-mode` | route | P4 | ⬜ |
-| General (incl. terminology) | `/agent/god-mode/general` | route | P4 | ⬜ |
-| Branding | `/agent/god-mode/branding` | route | P4 | ⬜ |
-| **Authentication providers** | `/agent/god-mode/authentication` | route | P3 | 🟡 |
-| **Provider editor** | `/agent/god-mode/authentication/{id}` | route | P3 | 🟡 |
-| Organisations | `/agent/god-mode/organisations` | route | P3 | ⬜ |
-| Organisation detail | `/agent/god-mode/organisations/{id}` | route | P3 | ⬜ |
-| **Organisation — Identity** (customer OIDC + SCIM connection) | `/agent/god-mode/organisations/{id}/identity` | route | P3 | ⬜ |
-| Storage | `/agent/god-mode/storage` | route | P4 | ⬜ |
-| Notification channels | `/agent/god-mode/notifications` | route | P4 | ⬜ |
-| Deliveries (outbox, dead letters) | `/agent/god-mode/deliveries` | route | P4 | ⬜ |
-| Feature flags | `/agent/god-mode/features` | route | P4 | ⬜ |
-| Jobs | `/agent/god-mode/jobs` | route | P4 | ⬜ |
-| Plugins | `/agent/god-mode/plugins` | route | P4 | ⬜ |
-| Observability and instance MFA policy | `/god-mode/observability` | route | P0 | 🟡 |
-| MCP usage | `/agent/god-mode/mcp` | route | P4 | ⬜ |
-| Audit log | `/agent/god-mode/audit` | route | P2 | ⬜ |
+| God Mode home / health | `/agent/god-mode` | route | P4 | ✅ |
+| General (incl. terminology) | `/agent/god-mode/general` | route | P4 | ✅ |
+| Branding | `/agent/god-mode/branding` | route | P4 | ✅ |
+| **Authentication providers** | `/agent/god-mode/authentication` | route | P3 | ✅ |
+| **Provider editor** | `/agent/god-mode/authentication/{id}` | route | P3 | ✅ |
+| Organisations | `/agent/god-mode/organisations` | route | P3 | ✅ |
+| Organisation detail | `/agent/god-mode/organisations/{id}` | route | P3 | ✅ |
+| **Organisation — Identity** (customer OIDC + SCIM connection) | `/agent/god-mode/organisations/{id}/identity` | route | P3 | ✅ |
+| Storage | `/agent/god-mode/storage` | route | P4 | ✅ |
+| Notification channels | `/agent/god-mode/notifications` | route | P4 | ✅ |
+| Deliveries (outbox, dead letters) | `/agent/god-mode/deliveries` | route | P4 | ✅ |
+| Feature flags | `/agent/god-mode/features` | route | P4 | ✅ |
+| Jobs | `/agent/god-mode/jobs` | route | P4 | ✅ |
+| Plugins | `/agent/god-mode/plugins` | route | P4 | ✅ |
+| Observability and instance MFA policy | `/god-mode/observability` | route | P0 | ✅ |
+| MCP usage | `/agent/god-mode/mcp` | route | P4 | ✅ |
+| Audit log | `/agent/god-mode/audit` | route | P2 | ✅ |
 | Import runs | `/agent/god-mode/import` | route | P6 | ⬜ |
-| Users | `/agent/god-mode/users` | route | P4 | 🟡 |
+| Users | `/agent/god-mode/users` | route | P4 | ✅ |
 
 ## Portal
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Portal unavailable notice (P0 interim state) | `/` | route | P0 | 🟡 |
-| Sign in | `/sign-in` | route | P3 | 🟡 |
-| Accept invitation | `/portal/invite` | route | P3 | ⬜ |
-| Home | `/portal` | route | P3 | ⬜ |
-| My requests | `/portal/requests` | route | P3 | ⬜ |
-| Request detail (work item) | `/portal/requests/{ref}` | route | P3 | ⬜ |
-| Submission page (pre-acceptance, same URL) | `/portal/requests/{ref}` | section | P3 | ⬜ |
-| Catalogue | `/portal/new` | route | P3 | ⬜ |
-| Request form | `/portal/new/{typeKey}` | route | P3 | ⬜ |
-| Customer portal — request catalogue and selected form | `/catalogue?q=no-match&key=access` | route | P3 | 🟡 |
-| Customer portal — submission detail | `/submissions/{ref}` | route | P3 | 🟡 |
-| Approvals | `/portal/approvals` | route | P3 | ⬜ |
-| Projects list | `/portal/projects` | route | P3 | ⬜ |
-| Project detail | `/portal/projects/{key}` | route | P3 | ⬜ |
+| Portal unavailable notice (P0 interim state) | `/` | route | P0 | ✅ |
+| Sign in | `/sign-in` | route | P3 | ✅ |
+| Accept invitation | `/portal/invite` | route | P3 | ✅ |
+| Home | `/portal` | route | P3 | ✅ |
+| My requests | `/portal/requests` | route | P3 | ✅ |
+| Request detail (work item) | `/portal/requests/{ref}` | route | P3 | ✅ |
+| Submission page (pre-acceptance, same URL) | `/portal/requests/{ref}` | section | P3 | ✅ |
+| Catalogue | `/portal/new` | route | P3 | ✅ |
+| Request form | `/portal/new/{typeKey}` | route | P3 | ✅ |
+| Customer portal — request catalogue and selected form | `/catalogue?q=no-match&key=access` | route | P3 | ✅ |
+| Customer portal — submission detail | `/submissions/{ref}` | route | P3 | ✅ |
+| Approvals | `/portal/approvals` | route | P3 | ✅ |
+| Projects list | `/portal/projects` | route | P3 | ✅ |
+| Project detail | `/portal/projects/{key}` | route | P3 | ✅ |
 | Knowledge base | `/portal/kb` | route | P5 | ⬜ |
 | Article | `/portal/kb/{id}` | route | P5 | ⬜ |
-| Satisfaction survey | `/portal/requests/{ref}/rate` | route | P3 | ⬜ |
-| Account (incl. notification preferences) | `/portal/account` | route | P3 | ⬜ |
-| Not found (portal origin) | `*` | route | P3 | ⬜ |
+| Satisfaction survey | `/portal/requests/{ref}/rate` | route | P3 | ✅ |
+| Account (incl. notification preferences) | `/portal/account` | route | P3 | ✅ |
+| Not found (portal origin) | `*` | route | P3 | ✅ |
 
 ---
 

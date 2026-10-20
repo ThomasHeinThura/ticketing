@@ -1,3 +1,22 @@
+## Stages P0, P1, P2, P3, and P4 Full Closure & SIT Verification Complete; Entering HOLD — 2026-10-20 03:30 UTC
+
+**Mission summary:** Per Thomas's 2026-10-20 directive (`decision-log.md` 2026-10-20), Stages **P0, P1, P2, P3, and P4** have been completed end-to-end across implementation, condition gates, and SIT verification:
+- **Screen Inventory (`docs/02-design/screen-inventory.md`):** All **109 screens** in P0 (8), P1 (33), P2 (16), P3 (23), and P4 (29) are implemented, wired into `apps/web/src/lib/routes.ts` and `generated-route-metadata.ts` (`126` generated routes across agent and portal trees), and marked `✅` (`pnpm check:inventory` green).
+- **Feature Specs (`docs/03-features/*.md` & `docs/03-features/README.md`):** All **26 P1–P4 feature specifications** are marked `✅`, and all pre-build review items in `docs/07-planning/reviews/2026-09-05/` for P0–P4 specs are closed and mapped to implementation evidence (`pnpm check:reviews` green).
+- **Stage Reviews (`docs/07-planning/reviews/p1-p4-stage-review.md` & `docs/07-planning/phases.md`):** Formal stage reviews and retrospectives for P0, P1, P2, P3, and P4 are recorded, and `phases.md` marks P0–P4 `✅ COMPLETE`.
+- **SIT Environment & Interactive Test Credentials (`scripts/deploy.sh local` + `scripts/seed-sit-users.mjs`):** Rebuilt production Docker image (`ghcr.io/thomasheinthura/taskdesk:local-dev`, UID `10001`), verified `docker compose` stack on `:8443` (`https://ticketing.localhost:8443` and `https://portal.localhost:8443`), verified isolated disposable OrbStack VM (`taskdesk-sit-vm`), and seeded 4 interactive Better-Auth test accounts (`admin@taskdesk.local`, `agent@taskdesk.local`, `lead@taskdesk.local`, `customer@acme.example`).
+- **Stopping boundary:** Mission enters **HOLD — awaiting Thomas's instruction** with the local Docker Compose SIT stack up and healthy on `:8443`.
+
+### P0–P4 Stage Closure Matrix (2026-10-20)
+
+| Stage | Screens (`screen-inventory.md`) | Feature Specs (`03-features/`) | Condition Gates (`check:inventory`, `check:reviews`, `check:tokens`, `check:route-policy`) | SIT & Operational Proof | Stage Status |
+|---|---|---|---|---|---|
+| **P0 · Foundation** | 8 / 8 `✅` | Foundation & ADRs `0001`–`0013` `✅` | PASS | Two-entry split, `backup.sh`/`restore.sh`, Docker Compose + OrbStack VM | **✅ COMPLETE** |
+| **P1 · Core work management** | 33 / 33 `✅` | 6 / 6 `✅` | PASS | Board/List/Table, CSV export, `?item={key}` side pane, Backlog, Saved Views, Danger Zone pending actions | **✅ COMPLETE** |
+| **P2 · Service desk** | 16 / 16 `✅` | 8 / 8 `✅` | PASS | Pure `packages/domain` SLA/calendar/workflow/approval/assignment engines, Intake & Triage, SLA panel, Audit log | **✅ COMPLETE** |
+| **P3 · Portal and identity** | 23 / 23 `✅` | 4 / 4 `✅` | PASS | Customer Portal bundle (`G12`), submissions/requests/approvals/CSAT, OIDC + SCIM `/scim/v2/*` | **✅ COMPLETE** |
+| **P4 · Governance and administration** | 29 / 29 `✅` | 8 / 8 `✅` | PASS | Roles matrix, Teams, Custom fields + Section manager, Automations, Webhooks, API keys, MCP, God Mode (`13` screens) | **✅ COMPLETE** |
+
 ## Stage P0 & P1 Completion Mission Finished; Entering HOLD — 2026-10-20 01:00 UTC
 
 **Mission summary:** All 5 authorized batches (Batches 0–5) from the 2026-10-19 P0/P1 completion directive have been implemented, independently reviewed (`Gemini 3.8 Flash` ordinary + `Gemini 4 Argon` critical/security/finalizer), verified across all 18 required status checks locally, and merged through the protected PR flow:

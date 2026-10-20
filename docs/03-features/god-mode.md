@@ -1,7 +1,7 @@
 # God Mode
 
 - **Stage:** P4 (authentication and organisations land in P3; the audit log in P2)
-- **Status:** ⬜
+- **Status:** ✅
 - **Feature flag:** always on
 - **Depends on:** plugin architecture, RBAC
 

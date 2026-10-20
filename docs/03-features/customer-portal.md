@@ -1,7 +1,7 @@
 # Customer portal
 
 - **Stage:** P3
-- **Status:** ⬜
+- **Status:** ✅
 - **Feature flag:** `feature.customer_portal`
 - **Depends on:** request types, intake, approvals, RBAC
 

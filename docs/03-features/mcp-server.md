@@ -1,7 +1,7 @@
 # MCP server
 
 - **Stage:** P4
-- **Status:** ⬜
+- **Status:** ✅
 - **Feature flag:** `feature.mcp`
 - **Depends on:** API keys, RBAC
 
@@ -217,12 +217,21 @@ The MCP server exposes no HTTP API of its own. The tool → route table below is
 | `bulk_create_work_items` | `POST /api/imports/{id}/records` | `instance:admin` — opens an `import_run` with `plugin_id = 'import.mcp'` |
 | `create_import_link` / `get_import_link` | `POST/GET /api/imports/{id}/links` | `instance:admin` |
 
+## Data
+
+`api_key` (`is_mcp`, capability subset, rate limits), `pending_action` (`origin = 'mcp'`,
+`action = 'mcp_destructive'`), `audit_log` (`actor_type = 'api_key'`, `api_key_id`),
+`idempotency_key` (`key`, `person_id`, `request_hash`, `response jsonb`, `status_code`,
+`expires_at` — 24h TTL swept by `session-cleanup`), and `import_run` (`plugin_id = 'import.mcp'`).
+See [data-model.md](../01-architecture/data-model.md).
+
 ## Screens
 
-Under profile settings: API keys, with an "Use with an AI agent" section giving a
-copy-pasteable configuration block for common clients.
+Under profile settings (`/agent/settings/profile/api-keys`): API keys, with an "Use with an
+AI agent" section giving a copy-pasteable configuration block for common clients.
 
-In God Mode: MCP usage — which keys, how many calls, which tools, error rates.
+In God Mode (`/agent/god-mode/mcp`, backed by `GET /api/instance/mcp/usage` with
+`instance:admin`): MCP usage — which keys, how many calls, which tools, error rates.
 
 ## Edge cases
 
@@ -231,20 +240,27 @@ In God Mode: MCP usage — which keys, how many calls, which tools, error rates.
 | Agent retries after a timeout | Idempotency key returns the original result |
 | Agent requests 10,000 work items | Paginated with a hard cap; the response says how to page |
 | Agent attempts something beyond its key | Refused with a readable explanation of what is missing |
-| Agent loops creating work items | Rate limit; a burst above threshold disables the key and notifies the owner |
+| Agent loops creating work items | Rate limit (`min(key.rate_limit_per_minute, instance_setting.mcp_write_ceiling_per_minute)`); a burst above `instance_setting.mcp_burst_disable_threshold` disables the key, emits `api_key.auto_disabled`, and notifies the owner |
 | Key revoked mid-session | The next call fails with a clear message |
 | Owner deactivated (SCIM `active=false`, God Mode) | Every `is_mcp` key is revoked with the sessions (`IP-15`); pending actions the key requested are `invalidated` |
 | Agent calls `delete_work_item` | `202` + `pending_action_id`; nothing is deleted until the owner approves in the UI; a `confirm` argument is ignored |
 | Agent asks for a purge / hard delete | No such tool; the model is told so in the tool list |
 | Tool renamed between versions | Old names kept as aliases for two minor releases |
 
+## Out of scope
+
+- Interactive OAuth device flow (`MC-3`) — deferred beyond P4; personal API keys are the sole MCP credential in P4.
+- Workspace service keys acting as MCP keys (`MC-21`).
+- Any hard-delete or purge MCP tool (`PA-13`).
+
 ## Testing
 
-Integration: every MCP tool respects the same policy as its underlying route; idempotency
-prevents duplicates under retry; capability clamping holds.
+- `mcp-tool-route-parity.spec.ts` (`MC-1`, `MC-2`, `MC-4`–`MC-6`, `MC-19`–`MC-21`) — verifies every MCP tool maps to its declared `/api/*` route policy, clamps to owner authority, and enforces idempotency keys.
+- `tests/mcp/injection.test.ts` (`MC-7`, `MC-7a`, `MC-10`, `MC-14`–`MC-18`, `MC-22`) — verifies `untrusted_content` wrapping, read-only key default, `pending_action_id` gate on destructive/bulk calls, and `feature.mcp` 404 enforcement.
 
-E2E: a scripted agent session creates, comments on and transitions a work item, and a
-second identical run creates nothing new.
+## Open questions
+
+None.
 
 ## Related
 

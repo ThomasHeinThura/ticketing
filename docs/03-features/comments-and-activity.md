@@ -1,7 +1,7 @@
 # Comments and activity
 
 - **Stage:** P1
-- **Status:** ⬜
+- **Status:** ✅
 - **Feature flag:** always on
 - **Depends on:** work items, RBAC
 

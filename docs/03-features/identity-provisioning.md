@@ -3,7 +3,7 @@
 - **Stage:** P3 (data model, security rules and acceptance tests fixed in P0; identity,
   membership, RBAC, audit and revocation infrastructure proven in P1/P2; operational
   hardening in P4)
-- **Status:** ⬜
+- **Status:** ✅
 - **Feature flag:** `feature.scim` (the SCIM endpoint; default on once P3 ships — a
   connection must also be enabled). OIDC sign-in is part of authentication and is not
   flag-gated.

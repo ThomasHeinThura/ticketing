@@ -1,7 +1,7 @@
 # Attachments
 
 - **Stage:** P1
-- **Status:** ⬜
+- **Status:** ✅
 - **Feature flag:** always on
 - **Depends on:** storage plugin, work items
 
