@@ -7,8 +7,10 @@ import {
 import { AccountSettingsFrame } from "@/components/settings/account-settings-frame";
 import { SettingsShell } from "@/components/settings/settings-shell";
 import { WorkspaceSettingsFrame } from "@/components/settings/workspace-settings-frame";
+import { ensureActiveWorkspace } from "@/lib/ensure-active-workspace";
 
 export const Route = createFileRoute("/_layout/_authenticated/agent/settings")({
+  beforeLoad: ensureActiveWorkspace,
   component: AgentSettingsRoute,
 });
 

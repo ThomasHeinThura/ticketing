@@ -9,7 +9,8 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
  */
 export function WorkspaceMembersRedirect() {
   const { data: workspace, isLoading } = useActiveWorkspace();
-  if (!workspace) return isLoading ? null : <Navigate to="/dashboard" />;
+  if (!workspace)
+    return isLoading ? null : <Navigate to="/dashboard" replace />;
   return (
     <Navigate
       to="/dashboard/workspace/$workspaceId/members"
@@ -21,7 +22,8 @@ export function WorkspaceMembersRedirect() {
 
 export function WorkspaceSearchRedirect() {
   const { data: workspace, isLoading } = useActiveWorkspace();
-  if (!workspace) return isLoading ? null : <Navigate to="/dashboard" />;
+  if (!workspace)
+    return isLoading ? null : <Navigate to="/dashboard" replace />;
   return (
     <Navigate
       to="/dashboard/workspace/$workspaceId/search"
@@ -38,13 +40,17 @@ export function ProjectSettingsRedirect({
   projectKey: string;
   section: "general" | "workflow";
 }) {
-  const { data: workspace } = useActiveWorkspace();
+  const { data: workspace, isLoading: isWorkspaceLoading } =
+    useActiveWorkspace();
   const { data: projects, isLoading } = useGetProjects({
     workspaceId: workspace?.id ?? "",
   });
   const project = projects?.find((candidate) => candidate.slug === projectKey);
   if (!project) {
-    if (isLoading || !workspace) return null;
+    if (!workspace) {
+      return isWorkspaceLoading ? null : <Navigate to="/dashboard" replace />;
+    }
+    if (isLoading) return null;
     return <Navigate to="/agent" replace />;
   }
   return section === "workflow" ? (
