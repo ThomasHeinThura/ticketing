@@ -1,7 +1,7 @@
 # Automations
 
 - **Stage:** P4
-- **Status:** ⬜
+- **Status:** ✅
 - **Feature flag:** `feature.automations`
 - **Depends on:** workflows, notifications, webhooks
 

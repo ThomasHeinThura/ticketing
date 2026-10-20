@@ -1,7 +1,7 @@
 # Custom fields
 
 - **Stage:** P4
-- **Status:** ⬜
+- **Status:** ✅
 - **Feature flag:** always on
 - **Depends on:** work item types, RBAC
 

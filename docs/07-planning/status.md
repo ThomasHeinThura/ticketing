@@ -59,6 +59,10 @@ Each step below is one PR.
 
 ## Open obligations
 
+- `custom-fields.md`, `automations.md` and `mcp-server.md` still say ✅ (left by #863). #863
+  also hid their open review findings behind extra headings. The register is restored, and
+  `check:reviews` blocks editing those specs until the findings are independently
+  dispositioned, so their status is corrected together with that work.
 - #580: repository query ownership. The checker reports about 2.3k problems and is not wired
   into CI.
 - #626: deferrals that must be cleared before `2.0.0`.
