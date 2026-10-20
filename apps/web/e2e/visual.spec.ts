@@ -471,6 +471,47 @@ async function installAuthenticatedFixture(page: Page) {
       // The native activity timeline reads a paged envelope; the generic `[]`
       // default has no `data` array and crashes the detail route.
       body = { data: [], page: { nextCursor: null, hasMore: false } };
+    } else if (path.endsWith("/api/work-items/HELP-7/sla")) {
+      body = {
+        key: "HELP-7",
+        startedAt: "2026-09-15T00:00:00.000Z",
+        evaluatedAt: "2026-09-15T02:00:00.000Z",
+        metrics: [
+          {
+            metric: "first_response",
+            state: "met",
+            dueAt: "2026-09-15T04:00:00.000Z",
+            targetMinutes: 240,
+            consumedMinutes: 45,
+            consumedPct: 18.75,
+            remainingMinutes: null,
+          },
+          {
+            metric: "resolution",
+            state: "at_risk",
+            dueAt: "2026-09-16T00:00:00.000Z",
+            targetMinutes: 1440,
+            consumedMinutes: 1200,
+            consumedPct: 83.3,
+            remainingMinutes: 240,
+          },
+        ],
+      };
+    } else if (path.endsWith("/api/work-items/HELP-7/attachments")) {
+      body = [
+        {
+          id: "visual-attachment",
+          workItemId: "visual-work-item",
+          filename: "error-screenshot.png",
+          mimeType: "image/png",
+          size: 48213,
+          state: "ready",
+          customerVisible: false,
+          uploadedBy: "visual-user",
+          createdAt: "2026-09-15T00:00:00.000Z",
+          deletedAt: null,
+        },
+      ];
     } else if (path.endsWith("/api/work-items/HELP-7")) body = workItem;
     else if (path.endsWith("/api/me/security/factors")) {
       body = { enabled: false, required: false, policyMode: "optional" };

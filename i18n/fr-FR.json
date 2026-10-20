@@ -2388,6 +2388,34 @@
 				"withdrawFailed": "Something went wrong while withdrawing the approval. Try again.",
 				"withdrawn": "Approval request withdrawn.",
 				"withdrawFor": "Withdraw request — {{label}}"
+			},
+			"attachments": {
+				"add": "Add file",
+				"delete": "Delete {{name}}",
+				"deleteFailed": "The file could not be deleted.",
+				"empty": "No files attached.",
+				"heading": "Attachments",
+				"loadFailed": "Attachments could not be loaded.",
+				"uploadFailed": "The file could not be uploaded.",
+				"uploading": "Uploading…"
+			},
+			"sla": {
+				"due": "due {{date}}",
+				"heading": "SLA",
+				"metric": {
+					"first_response": "First response",
+					"resolution": "Resolution"
+				},
+				"remaining": "{{time}} left",
+				"state": {
+					"at_risk": "At risk",
+					"breached": "Breached",
+					"met": "Met",
+					"missed": "Missed",
+					"none": "No SLA",
+					"ok": "On track"
+				},
+				"unavailable": "SLA targets are not available for this item."
 			}
 		},
 		"list": {

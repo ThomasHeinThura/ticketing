@@ -42,6 +42,8 @@ vi.mock("@/hooks/mutations/approval/use-withdraw-approval", () => ({
   default: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
 }));
 
+vi.mock("./work-item-sla", () => ({ default: () => null }));
+vi.mock("./work-item-attachments", () => ({ default: () => null }));
 vi.mock("./work-item-activity", () => ({
   default: () => <div data-testid="work-item-activity" />,
 }));

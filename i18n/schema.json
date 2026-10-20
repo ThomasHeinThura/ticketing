@@ -10115,6 +10115,117 @@
 								"withdrawn",
 								"withdrawFor"
 							]
+						},
+						"sla": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								},
+								"unavailable": {
+									"type": "string"
+								},
+								"remaining": {
+									"type": "string"
+								},
+								"due": {
+									"type": "string"
+								},
+								"metric": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"first_response": {
+											"type": "string"
+										},
+										"resolution": {
+											"type": "string"
+										}
+									},
+									"required": ["first_response", "resolution"]
+								},
+								"state": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"none": {
+											"type": "string"
+										},
+										"ok": {
+											"type": "string"
+										},
+										"at_risk": {
+											"type": "string"
+										},
+										"breached": {
+											"type": "string"
+										},
+										"met": {
+											"type": "string"
+										},
+										"missed": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"none",
+										"ok",
+										"at_risk",
+										"breached",
+										"met",
+										"missed"
+									]
+								}
+							},
+							"required": [
+								"heading",
+								"unavailable",
+								"remaining",
+								"due",
+								"metric",
+								"state"
+							]
+						},
+						"attachments": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								},
+								"add": {
+									"type": "string"
+								},
+								"uploading": {
+									"type": "string"
+								},
+								"empty": {
+									"type": "string"
+								},
+								"loadFailed": {
+									"type": "string"
+								},
+								"uploadFailed": {
+									"type": "string"
+								},
+								"deleteFailed": {
+									"type": "string"
+								},
+								"delete": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"heading",
+								"add",
+								"uploading",
+								"empty",
+								"loadFailed",
+								"uploadFailed",
+								"deleteFailed",
+								"delete"
+							]
 						}
 					},
 					"required": [
@@ -10146,7 +10257,9 @@
 						"partialNoticeTitle",
 						"partialNoticeDescription",
 						"realtimeUnavailable",
-						"approvals"
+						"approvals",
+						"sla",
+						"attachments"
 					]
 				},
 				"journey": {
