@@ -58,7 +58,7 @@ export default function WorkItemAttachments({
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
 
-  const ready = (list.data ?? []).filter(
+  const ready = (Array.isArray(list.data) ? list.data : []).filter(
     (attachment) => attachment.state === "ready",
   );
 
