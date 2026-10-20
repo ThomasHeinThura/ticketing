@@ -42,8 +42,6 @@ repeated per document.
 ## 3. `settings-hierarchy.md`
 ## 4. `custom-fields.md`
 
-## Historical custom fields findings — 2026-09-05 review
-
 **Verdict: not-ready.** Behaviour, permissions, API and edge cases are all present and
 well-judged; the format table matches the data model exactly. But **four of the eleven
 numbered rules describe state the data model cannot store**, which is the clearest kind of
@@ -66,8 +64,6 @@ numbered rules describe state the data model cannot store**, which is the cleare
 
 Data references: `custom_field_section`, `custom_field`, `custom_field_type_visibility`,
 `custom_field_value` all exist ✓. Capability `custom_field:manage` present in `rbac.md` ✓.
-
-**Disposition — 2026-10-20.** Every row above is closed in `docs/03-features/custom-fields.md`, `docs/01-architecture/data-model.md` §5, `docs/01-architecture/api-design.md`, and `docs/02-design/screen-inventory.md`: `custom_field` defines `visibility_condition jsonb` (single-level `{ field_key, op, value }`), `customer_visible`, `deleted_at` (30-day restore), `entity_type` (`work_item` in P4), and `help_text`; the API section includes section `PATCH`/`DELETE`/`reorder`, `PUT /api/custom-fields/{id}/visibility`, `POST /api/custom-fields/{id}/restore`, `GET /api/custom-fields/{id}/non-compliant-items`, and `X-Workspace-Id` resolution; `screen-inventory.md` lists `Workspace — custom fields`, `Custom field editor`, and `Section manager`; `CF-4` explicitly exempts `cancelled`; `CF-10` cross-links `search-and-saved-views.md` (`cf.<key>`); and `## Out of scope`, `## Open questions`, and named test files are present.
 
 ---
 
@@ -111,8 +107,6 @@ except `in-app`, which is correctly not a plugin but is not documented as an exc
 
 ## 6. `automations.md`
 
-## Historical automations findings — 2026-09-05 review
-
 **Verdict: not-ready.** The design stance ("one trigger, a flat list of conditions, a flat
 list of actions") is excellent and the edge cases are genuinely thought through. But the
 feature **has no tables in the data model at all**, and its actor model conflicts with the
@@ -133,8 +127,6 @@ feature **has no tables in the data model at all**, and its actor model conflict
 
 Capabilities used — `project:read`, `project:manage_settings`, `workspace:manage_settings`
 — all present in `rbac.md` ✓.
-
-**Disposition — 2026-10-20.** Every row above is closed in `docs/03-features/automations.md`, `docs/01-architecture/data-model.md` §11, `docs/01-architecture/events.md`, `docs/01-architecture/plugin-architecture.md`, and `docs/02-design/screen-inventory.md`: `automation` and `automation_run` (30-day retention) are defined in `data-model.md` §11 and referenced in `## Data`; `activity` and `audit_log` carry polymorphic `actor_type = 'automation'` (`AM-4`); `events.md` is the single canonical event catalogue (`## Triggers`); workspace-scoped automation routes (`GET/POST /api/workspaces/{id}/automations`) and screen (`Workspace — automations`) are defined alongside `automation.project_filter jsonb`; `## Conditions` links `search-and-saved-views.md` and specifies `age`, `sla_state`, `comment_visibility`, and `actor_role`; `AM-5` specifies the causation/depth envelope; `POST /api/automations/{id}/disable` and bounded `AM-9` dry-run (`windowDays` default 7, max 30, cap 1,000) are defined; and `## Open questions` and named tests are present.
 
 ---
 
@@ -213,8 +205,6 @@ finding, and may now proceed.
 
 ## 8. `mcp-server.md`
 
-## Historical MCP server findings — 2026-09-05 review
-
 **Verdict: not-ready.** The core architectural claim — "a thin client over the public API…
 there is **one** authorization surface, not two" — is right and is the single most valuable
 sentence in the document. But the spec omits three of the template's required sections
@@ -238,8 +228,6 @@ sentence, and its feature flag is not enforceable as described.
 
 Capabilities: the spec names none directly, relying on route inheritance — acceptable given
 the architecture, but the missing API table makes it unverifiable.
-
-**Disposition — 2026-10-20.** Every row above is closed in `docs/03-features/mcp-server.md`, `docs/01-architecture/data-model.md`, `docs/01-architecture/events.md`, and `docs/02-design/screen-inventory.md`: `MC-14` enforces `feature.mcp` via `api_key.is_mcp` and `min(key.rate_limit_per_minute, instance_setting.mcp_write_ceiling_per_minute)`; `MC-3` OAuth device flow is explicitly moved to `## Out of scope`; `audit_log` records `actor_type = 'api_key'` and `api_key_id` (`MC-4`); `## API`, `## Permissions`, `## Data`, `## Out of scope`, `## Open questions`, and named test files are present; `screen-inventory.md` includes `MCP usage` (`/agent/god-mode/mcp`, backed by `GET /api/instance/mcp/usage`); `delete_work_item` is in the tool list (`MC-7` pending action); `idempotency_key` and `import_run` (`plugin_id = 'import.mcp'`) are documented; and burst auto-disable cites `instance_setting.mcp_burst_disable_threshold` and `api_key.auto_disabled`.
 
 ---
 

@@ -1,7 +1,7 @@
 # Settings hierarchy
 
 - **Stage:** P4 (individual screens land with their features, from P1)
-- **Status:** ✅
+- **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** RBAC, plugin architecture
 

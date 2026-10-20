@@ -34,8 +34,7 @@ own. The licence is **AGPL-3.0**. Only Thomas sets direction. His decisions live
    registered in `apps/web/src/lib/routes.ts`.
 6. **Ship narrow and finished.** Fewer screens at 100% beat many at 60%; v1 died of the
    second. A stage is ✅ only when its exit criteria in [phases.md](docs/07-planning/phases.md)
-   hold **and** Thomas has walked through it on SIT. P0 and P1 keep the ✅ they had before
-   this rule (2026-10-20), and their walkthrough is still owed.
+   hold **and** Thomas has walked through it on SIT. No stage is ✅ yet.
 
 ## Layout
 

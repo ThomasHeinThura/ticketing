@@ -1,7 +1,7 @@
 # Automations
 
 - **Stage:** P4
-- **Status:** ✅
+- **Status:** ⬜
 - **Feature flag:** `feature.automations`
 - **Depends on:** workflows, notifications, webhooks
 
@@ -53,21 +53,12 @@ list of what may appear in this picker. This document does not maintain its own 
 
 ## Conditions
 
-Field comparisons using the same grammar as filters in
-[search-and-saved-views.md](search-and-saved-views.md): type, state, state group, priority,
-assignee, requester, label, organisation, project, custom field (`cf.<key>`), plus four
-automation-specific condition keys: `age` (integer minutes since `created_at` or
-`updated_at`), `sla_state` (`ok`|`at_risk`|`breached`|`met`|`missed`),
-`comment_visibility` (`public`|`internal`), and `actor_role` (role key or `customer`).
+Field comparisons using the same grammar as filters: type, state, state group, priority,
+assignee, requester, label, organisation, project, age, custom field, SLA state, comment
+visibility, actor role.
 
 - `AM-1` Conditions combine with AND. An OR is expressed by writing two rules — which is
   simpler to read than nested logic, and reads better in a list.
-
-## Data
-
-`automation`, `automation_run`, `outbox`, `activity`, `audit_log`. See
-[data-model.md](../01-architecture/data-model.md) §11 (`automation_run` rows are retained
-30 days).
 
 ## Actions
 
@@ -91,26 +82,22 @@ automation-specific condition keys: `age` (integer minutes since `created_at` or
 - `AM-3` An automation acts as a **system actor** with an explicit effective role,
   configured per rule. It cannot exceed that role. This prevents "the automation can do
   anything" — which is how privilege escalation happens through configuration.
-- `AM-4` Every action taken writes an `activity` and `audit_log` entry with
-  `actor_type = 'automation'` and `actor_id = automation.id`, attributed to the automation
-  by name, never to a person.
-- `AM-5` **Loop protection.** Every domain event envelope ([events.md](../01-architecture/events.md))
-  carries `{ id, kind, payload, causationId, depth, originAutomationId }`. An automation's
-  own changes (`originAutomationId === automation.id`) do not re-trigger it, and each
-  automation-emitted event increments `depth`. A chain of automations is capped at
-  `depth = 5`, after which the chain is abandoned and an error is recorded and surfaced.
-- `AM-6` Rules are ordered (`automation.position`) and run in order. A rule may be marked
-  "stop processing further rules" (`automation.stop_processing`).
+- `AM-4` Every action taken writes an activity entry attributed to the automation by name,
+  never to a person.
+- `AM-5` **Loop protection.** An automation's own changes do not re-trigger it. A chain of
+  automations is capped at depth 5, after which the chain is abandoned and an error is
+  recorded and surfaced.
+- `AM-6` Rules are ordered and run in order. A rule may be marked "stop processing further
+  rules".
 - `AM-7` A failing action does not abort the remaining actions in the rule. Each result is
   recorded.
-- `AM-8` Every execution writes an `automation_run` record: trigger, matched or not, each
-  action's outcome. Retained 30 days.
+- `AM-8` Every execution writes a run record: trigger, matched or not, each action's
+  outcome. Retained 30 days.
 
 ## Testing before enabling
 
-- `AM-9` A rule can be **dry-run** against recent history (`windowDays` query parameter,
-  default 7 days, max 30 days, capped at 1,000 candidate events/items per run): "this rule
-  would have fired 47 times in the last 7 days, on these items."
+- `AM-9` A rule can be **dry-run** against recent history: "this rule would have fired 47
+  times in the last 7 days, on these items."
 - `AM-10` New rules default to disabled. Enabling is a deliberate act.
 - `AM-11` **Placeholder expansion respects the destination's visibility.** A placeholder
   that references an internal-only custom field, an internal note, or a staff-only value
@@ -135,42 +122,36 @@ and the dry-run is the guard.
 
 ## Scope
 
-Rules are per project by default (`automation.project_id` set), or per workspace
-(`automation.project_id IS NULL`) with `workspace:manage_settings`. A workspace rule may be
-restricted to certain projects via `automation.project_filter jsonb` (an array of project
-ids evaluated before condition matching).
+Rules are per project by default, or per workspace with `workspace:manage_settings`.
+A workspace rule may be restricted to certain projects.
 
 ## Permissions
 
 | Action | Capability |
 | --- | --- |
-| See rules | `project:read` / `workspace:manage_settings` |
+| See rules | `project:read` |
 | Create, edit, delete project rules | `project:manage_settings` |
-| Create, edit, delete workspace rules | `workspace:manage_settings` |
+| Create workspace rules | `workspace:manage_settings` |
 | Set a rule's effective role | Only to a role at or below your own rank |
 
 That last constraint is the important one.
 
 ## Screens
 
-Project automations (`/agent/projects/{key}/settings/automations`) and Workspace
-automations (`/agent/settings/automations`): rule list with enabled state, last run, and
-fire count. Rule editor as three stacked sections — trigger, conditions, actions — in plain
-language. Run history per rule with per-action outcomes.
+Rule list with enabled state, last run, and fire count. Rule editor as three stacked
+sections — trigger, conditions, actions — in plain language. Run history per rule with
+per-action outcomes.
 
 ## API
 
 ```
-GET    /api/workspaces/{id}/automations        workspace:manage_settings
-POST   /api/workspaces/{id}/automations        workspace:manage_settings
 GET    /api/projects/{key}/automations         project:read
 POST   /api/projects/{key}/automations         project:manage_settings
-PATCH  /api/automations/{id}                   project:manage_settings | workspace:manage_settings
-DELETE /api/automations/{id}                   project:manage_settings | workspace:manage_settings
-POST   /api/automations/{id}/dry-run           project:manage_settings | workspace:manage_settings
-POST   /api/automations/{id}/enable            project:manage_settings | workspace:manage_settings
-POST   /api/automations/{id}/disable           project:manage_settings | workspace:manage_settings
-GET    /api/automations/{id}/runs              project:read | workspace:manage_settings
+PATCH  /api/automations/{id}                   project:manage_settings
+DELETE /api/automations/{id}                   project:manage_settings
+POST   /api/automations/{id}/dry-run           project:manage_settings
+POST   /api/automations/{id}/enable            project:manage_settings
+GET    /api/automations/{id}/runs              project:read
 ```
 
 ## Edge cases
@@ -193,13 +174,12 @@ GET    /api/automations/{id}/runs              project:read | workspace:manage_s
 
 ## Testing
 
-- `automation-conditions-and-loops.spec.ts` (`AM-1`, `AM-5`, `AM-6`) — unit tests for condition evaluation, self-trigger suppression, and depth-5 loop protection.
-- `automation-effective-role.spec.ts` (`AM-2`–`AM-4`, `AM-7`, `AM-8`, `AM-11`–`AM-13`) — integration tests verifying effective-role clamping, `actor_type = 'automation'` attribution, visibility redaction, and non-aborting action execution.
-- `automation-dry-run.spec.ts` (`AM-9`, `AM-10`) — dry-run window/cap enforcement and enable/disable lifecycle.
+Unit: condition evaluation; loop and depth protection; effective-role clamping.
 
-## Open questions
+Integration: an automation cannot exceed its effective role even when configured to try;
+a failed action does not abort the rule; dry-run mutates nothing.
 
-None.
+E2E: create a rule, dry-run it, enable it, trigger it, inspect the run history.
 
 ## Related
 

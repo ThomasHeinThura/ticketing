@@ -1,7 +1,7 @@
 # Request types and catalogue
 
 - **Stage:** P2
-- **Status:** ✅
+- **Status:** ⬜
 - **Feature flag:** `feature.intake`
 - **Depends on:** work item types, workflows, SLA, custom fields
 

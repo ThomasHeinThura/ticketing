@@ -5,11 +5,16 @@ SIT build "just draft". An audit found that 56 of the 68 screens #863 touched ar
 UI, and that the earlier same-day entry below closed gates that were never run.
 
 1. **Stage truth.**
-   - P2, P3 and P4 are reopened (🟡). The 2026-10-20 "P0–P4 complete" closure below is
-     **withdrawn**.
-   - Its H1–H6, PG1–PG6 and real-Entra gates are **deferred, not approved or satisfied**.
-   - P0 and P1 stay ✅ for what #857–#862 delivered, with H1–H6 deferred. The P1 screens that
-     #863 rebuilt as mocks are 🟡.
+   - #863 is **reverted**. Its mock P2–P4 screens, mock `/portal/*` routes, mock SLA panel and
+     the session-check bypass for `/agent/sign-in` and `/agent/invite` are removed. Its SIT
+     seed accounts and `deploy.sh` fix are kept.
+   - The 2026-10-20 "P0–P4 complete" closure below is **withdrawn**. Its H1–H6, PG1–PG6 and
+     real-Entra gates are **deferred, not approved or satisfied**.
+   - No stage is ✅. Stage statuses return to their pre-#863 values, and P0 and P1 are
+     implemented but await Thomas's walkthrough.
+   - **Why the revert:** #863 merged with `[skip ci]` and left `main` red on unit, G8 and G11.
+     Repairing it would mean either baselining its mock screens as tested or rebuilding them;
+     a revert is the honest restore.
 2. **`/agent/*` is the one agent app,** inside kaneo's layout. The `/dashboard/*` routes become
    redirects, and the legacy `task` board is retired.
 3. **Screens without a backend API are hidden** from navigation and marked ⬜. No mock UI ships.

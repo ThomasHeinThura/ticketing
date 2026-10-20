@@ -211,8 +211,6 @@ and the PR template is present. The **RLS prototype** is either merged with its 
 cost and agreement findings written down, or dropped with the reason in the decision log —
 an open prototype does not close P0.
 
-**Status (2026-10-20):** ✅ **COMPLETE.** Two-entry split, route-policy coverage, backup and restore, and SIT on Docker Compose plus a disposable VM ([p0-stage-review.md](p0-stage-review.md)). The human design gates H1–H6 are **deferred**, not approved.
-
 ---
 
 ## P1 · Core work management
@@ -246,8 +244,6 @@ hardened and extended.
 
 **Done when:** a team can run its work here and prefers it to Planner.
 
-**Status (2026-10-20):** ✅ **COMPLETE for the core work surface**, accepted in #857–#862: board, list and table layouts, side pane, bulk edit, backlog, saved views and CSV export. Thirteen P1 settings and inbox screens that #863 rebuilt as mock UI are 🟡 in [screen-inventory.md](../02-design/screen-inventory.md) and are fixed under the current plan ([status.md](status.md)). H1–H6 are **deferred**.
-
 ---
 
 ## P2 · Service desk
@@ -273,8 +269,6 @@ this is v1's domain logic reimplemented in TypeScript.
 - Milestones, prerequisites, stakeholders, escalation paths
 
 **Done when:** a real support queue runs here, with SLAs measured and approvals working.
-
-**Status (2026-10-20):** 🟡 **IN PROGRESS.** The domain engines and APIs are real. Most of the new agent screens are hardcoded mock UI outside the kaneo shell, so the exit criterion is not met yet. The 2026-10-20 closure claim was withdrawn ([decision log](decision-log.md#2026-10-20--lean-process-reset-and-stage-truth)).
 
 ---
 
@@ -310,8 +304,6 @@ their organisation; Entra deactivating a person ends their access within a minut
 **all 25 named SCIM/Entra acceptance tests pass against a real Microsoft Entra test tenant** —
 the identity gate does not close on a mock alone.
 
-**Status (2026-10-20):** 🟡 **IN PROGRESS.** The portal and identity APIs are real, and so are the portal pages `/catalogue` and `/submissions/$ref`. The newer `/portal/*` screens are mock UI. The real Entra tenant run (25 tests) has not been done, and the evidence previously cited for it is not in the repository. The closure claim was withdrawn.
-
 ---
 
 ## P4 · Governance and administration
@@ -343,8 +335,6 @@ the identity gate does not close on a mock alone.
 
 **Done when:** a fresh container can be turned into a customer's own service desk without
 touching a file.
-
-**Status (2026-10-20):** 🟡 **IN PROGRESS.** The governance and God Mode APIs are real. The new settings and God Mode screens are hardcoded mock UI, and their save, create and delete buttons do not call the API. The closure claim was withdrawn.
 
 ---
 
