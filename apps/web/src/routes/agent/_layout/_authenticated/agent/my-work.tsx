@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AgentMyWorkScreen } from "@/components/agent/p1-core-and-settings";
+import MyWork from "@/components/work-item/my-work";
 import { type AgentMyWorkSearch, parseAgentMyWorkSearch } from "@/lib/routes";
 
 export const Route = createFileRoute("/_layout/_authenticated/agent/my-work")({
@@ -10,16 +10,20 @@ export const Route = createFileRoute("/_layout/_authenticated/agent/my-work")({
 function MyWorkRouteComponent() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const update = (patch: Record<string, unknown>) =>
+    void navigate({
+      search: (prev: AgentMyWorkSearch) =>
+        parseAgentMyWorkSearch({ ...prev, ...patch }),
+      replace: true,
+    });
   return (
-    <AgentMyWorkScreen
-      search={search}
-      onUpdateSearch={(patch) =>
-        void navigate({
-          search: (prev: AgentMyWorkSearch) =>
-            parseAgentMyWorkSearch({ ...prev, ...patch }),
-          replace: true,
-        })
+    <MyWork
+      lens={search.lens ?? "assigned"}
+      item={search.item}
+      onLensChange={(lens) =>
+        update({ lens: lens === "assigned" ? undefined : lens })
       }
+      onItemChange={(item) => update({ item })}
     />
   );
 }

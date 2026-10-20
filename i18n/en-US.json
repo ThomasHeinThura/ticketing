@@ -1484,6 +1484,25 @@
 				"openTask": "Open selected task",
 				"quickSelectNumber": "Select option by number"
 			}
+		},
+		"inbox": {
+			"all": "All",
+			"unread": "Unread ({{count}})",
+			"emptyUnread": "You're all caught up.",
+			"loadError": "Notifications could not be loaded."
+		},
+		"myWork": {
+			"assigned": "Assigned to me",
+			"watching": "Watching",
+			"approvals": "Approvals",
+			"approvalsEmpty": "No approvals are waiting for you.",
+			"approvalsError": "Approvals could not be loaded.",
+			"columnItem": "Work item",
+			"columnKind": "Kind",
+			"columnRequestedBy": "Requested by",
+			"columnExpires": "Expires",
+			"kindCab": "CAB",
+			"kindCustomer": "Customer"
 		}
 	},
 	"notifications": {

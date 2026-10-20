@@ -5983,6 +5983,95 @@
 						"categories",
 						"items"
 					]
+				},
+				"inbox": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"all": {
+							"type": "string"
+						},
+						"unread": {
+							"type": "string"
+						},
+						"unread_zero": {
+							"type": "string"
+						},
+						"unread_one": {
+							"type": "string"
+						},
+						"unread_two": {
+							"type": "string"
+						},
+						"unread_few": {
+							"type": "string"
+						},
+						"unread_many": {
+							"type": "string"
+						},
+						"unread_other": {
+							"type": "string"
+						},
+						"emptyUnread": {
+							"type": "string"
+						},
+						"loadError": {
+							"type": "string"
+						}
+					},
+					"required": ["all", "emptyUnread", "loadError"]
+				},
+				"myWork": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"assigned": {
+							"type": "string"
+						},
+						"watching": {
+							"type": "string"
+						},
+						"approvals": {
+							"type": "string"
+						},
+						"approvalsEmpty": {
+							"type": "string"
+						},
+						"approvalsError": {
+							"type": "string"
+						},
+						"columnItem": {
+							"type": "string"
+						},
+						"columnKind": {
+							"type": "string"
+						},
+						"columnRequestedBy": {
+							"type": "string"
+						},
+						"columnExpires": {
+							"type": "string"
+						},
+						"kindCab": {
+							"type": "string"
+						},
+						"kindCustomer": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"assigned",
+						"watching",
+						"approvals",
+						"approvalsEmpty",
+						"approvalsError",
+						"columnItem",
+						"columnKind",
+						"columnRequestedBy",
+						"columnExpires",
+						"kindCab",
+						"kindCustomer"
+					]
 				}
 			},
 			"required": [
@@ -5997,7 +6086,9 @@
 				"page",
 				"projectSettings",
 				"mobileProjectNav",
-				"keyboardShortcuts"
+				"keyboardShortcuts",
+				"inbox",
+				"myWork"
 			]
 		},
 		"notifications": {
