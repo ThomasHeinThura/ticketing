@@ -81,7 +81,6 @@ function preloadWorkRouteForDirectVisits(): Plugin {
           "/routes/agent/__root.tsx",
           "/routes/agent/_layout.tsx",
           "/routes/agent/_layout/_authenticated.tsx",
-          "/routes/agent/_layout/_authenticated/agent.tsx",
         ];
         for (const item of Object.values(bundle)) {
           if (item.type !== "chunk") continue;

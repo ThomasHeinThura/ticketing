@@ -12,33 +12,38 @@ export function waitsForPrimaryContent(pathname: string): boolean {
 
 /**
  * Resolves once the page's primary content has painted and the main thread is idle. On the
- * work list and boards that is after their rows render (`data-primary-content-ready`), so
- * secondary UI never competes with them (G11 work-list render and LCP); elsewhere it is
- * after the first paint. Always resolves: a screen that never marks itself falls back to a
- * timer.
+ * work list and boards that is after their rows, empty or error state render
+ * (`data-primary-content-ready`), so secondary UI never competes with them (G11 work-list
+ * render and LCP); elsewhere it is after the first paint. It stops waiting when the user
+ * leaves for a page without the marker, and falls back to a timer, so it always resolves
+ * unless `signal` aborts first.
  */
 export function afterPrimaryContent({
-  timeoutMs = 10_000,
+  timeoutMs = 3_000,
+  signal,
 }: {
   timeoutMs?: number;
+  signal?: AbortSignal;
 } = {}): Promise<void> {
-  if (
-    typeof document === "undefined" ||
+  const ready = () =>
     !waitsForPrimaryContent(window.location.pathname) ||
-    document.querySelector(MARKER)
-  )
-    return afterFirstPaint();
-  return new Promise<void>((resolve) => {
+    document.querySelector(MARKER) !== null;
+  if (typeof document === "undefined" || ready()) return afterFirstPaint();
+  return new Promise<void>((resolve, reject) => {
     let settled = false;
-    const done = () => {
+    const finish = (aborted: boolean) => {
       if (settled) return;
       settled = true;
       observer.disconnect();
       clearTimeout(timer);
-      resolve();
+      signal?.removeEventListener("abort", onAbort);
+      if (aborted) reject(signal?.reason);
+      else resolve();
     };
+    const onAbort = () => finish(true);
+    // Mutations also follow client-side navigation, so leaving the screen ends the wait.
     const observer = new MutationObserver(() => {
-      if (document.querySelector(MARKER)) done();
+      if (ready()) finish(false);
     });
     observer.observe(document.body, {
       childList: true,
@@ -46,6 +51,8 @@ export function afterPrimaryContent({
       attributes: true,
       attributeFilter: ["data-primary-content-ready"],
     });
-    const timer = setTimeout(done, timeoutMs);
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener("abort", onAbort);
   }).then(() => afterFirstPaint());
 }

@@ -1,5 +1,12 @@
 import { SidebarTrigger } from "@taskdesk/ui";
-import { lazy, Suspense, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { afterPrimaryContent } from "@/lib/after-primary-content";
 
@@ -13,27 +20,46 @@ let tooltipReady = false;
 export default function SidebarToggle() {
   const { t } = useTranslation();
   const [withTooltip, setWithTooltip] = useState(tooltipReady);
+  const wrapperRef = useRef<HTMLSpanElement>(null);
+  const hadFocus = useRef(false);
   useEffect(() => {
     if (tooltipReady) return;
-    let cancelled = false;
-    void afterPrimaryContent().then(() => {
-      tooltipReady = true;
-      if (!cancelled) setWithTooltip(true);
-    });
-    return () => {
-      cancelled = true;
-    };
+    const abort = new AbortController();
+    afterPrimaryContent({ signal: abort.signal }).then(
+      () => {
+        tooltipReady = true;
+        if (abort.signal.aborted) return;
+        // Wrapping the trigger in the tooltip remounts the button; keep keyboard focus.
+        hadFocus.current =
+          wrapperRef.current?.contains(document.activeElement) ?? false;
+        setWithTooltip(true);
+      },
+      () => {},
+    );
+    return () => abort.abort();
   }, []);
+  useLayoutEffect(() => {
+    if (!hadFocus.current) return;
+    const button = wrapperRef.current?.querySelector("button");
+    if (!button) return;
+    hadFocus.current = false;
+    button.focus();
+  });
   const trigger = (
     <SidebarTrigger
       className="-ml-1 h-6 w-6"
       toggleLabel={t("common:a11y.toggleSidebar")}
     />
   );
-  if (!withTooltip) return trigger;
   return (
-    <Suspense fallback={trigger}>
-      <SidebarToggleTooltip>{trigger}</SidebarToggleTooltip>
-    </Suspense>
+    <span ref={wrapperRef} className="contents">
+      {withTooltip ? (
+        <Suspense fallback={trigger}>
+          <SidebarToggleTooltip>{trigger}</SidebarToggleTooltip>
+        </Suspense>
+      ) : (
+        trigger
+      )}
+    </span>
   );
 }

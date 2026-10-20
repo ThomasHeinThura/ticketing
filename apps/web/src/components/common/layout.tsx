@@ -60,14 +60,15 @@ function Layout({ children, className }: LayoutProps) {
   const [showSidebar, setShowSidebar] = useState(sidebarReady);
   useEffect(() => {
     if (sidebarReady) return;
-    let cancelled = false;
-    void afterPrimaryContent().then(() => {
-      sidebarReady = true;
-      if (!cancelled) setShowSidebar(true);
-    });
-    return () => {
-      cancelled = true;
-    };
+    const abort = new AbortController();
+    afterPrimaryContent({ signal: abort.signal }).then(
+      () => {
+        sidebarReady = true;
+        if (!abort.signal.aborted) setShowSidebar(true);
+      },
+      () => {},
+    );
+    return () => abort.abort();
   }, []);
   const placeholder = sidebarDefaultOpen ? (
     // Same width as the sidebar it stands in for (none when collapsed), so nothing shifts.

@@ -224,6 +224,19 @@ describe("G6 states of the board", () => {
     expect(screen.queryByTestId("work-item-board")).toBeNull();
   });
 
+  it("marks its loaded, error and no-states views as primary content, never the skeleton", () => {
+    const ready = () =>
+      document.querySelector("[data-primary-content-ready='true']");
+    const first = board({ isLoading: true, workItems: undefined });
+    expect(ready()).toBeNull();
+    first.rerender({ isLoading: false, isError: true });
+    expect(ready()).not.toBeNull();
+    first.rerender({ isLoading: false, isError: false, states: [] });
+    expect(ready()).not.toBeNull();
+    first.rerender({ isLoading: false, isError: false });
+    expect(ready()).toBe(screen.getByTestId("work-item-board"));
+  });
+
   it("partial: a card whose title or priority failed validation says Unavailable instead of rendering blank or wrong", () => {
     board({
       workItems: [
