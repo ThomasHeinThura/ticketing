@@ -301,19 +301,11 @@ The network itself must inspect as a local bridge network with this run's owners
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
-The **security review** is a required section of `.github/pull_request_template.md`
-(the template is specified in [definition-of-done.md](definition-of-done.md#the-pull-request-template)).
-CI checks it non-empty, naming exactly one **accepted security-review model**, whenever the
-diff touches **any** of the paths below. The accepted models are the list in
-[agent-workflow.md § Model policy](agent-workflow.md#model-policy) **as it stands on the merge
-base** (`scripts/ci/lib/review-models.mjs`): a pull request cannot add a model and approve
-itself with it. Without a list at the merge base, only `GPT-6 Sol` is accepted, as before the
-list existed. This list of paths is the authoritative scope; [sdlc.md](sdlc.md) and
-[security-model.md](../01-architecture/security-model.md) cite it and do not restate it:
-
-The optional sampled big review is outside this per-PR status-check gate. It does not
-satisfy or delay the required security review; when a sample is selected, follow the packet
-process in [agent-workflow.md](agent-workflow.md#model-policy).
+The `## Security` section of `.github/pull_request_template.md` may not be "n/a" when the
+diff touches **any** of the paths below, or changes a file that declares a Hono router
+(`check:pr-template`, [workflow.md § Pull requests](workflow.md#pull-requests)). The scope is the
+union of this list at the merge base and at HEAD, so a pull request cannot shrink it to escape
+it. This list is the authoritative scope:
 
 ```
 apps/api/src/**/policy.ts            packages/permissions/**
@@ -497,84 +489,20 @@ reduction. If the merge base cannot be resolved, or the document exists there an
 be parsed, the check **fails closed** — "the scope could not be computed" and "nothing
 sensitive was touched" are different facts.
 
-**The committed note is bound to the code it reviewed.** `## Security review`'s
-`**Note:**` must link a committed
-`docs/07-planning/security-reviews/<pr>-<slug>.md`, and that note must declare, on its own
-line, the head each review actually read:
+**The PR-template check** (`check:pr-template`, since 2026-10-20) asserts that every `##`
+section of the template is present and filled in, or says "n/a — reason". `Reviewed by`,
+`Security` and `Screens` are mandatory even if a diff deletes them from the template. Then:
 
-```
-**Reviewed head:** `6b32ef316c49cc14cc841b32fdcce637a442b813`
-```
+- `Reviewed by` is never n/a.
+- `Security` is not n/a when the diff touches the scope above, or changes a Hono router.
+- `Screens` is not n/a when `apps/web/**` changed.
 
-Full forty-character SHAs. SHAs written in prose are not parsed — the notes on file cite
-merge bases and post-rebase orphans in the same sentence as reviewed heads. The newest
-declared head must be an ancestor of HEAD, and **every commit that LANDED between it and
-HEAD must have touched nothing outside `docs/07-planning/security-reviews/`**. So the
-shape is: a code head is reviewed, a **note-only** commit records it and the gate goes
-green, and any later code commit makes the note stale until a fresh delta review adds its
-own `**Reviewed head:**` line for the new head. Recording that new head is itself a
-note-only commit, so closing the gate does not reopen it. Existence of the note was the
-whole of the old check, and existence never expires.
+Any lead-in form of "n/a", "not applicable" or "none" counts as n/a. The earlier model-label,
+committed-review-note, waiver-declaration and checklist machinery was retired with the
+[lean process reset](../07-planning/decision-log.md#2026-10-20--lean-process-reset-and-stage-truth).
+A gate is now deferred only by Thomas, in the decision log, with an issue.
 
-**Landed commits, not the net tree.** The invariant is over history, and the difference is
-a bypass: a commit that changes code plus a later commit that exactly reverts it leaves
-the two endpoint trees identical, so a `git diff <head>..HEAD` comparison saw an empty
-range and the old review passed with two unreviewed commits landed. **Reverting does not
-restore a clearance** — the reverted diff is still in the branch's history, it is what a
-bisect replays, and a revert can itself be wrong, so a reviewer has to see both. Merges
-are attributed **conservatively**: `git rev-list` enumerates the commits a merge brought
-in individually, and the merge itself is charged the **union of its per-parent diffs**.
-Not a combined diff — that reports only what differs from *every* parent, so a merge whose
-tree is taken wholesale from an ancestor reports **nothing** while the reviewed content is
-silently replaced (constructible with `git commit-tree`, and constructed as a probe). The
-union can charge a merge with a path a side-branch commit in the same range is also
-charged with; that over-attribution costs a fresh delta review, whereas
-under-attribution ships unreviewed content. One consequence, stated rather than discovered: merging `main` into the branch
-after a review makes the note stale, because the tree the reviewer read is not the tree
-that would merge.
-
-**A waived gate needs a declaration, not a sentence.** `## Gates`' third cell must cite
-one decision-log entry **with its `#anchor`**, and that entry must contain, on one line:
-
-```
-**Waives gate:** `G1` · **PR:** #19 · **Follow-up:** #123
-```
-
-The gate identifier is compared exactly, the pull-request number must be the one being
-checked, and the follow-up issue is
-[§ Waiving a gate](../02-design/ux-quality-gates.md#waiving-a-gate) step 3 made mechanical.
-Prose is deliberately not accepted: the previous check looked for the gate identifier
-anywhere in the document, which the sentence *"G1 is not waived"* satisfied. **What is
-still not enforceable is who authorised it** — agents commit through the same repository
-identity Thomas does, so nothing readable from a file proves authorship. The declaration
-provides a durable, specific, gate-bound, PR-scoped record; CI says so rather than implying
-it checked authorship.
-
-**Updated 2026-09-15.** This paragraph used to end "Thomas confirms the authority at the
-merge button" — that was the actual, if informal, control: Thomas was the one merging, so
-he was the last human able to catch a fabricated waiver before it landed. Since merge
-execution is now delegated (see [`AGENTS.md`](../../AGENTS.md#how-work-reaches-main-and-who-may-merge)),
-that check no longer exists by default. **A candidate whose `## Gates` table cites any
-waived gate is excluded from the delegation** — it always needs Thomas's own action to
-merge, never the orchestrator alone. Found by independent Opus review, 2026-09-15; tracked
-for a real mechanical check (verifying waiver authorship some way stronger than "the
-orchestrator says it checked") as a follow-up issue, not solved here.
-
-The same fast-stage **PR-template check** asserts every fixed section is present, that none
-is empty unless marked `n/a` with a reason, that `## Reviewed by` names a different model or
-session from `## Implemented by`, that `## Screens opened` is non-empty when `apps/web/**`
-changed, and that no checklist box is left unticked and unmarked.
-
-**`## Screens opened` declares a state, read from its first meaningful line** — `n/a` /
-`not applicable`, `BLOCKED — <why>`, or the screens themselves. When `apps/web/**` changed,
-`n/a` in any form is rejected; an explained `BLOCKED` is **accepted as an honest gap** and
-is explicitly *not* a readiness signal, because the screens still were not opened and
-AGENTS.md do-not 18 is still unsatisfied. A bare `BLOCKED` with nothing after it is
-rejected like a bare `n/a`. Only the first line sets the state: the earlier check matched
-the token `n/a` anywhere in the section and therefore **rejected the honest sentence "I am
-not marking this n/a — that would misrepresent a real gap"**, reading a negation as an
-assertion and teaching authors to explain less. The parser is structural on purpose — no
-sentiment or negation analysis, each of which is a new class of false positive. **`check:reviews`** fails
+**`check:reviews`** fails
 when a feature spec named in the diff still has a non-empty section in
 `docs/07-planning/reviews/2026-09-05/` (the `pre-p0-check-fable/` folder is an applied audit
 trail and is excluded). **`check:env`** fails on a `process.env` read outside

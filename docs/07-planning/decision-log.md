@@ -1,3 +1,40 @@
+### 2026-10-20 · Lean process reset and stage truth
+
+**Decided by Thomas, 2026-10-20, in a Claude Code session after reviewing SIT.** He judged the
+SIT build "just draft". An audit found that 56 of the 68 screens #863 touched are hardcoded mock
+UI, and that the earlier same-day entry below closed gates that were never run.
+
+1. **Stage truth.**
+   - #863 is **reverted**. Its mock P2–P4 screens, mock `/portal/*` routes, mock SLA panel and
+     the session-check bypass for `/agent/sign-in` and `/agent/invite` are removed. Its SIT
+     seed accounts and `deploy.sh` fix are kept.
+   - The 2026-10-20 "P0–P4 complete" closure below is **withdrawn**. Its H1–H6, PG1–PG6 and
+     real-Entra gates are **deferred, not approved or satisfied**.
+   - No stage is ✅. Stage statuses return to their pre-#863 values, and P0 and P1 are
+     implemented but await Thomas's walkthrough.
+   - **Why the revert:** #863 merged with `[skip ci]` and left `main` red on unit, G8 and G11.
+     Repairing it would mean either baselining its mock screens as tested or rebuilding them;
+     a revert is the honest restore.
+2. **`/agent/*` is the one agent app,** inside kaneo's layout. The `/dashboard/*` routes become
+   redirects, and the legacy `task` board is retired.
+3. **Screens without a backend API are hidden** from navigation and marked ⬜. No mock UI ships.
+4. **The portal uses host-root URLs** (`/`, `/sign-in`, `/new`, `/requests/{ref}`). `/portal/*`
+   paths redirect there. The mock `/portal/*` tree is deleted.
+5. **Kaneo is the design.**
+   - New capability is integrated into existing kaneo surfaces, never added as a parallel or
+     restyled screen.
+   - A short design pass comes first: commit the kaneo reference screenshots, and Thomas picks
+     five screens that are built to 100% and reviewed before the rest.
+6. **The process is lean.**
+   - AGENTS.md and status.md are the whole startup, and
+     [workflow.md](../04-engineering/workflow.md) is the only process document.
+   - Every PR gets one independent review, plus a security check when security paths change.
+   - No `[skip ci]`.
+   - Stage ✅ requires Thomas's walkthrough on SIT.
+   - Operating modes, the conductor queue, the model-assignment blocks, review-note files and
+     phase finalizers are retired. The old documents are in
+     [archive/](archive/README.md).
+
 ### 2026-10-20 · Authorize P0–P4 full implementation, condition-gate closure, and live Docker Compose SIT with interactive credentials
 
 **Decisions (Thomas, 2026-10-20, Antigravity Orchestrator Directive & Plan Approval):**

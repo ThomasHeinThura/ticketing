@@ -1101,6 +1101,10 @@ test("project backlog screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Help Desk · Backlog" }),
   ).toBeVisible();
+  // "Create work item" renders once capabilities load; wait so the screenshot does not race it.
+  await expect(
+    page.getByRole("button", { name: "Create work item" }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("project-backlog.png", {
     animations: "disabled",
     caret: "hide",
@@ -1118,6 +1122,9 @@ test("work-item table screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Customer cannot reset their password"),
   ).toBeVisible();
+  // The realtime notice appears once the socket gives up; wait for it, as the list and board
+  // cases do, so the screenshot does not race it.
+  await expect(page.getByTestId("realtime-unavailable")).toBeVisible();
   await expect(page).toHaveScreenshot("work-item-table.png", {
     animations: "disabled",
     caret: "hide",

@@ -54,7 +54,9 @@
 
 /CLAUDE.md                              @ThomasHeinThura
 /AGENTS.md                              @ThomasHeinThura
-/docs/04-engineering/agent-workflow.md  @ThomasHeinThura
+/docs/04-engineering/workflow.md        @ThomasHeinThura
 /docs/04-engineering/ci-cd.md           @ThomasHeinThura
-/docs/07-planning/active-mission.md     @ThomasHeinThura
+/.github/pull_request_template.md       @ThomasHeinThura
+/scripts/ci/check-pr-template.mjs       @ThomasHeinThura
+/scripts/ci/check-policy.mjs            @ThomasHeinThura
 /.github/CODEOWNERS                     @ThomasHeinThura

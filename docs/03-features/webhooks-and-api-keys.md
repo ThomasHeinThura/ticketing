@@ -1,7 +1,7 @@
 # Webhooks and API keys
 
 - **Stage:** P4
-- **Status:** ✅
+- **Status:** ⬜
 - **Feature flag:** always on
 - **Depends on:** plugin architecture, background jobs, RBAC
 

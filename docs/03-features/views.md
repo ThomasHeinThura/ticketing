@@ -1,7 +1,7 @@
 # Views and layouts
 
 - **Stage:** P1
-- **Status:** ✅
+- **Status:** ⬜
 - **Feature flag:** per layout — `feature.calendar`, `feature.timeline` (Board, List and Table are always on).
   `feature.timeline` was `feature.gantt`; the UI says Timeline. The flag identifier is owned by
   [plugin-architecture.md](../01-architecture/plugin-architecture.md) and is not renamed here.

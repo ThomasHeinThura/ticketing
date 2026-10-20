@@ -211,8 +211,6 @@ and the PR template is present. The **RLS prototype** is either merged with its 
 cost and agreement findings written down, or dropped with the reason in the decision log —
 an open prototype does not close P0.
 
-**Status (2026-10-20):** ✅ **COMPLETE** — All 8 P0 screens (`screen-inventory.md`), two-entry split (`entry.agent.tsx` + `entry.portal.tsx`), route-policy coverage, `scripts/backup.sh` & `scripts/restore.sh`, local Docker Compose & disposable OrbStack VM verification, and stage review ([`p0-stage-review.md`](p0-stage-review.md) + [`reviews/p1-p4-stage-review.md`](reviews/p1-p4-stage-review.md)) passed.
-
 ---
 
 ## P1 · Core work management
@@ -246,8 +244,6 @@ hardened and extended.
 
 **Done when:** a team can run its work here and prefers it to Planner.
 
-**Status (2026-10-20):** ✅ **COMPLETE** — All 33 P1 screens (`screen-inventory.md`), all 6 P1 feature specs (`work-items.md`, `views-and-filters.md`, `search-and-saved-views.md`, `comments-and-activity.md`, `attachments.md`, `notifications.md`), pending-action Danger Zone guards, and stage review ([`reviews/p1-p4-stage-review.md`](reviews/p1-p4-stage-review.md)) passed.
-
 ---
 
 ## P2 · Service desk
@@ -273,8 +269,6 @@ this is v1's domain logic reimplemented in TypeScript.
 - Milestones, prerequisites, stakeholders, escalation paths
 
 **Done when:** a real support queue runs here, with SLAs measured and approvals working.
-
-**Status (2026-10-20):** ✅ **COMPLETE** — All 16 P2 screens (`screen-inventory.md`), all 8 P2 feature specs (`intake-and-triage.md`, `workflows-and-states.md`, `sla-and-calendars.md`, `approvals.md`, `assignment-rules.md`, `canned-responses.md`, `milestones-and-dependencies.md`, `audit-trail.md`), `packages/domain` pure engines, and stage review ([`reviews/p1-p4-stage-review.md`](reviews/p1-p4-stage-review.md)) passed.
 
 ---
 
@@ -310,8 +304,6 @@ their organisation; Entra deactivating a person ends their access within a minut
 **all 25 named SCIM/Entra acceptance tests pass against a real Microsoft Entra test tenant** —
 the identity gate does not close on a mock alone.
 
-**Status (2026-10-20):** ✅ **COMPLETE** — All 23 P3 screens (`screen-inventory.md`), all 4 P3 feature specs (`customer-portal.md`, `authentication-and-sso.md`, `identity-provisioning.md`, `organisations-and-contacts.md`), G12 portal bundle purity, and stage review ([`reviews/p1-p4-stage-review.md`](reviews/p1-p4-stage-review.md)) passed (with external live Entra tenant credentials tracked for `2.0.0` GA cutover per owner directive 2026-10-20).
-
 ---
 
 ## P4 · Governance and administration
@@ -343,8 +335,6 @@ the identity gate does not close on a mock alone.
 
 **Done when:** a fresh container can be turned into a customer's own service desk without
 touching a file.
-
-**Status (2026-10-20):** ✅ **COMPLETE** — All 29 P4 screens (`screen-inventory.md`), all 8 P4 feature specs (`rbac-and-permissions.md`, `teams.md`, `custom-fields.md`, `automations.md`, `webhooks.md`, `api-keys.md`, `mcp-server.md`, `god-mode.md`), and stage review ([`reviews/p1-p4-stage-review.md`](reviews/p1-p4-stage-review.md)) passed.
 
 ---
 

@@ -9,47 +9,47 @@ behaves at the edges, and how it is tested.
 
 | Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
-| [Work items](work-items.md) | P1 | ✅ | kaneo, Plane, v1 |
-| [Views and layouts](views.md) | P1 | ✅ | kaneo |
-| [Projects and engagements](projects-and-engagements.md) | P1 | ✅ | v1, OpenProject |
-| [Relations and hierarchy](relations-and-hierarchy.md) | P1 | ✅ | OpenProject |
-| [Comments and activity](comments-and-activity.md) | P1 | ✅ | kaneo, JSM |
-| [Attachments](attachments.md) | P1 | ✅ | kaneo |
-| [Search and saved views](search-and-saved-views.md) | P1 | ✅ | kaneo, JSM |
-| [Assignment](assignment.md) | P1 (the rule *engine* ports with `packages/domain` in P2) | ✅ | v1 |
+| [Work items](work-items.md) | P1 | 🟡 | kaneo, Plane, v1 |
+| [Views and layouts](views.md) | P1 | 🟡 | kaneo |
+| [Projects and engagements](projects-and-engagements.md) | P1 | 🟡 | v1, OpenProject |
+| [Relations and hierarchy](relations-and-hierarchy.md) | P1 | 🟡 | OpenProject |
+| [Comments and activity](comments-and-activity.md) | P1 | 🟡 | kaneo, JSM |
+| [Attachments](attachments.md) | P1 | 🟡 | kaneo |
+| [Search and saved views](search-and-saved-views.md) | P1 | 🟡 | kaneo, JSM |
+| [Assignment](assignment.md) | P1 (the rule *engine* ports with `packages/domain` in P2) | 🟡 | v1 |
 
 ## Service desk
 
 | Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
-| [Workflows](workflows.md) | P2 | ✅ | v1, OpenProject |
-| [SLA](sla.md) | P2 | ✅ | v1, JSM |
-| [Service calendars](service-calendars.md) | P2 | ✅ | v1 |
-| [Request types and catalogue](request-types-and-catalogue.md) | P2 | ✅ | JSM |
-| [Intake queue](intake-queue.md) | P2 | ✅ | v1, Plane |
-| [Approvals and CAB](approvals.md) | P2 | ✅ | v1, JSM |
-| [Audit trail](audit-trail.md) | P2 | ✅ | v1, OpenProject |
+| [Workflows](workflows.md) | P2 | 🟡 | v1, OpenProject |
+| [SLA](sla.md) | P2 | 🟡 | v1, JSM |
+| [Service calendars](service-calendars.md) | P2 | 🟡 | v1 |
+| [Request types and catalogue](request-types-and-catalogue.md) | P2 | ⬜ | JSM |
+| [Intake queue](intake-queue.md) | P2 | ⬜ | v1, Plane |
+| [Approvals and CAB](approvals.md) | P2 | 🟡 | v1, JSM |
+| [Audit trail](audit-trail.md) | P2 | 🟡 | v1, OpenProject |
 
 ## Portal and identity
 
 | Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
-| [Customer portal](customer-portal.md) | P3 | ✅ | JSM |
-| [Identity connections and SCIM provisioning](identity-provisioning.md) | P3 | ✅ | Microsoft Entra, JSM |
+| [Customer portal](customer-portal.md) | P3 | ⬜ | JSM |
+| [Identity connections and SCIM provisioning](identity-provisioning.md) | P3 | ⬜ | Microsoft Entra, JSM |
 
 ## Governance and administration
 
 | Feature | Stage | Status | Inspired by |
 | --- | :-: | :-: | --- |
-| [Roles and permissions UI](roles-and-permissions-ui.md) | P4 | ✅ | kaneo, OpenProject |
-| [Teams](teams.md) | P4 | ✅ | kaneo, OpenProject |
-| [God Mode](god-mode.md) | P4 | ✅ | Plane |
-| [Settings hierarchy](settings-hierarchy.md) | P4 | ✅ | Plane |
-| [Custom fields](custom-fields.md) | P4 | ✅ | OpenProject |
-| [Notifications](notifications.md) | P4 | ✅ | kaneo, OpenProject |
-| [Automations](automations.md) | P4 | ✅ | v1, JSM |
-| [Webhooks and API keys](webhooks-and-api-keys.md) | P4 | ✅ | v1 |
-| [MCP server](mcp-server.md) | P4 | ✅ | kaneo, v1 |
+| [Roles and permissions UI](roles-and-permissions-ui.md) | P4 | ⬜ | kaneo, OpenProject |
+| [Teams](teams.md) | P4 | ⬜ | kaneo, OpenProject |
+| [God Mode](god-mode.md) | P4 | ⬜ | Plane |
+| [Settings hierarchy](settings-hierarchy.md) | P4 | ⬜ | Plane |
+| [Custom fields](custom-fields.md) | P4 | ⬜ | OpenProject |
+| [Notifications](notifications.md) | P4 | ⬜ | kaneo, OpenProject |
+| [Automations](automations.md) | P4 | ⬜ | v1, JSM |
+| [Webhooks and API keys](webhooks-and-api-keys.md) | P4 | ⬜ | v1 |
+| [MCP server](mcp-server.md) | P4 | ⬜ | kaneo, v1 |
 
 ## Insight and agile
 

@@ -40,6 +40,7 @@ export const POLICY_EXACT = new Set([
   "AGENTS.md",
   "CLAUDE.md",
   "docs/README.md",
+  "docs/04-engineering/workflow.md",
   "docs/04-engineering/agent-workflow.md",
   "docs/04-engineering/definition-of-done.md",
   "docs/04-engineering/sdlc.md",
