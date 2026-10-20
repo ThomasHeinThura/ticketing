@@ -65,10 +65,14 @@ function Layout({ children, className }: LayoutProps) {
       >
         <Suspense
           fallback={
-            <div
-              aria-hidden="true"
-              className="hidden w-(--sidebar-width) shrink-0 md:block"
-            />
+            // Same width as the sidebar it stands in for (none when collapsed), so
+            // nothing shifts when it loads.
+            sidebarDefaultOpen ? (
+              <div
+                aria-hidden="true"
+                className="hidden w-(--sidebar-width) shrink-0 md:block"
+              />
+            ) : null
           }
         >
           <AppSidebar />

@@ -131,16 +131,16 @@ export function AgentWorkspaceHomeScreen() {
 
   if (isWorkspaceLoading || isProjectsLoading) {
     return (
-      <main className="flex min-h-full w-full flex-col gap-5 p-6">
+      <div className="flex min-h-full w-full flex-col gap-5 p-6">
         <PageTitle title="Workspace home" />
         <Skeleton className="h-8 w-56" />
         <Skeleton className="h-32 w-full" />
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Workspace home" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Workspace home</h1>
@@ -271,7 +271,7 @@ export function AgentWorkspaceHomeScreen() {
           ))
         )}
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -296,7 +296,7 @@ export function AgentInboxScreen({
     filter === "unread" ? items.filter((item) => item.unread) : items;
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Inbox" />
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
@@ -391,7 +391,7 @@ export function AgentInboxScreen({
           ))}
         </section>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -433,7 +433,7 @@ export function AgentMyWorkScreen({
   });
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="My work" />
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
@@ -530,7 +530,7 @@ export function AgentMyWorkScreen({
           onClose={() => onUpdateSearch({ item: undefined })}
         />
       ) : null}
-    </main>
+    </div>
   );
 }
 
@@ -576,7 +576,7 @@ export function AgentGlobalSearchScreen({
         );
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Global search" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Global search</h1>
@@ -669,7 +669,7 @@ export function AgentGlobalSearchScreen({
           </Card>
         ) : null}
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -684,16 +684,16 @@ export function ProjectOverviewScreen({ projectKey }: { projectKey: string }) {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-full w-full flex-col gap-5 p-6">
+      <div className="flex min-h-full w-full flex-col gap-5 p-6">
         <PageTitle title="Project overview" />
         <Skeleton className="h-8 w-56" />
         <Skeleton className="h-32 w-full" />
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title={`${project?.name ?? projectKey} — Overview`} />
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
@@ -777,7 +777,7 @@ export function ProjectOverviewScreen({ projectKey }: { projectKey: string }) {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -787,7 +787,7 @@ export function ProfileGeneralSettingsScreen() {
   const [saved, setSaved] = useState(false);
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Profile settings" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Profile settings</h1>
@@ -831,7 +831,7 @@ export function ProfileGeneralSettingsScreen() {
           </div>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
 
@@ -839,7 +839,7 @@ export function ProfileAppearanceSettingsScreen() {
   const { theme, setTheme } = useUserPreferencesStore();
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Appearance" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Appearance</h1>
@@ -874,7 +874,7 @@ export function ProfileAppearanceSettingsScreen() {
           ))}
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
 
@@ -887,7 +887,7 @@ export function WorkspaceGeneralSettingsScreen() {
   const [saved, setSaved] = useState(false);
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Workspace settings" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Workspace settings</h1>
@@ -934,7 +934,7 @@ export function WorkspaceGeneralSettingsScreen() {
           </div>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
 
@@ -959,7 +959,7 @@ export function WorkspaceMembersSettingsScreen({
   );
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Workspace members" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Workspace members</h1>
@@ -1002,7 +1002,7 @@ export function WorkspaceMembersSettingsScreen({
           ))
         )}
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -1032,7 +1032,7 @@ export function WorkspaceStatesSettingsScreen() {
   ] as const;
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Workspace states" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Workspace states</h1>
@@ -1055,7 +1055,7 @@ export function WorkspaceStatesSettingsScreen() {
           </Card>
         ))}
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -1067,7 +1067,7 @@ export function WorkspaceLabelsSettingsScreen() {
   const [newLabelName, setNewLabelName] = useState("");
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Workspace labels" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Workspace labels</h1>
@@ -1125,7 +1125,7 @@ export function WorkspaceLabelsSettingsScreen() {
           </Card>
         ))}
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -1158,7 +1158,7 @@ export function WorkspaceCannedResponsesSettingsScreen({
   );
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Canned responses" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Canned responses</h1>
@@ -1232,7 +1232,7 @@ export function WorkspaceCannedResponsesSettingsScreen({
           </Card>
         ))}
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -1242,7 +1242,7 @@ export function WorkspaceDangerZoneSettingsScreen() {
   const slug = workspace?.slug ?? "northstar-support";
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Workspace danger zone" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Workspace danger zone</h1>
@@ -1299,7 +1299,7 @@ export function WorkspaceDangerZoneSettingsScreen() {
           </div>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
 
@@ -1322,7 +1322,7 @@ export function ProjectGeneralSettingsScreen({
   const [saved, setSaved] = useState(false);
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Project settings" />
       <header className="space-y-1">
         <div className="flex items-center gap-2">
@@ -1380,7 +1380,7 @@ export function ProjectGeneralSettingsScreen({
           </div>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
 
@@ -1395,7 +1395,7 @@ export function ProjectMembersSettingsScreen({
   });
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Project members" />
       <header className="space-y-1">
         <div className="flex items-center gap-2">
@@ -1433,7 +1433,7 @@ export function ProjectMembersSettingsScreen({
           ))
         )}
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -1465,7 +1465,7 @@ export function ProjectStatesSettingsScreen({
   const states = statesQuery.data ?? [];
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Project states" />
       <header className="space-y-1">
         <div className="flex items-center gap-2">
@@ -1503,7 +1503,7 @@ export function ProjectStatesSettingsScreen({
           ))
         )}
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -1523,7 +1523,7 @@ export function ProjectLabelsSettingsScreen({
   const [newName, setNewName] = useState("");
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Project labels" />
       <header className="space-y-1">
         <div className="flex items-center gap-2">
@@ -1584,7 +1584,7 @@ export function ProjectLabelsSettingsScreen({
           </Card>
         ))}
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -1597,7 +1597,7 @@ export function ProjectDangerZoneSettingsScreen({
   const upperKey = projectKey.toUpperCase();
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-6 p-6">
+    <div className="flex min-h-full w-full flex-col gap-6 p-6">
       <PageTitle title="Project danger zone" />
       <header className="space-y-1">
         <div className="flex items-center gap-2">
@@ -1650,6 +1650,6 @@ export function ProjectDangerZoneSettingsScreen({
           </Button>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
