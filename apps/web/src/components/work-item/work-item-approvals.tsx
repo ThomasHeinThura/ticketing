@@ -5,16 +5,20 @@ import {
   Badge,
   Button,
   Skeleton,
+  Textarea,
 } from "@taskdesk/ui";
 import { TriangleAlert } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import type { WorkItemApproval } from "@/fetchers/approval/get-work-item-approvals";
+import useDecideApproval from "@/hooks/mutations/approval/use-decide-approval";
 import useWithdrawApproval from "@/hooks/mutations/approval/use-withdraw-approval";
+import useGetMyApprovals from "@/hooks/queries/approval/use-get-my-approvals";
 import useGetWorkItemApprovals from "@/hooks/queries/approval/use-get-work-item-approvals";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
+import RequestApproval from "./request-approval";
 
 const STATE_BADGE_VARIANT = {
   pending: "warning",
@@ -52,13 +56,27 @@ function withdrawErrorKey(error: unknown) {
  *
  * Four states: loading (skeleton), error (retryable alert), empty, ready.
  */
-function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
+function WorkItemApprovals({
+  workItemKey,
+  projectId,
+}: {
+  workItemKey: string;
+  projectId?: string;
+}) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isInstanceAdmin =
     (user as { role?: string | null } | null | undefined)?.role === "admin";
   const approvalsQuery = useGetWorkItemApprovals({ key: workItemKey });
   const withdraw = useWithdrawApproval();
+  // The approvals addressed to the viewer (`GET /me/approvals`) are the ones they may decide.
+  const myApprovals = useGetMyApprovals();
+  const decidable = new Set(
+    (myApprovals.data?.approvals ?? []).map((approval) => approval.id),
+  );
+  const decide = useDecideApproval();
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectNote, setRejectNote] = useState("");
   // The Withdraw button unmounts once the refetch lands, which would drop focus to <body>.
   // After any settled withdrawal focus moves to the section heading, a stable target.
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -92,6 +110,9 @@ function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
       >
         {t("workItems:detail.approvals.heading")}
       </h2>
+      <div>
+        <RequestApproval workItemKey={workItemKey} projectId={projectId} />
+      </div>
       <p
         role="status"
         className="sr-only"
@@ -112,6 +133,24 @@ function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
           </AlertTitle>
           <AlertDescription>
             <p>{t(withdrawErrorKey(withdraw.error))}</p>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {decide.isError && (
+        <Alert variant="error" role="alert" data-testid="approval-decide-error">
+          <TriangleAlert />
+          <AlertTitle>
+            {t("workItems:detail.approvals.decideErrorTitle")}
+          </AlertTitle>
+          <AlertDescription>
+            <p>
+              {decide.error instanceof HttpError && decide.error.status === 409
+                ? t("workItems:detail.approvals.withdrawConflict")
+                : decide.error instanceof Error && decide.error.message
+                  ? decide.error.message
+                  : t("workItems:detail.approvals.decideFailed")}
+            </p>
           </AlertDescription>
         </Alert>
       )}
@@ -198,6 +237,77 @@ function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
                   {t("workItems:detail.approvals.reachLost")}
                 </span>
               )}
+              {approval.state === "pending" && decidable.has(approval.id) ? (
+                rejectingId === approval.id ? (
+                  <div className="flex w-full flex-col gap-2">
+                    <Textarea
+                      aria-label={t("workItems:detail.approvals.rejectNote")}
+                      placeholder={t("workItems:detail.approvals.rejectNote")}
+                      value={rejectNote}
+                      onChange={(event) => setRejectNote(event.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={decide.isPending || !rejectNote.trim()}
+                        onClick={() =>
+                          decide.mutate(
+                            {
+                              id: approval.id,
+                              action: "reject",
+                              note: rejectNote.trim(),
+                            },
+                            {
+                              onSuccess: () => {
+                                setRejectingId(null);
+                                setRejectNote("");
+                              },
+                            },
+                          )
+                        }
+                      >
+                        {t("workItems:detail.approvals.confirmReject")}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setRejectingId(null)}
+                      >
+                        {t("common:actions.cancel")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="inline-flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={decide.isPending}
+                      onClick={() =>
+                        decide.mutate({ id: approval.id, action: "approve" })
+                      }
+                    >
+                      {t("workItems:detail.approvals.approve")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={decide.isPending}
+                      onClick={() => {
+                        setRejectingId(approval.id);
+                        setRejectNote("");
+                      }}
+                    >
+                      {t("workItems:detail.approvals.reject")}
+                    </Button>
+                  </span>
+                )
+              ) : null}
+              {approval.decisionNote && approval.state !== "pending" ? (
+                <p className="w-full text-muted-foreground">
+                  {approval.decisionNote}
+                </p>
+              ) : null}
               {approval.canWithdraw && approval.state === "pending" && (
                 <Button
                   variant="outline"

@@ -2456,7 +2456,21 @@
 				"withdrawForbidden": "You can no longer withdraw this approval. The list has been refreshed.",
 				"withdrawFailed": "Something went wrong while withdrawing the approval. Try again.",
 				"withdrawn": "Approval request withdrawn.",
-				"withdrawFor": "Withdraw request — {{label}}"
+				"withdrawFor": "Withdraw request — {{label}}",
+				"request": "Request approval",
+				"nothingToRequest": "No transition on this item is waiting for an approval.",
+				"forTransition": "For the move to",
+				"pickTransition": "Choose a state",
+				"kindLabel": "Approval type",
+				"pickApprover": "Choose an approver",
+				"sendRequest": "Send request",
+				"requestFailed": "The approval could not be requested.",
+				"approve": "Approve",
+				"reject": "Reject",
+				"rejectNote": "Why are you rejecting this?",
+				"confirmReject": "Reject with note",
+				"decideErrorTitle": "The decision was not recorded",
+				"decideFailed": "The decision could not be recorded."
 			},
 			"sla": {
 				"heading": "SLA",
