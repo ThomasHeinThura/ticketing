@@ -624,6 +624,10 @@ test("sign-in screen @visual", async ({ page }) => {
 test("work-item list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/work?layout=list");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByText("Customer cannot reset their password"),
   ).toBeVisible();
@@ -642,6 +646,10 @@ test("work-item list screen @visual", async ({ page }) => {
 test("work-item detail screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/work-items/HELP-7");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByText("Customer cannot reset their password", { exact: true }),
   ).toBeVisible();
@@ -705,6 +713,10 @@ test("two-factor authenticator challenge screen @visual", async ({ page }) => {
 test("intake triage queue @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/triage?state=new&ref=SUB-7");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByText("SUB-7", { exact: true })).toBeVisible();
   await expect(
@@ -726,6 +738,10 @@ test("request type catalogue editor @visual", async ({ page }) => {
   await page.goto(
     "/agent/settings/request-types?requestTypeId=visual-request-type",
   );
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Edit Access request", level: 2 }),
@@ -832,6 +848,10 @@ test("portal sign-in email stage @visual", async ({ page }) => {
 test("instance users directory screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/god-mode/users");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Instance users", exact: true }),
   ).toBeVisible();
@@ -853,6 +873,10 @@ test("instance users directory screen @visual", async ({ page }) => {
 test("authentication providers list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/god-mode/authentication");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", {
       name: "Authentication providers",
@@ -874,6 +898,10 @@ test("authentication providers list screen @visual", async ({ page }) => {
 test("authentication provider editor screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/god-mode/authentication/visual-connection");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", {
       name: "Connection configuration",
@@ -895,6 +923,10 @@ test("authentication provider editor screen @visual", async ({ page }) => {
 test("pending actions list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/profile/pending-actions");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "My pending actions", exact: true }),
   ).toBeVisible();
@@ -919,6 +951,10 @@ test("pending action detail screen @visual", async ({ page }) => {
   await page.goto(
     "/agent/settings/profile/pending-actions/visual-pending-action",
   );
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", {
       name: "Approve person deactivation",
@@ -941,6 +977,10 @@ test("pending action detail screen @visual", async ({ page }) => {
 test("service calendar list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/calendars");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Service calendars" }),
   ).toBeVisible();
@@ -961,6 +1001,10 @@ test("service calendar list screen @visual", async ({ page }) => {
 test("service calendar editor screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/calendars/visual-calendar");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Support coverage" }),
   ).toBeVisible();
@@ -979,6 +1023,10 @@ test("service calendar editor screen @visual", async ({ page }) => {
 test("SLA policy list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/sla-policies");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "SLA policies" }),
   ).toBeVisible();
@@ -1000,6 +1048,10 @@ test("SLA policy list screen @visual", async ({ page }) => {
 test("SLA policy editor screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/sla-policies/visual-sla-policy");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Priority support" }),
   ).toBeVisible();
@@ -1019,6 +1071,10 @@ test("SLA policy editor screen @visual", async ({ page }) => {
 test("work-item board screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/work?layout=board");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "In progress" }),
   ).toBeVisible();
@@ -1040,6 +1096,10 @@ test("work-item board screen @visual", async ({ page }) => {
 test("saved views index screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/views");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Saved views" }),
   ).toBeVisible();
@@ -1061,6 +1121,10 @@ test("saved views index screen @visual", async ({ page }) => {
 test("saved view detail screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/views/visual-view");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Open incidents" }),
   ).toBeVisible();
@@ -1082,6 +1146,10 @@ test("saved view detail screen @visual", async ({ page }) => {
 test("project backlog screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/backlog");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Help Desk · Backlog" }),
   ).toBeVisible();
@@ -1103,6 +1171,10 @@ test("project backlog screen @visual", async ({ page }) => {
 test("work-item table screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/work?layout=table");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByText("Customer cannot reset their password"),
   ).toBeVisible();
@@ -1123,6 +1195,10 @@ test("work-item table screen @visual", async ({ page }) => {
 test("agent workspace home screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   // `/agent` home is kaneo's projects page inside the kaneo shell (sidebar + breadcrumb).
   await expect(page.getByRole("button", { name: "Inbox" })).toBeVisible();
   await expect(page.getByTestId("g13-projects-content")).toBeVisible();
@@ -1140,6 +1216,10 @@ test("agent workspace home screen @visual", async ({ page }) => {
 test("agent inbox screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/inbox");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
   await expect(page).toHaveScreenshot("agent-inbox.png", {
     animations: "disabled",
@@ -1155,6 +1235,10 @@ test("agent inbox screen @visual", async ({ page }) => {
 test("agent my work screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/my-work");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "My work" })).toBeVisible();
   await expect(page).toHaveScreenshot("agent-my-work.png", {
     animations: "disabled",
@@ -1170,6 +1254,10 @@ test("agent my work screen @visual", async ({ page }) => {
 test("agent global search screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/search");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Global search" }),
   ).toBeVisible();
@@ -1187,6 +1275,10 @@ test("agent global search screen @visual", async ({ page }) => {
 test("project overview screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Project overview" }),
   ).toBeVisible();
@@ -1204,6 +1296,10 @@ test("project overview screen @visual", async ({ page }) => {
 test("profile settings general screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/profile");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Profile settings" }),
   ).toBeVisible();
@@ -1221,6 +1317,10 @@ test("profile settings general screen @visual", async ({ page }) => {
 test("profile settings appearance screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/profile/appearance");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Appearance" })).toBeVisible();
   await expect(page).toHaveScreenshot("profile-settings-appearance.png", {
     animations: "disabled",
@@ -1236,6 +1336,10 @@ test("profile settings appearance screen @visual", async ({ page }) => {
 test("workspace settings general screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Workspace settings" }),
   ).toBeVisible();
@@ -1253,6 +1357,10 @@ test("workspace settings general screen @visual", async ({ page }) => {
 test("workspace settings members screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/members");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Workspace members" }),
   ).toBeVisible();
@@ -1270,6 +1378,10 @@ test("workspace settings members screen @visual", async ({ page }) => {
 test("workspace settings states screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/states");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Workspace states" }),
   ).toBeVisible();
@@ -1287,6 +1399,10 @@ test("workspace settings states screen @visual", async ({ page }) => {
 test("workspace settings labels screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/labels");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Workspace labels" }),
   ).toBeVisible();
@@ -1304,6 +1420,10 @@ test("workspace settings labels screen @visual", async ({ page }) => {
 test("workspace settings canned responses screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/canned-responses");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Canned responses" }),
   ).toBeVisible();
@@ -1324,6 +1444,10 @@ test("workspace settings canned responses screen @visual", async ({ page }) => {
 test("workspace settings danger screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/danger");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Workspace danger zone" }),
   ).toBeVisible();
@@ -1341,6 +1465,10 @@ test("workspace settings danger screen @visual", async ({ page }) => {
 test("project settings general screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/settings");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Project settings" }),
   ).toBeVisible();
@@ -1358,6 +1486,10 @@ test("project settings general screen @visual", async ({ page }) => {
 test("project settings members screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/settings/members");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Project members" }),
   ).toBeVisible();
@@ -1375,6 +1507,10 @@ test("project settings members screen @visual", async ({ page }) => {
 test("project settings states screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/settings/states");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Project states" }),
   ).toBeVisible();
@@ -1392,6 +1528,10 @@ test("project settings states screen @visual", async ({ page }) => {
 test("project settings labels screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/settings/labels");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Project labels" }),
   ).toBeVisible();
@@ -1409,6 +1549,10 @@ test("project settings labels screen @visual", async ({ page }) => {
 test("project settings danger screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/settings/danger");
+  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Project danger zone" }),
   ).toBeVisible();
