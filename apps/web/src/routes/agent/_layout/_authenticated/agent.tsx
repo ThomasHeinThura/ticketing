@@ -72,6 +72,10 @@ function AgentRootRoute() {
   if (location.pathname === "/agent" || location.pathname === "/agent/") {
     return <AgentHome />;
   }
+  // Settings use kaneo's full-page settings shell, as /dashboard/settings does.
+  if (location.pathname.startsWith("/agent/settings")) {
+    return <Outlet />;
+  }
   return (
     <WorkspaceLayout title={t(agentSectionTitleKey(location.pathname))}>
       <div className="h-full overflow-y-auto">

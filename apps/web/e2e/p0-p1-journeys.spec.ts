@@ -75,11 +75,9 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
     await expect(page.getByRole("heading", { name: "My work" })).toBeVisible();
     await expect(page).toHaveURL(/\/agent\/my-work\?lens=assigned/);
 
+    // Search is kaneo's workspace search page.
     await page.goto("/agent/search?q=SSO&scope=work_items");
-    await expect(
-      page.getByRole("heading", { name: "Global search" }),
-    ).toBeVisible();
-    await expect(page).toHaveURL(/\/agent\/search\?q=SSO&scope=work_items/);
+    await expect(page).toHaveURL(/\/dashboard\/workspace\/[^/]+\/search/);
   });
 
   test("Journey 2: Project Overview (/agent/projects/$projectKey) and Work Layout Switcher (board, list, table)", async ({
@@ -138,100 +136,54 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
     ).toBeVisible();
   });
 
-  test("Journey 6: Profile Settings (/agent/settings/profile and /agent/settings/profile/appearance)", async ({
+  // Journeys 6–8: the /agent settings URLs open kaneo's real, API-wired settings pages
+  // (docs/02-design/design-principles.md § Integrate, don't add).
+  test("Journey 6: profile settings URLs open kaneo account settings", async ({
     page,
   }) => {
     await page.goto("/agent/settings/profile");
-    await expect(
-      page.getByRole("heading", { name: "Profile settings" }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Save profile" }).click();
-    await expect(page.getByText("Saved", { exact: true })).toBeVisible();
-
+    await expect(page).toHaveURL(
+      /\/dashboard\/settings\/account\/information$/,
+    );
     await page.goto("/agent/settings/profile/appearance");
-    await expect(
-      page.getByRole("heading", { name: "Appearance" }),
-    ).toBeVisible();
-    const darkBtn = page.getByRole("button", { name: "Dark", exact: true });
-    await darkBtn.click();
-    await expect(darkBtn).toHaveAttribute("aria-pressed", "true");
+    await expect(page).toHaveURL(
+      /\/dashboard\/settings\/account\/preferences$/,
+    );
   });
 
-  test("Journey 7: Workspace Settings (/agent/settings/*) and slug-confirmed Danger Zone pending-action guard", async ({
+  test("Journey 7: workspace settings URLs open kaneo workspace settings", async ({
     page,
   }) => {
-    await page.goto("/agent/settings");
-    await expect(
-      page.getByRole("heading", { name: "Workspace settings" }),
-    ).toBeVisible();
-
-    await page.goto("/agent/settings/members?q=Maya");
-    await expect(
-      page.getByRole("heading", { name: "Workspace members" }),
-    ).toBeVisible();
-
-    await page.goto("/agent/settings/states");
-    await expect(
-      page.getByRole("heading", { name: "Workspace states" }),
-    ).toBeVisible();
-
-    await page.goto("/agent/settings/labels");
-    await expect(
-      page.getByRole("heading", { name: "Workspace labels" }),
-    ).toBeVisible();
-
-    await page.goto("/agent/settings/canned-responses?q=SLA");
-    await expect(
-      page.getByRole("heading", { name: "Canned responses" }),
-    ).toBeVisible();
-
-    await page.goto("/agent/settings/danger");
-    await expect(
-      page.getByRole("heading", { name: "Workspace danger zone" }),
-    ).toBeVisible();
-    const deleteBtn = page.getByRole("button", {
-      name: "Request workspace deletion",
-    });
-    await expect(deleteBtn).toBeDisabled();
-    const slugInput = page.getByLabel("Confirm workspace slug");
-    const expectedSlug =
-      (await slugInput.getAttribute("placeholder")) ?? "northstar-support";
-    await slugInput.fill(expectedSlug);
-    await expect(deleteBtn).toBeEnabled();
+    for (const [from, to] of [
+      ["/agent/settings", /\/dashboard\/settings\/workspace\/general$/],
+      ["/agent/settings/labels", /\/dashboard\/settings\/workspace\/labels$/],
+      ["/agent/settings/danger", /\/dashboard\/settings\/workspace\/general$/],
+      ["/agent/settings/members", /\/dashboard\/workspace\/[^/]+\/members$/],
+    ] as const) {
+      await page.goto(from);
+      await expect(page).toHaveURL(to);
+    }
   });
 
-  test("Journey 8: Project Settings (/agent/projects/$projectKey/settings/*) and key-confirmed Danger Zone pending-action guard", async ({
+  test("Journey 8: project settings URLs open kaneo project settings", async ({
     page,
   }) => {
-    await page.goto("/agent/projects/WLP/settings");
-    await expect(
-      page.getByRole("heading", { name: "Project settings" }),
-    ).toBeVisible();
-
-    await page.goto("/agent/projects/WLP/settings/members");
-    await expect(
-      page.getByRole("heading", { name: "Project members" }),
-    ).toBeVisible();
-
-    await page.goto("/agent/projects/WLP/settings/states");
-    await expect(
-      page.getByRole("heading", { name: "Project states" }),
-    ).toBeVisible();
-
-    await page.goto("/agent/projects/WLP/settings/labels");
-    await expect(
-      page.getByRole("heading", { name: "Project labels" }),
-    ).toBeVisible();
-
-    await page.goto("/agent/projects/WLP/settings/danger");
-    await expect(
-      page.getByRole("heading", { name: "Project danger zone" }),
-    ).toBeVisible();
-    const deleteBtn = page.getByRole("button", {
-      name: "Request project deletion",
-    });
-    await expect(deleteBtn).toBeDisabled();
-    await page.getByLabel("Confirm project key").fill("WLP");
-    await expect(deleteBtn).toBeEnabled();
+    for (const [from, to] of [
+      [
+        "/agent/projects/WLP/settings",
+        /\/dashboard\/settings\/projects\/[^/]+\/general$/,
+      ],
+      [
+        "/agent/projects/WLP/settings/members",
+        /\/dashboard\/settings\/projects\/[^/]+\/general$/,
+      ],
+      [
+        "/agent/projects/WLP/settings/states",
+        /\/dashboard\/settings\/projects\/[^/]+\/workflow$/,
+      ],
+    ] as const) {
+      await page.goto(from);
+      await expect(page).toHaveURL(to);
+    }
   });
 });

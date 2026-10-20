@@ -1,26 +1,13 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { WorkspaceCannedResponsesSettingsScreen } from "@/components/agent/p1-core-and-settings";
-import { parseSettingsTextFilterSearch } from "@/lib/routes";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+// The real screen is kaneo's (/dashboard/settings/workspace/general); this URL sends the user there.
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/settings/canned-responses",
 )({
-  validateSearch: parseSettingsTextFilterSearch,
-  component: WorkspaceCannedResponsesRoute,
+  beforeLoad: () => {
+    throw redirect({
+      to: "/dashboard/settings/workspace/general",
+      replace: true,
+    });
+  },
 });
-
-function WorkspaceCannedResponsesRoute() {
-  const { q } = Route.useSearch();
-  const navigate = useNavigate({ from: Route.fullPath });
-  return (
-    <WorkspaceCannedResponsesSettingsScreen
-      query={q}
-      onQueryChange={(next) =>
-        void navigate({
-          search: next ? { q: next } : {},
-          replace: true,
-        })
-      }
-    />
-  );
-}

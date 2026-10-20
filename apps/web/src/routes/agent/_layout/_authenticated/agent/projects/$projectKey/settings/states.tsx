@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ProjectStatesSettingsScreen } from "@/components/agent/p1-core-and-settings";
+import { ProjectSettingsRedirect } from "@/components/agent/kaneo-redirects";
 
+// Project states live in kaneo's project workflow settings.
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/projects/$projectKey/settings/states",
 )({
-  component: ProjectStatesRoute,
+  component: RouteComponent,
 });
 
-function ProjectStatesRoute() {
+function RouteComponent() {
   const { projectKey } = Route.useParams();
-  return <ProjectStatesSettingsScreen projectKey={projectKey} />;
+  return <ProjectSettingsRedirect projectKey={projectKey} section="workflow" />;
 }

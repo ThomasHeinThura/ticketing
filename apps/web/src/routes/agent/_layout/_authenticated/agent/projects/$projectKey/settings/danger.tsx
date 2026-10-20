@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ProjectDangerZoneSettingsScreen } from "@/components/agent/p1-core-and-settings";
+import { ProjectSettingsRedirect } from "@/components/agent/kaneo-redirects";
 
+// The real screen is kaneo's project settings (/dashboard/settings/projects/{id}/general).
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/projects/$projectKey/settings/danger",
 )({
-  component: ProjectDangerZoneRoute,
+  component: RouteComponent,
 });
 
-function ProjectDangerZoneRoute() {
+function RouteComponent() {
   const { projectKey } = Route.useParams();
-  return <ProjectDangerZoneSettingsScreen projectKey={projectKey} />;
+  return <ProjectSettingsRedirect projectKey={projectKey} section="general" />;
 }
