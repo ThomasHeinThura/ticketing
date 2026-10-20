@@ -36,11 +36,11 @@ scripts/deploy.sh local
 Runs at `https://ticket.localhost` and `https://portal.localhost` via local Traefik with a
 self-signed certificate.
 
-**Laptop SIT (decision log 2026-10-15):** the owner's laptop SIT serves the agent at
-`https://ticketing.localhost` and the portal at `https://portal.localhost` on Traefik HTTPS
-443, loopback only. `ticketing.localhost` is routed by that host's own untracked Traefik
-dynamic file and its `TASKDESK_AGENT_URL`; `ticket.localhost` there answers health checks
-only and is not an agent-application test.
+**Laptop SIT:** the owner's laptop serves the agent at `https://ticketing.localhost:8443`
+and the portal at `https://portal.localhost:8443` (loopback only), because another proxy
+holds 443. Its `.env` sets `TASKDESK_LOCAL_HTTP_PORT=8080`, `TASKDESK_LOCAL_HTTPS_PORT=8443`
+and both public URLs with `:8443`. `scripts/deploy.sh local` seeds the SIT accounts, the
+Acme customer organisation, and two published request types, with intake enabled.
 
 Two hostnames means either `/etc/hosts` entries or `dnsmasq` for `*.localhost`. The script
 prints exactly what to add.
