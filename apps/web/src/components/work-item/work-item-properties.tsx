@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Calendar,
   Popover,
@@ -7,16 +9,20 @@ import {
   PopoverTrigger,
   Textarea,
 } from "@taskdesk/ui";
-import { CalendarClock, CalendarDays, Check, Copy, X } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import {
+  CalendarClock,
+  CalendarDays,
+  Check,
+  Copy,
+  TriangleAlert,
+  X,
+} from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/avatar";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
 import transitionWorkItem from "@/fetchers/work-item/transition-work-item";
 import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
-import updateWorkItem, {
-  type UpdateWorkItemInput,
-} from "@/fetchers/work-item/update-work-item";
 import useGetAssignablePeople from "@/hooks/queries/work-item/use-get-assignable-people";
 import useGetWorkItemTransitions from "@/hooks/queries/work-item/use-get-work-item-transitions";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -24,6 +30,7 @@ import { cn } from "@/lib/cn";
 import { getColumnIcon } from "@/lib/column";
 import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
+import { HttpError } from "@/lib/http-error";
 import { getPriorityLabel } from "@/lib/i18n/domain";
 import { getPriorityIcon } from "@/lib/priority";
 import { routes } from "@/lib/routes";
@@ -33,7 +40,21 @@ import {
   WorkItemVersionConflictError,
 } from "@/lib/work-item-errors";
 import { useUserPreferencesStore } from "@/store/user-preferences";
-import type { WorkItemDetailRow } from "@/types/work-item";
+import type { WorkItemDetailField, WorkItemDetailRow } from "@/types/work-item";
+import {
+  useHasWorkItemFeedback,
+  useWorkItemFeedback,
+  WorkItemFeedbackProvider,
+} from "./work-item-feedback";
+import {
+  cachedWorkItem,
+  useRefreshWorkItem,
+  useSaveWorkItemFields,
+  workItemDetailKey,
+  workItemMutationScope,
+  writeWorkItemResponse,
+} from "./work-item-save";
+import UnavailableField from "./work-item-unavailable-field";
 
 /** Kaneo's property-row trigger (`task-properties-controls.tsx` `buttonClass`). */
 const rowClass = (compact: boolean) =>
@@ -66,38 +87,30 @@ function reasonKey(code: string) {
   return `workItems:journey.${REASON_KEYS[code] ?? "reasonUnknown"}`;
 }
 
-/** The item's queries a change must refresh (detail, activity, transitions, lists). */
-function useRefreshWorkItem(item: WorkItemDetailRow) {
-  const queryClient = useQueryClient();
-  return () =>
-    Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: ["work-items", "detail", item.key],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["work-items", "activity", item.key],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["work-items", "transitions", item.key],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["work-items", item.projectId],
-      }),
-      queryClient.invalidateQueries({ queryKey: ["work-items", "sla"] }),
-    ]);
+/** Kaneo's small muted inline message inside a popover or under a field. */
+function InlineMessage({ children }: { children: ReactNode }) {
+  return (
+    <p className="px-2 py-1.5 text-muted-foreground text-xs" role="alert">
+      {children}
+    </p>
+  );
 }
 
-/** One handler for every mutation's failure: 404 → access lost, 409 → reload, else toast. */
-function useFailureHandler(item: WorkItemDetailRow, onAccessLost: () => void) {
+/** A property-row failure: 404 → access lost, 409 → the inline conflict alert, else toast. */
+function usePropertyFailureHandler(
+  item: WorkItemDetailRow,
+  onAccessLost: () => void,
+) {
   const { t } = useTranslation();
   const refresh = useRefreshWorkItem(item);
+  const { reportConflict } = useWorkItemFeedback();
   return (error: unknown) => {
     if (isWorkItemAccessLost(error)) {
       onAccessLost();
       return;
     }
     if (error instanceof WorkItemVersionConflictError) {
-      toast.error(t("workItems:properties.conflict"));
+      reportConflict();
       void refresh();
       return;
     }
@@ -106,23 +119,37 @@ function useFailureHandler(item: WorkItemDetailRow, onAccessLost: () => void) {
   };
 }
 
-/** Saves a partial change with the item's version (`If-Match`); see `useFailureHandler`. */
+/** Saves a property row's change with the item's current version (`If-Match`). */
 export function useUpdateWorkItemFields(
   item: WorkItemDetailRow,
   onAccessLost: () => void,
 ) {
-  const refresh = useRefreshWorkItem(item);
-  const onError = useFailureHandler(item, onAccessLost);
-  return useMutation({
-    mutationFn: (fields: Omit<UpdateWorkItemInput, "key" | "version">) =>
-      updateWorkItem({ key: item.key, version: item.version, ...fields }),
-    onSuccess: () => refresh(),
+  const { t } = useTranslation();
+  const { announce, clearConflict } = useWorkItemFeedback();
+  const onError = usePropertyFailureHandler(item, onAccessLost);
+  return useSaveWorkItemFields(item, {
+    onSuccess: () => {
+      clearConflict();
+      announce(t("workItems:journey.editSaved"));
+    },
     onError,
   });
 }
 
-/** Calendar day → the API's ISO datetime, keeping the stored time of day (UTC midnight). */
-function dayToIso(day: Date | undefined, original: string | null) {
+/** A 404 from a query the row reads (transitions, assignable people) means access lost. */
+function useAccessLostOnQueryError(error: unknown, onAccessLost: () => void) {
+  useEffect(() => {
+    if (isWorkItemAccessLost(error)) onAccessLost();
+  }, [error, onAccessLost]);
+}
+
+/**
+ * The API's dates are UTC instants; the calendar edits only the calendar day. The day is
+ * the instant's UTC date, shown as a local date (`isoToDay`), and the trigger formats that
+ * same day, so the label and the calendar never disagree in a UTC−x zone. A changed day
+ * keeps the stored time of day (UTC); a new date lands on UTC midnight.
+ */
+export function dayToIso(day: Date | undefined, original: string | null) {
   if (!day) return null;
   const y = day.getFullYear();
   const m = String(day.getMonth() + 1).padStart(2, "0");
@@ -131,10 +158,14 @@ function dayToIso(day: Date | undefined, original: string | null) {
   return `${y}-${m}-${d}${timeOfDay}`;
 }
 
-function isoToDay(value: string | null) {
+export function isoToDay(value: string | null) {
   if (!value) return undefined;
   const [y, m, d] = value.slice(0, 10).split("-").map(Number);
   return new Date(y, m - 1, d);
+}
+
+export function formatWorkItemDay(value: string) {
+  return formatDateMedium(isoToDay(value) as Date);
 }
 
 type ControlProps = {
@@ -143,32 +174,97 @@ type ControlProps = {
   onAccessLost: () => void;
 };
 
-function ReadOnly({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+/** A row whose value failed validation: its icon and the "Unavailable" badge, read-only. */
+function UnavailableRow({
+  compact,
+  icon,
+  field,
+}: {
+  compact: boolean;
+  icon: ReactNode;
+  field: WorkItemDetailField;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex h-7 items-center gap-1.5 px-1.5",
+        !compact && "lg:w-full",
+      )}
+      data-testid={`work-item-${field}-unavailable`}
+    >
+      {icon}
+      <UnavailableField field={field} />
+    </div>
+  );
 }
 
 function StateControl({ item, compact, onAccessLost }: ControlProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { announce } = useWorkItemFeedback();
   const [open, setOpen] = useState(false);
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [error, setError] = useState("");
   const transitions = useGetWorkItemTransitions({
     key: item.key,
     enabled: open,
   });
+  useAccessLostOnQueryError(transitions.error, onAccessLost);
   const refresh = useRefreshWorkItem(item);
-  const onError = useFailureHandler(item, onAccessLost);
+  const offers = transitions.data ?? [];
   const transition = useMutation({
-    mutationFn: transitionWorkItem,
-    onSuccess: async () => {
+    scope: workItemMutationScope(item.key),
+    mutationFn: async (input: {
+      toStateTemplateId: string;
+      note?: string;
+      toStateName: string;
+    }) => {
+      const result = await transitionWorkItem({
+        key: item.key,
+        toStateTemplateId: input.toStateTemplateId,
+        ...(input.note ? { note: input.note } : {}),
+      });
+      writeWorkItemResponse(queryClient, item.key, result, {
+        stateName: input.toStateName,
+        ...(result && typeof result === "object" && "stateId" in result
+          ? { stateId: (result as { stateId: string }).stateId }
+          : {}),
+      });
+      return result;
+    },
+    onSuccess: async (_result, input) => {
       setOpen(false);
       setNoteFor(null);
       setNote("");
+      setError("");
+      announce(
+        t("workItems:journey.transitionDone", { state: input.toStateName }),
+      );
       await refresh();
     },
-    onError,
+    onError: async (mutationError) => {
+      if (isWorkItemAccessLost(mutationError)) {
+        onAccessLost();
+        return;
+      }
+      setNoteFor(null);
+      setError(
+        mutationError instanceof HttpError && mutationError.status === 409
+          ? t("workItems:journey.transitionConflict")
+          : mutationError instanceof HttpError && mutationError.status === 422
+            ? t("workItems:journey.transitionUnavailable")
+            : t("workItems:journey.saveError"),
+      );
+      // The offers may have changed under us; show the server's current ones.
+      await refresh();
+    },
   });
   const { canTransitionTasks } = useWorkspacePermission(item.workspaceId);
+  const icon = getColumnIcon(CATEGORY_ICON[item.stateCategory] ?? "to-do");
+  if (item.unavailableFields.includes("stateName")) {
+    return <UnavailableRow compact={compact} icon={icon} field="stateName" />;
+  }
   const trigger = (
     <Button
       variant="ghost"
@@ -176,31 +272,35 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       className={rowClass(compact)}
       data-testid="work-item-state-control"
     >
-      {getColumnIcon(CATEGORY_ICON[item.stateCategory] ?? "to-do")}
+      {icon}
       <span className="truncate font-semibold text-xs">{item.stateName}</span>
     </Button>
   );
-  if (!canTransitionTasks()) return <ReadOnly>{trigger}</ReadOnly>;
-  const offers = transitions.data ?? [];
+  if (!canTransitionTasks()) return trigger;
   const noteOffer = offers.find((offer) => offer.transitionId === noteFor);
   return (
     <Popover
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setNoteFor(null);
+        if (!next) {
+          setNoteFor(null);
+          setNote("");
+          setError("");
+        }
       }}
     >
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
+        {error ? <InlineMessage>{error}</InlineMessage> : null}
         {noteOffer ? (
           <form
             className="flex flex-col gap-2 p-2"
             onSubmit={(event) => {
               event.preventDefault();
               transition.mutate({
-                key: item.key,
                 toStateTemplateId: noteOffer.toStateTemplateId,
+                toStateName: noteOffer.toStateName,
                 note: note.trim() || undefined,
               });
             }}
@@ -228,6 +328,10 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
           <p className="p-3 text-muted-foreground text-sm" role="status">
             {t("common:empty.loading")}
           </p>
+        ) : transitions.isError ? (
+          <p className="p-3 text-muted-foreground text-sm" role="alert">
+            {t("workItems:journey.transitionsError")}
+          </p>
         ) : offers.length === 0 ? (
           <p className="p-3 text-muted-foreground text-sm">
             {t("workItems:properties.noTransitions")}
@@ -235,10 +339,18 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
         ) : (
           <div>
             {offers.map((offer) => {
-              const onlyNote = offer.blockedBy.every(
-                (reason) => reason.reasonCode === "note.required",
-              );
+              // Blocked only for want of a note: runnable once the note is written.
+              const onlyNote =
+                offer.blockedBy.length > 0 &&
+                offer.blockedBy.every(
+                  (reason) => reason.reasonCode === "note.required",
+                );
               const blocked = !offer.available && !onlyNote;
+              const reasons = offer.blockedBy.length
+                ? offer.blockedBy.map((reason) =>
+                    t(reasonKey(reason.reasonCode)),
+                  )
+                : [t("workItems:journey.reasonUnknown")];
               return (
                 <Button
                   key={offer.transitionId}
@@ -247,22 +359,21 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
                   disabled={blocked || transition.isPending}
                   className="h-auto min-h-8 w-full flex-col items-start gap-0 rounded-none px-2 py-1.5 first:rounded-t-md last:rounded-b-md"
                   onClick={() => {
+                    setError("");
                     if (offer.notePolicy !== "none" && offer.notePolicy) {
                       setNoteFor(offer.transitionId);
                       return;
                     }
                     transition.mutate({
-                      key: item.key,
                       toStateTemplateId: offer.toStateTemplateId,
+                      toStateName: offer.toStateName,
                     });
                   }}
                 >
                   <span className="text-sm">{offer.toStateName}</span>
                   {blocked ? (
                     <span className="text-muted-foreground text-xs">
-                      {offer.blockedBy
-                        .map((reason) => t(reasonKey(reason.reasonCode)))
-                        .join(", ")}
+                      {reasons.join(", ")}
                     </span>
                   ) : null}
                 </Button>
@@ -278,17 +389,35 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
 function PriorityControl({ item, compact, onAccessLost }: ControlProps) {
   const [open, setOpen] = useState(false);
   const update = useUpdateWorkItemFields(item, onAccessLost);
-  const { canUpdateTasks } = useWorkspacePermission(item.workspaceId);
+  const { canUpdateTasks, canSetPriorityTasks } = useWorkspacePermission(
+    item.workspaceId,
+  );
   const current = item.priority ?? "no-priority";
+  if (item.unavailableFields.includes("priority")) {
+    return (
+      <UnavailableRow
+        compact={compact}
+        icon={getPriorityIcon("no-priority")}
+        field="priority"
+      />
+    );
+  }
   const trigger = (
-    <Button variant="ghost" size="sm" className={rowClass(compact)}>
+    <Button
+      variant="ghost"
+      size="sm"
+      className={rowClass(compact)}
+      data-testid="work-item-priority-control"
+    >
       {getPriorityIcon(current)}
       <span className="truncate font-semibold text-xs">
         {getPriorityLabel(current)}
       </span>
     </Button>
   );
-  if (!canUpdateTasks()) return <ReadOnly>{trigger}</ReadOnly>;
+  // PATCH needs `work_item:update`; a priority in the body also needs
+  // `work_item:set_priority` (`rbac.md`).
+  if (!canUpdateTasks() || !canSetPriorityTasks()) return trigger;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
@@ -325,27 +454,75 @@ function PriorityControl({ item, compact, onAccessLost }: ControlProps) {
 
 function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { announce } = useWorkItemFeedback();
   const [open, setOpen] = useState(false);
+  // `AS-3`: taking work already held by someone else needs an explicit second step.
+  const [confirmFor, setConfirmFor] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  // A confirmation was for the holder the screen showed; if the holder moves, it lapses.
+  const [seenHolder, setSeenHolder] = useState(item.assigneeId);
+  if (seenHolder !== item.assigneeId) {
+    setSeenHolder(item.assigneeId);
+    setConfirmFor(null);
+  }
   const people = useGetAssignablePeople({
     projectId: item.projectId,
     enabled: open,
   });
+  useAccessLostOnQueryError(people.error, onAccessLost);
   const refresh = useRefreshWorkItem(item);
-  const onError = useFailureHandler(item, onAccessLost);
   const assign = useMutation({
-    mutationFn: async (personId: string | null) =>
-      personId === null
-        ? unassignWorkItem(item.key, item.assigneeId)
-        : assignWorkItem({
-            key: item.key,
-            assigneeId: personId,
-            expectedCurrentAssigneeId: item.assigneeId,
-          }),
-    onSuccess: async () => {
+    scope: workItemMutationScope(item.key),
+    mutationFn: async (
+      person: { personId: string; name: string | null } | null,
+    ) => {
+      // The holder the screen showed, read when the request is made.
+      const holder = cachedWorkItem(queryClient, item).assigneeId;
+      const result =
+        person === null
+          ? await unassignWorkItem(item.key, holder)
+          : await assignWorkItem({
+              key: item.key,
+              assigneeId: person.personId,
+              expectedCurrentAssigneeId: holder,
+            });
+      writeWorkItemResponse(queryClient, item.key, result, {
+        assigneeId: person?.personId ?? null,
+        assigneeName: person?.name ?? null,
+      });
+      return result;
+    },
+    onSuccess: async (_result, person) => {
       setOpen(false);
+      setConfirmFor(null);
+      setError("");
+      announce(
+        person === null
+          ? t("workItems:journey.unassignDone")
+          : t("workItems:journey.assignDone", {
+              name: person.name ?? t("workItems:journey.unnamedPerson"),
+            }),
+      );
       await refresh();
     },
-    onError,
+    onError: async (mutationError, person) => {
+      setConfirmFor(null);
+      if (isWorkItemAccessLost(mutationError)) {
+        onAccessLost();
+        return;
+      }
+      setError(
+        mutationError instanceof HttpError && mutationError.status === 409
+          ? t("workItems:journey.assignmentConflict")
+          : person === null
+            ? t("workItems:journey.unassignmentError")
+            : t("workItems:journey.assignmentError"),
+      );
+      await queryClient.invalidateQueries({
+        queryKey: workItemDetailKey(item.key),
+      });
+    },
   });
   const { canUpdateTasks, canAssignTasks } = useWorkspacePermission(
     item.workspaceId,
@@ -355,7 +532,12 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       ? null
       : (item.assigneeName ?? t("workItems:detail.inactiveAssignee"));
   const trigger = (
-    <Button variant="ghost" size="sm" className={rowClass(compact)}>
+    <Button
+      variant="ghost"
+      size="sm"
+      className={rowClass(compact)}
+      data-testid="work-item-assignee-control"
+    >
       {name ? (
         <Avatar className="h-[16px] w-[16px]">
           <AvatarFallback className="text-[8px]">
@@ -373,55 +555,116 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       </span>
     </Button>
   );
-  if (!canUpdateTasks() && !canAssignTasks()) {
-    return <ReadOnly>{trigger}</ReadOnly>;
-  }
+  if (!canUpdateTasks() && !canAssignTasks()) return trigger;
+  const list = people.data ?? [];
+  const confirmPerson = list.find((person) => person.personId === confirmFor);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
+          setConfirmFor(null);
+          setError("");
+        }
+      }}
+    >
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="start">
-        <div className="max-h-72 overflow-y-auto">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-full justify-start gap-2 rounded-none px-2 text-muted-foreground"
-            disabled={assign.isPending || item.assigneeId === null}
-            onClick={() => assign.mutate(null)}
-          >
-            {t("workItems:detail.unassigned")}
-            {item.assigneeId === null ? (
-              <Check className="ml-auto h-4 w-4" />
-            ) : null}
-          </Button>
-          {people.isLoading ? (
-            <p className="p-3 text-muted-foreground text-sm" role="status">
-              {t("common:empty.loading")}
+        {error ? <InlineMessage>{error}</InlineMessage> : null}
+        {confirmPerson ? (
+          <div className="flex flex-col gap-2 p-2" role="alert">
+            <p className="font-medium text-sm">
+              {t("workItems:journey.confirmReassign")}
             </p>
-          ) : (
-            (people.data ?? []).map((person) => (
+            <p className="text-muted-foreground text-xs">
+              {t("workItems:journey.confirmReassignDescription")}
+            </p>
+            <div className="flex gap-2">
               <Button
-                key={person.personId}
-                variant="ghost"
                 size="sm"
-                className="h-8 w-full justify-start gap-2 rounded-none px-2"
                 disabled={assign.isPending}
-                onClick={() => assign.mutate(person.personId)}
+                onClick={() =>
+                  assign.mutate({
+                    personId: confirmPerson.personId,
+                    name: confirmPerson.name ?? null,
+                  })
+                }
               >
-                <Avatar className="h-[16px] w-[16px]">
-                  <AvatarFallback className="text-[8px]">
-                    {getInitials(person.name ?? "")}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="truncate text-sm">
-                  {person.name ?? person.personId}
-                </span>
-                {item.assigneeId === person.personId ? (
-                  <Check className="ml-auto h-4 w-4" />
-                ) : null}
+                {t("workItems:journey.confirmAssignment")}
               </Button>
-            ))
-          )}
-        </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConfirmFor(null)}
+              >
+                {t("workItems:journey.cancel")}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="max-h-72 overflow-y-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-full justify-start gap-2 rounded-none px-2 text-muted-foreground"
+              disabled={assign.isPending || item.assigneeId === null}
+              onClick={() => assign.mutate(null)}
+            >
+              {t("workItems:detail.unassigned")}
+              {item.assigneeId === null ? (
+                <Check className="ml-auto h-4 w-4" />
+              ) : null}
+            </Button>
+            {people.isLoading ? (
+              <p className="p-3 text-muted-foreground text-sm" role="status">
+                {t("common:empty.loading")}
+              </p>
+            ) : people.isError && !isWorkItemAccessLost(people.error) ? (
+              <p className="p-3 text-muted-foreground text-sm" role="alert">
+                {t("workItems:journey.peopleError")}
+              </p>
+            ) : (
+              list.map((person) => (
+                <Button
+                  key={person.personId}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-full justify-start gap-2 rounded-none px-2"
+                  disabled={
+                    assign.isPending || item.assigneeId === person.personId
+                  }
+                  onClick={() => {
+                    setError("");
+                    if (
+                      item.assigneeId &&
+                      item.assigneeId !== person.personId
+                    ) {
+                      setConfirmFor(person.personId);
+                      return;
+                    }
+                    assign.mutate({
+                      personId: person.personId,
+                      name: person.name ?? null,
+                    });
+                  }}
+                >
+                  <Avatar className="h-[16px] w-[16px]">
+                    <AvatarFallback className="text-[8px]">
+                      {getInitials(person.name ?? "")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate text-sm">
+                    {person.name ?? t("workItems:journey.unnamedPerson")}
+                  </span>
+                  {item.assigneeId === person.personId ? (
+                    <Check className="ml-auto h-4 w-4" />
+                  ) : null}
+                </Button>
+              ))
+            )}
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
@@ -440,24 +683,33 @@ function DateControl({
   const { canUpdateTasks } = useWorkspacePermission(item.workspaceId);
   const value = item[field];
   const Icon = field === "startDate" ? CalendarDays : CalendarClock;
+  const icon = <Icon className="h-4 w-4 text-muted-foreground" />;
+  if (item.unavailableFields.includes(field)) {
+    return <UnavailableRow compact={compact} icon={icon} field={field} />;
+  }
   const emptyLabel =
     field === "startDate"
       ? t("workItems:properties.noStartDate")
       : t("workItems:detail.noDueDate");
   const trigger = (
-    <Button variant="ghost" size="sm" className={rowClass(compact)}>
-      <Icon className="h-4 w-4 text-muted-foreground" />
+    <Button
+      variant="ghost"
+      size="sm"
+      className={rowClass(compact)}
+      data-testid={`work-item-${field}-control`}
+    >
+      {icon}
       <span
         className={cn(
           "truncate font-semibold text-xs",
           !value && "text-muted-foreground",
         )}
       >
-        {value ? formatDateMedium(value) : emptyLabel}
+        {value ? formatWorkItemDay(value) : emptyLabel}
       </span>
     </Button>
   );
-  if (!canUpdateTasks()) return <ReadOnly>{trigger}</ReadOnly>;
+  if (!canUpdateTasks()) return trigger;
   const save = (day: Date | undefined) =>
     update.mutate(
       { [field]: dayToIso(day, value) },
@@ -499,24 +751,71 @@ function DateControl({
   );
 }
 
-/**
- * Kaneo's task "Properties" panel (`task-properties-sidebar.tsx`), fed by the v2 work
- * item: state moves through the workflow's transitions, priority/dates save with the item
- * version, assignment goes through the assignable list. Each control is read-only without
- * the capability, as kaneo's are. `compact` is kaneo's horizontal strip (side pane).
- */
-export default function WorkItemProperties({
-  item,
-  compact = false,
-  onAccessLost,
-  children,
-}: {
+/** A save answered 409: the field was reset to the server's value; this says so and offers
+ * to load the latest of everything else. */
+function ConflictNotice({ item }: { item: WorkItemDetailRow }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { conflict, clearConflict } = useWorkItemFeedback();
+  if (!conflict) return null;
+  return (
+    <div className="px-2 pt-2 lg:px-3">
+      <Alert variant="warning" data-testid="work-item-conflict">
+        <TriangleAlert />
+        <AlertDescription>
+          <p className="text-xs">{t("workItems:properties.conflict")}</p>
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => {
+              clearConflict();
+              void queryClient.invalidateQueries({
+                queryKey: workItemDetailKey(item.key),
+              });
+            }}
+          >
+            {t("workItems:properties.reloadLatest")}
+          </Button>
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+}
+
+type WorkItemPropertiesProps = {
   item: WorkItemDetailRow;
   compact?: boolean;
   onAccessLost: () => void;
   /** v2 panels (SLA, approvals, metadata) under the property rows. */
   children?: ReactNode;
-}) {
+};
+
+/**
+ * Kaneo's task "Properties" panel (`task-properties-sidebar.tsx`), fed by the v2 work
+ * item: state moves through the workflow's transitions, priority/dates save with the item
+ * version, assignment goes through the assignable list. Each control is read-only without
+ * the capability, as kaneo's are, and a field that failed validation is read-only with
+ * its "Unavailable" badge. `compact` is kaneo's horizontal strip (side pane).
+ */
+export default function WorkItemProperties(props: WorkItemPropertiesProps) {
+  // The page provides the feedback shared with the title and description; standalone,
+  // the panel keeps its own.
+  if (!useHasWorkItemFeedback()) {
+    return (
+      <WorkItemFeedbackProvider>
+        <WorkItemPropertiesPanel {...props} />
+      </WorkItemFeedbackProvider>
+    );
+  }
+  return <WorkItemPropertiesPanel {...props} />;
+}
+
+function WorkItemPropertiesPanel({
+  item,
+  compact = false,
+  onAccessLost,
+  children,
+}: WorkItemPropertiesProps) {
   const { t } = useTranslation();
   const controlProps = { item, compact, onAccessLost };
   const copyLink = () => {
@@ -531,8 +830,8 @@ export default function WorkItemProperties({
   return (
     <div
       className={cn(
-        "flex h-full w-full flex-col gap-2",
-        !compact && "lg:w-72 xl:w-80",
+        "flex w-full flex-col gap-2",
+        !compact && "h-full lg:w-72 xl:w-80",
       )}
       data-testid="work-item-properties"
     >
@@ -552,6 +851,7 @@ export default function WorkItemProperties({
           </Button>
         </div>
       ) : null}
+      <ConflictNotice item={item} />
       <div
         className={cn(
           "flex w-full flex-row flex-wrap items-center gap-1 p-2",

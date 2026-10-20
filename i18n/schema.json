@@ -11072,6 +11072,12 @@
 						},
 						"clearDate": {
 							"type": "string"
+						},
+						"reloadLatest": {
+							"type": "string"
+						},
+						"unsaved": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -11086,7 +11092,9 @@
 						"move",
 						"noTransitions",
 						"noStartDate",
-						"clearDate"
+						"clearDate",
+						"reloadLatest",
+						"unsaved"
 					]
 				}
 			},

@@ -2691,7 +2691,9 @@
 			"move": "Move",
 			"noTransitions": "No state changes are available right now.",
 			"noStartDate": "No start date",
-			"clearDate": "Clear date"
+			"clearDate": "Clear date",
+			"reloadLatest": "Reload latest",
+			"unsaved": "Not saved yet. It will be tried again when you leave the field."
 		}
 	},
 	"portal": {

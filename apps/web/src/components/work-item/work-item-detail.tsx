@@ -14,19 +14,17 @@ import { Info, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatDateTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
-import {
-  extractDescription,
-  type WorkItemDetailField,
-  type WorkItemDetailRow,
-} from "@/types/work-item";
+import { extractDescription, type WorkItemDetailRow } from "@/types/work-item";
 import WorkItemActivity, { type ActivityFilter } from "./work-item-activity";
 import WorkItemApprovals from "./work-item-approvals";
 import WorkItemAttachments from "./work-item-attachments";
 import WorkItemDescription from "./work-item-description";
 import WorkItemDetailLoading from "./work-item-detail-loading";
+import { WorkItemFeedbackProvider } from "./work-item-feedback";
 import WorkItemProperties from "./work-item-properties";
 import WorkItemSla from "./work-item-sla";
 import WorkItemTitle from "./work-item-title";
+import UnavailableField from "./work-item-unavailable-field";
 
 export type WorkItemDetailProps = {
   item: WorkItemDetailRow | undefined;
@@ -49,38 +47,6 @@ export type WorkItemDetailProps = {
   variant?: "page" | "pane";
 };
 
-const FIELD_LABEL_KEYS: Record<WorkItemDetailField, string> = {
-  key: "workItems:detail.keyLabel",
-  title: "workItems:detail.titleLabel",
-  priority: "workItems:detail.priorityLabel",
-  dueDate: "workItems:detail.dueDateLabel",
-  startDate: "workItems:detail.startDateLabel",
-  stateName: "workItems:detail.stateLabel",
-  createdAt: "workItems:detail.createdLabel",
-  updatedAt: "workItems:detail.updatedLabel",
-};
-
-/** Renders a field marked unavailable by `parseWorkItemDetailRow` -- a visible
- * "Unavailable" badge plus a field-specific accessible label, e.g. "State unavailable". */
-function UnavailableField({
-  field,
-  t,
-}: {
-  field: WorkItemDetailField;
-  t: ReturnType<typeof useTranslation>["t"];
-}) {
-  return (
-    <Badge
-      variant="outline"
-      aria-label={t("workItems:detail.unavailableFieldLabel", {
-        field: t(FIELD_LABEL_KEYS[field]),
-      })}
-    >
-      {t("workItems:detail.unavailable")}
-    </Badge>
-  );
-}
-
 /**
  * The work-item detail page (`docs/02-design/screen-inventory.md` "Work item — full
  * page", `/agent/work-items/{key}`). Read-only first slice, per the spec's own
@@ -88,9 +54,10 @@ function UnavailableField({
  * assignee, priority and due date in the header; the description in the body; everything
  * else in a collapsible section. The spec's remaining sections (activity and comments,
  * relations, attachments, SLA, time entries) are separate
- * `screen-inventory.md` rows and separate slices. Edit, state change and assignment
- * (`WorkItemJourney`) sit under the description, each gated on the server's strict
- * capability for the item's workspace.
+ * `screen-inventory.md` rows and separate slices. The title and description edit in
+ * place; state, priority, assignee and dates are kaneo's Properties rows
+ * (`WorkItemProperties`), each gated on the server's strict capability for the item's
+ * workspace.
  *
  * Four states, matching G6 with a record view's own shape of them: loading (skeleton),
  * error (retryable alert), not-found (the 404 the route deliberately distinguishes --
@@ -179,7 +146,7 @@ function WorkItemDetail({
       <dt>{t("workItems:detail.createdLabel")}</dt>
       <dd className="text-foreground">
         {item.unavailableFields.includes("createdAt") ? (
-          <UnavailableField field="createdAt" t={t} />
+          <UnavailableField field="createdAt" />
         ) : (
           formatDateTime(item.createdAt)
         )}
@@ -187,7 +154,7 @@ function WorkItemDetail({
       <dt>{t("workItems:detail.updatedLabel")}</dt>
       <dd className="text-foreground">
         {item.unavailableFields.includes("updatedAt") ? (
-          <UnavailableField field="updatedAt" t={t} />
+          <UnavailableField field="updatedAt" />
         ) : (
           formatDateTime(item.updatedAt)
         )}
@@ -217,14 +184,14 @@ function WorkItemDetail({
       <div className="flex flex-col gap-2.5">
         <p className="font-semibold text-foreground text-xs">
           {item.unavailableFields.includes("key") ? (
-            <UnavailableField field="key" t={t} />
+            <UnavailableField field="key" />
           ) : (
             item.key
           )}
         </p>
         <h1 className="sr-only">{item.title}</h1>
         {item.unavailableFields.includes("title") ? (
-          <UnavailableField field="title" t={t} />
+          <UnavailableField field="title" />
         ) : (
           <WorkItemTitle item={item} onAccessLost={onAccessLost} />
         )}
@@ -253,39 +220,55 @@ function WorkItemDetail({
   );
 
   if (variant === "pane") {
-    // Kaneo's task sheet (`task-details-sheet-body.tsx`): a compact properties strip over
-    // the scrolling content.
+    // Kaneo's task sheet (`task-details-sheet-body.tsx`): a compact properties strip that
+    // stays put over the content, which scrolls on its own.
     return (
-      <div
-        className="flex flex-col bg-background"
-        data-testid="work-item-detail"
-      >
-        <div className="border-border border-b bg-sidebar">
-          <WorkItemProperties item={item} compact onAccessLost={onAccessLost} />
+      <WorkItemFeedbackProvider>
+        <div
+          className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
+          data-testid="work-item-detail"
+        >
+          <div
+            className="flex w-full shrink-0 flex-col gap-0 overflow-y-auto border-border border-b bg-sidebar"
+            data-testid="work-item-properties-strip"
+          >
+            <WorkItemProperties
+              item={item}
+              compact
+              onAccessLost={onAccessLost}
+            />
+          </div>
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            data-testid="work-item-pane-content"
+          >
+            {main}
+          </div>
         </div>
-        {main}
-      </div>
+      </WorkItemFeedbackProvider>
     );
   }
 
   // Kaneo's task page (`task-layout.tsx`): content on the left, the Properties panel on
   // the right (above the content below `lg`).
   return (
-    <div
-      className="flex h-full min-h-0 flex-col bg-background lg:flex-row"
-      data-testid="work-item-detail"
-    >
-      <div className="order-2 min-h-0 flex-1 overflow-y-auto overscroll-contain lg:order-1">
-        {main}
+    <WorkItemFeedbackProvider>
+      <div
+        className="flex h-full min-h-0 flex-col bg-background lg:flex-row"
+        data-testid="work-item-detail"
+      >
+        <div className="order-2 min-h-0 flex-1 overflow-y-auto overscroll-contain lg:order-1">
+          {main}
+        </div>
+        <aside className="order-1 border-border/80 border-b bg-card lg:order-2 lg:h-full lg:overflow-y-auto lg:border-b-0 lg:border-l">
+          <WorkItemProperties item={item} onAccessLost={onAccessLost}>
+            <WorkItemSla workItemKey={workItemKey} compact />
+            <WorkItemApprovals workItemKey={workItemKey} compact />
+            {metadata}
+          </WorkItemProperties>
+        </aside>
       </div>
-      <aside className="order-1 border-border/80 border-b bg-card lg:order-2 lg:h-full lg:overflow-y-auto lg:border-b-0 lg:border-l">
-        <WorkItemProperties item={item} onAccessLost={onAccessLost}>
-          <WorkItemSla workItemKey={workItemKey} compact />
-          <WorkItemApprovals workItemKey={workItemKey} compact />
-          {metadata}
-        </WorkItemProperties>
-      </aside>
-    </div>
+    </WorkItemFeedbackProvider>
   );
 }
 

@@ -190,6 +190,25 @@ describe("WorkItemDetail", () => {
     expect(screen.queryByTestId("work-item-metadata")).toBeNull();
   });
 
+  it("keeps the pane's properties strip fixed while the content scrolls, as kaneo's sheet does", () => {
+    render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
+    const strip = screen.getByTestId("work-item-properties-strip");
+    expect(strip).toHaveClass("shrink-0");
+    expect(strip).toContainElement(screen.getByTestId("work-item-properties"));
+    const content = screen.getByTestId("work-item-pane-content");
+    expect(content).toHaveClass("min-h-0", "flex-1", "overflow-y-auto");
+    expect(content).toContainElement(screen.getByTestId("work-item-title"));
+    expect(strip).not.toContainElement(screen.getByTestId("work-item-title"));
+  });
+
+  it("mounts one polite status region for save announcements", () => {
+    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
+    expect(screen.getByTestId("work-item-status")).toHaveAttribute(
+      "role",
+      "status",
+    );
+  });
+
   it("reports access loss from a property control", () => {
     const onAccessLost = vi.fn();
     render(

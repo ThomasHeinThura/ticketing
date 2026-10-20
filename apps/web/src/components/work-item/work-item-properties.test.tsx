@@ -16,8 +16,11 @@ const mocks = vi.hoisted(() => ({
   canUpdate: true,
   canAssign: true,
   canTransition: true,
+  canSetPriority: true,
   transitions: [] as unknown[],
+  transitionsError: null as unknown,
   people: [] as unknown[],
+  peopleError: null as unknown,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -44,13 +47,24 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     canUpdateTasks: () => mocks.canUpdate,
     canAssignTasks: () => mocks.canAssign,
     canTransitionTasks: () => mocks.canTransition,
+    canSetPriorityTasks: () => mocks.canSetPriority,
   }),
 }));
 vi.mock("@/hooks/queries/work-item/use-get-work-item-transitions", () => ({
-  default: () => ({ data: mocks.transitions, isLoading: false }),
+  default: () => ({
+    data: mocks.transitionsError ? undefined : mocks.transitions,
+    error: mocks.transitionsError,
+    isError: Boolean(mocks.transitionsError),
+    isLoading: false,
+  }),
 }));
 vi.mock("@/hooks/queries/work-item/use-get-assignable-people", () => ({
-  default: () => ({ data: mocks.people, isLoading: false }),
+  default: () => ({
+    data: mocks.peopleError ? undefined : mocks.people,
+    error: mocks.peopleError,
+    isError: Boolean(mocks.peopleError),
+    isLoading: false,
+  }),
 }));
 
 function item(overrides: Partial<WorkItemDetailRow> = {}) {
@@ -71,13 +85,17 @@ function item(overrides: Partial<WorkItemDetailRow> = {}) {
   } as unknown as WorkItemDetailRow;
 }
 
-function renderProps(node: ReactNode) {
+function renderProps(node: ReactNode, seed?: WorkItemDetailRow) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={client}>{node}</QueryClientProvider>,
-  );
+  if (seed) client.setQueryData(["work-items", "detail", seed.key], seed);
+  return {
+    client,
+    ...render(
+      <QueryClientProvider client={client}>{node}</QueryClientProvider>,
+    ),
+  };
 }
 
 beforeEach(() => {
@@ -93,8 +111,11 @@ beforeEach(() => {
   mocks.canUpdate = true;
   mocks.canAssign = true;
   mocks.canTransition = true;
+  mocks.canSetPriority = true;
   mocks.transitions = [];
+  mocks.transitionsError = null;
   mocks.people = [];
+  mocks.peopleError = null;
 });
 
 describe("WorkItemProperties", () => {
@@ -112,15 +133,142 @@ describe("WorkItemProperties", () => {
     );
   });
 
-  it("explains a version conflict and does not lose the user's place", async () => {
+  it("shows a version conflict inline with a way to reload the latest", async () => {
     mocks.update.mockRejectedValue(new WorkItemVersionConflictError(4, 5));
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /High/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Low/ }));
+    const notice = await screen.findByTestId("work-item-conflict");
+    expect(notice).toHaveTextContent("workItems:properties.conflict");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:properties.reloadLatest" }),
+    );
+    expect(screen.queryByTestId("work-item-conflict")).toBeNull();
+  });
+
+  it("sends the version the last save returned, not the one it rendered with", async () => {
+    mocks.update
+      .mockResolvedValueOnce({ key: "HELP-7", version: 5, priority: "low" })
+      .mockResolvedValueOnce({ key: "HELP-7", version: 6, priority: "urgent" });
+    const current = item();
+    renderProps(
+      <WorkItemProperties item={current} onAccessLost={vi.fn()} />,
+      current,
+    );
+    fireEvent.click(screen.getByTestId("work-item-priority-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Low/ }));
     await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        "workItems:properties.conflict",
-      ),
+      expect(screen.queryByRole("button", { name: /Urgent/ })).toBeNull(),
+    );
+    // The row still renders version 4 (no refetch has landed); the save must not.
+    fireEvent.click(screen.getByTestId("work-item-priority-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Urgent/ }));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
+    expect(mocks.update.mock.calls[0]?.[0]).toMatchObject({ version: 4 });
+    expect(mocks.update.mock.calls[1]?.[0]).toMatchObject({ version: 5 });
+  });
+
+  it("keeps priority read-only without work_item:set_priority", () => {
+    mocks.canSetPriority = false;
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("work-item-priority-control"));
+    expect(screen.queryByRole("button", { name: /Urgent/ })).toBeNull();
+  });
+
+  it("shows an unavailable field read-only with its badge", () => {
+    renderProps(
+      <WorkItemProperties
+        item={item({ unavailableFields: ["priority", "dueDate", "stateName"] })}
+        onAccessLost={vi.fn()}
+      />,
+    );
+    for (const field of ["priority", "dueDate", "stateName"]) {
+      expect(
+        screen.getByTestId(`work-item-${field}-unavailable`),
+      ).toHaveTextContent("workItems:detail.unavailable");
+    }
+    expect(screen.queryByTestId("work-item-priority-control")).toBeNull();
+    expect(screen.queryByTestId("work-item-state-control")).toBeNull();
+    expect(screen.queryByTestId("work-item-dueDate-control")).toBeNull();
+    expect(screen.getByTestId("work-item-startDate-control")).toBeEnabled();
+  });
+
+  it("treats a 404 from the transitions query as access lost", async () => {
+    mocks.transitionsError = new HttpError(404, "gone");
+    const onAccessLost = vi.fn();
+    renderProps(
+      <WorkItemProperties item={item()} onAccessLost={onAccessLost} />,
+    );
+    await waitFor(() => expect(onAccessLost).toHaveBeenCalled());
+  });
+
+  it("gives a refused transition its specific message", async () => {
+    mocks.transition.mockRejectedValue(new HttpError(422, "blocked"));
+    mocks.transitions = [
+      {
+        transitionId: "t1",
+        toStateTemplateId: "tpl-progress",
+        toStateName: "In progress",
+        notePolicy: "none",
+        available: true,
+        blockedBy: [],
+      },
+    ];
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("work-item-state-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /In progress/ }));
+    expect(
+      await screen.findByText("workItems:journey.transitionUnavailable"),
+    ).toBeInTheDocument();
+  });
+
+  it("disables an unavailable transition even when it gives no reason", async () => {
+    mocks.transitions = [
+      {
+        transitionId: "t9",
+        toStateTemplateId: "tpl-held",
+        toStateName: "Held",
+        notePolicy: "none",
+        available: false,
+        blockedBy: [],
+      },
+    ];
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("work-item-state-control"));
+    const held = await screen.findByRole("button", { name: /Held/ });
+    expect(held).toBeDisabled();
+    expect(held).toHaveTextContent("workItems:journey.reasonUnknown");
+  });
+
+  it("moves with an optional note left empty, sending no note", async () => {
+    mocks.transition.mockResolvedValue({ key: "HELP-7", version: 5 });
+    mocks.transitions = [
+      {
+        transitionId: "t4",
+        toStateTemplateId: "tpl-review",
+        toStateName: "Review",
+        notePolicy: "optional",
+        available: true,
+        blockedBy: [],
+      },
+    ];
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("work-item-state-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Review/ }));
+    const move = screen.getByRole("button", {
+      name: "workItems:properties.move",
+    });
+    expect(move).toBeEnabled();
+    fireEvent.click(move);
+    await waitFor(() =>
+      expect(mocks.transition.mock.calls[0]?.[0]).toEqual({
+        key: "HELP-7",
+        toStateTemplateId: "tpl-review",
+      }),
+    );
+    expect(await screen.findByTestId("work-item-status")).toHaveTextContent(
+      "workItems:journey.transitionDone",
     );
   });
 
@@ -204,9 +352,8 @@ describe("WorkItemProperties", () => {
     );
   });
 
-  it("assigns with the holder the screen showed, and unassigns the same way", async () => {
-    mocks.assign.mockResolvedValue({});
-    mocks.unassign.mockResolvedValue({});
+  it("asks before taking work from its current holder, then assigns with that holder", async () => {
+    mocks.assign.mockResolvedValue({ key: "HELP-7", version: 5 });
     mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
     renderProps(
       <WorkItemProperties
@@ -216,6 +363,15 @@ describe("WorkItemProperties", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Riley Fox/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    expect(mocks.assign).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("workItems:journey.confirmReassignDescription"),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "workItems:journey.confirmAssignment",
+      }),
+    );
     await waitFor(() =>
       expect(mocks.assign.mock.calls[0]?.[0]).toEqual({
         key: "HELP-7",
@@ -223,6 +379,40 @@ describe("WorkItemProperties", () => {
         expectedCurrentAssigneeId: "person-1",
       }),
     );
+  });
+
+  it("assigns an unassigned item without asking", async () => {
+    mocks.assign.mockResolvedValue({ key: "HELP-7", version: 5 });
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    await waitFor(() =>
+      expect(mocks.assign.mock.calls[0]?.[0]).toEqual({
+        key: "HELP-7",
+        assigneeId: "person-2",
+        expectedCurrentAssigneeId: null,
+      }),
+    );
+  });
+
+  it("cancels a take-over without assigning", async () => {
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    renderProps(
+      <WorkItemProperties
+        item={item({ assigneeId: "person-1", assigneeName: "Riley Fox" })}
+        onAccessLost={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Riley Fox/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.cancel" }),
+    );
+    expect(
+      await screen.findByRole("button", { name: /Casey Ray/ }),
+    ).toBeInTheDocument();
+    expect(mocks.assign).not.toHaveBeenCalled();
   });
 
   it("shows every property read-only to a role that cannot change them", () => {

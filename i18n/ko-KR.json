@@ -2683,7 +2683,9 @@
 			"title": "Properties",
 			"titleLabel": "Title",
 			"titlePlaceholder": "Work item title",
-			"transitionNote": "Add a note for this move"
+			"transitionNote": "Add a note for this move",
+			"reloadLatest": "Reload latest",
+			"unsaved": "Not saved yet. It will be tried again when you leave the field."
 		}
 	},
 	"portal": {
