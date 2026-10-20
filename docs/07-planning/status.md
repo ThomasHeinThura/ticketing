@@ -33,29 +33,12 @@ The SIT seed accounts it added were kept.
   `/agent` copy is often the mock.
 - **Mock screens.** `components/agent/p1-core-and-settings.tsx` (from #861) still backs
   Inbox and several `/agent/settings` pages with hardcoded data.
-- **Thin SIT seed.** There are no request types or submissions.
+- **SIT seed** has accounts, Acme, two published request types and intake enabled, but no
+  seeded submissions or realistic work-item volume yet.
 
 ## Next
 
-The plan is in the [decision log, 2026-10-20](decision-log.md#2026-10-20--lean-process-reset-and-stage-truth).
-Each step below is one PR.
-
-1. **Shell and entry points.**
-   - `/agent/*` goes inside kaneo's `Layout`, with the sidebar links Inbox, My work, Triage,
-     Projects, Views, Settings and God Mode.
-   - Sign-in goes to `/agent`, `/dashboard/*` redirects to `/agent`, and a project click goes to
-     `/agent/projects/{key}/work`.
-   - Portal `/portal/*` redirects to the host root, and `/` goes to home or sign-in.
-2. **Design pass.** Commit the kaneo reference screenshots. Thomas picks five screens, and those
-   are built to 100% and reviewed.
-3. **Replace the mocks.**
-   - Mount the existing real components: security, notification preferences, API keys, roles,
-     members, the column and workflow editors, and the identity and SCIM editors.
-   - Wire the screens that have an API but no UI yet, inside the kaneo layout.
-   - Hide the screens with no API. Delete the mock files.
-4. **One portal.** Build on the real catalogue and submission pages inside a kaneo-style top bar.
-5. **Seed and prove.** Seed through the real APIs, then run one unstubbed E2E: portal request →
-   triage → reply → resolve. Thomas walks through it, and only then does a stage become ✅.
+The full plan, goal and batch order are in [plan.md](plan.md). One PR per batch.
 
 ## Open obligations
 

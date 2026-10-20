@@ -59,7 +59,10 @@ services:
       # Verified live; see traefik-and-domains.md § Security headers.
       - --providers.file.watch=false
       - --entrypoints.web.address=:80
-      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      # Redirect to the HTTPS port the host actually publishes. `to=websecure` would send
+      # http://…:8080 to https://…:443, which nothing serves when TASKDESK_LOCAL_HTTPS_PORT
+      # is set (for example 8443 on a laptop that already runs a proxy on 443).
+      - --entrypoints.web.http.redirections.entrypoint.to=:${TASKDESK_LOCAL_HTTPS_PORT:-443}
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
       # Idle timeout above the application's 30-second WebSocket heartbeat, or

@@ -4,6 +4,10 @@ import bcrypt from "bcryptjs";
 import { config } from "dotenv-mono";
 import { and, eq, sql } from "drizzle-orm";
 import db, { getDatabasePool, schema } from "../src/database";
+import {
+  createRequestType,
+  publishRequestType,
+} from "../src/intake/repository";
 import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-project";
 import { seedDefaultWorkspaceRoles } from "../src/utils/seed-default-workspace-roles";
 import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
@@ -360,6 +364,122 @@ async function upsertScopedMembership(
   `);
 }
 
+const SIT_REQUEST_TYPES = [
+  {
+    name: "Access request",
+    group: "Accounts and access",
+    description: "Ask for access to a system, application or shared folder.",
+    fields: [
+      {
+        key: "summary",
+        type: "text",
+        label: "What do you need access to?",
+        required: true,
+        mapsTo: { field: "title" },
+      },
+      {
+        key: "details",
+        type: "textarea",
+        label: "Why do you need it?",
+        mapsTo: { field: "description" },
+      },
+    ],
+  },
+  {
+    name: "Report a problem",
+    group: "Support",
+    description: "Something is broken or not working as expected.",
+    fields: [
+      {
+        key: "summary",
+        type: "text",
+        label: "Short summary",
+        required: true,
+        mapsTo: { field: "title" },
+      },
+      {
+        key: "details",
+        type: "textarea",
+        label: "What happened?",
+        required: true,
+        mapsTo: { field: "description" },
+      },
+      {
+        key: "impact",
+        type: "select",
+        label: "How badly does it affect you?",
+        options: ["Blocked", "Slowed down", "Minor"],
+        mapsTo: {
+          field: "priority",
+          map: { Blocked: "urgent", "Slowed down": "high", Minor: "low" },
+        },
+      },
+    ],
+  },
+] as const;
+
+/**
+ * Publishes customer-visible request types for Acme through the real intake repository, so
+ * the portal catalogue and agent triage have something to work with. Idempotent by name.
+ */
+async function seedSitRequestTypes(input: {
+  workspaceId: string;
+  helpProjectId: string;
+  acmeOrgId: string;
+  workItemTypeId: string | null;
+}) {
+  if (!input.workItemTypeId)
+    throw new Error(
+      "SIT workspace has no work item type; request types cannot be seeded.",
+    );
+  const [admin] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, "sit-user-admin"))
+    .limit(1);
+  if (!admin) throw new Error("SIT admin person is missing; seed users first.");
+  for (const [position, def] of SIT_REQUEST_TYPES.entries()) {
+    const [existing] = await db
+      .select({
+        id: schema.requestTypeTable.id,
+        published: schema.requestTypeTable.published,
+      })
+      .from(schema.requestTypeTable)
+      .where(
+        and(
+          eq(schema.requestTypeTable.workspaceId, input.workspaceId),
+          eq(schema.requestTypeTable.name, def.name),
+        ),
+      )
+      .limit(1);
+    const id =
+      existing?.id ??
+      (
+        await createRequestType(
+          {
+            workspaceId: input.workspaceId,
+            name: def.name,
+            description: def.description,
+            group: def.group,
+            workItemTypeId: input.workItemTypeId,
+            defaultProjectId: input.helpProjectId,
+            formSchema: { fields: def.fields.map((field) => ({ ...field })) },
+            autoAccept: false,
+            customerVisible: true,
+            forcePrivate: false,
+            position,
+          },
+          admin.id,
+        )
+      ).id;
+    await db
+      .insert(schema.organisationRequestTypeTable)
+      .values({ organisationId: input.acmeOrgId, requestTypeId: id })
+      .onConflictDoNothing();
+    if (!existing?.published) await publishRequestType(id, admin.id);
+  }
+}
+
 /**
  * Seeds the SIT login accounts (published test passwords, an owner with `sees_all`) and marks
  * instance setup complete. It must never touch a real database, so it refuses unless the
@@ -375,7 +495,7 @@ export async function runSitUserSeed(argv: readonly string[] = process.argv) {
   const now = new Date();
 
   try {
-    await db.transaction(async (tx) => {
+    const seeded = await db.transaction(async (tx) => {
       await tx
         .insert(schema.instanceSettingTable)
         .values({
@@ -597,6 +717,18 @@ export async function runSitUserSeed(argv: readonly string[] = process.argv) {
         .where(eq(schema.workItemTypeTable.workspaceId, workspaceId))
         .limit(1);
 
+      // Intake is off by default (feature.intake); SIT needs triage and the portal catalogue.
+      await tx
+        .insert(schema.workspaceFeatureFlagTable)
+        .values({ workspaceId, featureKey: "feature.intake", enabled: true })
+        .onConflictDoUpdate({
+          target: [
+            schema.workspaceFeatureFlagTable.workspaceId,
+            schema.workspaceFeatureFlagTable.featureKey,
+          ],
+          set: { enabled: true, updatedAt: now },
+        });
+
       if (defaultState && defaultType) {
         const sampleItems = [
           {
@@ -655,8 +787,15 @@ export async function runSitUserSeed(argv: readonly string[] = process.argv) {
             .onConflictDoNothing();
         }
       }
+      return {
+        workspaceId,
+        helpProjectId,
+        acmeOrgId,
+        workItemTypeId: defaultType?.id ?? null,
+      };
     });
 
+    await seedSitRequestTypes(seeded);
     await seedDefaultWorkspaceRoles();
     console.log(
       "✅ Seeded SIT interactive accounts, organisations, workspaces, and sample work items.",
