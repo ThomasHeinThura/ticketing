@@ -9187,17 +9187,6 @@
         "backdropLayers": []
       },
       {
-        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/portal/__root.tsx:PortalUnavailableNotice",
-          "PortalFrame->apps/web/src/routes/portal/__root.tsx:PortalFrame"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
         "usage": "packages/ui/src/components/breadcrumb.tsx",
         "surfaceContext": "caller-chain",
@@ -11831,17 +11820,6 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/portal/__root.tsx:PortalError",
-          "PortalFrame->apps/web/src/routes/portal/__root.tsx:PortalFrame"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/portal/__root.tsx:PortalUnavailableNotice",
           "PortalFrame->apps/web/src/routes/portal/__root.tsx:PortalFrame"
         ],
         "backdropLayers": []
