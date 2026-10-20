@@ -1390,7 +1390,14 @@
 			"invitations": "Προσκλήσεις",
 			"more": "Περισσότερα",
 			"backToBoard": "Επιστροφή στον πίνακα",
-			"savedViews": "Saved views"
+			"savedViews": "Saved views",
+			"godMode": "God Mode",
+			"inbox": "Inbox",
+			"myWork": "My work",
+			"search": "Search",
+			"settings": "Settings",
+			"triage": "Triage",
+			"workItem": "Work item"
 		},
 		"projectList": {
 			"viewProject": "Προβολή έργου",

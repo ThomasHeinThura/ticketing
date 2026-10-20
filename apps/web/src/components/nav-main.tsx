@@ -82,33 +82,59 @@ export function NavMain() {
 
   const pendingCount = invitations.length;
 
+  const path = window.location.pathname;
   const navItems = [
     {
-      title: t("navigation:sidebar.projects"),
-      url: `/dashboard/workspace/${workspace.id}`,
-      isActive:
-        window.location.pathname === `/dashboard/workspace/${workspace.id}`,
+      title: t("navigation:sidebar.inbox"),
+      url: routes.agentInbox.path,
+      isActive: path === routes.agentInbox.path,
       badge: null,
     },
     {
-      title: t("navigation:sidebar.members"),
-      url: `/dashboard/workspace/${workspace.id}/members`,
+      title: t("navigation:sidebar.myWork"),
+      url: routes.agentMyWork.path,
+      isActive: path === routes.agentMyWork.path,
+      badge: null,
+    },
+    {
+      title: t("navigation:sidebar.triage"),
+      url: routes.intakeQueue.path,
+      isActive: path.startsWith(routes.intakeQueue.path),
+      badge: null,
+    },
+    {
+      title: t("navigation:sidebar.projects"),
+      url: routes.agentHome.path,
       isActive:
-        window.location.pathname ===
-        `/dashboard/workspace/${workspace.id}/members`,
+        path === routes.agentHome.path ||
+        path === `/dashboard/workspace/${workspace.id}`,
       badge: null,
     },
     {
       title: t("navigation:sidebar.savedViews"),
       url: routes.savedViews.path,
-      isActive: window.location.pathname === routes.savedViews.path,
+      isActive: path === routes.savedViews.path,
+      badge: null,
+    },
+    {
+      title: t("navigation:sidebar.members"),
+      url: `/dashboard/workspace/${workspace.id}/members`,
+      isActive: path === `/dashboard/workspace/${workspace.id}/members`,
       badge: null,
     },
     {
       title: t("navigation:sidebar.invitations"),
       url: "/dashboard/invitations",
-      isActive: window.location.pathname === "/dashboard/invitations",
+      isActive: path === "/dashboard/invitations",
       badge: pendingCount > 0 ? pendingCount : null,
+    },
+    {
+      // kaneo's settings shell holds the API-wired settings; the /agent/settings copies
+      // are replaced in the next change (docs/07-planning/status.md § Next).
+      title: t("navigation:sidebar.settings"),
+      url: "/dashboard/settings/workspace/general",
+      isActive: path.startsWith("/dashboard/settings"),
+      badge: null,
     },
   ];
 

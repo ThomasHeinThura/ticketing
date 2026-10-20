@@ -419,7 +419,9 @@ async function collectSignInInteraction(page: Page) {
   const clickToPaint = await page.evaluate(
     () => (window as G11Window).__g11Metrics.signInPaint,
   );
-  await expect(page).toHaveURL(/\/dashboard(?:\/|$)/, { timeout: 15_000 });
+  await expect(page).toHaveURL(/\/(?:dashboard|agent)(?:\/|$)/, {
+    timeout: 15_000,
+  });
   return clickToPaint;
 }
 

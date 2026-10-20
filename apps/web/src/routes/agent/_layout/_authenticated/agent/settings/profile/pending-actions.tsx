@@ -42,7 +42,7 @@ function PendingActionsList() {
   const page = pendingActions.data;
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
+    <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
       <PageTitle title={t("pendingActions:copy.8008829bb5ed")} />
       <header>
         <h1 className="text-2xl font-semibold">
@@ -164,6 +164,6 @@ function PendingActionsList() {
           {t("pendingActions:copy.3b04d7a51cb2")}
         </p>
       )}
-    </main>
+    </div>
   );
 }

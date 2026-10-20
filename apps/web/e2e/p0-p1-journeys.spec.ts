@@ -63,9 +63,9 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
     page,
   }) => {
     await page.goto("/agent");
-    await expect(
-      page.getByRole("heading", { name: "Workspace home" }),
-    ).toBeVisible();
+    // `/agent` home is kaneo's projects page inside the kaneo shell (sidebar + breadcrumb).
+    await expect(page.getByRole("button", { name: "Inbox" })).toBeVisible();
+    await expect(page.getByTestId("g13-projects-content")).toBeVisible();
 
     await page.goto("/agent/inbox?filter=unread");
     await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
@@ -146,7 +146,7 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
       page.getByRole("heading", { name: "Profile settings" }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Save profile" }).click();
-    await expect(page.getByText("Saved")).toBeVisible();
+    await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
     await page.goto("/agent/settings/profile/appearance");
     await expect(

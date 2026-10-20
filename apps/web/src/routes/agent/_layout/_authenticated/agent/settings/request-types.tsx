@@ -271,7 +271,7 @@ function RequestTypesPage() {
     (field) => field.type !== "file" || field.required !== true,
   );
   return (
-    <main className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+    <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <PageTitle title={t("title")} />
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -978,6 +978,6 @@ function RequestTypesPage() {
           </section>
         </div>
       )}
-    </main>
+    </div>
   );
 }

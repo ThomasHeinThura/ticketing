@@ -174,7 +174,7 @@ function SavedViewsIndexRoute() {
       : undefined;
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
+    <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
       <PageTitle title={t("title")} />
       <header className="space-y-1">
         <h1 className="font-semibold text-2xl">{t("title")}</h1>
@@ -361,6 +361,6 @@ function SavedViewsIndexRoute() {
               : t("deleteError")}
         </p>
       ) : null}
-    </main>
+    </div>
   );
 }

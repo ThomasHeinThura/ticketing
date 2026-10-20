@@ -1392,7 +1392,14 @@
 			"invitations": "Запрошення",
 			"more": "Більше",
 			"backToBoard": "Назад до дошки",
-			"savedViews": "Saved views"
+			"savedViews": "Saved views",
+			"godMode": "God Mode",
+			"inbox": "Inbox",
+			"myWork": "My work",
+			"search": "Search",
+			"settings": "Settings",
+			"triage": "Triage",
+			"workItem": "Work item"
 		},
 		"projectList": {
 			"viewProject": "Переглянути проєкт",

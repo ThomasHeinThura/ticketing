@@ -114,7 +114,7 @@ async function signInWithTotp(
   await expect(page).toHaveURL(/\/auth\/two-factor(?:\?|$)/u);
   await page.locator("#factor-code").fill(totpForUri(provisioningUri));
   await page.getByRole("button", { name: "Verify and sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard(?:\/|\?|$)/u);
+  await expect(page).toHaveURL(/\/(?:dashboard|agent)(?:\/|\?|$)/u);
 }
 
 async function seedTargets(

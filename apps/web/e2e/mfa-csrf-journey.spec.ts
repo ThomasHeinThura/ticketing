@@ -155,7 +155,7 @@ test.describe("P0 MFA and CSRF browser journey", () => {
           .locator("#factor-code")
           .fill(factor === "totp" ? totpForUri(provisioningUri) : backupCode);
         await page.getByRole("button", { name: "Verify and sign in" }).click();
-        await expect(page).toHaveURL(/\/dashboard(?:\/|\?|$)/);
+        await expect(page).toHaveURL(/\/(?:dashboard|agent)(?:\/|\?|$)/);
       };
 
       await test.step("MFA: sign out after enrollment", signOut);

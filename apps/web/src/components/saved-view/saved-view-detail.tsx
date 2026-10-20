@@ -351,7 +351,7 @@ export default function SavedViewDetail({
   const queryEditable = !unsupported;
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
+    <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
       <PageTitle title={title} />
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -544,6 +544,6 @@ export default function SavedViewDetail({
             : t("saveError")}
         </p>
       ) : null}
-    </main>
+    </div>
   );
 }

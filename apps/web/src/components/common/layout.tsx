@@ -1,9 +1,18 @@
 import { SidebarInset, SidebarProvider } from "@taskdesk/ui";
 import type React from "react";
-import type { ReactNode } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
+import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { cn } from "@/lib/cn";
 import { useUserPreferencesStore } from "@/store/user-preferences";
+
+// The sidebar (workspace switcher, navigation, projects, notifications) loads beside the
+// page instead of in front of it, so a page's own content is never held behind the
+// sidebar's code (G11 work-list LCP).
+const AppSidebar = lazy(() =>
+  import("@/components/app-sidebar").then((module) => ({
+    default: module.AppSidebar,
+  })),
+);
 
 type LayoutProps = {
   children: ReactNode;
@@ -41,8 +50,33 @@ function LayoutContent({ children, className }: ContentProps) {
   );
 }
 
+// Once the sidebar has mounted after a first paint, later pages show it straight away.
+let sidebarReady = false;
+
 function Layout({ children, className }: LayoutProps) {
   const { sidebarDefaultOpen } = useUserPreferencesStore();
+  // The page paints first (on the work list and boards, its rows); the sidebar mounts once
+  // the main thread is idle after that (G11).
+  const [showSidebar, setShowSidebar] = useState(sidebarReady);
+  useEffect(() => {
+    if (sidebarReady) return;
+    const abort = new AbortController();
+    afterPrimaryContent({ signal: abort.signal }).then(
+      () => {
+        sidebarReady = true;
+        if (!abort.signal.aborted) setShowSidebar(true);
+      },
+      () => {},
+    );
+    return () => abort.abort();
+  }, []);
+  const placeholder = sidebarDefaultOpen ? (
+    // Same width as the sidebar it stands in for (none when collapsed), so nothing shifts.
+    <div
+      aria-hidden="true"
+      className="hidden w-(--sidebar-width) shrink-0 md:block"
+    />
+  ) : null;
 
   return (
     <div className="flex w-full bg-background">
@@ -55,7 +89,13 @@ function Layout({ children, className }: LayoutProps) {
           } as React.CSSProperties
         }
       >
-        <AppSidebar />
+        {showSidebar ? (
+          <Suspense fallback={placeholder}>
+            <AppSidebar />
+          </Suspense>
+        ) : (
+          placeholder
+        )}
         <SidebarInset
           className={cn(
             "m-2 flex flex-1 flex-col overflow-auto rounded-xl border border-border/80 bg-background shadow-sm/5",

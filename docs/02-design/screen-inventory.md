@@ -192,7 +192,6 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Portal unavailable notice (P0 interim state) | `/` | route | P0 | 🟡 |
 | Sign in | `/sign-in` | route | P3 | 🟡 |
 | Accept invitation | `/portal/invite` | route | P3 | ⬜ |
 | Home | `/portal` | route | P3 | ⬜ |
@@ -221,14 +220,14 @@ build if it drifts.
 
 | Stage | Screens |
 | --- | --- |
-| P0 Foundation | 8 |
+| P0 Foundation | 7 |
 | P1 Core work | 33 |
 | P2 Service desk | 16 |
 | P3 Portal & identity | 23 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **139** |
+| **Total** | **138** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see

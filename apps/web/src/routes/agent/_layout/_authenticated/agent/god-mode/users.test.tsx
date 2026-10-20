@@ -311,11 +311,14 @@ describe("God Mode Users action context", () => {
     // jsdom has no layout engine; this pins the class contract the real-browser
     // 375px probe measured (an inline link wrapping unbreakable block text made
     // the first column wider than the viewport).
-    render(<Harness />);
-    // G13: <main> is a flex item of the app shell; without w-full it is as wide as
+    const { container } = render(<Harness />);
+    // G13: the page root is a flex item of the app shell; without w-full it is as wide as
     // its content, so loading (narrow) and loaded (wide table + detail grid) lay
     // out differently and the filter row reflows (measured CLS 0.28 at 1280px).
-    expect(document.querySelector("main")?.className).toMatch(/\bw-full\b/u);
+    // The shell's inset is the page's <main>; the page renders a div root inside it.
+    expect(
+      (container.firstElementChild as HTMLElement | null)?.className,
+    ).toMatch(/\bw-full\b/u);
     // The mocked Link renders an <a> without href, so query by aria-label.
     const [link] = screen.getAllByLabelText("instanceUsers:selectUser");
     if (!link) throw new Error("directory row link missing");

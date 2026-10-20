@@ -370,7 +370,7 @@ export default function WorkItemBoard({
 
   if (isError || statesError) {
     return (
-      <Alert variant="error">
+      <Alert variant="error" data-primary-content-ready="true">
         <AlertTitle>{t("workItems:board.loadErrorTitle")}</AlertTitle>
         <AlertDescription>
           {t("workItems:board.loadErrorDescription")}
@@ -398,7 +398,7 @@ export default function WorkItemBoard({
 
   if (states.length === 0) {
     return (
-      <Empty>
+      <Empty data-primary-content-ready="true">
         <EmptyHeader>
           <EmptyTitle>{t("workItems:board.noStatesTitle")}</EmptyTitle>
           <EmptyDescription>

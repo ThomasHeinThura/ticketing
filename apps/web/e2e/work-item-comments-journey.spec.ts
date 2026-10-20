@@ -177,7 +177,7 @@ async function signInThroughUi(
   });
   await test.step("Setup diagnostic: dashboard navigation assertion", async () => {
     console.info("Setup diagnostic begin: dashboard navigation assertion");
-    await expect(page).toHaveURL(/\/dashboard(?:\/|\?|$)/);
+    await expect(page).toHaveURL(/\/(?:dashboard|agent)(?:\/|\?|$)/);
     console.info("Setup diagnostic completed: dashboard navigation assertion");
   });
 }

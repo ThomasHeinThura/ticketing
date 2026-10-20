@@ -83,6 +83,7 @@ export const generatedRouteMetadata = {
     // Canonical full paths for this surface.
     "/",
     "/catalogue",
+    "/portal/sign-in",
     "/sign-in",
     "/submissions/$ref",
   ],

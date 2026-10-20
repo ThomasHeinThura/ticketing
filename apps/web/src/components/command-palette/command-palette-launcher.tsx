@@ -8,6 +8,7 @@ import {
 } from "react";
 import { shortcuts } from "@/constants/shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { waitsForPrimaryContent } from "@/lib/after-primary-content";
 import type { CommandPaletteIntent, CommandPaletteRequest } from "./index";
 
 const CommandPalette = lazy(async () => {
@@ -18,7 +19,10 @@ const CommandPalette = lazy(async () => {
 let nextRequestId = 0;
 
 type IdleWindow = Window & {
-  requestIdleCallback?: (callback: () => void) => number;
+  requestIdleCallback?: (
+    callback: () => void,
+    options?: { timeout?: number },
+  ) => number;
   cancelIdleCallback?: (handle: number) => void;
 };
 
@@ -84,10 +88,7 @@ export default function CommandPaletteLauncher() {
     // On the heavy work and board screens, wait for their real primary content
     // paint before warming the closed palette. Explicit shortcut intent still
     // loads immediately through `requested`.
-    const path = window.location.pathname;
-    const waitsForPrimaryContent =
-      (path.includes("/agent/projects/") && path.endsWith("/work")) ||
-      path.endsWith("/board");
+    const waitsForPrimary = waitsForPrimaryContent(window.location.pathname);
     let firstFrame: number | undefined;
     let secondFrame: number | undefined;
     let observer: MutationObserver | undefined;
@@ -109,14 +110,19 @@ export default function CommandPaletteLauncher() {
             setKeepMounted(true);
             return;
           }
-          idleMountRef.current = idleWindow.requestIdleCallback(() => {
-            idleMountRef.current = undefined;
-            if (!cancelled) setKeepMounted(true);
-          });
+          // Bounded: the sidebar mounts in the same idle window and can keep the main thread
+          // busy on a slow machine, which must not leave the palette cold.
+          idleMountRef.current = idleWindow.requestIdleCallback(
+            () => {
+              idleMountRef.current = undefined;
+              if (!cancelled) setKeepMounted(true);
+            },
+            { timeout: 1_000 },
+          );
         });
       });
     };
-    if (waitsForPrimaryContent) {
+    if (waitsForPrimary) {
       if (document.querySelector("[data-primary-content-ready='true']")) {
         mountAfterCommit();
       } else {

@@ -1389,7 +1389,14 @@
 			"invitations": "邀请",
 			"more": "更多",
 			"backToBoard": "返回看板",
-			"savedViews": "Saved views"
+			"savedViews": "Saved views",
+			"godMode": "God Mode",
+			"inbox": "Inbox",
+			"myWork": "My work",
+			"search": "Search",
+			"settings": "Settings",
+			"triage": "Triage",
+			"workItem": "Work item"
 		},
 		"projectList": {
 			"viewProject": "查看项目",
