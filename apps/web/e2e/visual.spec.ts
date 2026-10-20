@@ -1118,6 +1118,9 @@ test("work-item table screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Customer cannot reset their password"),
   ).toBeVisible();
+  // The realtime notice appears once the socket gives up; wait for it, as the list and board
+  // cases do, so the screenshot does not race it.
+  await expect(page.getByTestId("realtime-unavailable")).toBeVisible();
   await expect(page).toHaveScreenshot("work-item-table.png", {
     animations: "disabled",
     caret: "hide",
