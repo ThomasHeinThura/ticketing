@@ -197,15 +197,18 @@ function preloadWorkRouteForDirectVisits(): Plugin {
         // The legacy project board is the other measured direct-visit screen (G11 board
         // render). Its route chunk is only requested after the session resolves, so start it
         // and the full locale catalog it renders with alongside the entry instead.
+        // Matched by the module it contains: rolldown 1.2.14 no longer reports this split chunk
+        // as a dynamic entry with a facade module (vite 8.2.4).
         const boardRouteChunk = Object.values(bundle).find(
           (item) =>
             item.type === "chunk" &&
-            item.isDynamicEntry &&
-            item.facadeModuleId
-              ?.replaceAll("\\", "/")
-              .endsWith(
-                "/dashboard/workspace/$workspaceId/project/$projectId/board.tsx?tsr-split=component",
-              ) === true,
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith(
+                  "/dashboard/workspace/$workspaceId/project/$projectId/board.tsx?tsr-split=component",
+                ),
+            ),
         );
         if (boardRouteChunk?.type !== "chunk")
           throw new Error(

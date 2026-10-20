@@ -101,10 +101,12 @@ overrides:
   mysql2: ^3.23.1
   nanoid: ^3.3.18                 # caret-bounded: '>=' let pnpm jump 3.x -> 6.x, which
                                   # took the audit from 11 findings to 51 with a CRITICAL.
+  # ── 2026-10-21 ──
   vite: '>=8.2.4 <8.3'            # SECURITY PIN: launch-editor existence-check bypass on
                                   # Windows (vite >=8.2.0 <=8.2.3); dev server only, but
-                                  # `pnpm audit --audit-level=high` gates CI. Patch-only, so
-                                  # build output stays as on 8.2.1.
+                                  # `pnpm audit --audit-level=high` gates CI. Bounded to 8.2.x;
+                                  # vite 8.2.4 pins rolldown 1.2.14 (was 1.2.3), so the agent
+                                  # and portal builds were re-verified against the bundle gates.
 
 onlyBuiltDependencies:
   - '@biomejs/biome'
