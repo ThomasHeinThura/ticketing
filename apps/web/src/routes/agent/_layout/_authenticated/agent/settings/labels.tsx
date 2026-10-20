@@ -1,8 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { WorkspaceLabelsSettingsScreen } from "@/components/agent/p1-core-and-settings";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+// The real screen is kaneo's (/dashboard/settings/workspace/labels); this URL sends the user there.
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/settings/labels",
 )({
-  component: WorkspaceLabelsSettingsScreen,
+  beforeLoad: () => {
+    throw redirect({
+      to: "/dashboard/settings/workspace/labels",
+      replace: true,
+    });
+  },
 });

@@ -1397,7 +1397,8 @@
 			"settings": "Settings",
 			"workItem": "Work item",
 			"search": "Search",
-			"godMode": "God Mode"
+			"godMode": "God Mode",
+			"pendingActions": "Pending actions"
 		},
 		"projectList": {
 			"viewProject": "View Project",

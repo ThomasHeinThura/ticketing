@@ -1,5 +1,9 @@
-import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
-import { ProfileGeneralSettingsScreen } from "@/components/agent/p1-core-and-settings";
+import {
+  createFileRoute,
+  Navigate,
+  Outlet,
+  useLocation,
+} from "@tanstack/react-router";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/settings/profile",
@@ -7,13 +11,14 @@ export const Route = createFileRoute(
   component: ProfileSettingsRootRoute,
 });
 
+// Profile settings are kaneo's account settings; only v2 additions (pending actions) live here.
 function ProfileSettingsRootRoute() {
   const location = useLocation();
   if (
-    location.pathname !== "/agent/settings/profile" &&
-    location.pathname !== "/agent/settings/profile/"
+    location.pathname === "/agent/settings/profile" ||
+    location.pathname === "/agent/settings/profile/"
   ) {
-    return <Outlet />;
+    return <Navigate to="/dashboard/settings/account/information" replace />;
   }
-  return <ProfileGeneralSettingsScreen />;
+  return <Outlet />;
 }
