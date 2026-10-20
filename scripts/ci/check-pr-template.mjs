@@ -15,7 +15,9 @@
  *   node scripts/ci/check-pr-template.mjs            # reads $GITHUB_EVENT_PATH
  */
 
+import { realpathSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { changedPaths, DiffUnavailableError } from "./lib/diff.mjs";
 import {
   contentOf,
@@ -40,9 +42,32 @@ function argValue(flag) {
   return index === -1 ? undefined : process.argv[index + 1];
 }
 
+/**
+ * Sections that are required whatever the template says, so a pull request cannot escape a
+ * rule by deleting the section from the template in the same diff. Changing this list means
+ * changing this reviewed file.
+ */
+export const MANDATORY_SECTIONS = ["Reviewed by", "Security", "Screens"];
+
 async function templateHeadings() {
   const source = await readText(path.join(repoRoot, TEMPLATE));
-  return [...source.matchAll(/^## (.+)$/gm)].map((match) => match[1].trim());
+  const headings = [...source.matchAll(/^## (.+)$/gm)].map((match) =>
+    match[1].trim(),
+  );
+  const present = new Set(headings.map(normaliseHeading));
+  for (const heading of MANDATORY_SECTIONS) {
+    if (!present.has(normaliseHeading(heading))) headings.push(heading);
+  }
+  return headings;
+}
+
+/** "n/a", "- N/A —", "**Not applicable**", "None." — any way of saying the section does not apply. */
+export function saysNotApplicable(text) {
+  const lead = text
+    .replace(/^[\s>*_`~-]+/, "")
+    .replace(/^(\d+[.)]|[-*+])\s+/, "")
+    .replace(/^[*_`~]+/, "");
+  return /^(n\s*\/?\s*a|not\s+applicable|none|nothing)\b/i.test(lead);
 }
 
 async function securityTouched(paths) {
@@ -88,14 +113,18 @@ export async function evaluate({ body, headings, paths, security }) {
       );
       continue;
     }
-    const notApplicable = /^\s*n\/a\b/i.test(text);
-    if (!notApplicable) continue;
-    if (!markedNotApplicable(text)) {
+    const key = normaliseHeading(heading);
+    if (!saysNotApplicable(text)) continue;
+    if (key === "not done") continue;
+    if (
+      !markedNotApplicable(
+        text.replace(/\b(not\s+applicable|none|nothing)\b/gi, "n/a"),
+      )
+    ) {
       failures.push(
         violation(where, 'says n/a without a reason ("n/a — <reason>").'),
       );
     }
-    const key = normaliseHeading(heading);
     if (key === "reviewed by") {
       failures.push(
         violation(
@@ -150,6 +179,17 @@ async function main() {
   finish({ name: NAME, failures, ok: "pull request body complete" });
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const invokedDirectly = (() => {
+  try {
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
+})();
+
+if (invokedDirectly) {
   await main();
 }

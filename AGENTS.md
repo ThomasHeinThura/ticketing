@@ -34,7 +34,8 @@ own. The licence is **AGPL-3.0**. Only Thomas sets direction. His decisions live
    registered in `apps/web/src/lib/routes.ts`.
 6. **Ship narrow and finished.** Fewer screens at 100% beat many at 60%; v1 died of the
    second. A stage is ✅ only when its exit criteria in [phases.md](docs/07-planning/phases.md)
-   hold **and** Thomas has walked through it on SIT.
+   hold **and** Thomas has walked through it on SIT. P0 and P1 keep the ✅ they had before
+   this rule (2026-10-20), and their walkthrough is still owed.
 
 ## Layout
 
@@ -76,11 +77,11 @@ The numbers are referenced by CI messages, so keep them stable.
 6. Waive a gate. Only Thomas can, in the decision log, and a waiver is "deferred", never "approved".
 7. Review your own work, or fake review evidence.
 8. Refactor beyond the task.
-9. Paste code from an unlicensed source. Kaneo (MIT) and TaskDesk v1 only.
+9. Paste code from an unlicensed source (see Licensing below).
 10. Retry a failing approach a fourth time without diagnosing the whole path.
 11. Name a table, column, capability, flag, event or job that is not in its authoritative document.
 12. Delete user data without a pending action where the architecture requires one.
-13. Let identity-provider data grant `instance:admin` or `sees_all`.
+13. Invent an MCP permission or a SCIM-only tenancy rule, or let identity-provider data grant `instance:admin` or `sees_all`.
 14. Restore a kaneo integration router that was removed at fork.
 15. Merge a feature whose findings in `docs/07-planning/reviews/` are still open.
 16. Push to `main`, force-push shared history, use `[skip ci]`, or bypass branch protection.
@@ -90,4 +91,11 @@ The numbers are referenced by CI messages, so keep them stable.
 20. Let two sessions edit the same file at once.
 21. Use `pal-mcp`, `pal-reviewer`, `clink` or 9Router.
 22. Treat a status snapshot or PR body as policy.
-23. Call a stage, screen or feature done when it isn't.
+23. Call a stage, screen or feature done when it isn't. Source review, offline tests or an image boot are not runtime acceptance.
+
+## Licensing
+
+We take **code** only from kaneo (MIT: keep its copyright headers) and TaskDesk v1 (ours).
+Plane, OpenProject and JSM are sources of ideas, never of source code. Record any
+third-party code in `THIRD-PARTY-NOTICES.md`. Details are in
+[licensing-and-attribution.md](docs/00-overview/licensing-and-attribution.md).

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { evaluate } from "./check-pr-template.mjs";
+import {
+  evaluate,
+  MANDATORY_SECTIONS,
+  saysNotApplicable,
+} from "./check-pr-template.mjs";
 
 const headings = [
   "What and why",
@@ -92,4 +96,32 @@ test("screens cannot be n/a when apps/web changes", async () => {
     security: [],
   });
   assert.match(failures.join("\n"), /apps\/web/);
+});
+
+test("disguised n/a forms are recognised", () => {
+  for (const text of [
+    "n/a — x",
+    "- n/a — no change",
+    "**N/A** — x",
+    "Not applicable here",
+    "None.",
+    "> n/a",
+  ]) {
+    assert.ok(saysNotApplicable(text), text);
+  }
+  assert.ok(!saysNotApplicable("Narrow change to the auth guard."));
+});
+
+test("a list-item n/a still cannot dodge the security rule", async () => {
+  const failures = await evaluate({
+    body: body({ Security: "- N/A — no change" }),
+    headings,
+    paths: ["apps/api/src/auth/x.ts"],
+    security: ["apps/api/src/auth/x.ts"],
+  });
+  assert.match(failures.join("\n"), /security paths/);
+});
+
+test("Reviewed by, Security and Screens are mandatory regardless of the template", () => {
+  assert.deepEqual(MANDATORY_SECTIONS, ["Reviewed by", "Security", "Screens"]);
 });
