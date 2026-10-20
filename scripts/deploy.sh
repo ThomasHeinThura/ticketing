@@ -426,7 +426,9 @@ seed_if_permitted() {
     say "seeding demo data"
     POSTGRES_HOST="${POSTGRES_HOST:-127.0.0.1}" pnpm seed minimal || warn "seeding failed — the stack is up regardless"
     if [ -f "$REPO_ROOT/scripts/seed-sit-users.mjs" ]; then
-      POSTGRES_HOST="${POSTGRES_HOST:-127.0.0.1}" pnpm --filter @taskdesk/api exec tsx "$REPO_ROOT/scripts/seed-sit-users.mjs" --sit || warn "SIT user seeding failed — the stack is up regardless"
+      # Fatal: without these accounts and request types nobody can sign in to SIT.
+      POSTGRES_HOST="${POSTGRES_HOST:-127.0.0.1}" pnpm --filter @taskdesk/api exec tsx "$REPO_ROOT/scripts/seed-sit-users.mjs" --sit \
+        || die "SIT seeding failed (accounts, Acme organisation, request types). The stack is up; fix the error above and rerun scripts/deploy.sh local."
     fi
   else
     warn "no \`pnpm seed\` script yet — skipping demo data"
