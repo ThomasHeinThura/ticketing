@@ -55,7 +55,14 @@ function withdrawErrorKey(error: unknown) {
  *
  * Four states: loading (skeleton), error (retryable alert), empty, ready.
  */
-function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
+function WorkItemApprovals({
+  workItemKey,
+  compact = false,
+}: {
+  workItemKey: string;
+  /** Inside kaneo's Properties column: a small heading. */
+  compact?: boolean;
+}) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isInstanceAdmin =
@@ -104,7 +111,7 @@ function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
         id="work-item-approvals-heading"
         ref={headingRef}
         tabIndex={-1}
-        className="font-medium text-lg"
+        className={compact ? "font-medium text-sm" : "font-medium text-lg"}
       >
         {t("workItems:detail.approvals.heading")}
       </h2>

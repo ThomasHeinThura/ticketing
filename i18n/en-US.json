@@ -2678,6 +2678,20 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"unavailable": "A field in this filter isn't available yet."
 			}
+		},
+		"properties": {
+			"title": "Properties",
+			"copyLink": "Copy link",
+			"linkCopied": "Link copied",
+			"titleLabel": "Title",
+			"titlePlaceholder": "Work item title",
+			"conflict": "Someone else changed this item. It now shows the latest version.",
+			"saveFailed": "The change could not be saved.",
+			"transitionNote": "Add a note for this move",
+			"move": "Move",
+			"noTransitions": "No state changes are available right now.",
+			"noStartDate": "No start date",
+			"clearDate": "Clear date"
 		}
 	},
 	"portal": {

@@ -2750,6 +2750,20 @@
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
 			}
+		},
+		"properties": {
+			"clearDate": "Clear date",
+			"conflict": "Someone else changed this item. It now shows the latest version.",
+			"copyLink": "Copy link",
+			"linkCopied": "Link copied",
+			"move": "Move",
+			"noStartDate": "No start date",
+			"noTransitions": "No state changes are available right now.",
+			"saveFailed": "The change could not be saved.",
+			"title": "Properties",
+			"titleLabel": "Title",
+			"titlePlaceholder": "Work item title",
+			"transitionNote": "Add a note for this move"
 		}
 	},
 	"portal": {

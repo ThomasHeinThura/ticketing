@@ -93,12 +93,13 @@ function WorkItemDetailRouteComponent() {
   return (
     <>
       <PageTitle title={item?.title ? `${item.title} · ${key}` : key} />
-      <div className="flex h-full flex-col gap-4 overflow-y-auto bg-background p-6">
+      <div className="flex h-full flex-col overflow-hidden bg-background">
         {item && isRealtimeUnavailable && (
           <Alert
             variant="warning"
             role="status"
             data-testid="realtime-unavailable"
+            className="m-3 w-auto"
           >
             <AlertDescription>
               {t("workItems:detail.realtimeUnavailable")}

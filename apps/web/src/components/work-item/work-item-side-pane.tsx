@@ -63,9 +63,9 @@ export default function WorkItemSidePane({
         key: itemKey,
       })}
       data-testid="work-item-side-pane"
-      className="flex h-full w-full max-w-xl shrink-0 flex-col overflow-y-auto rounded-md border p-4"
+      className="flex h-full w-full max-w-2xl shrink-0 flex-col overflow-y-auto border-border border-l bg-background"
     >
-      <div className="mb-3 flex items-center justify-between gap-2 border-b pb-2">
+      <div className="flex items-center justify-between gap-2 border-border border-b px-4 py-2.5">
         <span className="font-mono font-semibold text-sm">{itemKey}</span>
         <div className="flex items-center gap-2">
           <Link
@@ -105,6 +105,7 @@ export default function WorkItemSidePane({
           <WorkItemDetailLoading />
         ) : (
           <WorkItemDetail
+            variant="pane"
             item={undefined}
             workItemKey={itemKey}
             activityFilter={activityFilter}
@@ -146,6 +147,7 @@ function SidePaneDetailWithProject({
 
   return (
     <WorkItemDetail
+      variant="pane"
       item={item}
       workItemKey={workItemKey}
       activityFilter={activityFilter}

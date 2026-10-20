@@ -11032,6 +11032,62 @@
 						"toggleActive",
 						"errors"
 					]
+				},
+				"properties": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"copyLink": {
+							"type": "string"
+						},
+						"linkCopied": {
+							"type": "string"
+						},
+						"titleLabel": {
+							"type": "string"
+						},
+						"titlePlaceholder": {
+							"type": "string"
+						},
+						"conflict": {
+							"type": "string"
+						},
+						"saveFailed": {
+							"type": "string"
+						},
+						"transitionNote": {
+							"type": "string"
+						},
+						"move": {
+							"type": "string"
+						},
+						"noTransitions": {
+							"type": "string"
+						},
+						"noStartDate": {
+							"type": "string"
+						},
+						"clearDate": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"copyLink",
+						"linkCopied",
+						"titleLabel",
+						"titlePlaceholder",
+						"conflict",
+						"saveFailed",
+						"transitionNote",
+						"move",
+						"noTransitions",
+						"noStartDate",
+						"clearDate"
+					]
 				}
 			},
 			"required": [
@@ -11041,7 +11097,8 @@
 				"journey",
 				"board",
 				"bulk",
-				"filter"
+				"filter",
+				"properties"
 			]
 		},
 		"portal": {
