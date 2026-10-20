@@ -8,7 +8,7 @@ import {
   Textarea,
 } from "@taskdesk/ui";
 import { TriangleAlert } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import type { WorkItemApproval } from "@/fetchers/approval/get-work-item-approvals";
@@ -70,6 +70,11 @@ function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
   const decide = useDecideApproval();
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState("");
+  // Opening the reject form moves focus into its note field (the Reject button unmounts).
+  const rejectNoteRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (rejectingId) rejectNoteRef.current?.focus();
+  }, [rejectingId]);
   // The Withdraw button unmounts once the refetch lands, which would drop focus to <body>.
   // After any settled withdrawal focus moves to the section heading, a stable target.
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -232,6 +237,8 @@ function WorkItemApprovals({ workItemKey }: { workItemKey: string }) {
                 rejectingId === approval.id ? (
                   <div className="flex w-full flex-col gap-2">
                     <Textarea
+                      ref={rejectNoteRef}
+                      maxLength={4000}
                       aria-label={t("workItems:detail.approvals.rejectNote")}
                       placeholder={t("workItems:detail.approvals.rejectNote")}
                       value={rejectNote}
