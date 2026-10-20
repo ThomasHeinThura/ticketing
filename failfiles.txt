@@ -1,2 +1,0 @@
-src/components/activity/comment-version-history.test.tsx
-src/components/command-palette/index.test.tsx
