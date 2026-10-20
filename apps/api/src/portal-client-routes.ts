@@ -13,6 +13,8 @@
 export const PORTAL_CLIENT_ROUTE_PATTERNS: readonly string[] = [
   "/",
   "/catalogue",
+  // Redirects to /sign-in on the client; kept because customers already have the link.
+  "/portal/sign-in",
   "/sign-in",
   "/submissions/$ref",
 ];

@@ -5608,6 +5608,27 @@
 						},
 						"savedViews": {
 							"type": "string"
+						},
+						"inbox": {
+							"type": "string"
+						},
+						"myWork": {
+							"type": "string"
+						},
+						"triage": {
+							"type": "string"
+						},
+						"settings": {
+							"type": "string"
+						},
+						"workItem": {
+							"type": "string"
+						},
+						"search": {
+							"type": "string"
+						},
+						"godMode": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -5617,7 +5638,14 @@
 						"invitations",
 						"more",
 						"backToBoard",
-						"savedViews"
+						"savedViews",
+						"inbox",
+						"myWork",
+						"triage",
+						"settings",
+						"workItem",
+						"search",
+						"godMode"
 					]
 				},
 				"projectList": {

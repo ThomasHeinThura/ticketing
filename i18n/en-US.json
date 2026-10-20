@@ -1390,7 +1390,14 @@
 			"invitations": "Invitations",
 			"more": "More",
 			"backToBoard": "Back to board",
-			"savedViews": "Saved views"
+			"savedViews": "Saved views",
+			"inbox": "Inbox",
+			"myWork": "My work",
+			"triage": "Triage",
+			"settings": "Settings",
+			"workItem": "Work item",
+			"search": "Search",
+			"godMode": "God Mode"
 		},
 		"projectList": {
 			"viewProject": "View Project",

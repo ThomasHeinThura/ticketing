@@ -621,22 +621,6 @@ test("sign-in screen @visual", async ({ page }) => {
   });
 });
 
-test("portal disabled notice @visual", async ({ page }) => {
-  await page.goto("http://127.0.0.1:4179/");
-  await expect(
-    page.getByText("Customer portal unavailable", { exact: true }),
-  ).toBeVisible();
-  await expect(page).toHaveScreenshot("portal-disabled.png", {
-    animations: "disabled",
-    caret: "hide",
-    fullPage: true,
-    scale: "css",
-    maxDiffPixels: 0,
-    threshold: 0,
-    includeAA: true,
-  });
-});
-
 test("work-item list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/work?layout=list");
@@ -1139,9 +1123,9 @@ test("work-item table screen @visual", async ({ page }) => {
 test("agent workspace home screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent");
-  await expect(
-    page.getByRole("heading", { name: "Workspace home" }),
-  ).toBeVisible();
+  // `/agent` home is kaneo's projects page inside the kaneo shell (sidebar + breadcrumb).
+  await expect(page.getByRole("button", { name: "Inbox" })).toBeVisible();
+  await expect(page.getByTestId("g13-projects-content")).toBeVisible();
   await expect(page).toHaveScreenshot("agent-workspace-home.png", {
     animations: "disabled",
     caret: "hide",

@@ -208,10 +208,12 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
     },
   });
 
-  const handleProjectClick = (projectId: string) => {
+  // v2 work items live behind /agent/projects/{key}/work, the same target as the
+  // sidebar's project links (nav-projects.tsx); the legacy board reads the old task table.
+  const handleProjectClick = (projectKey: string) => {
     navigate({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
-      params: { workspaceId, projectId },
+      to: "/agent/projects/$projectKey/work",
+      params: { projectKey },
     });
   };
 
@@ -402,7 +404,7 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
                       key={project.id}
                       id={project.id}
                       canReorder={canReorder}
-                      onClick={() => handleProjectClick(project.id)}
+                      onClick={() => handleProjectClick(project.slug)}
                     >
                       <TableCell className="py-3">
                         <div className="flex items-center gap-3">

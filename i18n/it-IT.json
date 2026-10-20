@@ -1391,7 +1391,14 @@
 			"invitations": "Inviti",
 			"more": "Altro",
 			"backToBoard": "Torna alla board",
-			"savedViews": "Saved views"
+			"savedViews": "Saved views",
+			"godMode": "God Mode",
+			"inbox": "Inbox",
+			"myWork": "My work",
+			"search": "Search",
+			"settings": "Settings",
+			"triage": "Triage",
+			"workItem": "Work item"
 		},
 		"projectList": {
 			"viewProject": "Vedi Progetto",

@@ -60,10 +60,7 @@ export function WorkspaceSwitcher() {
         await activateWorkspace(selectedWorkspace.id);
 
         setTimeout(() => {
-          navigate({
-            to: "/dashboard/workspace/$workspaceId",
-            params: { workspaceId: selectedWorkspace.id },
-          });
+          navigate({ to: "/agent" });
         }, 50);
       } catch (error) {
         console.error("Failed to switch workspace:", error);

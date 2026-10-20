@@ -34,10 +34,7 @@ export const Route = createFileRoute("/_layout/_authenticated/dashboard/")({
         activeWorkspaceId &&
         workspaces.some((ws) => ws.id === activeWorkspaceId)
       ) {
-        throw redirect({
-          to: "/dashboard/workspace/$workspaceId",
-          params: { workspaceId: activeWorkspaceId },
-        });
+        throw redirect({ to: "/agent" });
       }
 
       const firstWorkspace = workspaces[0];
@@ -49,10 +46,7 @@ export const Route = createFileRoute("/_layout/_authenticated/dashboard/")({
       // rather than becoming an unhandled promise rejection.
       activateWorkspace(firstWorkspace.id).catch(() => {});
 
-      throw redirect({
-        to: "/dashboard/workspace/$workspaceId",
-        params: { workspaceId: firstWorkspace.id },
-      });
+      throw redirect({ to: "/agent" });
     }
     throw redirect({ to: "/onboarding" });
   },

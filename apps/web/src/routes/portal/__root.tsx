@@ -41,15 +41,3 @@ function PortalError({ reset }: { reset: () => void }) {
     </PortalFrame>
   );
 }
-
-export function PortalUnavailableNotice() {
-  const { t } = useTranslation("portal");
-  return (
-    <PortalFrame>
-      <Alert variant="info">
-        <AlertTitle>{t("unavailable.title")}</AlertTitle>
-        <AlertDescription>{t("unavailable.description")}</AlertDescription>
-      </Alert>
-    </PortalFrame>
-  );
-}
