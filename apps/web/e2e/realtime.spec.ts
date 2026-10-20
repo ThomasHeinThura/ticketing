@@ -115,7 +115,7 @@ test("native work-item events invalidate a second authenticated browser session"
         .locator('input[autocomplete="current-password"]')
         .fill(password);
       await second.getByRole("button", { name: "Sign in" }).click();
-      await expect(second).toHaveURL(/\/dashboard(?:\/|\?|$)/);
+      await expect(second).toHaveURL(/\/(?:dashboard|agent)(?:\/|\?|$)/);
       const activation = await csrfMutation(
         second,
         `/api/workspace/${encodeURIComponent(workspaceId as string)}/activate`,

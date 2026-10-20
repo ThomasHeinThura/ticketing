@@ -259,19 +259,19 @@ export function SlaPolicyEditor({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <main className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
+      <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
         <PageTitle title={t("editor.title")} />
         <div role="status" aria-label={t("editor.loading")}>
           <Skeleton className="h-12 w-2/3" />
           <Skeleton className="mt-4 h-72 w-full" />
         </div>
-      </main>
+      </div>
     );
   }
 
   if (!isNew && (isError || !policy)) {
     return (
-      <main className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
+      <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
         <PageTitle title={t("editor.title")} />
         <Alert variant="error">
           <AlertTitle>{t("editor.loadErrorTitle")}</AlertTitle>
@@ -290,7 +290,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
             </Button>
           </AlertDescription>
         </Alert>
-      </main>
+      </div>
     );
   }
 
@@ -301,7 +301,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
           isNew ? t("editor.newTitle") : (policy?.name ?? t("editor.title"))
         }
       />
-      <main className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+      <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
             <Button
@@ -601,7 +601,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
             ) : null}
           </div>
         </form>
-      </main>
+      </div>
     </>
   );
 }

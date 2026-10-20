@@ -141,7 +141,8 @@ describe("pending action detail intent lifecycle", () => {
     // and shrank to its padding (64px wide), giving the w-full skeleton width 0.
     mocks.loading = true;
     render(<Harness />);
-    const main = document.querySelector("main");
+    // The shell's inset is the page's <main>; the page renders a busy div root inside it.
+    const main = document.querySelector('[aria-busy="true"]');
     expect(main?.className).toMatch(/\bw-full\b/u);
     expect(main?.getAttribute("aria-busy")).toBe("true");
     expect(document.querySelector('[data-slot="skeleton"]')).not.toBeNull();

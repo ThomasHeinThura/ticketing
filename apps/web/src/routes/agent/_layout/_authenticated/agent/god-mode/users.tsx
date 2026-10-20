@@ -248,7 +248,7 @@ function InstanceUsersPage() {
     actions.resetMfa.isPending;
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
+    <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
       <PageTitle title={t("instanceUsers:copy.d094be66b726")} />
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -569,7 +569,7 @@ function InstanceUsersPage() {
           onSubmit={() => void runAction(selected.data as InstanceUser, action)}
         />
       )}
-    </main>
+    </div>
   );
 }
 

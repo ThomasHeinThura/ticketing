@@ -62,12 +62,12 @@ function IdentityConnectionEditorRoute() {
     return (
       <>
         <PageTitle title={t("detail.title")} />
-        <main className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+        <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
           <div>
             <BackLink />
           </div>
           <IdentityAccessDenied />
-        </main>
+        </div>
       </>
     );
 
@@ -75,7 +75,7 @@ function IdentityConnectionEditorRoute() {
     return (
       <>
         <PageTitle title={t("detail.createTitle")} />
-        <main className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+        <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
           <div>
             <BackLink />
           </div>
@@ -91,7 +91,7 @@ function IdentityConnectionEditorRoute() {
             }
             onReload={() => {}}
           />
-        </main>
+        </div>
       </>
     );
   }
@@ -104,7 +104,7 @@ function IdentityConnectionEditorRoute() {
   return (
     <>
       <PageTitle title={connection?.displayName ?? t("detail.title")} />
-      <main className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+      <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
         <div>
           <BackLink />
         </div>
@@ -220,7 +220,7 @@ function IdentityConnectionEditorRoute() {
             </Tabs>
           </>
         ) : null}
-      </main>
+      </div>
     </>
   );
 }

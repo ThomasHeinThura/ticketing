@@ -1,9 +1,17 @@
 import { SidebarInset, SidebarProvider } from "@taskdesk/ui";
 import type React from "react";
-import type { ReactNode } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
+import { lazy, type ReactNode, Suspense } from "react";
 import { cn } from "@/lib/cn";
 import { useUserPreferencesStore } from "@/store/user-preferences";
+
+// The sidebar (workspace switcher, navigation, projects, notifications) loads beside the
+// page instead of in front of it, so a page's own content is never held behind the
+// sidebar's code (G11 work-list LCP).
+const AppSidebar = lazy(() =>
+  import("@/components/app-sidebar").then((module) => ({
+    default: module.AppSidebar,
+  })),
+);
 
 type LayoutProps = {
   children: ReactNode;
@@ -55,7 +63,16 @@ function Layout({ children, className }: LayoutProps) {
           } as React.CSSProperties
         }
       >
-        <AppSidebar />
+        <Suspense
+          fallback={
+            <div
+              aria-hidden="true"
+              className="hidden w-(--sidebar-width) shrink-0 md:block"
+            />
+          }
+        >
+          <AppSidebar />
+        </Suspense>
         <SidebarInset
           className={cn(
             "m-2 flex flex-1 flex-col overflow-auto rounded-xl border border-border/80 bg-background shadow-sm/5",

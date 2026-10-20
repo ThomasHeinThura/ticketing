@@ -193,7 +193,7 @@ function IntakeRoute() {
     organisation: { name: string };
   }>;
   return (
-    <main className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+    <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
       <PageTitle title={t("title")} />
       <header>
         <h1 className="font-semibold text-2xl">{t("title")}</h1>
@@ -537,6 +537,6 @@ function IntakeRoute() {
           )}
         </section>
       )}
-    </main>
+    </div>
   );
 }

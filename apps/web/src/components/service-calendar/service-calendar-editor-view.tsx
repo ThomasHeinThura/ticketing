@@ -52,19 +52,19 @@ export function ServiceCalendarEditorView({
 
   if (loading) {
     return (
-      <main className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
+      <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
         <PageTitle title={t("editor.pageTitle")} />
         <div role="status" aria-label={t("editor.loading")}>
           <Skeleton className="h-12 w-2/3" />
           <Skeleton className="mt-4 h-72 w-full" />
         </div>
-      </main>
+      </div>
     );
   }
 
   if (isCalendarError) {
     return (
-      <main className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
+      <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
         <PageTitle title={t("editor.pageTitle")} />
         <Alert variant="error">
           <AlertTitle>{t("editor.loadErrorTitle")}</AlertTitle>
@@ -83,7 +83,7 @@ export function ServiceCalendarEditorView({
             </Button>
           </AlertDescription>
         </Alert>
-      </main>
+      </div>
     );
   }
 
@@ -96,7 +96,7 @@ export function ServiceCalendarEditorView({
             : (calendar?.name ?? t("editor.pageTitle"))
         }
       />
-      <main className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+      <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-2">
             <Button
@@ -281,7 +281,7 @@ export function ServiceCalendarEditorView({
             </AlertDialogFooter>
           </AlertDialogPopup>
         </AlertDialog>
-      </main>
+      </div>
     </>
   );
 }
