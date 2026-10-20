@@ -1,7 +1,8 @@
 import { SidebarInset, SidebarProvider } from "@taskdesk/ui";
 import type React from "react";
-import { lazy, type ReactNode, Suspense } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 // The sidebar (workspace switcher, navigation, projects, notifications) loads beside the
@@ -51,6 +52,24 @@ function LayoutContent({ children, className }: ContentProps) {
 
 function Layout({ children, className }: LayoutProps) {
   const { sidebarDefaultOpen } = useUserPreferencesStore();
+  // The page paints first; the sidebar mounts once the main thread is idle (G11).
+  const [showSidebar, setShowSidebar] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void afterFirstPaint().then(() => {
+      if (!cancelled) setShowSidebar(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const placeholder = sidebarDefaultOpen ? (
+    // Same width as the sidebar it stands in for (none when collapsed), so nothing shifts.
+    <div
+      aria-hidden="true"
+      className="hidden w-(--sidebar-width) shrink-0 md:block"
+    />
+  ) : null;
 
   return (
     <div className="flex w-full bg-background">
@@ -63,20 +82,13 @@ function Layout({ children, className }: LayoutProps) {
           } as React.CSSProperties
         }
       >
-        <Suspense
-          fallback={
-            // Same width as the sidebar it stands in for (none when collapsed), so
-            // nothing shifts when it loads.
-            sidebarDefaultOpen ? (
-              <div
-                aria-hidden="true"
-                className="hidden w-(--sidebar-width) shrink-0 md:block"
-              />
-            ) : null
-          }
-        >
-          <AppSidebar />
-        </Suspense>
+        {showSidebar ? (
+          <Suspense fallback={placeholder}>
+            <AppSidebar />
+          </Suspense>
+        ) : (
+          placeholder
+        )}
         <SidebarInset
           className={cn(
             "m-2 flex flex-1 flex-col overflow-auto rounded-xl border border-border/80 bg-background shadow-sm/5",
