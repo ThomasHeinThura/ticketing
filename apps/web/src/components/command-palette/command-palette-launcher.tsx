@@ -8,6 +8,7 @@ import {
 } from "react";
 import { shortcuts } from "@/constants/shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { waitsForPrimaryContent } from "@/lib/after-primary-content";
 import type { CommandPaletteIntent, CommandPaletteRequest } from "./index";
 
 const CommandPalette = lazy(async () => {
@@ -84,10 +85,7 @@ export default function CommandPaletteLauncher() {
     // On the heavy work and board screens, wait for their real primary content
     // paint before warming the closed palette. Explicit shortcut intent still
     // loads immediately through `requested`.
-    const path = window.location.pathname;
-    const waitsForPrimaryContent =
-      (path.includes("/agent/projects/") && path.endsWith("/work")) ||
-      path.endsWith("/board");
+    const waitsForPrimary = waitsForPrimaryContent(window.location.pathname);
     let firstFrame: number | undefined;
     let secondFrame: number | undefined;
     let observer: MutationObserver | undefined;
@@ -116,7 +114,7 @@ export default function CommandPaletteLauncher() {
         });
       });
     };
-    if (waitsForPrimaryContent) {
+    if (waitsForPrimary) {
       if (document.querySelector("[data-primary-content-ready='true']")) {
         mountAfterCommit();
       } else {

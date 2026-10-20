@@ -472,7 +472,6 @@ export {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarInput,
-  SidebarInset,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuBadge,
@@ -482,12 +481,15 @@ export {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarProvider,
   SidebarRail,
   SidebarSeparator,
+} from "./components/sidebar";
+export {
+  SidebarInset,
+  SidebarProvider,
   SidebarTrigger,
   useSidebar,
-} from "./components/sidebar";
+} from "./components/sidebar-shell";
 export { Skeleton } from "./components/skeleton";
 export { Slider, SliderValue } from "./components/slider";
 export { Spinner } from "./components/spinner";

@@ -1,8 +1,8 @@
 import { SidebarInset, SidebarProvider } from "@taskdesk/ui";
 import type React from "react";
 import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { cn } from "@/lib/cn";
-import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 // The sidebar (workspace switcher, navigation, projects, notifications) loads beside the
@@ -55,12 +55,13 @@ let sidebarReady = false;
 
 function Layout({ children, className }: LayoutProps) {
   const { sidebarDefaultOpen } = useUserPreferencesStore();
-  // The page paints first; the sidebar mounts once the main thread is idle (G11).
+  // The page paints first (on the work list and boards, its rows); the sidebar mounts once
+  // the main thread is idle after that (G11).
   const [showSidebar, setShowSidebar] = useState(sidebarReady);
   useEffect(() => {
     if (sidebarReady) return;
     let cancelled = false;
-    void afterFirstPaint().then(() => {
+    void afterPrimaryContent().then(() => {
       sidebarReady = true;
       if (!cancelled) setShowSidebar(true);
     });

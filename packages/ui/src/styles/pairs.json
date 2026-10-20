@@ -23144,17 +23144,6 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/common/workspace-layout.tsx:WorkspaceLayout",
-          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/kbd.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
           "apps/web/src/components/notification/notification-dropdown.tsx:<module>",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
@@ -23377,6 +23366,17 @@
         "chain": [
           "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
           "SheetContent->packages/ui/src/components/sheet.tsx:SheetPopup"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/kbd.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/sidebar-toggle-tooltip.tsx:SidebarToggleTooltip",
+          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
         "backdropLayers": []
       }
@@ -26219,17 +26219,6 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/common/workspace-layout.tsx:WorkspaceLayout",
-          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/kbd.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
           "apps/web/src/components/notification/notification-dropdown.tsx:<module>",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
@@ -26452,6 +26441,17 @@
         "chain": [
           "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
           "SheetContent->packages/ui/src/components/sheet.tsx:SheetPopup"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/kbd.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/sidebar-toggle-tooltip.tsx:SidebarToggleTooltip",
+          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
         "backdropLayers": []
       }
@@ -27917,21 +27917,6 @@
         "chain": [
           "packages/ui/src/components/kbd.tsx:Kbd",
           "jsx:kbd[0]>bg-muted",
-          "apps/web/src/components/common/workspace-layout.tsx:WorkspaceLayout",
-          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
-        ],
-        "backdropLayers": [
-          "bg-popover"
-        ]
-      },
-      {
-        "id": "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/kbd.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/kbd.tsx:Kbd",
-          "jsx:kbd[0]>bg-muted",
           "apps/web/src/components/notification/notification-dropdown.tsx:<module>",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
@@ -27963,6 +27948,21 @@
           "packages/ui/src/components/kbd.tsx:Kbd",
           "jsx:kbd[0]>bg-muted",
           "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
+          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/kbd.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/kbd.tsx:Kbd",
+          "jsx:kbd[0]>bg-muted",
+          "apps/web/src/components/common/sidebar-toggle-tooltip.tsx:SidebarToggleTooltip",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
         "backdropLayers": [
@@ -28103,21 +28103,6 @@
         "chain": [
           "packages/ui/src/components/kbd.tsx:Kbd",
           "jsx:kbd[0]>bg-muted",
-          "apps/web/src/components/common/workspace-layout.tsx:WorkspaceLayout",
-          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
-        ],
-        "backdropLayers": [
-          "bg-popover"
-        ]
-      },
-      {
-        "id": "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/kbd.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/kbd.tsx:Kbd",
-          "jsx:kbd[0]>bg-muted",
           "apps/web/src/components/notification/notification-dropdown.tsx:<module>",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
@@ -28149,6 +28134,21 @@
           "packages/ui/src/components/kbd.tsx:Kbd",
           "jsx:kbd[0]>bg-muted",
           "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
+          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/kbd.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/kbd.tsx:Kbd",
+          "jsx:kbd[0]>bg-muted",
+          "apps/web/src/components/common/sidebar-toggle-tooltip.tsx:SidebarToggleTooltip",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
         "backdropLayers": [
