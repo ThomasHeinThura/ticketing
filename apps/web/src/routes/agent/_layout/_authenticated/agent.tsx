@@ -1,9 +1,15 @@
-import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Navigate,
+  Outlet,
+  useLocation,
+} from "@tanstack/react-router";
 import { Skeleton } from "@taskdesk/ui";
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import WorkspaceLayout from "@/components/common/workspace-layout";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 
 // `/agent` home is kaneo's own projects page, and every other `/agent/*` page renders inside
 // kaneo's layout (AppSidebar + SidebarInset + breadcrumb header), the same shell as
@@ -34,14 +40,25 @@ export function agentSectionTitleKey(pathname: string): string {
 }
 
 function AgentHome() {
-  const { data: workspace, isLoading } = useActiveWorkspace();
+  const { t } = useTranslation();
+  const { data: activeWorkspace, isLoading } = useActiveWorkspace();
+  const { data: workspaces, isLoading: isWorkspacesLoading } =
+    useGetWorkspaces();
   const fallback = (
-    <div className="flex flex-col gap-4 p-6">
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-10 w-full" />
-    </div>
+    <WorkspaceLayout title={t("navigation:sidebar.projects")}>
+      <div className="flex flex-col gap-4 p-6">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    </WorkspaceLayout>
   );
-  if (!workspace) return isLoading ? fallback : null;
+  // No active workspace yet (activation still landing): show the first one. No workspace at
+  // all: onboarding, as /dashboard does. Never bounce back to /dashboard, which would loop.
+  const workspace = activeWorkspace ?? workspaces?.[0];
+  if (!workspace) {
+    if (isLoading || isWorkspacesLoading) return fallback;
+    return <Navigate to="/onboarding" />;
+  }
   return (
     <Suspense fallback={fallback}>
       <ProjectsPage workspaceId={workspace.id} />
