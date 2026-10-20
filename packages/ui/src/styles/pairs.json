@@ -7306,11 +7306,19 @@
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[2]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[3]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#1",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#2",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/ul[0]/li[0]/Paperclip[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-journey.tsx::EditSection::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-journey.tsx::TransitionSection::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-journey.tsx::TransitionSection::section[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/work-item/work-item-journey.tsx::AssignmentSection::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-journey.tsx::AssignmentSection::section[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#1",
+      "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
       "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -9325,6 +9333,61 @@
         "backdropLayers": []
       },
       {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#2",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/ul[0]/li[0]/Paperclip[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
         "id": "apps/web/src/components/work-item/work-item-journey.tsx::EditSection::section[0]/p[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-journey.tsx",
         "surfaceContext": "caller-chain",
@@ -9376,6 +9439,39 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
           "jsx:div[0]/WorkItemJourney[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-sla.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemSla[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/components/work-item/work-item-sla.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemSla[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-sla.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemSla[0]"
         ],
         "backdropLayers": []
       },
@@ -10437,11 +10533,19 @@
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[2]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[3]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#1",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#2",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/ul[0]/li[0]/Paperclip[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-journey.tsx::EditSection::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-journey.tsx::TransitionSection::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-journey.tsx::TransitionSection::section[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/work-item/work-item-journey.tsx::AssignmentSection::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-journey.tsx::AssignmentSection::section[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#1",
+      "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
       "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -12456,6 +12560,61 @@
         "backdropLayers": []
       },
       {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#2",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/ul[0]/li[0]/Paperclip[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
         "id": "apps/web/src/components/work-item/work-item-journey.tsx::EditSection::section[0]/p[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-journey.tsx",
         "surfaceContext": "caller-chain",
@@ -12507,6 +12666,39 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
           "jsx:div[0]/WorkItemJourney[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-sla.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemSla[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/components/work-item/work-item-sla.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemSla[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-sla.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemSla[0]"
         ],
         "backdropLayers": []
       },
@@ -34350,6 +34542,7 @@
     "surfaceContext": "nearest-opaque-ancestor",
     "occurrenceIds": [
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/p[0]::text-destructive-foreground#0",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0"
     ],
     "occurrences": [
@@ -34361,6 +34554,17 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
           "jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
         ],
         "backdropLayers": []
       },
@@ -34449,6 +34653,7 @@
     "surfaceContext": "nearest-opaque-ancestor",
     "occurrenceIds": [
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/p[0]::text-destructive-foreground#0",
+      "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0"
     ],
     "occurrences": [
@@ -34460,6 +34665,17 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
           "jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemAttachments[0]"
         ],
         "backdropLayers": []
       },
