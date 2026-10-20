@@ -3,7 +3,6 @@ import type React from "react";
 import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { cn } from "@/lib/cn";
-import { markSidebarShown } from "@/lib/sidebar-shown";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 // The sidebar (workspace switcher, navigation, projects, notifications) loads beside the
@@ -49,12 +48,6 @@ function LayoutContent({ children, className }: ContentProps) {
       <div className="h-full">{children}</div>
     </div>
   );
-}
-
-/** Renders with the sidebar (inside its Suspense boundary) and reports it shown. */
-function SidebarShown() {
-  useEffect(() => markSidebarShown(), []);
-  return null;
 }
 
 // Once the sidebar has mounted after a first paint, later pages show it straight away.
@@ -104,7 +97,6 @@ function Layout({ children, className }: LayoutProps) {
         {showSidebar ? (
           <Suspense fallback={placeholder}>
             <AppSidebar />
-            <SidebarShown />
           </Suspense>
         ) : (
           placeholder

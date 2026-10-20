@@ -14,7 +14,7 @@ export function markSidebarShown(): void {
 }
 
 /** Resolves when the sidebar has rendered, or after `timeoutMs`, whichever is first. */
-export function whenSidebarShown(timeoutMs = 2_000): Promise<void> {
+export function whenSidebarShown(timeoutMs = 2_500): Promise<void> {
   return Promise.race([
     shown,
     new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),

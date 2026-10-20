@@ -50,6 +50,7 @@ vi.mock("@/hooks/use-keyboard-shortcuts", () => ({
 afterEach(() => {
   cleanup();
   mocks.sidebarShownPromise = undefined;
+  mocks.sidebarShown.mockClear();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
   document.querySelector("[data-primary-content-ready]")?.remove();
@@ -184,6 +185,44 @@ describe("CommandPaletteLauncher warm mount", () => {
 
     await act(async () => sidebarRendered());
     expect(frames).toHaveLength(1);
+  });
+
+  it("opens on ⌘K while it waits for the sidebar, and schedules no warm mount afterwards", async () => {
+    window.history.replaceState({}, "", "/agent/projects/OPS/work");
+    const frames = mockFrames();
+    let sidebarRendered: () => void = () => {};
+    mocks.sidebarShownPromise = new Promise<void>((resolve) => {
+      sidebarRendered = resolve;
+    });
+    const content = document.createElement("div");
+    content.dataset.primaryContentReady = "true";
+    document.body.append(content);
+    render(<CommandPaletteLauncher />);
+    await act(async () => {});
+
+    const openPalette =
+      mocks.registered?.modifierShortcuts?.[shortcuts.palette.prefix]?.[
+        shortcuts.palette.open
+      ];
+    act(() => openPalette?.());
+    await waitFor(() =>
+      expect(screen.getByTestId("palette-instance")).toHaveAttribute(
+        "data-open",
+        "true",
+      ),
+    );
+
+    await act(async () => sidebarRendered());
+    expect(frames).toHaveLength(0);
+  });
+
+  it("does not wait for the sidebar outside the work list and boards", async () => {
+    window.history.replaceState({}, "", "/agent/inbox");
+    mockFrames();
+    vi.stubGlobal("requestIdleCallback", () => 3);
+    render(<CommandPaletteLauncher />);
+    await act(async () => {});
+    expect(mocks.sidebarShown).not.toHaveBeenCalled();
   });
 
   it("cancels an outstanding idle callback on unmount", async () => {
