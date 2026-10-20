@@ -1324,6 +1324,10 @@ test("workspace settings members screen @visual", async ({ page }) => {
   await page.goto("/agent/settings/members");
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(page.getByRole("table")).toBeVisible();
+  // Kaneo's members page sits in the app shell, whose sidebar mounts after the page.
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("workspace-settings-members.png", {
     animations: "disabled",
     caret: "hide",

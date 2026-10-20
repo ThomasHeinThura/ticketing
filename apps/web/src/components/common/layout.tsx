@@ -85,9 +85,13 @@ function Layout({ children, className }: LayoutProps) {
   }, []);
   const placeholder = sidebarDefaultOpen ? (
     // Same width as the sidebar it stands in for (none when collapsed), so nothing shifts.
+    // `peer` + `data-variant="inset"` give the inset the same margins the real inset sidebar
+    // does, so nothing shifts when it arrives.
     <div
       aria-hidden="true"
-      className="hidden w-(--sidebar-width) shrink-0 md:block"
+      className="peer hidden w-(--sidebar-width) shrink-0 md:block"
+      data-variant="inset"
+      data-state="expanded"
     />
   ) : null;
 
