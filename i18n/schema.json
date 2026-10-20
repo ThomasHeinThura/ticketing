@@ -10089,6 +10089,48 @@
 								},
 								"withdrawFor": {
 									"type": "string"
+								},
+								"request": {
+									"type": "string"
+								},
+								"nothingToRequest": {
+									"type": "string"
+								},
+								"forTransition": {
+									"type": "string"
+								},
+								"pickTransition": {
+									"type": "string"
+								},
+								"kindLabel": {
+									"type": "string"
+								},
+								"pickApprover": {
+									"type": "string"
+								},
+								"sendRequest": {
+									"type": "string"
+								},
+								"requestFailed": {
+									"type": "string"
+								},
+								"approve": {
+									"type": "string"
+								},
+								"reject": {
+									"type": "string"
+								},
+								"rejectNote": {
+									"type": "string"
+								},
+								"confirmReject": {
+									"type": "string"
+								},
+								"decideErrorTitle": {
+									"type": "string"
+								},
+								"decideFailed": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -10113,7 +10155,21 @@
 								"withdrawForbidden",
 								"withdrawFailed",
 								"withdrawn",
-								"withdrawFor"
+								"withdrawFor",
+								"request",
+								"nothingToRequest",
+								"forTransition",
+								"pickTransition",
+								"kindLabel",
+								"pickApprover",
+								"sendRequest",
+								"requestFailed",
+								"approve",
+								"reject",
+								"rejectNote",
+								"confirmReject",
+								"decideErrorTitle",
+								"decideFailed"
 							]
 						},
 						"sla": {

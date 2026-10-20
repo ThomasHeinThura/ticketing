@@ -263,7 +263,7 @@ function WorkItemDetail({
 
       <Separator />
 
-      <WorkItemApprovals workItemKey={workItemKey} />
+      <WorkItemApprovals workItemKey={workItemKey} projectId={item.projectId} />
 
       <Separator />
 
