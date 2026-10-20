@@ -364,11 +364,6 @@ async function upsertScopedMembership(
   `);
 }
 
-/**
- * Seeds the SIT login accounts (published test passwords, an owner with `sees_all`) and marks
- * instance setup complete. It must never touch a real database, so it refuses unless the
- * caller passes `--sit` explicitly; `scripts/deploy.sh` does so only in `local` mode.
- */
 const SIT_REQUEST_TYPES = [
   {
     name: "Access request",
@@ -433,7 +428,10 @@ async function seedSitRequestTypes(input: {
   acmeOrgId: string;
   workItemTypeId: string | null;
 }) {
-  if (!input.workItemTypeId) return;
+  if (!input.workItemTypeId)
+    throw new Error(
+      "SIT workspace has no work item type; request types cannot be seeded.",
+    );
   const [admin] = await db
     .select({ id: schema.personTable.id })
     .from(schema.personTable)
@@ -470,7 +468,7 @@ async function seedSitRequestTypes(input: {
             customerVisible: true,
             forcePrivate: false,
             position,
-          } as Parameters<typeof createRequestType>[0],
+          },
           admin.id,
         )
       ).id;
@@ -482,6 +480,11 @@ async function seedSitRequestTypes(input: {
   }
 }
 
+/**
+ * Seeds the SIT login accounts (published test passwords, an owner with `sees_all`) and marks
+ * instance setup complete. It must never touch a real database, so it refuses unless the
+ * caller passes `--sit` explicitly; `scripts/deploy.sh` does so only in `local` mode.
+ */
 export async function runSitUserSeed(argv: readonly string[] = process.argv) {
   if (!argv.includes("--sit")) {
     throw new Error(

@@ -33,7 +33,8 @@ The SIT seed accounts it added were kept.
   `/agent` copy is often the mock.
 - **Mock screens.** `components/agent/p1-core-and-settings.tsx` (from #861) still backs
   Inbox and several `/agent/settings` pages with hardcoded data.
-- **Thin SIT seed.** There are no request types or submissions.
+- **SIT seed** has accounts, Acme, two published request types and intake enabled, but no
+  seeded submissions or realistic work-item volume yet.
 
 ## Next
 

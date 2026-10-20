@@ -27,12 +27,11 @@ design rule is [Integrate, don't add](../02-design/design-principles.md#integrat
   routes. Nine of those duplicate real kaneo `/dashboard/*` pages.
 - **Real but unlinked:** triage, request types, SLA policies, calendars, pending actions, God
   Mode authentication and SCIM.
-- **SIT config:**
-  - The agent host is `ticket.localhost` in the examples but `ticketing.localhost` in SIT.
-  - Portal URLs lack `:8443`, which breaks portal auth detection.
-  - The http→https redirect drops the port.
-  - Seeding runs on the host, and a failure is only a warning.
-  - No request types are seeded, so the portal has nothing to submit.
+- **SIT config:** the redirect, fatal seeding and request-type seed are fixed by batch 3.
+  Still open:
+  - SIT depends on an untracked Traefik file for `ticketing.localhost`.
+  - Seeds run on the host, not in the container.
+  - There are no seeded submissions.
 
 ## Batches (one PR each, in order)
 
@@ -40,7 +39,7 @@ design rule is [Integrate, don't add](../02-design/design-principles.md#integrat
 | --- | --- | --- |
 | 1 | **Lean reset + revert #863** (#864) | `main` green, docs true |
 | 2 | **Kaneo shell on `/agent`, entry points, portal sign-in** (#865) | Every `/agent` page has the sidebar; `/portal/sign-in` works |
-| 3 | **SIT config and seed** | `scripts/deploy.sh local` gives working agent *and* portal logins with seeded request types, submissions and work items, on `:8443`, and the redirect keeps the port. Seeds run in the container and fail loudly. The env example and `environments.md` match. |
+| 3 | **SIT config and seed** (#866) | `scripts/deploy.sh local` gives working agent *and* portal logins and published request types on `:8443`, the redirect keeps the port, and seeding fails loudly. Follow-ups: seeds in the container, seeded submissions, `TASKDESK_AGENT_HOST` instead of the untracked Traefik file. |
 | 4 | **Settings: one kaneo settings shell** | Every `/agent/settings/*` item mounts the real kaneo component inside kaneo's settings layout (account info, preferences, security, notifications, API keys, workspace general, labels, members, roles, project general). The sidebar links triage, request types, SLA, calendars and pending actions. The mock screens and `/dashboard/settings/*` redirect to `/agent/settings/*`. The p1 mock module is deleted. |
 | 5 | **Work item completeness** on `work_item` | The detail page and side pane get an SLA panel (`/work-items/{key}/sla`), approvals (request, decide, withdraw), attachments, a relations/parent editor and inline field editing, all with kaneo's task components. My work gets an approvals lens (`/me/approvals`). Inbox uses the notification API. The legacy `/dashboard/.../task` and board routes redirect to `/agent`. |
 | 6 | **Portal** | A kaneo-style portal shell (top bar, logo, nav, theme, sign-out) with home, new request (catalogue), my requests (`GET /portal/submissions`), request detail, approvals (`/portal/approvals`), and account. |
