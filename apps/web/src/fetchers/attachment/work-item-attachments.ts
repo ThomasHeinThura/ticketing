@@ -37,12 +37,23 @@ export async function uploadWorkItemAttachment(key: string, file: File) {
     throw new HttpError(presign.status, await readErrorDetail(presign));
   }
   const { attachmentId, uploadUrl, uploadHeaders } = await presign.json();
-  const put = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: uploadHeaders,
-    body: file,
-  });
-  if (!put.ok) throw new HttpError(put.status, "Upload failed");
+  let put: Response;
+  try {
+    put = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: uploadHeaders,
+      body: file,
+    });
+  } catch (cause) {
+    await discardPending(attachmentId);
+    throw cause;
+  }
+  if (!put.ok) {
+    // A pending row still counts toward the item's attachment limit; remove it.
+    await discardPending(attachmentId);
+    // No server message to show; the caller falls back to its translated text.
+    throw new HttpError(put.status, "");
+  }
   const complete = await client.attachments[":id"].complete.$post({
     param: { id: attachmentId },
   });
@@ -50,6 +61,14 @@ export async function uploadWorkItemAttachment(key: string, file: File) {
     throw new HttpError(complete.status, await readErrorDetail(complete));
   }
   return complete.json();
+}
+
+async function discardPending(attachmentId: string) {
+  try {
+    await client.attachments[":id"].$delete({ param: { id: attachmentId } });
+  } catch {
+    // Best effort; the upload already failed and that is what the user is told.
+  }
 }
 
 /** `DELETE /api/attachments/{id}` (soft delete, uploader only). */

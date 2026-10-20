@@ -10,6 +10,7 @@ import {
 } from "@/fetchers/attachment/work-item-attachments";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { formatDateMedium } from "@/lib/format";
+import { HttpError } from "@/lib/http-error";
 
 function formatBytes(size: number) {
   if (size < 1024) return `${size} B`;
@@ -40,7 +41,7 @@ export default function WorkItemAttachments({
     onMutate: () => setError(null),
     onError: (cause) =>
       setError(
-        cause instanceof Error
+        cause instanceof HttpError && cause.status < 500 && cause.message
           ? cause.message
           : t("workItems:detail.attachments.uploadFailed"),
       ),
@@ -50,7 +51,7 @@ export default function WorkItemAttachments({
     mutationFn: deleteAttachment,
     onError: (cause) =>
       setError(
-        cause instanceof Error
+        cause instanceof HttpError && cause.status < 500 && cause.message
           ? cause.message
           : t("workItems:detail.attachments.deleteFailed"),
       ),
