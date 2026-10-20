@@ -738,10 +738,6 @@ test("request type catalogue editor @visual", async ({ page }) => {
   await page.goto(
     "/agent/settings/request-types?requestTypeId=visual-request-type",
   );
-  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
-  await expect(
-    page.getByRole("button", { name: "Help Desk", exact: true }),
-  ).toBeVisible();
   // The settings shell has its own "Settings" h1; target the page's.
   await expect(
     page.getByRole("heading", { level: 1, name: "Request types" }),
@@ -926,10 +922,6 @@ test("authentication provider editor screen @visual", async ({ page }) => {
 test("pending actions list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/profile/pending-actions");
-  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
-  await expect(
-    page.getByRole("button", { name: "Help Desk", exact: true }),
-  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "My pending actions", exact: true }),
   ).toBeVisible();
@@ -954,10 +946,6 @@ test("pending action detail screen @visual", async ({ page }) => {
   await page.goto(
     "/agent/settings/profile/pending-actions/visual-pending-action",
   );
-  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
-  await expect(
-    page.getByRole("button", { name: "Help Desk", exact: true }),
-  ).toBeVisible();
   await expect(
     page.getByRole("heading", {
       name: "Approve person deactivation",
@@ -980,10 +968,6 @@ test("pending action detail screen @visual", async ({ page }) => {
 test("service calendar list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/calendars");
-  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
-  await expect(
-    page.getByRole("button", { name: "Help Desk", exact: true }),
-  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Service calendars" }),
   ).toBeVisible();
@@ -1004,10 +988,6 @@ test("service calendar list screen @visual", async ({ page }) => {
 test("service calendar editor screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/calendars/visual-calendar");
-  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
-  await expect(
-    page.getByRole("button", { name: "Help Desk", exact: true }),
-  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Support coverage" }),
   ).toBeVisible();
@@ -1026,10 +1006,6 @@ test("service calendar editor screen @visual", async ({ page }) => {
 test("SLA policy list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/sla-policies");
-  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
-  await expect(
-    page.getByRole("button", { name: "Help Desk", exact: true }),
-  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "SLA policies" }),
   ).toBeVisible();
@@ -1051,10 +1027,6 @@ test("SLA policy list screen @visual", async ({ page }) => {
 test("SLA policy editor screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/sla-policies/visual-sla-policy");
-  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
-  await expect(
-    page.getByRole("button", { name: "Help Desk", exact: true }),
-  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Priority support" }),
   ).toBeVisible();
