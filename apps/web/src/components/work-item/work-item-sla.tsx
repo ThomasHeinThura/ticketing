@@ -47,13 +47,13 @@ export default function WorkItemSla({ workItemKey }: { workItemKey: string }) {
         <p className="text-muted-foreground text-sm" role="status">
           {t("common:empty.loading")}
         </p>
-      ) : query.isError || !query.data ? (
+      ) : query.isError || !Array.isArray(query.data?.metrics) ? (
         <p className="text-muted-foreground text-sm">
           {t("workItems:detail.sla.unavailable")}
         </p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
-          {query.data.metrics.map((metric) => (
+          {(query.data?.metrics ?? []).map((metric) => (
             <li
               key={metric.metric}
               className="flex flex-col gap-2 rounded-lg border border-border p-3"
