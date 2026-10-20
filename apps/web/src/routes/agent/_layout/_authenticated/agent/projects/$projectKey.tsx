@@ -1,5 +1,13 @@
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
-import { ProjectOverviewScreen } from "@/components/agent/p1-core-and-settings";
+import { lazy, Suspense } from "react";
+
+// Lazy: this route is the parent of the work list, and a static import put the whole
+// settings-screen module on the work list's critical path (G11 work-list LCP).
+const ProjectOverviewScreen = lazy(() =>
+  import("@/components/agent/p1-core-and-settings").then((module) => ({
+    default: module.ProjectOverviewScreen,
+  })),
+);
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/projects/$projectKey",
@@ -20,5 +28,9 @@ function ProjectRootRoute() {
   ) {
     return <Outlet />;
   }
-  return <ProjectOverviewScreen projectKey={projectKey} />;
+  return (
+    <Suspense fallback={null}>
+      <ProjectOverviewScreen projectKey={projectKey} />
+    </Suspense>
+  );
 }
