@@ -342,7 +342,7 @@ export function LabelCatalogue({
   return (
     <>
       <PageTitle title={t("settings:workspaceLabels.pageTitle")} />
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-8 bg-card">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold">
             {t("settings:workspaceLabels.title", { defaultValue: "Labels" })}

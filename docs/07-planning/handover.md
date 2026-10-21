@@ -31,7 +31,7 @@ are authorized. No P5–P7, production deployment or bulk branch/worktree deleti
 
 ## Accepted code and current branches
 
-Live accepted main: `948cc5c05c480b438f3d25cb22cd972f336e951a` (#883).
+Live accepted main: `0f121c4e3c46898a840bf70e962be76a6ac5e2c3` (#885).
 The primary checkout has been refreshed to it without discarding work. Do not delete other
 worktrees or have two sessions edit the same file. Inspect live GitHub before continuing.
 
@@ -148,8 +148,9 @@ nullable project_id; both now explicitly select NULL, with original scope predic
 Independent review also found a legacy bulk lookup treating project catalogues as workspace
 labels; it now excludes project_id and a positive-control/hidden-source negative bulk-route
 regression is authored. Affected actual bulk/repository/race tests must pass before merge. Logs:
-/tmp/taskdesk-project-labels-34-pg1.log and -pg2.log. Static job failed Chromium download
-DNS resolution, not source lint. Record new-head results; never manufacture clearance.
+/tmp/taskdesk-project-labels-34-pg1.log and -pg2.log. Static failed the contrast occurrence manifest after the label-screen extraction;
+Playwright download DNS warnings recovered and were not the failing step. Update source
+occurrence bindings and rerun the actual contrast gate; do not waive it. Record new-head results; never manufacture clearance.
 
 [#885 sampled CPU timestamp repair](https://github.com/ThomasHeinThura/ticketing/pull/885)
 is separate, worktree ~/.codex/worktrees/taskdesk-profile-sample-timestamps, branch
@@ -160,3 +161,15 @@ passed; palette retained one profile with 2,137 intervals. Exact-head review5600
 Hosted CPU attribution, alignment and G11 remain required. This is diagnostic evidence,
 not a fix claim for #880's timing or multiarch release. Logs:
 /tmp/taskdesk-profile-clock-full-diagnostic.log and -native-diagnostic-2.log.
+
+Latest update: #885 is merged to main0f121c4e after all18 required checks, review5600302361,
+G11 22/22 and both hosted CPU diagnostics2/2. #880 imported it at reviewed046e4964;
+17/18 checks passed but palette timing243.2ms failed. Log /tmp/taskdesk-image-046-g11.log;
+retained sampled palette profile /tmp/taskdesk-image-046-diagnostic. Assignment diagnostic
+clock alignment failed separately. Diagnose sampled interval before further app changes.
+#884 head329cfe36 passed17/18 (PG,realbrowser,G8,G11), with contrast manifest the only failure.
+Refreshed12 source occurrence groups, all418 pairs/thresholds intact. Declared the catalogue's
+already-computed bg-card backdrop explicitly, restoring subtitle coverage; independent full
+contrast check passed. Workspace controlled light/dark paint was identical; project had
+one RGB-rounding pixel outside the catalogue on the Projects tab. Hosted G8 stays strict.
+Final repair/import review and exact-head CI remain required; no stage/SIT acceptance.

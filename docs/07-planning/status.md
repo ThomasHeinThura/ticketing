@@ -1,7 +1,7 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `948cc5c0`; primary checkout refreshed to that source.
+Current inspected GitHub main: `0f121c4e`; primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
@@ -66,10 +66,14 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   run found an API-path ambiguity and two legacy task-label insert projections needing the
   new nullable column; repairs are prepared, including a reviewed legacy-bulk catalogue
   isolation finding and regression. Five intended Linux baselines were inspected.
-- #885 repairs signed CPU sample timestamp reconstruction. Twenty unit tests and both
-  native source-bound diagnostics passed with sampled profiles retained. Independent review
-  is clean; hosted attribution/alignment and required checks remain pending. This does not
-  close #880's failed performance budget.
+- #885 is merged on reviewed `5e201dbe` after all 18 required checks passed. Both hosted
+  CPU diagnostics passed with sampled profiles retained; G11 passed 22/22. #880 still
+  requires a performance repair: reviewed `046e4964` passed 17/18 checks but palette timing
+  failed at 243.2 ms against 200 ms. No blind rerun or release-fix claim.
+- #884 reviewed `329cfe36` passed 17/18 checks, including PostgreSQL, real browser, G8 and
+  G11. Static failed stale contrast occurrence bindings. The source-grounded repair and
+  explicit existing `bg-card` surface passed all 418 native contrast pairs and independent
+  review; final-head hosted checks remain required.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
   constraints. It is a dated snapshot, not policy or proof that pending checks passed.
