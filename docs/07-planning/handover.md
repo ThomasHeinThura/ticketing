@@ -52,12 +52,16 @@ a hierarchy skeleton because the visual fixture omitted children. Prepared fixtu
 returns one real-shaped child and waits for its link before capture. Native readiness
 assertion passed; Mac snapshot is absent (expected), so no Mac baseline is committed.
 Generate/inspect the correct Linux image and obtain independent delta/baseline review.
+Candidate fcd1abee then stopped before screenshots: chained locator rejected by scope
+validator. Direct equivalent now passes all43 local screenshot cases; no checker change.
 Earlier a9 G11 stopped before budgets: calibration0.739<0.75; no limits changed.
 
 Separate unfinished draft: ~/.codex/worktrees/taskdesk-parent-editing, codex/parent-editing
-from b4958b59. Six uncommitted files add required parent attach/detach If-Match, locked
-version checks and stale/concurrent/no-op regressions. API typecheck passed. No PG run,
-contract regeneration, independent review or editing UI yet. Do not lose or claim it done.
+from b4958b59. Uncommitted work adds required parent attach/detach If-Match, locked
+version checks and stale/concurrent/no-op regressions, a Kaneo parent property control,
+typed client and locale/schema keys. API/web typecheck and9 fetcher tests passed. No PG
+run, contract regeneration, component/browser/contrast verification or review yet.
+Do not lose this draft or claim it done.
 
 ## Immediate next work
 

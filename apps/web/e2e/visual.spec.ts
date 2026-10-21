@@ -745,7 +745,7 @@ test("work-item detail screen @visual", async ({ page }) => {
     ),
   ).toBeVisible();
   await expect(
-    page.getByTestId("work-item-hierarchy").getByRole("link", {
+    page.getByRole("link", {
       name: "HELP-8 · Verify access after reset",
       exact: true,
     }),

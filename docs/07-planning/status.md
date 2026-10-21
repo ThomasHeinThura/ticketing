@@ -79,12 +79,15 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   work-item-detail change but its new hierarchy endpoint lacked a visual fixture, leaving
   a loading skeleton in the capture. A valid parent/child fixture and explicit readiness
   assertion are prepared; generate, inspect and independently review its Linux baseline
-  before committing it. The earlier `a9db0121` G11 failed closed on calibration 0.739
+  before committing it. Candidate `fcd1abee` stopped at visual-scope validation because
+  its chained locator is unsupported there; a direct equivalent assertion now passes
+  all 43 local screenshot cases. The earlier `a9db0121` G11 failed closed on calibration 0.739
   below 0.75 before budgets. No thresholds or retries changed.
 - Parent editing is being prepared separately in `~/.codex/worktrees/taskdesk-parent-editing`,
   branch `codex/parent-editing`: required If-Match for attach/detach, locked version checks
-  and stale/concurrent-write integration regressions. API typecheck passed; PostgreSQL,
-  OpenAPI regeneration, review and the actual Kaneo editing control remain unfinished.
+  and stale/concurrent-write integration regressions. The Kaneo parent property control
+  and typed client are drafted; API/web typechecks and nine fetcher unit tests passed.
+  PostgreSQL, OpenAPI regeneration, component/browser/contrast checks and review remain.
   This uncommitted draft is not a completed feature or accepted code.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
