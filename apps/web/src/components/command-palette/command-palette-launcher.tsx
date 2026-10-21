@@ -9,13 +9,26 @@ import {
 import { shortcuts } from "@/constants/shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { waitsForPrimaryContent } from "@/lib/after-primary-content";
+import { markPaletteWarmup } from "@/lib/palette-warmup-diagnostics";
 import { whenSidebarShown } from "@/lib/sidebar-shown";
 import type { CommandPaletteIntent, CommandPaletteRequest } from "./index";
 
 let paletteModule: Promise<typeof import("./index")> | undefined;
 /** One download of the palette module, shared by the warm-up prefetch and the lazy mount. */
 function loadPaletteModule() {
-  paletteModule ??= import("./index");
+  if (!paletteModule) {
+    markPaletteWarmup("import-start");
+    paletteModule = import("./index").then(
+      (module) => {
+        markPaletteWarmup("import-resolved");
+        return module;
+      },
+      (error) => {
+        markPaletteWarmup("import-rejected");
+        throw error;
+      },
+    );
+  }
   return paletteModule;
 }
 
@@ -93,6 +106,10 @@ export default function CommandPaletteLauncher() {
   }, []);
 
   useEffect(() => {
+    if (keepMounted) markPaletteWarmup("warm-commit");
+  }, [keepMounted]);
+
+  useEffect(() => {
     // On the heavy work and board screens, wait for their real primary content
     // paint before warming the closed palette. Explicit shortcut intent still
     // loads immediately through `requested`.
@@ -106,6 +123,7 @@ export default function CommandPaletteLauncher() {
     const mountAfterCommit = () => {
       if (cancelled || requestedRef.current || started) return;
       started = true;
+      markPaletteWarmup("primary-ready");
       // Start the download now; only the mount waits (for the sidebar on the heavy screens,
       // then for paint frames and idle time).
       void loadPaletteModule().catch(() => {});
@@ -113,14 +131,18 @@ export default function CommandPaletteLauncher() {
       // waited for briefly: the popup must be up well inside G11's 5 s.
       if (waitsForPrimary)
         void whenSidebarShown().then(() => {
+          markPaletteWarmup("sidebar-ready");
           if (!cancelled && !requestedRef.current) mountWhenIdle(300);
         });
       else mountWhenIdle(1_000);
     };
     const mountWhenIdle = (idleTimeoutMs: number) => {
+      markPaletteWarmup("frames-scheduled");
       firstFrame = requestAnimationFrame(() => {
+        markPaletteWarmup("first-frame");
         if (cancelled || requestedRef.current) return;
         secondFrame = requestAnimationFrame(() => {
+          markPaletteWarmup("second-frame");
           if (cancelled || requestedRef.current) return;
           if (typeof idleWindow.requestIdleCallback !== "function") {
             setKeepMounted(true);
@@ -129,6 +151,7 @@ export default function CommandPaletteLauncher() {
           // Bounded, so a busy main thread on a slow machine cannot leave the palette cold.
           idleMountRef.current = idleWindow.requestIdleCallback(
             () => {
+              markPaletteWarmup("idle-fired");
               idleMountRef.current = undefined;
               if (!cancelled) setKeepMounted(true);
             },

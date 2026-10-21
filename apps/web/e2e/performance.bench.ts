@@ -429,9 +429,56 @@ async function collectCommandPaletteInteraction(
   page: Page,
   metric: "open" | "navigate" = "open",
 ) {
+  await page.addInitScript(() => {
+    document.addEventListener(
+      "DOMContentLoaded",
+      () => {
+        const observer = new MutationObserver(() => {
+          if (!document.querySelector('[data-slot="command-dialog-popup"]'))
+            return;
+          performance.mark("taskdesk.palette.popup-inserted");
+          observer.disconnect();
+        });
+        observer.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+        });
+      },
+      { once: true },
+    );
+  });
   await openWorkList(page);
   const palettePopup = page.locator('[data-slot="command-dialog-popup"]');
-  await expect(palettePopup).toHaveCount(1);
+  try {
+    await expect(palettePopup).toHaveCount(1);
+  } catch (error) {
+    console.error(
+      "G11 palette warmup failure evidence",
+      await page.evaluate(() => ({
+        atMs: performance.now(),
+        primaryReady:
+          document.querySelector("[data-primary-content-ready='true']") !==
+          null,
+        phases: performance
+          .getEntriesByType("mark")
+          .filter((entry) => entry.name.startsWith("taskdesk.palette."))
+          .map((entry) => ({ name: entry.name, atMs: entry.startTime })),
+        scripts: performance
+          .getEntriesByType("resource")
+          .filter(
+            (entry) =>
+              entry.name.includes("/assets/") && entry.name.endsWith(".js"),
+          )
+          .slice(-20)
+          .map((entry) => ({
+            file: entry.name.split("/").pop(),
+            atMs: entry.startTime,
+            durationMs: entry.duration,
+          })),
+      })),
+    );
+    throw error;
+  }
   await expect(palettePopup).toBeHidden();
   await page.keyboard.press(
     process.platform === "darwin" ? "Meta+k" : "Control+k",
