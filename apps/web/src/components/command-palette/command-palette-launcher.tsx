@@ -73,12 +73,15 @@ export default function CommandPaletteLauncher() {
     [cancelIdleMount],
   );
   const togglePalette = useCallback(() => {
-    setOpen((current) => {
-      const next = !current;
-      dispatch(next ? "open" : "close");
-      return next;
-    });
-  }, [dispatch]);
+    cancelIdleMount();
+    requestedRef.current = true;
+    setRequested(true);
+    // `open` already controls the warmed dialog. Sending the same intent through
+    // its effect added another request/acknowledgement render to each toggle.
+    // A direct toggle also supersedes an older, still-pending command intent.
+    setRequest(null);
+    setOpen((current) => !current);
+  }, [cancelIdleMount]);
 
   useRegisterShortcuts({
     shortcuts: { [shortcuts.search.prefix]: () => dispatch("search") },

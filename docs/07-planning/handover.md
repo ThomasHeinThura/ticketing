@@ -55,6 +55,15 @@ worktrees or have two sessions edit the same file. Inspect live GitHub before co
    artifacts: /tmp/taskdesk-sidebar-2c4-perf. Profile the open interaction before patching;
    do not blindly rerun, relax budgets or treat 17/18 as merge clearance.
    Native integrated checks passed 48 unit tests and 23 browser journeys.
+   The next repair removes duplicate toggle request/acknowledgement renders; two new
+   cold/warm browser journeys passed search, focus containment, toggle/Escape and focus
+   return. Source review is clean, but no hosted performance improvement is established.
+   An independent palette diagnostic now retains its sanitized capture even if another
+   diagnostic window fails. Native capture has valid canonical clock marks/timeline but
+   rejects all CPU profiles: the first chunk contains signed negative time deltas, which
+   the existing strict parser rejects. Do not label it complete CPU attribution or relax
+   validation without tracing the actual V8 timestamp contract. Native logs:
+   /tmp/taskdesk-palette-toggle-browser.log and /tmp/taskdesk-palette-native-diagnostic-4.log.
 
    Current implementation: It retains primary-content/paint/idle protection, prefetches
    project navigation alongside the sidebar, and scopes work/backlog create controls to

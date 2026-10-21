@@ -52,7 +52,10 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   changing the authored source delta. On final head `2c4a1102`, 17/18 required checks passed;
   G11 failed command-palette click-to-paint (209.7 ms against 200 ms). Palette readiness
   and the 500-row render budget passed. Profile this interaction before another repair;
-  no gate, budget or retry was relaxed. Do not merge this candidate yet.
+  no gate, budget or retry was relaxed. The next candidate removes duplicate palette-toggle
+  renders and adds cold/warm focus journeys plus independent diagnostic capture. Native
+  browser journeys pass; native sampled-frame attribution fails closed on negative V8
+  deltas. Hosted final-head checks are still required. Do not merge this candidate yet.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
   constraints. It is a dated snapshot, not policy or proof that pending checks passed.
