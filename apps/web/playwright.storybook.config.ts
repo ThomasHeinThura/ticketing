@@ -19,6 +19,7 @@ export default defineConfig({
     timezoneId: "UTC",
     colorScheme: "light",
     reducedMotion: "reduce",
+    launchOptions: { args: ["--disable-partial-raster"] },
     trace: "retain-on-failure",
   },
   webServer: {

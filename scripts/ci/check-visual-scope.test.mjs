@@ -648,7 +648,7 @@ for (const [label, replacement] of [
       "utf8",
     );
     const visualConfig = original.replace(
-      /use: \{[\s\S]*?launchOptions: \{ args: \["--disable-partial-raster"\] \},\n  \},/u,
+      /use: \{[\s\S]*?launchOptions: \{ args: \["--disable-partial-raster"\] \},\n {2}\},/u,
       `${replacement},`,
     );
     assert.notEqual(visualConfig, original);
@@ -668,7 +668,7 @@ test("G8 rejects a route visual config that removes the partial-raster launch op
     "utf8",
   );
   const visualConfig = original.replace(
-    /  use: \{[\s\S]*?launchOptions: \{ args: \["--disable-partial-raster"\] \},\n  \},\n/u,
+    / {2}use: \{[\s\S]*?launchOptions: \{ args: \["--disable-partial-raster"\] \},\n {2}\},\n/u,
     "",
   );
   assert.notEqual(visualConfig, original);
@@ -698,6 +698,44 @@ test("G8 rejects a route visual config filter that skips declared route cases", 
     /playwright\.visual\.config\.ts must extend the app Playwright config/,
   );
 });
+
+for (const [label, replacement] of [
+  ["omits full raster", ""],
+  [
+    "changes the raster argument",
+    'launchOptions: { args: ["--disable-gpu"] },',
+  ],
+  [
+    "adds a second argument",
+    'launchOptions: { args: ["--disable-partial-raster", "--force-color-profile=srgb"] },',
+  ],
+  [
+    "substitutes the browser",
+    'launchOptions: { args: ["--disable-partial-raster"], executablePath: "/usr/bin/true" },',
+  ],
+  [
+    "adds an unreviewed use setting",
+    'launchOptions: { args: ["--disable-partial-raster"] }, deviceScaleFactor: 2,',
+  ],
+]) {
+  test(`G8 rejects Storybook raster configuration that ${label}`, async () => {
+    const original = await readFile(
+      path.join(repoRoot, "apps/web/playwright.storybook.config.ts"),
+      "utf8",
+    );
+    const storybookConfig = original.replace(
+      'launchOptions: { args: ["--disable-partial-raster"] },',
+      replacement,
+    );
+    assert.notEqual(storybookConfig, original);
+    const result = await runVisualScope({ storybookConfig });
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.output,
+      /playwright\.storybook\.config\.ts must select the Storybook visual spec/,
+    );
+  });
+}
 
 test("G8 rejects a Storybook visual config filter that skips story coverage", async () => {
   const original = await readFile(
