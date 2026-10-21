@@ -55,7 +55,10 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   no gate, budget or retry was relaxed. The next candidate removes duplicate palette-toggle
   renders and adds cold/warm focus journeys plus independent diagnostic capture. Native
   browser journeys pass; native sampled-frame attribution fails closed on negative V8
-  deltas. Hosted final-head checks are still required. Do not merge this candidate yet.
+  deltas. Hosted `fde5bcbc` passed the palette timing budget (108.7 ms) but failed a G13
+  cold-palette readiness sample; 17/18 required checks passed. The next reviewed change
+  defers the closed project-creation form until intent; 13 native unit tests and eight
+  browser journeys passed. Hosted final-head checks remain required. Do not merge yet.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
   constraints. It is a dated snapshot, not policy or proof that pending checks passed.

@@ -93,3 +93,37 @@ for (const view of ["work?layout=list", "backlog"]) {
     await expect(page.getByTestId("create-work-item-trigger")).toHaveCount(0);
   });
 }
+
+test("sidebar defers project creation code until the user opens the existing dialog", async ({
+  page,
+}) => {
+  await installPerformanceApiFixture(page);
+  await page.route("**/api/capabilities?*", async (route) => {
+    await route.fulfill({ json: { createProjects: true, createTasks: true } });
+  });
+  let creationRequested = false;
+  page.on("request", (request) => {
+    if (/\/assets\/create-project-modal-[^/]+\.js$/.test(request.url()))
+      creationRequested = true;
+  });
+  await page.goto("/agent/projects/WLP/work?layout=list");
+  const addProject = page.getByRole("button", {
+    name: "Add project",
+    exact: true,
+  });
+  await expect(addProject).toBeVisible();
+  expect(creationRequested).toBe(false);
+  await addProject.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  expect(creationRequested).toBe(true);
+  const name = dialog.getByPlaceholder("Project name", { exact: true });
+  await name.fill("Deferred project");
+  await expect(name).toHaveValue("Deferred project");
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await addProject.click();
+  await expect(name).toHaveValue("");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+});

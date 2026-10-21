@@ -64,6 +64,19 @@ worktrees or have two sessions edit the same file. Inspect live GitHub before co
    the existing strict parser rejects. Do not label it complete CPU attribution or relax
    validation without tracing the actual V8 timestamp contract. Native logs:
    /tmp/taskdesk-palette-toggle-browser.log and /tmp/taskdesk-palette-native-diagnostic-4.log.
+   Hosted fde5bcbc then passed 17/18 required checks: palette click-to-paint 108.7 ms,
+   keyboard navigation 149.0 ms and 500-row render 475.8 ms all passed. Its remaining G11
+   failure was G13 Projects preparation: a cold popup missed the unchanged 5 s readiness
+   assertion. Phase evidence shows sidebar timeout plus closed project-form imports
+   competing with palette warm-up. The next reviewed delta loads that form only on Add
+   project intent. Thirteen unit tests and eight browser journeys passed, including actual
+   form open/edit/cancel/reopen. Exact-head hosted validation remains required.
+   fde hosted diagnostic also failed: assignment clock alignment and negative-delta CPU
+   rejection. The independent sanitized palette artifact was retained; neither diagnostic
+   is passed CPU attribution. Logs: /tmp/taskdesk-sidebar-fde-g11.log; artifact directory
+   /tmp/taskdesk-sidebar-fde-diagnostic. Continue project catalogues separately in
+   ~/.codex/worktrees/taskdesk-project-label-catalogues (codex/project-label-catalogues):
+   uncommitted migration/API/assignment work is incomplete and has no browser/PG acceptance.
 
    Current implementation: It retains primary-content/paint/idle protection, prefetches
    project navigation alongside the sidebar, and scopes work/backlog create controls to
