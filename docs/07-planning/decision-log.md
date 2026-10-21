@@ -5,6 +5,10 @@
 “because orb take alot of power draw and laptop battery drain alot”; “This is additional
 tasks to existing tasks.”
 
+**Follow-up, same direct chat:** Thomas selected `tickting.technexus.info` for agents
+and `portal.technexus.info` for customers and stated “I will add the dns.” Preserve the
+agent hostname's exact spelling; DNS ownership remains with Thomas.
+
 Add VM readiness assessment and a hosted SIT path under `technexus.info` to the approved
 P0–P4 mission. Preserve ongoing feature implementation and the Kaneo requirement. The
 purpose is to move persistent SIT runtime off the laptop. This request does not authorize

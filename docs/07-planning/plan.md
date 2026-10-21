@@ -55,8 +55,8 @@ power use. Live read-only inspection confirmed x86-64 Ubuntu, 2 vCPUs, 7.7 GiB R
 supports light functional SIT; this shared 2-vCPU host is not reference load/performance
 acceptance evidence. No remote services were changed.
 
-Recommended agent/portal origins: `https://sit.technexus.info` and
-`https://portal-sit.technexus.info`. Both need DNS records; the checked authoritative
+Thomas selected the agent/portal origins: `https://tickting.technexus.info` and
+`https://portal.technexus.info`. Thomas will add both DNS records to the VM public IP `4.194.153.78`; the checked authoritative
 Cloudflare zone had no address records at those names. Reuse existing Traefik on ports
 80/443, its `web` network and `le` ACME resolver. The stock overlay assumes network
 `proxy`, resolver `letsencrypt` and file-provider middleware absent on this host, so it
