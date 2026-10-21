@@ -46,6 +46,19 @@ Primary checkout is clean at that source. Refresh live GitHub before acting.
 | #887 hierarchy API | Merged to a99483a7 on reviewed2007b480; all18 checks,152 browser tests,image smoke passed. | Complete inline UI and remaining hierarchy lifecycle; not #434/P1 acceptance. |
 | #888 hierarchy inline UI | Candidate codex/hierarchy-ui in ~/.codex/worktrees/taskdesk-hierarchy-ui, imports accepted main a99483a7. | Confirm main target after import. Five fixture browser journeys,1446 web unit,lint/typecheck,428 contrast pass. Source/security approval a9db0121; import/doc delta review and hosted actual API evidence pending. |
 
+Current #888 import `b4958b59` passed fast CI; full run39627297497 has G8 failure.
+Only work-item-detail Linux baseline changed. Artifact12356943262 initially showed
+a hierarchy skeleton because the visual fixture omitted children. Prepared fixture now
+returns one real-shaped child and waits for its link before capture. Native readiness
+assertion passed; Mac snapshot is absent (expected), so no Mac baseline is committed.
+Generate/inspect the correct Linux image and obtain independent delta/baseline review.
+Earlier a9 G11 stopped before budgets: calibration0.739<0.75; no limits changed.
+
+Separate unfinished draft: ~/.codex/worktrees/taskdesk-parent-editing, codex/parent-editing
+from b4958b59. Six uncommitted files add required parent attach/detach If-Match, locked
+version checks and stale/concurrent/no-op regressions. API typecheck passed. No PG run,
+contract regeneration, independent review or editing UI yet. Do not lose or claim it done.
+
 ## Immediate next work
 
 1. Finish hierarchy UI: actual persisted51-child pagination/reload/ancestor-navigation browser

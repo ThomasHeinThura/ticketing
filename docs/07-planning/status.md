@@ -75,6 +75,17 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   hosted checks and image verification remain. Full parent editing/lifecycle/relations
   are still unfinished. An initial native unit run hit two unchanged process-lock timeouts;
   its 11-test isolated diagnostic and the complete sequential recheck (12 tasks) passed.
+- #888 accepted-main candidate `b4958b59` passed fast CI. G8 found the intended
+  work-item-detail change but its new hierarchy endpoint lacked a visual fixture, leaving
+  a loading skeleton in the capture. A valid parent/child fixture and explicit readiness
+  assertion are prepared; generate, inspect and independently review its Linux baseline
+  before committing it. The earlier `a9db0121` G11 failed closed on calibration 0.739
+  below 0.75 before budgets. No thresholds or retries changed.
+- Parent editing is being prepared separately in `~/.codex/worktrees/taskdesk-parent-editing`,
+  branch `codex/parent-editing`: required If-Match for attach/detach, locked version checks
+  and stale/concurrent-write integration regressions. API typecheck passed; PostgreSQL,
+  OpenAPI regeneration, review and the actual Kaneo editing control remain unfinished.
+  This uncommitted draft is not a completed feature or accepted code.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
   constraints. It is a dated snapshot, not policy or proof that pending checks passed.
