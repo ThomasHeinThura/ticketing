@@ -214,3 +214,23 @@ All 11 bundle regressions pass. A local non-gating CPU diagnostic completed init
 state, assignment and board rendering, then hit the existing browser timeline event bound
 on board selection. It is not a diagnostic pass or a G11 timing pass. Final hosted
 measurement and reviewed image delivery remain required; no merge or UI deployment yet.
+
+## Fourth hosted run and dependency grouping
+
+Head `b542ec9f`: fast `39669228573` passes. Full `39669228675` passes all PostgreSQL
+shards, G8, accessibility, all 160 browser tests, real-Docker deployment helpers and the
+shipping-image build/migrate/boot check. CI-local image
+`sha256:96ee816af4be9b378a047b6c35871fc185a0f99b8105f607de5e9f8859b515ed`
+is not a published signed release or a new SIT deployment.
+
+G11 still fails: render 659.5 ms against 500 ms and LCP 3510.7 ms against 2500 ms. A later
+worker's unstable calibration leaves 19 tests unrun. The two hosted CPU diagnostics pass;
+that does not override the failed budgets. The trace shows 57 preloaded/static assets
+queuing under the cold-network profile and delaying locale bootstrap. The build now groups
+the restored frame's static dependencies, preserving initial-module ownership and strict
+execution order. Honest work-list size is 330.5 KB / 20 assets; agent 242.5 KB, portal 189.3 KB,
+all within unchanged budgets. Nine focused browser cases, types, lint, 11 bundle regressions,
+purity and all 428 unchanged contrast pairs pass locally. Three raw native LCP samples
+(2636/2312/2316ms) are diagnostic only, not G11 acceptance. The temporary diagnostic spec
+is outside the checkout. Final hosted measurement, reviewed image delivery and complete
+P0–P4 implementation remain open.

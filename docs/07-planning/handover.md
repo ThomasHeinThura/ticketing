@@ -3,51 +3,49 @@
 Read [status.md](status.md) first. No P0–P4 stage is complete or awaiting only human review.
 The full goal and Thomas's no-AIDLC, Kaneo-preservation directive remain in force.
 
-- Repair worktree: `/Users/heinthura/.codex/worktrees/taskdesk-sit-alignment`,
-  branch `fix/sit-kaneo-integration`, based on Antigravity `90973b7e`. Preserve unrelated
-  dirty files in the primary checkout; do not merge duplicate hierarchy branches blindly.
-- VM runtime directory: `/home/bimdevops/taskdesk-sit`, Compose project `taskdesk`.
-  Old VM source checkout was privately archived, checksum verified, then removed. Named
-  volumes remain intact. OrbStack stays stopped; Cloudflare stays enabled. No VM builds.
-- Current image digest: `sha256:8ba4fdc714c7161e0e70c3732e0ab316f7e978a2514712a13ec3ed8911acaf1f`.
-  Its source revision remains unknown. UI repair is not deployed; do not rerun old seeds
-  or publish the rotated credentials. Private account/recovery files are outside Git.
-- Source repairs restore the project header/calendar/timeline on canonical work data,
-  missing Tailwind application utilities, portal shell/home/approvals/paging/draft and
-  cache isolation, audit URL/filter state, private seeds and SIT image verification.
-- Web 1,486/API 902 unit tests pass; independent standard/security source review approves
-  after actual findings were fixed. Browser/visual/performance/exact-image acceptance open.
-  G8 must stay failed until pinned Linux candidates are reviewed and committed. CI captures
-  candidates only after failure and preserves original evidence separately.
-- Isolated PostgreSQL: 87/89 broad tests passed, two WAN timeouts remain unpassed; three
-  focused seed/label checks passed. Keep these adverse results visible; hosted co-located
-  PostgreSQL checks must resolve them. Never run database resets against live SIT.
-- Draft PR #889 latest pushed head `3a863039` contains the source/evidence batch. Hosted results
-  and local fixes are recorded in status.md; do not blindly rerun old failing jobs. All four
-  PostgreSQL shards pass in the second run; approved Linux captures and the calendar
-  ScrollArea/keyboard fix are the next batch. G11 failed calibration before measurements. Browser158passed/1calendar accessibility
-  failure is repaired locally and reviewed; shipping-image build was skipped, not passed.
-- Next: finish source/baseline fixes and hosted G11 measurement, bind delta review, then
-  verified-image deployment and developer walkthrough. Repair the separate proxy-IP defect
-  before claiming login rate-limit or API-key IP acceptance. The candidate normalizer
-  passed nginx syntax/readiness and trusted IPv4/IPv6 versus invalid/untrusted header
-  tests; it was removed after testing and live routing is unchanged. App-IP-change,
-  live attribution/forgery, upload and WebSocket checks remain. See the hosted SIT
-  section in [traefik-and-domains.md](../05-operations/traefik-and-domains.md).
-  Continue the remaining requirement-level P0–P4 work; do not hand unfinished stages to Thomas.
-
-Live ingress update: the reviewed TaskDesk-only normalizer is now applied. Both origins
-are healthy; staff browser/session IP matches its Cloudflare trace; direct-origin spoofing
-returns 403, shared-network spoofing returns 400, changed-IP DNS recovery takes six
-seconds, and authenticated WebSocket upgrade returns 101. Runtime template mode is 0644
-so UID 101 can read it; secrets remain 0600. Runtime rollback is private. Source/UI image is still the old unknown revision.
-Current pushed source is `1db85887`; fast, G8, a11y and PG pass in runs
-`39665053950`/`39665053960`,
-All 159 E2E tests and image smoke passed; G11 is 21/22 with LCP 3838.3 ms > 2500 ms. These operation notes join the coherent cold-load fix. HTML preloads the restored frame
-closure; desktop lazily excludes the hidden mobile menu; the size gate honestly counts
-preloads plus selected/English slim locales (346917/350000 bytes). Nine browser cases,
-11 bundle regressions, types and 428 contrast pairs pass locally. Hosted timing remains
-required; do not rerun unchanged failures or claim the old image contains these repairs.
+- Repair worktree: `/Users/heinthura/.codex/worktrees/taskdesk-sit-alignment`, branch
+  `fix/sit-kaneo-integration`, draft PR #889. Preserve the primary checkout's unrelated
+  dirty files. Accepted main last observed at `a99483a7` (#887); do not merge duplicate
+  hierarchy branches blindly. Aggregate standard/security source review covers accepted
+  main through the repair; final runtime acceptance remains separate.
+- OrbStack stays stopped; Cloudflare stays enabled. Both hosted origins are healthy.
+  VM runtime directory `/home/bimdevops/taskdesk-sit`, Compose project `taskdesk`, images
+  only: no source checkout, builds or test workers. The old checkout was privately archived
+  and checksum verified before removal; named volumes remain intact.
+- Current application image digest:
+  `sha256:8ba4fdc714c7161e0e70c3732e0ab316f7e978a2514712a13ec3ed8911acaf1f`.
+  Its source revision remains unknown. **The repaired UI is not deployed.** Private rotated
+  account/recovery files remain outside Git; do not publish credentials or rerun old seeds.
+- Source repairs restore Kaneo's project header/calendar/Gantt on canonical work data,
+  missing Tailwind application utilities, portal shell/home/approvals/paging and identity
+  cache isolation, audit URL/filter state, private seeds and signed SIT image verification.
+- Latest pushed source before this batch: `b542ec9f`, fast `39669228573` passes.
+  Full `39669228675`: all PostgreSQL shards, G8, accessibility, all 160 browser tests,
+  real deployment-helper tests and shipping-image smoke pass. That CI-local image is
+  `sha256:96ee816af4be9b378a047b6c35871fc185a0f99b8105f607de5e9f8859b515ed`,
+  not a signed published release or a VM deployment. G11 remains failed: render 659.5 ms,
+  LCP 3510.7 ms; later worker calibration also failed, leaving 19 tests unrun. Do not infer
+  performance acceptance or rerun unchanged failures.
+- Trace diagnosis: 57 static/preloaded assets queue behind HTTP/1 cold-network limits,
+  delaying the tiny locale bootstrap. The build-only frame grouping reduces the honest
+  work-list graph to 330.5 KB / 20 assets (limit 350 KB), agent 242.5 KB, portal 189.3 KB.
+  Initial module priority and strict execution order are preserved. Nine focused browser
+  cases, types, 11 bundle regressions, purity, lint and 428 unchanged contrast pairs pass.
+  Native raw LCP 2636/2312/2316 ms is diagnostic only; this faster host cannot pass pinned
+  G11 calibration. The temporary diagnostic spec was preserved under /tmp and removed
+  from the checkout. Require actual hosted timing on the final coherent batch.
+- Live ingress repair is deployed independently of the old UI image. Pinned unprivileged
+  TaskDesk-only normalizer attributes the staff session to the same browser's Cloudflare
+  trace; direct-origin spoofing returns 403 and shared-network spoofing 400. Actual app-IP
+  change recovered in six seconds; authenticated WebSocket upgrade returned 101. App is
+  on its private network only; no published app/sidecar ports. Shared Traefik untouched.
+  Template 0644 inside private runtime directory, secrets 0600; private rollback retained.
+  Upload/client-IP ceilings and full portal journeys remain open.
+- Next: final delta review/one coherent push, all required green checks, protected merge,
+  signed published image verification and image-only SIT upgrade, then developer walkthrough.
+  Continue every remaining P0–P4 numbered requirement in [plan.md](plan.md); never hand
+  unfinished stages to Thomas as complete. Backups/offsite/restore, relations, full service
+  desk, identity/admission, governance/notification/automation/MCP/query ownership remain.
 
 ---
 

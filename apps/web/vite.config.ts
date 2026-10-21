@@ -395,8 +395,24 @@ export default defineConfig(({ mode }) => {
                   ? "portal-initial-runtime"
                   : "agent-initial-runtime",
                 tags: ["$initial"],
+                // Keep shared bootstrap modules in the initial graph before the frame
+                // group captures its remaining static dependencies below.
+                priority: 2,
                 maxSize: 1_000_000,
               },
+              ...(!isPortal
+                ? [
+                    {
+                      // Dozens of small frame imports otherwise queue ahead of locale
+                      // bootstrap on a cold connection. Preserve the same module graph
+                      // and execution order while fetching that closure in one group.
+                      name: "project-layout",
+                      test: /\/src\/components\/common\/project-layout\.tsx$/u,
+                      priority: 1,
+                      maxSize: 1_000_000,
+                    },
+                  ]
+                : []),
             ],
           },
           strictExecutionOrder: true,
