@@ -1,9 +1,10 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
   Button,
   Calendar,
+  Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -14,6 +15,7 @@ import {
   CalendarDays,
   Check,
   Copy,
+  Tag,
   TriangleAlert,
   X,
 } from "lucide-react";
@@ -21,6 +23,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/avatar";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
+import { getWorkItemLabels } from "@/fetchers/work-item/get-work-item-labels";
 import transitionWorkItem from "@/fetchers/work-item/transition-work-item";
 import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
 import useGetAssignablePeople from "@/hooks/queries/work-item/use-get-assignable-people";
@@ -32,6 +35,7 @@ import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
 import { HttpError } from "@/lib/http-error";
 import { getPriorityLabel } from "@/lib/i18n/domain";
+import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
@@ -805,6 +809,124 @@ function ConflictNotice({ item }: { item: WorkItemDetailRow }) {
   );
 }
 
+function LabelsControl({
+  item,
+  compact,
+  onAccessLost,
+}: {
+  item: WorkItemDetailRow;
+  compact: boolean;
+  onAccessLost: () => void;
+}) {
+  const { t } = useTranslation();
+  const [search, setSearch] = useState("");
+  const { canUpdateTasks } = useWorkspacePermission(
+    item.workspaceId,
+    item.projectId,
+  );
+  const query = useQuery({
+    queryKey: [
+      "labels",
+      item.workspaceId,
+      "work-items",
+      item.key,
+      item.version,
+    ],
+    queryFn: () => getWorkItemLabels(item.key),
+  });
+  const save = useUpdateWorkItemFields(item, onAccessLost);
+  useAccessLostOnQueryError(query.error, onAccessLost);
+  const labels = query.data ?? [];
+  const selected = labels.filter((label) => label.assigned);
+  const title = t("tasks:properties.labels");
+  const unavailable =
+    query.isPending || query.isFetching || query.isError || save.isPending;
+  return (
+    <Popover>
+      <PopoverTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className={rowClass(compact)}
+            aria-label={title}
+            disabled={!canUpdateTasks() || unavailable}
+          />
+        }
+      >
+        <Tag className="size-4" />
+        <span className="truncate">
+          {selected.length
+            ? selected.map((label) => label.name).join(", ")
+            : title}
+        </span>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-1" align="start">
+        <Input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={t("tasks:popover.labels.searchPlaceholder")}
+          aria-label={t("tasks:popover.labels.searchPlaceholder")}
+        />
+        <div className="max-h-64 overflow-y-auto py-1">
+          {labels
+            .filter((label) =>
+              label.name
+                .toLocaleLowerCase()
+                .includes(search.toLocaleLowerCase()),
+            )
+            .map((label) => (
+              <Button
+                key={label.id}
+                role="checkbox"
+                aria-checked={label.assigned}
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2"
+                disabled={unavailable}
+                onClick={() =>
+                  save.mutate({
+                    labelIds: label.assigned
+                      ? selected
+                          .filter((current) => current.id !== label.id)
+                          .map((current) => current.id)
+                      : [...selected.map((current) => current.id), label.id],
+                  })
+                }
+              >
+                <span
+                  className="size-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: resolveLabelColor(label.color) }}
+                />
+                <span className="truncate">{label.name}</span>
+                {label.assigned ? <Check className="ml-auto size-3" /> : null}
+              </Button>
+            ))}
+          {!labels.some((label) =>
+            label.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
+          ) ? (
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">
+              {t("tasks:popover.labels.empty")}
+            </p>
+          ) : null}
+        </div>
+      </PopoverContent>
+      {query.isError ? (
+        <div role="alert" className="text-xs">
+          <span>{t("tasks:popover.labels.updateError")}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void query.refetch()}
+          >
+            {t("common:actions.retry")}
+          </Button>
+        </div>
+      ) : null}
+    </Popover>
+  );
+}
+
 type WorkItemPropertiesProps = {
   item: WorkItemDetailRow;
   compact?: boolean;
@@ -884,6 +1006,7 @@ function WorkItemPropertiesPanel({
         <StateControl {...controlProps} />
         <PriorityControl {...controlProps} />
         <AssigneeControl {...controlProps} />
+        <LabelsControl {...controlProps} />
         <DateControl {...controlProps} field="startDate" />
         <DateControl {...controlProps} field="dueDate" />
       </div>

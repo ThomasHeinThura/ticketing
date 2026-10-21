@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { lockWorkspaceLabelNames } from "../../label/repository";
 import {
   type ActivityActorType,
   diffWorkItemFieldChanges,
@@ -15,9 +16,11 @@ import {
   assertProjectStillLive,
   projectNotDeletedClause,
 } from "../assert-work-item-live";
+import { replaceWorkItemLabels } from "../labels-repository";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 
 export type UpdateWorkItemInput = {
+  labelIds?: string[];
   title?: string;
   description?: unknown;
   priority?: "low" | "medium" | "high" | "urgent" | null;
@@ -137,6 +140,8 @@ export async function updateWorkItem(
 
   const { updated, activityRows, realtimeEvent } = await db.transaction(
     async (tx) => {
+      if (input.labelIds !== undefined)
+        await lockWorkspaceLabelNames(tx, workspaceId, []);
       const [locked] = await tx
         .select()
         .from(workItemTable)
@@ -169,6 +174,16 @@ export async function updateWorkItem(
         throw new WorkItemVersionConflictError(assertedVersion, locked.version);
       }
 
+      const labelChange =
+        input.labelIds === undefined
+          ? undefined
+          : await replaceWorkItemLabels(
+              tx,
+              locked.id,
+              workspaceId,
+              input.labelIds,
+            );
+
       const [updated] = await tx
         .update(workItemTable)
         .set({ ...values, version: sql`${workItemTable.version} + 1` })
@@ -197,6 +212,10 @@ export async function updateWorkItem(
       // of this update", not a change to/from `undefined`.
       const before: WorkItemFieldSnapshot = {};
       const after: WorkItemFieldSnapshot = {};
+      if (labelChange) {
+        before.labelIds = labelChange.before;
+        after.labelIds = labelChange.after;
+      }
       if (input.title !== undefined) {
         before.title = locked.title;
         after.title = updated.title;

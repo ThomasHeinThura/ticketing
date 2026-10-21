@@ -86,6 +86,12 @@ export const workItemPolicies = {
     reach: "required",
   },
 
+  "GET /api/work-items/{key}/labels": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
   "GET /api/work-items/{key}/sla": {
     capability: "work_item:read",
     scope: "work_item",
