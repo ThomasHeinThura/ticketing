@@ -9774,17 +9774,6 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
-          "jsx:div[0]/WorkItemApprovals[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-attachments.tsx",
         "surfaceContext": "caller-chain",
@@ -13306,17 +13295,6 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
           "jsx:div[0]/Suspense[0]/WorkItemDetail[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
-          "jsx:div[0]/WorkItemApprovals[0]"
         ],
         "backdropLayers": []
       },

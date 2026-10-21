@@ -20,21 +20,20 @@ import {
   z,
 } from "../openapi";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
+import {
+  hasProjectReadCapability,
+  resolveCallerIdentity,
+} from "../utils/has-project-reach";
 import { isCustomerPrincipal } from "../utils/is-customer-principal";
 import { markReach } from "../utils/reach-mark";
 import {
   assertCallerHasCapability,
   assertCallerHasCapabilityOrSelf,
-  builtInRoleHasCapability,
   capabilityCredential,
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
-import {
-  isUnambiguousMembership,
-  workspaceMemberRoles,
-} from "../utils/workspace-member-roles";
 import type { ActivityActorType } from "./activity";
 import { workItemBulkAuthoriser } from "./bulk-reach";
 import { commentSchema } from "./comment-response";
@@ -1466,28 +1465,40 @@ const workItem = apiRouter<
       .orderBy(personTable.createdAt)
       .limit(1);
 
-    // "May assign anyone" reads the caller's own role through the same
-    // `builtInRoleHasCapability` predicate every other authority check uses (#318's
-    // genuine-row rule included) -- one source, so this feed cannot disagree with
-    // `POST /assign` about what the actor may do.
-    const roles = await workspaceMemberRoles(db, workspaceId, userId);
-    const hasUnambiguousRole = isUnambiguousMembership(roles);
-    const canAssignAnyone =
-      hasUnambiguousRole &&
-      (await builtInRoleHasCapability(
-        workspaceId,
-        roles[0],
-        "work_item:assign",
-      ));
-    // The self-only tier keys on the CAPABILITY (`work_item:update`), never on "the
-    // caller happens to have a person row" -- PR #362's F2.
-    const canSelfAssign =
-      hasUnambiguousRole &&
-      (await builtInRoleHasCapability(
-        workspaceId,
-        roles[0],
-        "work_item:update",
-      ));
+    // Match write authority: workspace capability, project override and key ceiling.
+    const identity = await resolveCallerIdentity(c, userId);
+    const canAssign = async (
+      capability: "work_item:assign" | "work_item:update",
+    ) => {
+      if (
+        !identity ||
+        !hasProjectReadCapability(identity, capability, "work_item", {
+          projectId,
+          workspaceId,
+          ancestorProjectIds: [],
+          ownerTeamId: null,
+          organisationId: null,
+        })
+      )
+        return false;
+      try {
+        await assertCallerHasCapability(
+          workspaceId,
+          userId,
+          capability,
+          capabilityCredential(c.get("apiKey")),
+        );
+        return true;
+      } catch (error) {
+        if (!(error instanceof HTTPException) || error.status !== 403)
+          throw error;
+        return false;
+      }
+    };
+    const [canAssignAnyone, canSelfAssign] = await Promise.all([
+      canAssign("work_item:assign"),
+      canAssign("work_item:update"),
+    ]);
 
     const people = await listAssignablePeople({
       projectId,
