@@ -5461,6 +5461,86 @@
 						"draft",
 						"open"
 					]
+				},
+				"cannedResponses": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"create": {
+							"type": "string"
+						},
+						"edit": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"body": {
+							"type": "string"
+						},
+						"visibility": {
+							"type": "string"
+						},
+						"failed": {
+							"type": "string"
+						},
+						"forbidden": {
+							"type": "string"
+						},
+						"notFound": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"search": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"editNamed": {
+							"type": "string"
+						},
+						"deleteNamed": {
+							"type": "string"
+						},
+						"deleteDescription": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"create",
+						"edit",
+						"name",
+						"body",
+						"visibility",
+						"failed",
+						"forbidden",
+						"notFound",
+						"loadFailed",
+						"search",
+						"empty",
+						"emptyDescription",
+						"editNamed",
+						"deleteNamed",
+						"deleteDescription",
+						"save"
+					]
 				}
 			},
 			"required": [
@@ -5493,7 +5573,8 @@
 				"repositoryBrowser",
 				"tasksImportExport",
 				"workflowEditor",
-				"externalLinks"
+				"externalLinks",
+				"cannedResponses"
 			]
 		},
 		"navigation": {

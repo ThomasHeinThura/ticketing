@@ -1437,10 +1437,36 @@ test("workspace settings labels screen @visual", async ({ page }) => {
 
 test("workspace settings canned responses screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
+  await page.route("**/api/capabilities**", (route) =>
+    route.fulfill({ json: { manageWorkspaceSettings: true } }),
+  );
+  await page.route("**/api/canned-responses/manage?*", (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: "visual-snippet",
+          workspaceId: "visual-workspace",
+          name: "Request acknowledgement",
+          body: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "Thanks for your request." }],
+              },
+            ],
+          },
+          visibilityDefault: "internal",
+          createdBy: "visual-user",
+          createdAt: "2026-09-15T00:00:00.000Z",
+          updatedAt: "2026-09-15T00:00:00.000Z",
+        },
+      ],
+    }),
+  );
   await page.goto("/agent/settings/canned-responses");
-  // This URL opens kaneo's real page; assert that page's own content.
   await expect(
-    page.getByRole("heading", { level: 1, name: "General Settings" }),
+    page.getByRole("heading", { level: 1, name: "Canned responses" }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot(
     "workspace-settings-canned-responses.png",

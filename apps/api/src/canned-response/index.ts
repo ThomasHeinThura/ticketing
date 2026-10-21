@@ -13,6 +13,7 @@ import createCannedResponse from "./controllers/create-canned-response";
 import deleteCannedResponse from "./controllers/delete-canned-response";
 import listCannedResponses from "./controllers/list-canned-responses";
 import updateCannedResponse from "./controllers/update-canned-response";
+import { listCannedResponsesForManagement } from "./repository";
 import {
   requireCannedResponseListReach,
   requireCannedResponseReach,
@@ -21,6 +22,7 @@ import { cannedResponseListSchema, cannedResponseSchema } from "./response";
 import {
   cannedResponseIdParam,
   cannedResponseListQuery,
+  cannedResponseManagementQuery,
   createCannedResponseBody,
   updateCannedResponseBody,
 } from "./schema";
@@ -43,6 +45,26 @@ const listCannedResponsesRoute = createRoute({
     400: errorResponse("Work item key is required"),
     403: errorResponse("Missing work_item:read permission"),
     404: errorResponse("Work item not found or not reachable"),
+  },
+});
+
+const manageCannedResponsesRoute = createRoute({
+  method: "get",
+  operationId: "listCannedResponsesForManagement",
+  path: "/manage",
+  tags: ["Canned responses"],
+  summary: "List the workspace canned-response library for settings",
+  middleware: [
+    workspaceAccess.fromQuery("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: { query: cannedResponseManagementQuery },
+  responses: {
+    200: jsonResponse("Workspace canned responses", cannedResponseListSchema),
+    400: errorResponse("Workspace ID is required"),
+    403: errorResponse(
+      "No workspace access or missing workspace:manage_settings",
+    ),
   },
 });
 
@@ -126,6 +148,17 @@ const cannedResponse = apiRouter<BaseVariables & { workspaceId: string }>()
     if (!identity) throw new HTTPException(401, { message: "Unauthorized" });
     const rows = await listCannedResponses(identity, workItemKey);
     return c.json(rows, 200);
+  })
+  .openapi(manageCannedResponsesRoute, async (c) => {
+    const { workspaceId } = c.req.valid("query");
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (!identity) throw new HTTPException(401, { message: "Unauthorized" });
+    if (identity.side !== "staff")
+      throw new HTTPException(403, { message: "Insufficient permissions" });
+    return c.json(
+      await listCannedResponsesForManagement(identity, workspaceId),
+      200,
+    );
   })
   .openapi(createCannedResponseRoute, async (c) => {
     const { workspaceId, name, body, visibilityDefault } = c.req.valid("json");

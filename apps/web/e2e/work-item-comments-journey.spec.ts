@@ -786,29 +786,37 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
     const originalText = `Thanks for reporting this. ${item.key} is under review.`;
     const editedText = `${originalText} We will follow up shortly.`;
     const created =
-      await test.step("CA19 phase: canned-response API create", async () => {
-        console.info("CA19 phase begin: canned-response API create");
-        const response = await page.request.post(
-          new URL("/api/canned-responses", origin).toString(),
-          {
-            headers: await csrfHeaders(page, origin),
-            data: {
-              workspaceId: item.workspaceId,
-              name: responseName,
-              body: {
-                type: "doc",
-                content: [
-                  {
-                    type: "paragraph",
-                    content: [{ type: "text", text: originalText }],
-                  },
-                ],
-              },
-              visibilityDefault: "internal",
-            },
-          },
+      await test.step("CA19 phase: create a canned response through workspace settings", async () => {
+        await page.goto(
+          new URL("/agent/settings/canned-responses", origin).toString(),
         );
-        console.info("CA19 phase completed: canned-response API create");
+        await page
+          .getByRole("button", { name: "New response", exact: true })
+          .click();
+        const dialog = page.getByRole("dialog");
+        await dialog.getByLabel("Name", { exact: true }).fill(responseName);
+        await dialog
+          .locator(".ProseMirror[contenteditable=true]")
+          .fill(originalText);
+        const saved = page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname === "/api/canned-responses" &&
+            response.request().method() === "POST",
+        );
+        await dialog.getByRole("button", { name: "Save", exact: true }).click();
+        const response = await saved;
+        expect(response.status()).toBe(200);
+        await expect(dialog).not.toBeVisible();
+        await page.reload();
+        await expect(
+          page.getByRole("button", {
+            name: `Edit ${responseName}`,
+            exact: true,
+          }),
+        ).toBeVisible();
+        await page.screenshot({
+          path: "test-results/kaneo-canned-response-real-library.png",
+        });
         return response;
       });
     const cannedResponse =

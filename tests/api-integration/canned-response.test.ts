@@ -158,6 +158,106 @@ describe("API integration: canned responses (#27)", () => {
     await resetTestDatabase();
   });
 
+  it.each([
+    ["owner", 200],
+    ["admin", 200],
+    ["manager", 200],
+    ["lead", 403],
+    ["member", 403],
+    ["viewer", 403],
+    ["customer", 403],
+  ] as const)(
+    "management listing enforces %s authority without needing a work item",
+    async (role, expected) => {
+      const member = await createWorkspaceMember({ role });
+      mockAuthenticatedSession(member.user);
+      const { app } = createApp();
+      await db.insert(schema.cannedResponseTable).values({
+        workspaceId: member.workspace.id,
+        name: "Workspace-only reply",
+        body: { type: "doc", content: [] },
+      });
+      const response = await app.request(
+        `/api/canned-responses/manage?workspaceId=${member.workspace.id}`,
+      );
+      expect(response.status).toBe(expected);
+      const text = await response.text();
+      if (expected === 200)
+        expect(JSON.parse(text)).toEqual([
+          expect.objectContaining({ name: "Workspace-only reply" }),
+        ]);
+      else expect(text).not.toContain("Workspace-only reply");
+    },
+  );
+
+  it("management listing refuses a customer-side person even with a legacy admin membership", async () => {
+    const customer = await createWorkspaceMember({ role: "admin" });
+    await db
+      .update(schema.personTable)
+      .set({ side: "customer" })
+      .where(eq(schema.personTable.userId, customer.user.id));
+    await db.insert(schema.cannedResponseTable).values({
+      workspaceId: customer.workspace.id,
+      name: "Internal configuration",
+      body: { type: "doc", content: [] },
+    });
+    mockAuthenticatedSession(customer.user);
+    const { app } = createApp();
+    const response = await app.request(
+      `/api/canned-responses/manage?workspaceId=${customer.workspace.id}`,
+    );
+    expect(response.status).toBe(403);
+    expect(await response.text()).not.toContain("Internal configuration");
+  });
+
+  it("management listing excludes other workspaces and clamps API keys", async () => {
+    const manager = await createWorkspaceMember({ role: "admin" });
+    const other = await createWorkspaceMember({ role: "admin" });
+    await db.insert(schema.cannedResponseTable).values([
+      {
+        workspaceId: manager.workspace.id,
+        name: "Own snippet",
+        body: { type: "doc", content: [] },
+      },
+      {
+        workspaceId: other.workspace.id,
+        name: "Other tenant secret",
+        body: { type: "doc", content: [] },
+      },
+    ]);
+    mockAuthenticatedSession(manager.user);
+    const { app } = createApp();
+    const path = `/api/canned-responses/manage?workspaceId=${manager.workspace.id}`;
+    const allowed = await app.request(path);
+    expect(allowed.status).toBe(200);
+    const rows = await allowed.json();
+    expect(rows).toEqual([expect.objectContaining({ name: "Own snippet" })]);
+    const foreign = await app.request(
+      `/api/canned-responses/manage?workspaceId=${other.workspace.id}`,
+    );
+    expect(foreign.status).toBe(403);
+    expect(await foreign.text()).not.toContain("Other tenant secret");
+    const readKey = await createScopedApiKey(manager.user.id, {
+      work_item: ["read"],
+    });
+    const denied = await app.request(path, {
+      headers: { "x-api-key": readKey },
+    });
+    expect(denied.status).toBe(403);
+    expect(await denied.text()).not.toContain("Own snippet");
+    const manageKey = await createScopedApiKey(manager.user.id, {
+      workspace: ["manage_settings"],
+    });
+    const keyAllowed = await app.request(path, {
+      headers: { "x-api-key": manageKey },
+    });
+    expect(keyAllowed.status).toBe(200);
+    expect(await keyAllowed.json()).toEqual(rows);
+    expect((await app.request("/api/canned-responses/manage")).status).toBe(
+      400,
+    );
+  });
+
   it("CA-19: an admin creates, lists, updates and deletes a canned response", async () => {
     const creator = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(creator.user);

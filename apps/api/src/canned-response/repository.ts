@@ -111,6 +111,26 @@ export async function listCannedResponsesForWorkItem(
     .orderBy(cannedResponseTable.name);
 }
 
+/** Workspace settings listing; the route separately requires manage_settings. */
+export async function listCannedResponsesForManagement(
+  identity: ResolvedIdentity,
+  workspaceId: string,
+): Promise<CannedResponse[]> {
+  return db
+    .select()
+    .from(cannedResponseTable)
+    .where(
+      and(
+        eq(cannedResponseTable.workspaceId, workspaceId),
+        currentWorkspaceReachPredicate(
+          identity,
+          cannedResponseTable.workspaceId,
+        ),
+      ),
+    )
+    .orderBy(cannedResponseTable.name, cannedResponseTable.id);
+}
+
 export async function insertCannedResponse(
   identity: ResolvedIdentity,
   values: NewCannedResponse,

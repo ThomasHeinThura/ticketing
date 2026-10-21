@@ -10427,6 +10427,64 @@
         }
       }
     },
+    "/canned-responses/manage": {
+      "get": {
+        "operationId": "listCannedResponsesForManagement",
+        "tags": [
+          "Canned responses"
+        ],
+        "summary": "List the workspace canned-response library for settings",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workspace canned responses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CannedResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace ID is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access or missing workspace:manage_settings",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/canned-responses/{id}": {
       "patch": {
         "operationId": "updateCannedResponse",

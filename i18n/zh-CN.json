@@ -1357,6 +1357,26 @@
 			"merged": "已合并",
 			"draft": "草稿",
 			"open": "打开"
+		},
+		"cannedResponses": {
+			"body": "Response body",
+			"create": "New response",
+			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
+			"deleteNamed": "Delete {{name}}",
+			"description": "Manage reusable replies for this workspace. Agents can insert a reply and edit it before sending.",
+			"edit": "Edit response",
+			"editNamed": "Edit {{name}}",
+			"empty": "No matching responses",
+			"emptyDescription": "Create a reusable reply or change the search.",
+			"failed": "Unable to save this response.",
+			"forbidden": "You need workspace settings permission to manage canned responses.",
+			"loadFailed": "Unable to load canned responses.",
+			"name": "Name",
+			"notFound": "This response is no longer available in this workspace.",
+			"search": "Search responses",
+			"title": "Canned responses",
+			"visibility": "Default visibility",
+			"save": "Save"
 		}
 	},
 	"navigation": {

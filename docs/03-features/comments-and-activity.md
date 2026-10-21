@@ -147,7 +147,9 @@ security-sensitive field in the product.
   ([data-model.md](../01-architecture/data-model.md) §4). Creating, editing and deleting a
   canned response requires `workspace:manage_settings`
   ([rbac.md](../01-architecture/rbac.md)); reading the list to insert one only requires
-  `work_item:read` on the work item being commented on.
+  `work_item:read` on the work item being commented on. Workspace settings lists the
+  library through a separate manager-only route requiring `workspace:manage_settings`,
+  so managing snippets does not require creating a work item or broadening composer reads.
 - `CA-20` Inserted from the composer, then editable before sending. Never sent
   automatically.
 
@@ -191,6 +193,7 @@ PATCH  /api/comments/{id}                      comment:update_any, or comment:up
 DELETE /api/comments/{id}                      comment:delete_any, or comment:delete_own
                                                 (owner)
 GET    /api/portal/requests/{ref}/activity     (portal router — public only)
+GET    /api/canned-responses/manage            workspace:manage_settings (workspaceId query)
 GET    /api/canned-responses                   work_item:read
 POST   /api/canned-responses                   workspace:manage_settings
 PATCH  /api/canned-responses/{id}              workspace:manage_settings

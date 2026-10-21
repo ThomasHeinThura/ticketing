@@ -1357,6 +1357,26 @@
 			"updateError": "라벨 업데이트에 실패했습니다",
 			"deleteError": "라벨 삭제에 실패했습니다",
 			"nameRequired": "라벨 이름은 필수입니다"
+		},
+		"cannedResponses": {
+			"body": "Response body",
+			"create": "New response",
+			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
+			"deleteNamed": "Delete {{name}}",
+			"description": "Manage reusable replies for this workspace. Agents can insert a reply and edit it before sending.",
+			"edit": "Edit response",
+			"editNamed": "Edit {{name}}",
+			"empty": "No matching responses",
+			"emptyDescription": "Create a reusable reply or change the search.",
+			"failed": "Unable to save this response.",
+			"forbidden": "You need workspace settings permission to manage canned responses.",
+			"loadFailed": "Unable to load canned responses.",
+			"name": "Name",
+			"notFound": "This response is no longer available in this workspace.",
+			"search": "Search responses",
+			"title": "Canned responses",
+			"visibility": "Default visibility",
+			"save": "Save"
 		}
 	},
 	"navigation": {
