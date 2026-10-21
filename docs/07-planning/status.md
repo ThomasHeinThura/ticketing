@@ -1,7 +1,7 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `0f121c4e`; primary checkout refreshed to that source.
+Current inspected GitHub main: `f7a24732`; primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
@@ -9,7 +9,7 @@ This is a dated snapshot; refresh live GitHub before acting.
 | Stage | State | Remaining work |
 | --- | --- | --- |
 | P0 Foundation | Partial implementation; verification incomplete | Container seeding and isolated recovery merged and verified; finish backup encryption/offsite/runtime recording, integrated recovery and owner walkthrough. |
-| P1 Core work | Partial implementation | Finish project label catalogues, hierarchy/relations/uploads and legacy-work redirects. Board/list/table, bulk, backlog, saved views, inbox and My work have real implementations; full acceptance remains. |
+| P1 Core work | Partial implementation | Finish hierarchy/relations/uploads and legacy-work redirects. Board/list/table, bulk, backlog, saved views, inbox and My work have real implementations; full acceptance remains. |
 | P2 Service desk | Partial implementation | Approval requests/candidates, authoring/configuration UI, audit, milestones/stakeholders and integrated service-desk journeys. |
 | P3 Portal and identity | Partial implementation | Full portal, invitation/admission/discovery contracts and implementation, identity administration and real Entra verification. |
 | P4 Governance | Partial implementation | Missing APIs/UI, notification runtime, automations, God Mode, MCP and #580 query ownership. |
@@ -34,7 +34,7 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
 - #881 canonical workspace-label assignment is merged after all 18 required checks passed
   on reviewed head `a871a853`. The Kaneo properties picker persists through versioned writes;
   catalogue deletion advances affected item versions and records internal activity/events.
-  Project-scoped label catalogues remain separate unfinished work.
+  Project-scoped label catalogues subsequently merged in #884.
 - #877 container seeding is merged with all 18 required checks green: real intake
   submissions repeat under the restricted credential; local image build/boot passed.
 - Recovery targeting now resolves the selected mounted volume. An isolated internal-network
@@ -57,23 +57,22 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   passed, but G11 palette timing failed (209.3 ms against 200 ms); do not merge or blindly
   rerun. Actual multiarch release verification remains required before claiming the
   35-minute image-build defect fixed.
-- Project label catalogues are in #884, in a separate worktree. Migration,
-  scoped CRUD/assignment and Kaneo settings reuse exist on the candidate; 884 API unit
-  tests, 107 permission checks and typechecks passed. Independent backend review is clean;
-  UI/security review is clean. Six native browser journeys and 53 URL/navigation tests
-  passed, including workspace regression and mobile/dark presentation. PostgreSQL,
-  concurrency/migration, real-API browser and required CI evidence remain open. First hosted
-  run found an API-path ambiguity and two legacy task-label insert projections needing the
-  new nullable column; repairs are prepared, including a reviewed legacy-bulk catalogue
-  isolation finding and regression. Five intended Linux baselines were inspected.
+- #884 project label catalogues are merged to `f7a24732` on independently reviewed
+  `94eb6795` after all 18 required checks passed. Scoped catalogue CRUD/assignment uses
+  Kaneo settings, URL dialogs and strict management grants. Hosted PostgreSQL, actual API
+  browser journeys, G8, accessibility and all 418 contrast pairs passed. G11 passed 22/22;
+  palette retry median 103.0 ms and keyboard navigation 167.3 ms. Both hosted CPU diagnostics
+  passed. Earlier API-path, legacy projection/bulk-isolation and contrast findings were
+  repaired and reviewed; no P1 or SIT completion is claimed.
 - #885 is merged on reviewed `5e201dbe` after all 18 required checks passed. Both hosted
   CPU diagnostics passed with sampled profiles retained; G11 passed 22/22. #880 still
   requires a performance repair: reviewed `046e4964` passed 17/18 checks but palette timing
   failed at 243.2 ms against 200 ms. No blind rerun or release-fix claim.
-- #884 reviewed `329cfe36` passed 17/18 checks, including PostgreSQL, real browser, G8 and
-  G11. Static failed stale contrast occurrence bindings. The source-grounded repair and
-  explicit existing `bg-card` surface passed all 418 native contrast pairs and independent
-  review; final-head hosted checks remain required.
+- #886 corrects palette measurement interference: the same visibility/focus assertions
+  run after the unchanged recorder's paint window. Independent source/method/security
+  review is clean; native diagnostic and cold/warm browser journeys passed. Native full
+  G11 failed closed on calibration factor 0.565, so hosted verification remains required.
+  Accepted #884 is being imported; do not treat earlier-head checks as final evidence.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
   constraints. It is a dated snapshot, not policy or proof that pending checks passed.

@@ -31,7 +31,7 @@ are authorized. No P5–P7, production deployment or bulk branch/worktree deleti
 
 ## Accepted code and current branches
 
-Live accepted main: `0f121c4e3c46898a840bf70e962be76a6ac5e2c3` (#885).
+Live accepted main: `f7a247325844b865050917f11cfaf637e0ad58a1` (#884).
 The primary checkout has been refreshed to it without discarding work. Do not delete other
 worktrees or have two sessions edit the same file. Inspect live GitHub before continuing.
 
@@ -40,11 +40,13 @@ worktrees or have two sessions edit the same file. Inspect live GitHub before co
 | #875 integration shards | Merged, all 18 checks. Slowest measured partition 8m43s versus former 31m22s serial step, not total pipeline time. | Preserve the fail-closed collector and required checks. |
 | #877 seed; #878 recovery | Merged, all 18 checks each. Restricted-credential repeated real submissions, isolated database-row/nonempty-file restore, health and denied egress verified. | Complete remaining P0 backup/runtime/recovery acceptance. |
 | #870 approval decisions | Merged after required checks/review. | Approval requests/candidates and prerequisites remain. |
-| #871 canonical Kaneo work-item page/pane | Merged on reviewed bf3c6b95, all 18 checks. | Remaining P1 hierarchy/relations/project labels and integrated acceptance. |
-| #881 canonical workspace labels | Merged on reviewed a871a853, all 18 checks. | Project label catalogues remain separate unfinished work. |
+| #871 canonical Kaneo work-item page/pane | Merged on reviewed bf3c6b95, all 18 checks. | Remaining P1 hierarchy/relations and integrated acceptance. |
+| #881 canonical workspace labels | Merged on reviewed a871a853, all 18 checks. | Project label catalogues merged in #884. |
 | [#882 canned responses](https://github.com/ThomasHeinThura/ticketing/pull/882) | **Merged** to main 2f366cd4 on reviewed ff85f0bc after all 18 checks. Hosted PostgreSQL, 138 browser tests, G8, G11 budgets 22/22 and amd64 image boot passed. | Do not reimplement its placeholders/management or repeat resolved fixture defects. Full P2/SIT acceptance remains open. |
 | [#883 sidebar/project controls](https://github.com/ThomasHeinThura/ticketing/pull/883) | **Merged** to 948cc5c0 on independently reviewed 2bbfb21d after all 18 required checks. G11 22/22; G8, PostgreSQL and browser checks passed. | Preserve scoped create controls, parallel sidebar/navigation downloads and creation-form loading on intent. P1 acceptance remains open. |
-| [#880 image build](https://github.com/ThomasHeinThura/ticketing/pull/880) | Candidate c3ca7047 imports accepted 948cc5c0. Authored source diff unchanged; native structural check passed. Hosted PostgreSQL/G8 passed but G11 palette timing failed at 209.3 ms > 200 ms. | Worktree ~/.codex/worktrees/taskdesk-native-artifact-image-build. Import/docs reviewed (5599889913). Diagnose retained G11 failure before another candidate; no blind rerun/merge. Actual multiarch release, scanning and signing remain unverified. |
+| [#880 image build](https://github.com/ThomasHeinThura/ticketing/pull/880) | Reviewed candidate046e4964 imports accepted0f121c4e. 17/18 checks; G11 palette243.2ms failed. | ~/.codex/worktrees/taskdesk-native-artifact-image-build. Import accepted #886 after its checks/merge; keep authored Dockerfile/structural-test delta. Actual multiarch release/scan/sign remains required. |
+| [#884 project catalogues](https://github.com/ThomasHeinThura/ticketing/pull/884) | Merged to f7a24732 on reviewed94eb6795 after18/18 required checks, PG, real browser, G8, contrast418/418, G11 22/22 and both CPU diagnostics. | Preserve project scope, strict manageLabels, legacy isolation and URL dialogs. Full P1/SIT acceptance remains. |
+| [#886 palette measurement](https://github.com/ThomasHeinThura/ticketing/pull/886) | Independent source/method/security approval on b6bb56c9; accepted #884 import and documentation update in progress. | ~/.codex/worktrees/taskdesk-palette-measurement, codex/palette-measurement. Bind review/checks to final head; see evidence below. |
 
 ## Immediate next work
 
@@ -53,21 +55,10 @@ worktrees or have two sessions edit the same file. Inspect live GitHub before co
    timeout. The candidate compiles CPU-independent artifacts on the native build platform,
    with target-native production dependencies/runtime. Do not increase the timeout or
    narrow supported architectures. An amd64 image proof does not establish arm64 success.
-2. Continue [#884 project catalogues](https://github.com/ThomasHeinThura/ticketing/pull/884)
-   in ~/.codex/worktrees/taskdesk-project-label-catalogues, branch codex/project-label-catalogues. Candidate migration 0126 adds label.project_id
-   with a composite workspace/project FK and per-catalogue uniqueness. Dedicated typed
-   routes enforce current project reach and strict label:manage; legacy label routes
-   exclude project entries. Assignments accept workspace/own-project labels only; deletion
-   journals removals and advances affected item versions. Backend security review is clean;
-   884 API unit tests, 107 permission checks and API/web typechecks passed. UI reuses the
-   Kaneo label catalogue with URL-addressed dialogs and a strict manageLabels flag.
-   UI/security review is clean. Six native browser journeys and 53 URL/navigation tests
-   passed, including reload CRUD, strict management grants, late-response draft preservation,
-   retry, mobile/dark/reduced-motion and workspace regression. Logs are
-   /tmp/taskdesk-project-labels-browser-4.log and /tmp/taskdesk-project-labels-url-nav-unit.log.
-   Finish real PostgreSQL migration/concurrency/permission and actual API browser journeys,
-   Linux visual baseline inspection and all required CI. New PG tests are authored, not run.
-   It is not merged, deployed or accepted. Preserve its local work when refreshing main.
+2. Finish #886 final-head checks/review after accepted #884 import. Wait for the canonical
+   paint recorder before running the same Playwright dialog visibility/focus assertions.
+   Do not change the recorder, fixture, calibration, samples, retries or budget. Then import
+   accepted code into #880, review the preserved delta and run its required checks.
 3. Continue the full P1 then P2–P4 sequence in the living plan. Hierarchy has parent/tree
    backend code but a 500-node cap with truncation; per-parent pagination (#434), inline
    hierarchy UI and full lifecycle behavior remain. Canonical relations remain unbuilt;
@@ -116,7 +107,7 @@ ports unpublished. Do not opt into Watchtower replacement. No remote application
 have been made. OrbStack remains stopped and its local data is retained.
 
 P0 still needs backup encryption/offsite/retention/runtime records and full restore walkthrough.
-P1 needs complete hierarchy/relations, project labels and remaining work/view acceptance.
+P1 needs complete hierarchy/relations and remaining work/view acceptance.
 P2 needs teams/CAB/custom fields, approval requests, complete authoring/SLA/workflow journeys,
 audit and delivery planning. P3 needs the full host-root portal, admission contracts and
 implementation, identity administration and all 25 real-Entra tests (tenant access must be
@@ -131,45 +122,38 @@ installation/upgrade/image health, isolated backup/restore, exact SHA/digest dep
 developer walkthrough and private test accounts. Report implemented/verified/blocked/awaiting
 Thomas's sign-off separately. Missing external evidence never manufactures completion.
 
-Latest #880 failure: fast 39602448809 / full 39602448792, G11 job 119230093551.
-Palette normalised retry median 209.3 ms (budget <200); keyboard navigation 163.6 ms
-passed. Log /tmp/taskdesk-image-c3ca-g11.log; sanitized diagnostic retained in
-/tmp/taskdesk-image-c3ca-diagnostic. CPU profiles remain empty due parser rejection.
-Do not turn this failure into a merge clearance, budget increase or blind workflow rerun.
+## Latest evidence and adverse history
 
-#884 first hosted candidate 34bea894: contract caught ambiguous legacy/new paths; use
-/api/label/project/{projectId}/catalogue[/{id}] consistently in route/client/policy/spec.
-Local contract, 107 permission checks, six browser journeys and API/web typechecks pass
-for that repair. Five Linux baselines (project labels/general/states/danger/members) are
-from actual run39605343376; reviewer inspected the new catalogue and navigation-only
-changes. Native all-unit tasks passed (API884, web1434), all nine typecheck tasks passed.
-Hosted PostgreSQL exposed two old task-label insert-select projections lacking the new
-nullable project_id; both now explicitly select NULL, with original scope predicates.
-Independent review also found a legacy bulk lookup treating project catalogues as workspace
-labels; it now excludes project_id and a positive-control/hidden-source negative bulk-route
-regression is authored. Affected actual bulk/repository/race tests must pass before merge. Logs:
-/tmp/taskdesk-project-labels-34-pg1.log and -pg2.log. Static failed the contrast occurrence manifest after the label-screen extraction;
-Playwright download DNS warnings recovered and were not the failing step. Update source
-occurrence bindings and rerun the actual contrast gate; do not waive it. Record new-head results; never manufacture clearance.
+#880 reviewed046e4964: fast39609943696/full39609943861; G11job119255890231 failed
+palette retry median243.2ms against200ms, keyboard144ms passed. Other17required checks
+passed. Log /tmp/taskdesk-image-046-g11.log, sampled palette artifact
+/tmp/taskdesk-image-046-diagnostic. Assignment diagnostic failed clock alignment; independent
+palette diagnostic retained valid samples. Do not call the multiarch release fixed yet.
 
-[#885 sampled CPU timestamp repair](https://github.com/ThomasHeinThura/ticketing/pull/885)
-is separate, worktree ~/.codex/worktrees/taskdesk-profile-sample-timestamps, branch
-codex/profile-sample-timestamps, reviewed head5e201dbe. Reconstruct signed deltas across
-chunks, globally sort observed points after capture, omit ambiguous intervals/tails.
-Twenty native unit checks, web typecheck/build and both native source-bound captures
-passed; palette retained one profile with 2,137 intervals. Exact-head review5600302361.
-Hosted CPU attribution, alignment and G11 remain required. This is diagnostic evidence,
-not a fix claim for #880's timing or multiarch release. Logs:
-/tmp/taskdesk-profile-clock-full-diagnostic.log and -native-diagnostic-2.log.
+#884 final reviewed94eb6795: fast39613713781/full39613713595, independent review
+6318052802, mergef7a24732. All18required checks passed; G11job119269017772 passed22/22,
+palette retry103.0ms, navigation167.3ms, both independent CPU diagnostics2/2. Log
+/tmp/taskdesk-project-labels-final-g11.log. Earlier34bea894 path ambiguity, two legacy
+insert-select projections and hidden project catalogue bulk lookup were repaired; the
+329cfe36 contrast-only failure was repaired by12source occurrence groups and explicit
+existing bg-card backdrop, preserving418pairs/thresholds. Initial download DNS warnings
+recovered and were not the static failure. Five intended Linux baselines were reviewed;
+final G8 passed. These are change-level results, not stage acceptance.
 
-Latest update: #885 is merged to main0f121c4e after all18 required checks, review5600302361,
-G11 22/22 and both hosted CPU diagnostics2/2. #880 imported it at reviewed046e4964;
-17/18 checks passed but palette timing243.2ms failed. Log /tmp/taskdesk-image-046-g11.log;
-retained sampled palette profile /tmp/taskdesk-image-046-diagnostic. Assignment diagnostic
-clock alignment failed separately. Diagnose sampled interval before further app changes.
-#884 head329cfe36 passed17/18 (PG,realbrowser,G8,G11), with contrast manifest the only failure.
-Refreshed12 source occurrence groups, all418 pairs/thresholds intact. Declared the catalogue's
-already-computed bg-card backdrop explicitly, restoring subtitle coverage; independent full
-contrast check passed. Workspace controlled light/dark paint was identical; project had
-one RGB-rounding pixel outside the catalogue on the Projects tab. Hosted G8 stays strict.
-Final repair/import review and exact-head CI remain required; no stage/SIT acceptance.
+#885 merged0f121c4e after18required checks, review5600302361, G11 22/22 and both hosted
+CPU diagnostics2/2. Signed V8 timestamps reconstruct in arrival order, globally sort after
+capture, and attribute only observed adjacent intervals. Do not reinstate nonnegative-delta
+rejection, clamping or extrapolation. Older #882/#883 captures above remain historical
+failures; they do not describe the current parser.
+
+#886 independently reviewedb6bb56c9 corrects observer interference. Reviewer reconstructed
+91.193ms sampled Playwright role-query work inside the hosted261.3ms interval and38.615ms
+inside a native156.1ms interval. Corrected native diagnostic passed with0ms sampled role-query
+work; raw208.6ms is not a controlled speed-improvement proof. Agent build, webtypecheck,
+Biome and two cold/warm browser keyboard/focus/filter/restore journeys passed. Native full
+G11 failed closed at calibration factor0.565 outside[0.75,1.75],21tests not run. Logs:
+/tmp/taskdesk-palette-observer-{build,typecheck,browser,after,performance}.log; profiles
+/tmp/taskdesk-palette-observer-{before,after}.json. Source/method review6318215302 and
+security addendum6318258978. PR-template initially failed incorrect n/a security wording;
+body corrected after explicit independent security review. Final import/docs review and
+hosted checks remain required. Do not restart failed jobs blindly or claim a gate passed.
