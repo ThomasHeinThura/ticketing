@@ -856,3 +856,20 @@ content, sidebar completion/timeout, paint frames, idle execution and warm commi
 records popup insertion and prints these phases plus bounded static-script timings if
 its existing five-second warm-up assertion fails. This is diagnostic evidence, not a
 retry or a change to calibration, sample counts, budgets or failure handling.
+
+### Sampled CPU trace reconstruction
+
+Diagnostic CPU profiles reconstruct each sample timestamp by accumulating V8's signed
+integer `timeDeltas` across the complete process/profile stream from its initial `Profile`
+trace timestamp. A delta is a timestamp difference, not a duration; out-of-order samples
+must remain in arrival order during reconstruction, then be sorted globally after capture.
+Only adjacent observed timestamps produce attributed intervals. Equal-timestamp ambiguity
+and the unobserved final tail receive no attribution. Malformed identities, conflicting
+sources, duplicate heads, impossible clocks and mismatched arrays still invalidate profiles.
+No absolute-value/clamping repair, extrapolated coverage or gate-budget change is permitted.
+
+Contract references: [V8 trace emitter](https://github.com/v8/v8/blob/main/src/profiler/profile-generator.cc)
+(`StreamPendingTraceEvents`) and [DevTools CPU profile model](https://github.com/ChromeDevTools/devtools-frontend/blob/main/front_end/models/cpu_profile/CPUProfileDataModel.ts)
+(`convertTimeDeltas` / `sortSamples`). These describe the format; the implementation here is
+original TaskDesk code. Timeline/recorder clock alignment and actual sampled-frame coverage
+remain separate requirements. A successful parser test does not establish runtime performance.
