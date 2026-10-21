@@ -56,9 +56,8 @@ supports light functional SIT; this shared 2-vCPU host is not reference load/per
 acceptance evidence. No remote services were changed.
 
 Thomas selected the agent/portal origins: `https://tickting.technexus.info` and
-`https://portal.technexus.info`. Thomas will add both DNS records to the VM public IP `4.194.153.78`; the checked authoritative
-Cloudflare zone initially had no address records at those names; Thomas subsequently
-created them with Cloudflare proxy enabled. Reuse existing Traefik on ports
+`https://portal.technexus.info`. Thomas has created both DNS records for VM public IP `4.194.153.78`, with Cloudflare
+proxy enabled. TaskDesk has not yet been deployed to the VM. Reuse existing Traefik on ports
 80/443, its `web` network and `le` ACME resolver. The stock overlay assumes network
 `proxy`, resolver `letsencrypt` and file-provider middleware absent on this host, so it
 cannot be deployed unchanged. Prepare and review a dedicated SIT overlay, isolated
@@ -74,7 +73,7 @@ candidate presented as final SIT.
 
 Before hosted handoff: establish DNS/certificate access, validate the new overlay, deploy
 the reviewed SHA/digest with seeded accounts, verify both origins/security/journeys and
-backup/restore, then move persistent SIT use off OrbStack. Retain local data until the
+backup/restore. OrbStack stays stopped; retain its local data until the
 VM's recovery path works. The VM reports pending kernel maintenance/reboot; coordinate
 that separately because unrelated applications share the host. Existing Watchtower is
 label/scope restricted; do not opt TaskDesk into unattended image replacement.

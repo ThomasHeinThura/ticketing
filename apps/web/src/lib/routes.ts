@@ -373,6 +373,29 @@ export type SettingsTextFilterSearch = {
   q?: string;
 };
 
+export type CannedResponseSearch = SettingsTextFilterSearch & {
+  id?: string;
+  action?: "delete";
+};
+export function parseCannedResponseSearch(raw: unknown): CannedResponseSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const id =
+    typeof value.id === "string" &&
+    value.id.length <= 200 &&
+    !value.id.includes("\u0000")
+      ? value.id.trim()
+      : undefined;
+  return {
+    ...parseSettingsTextFilterSearch(raw),
+    ...(id
+      ? {
+          id,
+          ...(value.action === "delete" ? { action: "delete" as const } : {}),
+        }
+      : {}),
+  };
+}
+
 export function parseSettingsTextFilterSearch(
   raw: unknown,
 ): SettingsTextFilterSearch {
@@ -836,11 +859,10 @@ export const routes = {
   },
   workspaceCannedResponses: {
     path: "/agent/settings/canned-responses" as const,
-    build: (search: SettingsTextFilterSearch = {}) => {
-      const resolved = parseSettingsTextFilterSearch(search);
-      return resolved.q
-        ? `/agent/settings/canned-responses?q=${encodeURIComponent(resolved.q)}`
-        : "/agent/settings/canned-responses";
+    build: (search: CannedResponseSearch = {}) => {
+      const resolved = parseCannedResponseSearch(search);
+      const query = new URLSearchParams(resolved).toString();
+      return `/agent/settings/canned-responses${query ? `?${query}` : ""}`;
     },
   },
   workspaceDangerZone: {

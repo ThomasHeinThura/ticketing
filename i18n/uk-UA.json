@@ -1360,6 +1360,27 @@
 			"updateError": "Не вдалося оновити мітку",
 			"deleteError": "Не вдалося видалити мітку",
 			"nameRequired": "Назва мітки є обов'язковою"
+		},
+		"cannedResponses": {
+			"body": "Response body",
+			"create": "New response",
+			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
+			"deleteNamed": "Delete {{name}}",
+			"description": "Manage reusable replies for this workspace. Agents can insert a reply and edit it before sending.",
+			"edit": "Edit response",
+			"editNamed": "Edit {{name}}",
+			"empty": "No matching responses",
+			"emptyDescription": "Create a reusable reply or change the search.",
+			"failed": "Unable to save this response.",
+			"forbidden": "You need workspace settings permission to manage canned responses.",
+			"loadFailed": "Unable to load canned responses.",
+			"name": "Name",
+			"notFound": "This response is no longer available in this workspace.",
+			"search": "Search responses",
+			"title": "Canned responses",
+			"visibility": "Default visibility",
+			"save": "Save",
+			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		}
 	},
 	"navigation": {
@@ -1721,7 +1742,8 @@
 			"visibilityLabel": "Who can see this comment?",
 			"mentionWarning": "{{people}} не мають доступу до цього робочого елемента й не отримають сповіщення.",
 			"mentionUnavailable": "Вибрана людина",
-			"mentionCheckFailed": "Не вдалося перевірити доступ для згадок. Сервер перевірить його ще раз під час надсилання."
+			"mentionCheckFailed": "Не вдалося перевірити доступ для згадок. Сервер перевірить його ще раз під час надсилання.",
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
 		}
 	},
 	"tasks": {

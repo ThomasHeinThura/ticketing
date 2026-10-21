@@ -111,6 +111,9 @@ function findDerivedProjectLookupProblems(
  * A stale entry, or one that also carries the declaration, fails.
  */
 const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
+  "GET /api/canned-responses/manage":
+    "workspace snippet definitions, gated by workspace:manage_settings and current workspace reach in SQL; no work item or project content. Composer listing remains independently item-scoped",
+
   "GET /api/project/organisations":
     "customer organisations (project:create picker); organisation rows, not project rows",
   "GET /api/request-types":
