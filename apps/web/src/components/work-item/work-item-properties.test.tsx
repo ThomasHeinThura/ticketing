@@ -24,6 +24,9 @@ const mocks = vi.hoisted(() => ({
   peopleError: null as unknown,
 }));
 
+vi.mock("./work-item-parent-control", () => ({
+  default: () => <div data-testid="parent-control" />,
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
   initReactI18next: { type: "3rdParty", init: () => {} },

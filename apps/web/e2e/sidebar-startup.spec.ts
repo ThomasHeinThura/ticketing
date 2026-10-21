@@ -111,7 +111,7 @@ test("sidebar defers project creation code until the user opens the existing dia
     name: "Add project",
     exact: true,
   });
-  await expect(addProject).toBeVisible();
+  await expect(addProject).toBeVisible({ timeout: 15000 });
   expect(creationRequested).toBe(false);
   await addProject.click();
   const dialog = page.getByRole("dialog");

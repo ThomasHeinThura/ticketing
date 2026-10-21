@@ -104,7 +104,7 @@ const PROJECT = {
   columns: [],
 };
 
-function makeWorkItem(number: number) {
+export function makeWorkItem(number: number) {
   return {
     id: `work-item-${number}`,
     projectId: PROJECT_ID,

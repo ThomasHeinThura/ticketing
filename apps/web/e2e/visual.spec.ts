@@ -487,6 +487,27 @@ async function installAuthenticatedFixture(page: Page) {
       // The native activity timeline reads a paged envelope; the generic `[]`
       // default has no `data` array and crashes the detail route.
       body = { data: [], page: { nextCursor: null, hasMore: false } };
+    } else if (path.endsWith("/api/work-items/HELP-7/children")) {
+      body = {
+        parent: {
+          ...workItem,
+          stateCategory: "started",
+        },
+        ancestors: [],
+        data: [
+          {
+            id: "visual-hierarchy-child",
+            key: "HELP-8",
+            title: "Verify access after reset",
+            stateName: "Backlog",
+            stateCategory: "backlog",
+            hasChildren: false,
+          },
+        ],
+        page: { nextCursor: null, hasMore: false },
+        meta: { total: 1 },
+        progress: { completed: 0, total: 1 },
+      };
     } else if (path.endsWith("/api/work-items/HELP-7/labels")) {
       body = [];
     } else if (path.endsWith("/api/work-items/HELP-7/sla")) {
@@ -722,6 +743,12 @@ test("work-item detail screen @visual", async ({ page }) => {
     page.locator(
       'input[aria-label="Title"][value="Customer cannot reset their password"]',
     ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", {
+      name: "HELP-8 · Verify access after reset",
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("work-item-detail.png", {
     animations: "disabled",

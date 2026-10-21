@@ -19,6 +19,7 @@ import { ancestorChain, descendantDepth } from "../hierarchy";
 import { WORK_ITEM_HIERARCHY_LOCK_NAMESPACE } from "../hierarchy-lock";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
+import { WorkItemVersionConflictError } from "./update-work-item";
 
 /**
  * `POST /api/work-items/{key}/parent` (`work_item:update`, required on both ends --
@@ -79,6 +80,7 @@ export async function setWorkItemParent(
   parentKey: string,
   actorId: string,
   actorType: ActivityActorType,
+  assertedVersion?: number,
 ) {
   // Read TWICE, deliberately -- the same shape `accept-invitation.ts`'s own doc comment
   // documents for its own advisory lock. This first read (outside any lock, outside the
@@ -128,6 +130,9 @@ export async function setWorkItemParent(
       // matching #481's own guard on the parent lookup just below.
       assertWorkItemStillLive(item);
       await assertProjectStillLive(tx, item.projectId);
+      if (assertedVersion !== undefined && item.version !== assertedVersion) {
+        throw new WorkItemVersionConflictError(assertedVersion, item.version);
+      }
 
       const [parent] = await tx
         .select()

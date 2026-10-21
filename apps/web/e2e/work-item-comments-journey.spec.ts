@@ -553,6 +553,84 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       await page.keyboard.press("Escape");
     });
 
+    await test.step("page a persisted hierarchy through the canonical Kaneo surface", async () => {
+      const client = new Client({ connectionString: databaseUrl });
+      await client.connect();
+      let childKeys: string[];
+      try {
+        // Disposable database fixture only: clone authoritative project/type/state
+        // from the actual API-created parent, with 51 real direct children.
+        const children = await client.query<{ key: string }>(
+          `INSERT INTO work_item
+             (id, workspace_id, project_id, type_id, number, key, title,
+              parent_id, state_id, position)
+           SELECT $1 || '-' || n, parent.workspace_id, parent.project_id,
+                  parent.type_id, 1000 + n, project.slug || '-' || (1000 + n),
+                  'Persisted hierarchy child ' || n, parent.id, parent.state_id, n
+             FROM work_item AS parent
+             JOIN project ON project.id = parent.project_id
+             CROSS JOIN generate_series(1, 51) AS n
+            WHERE parent.id = $2
+           RETURNING key`,
+          [`hierarchy-${randomUUID()}`, item.id],
+        );
+        expect(children.rowCount).toBe(51);
+        childKeys = children.rows.map((row) => row.key);
+      } finally {
+        await client.end();
+      }
+      await page.goto(itemUrl);
+      const hierarchy = page.getByTestId("work-item-hierarchy");
+      await expect(hierarchy.getByText("0/51", { exact: true })).toBeVisible();
+      await expect(hierarchy.getByRole("link")).toHaveCount(51);
+      const more = hierarchy.getByRole("button", {
+        name: `Load more children of ${item.key}`,
+        exact: true,
+      });
+      const nextPage = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          url.pathname === `/api/work-items/${item.key}/children` &&
+          url.searchParams.has("cursor")
+        );
+      });
+      await more.click();
+      const response = await nextPage;
+      expect(response.status()).toBe(200);
+      const payload = await response.json();
+      expect(payload.data).toHaveLength(1);
+      expect(payload.meta.total).toBe(51);
+      await expect(hierarchy.getByRole("link")).toHaveCount(52);
+      await expect(more).toHaveCount(0);
+      await page.reload();
+      await expect(hierarchy.getByRole("link")).toHaveCount(52, {
+        timeout: 15000,
+      });
+      await hierarchy
+        .getByRole("link", {
+          name: `${childKeys[0]} · Persisted hierarchy child 1`,
+          exact: true,
+        })
+        .click();
+      await expect(page).toHaveURL(
+        new RegExp(`/agent/work-items/${childKeys[0]}$`),
+      );
+      await expect(hierarchy.locator('[aria-current="page"]')).toContainText(
+        childKeys[0] ?? "",
+      );
+      await expect(
+        hierarchy.getByRole("link", {
+          name: `${item.key} · Inline edited work item`,
+          exact: true,
+        }),
+      ).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath("kaneo-hierarchy-real-api.png"),
+        fullPage: true,
+      });
+      await page.goto(itemUrl);
+    });
+
     const mentionRecipient = await seedReachableMentionRecipient(
       databaseUrl,
       item.workspaceId,

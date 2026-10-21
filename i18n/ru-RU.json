@@ -2420,6 +2420,32 @@
 		}
 	},
 	"workItems": {
+		"parent": {
+			"label": "Parent",
+			"none": "No parent",
+			"key": "Parent work item key",
+			"loading": "Loading parent…",
+			"saved": "Parent updated.",
+			"conflict": "This item changed. Review the latest version and try again.",
+			"unavailable": "Choose a reachable work item in this project, other than this item.",
+			"failed": "Could not change the parent. Try again.",
+			"set": "Set parent",
+			"remove": "Remove parent"
+		},
+		"hierarchy": {
+			"title": "Hierarchy",
+			"progress": "{{completed}} of {{total}} descendants complete",
+			"error": "Hierarchy could not be loaded.",
+			"retry": "Retry",
+			"expand": "Expand {{key}}",
+			"collapse": "Collapse {{key}}",
+			"currentBranch": "Current branch outside the loaded page",
+			"more": "Load more children of {{key}}",
+			"loading": "Loading…",
+			"empty": "No children",
+			"restoreLimit": "Restored the first {{count}} pages. Load more to continue.",
+			"disclosureLimit": "Collapse a branch before opening more branches."
+		},
 		"detail": {
 			"loading": "Loading work item…",
 			"notFoundDescription": "This work item doesn't exist, or you don't have access to it.",

@@ -176,6 +176,19 @@ export const workItemPolicies = {
   // /api/work-items/{key}` above. rbac.md declares this "Required on both ends, including
   // detach" -- see that controller's own doc comment for why this is ONE capability check
   // under this codebase's current workspace-role-based permission model, not two.
+  "POST /api/v2/work-items/{key}/parent": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "DELETE /api/v2/work-items/{key}/parent": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
   "POST /api/work-items/{key}/parent": {
     capability: "work_item:update",
     scope: "work_item",

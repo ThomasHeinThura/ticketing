@@ -1,3 +1,7 @@
+import {
+  parseWorkItemHierarchySearch,
+  type WorkItemHierarchySearch,
+} from "./work-item-hierarchy-search";
 // URL state for the work-item list route (`/agent/projects/{key}/work`). Kept in its own
 // module so the saved-view screens reuse exactly the same parsing and bounds for the shared
 // query properties (filter text, editor mode, sort, columns) without importing route code.
@@ -53,7 +57,7 @@ export const WORK_ITEM_LIST_LAYOUTS = ["list", "board", "table"] as const;
 export type WorkItemListLayout = (typeof WORK_ITEM_LIST_LAYOUTS)[number];
 
 /** The query properties a work-item search shares with a saved view. Each is optional. */
-export type WorkItemQueryState = {
+export type WorkItemQueryState = WorkItemHierarchySearch & {
   sort?: WorkItemSortField;
   dir?: WorkItemSortDirection;
   filter?: string;
@@ -63,7 +67,7 @@ export type WorkItemQueryState = {
   item?: string;
 };
 
-export type WorkItemListSearch = {
+export type WorkItemListSearch = WorkItemHierarchySearch & {
   layout: WorkItemListLayout;
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
@@ -167,6 +171,7 @@ export function parseWorkItemQueryState(raw: unknown): WorkItemQueryState {
   const candidate = (raw ?? {}) as Record<string, unknown>;
   const columns = parseColumns(candidate.columns);
   return {
+    ...parseWorkItemHierarchySearch(candidate),
     ...(isWorkItemSortField(candidate.sort) ? { sort: candidate.sort } : {}),
     ...(isWorkItemSortDirection(candidate.dir) ? { dir: candidate.dir } : {}),
     ...(typeof candidate.filter === "string" &&
@@ -214,6 +219,7 @@ export function appendWorkItemQueryState(
   if (state.filterMode) query.set("filterMode", state.filterMode);
   if (state.columns) query.set("columns", JSON.stringify(state.columns));
   if (state.item) query.set("item", state.item);
+  if (state.hierarchy) query.set("hierarchy", JSON.stringify(state.hierarchy));
 }
 
 /** The inverse direction, for a column-header sort toggle. */

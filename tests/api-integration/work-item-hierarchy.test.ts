@@ -139,23 +139,37 @@ function createWorkItemRequest(
   });
 }
 
-function setParentRequest(
+async function setParentRequest(
   app: ReturnType<typeof createApp>["app"],
   key: string,
   parentKey: string,
 ) {
-  return app.request(`/api/work-items/${key}/parent`, {
+  const [row] = await db
+    .select({ version: schema.workItemTable.version })
+    .from(schema.workItemTable)
+    .where(eq(schema.workItemTable.key, key));
+  return app.request(`/api/v2/work-items/${key}/parent`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      "if-match": `"${row?.version ?? 1}"`,
+    },
     body: JSON.stringify({ parentKey }),
   });
 }
 
-function detachParentRequest(
+async function detachParentRequest(
   app: ReturnType<typeof createApp>["app"],
   key: string,
 ) {
-  return app.request(`/api/work-items/${key}/parent`, { method: "DELETE" });
+  const [row] = await db
+    .select({ version: schema.workItemTable.version })
+    .from(schema.workItemTable)
+    .where(eq(schema.workItemTable.key, key));
+  return app.request(`/api/v2/work-items/${key}/parent`, {
+    method: "DELETE",
+    headers: { "if-match": `"${row?.version ?? 1}"` },
+  });
 }
 
 function treeRequest(app: ReturnType<typeof createApp>["app"], key: string) {
@@ -191,6 +205,154 @@ async function waitForLockCount(
 describe("API integration: work item hierarchy (#26 third slice)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+  });
+
+  it("preserves legacy omission behavior while enforcing any supplied version", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const parent = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Legacy parent",
+      })
+    ).json()) as CreatedWorkItem;
+    const child = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Legacy child",
+      })
+    ).json()) as CreatedWorkItem;
+    const call = (method: "POST" | "DELETE", version?: string) =>
+      app.request(`/api/work-items/${child.key}/parent`, {
+        method,
+        headers: {
+          "content-type": "application/json",
+          ...(version ? { "if-match": version } : {}),
+        },
+        ...(method === "POST"
+          ? { body: JSON.stringify({ parentKey: parent.key }) }
+          : {}),
+      });
+    expect((await call("POST")).status).toBe(200);
+    const stale = await call("DELETE", '"1"');
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toMatchObject({
+      assertedVersion: 1,
+      currentVersion: 2,
+    });
+    expect((await call("DELETE", "invalid")).status).toBe(400);
+    expect((await call("DELETE")).status).toBe(200);
+  });
+
+  it("WI-7: rejects stale parent writes without changing the hierarchy or activity", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const parent = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Versioned parent",
+      })
+    ).json()) as CreatedWorkItem;
+    const child = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Versioned child",
+      })
+    ).json()) as CreatedWorkItem;
+    const write = (method: "POST" | "DELETE", version?: string) =>
+      app.request(`/api/v2/work-items/${child.key}/parent`, {
+        method,
+        headers: {
+          "content-type": "application/json",
+          ...(version === undefined ? {} : { "if-match": version }),
+        },
+        ...(method === "POST"
+          ? { body: JSON.stringify({ parentKey: parent.key }) }
+          : {}),
+      });
+    for (const method of ["POST", "DELETE"] as const) {
+      expect((await write(method)).status).toBe(400);
+      expect((await write(method, "invalid")).status).toBe(400);
+    }
+    const attached = await write("POST", '"1"');
+    expect(attached.status).toBe(200);
+    const attachedBody = (await attached.json()) as {
+      parentId: string;
+      version: number;
+    };
+    expect(attachedBody.version).toBe(2);
+    const before = JSON.stringify(await db.select().from(schema.activityTable));
+    for (const method of ["POST", "DELETE"] as const) {
+      const stale = await write(method, '"1"');
+      expect(stale.status).toBe(409);
+      expect(await stale.json()).toMatchObject({
+        assertedVersion: 1,
+        currentVersion: 2,
+      });
+    }
+    expect(JSON.stringify(await db.select().from(schema.activityTable))).toBe(
+      before,
+    );
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, child.key));
+    expect(row?.parentId).toBe(attachedBody.parentId);
+    expect(row?.version).toBe(2);
+    const detached = await write("DELETE", '"2"');
+    expect(detached.status).toBe(200);
+    expect(await detached.json()).toMatchObject({ parentId: null, version: 3 });
+    // Even an otherwise idempotent detach must reject a stale asserted version.
+    expect((await write("DELETE", '"2"')).status).toBe(409);
+    const again = await write("DELETE", '"3"');
+    expect(again.status).toBe(200);
+    expect(await again.json()).toMatchObject({ parentId: null, version: 3 });
+  });
+
+  it("WI-7: only one concurrent parent selection using the same version commits", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const items: CreatedWorkItem[] = [];
+    for (const title of ["Parent one", "Parent two", "Child"]) {
+      items.push(
+        (await (
+          await createWorkItemRequest(app, project.id, {
+            typeId: type.id,
+            title,
+          })
+        ).json()) as CreatedWorkItem,
+      );
+    }
+    const [parentA, parentB, child] = items;
+    if (!parentA || !parentB || !child) throw new Error("fixture missing");
+    const replies = await Promise.all(
+      [parentA, parentB].map((parent) =>
+        app.request(`/api/v2/work-items/${child.key}/parent`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "if-match": '"1"' },
+          body: JSON.stringify({ parentKey: parent.key }),
+        }),
+      ),
+    );
+    expect(replies.map((reply) => reply.status).sort()).toEqual([200, 409]);
+    const conflict = replies.find((reply) => reply.status === 409);
+    expect(await conflict?.json()).toMatchObject({
+      assertedVersion: 1,
+      currentVersion: 2,
+    });
+    const [persisted] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, child.key));
+    expect(persisted?.version).toBe(2);
+    const [parent] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, persisted?.parentId ?? "missing"));
+    expect([parentA.key, parentB.key]).toContain(parent?.key);
   });
 
   it("RH-5: sets a parent, bumps version, and the tree shows the highlighted item under its parent", async () => {
@@ -650,6 +812,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
         parentA.key,
         creator.user.id,
         "person",
+        1,
       );
     } catch (error) {
       deletedError = error;
@@ -689,6 +852,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
         parentB.key,
         creator.user.id,
         "person",
+        1,
       );
     } catch (error) {
       archivedError = error;
@@ -995,6 +1159,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
         creator.workspace.id,
         creator.user.id,
         "person",
+        1,
       );
     } catch (error) {
       deletedError = error;
@@ -1047,6 +1212,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
         creator.workspace.id,
         creator.user.id,
         "person",
+        1,
       );
     } catch (error) {
       archivedError = error;

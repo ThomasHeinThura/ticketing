@@ -50,6 +50,7 @@ import {
   useWorkItemFeedback,
   WorkItemFeedbackProvider,
 } from "./work-item-feedback";
+import WorkItemParentControl from "./work-item-parent-control";
 import {
   useRefreshWorkItem,
   useSaveWorkItemFields,
@@ -1014,6 +1015,7 @@ function WorkItemPropertiesPanel({
         <PriorityControl {...controlProps} />
         <AssigneeControl {...controlProps} />
         <LabelsControl {...controlProps} />
+        <WorkItemParentControl {...controlProps} />
         <DateControl {...controlProps} field="startDate" />
         <DateControl {...controlProps} field="dueDate" />
       </div>

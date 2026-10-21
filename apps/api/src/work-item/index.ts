@@ -772,13 +772,14 @@ const setWorkItemParentRoute = createRoute({
     "Attach a work item into a hierarchy under `parentKey` (`relations-and-hierarchy.md` " +
     "`RH-5`..`RH-8`). Rejected at 422 when the proposed parent is the item itself, is a " +
     "descendant of it (a cycle, at any distance), or would exceed the maximum hierarchy " +
-    "depth of 5. Parent and child must be in the same project (`RH-6`).",
+    "depth of 5. Parent and child must be in the same project (`RH-6`). Supplied If-Match is checked; first-party clients use the strict /v2 route (WI-7).",
   middleware: [
     requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:update"),
   ] as const,
   request: {
     params: workItemKeyParam,
+    headers: ifMatchHeader.partial(),
     body: {
       required: true,
       content: { "application/json": { schema: setWorkItemParentBody } },
@@ -793,9 +794,13 @@ const setWorkItemParentRoute = createRoute({
       "No workspace access, or missing work_item:update permission",
     ),
     404: errorResponse("Work item or parent work item not found"),
-    409: errorResponse(
-      "A concurrent change affected this hierarchy -- reload and retry",
-    ),
+    409: {
+      description: "Version mismatch or concurrent hierarchy change",
+      content: {
+        "application/json": { schema: workItemVersionConflictSchema },
+        "text/plain": { schema: z.string() },
+      },
+    },
     422: errorResponse(
       "The proposed parent is the item itself, a descendant of it, or would exceed the " +
         "maximum hierarchy depth of 5",
@@ -816,14 +821,37 @@ const detachWorkItemParentRoute = createRoute({
     requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:update"),
   ] as const,
-  request: { params: workItemKeyParam },
+  request: { params: workItemKeyParam, headers: ifMatchHeader.partial() },
   responses: {
+    400: errorResponse("Missing or malformed If-Match header"),
+    409: jsonResponse("Version mismatch", workItemVersionConflictSchema),
     200: jsonResponse("The work item with its parent cleared", workItemSchema),
     403: errorResponse(
       "No workspace access, or missing work_item:update permission",
     ),
     404: errorResponse("Work item not found"),
   },
+});
+
+// Compatibility endpoints retain omission behavior; the first-party UI uses these
+// strict versioned routes. Authorization and transaction logic are identical.
+const setWorkItemParentV2Route = createRoute({
+  ...setWorkItemParentRoute,
+  operationId: "setWorkItemParentV2",
+  path: "/v2/work-items/{key}/parent",
+  summary: "Set work item parent with optimistic concurrency",
+  description:
+    "Requires If-Match with the current work-item version (WI-7). Uses the same reach, hierarchy and update authorization as the compatibility route.",
+  request: { ...setWorkItemParentRoute.request, headers: ifMatchHeader },
+});
+const detachWorkItemParentV2Route = createRoute({
+  ...detachWorkItemParentRoute,
+  operationId: "detachWorkItemParentV2",
+  path: "/v2/work-items/{key}/parent",
+  summary: "Detach work item parent with optimistic concurrency",
+  description:
+    "Requires If-Match with the current work-item version (WI-7), including an already-detached no-op. Uses the compatibility route's authorization and transaction.",
+  request: { ...detachWorkItemParentRoute.request, headers: ifMatchHeader },
 });
 
 const hierarchyChildrenRoute = createRoute({
@@ -1628,36 +1656,140 @@ const workItem = apiRouter<
   .openapi(setWorkItemParentRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const assertedVersion =
+      ifMatch === undefined ? undefined : Number(ifMatch.replaceAll('"', ""));
     const { parentKey } = c.req.valid("json");
     const { actorId, actorType } = resolveActor(
       c.get("userId"),
       c.get("apiKey"),
     );
 
-    const updated = await setWorkItemParent(
-      key,
-      workspaceId,
-      parentKey,
-      actorId,
-      actorType,
-    );
-    return c.json(updated, 200);
+    try {
+      const updated = await setWorkItemParent(
+        key,
+        workspaceId,
+        parentKey,
+        actorId,
+        actorType,
+        assertedVersion,
+      );
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
   })
   .openapi(detachWorkItemParentRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const assertedVersion =
+      ifMatch === undefined ? undefined : Number(ifMatch.replaceAll('"', ""));
     const { actorId, actorType } = resolveActor(
       c.get("userId"),
       c.get("apiKey"),
     );
 
-    const updated = await detachWorkItemParent(
-      key,
-      workspaceId,
-      actorId,
-      actorType,
+    try {
+      const updated = await detachWorkItemParent(
+        key,
+        workspaceId,
+        actorId,
+        actorType,
+        assertedVersion,
+      );
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(setWorkItemParentV2Route, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const assertedVersion = Number(ifMatch.replaceAll('"', ""));
+    const { parentKey } = c.req.valid("json");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
     );
-    return c.json(updated, 200);
+
+    try {
+      const updated = await setWorkItemParent(
+        key,
+        workspaceId,
+        parentKey,
+        actorId,
+        actorType,
+        assertedVersion,
+      );
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(detachWorkItemParentV2Route, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const assertedVersion = Number(ifMatch.replaceAll('"', ""));
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+
+    try {
+      const updated = await detachWorkItemParent(
+        key,
+        workspaceId,
+        actorId,
+        actorType,
+        assertedVersion,
+      );
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
   })
   .openapi(hierarchyChildrenRoute, async (c) => {
     const { key } = c.req.valid("param");

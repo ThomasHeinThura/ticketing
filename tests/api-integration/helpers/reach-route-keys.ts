@@ -12,6 +12,8 @@ export const ITEM_WRITE_ROUTE_KEYS = [
   "DELETE /api/work-items/{key}/assign",
   "DELETE /api/work-items/{key}",
   "POST /api/work-items/{key}/rank",
+  "POST /api/v2/work-items/{key}/parent",
+  "DELETE /api/v2/work-items/{key}/parent",
   "POST /api/work-items/{key}/parent",
   "DELETE /api/work-items/{key}/parent",
   "POST /api/work-items/{key}/watch",

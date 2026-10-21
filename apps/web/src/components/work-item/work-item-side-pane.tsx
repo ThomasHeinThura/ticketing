@@ -34,7 +34,7 @@ export default function WorkItemSidePane({
 
   const onAccessLost = useCallback(() => {
     setAccessLostKey(itemKey);
-    for (const scope of ["detail", "transitions", "activity"]) {
+    for (const scope of ["detail", "transitions", "activity", "hierarchy"]) {
       queryClient.removeQueries({ queryKey: ["work-items", scope, itemKey] });
     }
   }, [itemKey, queryClient]);

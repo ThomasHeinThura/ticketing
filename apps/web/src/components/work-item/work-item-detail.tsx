@@ -21,6 +21,7 @@ import WorkItemAttachments from "./work-item-attachments";
 import WorkItemDescription from "./work-item-description";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 import { WorkItemFeedbackProvider } from "./work-item-feedback";
+import WorkItemHierarchy from "./work-item-hierarchy";
 import WorkItemProperties from "./work-item-properties";
 import WorkItemSla from "./work-item-sla";
 import WorkItemTitle from "./work-item-title";
@@ -206,6 +207,10 @@ function WorkItemDetail({
           <WorkItemDescription item={item} onAccessLost={onAccessLost} />
         )}
       </div>
+      <WorkItemHierarchy
+        workItemKey={workItemKey}
+        onAccessLost={onAccessLost}
+      />
       <WorkItemAttachments workItemKey={workItemKey} />
       {variant === "pane" ? (
         <>

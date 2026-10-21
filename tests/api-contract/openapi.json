@@ -22084,7 +22084,7 @@
           "Work items"
         ],
         "summary": "Set work item parent",
-        "description": "Attach a work item into a hierarchy under `parentKey` (`relations-and-hierarchy.md` `RH-5`..`RH-8`). Rejected at 422 when the proposed parent is the item itself, is a descendant of it (a cycle, at any distance), or would exceed the maximum hierarchy depth of 5. Parent and child must be in the same project (`RH-6`).",
+        "description": "Attach a work item into a hierarchy under `parentKey` (`relations-and-hierarchy.md` `RH-5`..`RH-8`). Rejected at 422 when the proposed parent is the item itself, is a descendant of it (a cycle, at any distance), or would exceed the maximum hierarchy depth of 5. Parent and child must be in the same project (`RH-6`). Supplied If-Match is checked; first-party clients use the strict /v2 route (WI-7).",
         "parameters": [
           {
             "schema": {
@@ -22093,6 +22093,15 @@
             "required": true,
             "name": "key",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"?\\d+\"?$"
+            },
+            "required": false,
+            "name": "if-match",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -22159,8 +22168,13 @@
             }
           },
           "409": {
-            "description": "A concurrent change affected this hierarchy -- reload and retry",
+            "description": "Version mismatch or concurrent hierarchy change",
             "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemVersionConflict"
+                }
+              },
               "text/plain": {
                 "schema": {
                   "type": "string"
@@ -22195,6 +22209,15 @@
             "required": true,
             "name": "key",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"?\\d+\"?$"
+            },
+            "required": false,
+            "name": "if-match",
+            "in": "header"
           }
         ],
         "responses": {
@@ -22204,6 +22227,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WorkItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or malformed If-Match header",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -22227,6 +22260,216 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemVersionConflict"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/work-items/{key}/parent": {
+      "post": {
+        "operationId": "setWorkItemParentV2",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Set work item parent with optimistic concurrency",
+        "description": "Requires If-Match with the current work-item version (WI-7). Uses the same reach, hierarchy and update authorization as the compatibility route.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"?\\d+\"?$"
+            },
+            "required": true,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parentKey": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "parentKey"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The work item with its parent set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or the parent is not in the same project (RH-6)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item or parent work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version mismatch or concurrent hierarchy change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemVersionConflict"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The proposed parent is the item itself, a descendant of it, or would exceed the maximum hierarchy depth of 5",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "detachWorkItemParentV2",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Detach work item parent with optimistic concurrency",
+        "description": "Requires If-Match with the current work-item version (WI-7), including an already-detached no-op. Uses the compatibility route's authorization and transaction.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"?\\d+\"?$"
+            },
+            "required": true,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The work item with its parent cleared",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or malformed If-Match header",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemVersionConflict"
                 }
               }
             }

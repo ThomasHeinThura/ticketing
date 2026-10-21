@@ -109,6 +109,18 @@ GET    /api/work-items/{key}/tree               work_item:read
 GET    /api/work-items/{key}/children           work_item:read
 ```
 
+First-party parent attach/detach use `POST`/`DELETE /api/v2/work-items/{key}/parent`,
+which require `If-Match: "<work_item.version>"` (WI-7). The
+asserted version is checked after locking and validating the live item, before parent
+validation, no-op detection or writes. A stale request returns structured 409 with
+`assertedVersion` and `currentVersion`, without row/activity/event effects. Missing or
+malformed headers return 400. Concurrent selections of the same version cannot both
+commit; an already-detached item is a no-op only with its current version.
+The existing unversioned parent routes remain compatible: an optional supplied header
+is strictly validated and checked under the same lock; omission preserves prior behavior.
+Unversioned callers retain their earlier last-write-wins risk. The strict routes share
+the same authorization, liveness, hierarchy constraints and controller transactions.
+
 ### Paginated hierarchy contract
 
 `GET /api/work-items/{key}/children` independently pages the requested parent's direct
@@ -128,6 +140,16 @@ independently of the current page or the legacy tree's 500-node cap. One read sn
 keeps context, page and totals consistent. No progress percentage is invented for a leaf.
 The legacy `/tree` response remains bounded and retains its explicit `truncated` flag;
 new inline hierarchy controls use child pages to navigate every branch (#434).
+
+The detail and side-pane URL carries `hierarchy: { itemKey, collapsed?, expanded?, pages? }`.
+`expanded` lists disclosed permanent keys; `pages` records each parent's requested page
+count, restored by following real cursors on reload. State is scoped to `itemKey` so a
+new item never inherits another item's disclosures. The current ancestor path opens by
+default. If its next node is outside the loaded sibling page, a labelled current-branch
+context appears before paged siblings. That branch stays pinned before the ordered siblings
+and is deduplicated when pagination reaches it.
+Its mapped state and whole-subtree progress use the real API. A failed extra page preserves
+loaded rows and exposes retry; a denied/missing current item discards its cached hierarchy.
 
 ## Edge cases
 
@@ -164,3 +186,11 @@ None.
 ## Related
 
 - [Work items](work-items.md) · [Workflows](workflows.md) · [Agile](agile.md)
+
+
+Hierarchy URL replay is bounded to 8,192 characters, 32 disclosure/page entries and three
+automatically restored pages per disclosed parent. A crafted page count never drains an
+unbounded hierarchy. Further pages remain available through explicit load-more actions;
+when restoration stops at the bound, the UI says so. Opening more than 32 branches at once
+requires collapsing another branch; every branch remains navigable. These are client replay
+limits, not a cap on server totals, hierarchy breadth or manual pagination.

@@ -352,9 +352,15 @@ export const ROUTES: RouteCase[] = [
   {
     matrixKey: "POST /api/work-items/{key}/parent",
     call: (app, _w, i) =>
-      json(app, "POST", `/api/work-items/${i.key}/parent`, {
-        parentKey: i.parentKey,
-      }),
+      json(
+        app,
+        "POST",
+        `/api/work-items/${i.key}/parent`,
+        {
+          parentKey: i.parentKey,
+        },
+        { "if-match": '"1"' },
+      ),
   },
   {
     matrixKey: "DELETE /api/work-items/{key}/parent",
@@ -369,7 +375,39 @@ export const ROUTES: RouteCase[] = [
         .where(eq(schema.workItemTable.key, i.key));
     },
     call: (app, _w, i) =>
-      json(app, "DELETE", `/api/work-items/${i.key}/parent`),
+      json(app, "DELETE", `/api/work-items/${i.key}/parent`, undefined, {
+        "if-match": '"1"',
+      }),
+  },
+  {
+    matrixKey: "POST /api/v2/work-items/{key}/parent",
+    call: (app, _w, i) =>
+      json(
+        app,
+        "POST",
+        `/api/v2/work-items/${i.key}/parent`,
+        {
+          parentKey: i.parentKey,
+        },
+        { "if-match": '"1"' },
+      ),
+  },
+  {
+    matrixKey: "DELETE /api/v2/work-items/{key}/parent",
+    prepare: async (_w, i) => {
+      const [parent] = await db
+        .select({ id: schema.workItemTable.id })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.key, i.parentKey));
+      await db
+        .update(schema.workItemTable)
+        .set({ parentId: parent?.id ?? null })
+        .where(eq(schema.workItemTable.key, i.key));
+    },
+    call: (app, _w, i) =>
+      json(app, "DELETE", `/api/v2/work-items/${i.key}/parent`, undefined, {
+        "if-match": '"1"',
+      }),
   },
   {
     matrixKey: "POST /api/work-items/{key}/watch",

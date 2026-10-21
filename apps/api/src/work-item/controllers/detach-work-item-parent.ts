@@ -15,6 +15,7 @@ import {
 } from "../assert-work-item-live";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
+import { WorkItemVersionConflictError } from "./update-work-item";
 
 /**
  * `DELETE /api/work-items/{key}/parent` (`work_item:update`, required on both ends,
@@ -44,6 +45,7 @@ export async function detachWorkItemParent(
   workspaceId: string,
   actorId: string,
   actorType: ActivityActorType,
+  assertedVersion?: number,
 ) {
   const { updated, oldParentId, changed, realtimeEvent } =
     await runWithParentWriteDeadlockRetry(() =>
@@ -66,6 +68,9 @@ export async function detachWorkItemParent(
         // this detach still succeed against a since-deleted/archived item.
         assertWorkItemStillLive(item);
         await assertProjectStillLive(tx, item.projectId);
+        if (assertedVersion !== undefined && item.version !== assertedVersion) {
+          throw new WorkItemVersionConflictError(assertedVersion, item.version);
+        }
 
         if (item.parentId === null) {
           return { updated: item, oldParentId: null, changed: false };
