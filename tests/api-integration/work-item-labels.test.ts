@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
@@ -308,7 +309,7 @@ describe("project label catalogues", () => {
     );
     expect(capabilities.status).toBe(200);
     expect(await capabilities.json()).toMatchObject({ manageLabels: true });
-    const url = `/api/label/project/${project.id}`;
+    const url = `/api/label/project/${project.id}/catalogue`;
     const create = () =>
       app.request(url, {
         method: "POST",
@@ -430,7 +431,7 @@ describe("project label catalogues", () => {
       (await patch(app, item.key, item.version, [label.id, own.id])).status,
     ).toBe(200);
     const deleted = await app.request(
-      `/api/label/project/${project.id}/${own.id}`,
+      `/api/label/project/${project.id}/catalogue/${own.id}`,
       { method: "DELETE" },
     );
     expect(deleted.status).toBe(200);
@@ -608,7 +609,7 @@ describe("project label catalogues", () => {
     );
     const [write, deleted] = await Promise.all([
       patch(app, item.key, item.version, [label.id]),
-      app.request(`/api/label/project/${project.id}/${label.id}`, {
+      app.request(`/api/label/project/${project.id}/catalogue/${label.id}`, {
         method: "DELETE",
       }),
     ]);
@@ -652,7 +653,7 @@ describe("project label catalogues", () => {
       .returning();
     const first = requireRow(rows, "first label");
     const response = await app.request(
-      `/api/label/project/${project.id}/${first.id}`,
+      `/api/label/project/${project.id}/catalogue/${first.id}`,
       {
         method: "PATCH",
         headers: { "content-type": "application/json" },
@@ -667,13 +668,96 @@ describe("project label catalogues", () => {
     expect(persisted).toMatchObject({ name: "First", color: "teal" });
   });
 
+  it("legacy bulk labels reject hidden project catalogue IDs without copying or removing by name", async () => {
+    const {
+      app,
+      workspace,
+      project,
+      user,
+      label: workspaceLabel,
+    } = await fixture();
+    await grantProjectRole(user.id, project.id, ["label:manage"]);
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Reachable legacy task",
+          status: "to-do",
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "legacy task",
+    );
+    const { project: hiddenProject } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    const hiddenLabel = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          workspaceId: workspace.id,
+          projectId: hiddenProject.id,
+          name: workspaceLabel.name,
+          color: "pink",
+        })
+        .returning(),
+      "hidden project label",
+    );
+    expect(
+      (await app.request(`/api/label/project/${hiddenProject.id}/catalogue`))
+        .status,
+    ).toBe(404);
+    const bulk = (operation: "addLabel" | "removeLabel", value: string) =>
+      app.request("/api/task/bulk", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ taskIds: [task.id], operation, value }),
+      });
+    const allowed = await bulk("addLabel", workspaceLabel.id);
+    expect(allowed.status).toBe(200);
+    const before = await db
+      .select()
+      .from(schema.labelTable)
+      .where(eq(schema.labelTable.taskId, task.id));
+    expect(before).toEqual([
+      expect.objectContaining({
+        name: workspaceLabel.name,
+        color: workspaceLabel.color,
+        projectId: null,
+      }),
+    ]);
+    for (const operation of ["addLabel", "removeLabel"] as const) {
+      const denied = await bulk(operation, hiddenLabel.id);
+      const absent = await bulk(operation, "missing-project-label");
+      expect(denied.status, operation).toBe(200);
+      expect(absent.status, operation).toBe(200);
+      const deniedBody = await denied.json();
+      expect(deniedBody).toMatchObject({
+        updatedCount: 0,
+        results: [
+          { taskId: task.id, success: false, error: "Label not found" },
+        ],
+      });
+      expect(deniedBody, operation).toEqual(await absent.json());
+      expect(
+        await db
+          .select()
+          .from(schema.labelTable)
+          .where(eq(schema.labelTable.taskId, task.id)),
+      ).toEqual(before);
+    }
+  });
+
   it("scopes API-key catalogue writes and rejects a read-only key", async () => {
     const { app, project, user } = await fixture();
     const key = await makeApiKey(user.id, {
       workspace: ["read"],
       label: ["manage"],
     });
-    const url = `/api/label/project/${project.id}`;
+    const url = `/api/label/project/${project.id}/catalogue`;
     const write = (apiKey: string) =>
       app.request(url, {
         method: "POST",
@@ -696,14 +780,17 @@ describe("project catalogue capability parity", () => {
     );
     expect(capabilities.status).toBe(200);
     expect(await capabilities.json()).toMatchObject({ manageLabels: false });
-    expect((await app.request(`/api/label/project/${project.id}`)).status).toBe(
-      200,
+    expect(
+      (await app.request(`/api/label/project/${project.id}/catalogue`)).status,
+    ).toBe(200);
+    const write = await app.request(
+      `/api/label/project/${project.id}/catalogue`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "No grant", color: "gray" }),
+      },
     );
-    const write = await app.request(`/api/label/project/${project.id}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: "No grant", color: "gray" }),
-    });
     expect(write.status).toBe(403);
   });
 });

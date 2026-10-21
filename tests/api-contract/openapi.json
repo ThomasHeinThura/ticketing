@@ -11256,7 +11256,7 @@
         }
       }
     },
-    "/label/project/{projectId}": {
+    "/label/project/{projectId}/catalogue": {
       "get": {
         "operationId": "listProjectLabels",
         "tags": [
@@ -11411,7 +11411,7 @@
         }
       }
     },
-    "/label/project/{projectId}/{id}": {
+    "/label/project/{projectId}/catalogue/{id}": {
       "patch": {
         "operationId": "updateProjectLabel",
         "tags": [

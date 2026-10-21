@@ -55,7 +55,7 @@ const errors = {
 };
 const list = createRoute({
   method: "get",
-  path: "/project/{projectId}",
+  path: "/project/{projectId}/catalogue",
   operationId: "listProjectLabels",
   tags: ["Labels"],
   summary: "List the project label catalogue",
@@ -68,7 +68,7 @@ const list = createRoute({
 });
 const create = createRoute({
   method: "post",
-  path: "/project/{projectId}",
+  path: "/project/{projectId}/catalogue",
   operationId: "createProjectLabel",
   tags: ["Labels"],
   summary: "Create a project catalogue label",
@@ -87,7 +87,7 @@ const create = createRoute({
 });
 const update = createRoute({
   method: "patch",
-  path: "/project/{projectId}/{id}",
+  path: "/project/{projectId}/catalogue/{id}",
   operationId: "updateProjectLabel",
   tags: ["Labels"],
   summary: "Edit a project catalogue label",
@@ -107,7 +107,7 @@ const update = createRoute({
 });
 const remove = createRoute({
   method: "delete",
-  path: "/project/{projectId}/{id}",
+  path: "/project/{projectId}/catalogue/{id}",
   operationId: "deleteProjectLabel",
   tags: ["Labels"],
   summary: "Delete a project label and journal its removed assignments",

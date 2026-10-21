@@ -348,7 +348,7 @@ async function installAuthenticatedFixture(page: Page) {
         manageServiceCalendars: true,
         manageLabels: true,
       };
-    } else if (path.endsWith("/api/label/project/visual-project")) {
+    } else if (path.endsWith("/api/label/project/visual-project/catalogue")) {
       body = [
         {
           id: "visual-project-label",

@@ -212,8 +212,8 @@ The inherited workspace/task-label routes do not expose
 project catalogue entries. Deletion removes assignments and advances affected work-item
 versions with internal activity/events, as workspace catalogue deletion already does.
 
-Typed routes: `GET`/`POST /api/label/project/{projectId}` and
-`PATCH`/`DELETE /api/label/project/{projectId}/{id}`. Each reads its workspace from the
+Typed routes: `GET`/`POST /api/label/project/{projectId}/catalogue` and
+`PATCH`/`DELETE /api/label/project/{projectId}/catalogue/{id}`. Each reads its workspace from the
 addressed live project, never a client-supplied workspace id. Duplicate creation is
 idempotent; rename to another label's name returns conflict. Assignment retains `WI-7`
 version checks and cannot select another project's label, even within the same workspace.

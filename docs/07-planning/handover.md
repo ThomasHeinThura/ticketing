@@ -53,8 +53,8 @@ worktrees or have two sessions edit the same file. Inspect live GitHub before co
    timeout. The candidate compiles CPU-independent artifacts on the native build platform,
    with target-native production dependencies/runtime. Do not increase the timeout or
    narrow supported architectures. An amd64 image proof does not establish arm64 success.
-2. Continue project catalogues in ~/.codex/worktrees/taskdesk-project-label-catalogues,
-   branch codex/project-label-catalogues. Candidate migration 0126 adds label.project_id
+2. Continue [#884 project catalogues](https://github.com/ThomasHeinThura/ticketing/pull/884)
+   in ~/.codex/worktrees/taskdesk-project-label-catalogues, branch codex/project-label-catalogues. Candidate migration 0126 adds label.project_id
    with a composite workspace/project FK and per-catalogue uniqueness. Dedicated typed
    routes enforce current project reach and strict label:manage; legacy label routes
    exclude project entries. Assignments accept workspace/own-project labels only; deletion
@@ -136,3 +136,27 @@ Palette normalised retry median 209.3 ms (budget <200); keyboard navigation 163.
 passed. Log /tmp/taskdesk-image-c3ca-g11.log; sanitized diagnostic retained in
 /tmp/taskdesk-image-c3ca-diagnostic. CPU profiles remain empty due parser rejection.
 Do not turn this failure into a merge clearance, budget increase or blind workflow rerun.
+
+#884 first hosted candidate 34bea894: contract caught ambiguous legacy/new paths; use
+/api/label/project/{projectId}/catalogue[/{id}] consistently in route/client/policy/spec.
+Local contract, 107 permission checks, six browser journeys and API/web typechecks pass
+for that repair. Five Linux baselines (project labels/general/states/danger/members) are
+from actual run39605343376; reviewer inspected the new catalogue and navigation-only
+changes. Native all-unit tasks passed (API884, web1434), all nine typecheck tasks passed.
+Hosted PostgreSQL exposed two old task-label insert-select projections lacking the new
+nullable project_id; both now explicitly select NULL, with original scope predicates.
+Independent review also found a legacy bulk lookup treating project catalogues as workspace
+labels; it now excludes project_id and a positive-control/hidden-source negative bulk-route
+regression is authored. Affected actual bulk/repository/race tests must pass before merge. Logs:
+/tmp/taskdesk-project-labels-34-pg1.log and -pg2.log. Static job failed Chromium download
+DNS resolution, not source lint. Record new-head results; never manufacture clearance.
+
+[#885 sampled CPU timestamp repair](https://github.com/ThomasHeinThura/ticketing/pull/885)
+is separate, worktree ~/.codex/worktrees/taskdesk-profile-sample-timestamps, branch
+codex/profile-sample-timestamps, reviewed head5e201dbe. Reconstruct signed deltas across
+chunks, globally sort observed points after capture, omit ambiguous intervals/tails.
+Twenty native unit checks, web typecheck/build and both native source-bound captures
+passed; palette retained one profile with 2,137 intervals. Exact-head review5600302361.
+Hosted CPU attribution, alignment and G11 remain required. This is diagnostic evidence,
+not a fix claim for #880's timing or multiarch release. Logs:
+/tmp/taskdesk-profile-clock-full-diagnostic.log and -native-diagnostic-2.log.

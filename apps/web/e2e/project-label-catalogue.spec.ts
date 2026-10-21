@@ -29,35 +29,38 @@ async function installCatalogue(page: Page, manageLabels = true) {
     failRead: false,
     holdCreate: undefined as undefined | (() => Promise<void>),
   };
-  await page.route("**/api/label/project/project-g11**", async (route) => {
-    const request = route.request();
-    if (request.method() === "GET")
-      return route.fulfill(
-        state.failRead
-          ? { status: 503, json: { message: "Catalogue unavailable" } }
-          : { json: state.rows },
-      );
-    state.writes++;
-    if (request.method() === "POST") {
-      await state.holdCreate?.();
-      const row = {
-        id: `label-${state.writes}`,
-        projectId: "project-g11",
-        workspaceId: "ws-g11",
-        ...request.postDataJSON(),
-      };
-      state.rows.push(row);
-      return route.fulfill({ json: row });
-    }
-    const id = new URL(request.url()).pathname.split("/").at(-1);
-    const index = state.rows.findIndex((row) => row.id === id);
-    if (request.method() === "PATCH") {
-      state.rows[index] = { ...state.rows[index], ...request.postDataJSON() };
-      return route.fulfill({ json: state.rows[index] });
-    }
-    const [removed] = state.rows.splice(index, 1);
-    return route.fulfill({ json: removed });
-  });
+  await page.route(
+    "**/api/label/project/project-g11/catalogue**",
+    async (route) => {
+      const request = route.request();
+      if (request.method() === "GET")
+        return route.fulfill(
+          state.failRead
+            ? { status: 503, json: { message: "Catalogue unavailable" } }
+            : { json: state.rows },
+        );
+      state.writes++;
+      if (request.method() === "POST") {
+        await state.holdCreate?.();
+        const row = {
+          id: `label-${state.writes}`,
+          projectId: "project-g11",
+          workspaceId: "ws-g11",
+          ...request.postDataJSON(),
+        };
+        state.rows.push(row);
+        return route.fulfill({ json: row });
+      }
+      const id = new URL(request.url()).pathname.split("/").at(-1);
+      const index = state.rows.findIndex((row) => row.id === id);
+      if (request.method() === "PATCH") {
+        state.rows[index] = { ...state.rows[index], ...request.postDataJSON() };
+        return route.fulfill({ json: state.rows[index] });
+      }
+      const [removed] = state.rows.splice(index, 1);
+      return route.fulfill({ json: removed });
+    },
+  );
   return state;
 }
 

@@ -9,7 +9,9 @@ async function checked<T extends Response>(response: T): Promise<T> {
 export async function getProjectLabels(projectId: string) {
   return (
     await checked(
-      await client.label.project[":projectId"].$get({ param: { projectId } }),
+      await client.label.project[":projectId"].catalogue.$get({
+        param: { projectId },
+      }),
     )
   ).json();
 }
@@ -19,7 +21,7 @@ export async function createProjectLabel(
 ) {
   return (
     await checked(
-      await client.label.project[":projectId"].$post({
+      await client.label.project[":projectId"].catalogue.$post({
         param: { projectId },
         json: values,
       }),
@@ -33,7 +35,7 @@ export async function updateProjectLabel(
 ) {
   return (
     await checked(
-      await client.label.project[":projectId"][":id"].$patch({
+      await client.label.project[":projectId"].catalogue[":id"].$patch({
         param: { projectId, id },
         json: values,
       }),
@@ -43,7 +45,7 @@ export async function updateProjectLabel(
 export async function deleteProjectLabel(projectId: string, id: string) {
   return (
     await checked(
-      await client.label.project[":projectId"][":id"].$delete({
+      await client.label.project[":projectId"].catalogue[":id"].$delete({
         param: { projectId, id },
       }),
     )

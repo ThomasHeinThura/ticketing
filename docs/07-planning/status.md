@@ -57,12 +57,19 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   passed, but G11 palette timing failed (209.3 ms against 200 ms); do not merge or blindly
   rerun. Actual multiarch release verification remains required before claiming the
   35-minute image-build defect fixed.
-- Project label catalogues are being implemented in a separate worktree. Migration,
+- Project label catalogues are in #884, in a separate worktree. Migration,
   scoped CRUD/assignment and Kaneo settings reuse exist on the candidate; 884 API unit
   tests, 107 permission checks and typechecks passed. Independent backend review is clean;
   UI/security review is clean. Six native browser journeys and 53 URL/navigation tests
   passed, including workspace regression and mobile/dark presentation. PostgreSQL,
-  concurrency/migration, real-API browser, Linux baseline and required CI evidence remain open.
+  concurrency/migration, real-API browser and required CI evidence remain open. First hosted
+  run found an API-path ambiguity and two legacy task-label insert projections needing the
+  new nullable column; repairs are prepared, including a reviewed legacy-bulk catalogue
+  isolation finding and regression. Five intended Linux baselines were inspected.
+- #885 repairs signed CPU sample timestamp reconstruction. Twenty unit tests and both
+  native source-bound diagnostics passed with sampled profiles retained. Independent review
+  is clean; hosted attribution/alignment and required checks remain pending. This does not
+  close #880's failed performance budget.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
   constraints. It is a dated snapshot, not policy or proof that pending checks passed.

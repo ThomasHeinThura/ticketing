@@ -966,6 +966,7 @@ export async function findLabelInWorkspaceScope(
 ) {
   const scope = and(
     eq(labelTable.id, labelId),
+    isNull(labelTable.projectId),
     or(eq(labelTable.workspaceId, workspaceId), isNull(labelTable.workspaceId)),
   );
   const [label] = await executor
@@ -1078,6 +1079,7 @@ export async function addTaskLabelForIdentity(
               sql`${sql.param(values.workspaceId, labelTable.workspaceId)}`.as(
                 "workspaceId",
               ),
+            projectId: sql`null`.as("projectId"),
           })
           .from(eligible),
       )
@@ -1207,6 +1209,7 @@ export async function insertTaskLabelOnConflictDoNothing(
       updatedAt: sql`now()`.as("updatedAt"),
       taskId: taskTable.id,
       workspaceId: projectTable.workspaceId,
+      projectId: sql`null`.as("projectId"),
     })
     .from(taskTable)
     .innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))

@@ -477,7 +477,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       const created = page.waitForResponse(
         (answer) =>
           new URL(answer.url()).pathname ===
-            `/api/label/project/${item.projectId}` &&
+            `/api/label/project/${item.projectId}/catalogue` &&
           answer.request().method() === "POST",
       );
       await dialog
@@ -521,7 +521,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       const renamed = page.waitForResponse(
         (answer) =>
           new URL(answer.url()).pathname.startsWith(
-            `/api/label/project/${item.projectId}/`,
+            `/api/label/project/${item.projectId}/catalogue/`,
           ) && answer.request().method() === "PATCH",
       );
       await dialog.getByRole("button", { name: "Save", exact: true }).click();
@@ -531,7 +531,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       const deleted = page.waitForResponse(
         (answer) =>
           new URL(answer.url()).pathname.startsWith(
-            `/api/label/project/${item.projectId}/`,
+            `/api/label/project/${item.projectId}/catalogue/`,
           ) && answer.request().method() === "DELETE",
       );
       await page
