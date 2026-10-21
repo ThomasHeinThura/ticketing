@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/portal/__root'
 import { Route as IndexRouteImport } from './routes/portal/index'
 import { Route as CatalogueRouteImport } from './routes/portal/catalogue'
+import { Route as RequestsRouteImport } from './routes/portal/requests'
 import { Route as SignInRouteImport } from './routes/portal/sign-in'
+import { Route as PortalRequestsRouteImport } from './routes/portal/portal/requests'
 import { Route as PortalSignInRouteImport } from './routes/portal/portal/sign-in'
 import { Route as SubmissionsRefRouteImport } from './routes/portal/submissions/$ref'
 
@@ -25,9 +27,19 @@ const CatalogueRoute = CatalogueRouteImport.update({
   path: '/catalogue',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RequestsRoute = RequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalRequestsRoute = PortalRequestsRouteImport.update({
+  id: '/portal/requests',
+  path: '/portal/requests',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalSignInRoute = PortalSignInRouteImport.update({
@@ -44,14 +56,18 @@ const SubmissionsRefRoute = SubmissionsRefRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/catalogue': typeof CatalogueRoute
+  '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/catalogue': typeof CatalogueRoute
+  '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
@@ -59,21 +75,38 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/catalogue': typeof CatalogueRoute
+  '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/catalogue' | '/sign-in' | '/portal/sign-in' | '/submissions/$ref'
+    | '/'
+    | '/catalogue'
+    | '/requests'
+    | '/sign-in'
+    | '/portal/requests'
+    | '/portal/sign-in'
+    | '/submissions/$ref'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/catalogue' | '/sign-in' | '/portal/sign-in' | '/submissions/$ref'
+  to:
+    | '/'
+    | '/catalogue'
+    | '/requests'
+    | '/sign-in'
+    | '/portal/requests'
+    | '/portal/sign-in'
+    | '/submissions/$ref'
   id:
     | '__root__'
     | '/'
     | '/catalogue'
+    | '/requests'
     | '/sign-in'
+    | '/portal/requests'
     | '/portal/sign-in'
     | '/submissions/$ref'
   fileRoutesById: FileRoutesById
@@ -81,7 +114,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CatalogueRoute: typeof CatalogueRoute
+  RequestsRoute: typeof RequestsRoute
   SignInRoute: typeof SignInRoute
+  PortalRequestsRoute: typeof PortalRequestsRoute
   PortalSignInRoute: typeof PortalSignInRoute
   SubmissionsRefRoute: typeof SubmissionsRefRoute
 }
@@ -102,11 +137,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatalogueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/requests': {
+      id: '/requests'
+      path: '/requests'
+      fullPath: '/requests'
+      preLoaderRoute: typeof RequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sign-in': {
       id: '/sign-in'
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/requests': {
+      id: '/portal/requests'
+      path: '/portal/requests'
+      fullPath: '/portal/requests'
+      preLoaderRoute: typeof PortalRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal/sign-in': {
@@ -129,7 +178,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CatalogueRoute: CatalogueRoute,
+  RequestsRoute: RequestsRoute,
   SignInRoute: SignInRoute,
+  PortalRequestsRoute: PortalRequestsRoute,
   PortalSignInRoute: PortalSignInRoute,
   SubmissionsRefRoute: SubmissionsRefRoute,
 }

@@ -5,6 +5,7 @@ export const generatedRouteMetadata = {
     // Canonical full paths for this surface.
     "/",
     "/agent",
+    "/agent/god-mode/audit",
     "/agent/god-mode/authentication",
     "/agent/god-mode/authentication/$id",
     "/agent/god-mode/users",
@@ -84,7 +85,9 @@ export const generatedRouteMetadata = {
     // Canonical full paths for this surface.
     "/",
     "/catalogue",
+    "/portal/requests",
     "/portal/sign-in",
+    "/requests",
     "/sign-in",
     "/submissions/$ref",
   ],

@@ -35,6 +35,7 @@ import { Route as LayoutAuthenticatedDashboardIndexRouteImport } from './routes/
 import { Route as LayoutAuthenticatedDashboardInvitationsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/invitations'
 import { Route as LayoutAuthenticatedDashboardSettingsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings'
 import { Route as LayoutAuthenticatedGodModeObservabilityRouteImport } from './routes/agent/_layout/_authenticated/god-mode/observability'
+import { Route as LayoutAuthenticatedAgentGodModeAuditRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/audit'
 import { Route as LayoutAuthenticatedAgentGodModeAuthenticationRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/authentication'
 import { Route as LayoutAuthenticatedAgentGodModeUsersRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/users'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey'
@@ -231,6 +232,12 @@ const LayoutAuthenticatedGodModeObservabilityRoute =
     id: '/god-mode/observability',
     path: '/god-mode/observability',
     getParentRoute: () => LayoutAuthenticatedRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeAuditRoute =
+  LayoutAuthenticatedAgentGodModeAuditRouteImport.update({
+    id: '/god-mode/audit',
+    path: '/god-mode/audit',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
   } as any)
 const LayoutAuthenticatedAgentGodModeAuthenticationRoute =
   LayoutAuthenticatedAgentGodModeAuthenticationRouteImport.update({
@@ -599,6 +606,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
+  '/agent/god-mode/audit': typeof LayoutAuthenticatedAgentGodModeAuditRoute
   '/agent/god-mode/authentication': typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
   '/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
   '/agent/projects/$projectKey': typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
@@ -676,6 +684,7 @@ export interface FileRoutesByTo {
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/dashboard': typeof LayoutAuthenticatedDashboardIndexRoute
+  '/agent/god-mode/audit': typeof LayoutAuthenticatedAgentGodModeAuditRoute
   '/agent/god-mode/authentication': typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
   '/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
   '/agent/projects/$projectKey': typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
@@ -756,6 +765,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/_layout/_authenticated/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/_layout/_authenticated/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
+  '/_layout/_authenticated/agent/god-mode/audit': typeof LayoutAuthenticatedAgentGodModeAuditRoute
   '/_layout/_authenticated/agent/god-mode/authentication': typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
   '/_layout/_authenticated/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
   '/_layout/_authenticated/agent/projects/$projectKey': typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
@@ -836,6 +846,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/god-mode/observability'
     | '/dashboard/'
+    | '/agent/god-mode/audit'
     | '/agent/god-mode/authentication'
     | '/agent/god-mode/users'
     | '/agent/projects/$projectKey'
@@ -913,6 +924,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/god-mode/observability'
     | '/dashboard'
+    | '/agent/god-mode/audit'
     | '/agent/god-mode/authentication'
     | '/agent/god-mode/users'
     | '/agent/projects/$projectKey'
@@ -992,6 +1004,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/dashboard/settings'
     | '/_layout/_authenticated/god-mode/observability'
     | '/_layout/_authenticated/dashboard/'
+    | '/_layout/_authenticated/agent/god-mode/audit'
     | '/_layout/_authenticated/agent/god-mode/authentication'
     | '/_layout/_authenticated/agent/god-mode/users'
     | '/_layout/_authenticated/agent/projects/$projectKey'
@@ -1237,6 +1250,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/god-mode/observability'
       preLoaderRoute: typeof LayoutAuthenticatedGodModeObservabilityRouteImport
       parentRoute: typeof LayoutAuthenticatedRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/audit': {
+      id: '/_layout/_authenticated/agent/god-mode/audit'
+      path: '/god-mode/audit'
+      fullPath: '/agent/god-mode/audit'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeAuditRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
     }
     '/_layout/_authenticated/agent/god-mode/authentication': {
       id: '/_layout/_authenticated/agent/god-mode/authentication'
@@ -1788,6 +1808,7 @@ interface LayoutAuthenticatedAgentRouteChildren {
   LayoutAuthenticatedAgentSettingsRoute: typeof LayoutAuthenticatedAgentSettingsRouteWithChildren
   LayoutAuthenticatedAgentTriageRoute: typeof LayoutAuthenticatedAgentTriageRoute
   LayoutAuthenticatedAgentViewsRoute: typeof LayoutAuthenticatedAgentViewsRouteWithChildren
+  LayoutAuthenticatedAgentGodModeAuditRoute: typeof LayoutAuthenticatedAgentGodModeAuditRoute
   LayoutAuthenticatedAgentGodModeAuthenticationRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
   LayoutAuthenticatedAgentGodModeUsersRoute: typeof LayoutAuthenticatedAgentGodModeUsersRoute
   LayoutAuthenticatedAgentProjectsProjectKeyRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
@@ -1804,6 +1825,8 @@ const LayoutAuthenticatedAgentRouteChildren: LayoutAuthenticatedAgentRouteChildr
     LayoutAuthenticatedAgentTriageRoute: LayoutAuthenticatedAgentTriageRoute,
     LayoutAuthenticatedAgentViewsRoute:
       LayoutAuthenticatedAgentViewsRouteWithChildren,
+    LayoutAuthenticatedAgentGodModeAuditRoute:
+      LayoutAuthenticatedAgentGodModeAuditRoute,
     LayoutAuthenticatedAgentGodModeAuthenticationRoute:
       LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren,
     LayoutAuthenticatedAgentGodModeUsersRoute:

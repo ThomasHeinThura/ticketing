@@ -190,6 +190,21 @@ export async function getPortalSubmission(ref: string) {
   return response.json();
 }
 
+export async function getPortalSubmissions(query?: {
+  cursor?: string;
+  limit?: string;
+}) {
+  const response = await client.portal.submissions.$get({
+    query: {
+      cursor: query?.cursor,
+      limit: query?.limit,
+    },
+  });
+  if (!response.ok)
+    throw new Error((await response.text()) || "Unable to load submissions");
+  return response.json();
+}
+
 export async function replyPortalSubmission(input: {
   ref: string;
   body: string;

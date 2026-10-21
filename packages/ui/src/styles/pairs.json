@@ -2308,6 +2308,17 @@
           "jsx:div[0]/div[0]/Button[1]/span[0]>bg-background"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:GodModeAuditRoute",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -3858,6 +3869,17 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
           "jsx:div[0]/div[0]/Button[1]/span[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:GodModeAuditRoute",
+          "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
       }
@@ -7953,7 +7975,15 @@
       "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#1",
-      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0"
+      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]/span[1]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/span[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -11403,6 +11433,120 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
           "jsx:Collapsible[0]/div[0]/div[0]/span[0]/CircularProgress[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:/_layout/_authenticated/agent/god-mode/audit",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:/_layout/_authenticated/agent/god-mode/audit",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]/span[1]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:/_layout/_authenticated/agent/god-mode/audit",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:/_layout/_authenticated/agent/god-mode/audit",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:/_layout/_authenticated/agent/god-mode/audit",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/requests.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:/requests",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/requests.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:/requests",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/requests.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:/requests",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:GodModeAuditRoute",
+          "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
       }
@@ -11608,7 +11752,15 @@
       "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#1",
-      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0"
+      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]/span[1]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/span[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]::text-muted-foreground#0",
+      "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -15060,6 +15212,120 @@
           "jsx:Collapsible[0]/div[0]/div[0]/span[0]/CircularProgress[0]"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:/_layout/_authenticated/agent/god-mode/audit",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:/_layout/_authenticated/agent/god-mode/audit",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]/span[1]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:/_layout/_authenticated/agent/god-mode/audit",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:/_layout/_authenticated/agent/god-mode/audit",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:/_layout/_authenticated/agent/god-mode/audit",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/requests.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:/requests",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/requests.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:/requests",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/portal/requests.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:/requests",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:GodModeAuditRoute",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -15083,7 +15349,8 @@
       "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::div[0]/Table[0]/TableBody[0]/div[0]/a[0]::text-primary#0",
       "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/Loader2[0]::text-primary#0",
       "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]/Link[0]::hover:text-primary#0",
-      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0"
+      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0",
+      "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0"
     ],
     "occurrences": [
       {
@@ -15150,6 +15417,17 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
           "jsx:Collapsible[0]/div[0]/div[0]/span[0]/CircularProgress[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
+        "usage": "apps/web/src/routes/portal/requests.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:/requests",
+          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
       }
@@ -15175,7 +15453,8 @@
       "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::div[0]/Table[0]/TableBody[0]/div[0]/a[0]::text-primary#0",
       "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/Loader2[0]::text-primary#0",
       "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]/Link[0]::hover:text-primary#0",
-      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0"
+      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0",
+      "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0"
     ],
     "occurrences": [
       {
@@ -15242,6 +15521,17 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
           "jsx:Collapsible[0]/div[0]/div[0]/span[0]/CircularProgress[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
+        "usage": "apps/web/src/routes/portal/requests.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:/requests",
+          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
       }
@@ -17847,6 +18137,28 @@
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader>bg-card"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:GodModeAuditRoute",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -20248,6 +20560,28 @@
           "apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
           "jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/Empty[0]/EmptyHeader[0]/EmptyMedia[0]/Tag[0]",
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:GodModeAuditRoute",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
         "backdropLayers": []
       }
@@ -43264,6 +43598,21 @@
         "backdropLayers": [
           "bg-popover"
         ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:GodModeAuditRoute",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
       }
     ]
   },
@@ -44415,6 +44764,21 @@
           "packages/ui/src/components/select.tsx:SelectItem",
           "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
           "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx:CannedResponseEditor",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:GodModeAuditRoute",
           "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
         ],
         "backdropLayers": [
@@ -47158,6 +47522,28 @@
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:GodModeAuditRoute",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -47365,6 +47751,28 @@
         "category": "body",
         "chain": [
           "packages/ui/src/components/empty.stories.tsx:<module>",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:GodModeAuditRoute",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
         "backdropLayers": []

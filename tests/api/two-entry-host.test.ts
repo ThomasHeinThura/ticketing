@@ -203,7 +203,7 @@ describe("P0 host and static isolation", () => {
       ),
       "utf8",
     );
-    const match = /fullPaths:\s*([^\n]+)/.exec(tree);
+    const match = /fullPaths:\s*([\s\S]*?)(?=\n\s*fileRoutesByTo)/.exec(tree);
     expect(match).not.toBeNull();
     const treePaths = [...(match?.[1] ?? "").matchAll(/'([^']+)'/g)]
       .map((m) => m[1] as string)
