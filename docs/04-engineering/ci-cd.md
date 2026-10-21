@@ -216,6 +216,14 @@ exclude real middleware, or weaken count declarations to make this verification 
 `synchronize`, and `ready_for_review` events and on the merge queue, target under 45 minutes,
 sharded four ways:**
 
+Integration runs `pnpm test:integration -- --shard=N/4` in four independent hosted
+jobs. Each runner has its own Testcontainers PostgreSQL and serial files. The existing
+required `integration - Postgres 18` job runs even when a shard fails or is cancelled,
+and fails unless all four named shards succeeded. Missing, skipped and unknown results
+fail closed. No test results are cached. Local `pnpm test:integration` remains the full
+serial suite; `CI=true pnpm test:integration` uses an isolated Testcontainer locally.
+Full hosted verification still runs before merge.
+
 ```
 ├─ Integration ────────────────────────────────────┤
 │ pnpm test:integration    Testcontainers Postgres,│
