@@ -1,12 +1,15 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { parseLabelCatalogueSearch } from "@/lib/routes";
 
 // The real screen is kaneo's (/dashboard/settings/workspace/labels); this URL sends the user there.
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/settings/labels",
 )({
-  beforeLoad: () => {
+  validateSearch: parseLabelCatalogueSearch,
+  beforeLoad: ({ search }) => {
     throw redirect({
       to: "/dashboard/settings/workspace/labels",
+      search,
       replace: true,
     });
   },

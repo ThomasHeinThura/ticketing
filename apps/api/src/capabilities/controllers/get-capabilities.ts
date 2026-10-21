@@ -22,6 +22,7 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   setPriorityTasks: boolean;
   manageProjectSettings: boolean;
   bindProjectOrganisation: boolean;
+  manageLabels: boolean;
 };
 
 /**
@@ -45,6 +46,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     setPriorityTasks,
     manageProjectSettings,
     bindProjectOrganisation,
+    manageLabels,
   ] = await Promise.all([
     Promise.all(
       entries.map(async ([name, permissions]) => {
@@ -80,6 +82,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasCanonicalCapability(c, "work_item:set_priority"),
     hasCanonicalCapability(c, "project:manage_settings"),
     hasCanonicalCapability(c, "project:create"),
+    hasCanonicalCapability(c, "label:manage"),
   ]);
   // The agent API refuses customer principals on item-scoped routes (403), so the UI must not
   // be told it may rank or comment publicly there. Same predicate the routes use
@@ -104,6 +107,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     setPriorityTasks: agentOnly(setPriorityTasks),
     manageProjectSettings,
     bindProjectOrganisation,
+    manageLabels,
   } as CapabilityMap;
 }
 
@@ -117,7 +121,8 @@ async function hasCanonicalCapability(
     | "work_item:export"
     | "work_item:set_priority"
     | "project:manage_settings"
-    | "project:create",
+    | "project:create"
+    | "label:manage",
 ): Promise<boolean> {
   const workspaceId = c.get("workspaceId");
   const userId = c.get("userId");

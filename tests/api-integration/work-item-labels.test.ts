@@ -11,10 +11,11 @@ import {
   grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
+import { PROJECT_LABEL_ROUTE_KEYS } from "./helpers/project-reach-route-keys";
 import { makeApiKey } from "./helpers/reach-world";
 
-async function fixture() {
-  const actor = await createWorkspaceMember({ role: "owner" });
+async function fixture(roleName = "owner") {
+  const actor = await createWorkspaceMember({ role: roleName });
   const { project } = await createProjectFixture({
     workspaceId: actor.workspace.id,
   });
@@ -106,7 +107,13 @@ describe("canonical work-item labels", () => {
     const list = await app.request(`/api/work-items/${item.key}/labels`);
     expect(list.status).toBe(200);
     expect(await list.json()).toEqual([
-      { id: label.id, name: label.name, color: label.color, assigned: true },
+      {
+        id: label.id,
+        name: label.name,
+        color: label.color,
+        projectId: null,
+        assigned: true,
+      },
     ]);
     const activity = await db
       .select()
@@ -288,5 +295,309 @@ describe("canonical work-item labels", () => {
     const missing = await app.request("/api/work-items/ABSENT-123/labels");
     expect(hidden.status).toBe(404);
     expect(await hidden.text()).toBe(await missing.text());
+  });
+});
+
+describe("project label catalogues", () => {
+  beforeEach(resetTestDatabase);
+
+  it("keeps equal workspace/project names distinct and supports idempotent project CRUD", async () => {
+    const { app, project, label: workspaceLabel } = await fixture();
+    const capabilities = await app.request(
+      `/api/capabilities?workspaceId=${project.workspaceId}&projectId=${project.id}`,
+    );
+    expect(capabilities.status).toBe(200);
+    expect(await capabilities.json()).toMatchObject({ manageLabels: true });
+    const url = `/api/label/project/${project.id}`;
+    const create = () =>
+      app.request(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: workspaceLabel.name, color: "teal" }),
+      });
+    const created = await create();
+    expect(created.status).toBe(200);
+    const label = await created.json();
+    expect(label).toMatchObject({
+      projectId: project.id,
+      workspaceId: project.workspaceId,
+    });
+    expect(label.id).not.toBe(workspaceLabel.id);
+    expect((await create()).status).toBe(200);
+    expect(await (await create()).json()).toMatchObject({ id: label.id });
+    const list = await app.request(url);
+    expect(list.status).toBe(200);
+    expect(await list.json()).toEqual([label]);
+    const workspace = await app.request(
+      `/api/label/workspace/${project.workspaceId}`,
+    );
+    expect(workspace.status).toBe(200);
+    expect(await workspace.json()).toEqual([
+      expect.objectContaining({ id: workspaceLabel.id }),
+    ]);
+    const edited = await app.request(`${url}/${label.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Project-specific", color: "blue" }),
+    });
+    expect(edited.status).toBe(200);
+    expect(await edited.json()).toMatchObject({
+      id: label.id,
+      name: "Project-specific",
+      color: "blue",
+    });
+    expect(
+      (await app.request(`${url}/${label.id}`, { method: "DELETE" })).status,
+    ).toBe(200);
+    expect(await (await app.request(url)).json()).toEqual([]);
+    expect(
+      (
+        await db
+          .select()
+          .from(schema.labelTable)
+          .where(eq(schema.labelTable.id, workspaceLabel.id))
+      )[0],
+    ).toMatchObject({ name: workspaceLabel.name });
+  });
+
+  it("allows own-project plus workspace assignment and rejects another project's labels atomically", async () => {
+    const { app, item, project, label } = await fixture();
+    const own = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          workspaceId: project.workspaceId,
+          projectId: project.id,
+          name: "Own",
+          color: "gray",
+        })
+        .returning(),
+      "own label",
+    );
+    const other = await createProjectFixture({
+      workspaceId: project.workspaceId,
+    });
+    const foreign = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          workspaceId: project.workspaceId,
+          projectId: other.project.id,
+          name: "Private project",
+          color: "blue",
+        })
+        .returning(),
+      "other project label",
+    );
+    const available = await app.request(`/api/work-items/${item.key}/labels`);
+    expect(available.status).toBe(200);
+    expect(
+      (await available.json()).map((entry: { id: string }) => entry.id).sort(),
+    ).toEqual([own.id, label.id].sort());
+    expect(
+      (await patch(app, item.key, item.version, [label.id, own.id, foreign.id]))
+        .status,
+    ).toBe(422);
+    expect(await db.select().from(schema.workItemLabelTable)).toHaveLength(0);
+    expect(
+      (await patch(app, item.key, item.version, [label.id, own.id])).status,
+    ).toBe(200);
+    expect(
+      (
+        await db
+          .select()
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.id, item.id))
+      )[0]?.version,
+    ).toBe(item.version + 1);
+  });
+
+  it("project deletion journals removed assignments and preserves workspace assignments", async () => {
+    const { app, item, project, label } = await fixture();
+    const own = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          workspaceId: project.workspaceId,
+          projectId: project.id,
+          name: "Project",
+          color: "gray",
+        })
+        .returning(),
+      "project label",
+    );
+    expect(
+      (await patch(app, item.key, item.version, [label.id, own.id])).status,
+    ).toBe(200);
+    const deleted = await app.request(
+      `/api/label/project/${project.id}/${own.id}`,
+      { method: "DELETE" },
+    );
+    expect(deleted.status).toBe(200);
+    expect(await db.select().from(schema.workItemLabelTable)).toEqual([
+      expect.objectContaining({ labelId: label.id, workItemId: item.id }),
+    ]);
+    expect(
+      (
+        await db
+          .select()
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.id, item.id))
+      )[0]?.version,
+    ).toBe(item.version + 2);
+    const activity = await db
+      .select()
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, item.id));
+    expect(activity).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "label",
+          visibility: "internal",
+          oldValue: [label.id, own.id].sort(),
+          newValue: [label.id],
+        }),
+      ]),
+    );
+    expect((await patch(app, item.key, item.version + 1, [])).status).toBe(409);
+  });
+
+  it("inherited routes cannot read, mutate, copy or delete project catalogue entries", async () => {
+    const { app, project, user } = await fixture();
+    const own = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          workspaceId: project.workspaceId,
+          projectId: project.id,
+          name: "Project",
+          color: "gray",
+        })
+        .returning(),
+      "project label",
+    );
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Legacy",
+          number: 1,
+          status: "to-do",
+          userId: user.id,
+        })
+        .returning(),
+      "legacy task",
+    );
+    for (const [path, method, body] of [
+      [`/api/label/${own.id}`, "GET", undefined],
+      [`/api/label/${own.id}`, "PUT", { name: "Changed", color: "red" }],
+      [`/api/label/${own.id}`, "DELETE", undefined],
+      [`/api/label/${own.id}/task`, "PUT", { taskId: task.id }],
+    ] as const) {
+      const response = await app.request(path, {
+        method,
+        ...(body
+          ? {
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(body),
+            }
+          : {}),
+      });
+      expect(response.status).toBe(404);
+    }
+    expect(
+      (
+        await db
+          .select()
+          .from(schema.labelTable)
+          .where(eq(schema.labelTable.id, own.id))
+      )[0],
+    ).toMatchObject({ projectId: project.id, name: "Project" });
+  });
+
+  it("hides a foreign project and its label exactly like missing IDs", async () => {
+    const { app } = await fixture();
+    const foreign = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: foreign.workspace.id,
+    });
+    const label = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          workspaceId: project.workspaceId,
+          projectId: project.id,
+          name: "Hidden",
+          color: "gray",
+        })
+        .returning(),
+      "foreign label",
+    );
+    for (const routeKey of PROJECT_LABEL_ROUTE_KEYS) {
+      const [method, template] = routeKey.split(" ");
+      if (!method || !template)
+        throw new Error("Invalid project-label test route");
+      const path = template
+        .replace("{projectId}", project.id)
+        .replace("{id}", label.id);
+      const absentPath = template
+        .replace("{projectId}", "missing")
+        .replace("{id}", label.id);
+      const init = {
+        method,
+        ...(method === "POST" || method === "PATCH"
+          ? {
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ name: "Change", color: "blue" }),
+            }
+          : {}),
+      };
+      const hidden = await app.request(path, init);
+      const absent = await app.request(absentPath, init);
+      expect(hidden.status, routeKey).toBe(404);
+      expect(absent.status, routeKey).toBe(404);
+      expect(await hidden.text(), routeKey).toBe(await absent.text());
+    }
+  });
+
+  it("scopes API-key catalogue writes and rejects a read-only key", async () => {
+    const { app, project, user } = await fixture();
+    const key = await makeApiKey(user.id, {
+      workspace: ["read"],
+      label: ["manage"],
+    });
+    const url = `/api/label/project/${project.id}`;
+    const write = (apiKey: string) =>
+      app.request(url, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-api-key": apiKey },
+        body: JSON.stringify({ name: "Key label", color: "teal" }),
+      });
+    mockAnonymousSession();
+    expect((await write(key)).status).toBe(200);
+    const readOnly = await makeApiKey(user.id, { workspace: ["read"] });
+    expect((await write(readOnly)).status).toBe(403);
+  });
+});
+
+describe("project catalogue capability parity", () => {
+  beforeEach(resetTestDatabase);
+  it("keeps a member's legacy label create grant from becoming label:manage", async () => {
+    const { app, project } = await fixture("member");
+    const capabilities = await app.request(
+      `/api/capabilities?workspaceId=${project.workspaceId}&projectId=${project.id}`,
+    );
+    expect(capabilities.status).toBe(200);
+    expect(await capabilities.json()).toMatchObject({ manageLabels: false });
+    expect((await app.request(`/api/label/project/${project.id}`)).status).toBe(
+      200,
+    );
+    const write = await app.request(`/api/label/project/${project.id}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "No grant", color: "gray" }),
+    });
+    expect(write.status).toBe(403);
   });
 });

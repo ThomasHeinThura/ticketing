@@ -1265,14 +1265,27 @@ export const labelTable = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    projectId: text("project_id"),
   },
   (table) => [
+    foreignKey({
+      columns: [table.workspaceId, table.projectId],
+      foreignColumns: [projectTable.workspaceId, projectTable.id],
+    }).onDelete("cascade"),
+    check(
+      "label_catalogue_or_task",
+      sql`${table.taskId} IS NULL OR ${table.projectId} IS NULL`,
+    ),
+    index("label_project_id_idx").on(table.projectId),
+    uniqueIndex("label_project_name_unique")
+      .on(table.projectId, table.name)
+      .where(sql.raw("(project_id IS NOT NULL)")),
     index("label_task_id_idx").on(table.taskId),
     index("label_workspace_id_idx").on(table.workspaceId),
     unique("label_task_name_unique").on(table.taskId, table.name),
     uniqueIndex("label_workspace_name_unique")
       .on(table.workspaceId, table.name)
-      .where(sql.raw("(task_id IS NULL)")),
+      .where(sql.raw("(task_id IS NULL AND project_id IS NULL)")),
   ],
 );
 

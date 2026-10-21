@@ -10,6 +10,10 @@ export const capabilitiesResponseSchema = z
     createTasks: z.boolean(),
     deleteTasks: z.boolean(),
     assignTasks: z.boolean(),
+    manageLabels: z.boolean().optional().openapi({
+      description:
+        "Strict label:manage for project catalogue mutations; absent means denied.",
+    }),
     createLabels: z.boolean(),
     updateLabels: z.boolean(),
     deleteLabels: z.boolean(),

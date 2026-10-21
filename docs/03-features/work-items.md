@@ -199,6 +199,25 @@ Editing on the detail page (UI decisions the rules above do not fix; none confli
   UTC midnight, and an untouched date is never sent. A date is therefore never silently
   rewritten to midnight by an unrelated edit.
 
+## Label catalogues
+
+`WI-8` labels may come from the workspace catalogue or the item's own project catalogue.
+Project settings extends Kaneo's existing settings frame with label create/edit/delete;
+work-item properties combines the two catalogues and identifies their scope. Names are
+unique within each catalogue, so equal names in separate catalogues remain distinct labels.
+Project label mutations require `label:manage` plus current project reach; reading requires
+`workspace:read` plus project reach. `GET /api/capabilities` returns the strict
+`manageLabels` boolean for `label:manage`; absence fails closed in the project UI.
+The inherited workspace/task-label routes do not expose
+project catalogue entries. Deletion removes assignments and advances affected work-item
+versions with internal activity/events, as workspace catalogue deletion already does.
+
+Typed routes: `GET`/`POST /api/label/project/{projectId}` and
+`PATCH`/`DELETE /api/label/project/{projectId}/{id}`. Each reads its workspace from the
+addressed live project, never a client-supplied workspace id. Duplicate creation is
+idempotent; rename to another label's name returns conflict. Assignment retains `WI-7`
+version checks and cannot select another project's label, even within the same workspace.
+
 ## API
 
 ```

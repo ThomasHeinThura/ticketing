@@ -126,3 +126,11 @@ export const SAVED_VIEW_BY_ID_ROUTE_KEYS = [
   "POST /api/views/{id}/run",
   "GET /api/views/{id}/count",
 ] as const;
+
+/** Driven by the catalogue CRUD/isolation cases in work-item-labels.test.ts. */
+export const PROJECT_LABEL_ROUTE_KEYS = [
+  "GET /api/label/project/{projectId}",
+  "POST /api/label/project/{projectId}",
+  "PATCH /api/label/project/{projectId}/{id}",
+  "DELETE /api/label/project/{projectId}/{id}",
+] as const;

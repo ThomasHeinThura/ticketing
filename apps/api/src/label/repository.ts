@@ -56,6 +56,7 @@ function currentLabelReach(identity: ResolvedIdentity, executor: Executor) {
   return or(
     and(
       isNull(labelTable.taskId),
+      isNull(labelTable.projectId),
       currentWorkspaceReachPredicate(
         identity,
         labelTable.workspaceId,
@@ -204,6 +205,7 @@ export async function insertTaskLabelOnConflictDoNothing(
           updatedAt: sql`now()`.as("updated_at"),
           taskId: sql`${values.taskId}`.as("task_id"),
           workspaceId: sql`${values.workspaceId}`.as("workspace_id"),
+          projectId: sql`null`.as("project_id"),
         })
         .from(taskTable)
         .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
@@ -267,6 +269,7 @@ export async function insertWorkspaceLabelOnConflictDoNothing(
           updatedAt: sql`now()`.as("updated_at"),
           taskId: sql`null`.as("task_id"),
           workspaceId: sql`${values.workspaceId}`.as("workspace_id"),
+          projectId: sql`null`.as("project_id"),
         })
         .from(workspaceTable)
         .where(
@@ -283,7 +286,7 @@ export async function insertWorkspaceLabelOnConflictDoNothing(
     )
     .onConflictDoNothing({
       target: [labelTable.workspaceId, labelTable.name],
-      where: sql`${labelTable.taskId} is null`,
+      where: sql`${labelTable.taskId} is null AND ${labelTable.projectId} is null`,
     })
     .returning({ id: labelTable.id });
   return inserted
@@ -310,6 +313,7 @@ export async function findWorkspaceLabelByName(
         eq(labelTable.workspaceId, workspaceId),
         eq(labelTable.name, name),
         isNull(labelTable.taskId),
+        isNull(labelTable.projectId),
         currentWorkspaceReachPredicate(
           identity,
           labelTable.workspaceId,

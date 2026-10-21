@@ -883,6 +883,13 @@
 			"when": 1792559895938,
 			"tag": "0125_canonical_work_item_labels",
 			"breakpoints": true
+		},
+		{
+			"idx": 126,
+			"version": "7",
+			"when": 1792584927635,
+			"tag": "0126_project_label_catalogues",
+			"breakpoints": true
 		}
 	]
 }

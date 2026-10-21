@@ -1142,6 +1142,7 @@ export async function removeTaskLabelForIdentity(
       deletedUpdatedAt: deleted.updatedAt,
       deletedTaskId: deleted.taskId,
       deletedWorkspaceId: deleted.workspaceId,
+      deletedProjectId: deleted.projectId,
     })
     .from(eligible)
     .leftJoin(deleted, sql`true`);
@@ -1156,6 +1157,7 @@ export async function removeTaskLabelForIdentity(
       createdAt: result.deletedCreatedAt as Date,
       updatedAt: result.deletedUpdatedAt as Date,
       taskId: result.deletedTaskId as string | null,
+      projectId: result.deletedProjectId as string | null,
       workspaceId: result.deletedWorkspaceId as string,
     },
   };

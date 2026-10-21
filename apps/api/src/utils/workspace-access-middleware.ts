@@ -790,6 +790,9 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.labelTable.id, id),
+              // Project catalogues have their own project-scoped routes. The
+              // inherited workspace/task routes must answer their normal 404.
+              isNull(schema.labelTable.projectId),
               reach(schema.labelTable.workspaceId),
             ),
           )

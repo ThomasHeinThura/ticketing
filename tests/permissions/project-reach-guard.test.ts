@@ -11,6 +11,7 @@ import {
 } from "../../apps/api/src/utils/task-target-reach";
 import {
   PROJECT_BODY_TARGET_ROUTE_KEYS,
+  PROJECT_LABEL_ROUTE_KEYS,
   PROJECT_LIST_ROUTE_KEYS,
   PROJECT_READ_ROUTE_KEYS,
   PROJECT_SOCKET_ROUTE_KEYS,
@@ -449,6 +450,7 @@ describe("project reach guard: the real router", () => {
         new Set<string>([
           ...PROJECT_WRITE_ROUTE_KEYS,
           ...PROJECT_READ_ROUTE_KEYS,
+          ...PROJECT_LABEL_ROUTE_KEYS,
         ]),
         PROJECT_REACH_EXEMPT,
       ),

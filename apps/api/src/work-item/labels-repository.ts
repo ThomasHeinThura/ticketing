@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
@@ -11,7 +11,7 @@ type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export async function listWorkItemLabels(key: string, workspaceId: string) {
   const [item] = await db
-    .select({ id: workItemTable.id })
+    .select({ id: workItemTable.id, projectId: workItemTable.projectId })
     .from(workItemTable)
     .where(
       and(
@@ -27,6 +27,7 @@ export async function listWorkItemLabels(key: string, workspaceId: string) {
       id: labelTable.id,
       name: labelTable.name,
       color: labelTable.color,
+      projectId: labelTable.projectId,
       assignedId: workItemLabelTable.labelId,
     })
     .from(labelTable)
@@ -38,7 +39,14 @@ export async function listWorkItemLabels(key: string, workspaceId: string) {
       ),
     )
     .where(
-      and(eq(labelTable.workspaceId, workspaceId), isNull(labelTable.taskId)),
+      and(
+        eq(labelTable.workspaceId, workspaceId),
+        isNull(labelTable.taskId),
+        or(
+          isNull(labelTable.projectId),
+          eq(labelTable.projectId, item.projectId),
+        ),
+      ),
     )
     .orderBy(labelTable.name, labelTable.id);
   return rows.map(({ assignedId, ...label }) => ({
@@ -52,6 +60,7 @@ export async function replaceWorkItemLabels(
   tx: Transaction,
   workItemId: string,
   workspaceId: string,
+  projectId: string,
   labelIds: string[],
 ) {
   const after = [...labelIds].sort();
@@ -64,13 +73,17 @@ export async function replaceWorkItemLabels(
             inArray(labelTable.id, after),
             eq(labelTable.workspaceId, workspaceId),
             isNull(labelTable.taskId),
+            or(
+              isNull(labelTable.projectId),
+              eq(labelTable.projectId, projectId),
+            ),
           ),
         )
         .for("key share")
     : [];
   if (valid.length !== after.length)
     throw new HTTPException(422, {
-      message: "Labels must belong to this workspace catalogue",
+      message: "Labels must belong to this workspace or project catalogue",
     });
   const before = (
     await tx
