@@ -30,7 +30,12 @@ import { useUserWebSocket } from "@/hooks/use-user-websocket";
 import { authClient } from "@/lib/auth-client";
 import { routes } from "@/lib/routes";
 import type { Workspace } from "@/types/workspace";
-import CreateWorkspaceModal from "./shared/modals/create-workspace-modal";
+
+// Workspace creation is an explicit action; its form and mutation hooks need not load
+// while the sidebar and command palette are warming on a cold page.
+const CreateWorkspaceModal = React.lazy(
+  () => import("./shared/modals/create-workspace-modal"),
+);
 
 export function WorkspaceSwitcher() {
   const { t } = useTranslation();
@@ -221,10 +226,14 @@ export function WorkspaceSwitcher() {
         </div>
       </div>
 
-      <CreateWorkspaceModal
-        open={isCreateWorkspaceModalOpen}
-        onClose={() => setIsCreateWorkspaceModalOpen(false)}
-      />
+      {isCreateWorkspaceModalOpen && (
+        <React.Suspense fallback={null}>
+          <CreateWorkspaceModal
+            open
+            onClose={() => setIsCreateWorkspaceModalOpen(false)}
+          />
+        </React.Suspense>
+      )}
     </>
   );
 }

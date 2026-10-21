@@ -8,8 +8,15 @@ import { useUserPreferencesStore } from "@/store/user-preferences";
 // The sidebar (workspace switcher, navigation, projects, notifications) loads beside the
 // page instead of in front of it, so a page's own content is never held behind the
 // sidebar's code (G11 work-list LCP).
+let sidebarModule:
+  | Promise<typeof import("@/components/app-sidebar")>
+  | undefined;
+function loadSidebarModule() {
+  sidebarModule ??= import("@/components/app-sidebar");
+  return sidebarModule;
+}
 const AppSidebar = lazy(() =>
-  import("@/components/app-sidebar").then((module) => ({
+  loadSidebarModule().then((module) => ({
     default: module.AppSidebar,
   })),
 );
@@ -61,7 +68,12 @@ function Layout({ children, className }: LayoutProps) {
   useEffect(() => {
     if (sidebarReady) return;
     const abort = new AbortController();
-    afterPrimaryContent({ signal: abort.signal }).then(
+    afterPrimaryContent({
+      signal: abort.signal,
+      onPrimaryContentReady: () => {
+        void loadSidebarModule().catch(() => {});
+      },
+    }).then(
       () => {
         if (abort.signal.aborted) return;
         sidebarReady = true;
