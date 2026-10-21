@@ -79,6 +79,8 @@ type CommentEditorProps = {
   value: string;
   onChange?: (value: string) => void;
   placeholder?: string;
+  /** Accessible name when the editor is reused outside a comment composer. */
+  ariaLabel?: string;
   className?: string;
   contentClassName?: string;
   proseClassName?: string;
@@ -194,6 +196,7 @@ export default function CommentEditor({
   value,
   onChange,
   placeholder,
+  ariaLabel,
   className,
   contentClassName,
   proseClassName,
@@ -1549,9 +1552,10 @@ export default function CommentEditor({
     <section
       ref={editorShellRef}
       aria-label={
-        readOnly
+        ariaLabel ??
+        (readOnly
           ? t("activity:comment.editor.ariaCommentContent")
-          : t("activity:comment.editor.ariaCommentEditor")
+          : t("activity:comment.editor.ariaCommentEditor"))
       }
       className={cn(
         "taskdesk-comment-editor-shell",

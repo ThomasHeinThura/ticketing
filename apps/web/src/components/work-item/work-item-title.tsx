@@ -33,7 +33,10 @@ export default function WorkItemTitle({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { announce, reportConflict, clearConflict } = useWorkItemFeedback();
-  const { canUpdateTasks } = useWorkspacePermission(item.workspaceId);
+  const { canUpdateTasks } = useWorkspacePermission(
+    item.workspaceId,
+    item.projectId,
+  );
   const [value, setValue] = useState(item.title);
   const [focused, setFocused] = useState(false);
   const [failed, setFailed] = useState(false);

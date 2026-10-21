@@ -259,7 +259,10 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       await refresh();
     },
   });
-  const { canTransitionTasks } = useWorkspacePermission(item.workspaceId);
+  const { canTransitionTasks } = useWorkspacePermission(
+    item.workspaceId,
+    item.projectId,
+  );
   const icon = getColumnIcon(CATEGORY_ICON[item.stateCategory] ?? "to-do");
   if (item.unavailableFields.includes("stateName")) {
     return <UnavailableRow compact={compact} icon={icon} field="stateName" />;
@@ -390,6 +393,7 @@ function PriorityControl({ item, compact, onAccessLost }: ControlProps) {
   const update = useUpdateWorkItemFields(item, onAccessLost);
   const { canUpdateTasks, canSetPriorityTasks } = useWorkspacePermission(
     item.workspaceId,
+    item.projectId,
   );
   const current = item.priority ?? "no-priority";
   if (item.unavailableFields.includes("priority")) {
@@ -527,6 +531,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
   });
   const { canUpdateTasks, canAssignTasks } = useWorkspacePermission(
     item.workspaceId,
+    item.projectId,
   );
   const name =
     item.assigneeId === null
@@ -695,7 +700,10 @@ function DateControl({
   const [open, setOpen] = useState(false);
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const update = useUpdateWorkItemFields(item, onAccessLost);
-  const { canUpdateTasks } = useWorkspacePermission(item.workspaceId);
+  const { canUpdateTasks } = useWorkspacePermission(
+    item.workspaceId,
+    item.projectId,
+  );
   const value = item[field];
   const Icon = field === "startDate" ? CalendarDays : CalendarClock;
   const icon = <Icon className="h-4 w-4 text-muted-foreground" />;

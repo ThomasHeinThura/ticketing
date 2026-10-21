@@ -47,7 +47,10 @@ export default function WorkItemDescription({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { announce, reportConflict, clearConflict } = useWorkItemFeedback();
-  const { canUpdateTasks } = useWorkspacePermission(item.workspaceId);
+  const { canUpdateTasks } = useWorkspacePermission(
+    item.workspaceId,
+    item.projectId,
+  );
   const [shown, setShown] = useState<unknown>(item.description);
   // Bumped to remount the editor on the server's value after a conflict.
   const [generation, setGeneration] = useState(0);
@@ -176,6 +179,8 @@ export default function WorkItemDescription({
     >
       <CommentEditor
         key={generation}
+        ariaLabel={t("workItems:detail.descriptionHeading")}
+        showQuickAttachButton={false}
         value={typeof shown === "string" ? shown : ""}
         documentValue={isDocument ? shown : undefined}
         onDocumentChange={(document) => {
