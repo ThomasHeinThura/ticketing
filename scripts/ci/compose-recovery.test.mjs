@@ -190,3 +190,16 @@ test("isolated restore selects only the scratch overlay", () => {
     f.close();
   }
 });
+
+test("scratch network blocks egress and proxy discovery without publishing ports", () => {
+  const overlay = readFileSync(
+    resolve("deploy/compose.restore-drill.yml"),
+    "utf8",
+  );
+  assert.match(
+    overlay,
+    /networks:\s+taskdesk:\s+name: [^\n]+\s+internal: true\s*$/,
+  );
+  assert.match(overlay, /traefik.enable: "false"/);
+  assert.doesNotMatch(overlay, /ports:|external: true|network_mode:/);
+});

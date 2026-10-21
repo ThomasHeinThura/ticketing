@@ -7,3 +7,4 @@ services:
 networks:
   taskdesk:
     name: ${COMPOSE_PROJECT_NAME:?an explicit Compose project is required}-restore
+    internal: true

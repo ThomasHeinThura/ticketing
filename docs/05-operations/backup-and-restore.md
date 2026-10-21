@@ -54,7 +54,8 @@ existing application container. They refuse a missing/ambiguous container or a b
 they never fall back to the default SIT volume. Restore resolves its target before stopping
 anything. A scratch stack must already exist before restore. Start it with base Compose plus
 `deploy/compose.restore-drill.yml` and an explicit non-default `-p <name>`; it has its own
-network, no host ports and no proxy discovery. Restore it with
+internal network with no outbound route, no host ports and no proxy discovery. Restored
+notification and webhook settings therefore cannot contact external destinations. Restore it with
 `scripts/restore.sh --backup <dir> --confirm --mode isolated --project-name <name>`.
 Do not use the local or production proxy overlays for a scratch drill.
 
