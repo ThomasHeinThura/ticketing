@@ -126,3 +126,19 @@ passed hosted measurement. A separate local diagnostic completed several capture
 failed a board-selection timeline bound; it is not a passing diagnostic. Live ingress
 observations remain attributed to the implementing session. Exact-head CI/image evidence,
 integrated runtime acceptance and Thomas's P0–P4 sign-off remain outstanding.
+
+## Cold-network dependency grouping — 2026-10-22
+
+Independent `review_completion_directive` reviewed
+`259f3a313c11b9aef47267bd6c9d92599080f3a8` against
+`b542ec9fb5853e9b08d9ba818dd48f01967d72ed`.
+**Standard source review: APPROVE. Security source review: APPROVE.** No new findings.
+The agent-only frame group preserves higher-priority initial-module ownership and strict
+execution order. The reviewer independently reproduced the honest 330.5 KB / 20-asset
+work-list graph under the unchanged 350 KB limit; portal grouping is unchanged.
+
+Nine focused browser checks, types, lint, purity, 11 bundle regressions and all 428 contrast
+pairs pass according to the implementing session. Native raw timings are diagnostic only.
+The prior hosted head passed 160 browser tests, G8, accessibility, PostgreSQL and image
+smoke but failed G11. Exact-head hosted timing, signed release, reviewed UI deployment and
+full P0–P4 runtime acceptance remain required. No stage sign-off is implied.
