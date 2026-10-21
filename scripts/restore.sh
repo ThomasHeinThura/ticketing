@@ -21,6 +21,7 @@ BACKUP_ROOT="${TASKDESK_BACKUP_ROOT:-$REPO_ROOT/backups}"
 BACKUP_ARG=""
 CONFIRMED=0
 MODE="local"
+PROJECT_NAME=""
 
 usage() {
   cat <<'EOF'
@@ -28,15 +29,22 @@ Usage:
   scripts/restore.sh --backup <id-or-dir> --confirm [--mode local|production]
 
 Options:
+  --project-name <name>  Select an isolated Compose project (default: Compose configuration)
   --backup <id-or-dir>  Backup identifier under backups/ or path to backup directory
   --confirm             Required confirmation flag before overwriting database and attachments
-  --mode <mode>         Compose overlay mode: local (default) or production
+  --mode <mode>         Compose overlay mode: local (default), production or isolated
 EOF
   exit "${1:-1}"
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --project-name)
+      [ $# -ge 2 ] || usage 1
+      PROJECT_NAME="$2"
+      [[ "$PROJECT_NAME" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || { printf 'xx invalid Compose project name\n' >&2; exit 1; }
+      shift 2
+      ;;
     --backup)
       [ $# -ge 2 ] || usage 1
       BACKUP_ARG="$2"
@@ -102,14 +110,20 @@ case "$MODE" in
   local)
     COMPOSE_FILES+=(-f deploy/compose.local.yml -f deploy/compose.traefik.yml)
     ;;
+  isolated)
+    [[ -n "$PROJECT_NAME" && "$PROJECT_NAME" != taskdesk ]] || { printf 'xx isolated restore requires a non-default --project-name\n' >&2; exit 1; }
+    COMPOSE_FILES+=(-f deploy/compose.restore-drill.yml)
+    ;;
   production)
     COMPOSE_FILES+=(-f deploy/compose.prod.yml)
     ;;
   *)
-    printf 'xx unknown mode: %s (expected local or production)\n' "$MODE" >&2
+    printf 'xx unknown mode: %s (expected local, production or isolated)\n' "$MODE" >&2
     exit 1
     ;;
 esac
+
+[ -z "$PROJECT_NAME" ] || COMPOSE_FILES+=(-p "$PROJECT_NAME")
 
 dc() { docker compose "${COMPOSE_FILES[@]}" "$@"; }
 
@@ -126,6 +140,11 @@ printf '==> Verifying backup checksums in %s\n' "$TARGET_DIR"
 printf '==> Verifying pg_restore --list on %s\n' "$DUMP_FILE"
 dc exec -T postgres pg_restore --list < "$DUMP_FILE" >/dev/null
 
+# Resolve before the first mutation. A missing/ambiguous/bind-mounted target fails closed.
+# shellcheck source=scripts/lib/compose-data-volume.sh
+. "$REPO_ROOT/scripts/lib/compose-data-volume.sh"
+DATA_VOLUME="$(resolve_compose_data_volume)" || exit 1
+
 printf '==> Step 1: Stopping taskdesk container (leaving PostgreSQL running)\n'
 dc stop taskdesk
 
@@ -136,9 +155,9 @@ dc exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
   -c "CREATE DATABASE \"$POSTGRES_DB\" OWNER \"$POSTGRES_USER\";" >/dev/null
 dc exec -T postgres pg_restore --single-transaction --no-owner --role="$POSTGRES_USER" -U "$POSTGRES_USER" -d "$POSTGRES_DB" < "$DUMP_FILE"
 
-printf '==> Step 3: Restoring attachment volume (taskdesk_taskdesk-data)\n'
+printf '==> Step 3: Restoring attachment volume (%s)\n' "$DATA_VOLUME"
 docker run --rm -i \
-  -v taskdesk_taskdesk-data:/data \
+  -v "$DATA_VOLUME:/data" \
   alpine:3.22 \
   sh -c 'find /data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + && tar -C /data -xf - && chown -R 10001:10001 /data' < "$ATTACHMENTS_TAR"
 

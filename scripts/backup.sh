@@ -20,6 +20,7 @@ ENV_FILE="$REPO_ROOT/.env"
 BACKUP_ROOT="${TASKDESK_BACKUP_ROOT:-$REPO_ROOT/backups}"
 BACKUP_ID="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
 OUTPUT_DIR=""
+PROJECT_NAME=""
 
 usage() {
   cat <<'EOF'
@@ -27,6 +28,7 @@ Usage:
   scripts/backup.sh [--backup <id>] [--output-dir <dir>]
 
 Options:
+  --project-name <name>  Select an isolated Compose project (default: Compose configuration)
   --backup <id>       Explicit backup identifier (default: UTC timestamp)
   --output-dir <dir>  Explicit target directory (default: backups/<id>)
 EOF
@@ -35,6 +37,12 @@ EOF
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --project-name)
+      [ $# -ge 2 ] || usage 1
+      PROJECT_NAME="$2"
+      [[ "$PROJECT_NAME" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || { printf 'xx invalid Compose project name\n' >&2; exit 1; }
+      shift 2
+      ;;
     --backup)
       [ $# -ge 2 ] || usage 1
       BACKUP_ID="$2"
@@ -64,6 +72,13 @@ POSTGRES_USER="${POSTGRES_USER:-taskdesk}"
 POSTGRES_DB="${POSTGRES_DB:-taskdesk}"
 TARGET_DIR="${OUTPUT_DIR:-$BACKUP_ROOT/$BACKUP_ID}"
 
+COMPOSE_FILES=(-f compose.yml)
+[ -z "$PROJECT_NAME" ] || COMPOSE_FILES+=(-p "$PROJECT_NAME")
+dc() { docker compose "${COMPOSE_FILES[@]}" "$@"; }
+# shellcheck source=scripts/lib/compose-data-volume.sh
+. "$REPO_ROOT/scripts/lib/compose-data-volume.sh"
+DATA_VOLUME="$(resolve_compose_data_volume)" || exit 1
+
 umask 077
 mkdir -p "$TARGET_DIR"
 
@@ -72,19 +87,19 @@ ATTACHMENTS_TAR="$TARGET_DIR/attachments.tar"
 CHECKSUMS_FILE="$TARGET_DIR/SHA256SUMS"
 
 printf '==> Dumping PostgreSQL database (%s) to %s\n' "$POSTGRES_DB" "$DUMP_FILE"
-docker compose -f compose.yml exec -T postgres \
+dc exec -T postgres \
   pg_dump -Fc -U "$POSTGRES_USER" "$POSTGRES_DB" > "$DUMP_FILE"
 
 printf '==> Verifying dump restorability with pg_restore --list\n'
-LIST_COUNT="$(docker compose -f compose.yml exec -T postgres pg_restore --list < "$DUMP_FILE" | grep -c '^[^;]' || true)"
+LIST_COUNT="$(dc exec -T postgres pg_restore --list < "$DUMP_FILE" | grep -c '^[^;]' || true)"
 if [ "${LIST_COUNT:-0}" -le 0 ]; then
   printf 'xx pg_restore --list returned no archive entries for %s\n' "$DUMP_FILE" >&2
   exit 1
 fi
 
-printf '==> Archiving attachment volume (taskdesk_taskdesk-data) to %s\n' "$ATTACHMENTS_TAR"
+printf '==> Archiving attachment volume (%s) to %s\n' "$DATA_VOLUME" "$ATTACHMENTS_TAR"
 docker run --rm \
-  -v taskdesk_taskdesk-data:/data:ro \
+  -v "$DATA_VOLUME:/data:ro" \
   alpine:3.22 \
   tar -C /data -cf - . > "$ATTACHMENTS_TAR"
 
