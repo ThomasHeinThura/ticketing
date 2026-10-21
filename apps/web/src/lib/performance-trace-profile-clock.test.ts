@@ -6,6 +6,7 @@ import {
   type TraceProfileEventInput,
   timeTraceProfileChunk,
   traceProfileKey,
+  traceSampleIntervals,
 } from "./performance-trace-profile-clock";
 
 function head(
@@ -66,16 +67,16 @@ describe("V8 trace profile event correlation", () => {
       ownerTid: 20,
       source: "Internal",
       samples: [
-        { nodeId: 1, start: 1_000_000, duration: 100 },
-        { nodeId: 1, start: 1_000_100, duration: 100 },
+        { nodeId: 1, timestamp: 1_000_100 },
+        { nodeId: 1, timestamp: 1_000_200 },
       ],
     });
     expect(second).toMatchObject({
       status: "chunk",
       ownerTid: 20,
       samples: [
-        { nodeId: 1, start: 1_000_200, duration: 100 },
-        { nodeId: 1, start: 1_000_300, duration: 100 },
+        { nodeId: 1, timestamp: 1_000_300 },
+        { nodeId: 1, timestamp: 1_000_400 },
       ],
     });
     const joined = [
@@ -84,7 +85,10 @@ describe("V8 trace profile event correlation", () => {
     ];
     expect(
       clipProfileIntervals(
-        joined.map(({ start, duration }) => ({ start, end: start + duration })),
+        traceSampleIntervals(joined).map(({ start, duration }) => ({
+          start,
+          end: start + duration,
+        })),
         1_000_350,
         1_000_450,
       ),
@@ -117,7 +121,7 @@ describe("V8 trace profile event correlation", () => {
     ).toMatchObject({
       status: "chunk",
       ownerTid: 20,
-      samples: [{ start: 1_000_000 }],
+      samples: [{ timestamp: 1_000_100 }],
     });
     expect(
       ingestTraceProfileEvent(
@@ -127,7 +131,7 @@ describe("V8 trace profile event correlation", () => {
     ).toMatchObject({
       status: "chunk",
       ownerTid: 30,
-      samples: [{ start: 2_000 }],
+      samples: [{ timestamp: 2_100 }],
     });
     expect(
       ingestTraceProfileEvent(
@@ -137,7 +141,7 @@ describe("V8 trace profile event correlation", () => {
     ).toMatchObject({
       status: "chunk",
       ownerTid: 40,
-      samples: [{ start: 3_000 }],
+      samples: [{ timestamp: 3_100 }],
     });
   });
 
@@ -195,7 +199,7 @@ describe("V8 trace profile event correlation", () => {
       ),
     ).toMatchObject({
       status: "chunk",
-      samples: [{ nodeId: 3, start: 5_000, duration: 25 }],
+      samples: [{ nodeId: 3, timestamp: 5_025 }],
     });
   });
 
@@ -264,7 +268,7 @@ describe("V8 trace profile event correlation", () => {
 
     for (const invalidChunk of [
       chunk({ samples: [1, 2], timeDeltas: [10] }),
-      chunk({ samples: [1], timeDeltas: [-1] }),
+      chunk({ samples: [1], timeDeltas: [-1_000_001] }),
       chunk({ samples: [Number.NaN], timeDeltas: [10] }),
       chunk({ samples: [1], timeDeltas: [Number.POSITIVE_INFINITY] }),
       chunk({ samples: null, timeDeltas: [10] }),
@@ -285,7 +289,7 @@ describe("V8 trace profile event correlation", () => {
     };
     expect(timeTraceProfileChunk(malformedClock, [1, 2], [10])).toBeUndefined();
     expect(malformedClock.nextSampleTimestamp).toBe(100);
-    expect(timeTraceProfileChunk(malformedClock, [1], [-1])).toBeUndefined();
+    expect(timeTraceProfileChunk(malformedClock, [1], [-101])).toBeUndefined();
     expect(malformedClock.nextSampleTimestamp).toBe(100);
 
     const overflowClock = {
@@ -296,5 +300,75 @@ describe("V8 trace profile event correlation", () => {
       timeTraceProfileChunk(overflowClock, [1], [Number.MAX_VALUE]),
     ).toBeUndefined();
     expect(overflowClock.nextSampleTimestamp).toBe(Number.MAX_VALUE);
+  });
+});
+
+describe("signed sample timestamp reconstruction", () => {
+  it("preserves signed delta order across chunks before globally sorting intervals", () => {
+    const state = createTraceProfileState();
+    ingestTraceProfileEvent(state, head({ timestamp: 1000 }));
+    const first = ingestTraceProfileEvent(
+      state,
+      chunk({ samples: [1, 2], timeDeltas: [100, -50] }),
+    );
+    const second = ingestTraceProfileEvent(
+      state,
+      chunk({ samples: [3, 4], timeDeltas: [150, -100] }),
+    );
+    expect(first).toMatchObject({
+      samples: [
+        { nodeId: 1, timestamp: 1100 },
+        { nodeId: 2, timestamp: 1050 },
+      ],
+    });
+    expect(second).toMatchObject({
+      samples: [
+        { nodeId: 3, timestamp: 1200 },
+        { nodeId: 4, timestamp: 1100 },
+      ],
+    });
+    if (first.status !== "chunk" || second.status !== "chunk")
+      throw new Error("Expected valid chunks");
+    const points = [...first.samples, ...second.samples];
+    expect(traceSampleIntervals(points)).toEqual([
+      { nodeId: 2, start: 1050, duration: 50 },
+    ]);
+    // The duplicate timestamp's interval is ambiguous; the last point has no observed end.
+    expect(points.map((point) => point.timestamp)).toEqual([
+      1100, 1050, 1200, 1100,
+    ]);
+    expect(
+      state.anchors.get(traceProfileKey(10, "profile-a") ?? "")?.clock
+        .nextSampleTimestamp,
+    ).toBe(1100);
+  });
+
+  it("permits a signed first delta while rejecting impossible and fractional clocks atomically", () => {
+    const clock = { profileStartTimestamp: 1000, nextSampleTimestamp: 1000 };
+    expect(timeTraceProfileChunk(clock, [5], [-10])).toEqual([
+      { nodeId: 5, timestamp: 990 },
+    ]);
+    expect(timeTraceProfileChunk(clock, [6, 7], [10, -2000])).toBeUndefined();
+    expect(clock.nextSampleTimestamp).toBe(990);
+    expect(timeTraceProfileChunk(clock, [6], [0.5])).toBeUndefined();
+    expect(clock.nextSampleTimestamp).toBe(990);
+  });
+
+  it("attributes only observed adjacent intervals to their timestamped node without filling tails", () => {
+    expect(
+      traceSampleIntervals([
+        { nodeId: 2, timestamp: 1200 },
+        { nodeId: 1, timestamp: 1000 },
+        { nodeId: 3, timestamp: 1500 },
+      ]),
+    ).toEqual([
+      { nodeId: 1, start: 1000, duration: 200 },
+      { nodeId: 2, start: 1200, duration: 300 },
+    ]);
+    expect(traceSampleIntervals([])).toEqual([]);
+    expect(traceSampleIntervals([{ nodeId: 1, timestamp: 1000 }])).toEqual([]);
+    expect(
+      traceSampleIntervals([{ nodeId: 1, timestamp: Number.NaN }]),
+    ).toEqual([]);
   });
 });

@@ -3,6 +3,8 @@ export type TraceProfileClock = {
   nextSampleTimestamp: number;
 };
 
+export type TraceSamplePoint = { nodeId: number; timestamp: number };
+
 export type TimedTraceSample = {
   nodeId: number;
   start: number;
@@ -41,7 +43,7 @@ export type TraceProfileEventResult =
       id: string;
       ownerTid: number;
       source?: string;
-      samples: TimedTraceSample[];
+      samples: TraceSamplePoint[];
     };
 
 export function createTraceProfileState(): TraceProfileState {
@@ -159,29 +161,78 @@ export function ingestTraceProfileEvent(
 
 /**
  * V8 ProfileChunk deltas continue from the initial Profile event across chunk
- * boundaries. Chunk emission timestamps are deliberately not used as anchors.
+ * boundaries. Deltas are signed differences between sample timestamps, not
+ * durations. Preserve arrival order for reconstruction; sort the complete stream
+ * only after capture. Chunk emission timestamps are not sample anchors.
  */
 export function timeTraceProfileChunk(
   clock: TraceProfileClock | undefined,
   sampleIds: readonly number[],
   timeDeltas: readonly number[],
-): TimedTraceSample[] | undefined {
+): TraceSamplePoint[] | undefined {
   if (!clock || sampleIds.length !== timeDeltas.length) return undefined;
   if (
     sampleIds.some((id) => !Number.isSafeInteger(id) || id < 0) ||
-    timeDeltas.some((delta) => !Number.isFinite(delta) || delta < 0)
+    timeDeltas.some((delta) => !Number.isSafeInteger(delta))
   )
     return undefined;
 
   let next = clock.nextSampleTimestamp;
-  const samples: TimedTraceSample[] = [];
+  const samples: TraceSamplePoint[] = [];
   for (let index = 0; index < sampleIds.length; index += 1) {
-    const duration = timeDeltas[index];
-    if (duration === undefined || !Number.isFinite(next + duration))
+    const delta = timeDeltas[index];
+    const nodeId = sampleIds[index];
+    if (
+      delta === undefined ||
+      nodeId === undefined ||
+      !Number.isSafeInteger(next + delta) ||
+      next + delta < 0
+    )
       return undefined;
-    samples.push({ nodeId: sampleIds[index], start: next, duration });
-    next += duration;
+    next += delta;
+    samples.push({ nodeId, timestamp: next });
   }
   clock.nextSampleTimestamp = next;
   return samples;
+}
+
+/**
+ * Infer intervals only between observed samples after all chunks arrive. Later
+ * chunks can contain earlier timestamps, so sorting each chunk is insufficient.
+ * Do not extrapolate a tail or attribute ambiguous equal-timestamp samples.
+ */
+export function traceSampleIntervals(
+  points: readonly TraceSamplePoint[],
+): TimedTraceSample[] {
+  if (
+    points.some(
+      ({ nodeId, timestamp }) =>
+        !Number.isSafeInteger(nodeId) ||
+        nodeId < 0 ||
+        !Number.isSafeInteger(timestamp) ||
+        timestamp < 0,
+    )
+  )
+    return [];
+  const ordered = [...points].sort(
+    (left, right) => left.timestamp - right.timestamp,
+  );
+  const intervals: TimedTraceSample[] = [];
+  for (let index = 0; index + 1 < ordered.length; index++) {
+    const current = ordered[index];
+    const next = ordered[index + 1];
+    if (
+      !current ||
+      !next ||
+      next.timestamp === current.timestamp ||
+      ordered[index - 1]?.timestamp === current.timestamp
+    )
+      continue;
+    intervals.push({
+      nodeId: current.nodeId,
+      start: current.timestamp,
+      duration: next.timestamp - current.timestamp,
+    });
+  }
+  return intervals;
 }

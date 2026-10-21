@@ -8,6 +8,8 @@ import { summarizeProfileCoverage } from "../src/lib/performance-profile-interva
 import {
   createTraceProfileState,
   ingestTraceProfileEvent,
+  type TraceSamplePoint,
+  traceSampleIntervals,
 } from "../src/lib/performance-trace-profile-clock";
 import {
   aggregateCpuProfileFrames,
@@ -762,7 +764,10 @@ async function withDiagnosticProfile(
   let metrics: InitialDocumentMetrics | undefined;
   let browserPerformance: DiagnosticCapture["browserPerformance"] | undefined;
   const timelineEvents: BrowserTimelineEvent[] = [];
-  const traceCpuProfilesByIdentity = new Map<string, TraceCpuProfile>();
+  const traceCpuProfilesByIdentity = new Map<
+    string,
+    Omit<TraceCpuProfile, "samples"> & { samples: TraceSamplePoint[] }
+  >();
   const traceProfileState = createTraceProfileState();
   const profileIngestionCounts = new Map<string, number>();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
@@ -1027,7 +1032,12 @@ async function withDiagnosticProfile(
     metrics,
     network: JSON.parse(networkCapture.finish()),
     browserPerformance,
-    traceCpuProfiles: [...traceCpuProfilesByIdentity.values()],
+    traceCpuProfiles: [...traceCpuProfilesByIdentity.values()].map(
+      (profile) => ({
+        ...profile,
+        samples: traceSampleIntervals(profile.samples),
+      }),
+    ),
     clockMarks,
     boundary,
   };
@@ -1413,7 +1423,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
       transform:
         "Two diagnostic CDP TimeStamp markers on the same document, measured around window.performance.now(); affine scale and offset map canonical recorder values to trace time. Uncertainty includes marker-call brackets plus measured slope uncertainty propagated across extrapolated distance.",
       cpuProfileClock:
-        "Sanitized V8 ProfileChunk sample intervals join the initial Profile event by process and profile id, retain the owner thread id from the Profile head even when chunk event thread ids differ, and accumulate ordered timeDeltas from the head timestamp. Optional source tags must be consistent; invalid or ambiguous profiles are omitted. Chunk emission timestamps are not used as sample anchors; valid intervals are clipped to the aligned recorder span.",
+        "Sanitized V8 ProfileChunk sample intervals join the initial Profile event by process and profile id, retain the owner thread id from the Profile head even when chunk event thread ids differ, and reconstruct sample timestamps using signed timeDeltas from the head timestamp. The complete sample stream is sorted after capture; intervals extend only to the next observed sample, with no extrapolated tail or ambiguous equal-timestamp attribution. Optional source tags must be consistent; invalid profiles are omitted. Chunk emission timestamps are not sample anchors; intervals are clipped to the aligned recorder span.",
       cpuFrameAttribution:
         "Self time is sampled time at the node; inclusive time sums each clipped sample once into that node and every reachable caller from retained child links. This is sampled CPU attribution, not wall time or a completeness guarantee. Coordinates remain compiled asset/function/line/column; source maps are inspected only for asset source lists and do not resolve individual functions.",
       contextMetrics:
