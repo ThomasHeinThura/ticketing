@@ -100,3 +100,29 @@ Prior-head PostgreSQL shard passes are not exact-head completion evidence. Final
 comparison, valid G11 measurements, exact-image verification and live topology tests remain
 pending. Unstable calibration with 21 unrun tests is not a performance pass. Source and
 baseline approval do not establish deployment, full feature completion or stage sign-off.
+
+## Cold-load and bundle accounting delta — 2026-10-22
+
+Reviewed `8c497ddfefb2b1006c5a6bb4489defcf8aed8a5d` against
+`1db85887b245ef46431b5d7d31dda03d69c9e3ac`.
+**Standard source review: APPROVE. Security source review: APPROVE.** Aggregate source
+coverage extends from accepted main `a99483a7befd97d91dce5853b428dc6994d74aca`
+through this exact head, including the original six Antigravity commits through `90973b7e`.
+Those original changes were covered by the initial aggregate audit and subsequent repairs;
+they are not excluded by the intermediate bases recorded above. No open source blockers.
+
+The HTML preload includes the restored header's static closure without executing protected
+data access. Mobile navigation loads on mobile instead of adding its hidden desktop graph.
+The bundle gate now counts the preloaded closures and worst selected slim locale plus the
+English fallback, deduplicating shared assets. The reviewer's fallback-accounting finding
+is resolved: corrected size is 346,917 bytes against the unchanged 350,000-byte limit.
+No bundle-budget waiver is approved. The reviewer independently reran all 11 bundle tests;
+all passed. The implementing session reports nine browser cases, build/type/lint, all 428
+contrast pairs and 47-case visual-scope validation passed; this is not a hosted G8/G11 pass.
+
+Prior-head hosted evidence included 159 browser tests and shipping-image success, but G11
+still failed LCP at 3838 ms (21/22 checks passed). The new cold-load change has not yet
+passed hosted measurement. A separate local diagnostic completed several captures then
+failed a board-selection timeline bound; it is not a passing diagnostic. Live ingress
+observations remain attributed to the implementing session. Exact-head CI/image evidence,
+integrated runtime acceptance and Thomas's P0–P4 sign-off remain outstanding.
