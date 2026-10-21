@@ -10,6 +10,7 @@ import {
 import type { WorkItemDetailRow } from "@/types/work-item";
 import { useWorkItemFeedback } from "./work-item-feedback";
 import {
+  cachedWorkItem,
   isSameJson,
   useSaveWorkItemFields,
   workItemDetailKey,
@@ -66,11 +67,12 @@ export default function WorkItemDescription({
   const lastSaved = useRef<unknown>(NOTHING_SAVED);
   // The document of the save in flight: a blur right after the pause must not resend it.
   const inFlight = useRef<unknown>(NOTHING_SAVED);
+  const pendingWrites = useRef(0);
 
   const update = useSaveWorkItemFields(item, {
-    onSettled: (fields) => {
-      if (inFlight.current === fields.description)
-        inFlight.current = NOTHING_SAVED;
+    onSettled: () => {
+      pendingWrites.current -= 1;
+      if (pendingWrites.current === 0) inFlight.current = NOTHING_SAVED;
     },
     onError: async (error) => {
       if (isWorkItemAccessLost(error)) {
@@ -98,7 +100,10 @@ export default function WorkItemDescription({
   });
 
   const save = (document: unknown) => {
-    if (isSameJson(document, item.description)) {
+    if (
+      pendingWrites.current === 0 &&
+      isSameJson(document, cachedWorkItem(queryClient, item).description)
+    ) {
       if (unsaved.current === document) unsaved.current = NOTHING_SAVED;
       setFailed(false);
       return;
@@ -110,6 +115,7 @@ export default function WorkItemDescription({
     )
       return;
     inFlight.current = document;
+    pendingWrites.current += 1;
     lastSaved.current = document;
     update.mutate(
       { description: document },

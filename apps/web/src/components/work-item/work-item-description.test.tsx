@@ -126,6 +126,37 @@ afterEach(() => {
 });
 
 describe("WorkItemDescription", () => {
+  it("persists a return to the original document while an earlier edit is saving", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.update
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (answer = resolve)),
+      )
+      .mockResolvedValueOnce({
+        key: "HELP-7",
+        version: 6,
+        description: doc("Original"),
+      });
+    const { editor } = setup();
+    fireEvent.focus(editor());
+    fireEvent.change(editor(), { target: { value: "Changed" } });
+    fireEvent.blur(editor());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.focus(editor());
+    fireEvent.change(editor(), { target: { value: "Original" } });
+    fireEvent.blur(editor());
+    await act(async () => {
+      answer({ key: "HELP-7", version: 5, description: doc("Changed") });
+    });
+    await vi.waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
+    expect(mocks.update.mock.calls[1]?.[0]).toMatchObject({
+      description: doc("Original"),
+      version: 5,
+    });
+  });
+
   it("does not wipe text typed while its own save was in flight", async () => {
     mocks.update.mockResolvedValue({
       key: "HELP-7",

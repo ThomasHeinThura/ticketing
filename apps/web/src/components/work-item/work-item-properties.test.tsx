@@ -392,6 +392,90 @@ describe("WorkItemProperties", () => {
     );
   });
 
+  it.each(["assign", "unassign"] as const)(
+    "keeps the confirmed holder when %s waits behind another write",
+    async (action) => {
+      mocks.assign.mockResolvedValue({ key: "HELP-7", version: 6 });
+      mocks.unassign.mockResolvedValue({ key: "HELP-7", version: 6 });
+      mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+      const original = item({
+        assigneeId: "person-1",
+        assigneeName: "Riley Fox",
+      });
+      const { client } = renderProps(
+        <WorkItemProperties item={original} onAccessLost={vi.fn()} />,
+        original,
+      );
+      let release: () => void = () => {};
+      const blocker = client.getMutationCache().build(client, {
+        scope: { id: "work-item:HELP-7" },
+        mutationFn: () =>
+          new Promise<void>((resolve) => {
+            release = resolve;
+          }),
+      });
+      const blocking = blocker.execute(undefined);
+      await waitFor(() => expect(blocker.state.status).toBe("pending"));
+      fireEvent.click(screen.getByRole("button", { name: /Riley Fox/ }));
+      if (action === "assign") {
+        fireEvent.click(
+          await screen.findByRole("button", { name: /Casey Ray/ }),
+        );
+        fireEvent.click(
+          screen.getByRole("button", {
+            name: "workItems:journey.confirmAssignment",
+          }),
+        );
+      } else {
+        fireEvent.click(
+          await screen.findByRole("button", {
+            name: "workItems:detail.unassigned",
+          }),
+        );
+      }
+      expect(mocks.assign).not.toHaveBeenCalled();
+      expect(mocks.unassign).not.toHaveBeenCalled();
+      client.setQueryData(
+        ["work-items", "detail", original.key],
+        item({ assigneeId: "person-3", version: 5 }),
+      );
+      release();
+      await blocking;
+      if (action === "assign") {
+        await waitFor(() =>
+          expect(mocks.assign).toHaveBeenCalledWith({
+            key: "HELP-7",
+            assigneeId: "person-2",
+            expectedCurrentAssigneeId: "person-1",
+          }),
+        );
+      } else {
+        await waitFor(() =>
+          expect(mocks.unassign).toHaveBeenCalledWith("HELP-7", "person-1"),
+        );
+      }
+    },
+  );
+
+  it.each([true, false])(
+    "update-only caller can unassign only their own item (self: %s)",
+    async (self) => {
+      mocks.canAssign = false;
+      mocks.people = [{ personId: "person-self", name: "Me" }];
+      const current = item({
+        assigneeId: self ? "person-self" : "person-other",
+        assigneeName: "Holder",
+      });
+      renderProps(<WorkItemProperties item={current} onAccessLost={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+      const button = await screen.findByRole("button", {
+        name: "workItems:detail.unassigned",
+      });
+      if (self) expect(button).toBeEnabled();
+      else expect(button).toBeDisabled();
+    },
+  );
+
   it("asks before taking work from its current holder, then assigns with that holder", async () => {
     mocks.assign.mockResolvedValue({ key: "HELP-7", version: 5 });
     mocks.people = [{ personId: "person-2", name: "Casey Ray" }];

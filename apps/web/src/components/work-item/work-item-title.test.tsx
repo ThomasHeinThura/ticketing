@@ -88,6 +88,35 @@ afterEach(() => {
 });
 
 describe("WorkItemTitle", () => {
+  it("persists a return to the original title while an earlier edit is saving", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.update
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (answer = resolve)),
+      )
+      .mockResolvedValueOnce({
+        key: "HELP-7",
+        version: 6,
+        title: "Printer jammed",
+      });
+    const { input } = setup();
+    fireEvent.focus(input());
+    fireEvent.change(input(), { target: { value: "Changed" } });
+    fireEvent.blur(input());
+    await flushPromises();
+    fireEvent.focus(input());
+    fireEvent.change(input(), { target: { value: "Printer jammed" } });
+    fireEvent.blur(input());
+    await act(async () => {
+      answer({ key: "HELP-7", version: 5, title: "Changed" });
+    });
+    await vi.waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
+    expect(mocks.update.mock.calls[1]?.[0]).toMatchObject({
+      title: "Printer jammed",
+      version: 5,
+    });
+  });
+
   it("saves once after the pause, with the cached version", async () => {
     mocks.update.mockResolvedValue({ key: "HELP-7", version: 5 });
     const { input } = setup();

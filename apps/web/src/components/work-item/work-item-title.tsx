@@ -8,7 +8,11 @@ import {
 } from "@/lib/work-item-errors";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import { useWorkItemFeedback } from "./work-item-feedback";
-import { useSaveWorkItemFields, workItemDetailKey } from "./work-item-save";
+import {
+  cachedWorkItem,
+  useSaveWorkItemFields,
+  workItemDetailKey,
+} from "./work-item-save";
 
 export const TITLE_SAVE_DELAY_MS = 800;
 
@@ -38,10 +42,12 @@ export default function WorkItemTitle({
   const unsaved = useRef<string | null>(null);
   // The title of the save in flight: a blur right after the pause must not send it again.
   const inFlight = useRef<string | null>(null);
+  const pendingWrites = useRef(0);
 
   const update = useSaveWorkItemFields(item, {
-    onSettled: (fields) => {
-      if (inFlight.current === fields.title) inFlight.current = null;
+    onSettled: () => {
+      pendingWrites.current -= 1;
+      if (pendingWrites.current === 0) inFlight.current = null;
     },
     onError: async (error) => {
       if (isWorkItemAccessLost(error)) {
@@ -68,7 +74,11 @@ export default function WorkItemTitle({
 
   const save = (text: string) => {
     const title = text.trim();
-    if (!title || title === item.title) {
+    if (
+      !title ||
+      (pendingWrites.current === 0 &&
+        title === cachedWorkItem(queryClient, item).title)
+    ) {
       if (unsaved.current === text) unsaved.current = null;
       setFailed(false);
       return;
@@ -76,6 +86,7 @@ export default function WorkItemTitle({
     // Already on its way; its answer clears `unsaved`.
     if (title === inFlight.current) return;
     inFlight.current = title;
+    pendingWrites.current += 1;
     update.mutate(
       { title },
       {

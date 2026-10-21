@@ -47,7 +47,6 @@ import {
   WorkItemFeedbackProvider,
 } from "./work-item-feedback";
 import {
-  cachedWorkItem,
   useRefreshWorkItem,
   useSaveWorkItemFields,
   workItemDetailKey,
@@ -474,11 +473,13 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
   const refresh = useRefreshWorkItem(item);
   const assign = useMutation({
     scope: workItemMutationScope(item.key),
-    mutationFn: async (
-      person: { personId: string; name: string | null } | null,
-    ) => {
-      // The holder the screen showed, read when the request is made.
-      const holder = cachedWorkItem(queryClient, item).assigneeId;
+    mutationFn: async ({
+      person,
+      holder,
+    }: {
+      person: { personId: string; name: string | null } | null;
+      holder: string | null;
+    }) => {
       const result =
         person === null
           ? await unassignWorkItem(item.key, holder)
@@ -493,7 +494,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       });
       return result;
     },
-    onSuccess: async (_result, person) => {
+    onSuccess: async (_result, { person }) => {
       setOpen(false);
       setConfirmFor(null);
       setError("");
@@ -506,7 +507,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       );
       await refresh();
     },
-    onError: async (mutationError, person) => {
+    onError: async (mutationError, { person }) => {
       setConfirmFor(null);
       if (isWorkItemAccessLost(mutationError)) {
         onAccessLost();
@@ -557,6 +558,12 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
   );
   if (!canUpdateTasks() && !canAssignTasks()) return trigger;
   const list = people.data ?? [];
+  // An update-only roster contains only the caller; never offer clearing another holder.
+  const canUnassign =
+    item.assigneeId !== null &&
+    (canAssignTasks() ||
+      (canUpdateTasks() &&
+        list.some((person) => person.personId === item.assigneeId)));
   const confirmPerson = list.find((person) => person.personId === confirmFor);
   return (
     <Popover
@@ -586,8 +593,11 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                 disabled={assign.isPending}
                 onClick={() =>
                   assign.mutate({
-                    personId: confirmPerson.personId,
-                    name: confirmPerson.name ?? null,
+                    person: {
+                      personId: confirmPerson.personId,
+                      name: confirmPerson.name ?? null,
+                    },
+                    holder: item.assigneeId,
                   })
                 }
               >
@@ -608,8 +618,10 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
               variant="ghost"
               size="sm"
               className="h-8 w-full justify-start gap-2 rounded-none px-2 text-muted-foreground"
-              disabled={assign.isPending || item.assigneeId === null}
-              onClick={() => assign.mutate(null)}
+              disabled={assign.isPending || !canUnassign}
+              onClick={() =>
+                assign.mutate({ person: null, holder: item.assigneeId })
+              }
             >
               {t("workItems:detail.unassigned")}
               {item.assigneeId === null ? (
@@ -644,8 +656,11 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                       return;
                     }
                     assign.mutate({
-                      personId: person.personId,
-                      name: person.name ?? null,
+                      person: {
+                        personId: person.personId,
+                        name: person.name ?? null,
+                      },
+                      holder: item.assigneeId,
                     });
                   }}
                 >
