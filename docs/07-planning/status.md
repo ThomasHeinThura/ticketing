@@ -1,7 +1,7 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `f8f51c77`; primary checkout refreshed to that source.
+Current inspected GitHub main: `9bbff929`; primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
@@ -34,7 +34,7 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   submissions repeat under the restricted credential; local image build/boot passed.
 - Recovery targeting now resolves the selected mounted volume. An isolated internal-network
   drill restored an actual database row and non-empty file, denied egress and passed health.
-  Candidate review cleared; protected merge and full application acceptance remain pending.
+  #878 is merged with all 18 required checks green; full application acceptance remains pending.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 
 ## SIT
@@ -44,6 +44,13 @@ has not been verified against current main. It cannot prove current feature acce
 Before handoff: deploy the reviewed SHA/digest, verify both HTTPS origins, seed accounts and
 realistic submissions, exercise all journeys, and verify backup/restore. Supply credentials
 privately. Thomas performs the final integrated stage walkthrough.
+
+Hosted SIT assessment (Thomas's additional request): `proxy` has 2 vCPUs, 7.7 GiB RAM,
+4.5 GiB available and 166 GiB free. Suitable for light functional SIT using synthetic
+scenarios. Proposed origins are `sit.technexus.info` and `portal-sit.technexus.info`.
+DNS, reviewed proxy integration and runtime deployment remain outstanding. Existing
+Traefik uses `web`/`le`; stock TaskDesk assumptions differ. No remote changes made.
+See [plan.md § Hosted SIT addition](plan.md#hosted-sit-addition--2026-10-21).
 
 ## Open obligations
 

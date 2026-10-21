@@ -1,3 +1,18 @@
+### 2026-10-21 · Assess proxy VM and technexus.info for SIT
+
+**Source:** Thomas's direct chat, 2026-10-21, with the `ssh proxy` transcript:
+“check this vm and it is okie to use that vm as SIT with technexus.info domain as SIT”;
+“because orb take alot of power draw and laptop battery drain alot”; “This is additional
+tasks to existing tasks.”
+
+Add VM readiness assessment and a hosted SIT path under `technexus.info` to the approved
+P0–P4 mission. Preserve ongoing feature implementation and the Kaneo requirement. The
+purpose is to move persistent SIT runtime off the laptop. This request does not authorize
+changes to the VM's unrelated applications, rebooting their shared host, production
+publishing, or reactivating retired model/reviewer routing services found on that host.
+The original local SIT path remains a fallback until the hosted environment is verified.
+Stage closure still requires Thomas's actual integrated walkthrough and sign-off.
+
 ### 2026-10-21 · Complete P0–P4 on Kaneo, lean execution and faster CI
 
 **Source:** Thomas directly approved the chat plan “Finish P0–P4, preserve Kaneo, then
