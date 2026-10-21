@@ -279,6 +279,8 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: g11-initial-page-diagnostic
-          path: apps/web/test-results/g11-initial-page-diagnostic/initial-page-profile.json
+          path: |
+            apps/web/test-results/g11-initial-page-diagnostic/initial-page-profile.json
+            apps/web/test-results/g11-initial-page-diagnostic/command-palette-profile.json
           if-no-files-found: warn
           retention-days: 7
