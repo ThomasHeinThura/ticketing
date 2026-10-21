@@ -9,6 +9,13 @@ tasks to existing tasks.”
 and `portal.technexus.info` for customers and stated “I will add the dns.” Preserve the
 agent hostname's exact spelling; DNS ownership remains with Thomas.
 
+**Further direct instructions, same chat:** keep Cloudflare proxy enabled. Thomas then
+stopped OrbStack and directed: “you can deploy P0-P4 100% finished integrated code SIT
+deploy in the proxy vm and continue all tasks.” Deployment must use Docker Compose with
+prebuilt images, not a source checkout. Continue feature work and hosted verification;
+deploy the reviewed integrated result after completing P0–P4. This is authorization and
+scope, not a claim those stages are already complete.
+
 Add VM readiness assessment and a hosted SIT path under `technexus.info` to the approved
 P0–P4 mission. Preserve ongoing feature implementation and the Kaneo requirement. The
 purpose is to move persistent SIT runtime off the laptop. This request does not authorize

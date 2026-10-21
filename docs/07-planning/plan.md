@@ -57,13 +57,20 @@ acceptance evidence. No remote services were changed.
 
 Thomas selected the agent/portal origins: `https://tickting.technexus.info` and
 `https://portal.technexus.info`. Thomas will add both DNS records to the VM public IP `4.194.153.78`; the checked authoritative
-Cloudflare zone had no address records at those names. Reuse existing Traefik on ports
+Cloudflare zone initially had no address records at those names; Thomas subsequently
+created them with Cloudflare proxy enabled. Reuse existing Traefik on ports
 80/443, its `web` network and `le` ACME resolver. The stock overlay assumes network
 `proxy`, resolver `letsencrypt` and file-provider middleware absent on this host, so it
 cannot be deployed unchanged. Prepare and review a dedicated SIT overlay, isolated
 Compose project/database/volumes and bounded runtime memory. Keep PostgreSQL/Valkey and
-application ports unpublished. Build immutable images on hosted CI, then pull on the VM;
-do not run builds or CI workers alongside its existing services.
+application ports unpublished. Keep Cloudflare proxy enabled as Thomas directed. DNS now resolves through Cloudflare;
+validate origin TLS and forwarded-client-IP handling without assuming a hop count or
+changing unrelated applications. OrbStack is stopped; local Docker checks are unavailable.
+Build immutable images on hosted CI, then pull on the VM;
+do not run builds or CI workers alongside its existing services. The VM receives only
+Compose/configuration/secrets and prebuilt digest-pinned images, never an application source
+checkout. Deploy the completed, integrated and reviewed P0–P4 artifact, not a partial feature
+candidate presented as final SIT.
 
 Before hosted handoff: establish DNS/certificate access, validate the new overlay, deploy
 the reviewed SHA/digest with seeded accounts, verify both origins/security/journeys and

@@ -48,7 +48,8 @@ privately. Thomas performs the final integrated stage walkthrough.
 Hosted SIT assessment (Thomas's additional request): `proxy` has 2 vCPUs, 7.7 GiB RAM,
 4.5 GiB available and 166 GiB free. Suitable for light functional SIT using synthetic
 scenarios. Thomas selected `tickting.technexus.info` and `portal.technexus.info`.
-DNS, reviewed proxy integration and runtime deployment remain outstanding. Existing
+DNS is now present with Cloudflare proxy enabled. Reviewed proxy integration and image-only
+Compose deployment remain outstanding; OrbStack is stopped. Existing
 Traefik uses `web`/`le`; stock TaskDesk assumptions differ. No remote changes made.
 See [plan.md § Hosted SIT addition](plan.md#hosted-sit-addition--2026-10-21).
 
