@@ -48,3 +48,32 @@ The running image's unknown source revision does not establish acceptance of thi
 
 This record approves source, not merge, deployment, feature completion or P0–P4 completion.
 Thomas's SIT walkthrough and stage sign-off remain outstanding.
+
+## Post-CI delta — 2026-10-22
+
+Reviewed `a3bc0cc5c3b62063c8a9471f417b8897d096eabf` against `f335fdfa`.
+**Standard source review: APPROVE. Security source review: APPROVE.** No open
+source blockers remain in this delta. Realtime ownership removes the duplicate legacy
+connection/notice; stable project framing and UI-only preloading preserve authentication
+before data access. Dialog padding, distinct selector names and direct BigInt-compatible
+activity equality retain behavior. The matched Storybook 10.6.2 patch updates address the
+published advisory without security-disable flags. The reviewer independently ran another
+23 targeted tests: all passed.
+
+The TaskDesk-only ingress preserves socket-source Cloudflare restrictions, exact Traefik
+peer trust and normalized forwarding headers. The stale application-address finding is
+resolved by a shared upstream with Docker DNS re-resolution. Reported isolated candidate
+syntax/readiness and trusted/untrusted IPv4/IPv6 checks are implementing-session evidence;
+the candidate was removed without changing live routing.
+
+The reviewer viewed and approved five Linux candidates: portal home, requests, selected
+catalogue form, submission detail and work-item detail. Committed PNGs are byte-identical
+to those inspected candidates. Approval does not extend to portal-approvals, instance-audit
+or project-backlog candidate images invalidated by subsequent fixture/layout corrections.
+
+G8 still requires the missing reviewed approval/audit baselines and a final hosted pass.
+G11, exact-image verification and complete real journeys remain pending; earlier failing
+performance measurements are not superseded by native calibration failure. Live client-IP
+attribution, forgery/direct-origin rejection, application-IP-change recovery, uploads,
+WebSockets and CSRF remain required before topology acceptance. No new application code
+or ingress topology is accepted as deployed by this review; no P0–P4 stage is complete.
