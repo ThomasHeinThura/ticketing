@@ -873,3 +873,15 @@ Contract references: [V8 trace emitter](https://github.com/v8/v8/blob/main/src/p
 (`convertTimeDeltas` / `sortSamples`). These describe the format; the implementation here is
 original TaskDesk code. Timeline/recorder clock alignment and actual sampled-frame coverage
 remain separate requirements. A successful parser test does not establish runtime performance.
+
+
+### Palette measurement observers
+
+The palette benchmark and independent CPU diagnostic wait for the canonical recorder's
+paint completion before running Playwright role/visibility/focus assertions. Those same
+assertions remain mandatory. Whole-page role resolution traverses the 500-row fixture on
+the measured browser thread; it must not compete with the interaction it is observing.
+The recorder, fixture size, CPU calibration, sample counts, retries, timeout and 200 ms
+budget are unchanged. This corrects measurement interference, not product behavior or a
+claim that modal focus/scroll work is free. Native and hosted captures must still prove
+the interaction meets its budget; earlier failures remain adverse evidence.

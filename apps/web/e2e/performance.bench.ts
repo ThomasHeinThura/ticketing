@@ -483,14 +483,16 @@ async function collectCommandPaletteInteraction(
   await page.keyboard.press(
     process.platform === "darwin" ? "Meta+k" : "Control+k",
   );
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByPlaceholder(/search/i)).toBeFocused();
+  // Let the recorder close its paint window before Playwright's role/focus
+  // assertions traverse the 500-row page on the browser's measured main thread.
   await page.waitForFunction(
     () => (window as G11Window).__g11Metrics.palettePaint > 0,
     undefined,
     { timeout: 15_000 },
   );
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByPlaceholder(/search/i)).toBeFocused();
   const clickToPaint = await page.evaluate(
     () => (window as G11Window).__g11Metrics.palettePaint,
   );

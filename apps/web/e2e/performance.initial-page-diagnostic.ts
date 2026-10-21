@@ -1493,9 +1493,8 @@ test("diagnostic: source-bound command-palette open profile", async ({
       await page.keyboard.press(
         process.platform === "darwin" ? "Meta+k" : "Control+k",
       );
-      const dialog = page.getByRole("dialog");
-      await expect(dialog).toBeVisible();
-      await expect(dialog.getByPlaceholder(/search/i)).toBeFocused();
+      // Match the gating interaction: observation must not run a full-page
+      // role query inside the recorder's click-to-paint window.
       await page.waitForFunction(
         () =>
           (window as Window & { __g11Metrics?: { palettePaint: number } })
@@ -1503,6 +1502,9 @@ test("diagnostic: source-bound command-palette open profile", async ({
         undefined,
         { timeout: 15_000 },
       );
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByPlaceholder(/search/i)).toBeFocused();
       return page.evaluate(() => {
         const metrics = (
           window as Window & {
