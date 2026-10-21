@@ -1,7 +1,7 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `02d99466`; primary checkout refreshed to that source.
+Current inspected GitHub main: `db7054b6`; primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
@@ -30,8 +30,8 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
 - #871's stack is reconciled without rewriting remote history. Independent review found
   three editor/assignment defects; fixes and delta review passed, plus 327 work-item tests.
   Final-head hosted checks, real-data use and protected merge remain outstanding.
-- #877 container seeding is open: real intake submissions are repeatable under the
-  restricted application credential; local image build/boot passed. Hosted checks pending.
+- #877 container seeding is merged with all 18 required checks green: real intake
+  submissions repeat under the restricted credential; local image build/boot passed.
 - Recovery targeting now resolves the selected mounted volume. An isolated internal-network
   drill restored an actual database row and non-empty file, denied egress and passed health.
   Candidate review cleared; protected merge and full application acceptance remain pending.

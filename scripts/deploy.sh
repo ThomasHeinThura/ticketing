@@ -422,17 +422,9 @@ print_setup_token() {
 
 seed_if_permitted() {
   [ "$MODE" = "local" ] || return 0
-  if grep -q '"seed"' "$REPO_ROOT/package.json" 2>/dev/null; then
-    say "seeding demo data"
-    POSTGRES_HOST="${POSTGRES_HOST:-127.0.0.1}" pnpm seed minimal || warn "seeding failed — the stack is up regardless"
-    if [ -f "$REPO_ROOT/scripts/seed-sit-users.mjs" ]; then
-      # Fatal: without these accounts and request types nobody can sign in to SIT.
-      POSTGRES_HOST="${POSTGRES_HOST:-127.0.0.1}" pnpm --filter @taskdesk/api exec tsx "$REPO_ROOT/scripts/seed-sit-users.mjs" --sit \
-        || die "SIT seeding failed (accounts, Acme organisation, request types). The stack is up; fix the error above and rerun scripts/deploy.sh local."
-    fi
-  else
-    warn "no \`pnpm seed\` script yet — skipping demo data"
-  fi
+  say "seeding local SIT accounts, catalogue and submissions inside the application container"
+  dc exec -T taskdesk node apps/api/dist/seed-sit-users.js --sit \
+    || die "SIT seeding failed. The stack is up; fix the error above and rerun scripts/deploy.sh local."
 }
 
 print_urls() {

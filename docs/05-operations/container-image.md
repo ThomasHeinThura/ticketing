@@ -4,6 +4,11 @@ One image serves the API, the agent bundle, the portal bundle, the scheduler and
 This is its specification; [ci-cd.md](../04-engineering/ci-cd.md) builds it. Written
 2026-09-05.
 
+The image includes `apps/api/dist/seed-sit-users.js`, bundled with the application build
+and using the installed production dependencies. `scripts/deploy.sh local` invokes it
+inside the application container; the explicit `--sit` argument is required. It is never
+invoked by normal application startup or production deployment.
+
 ## Stages
 
 ```dockerfile
