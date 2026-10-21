@@ -381,17 +381,63 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
 
     const item = await test.step("prepare a reachable work item", () =>
       setupWorkItem(page, origin));
+    const itemUrl = new URL(
+      `/agent/work-items/${encodeURIComponent(item.key)}`,
+      origin,
+    ).toString();
+    await page.goto(itemUrl);
+
+    await test.step("persist inline title and description edits through the real API", async () => {
+      const title = page.getByRole("textbox", { name: "Title", exact: true });
+      await expect(title).toHaveValue("Comments E2E work item");
+      const titleSaved = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === `/api/work-items/${item.key}` &&
+          response.request().method() === "PATCH",
+      );
+      await title.fill("Inline edited work item");
+      await title.press("Tab");
+      const response = await titleSaved;
+      expect(response.status(), await response.text()).toBe(200);
+      expect(response.request().headers()["if-match"]).toMatch(/^"\d+"$/);
+      const description = page.getByRole("region", {
+        name: "Description",
+        exact: true,
+      });
+      await expect(
+        description.getByRole("button", { name: "Attach file" }),
+      ).toHaveCount(0);
+      const editor = description.locator('[contenteditable="true"]');
+      const descriptionSaved = page.waitForResponse(
+        (answer) =>
+          new URL(answer.url()).pathname === `/api/work-items/${item.key}` &&
+          answer.request().method() === "PATCH",
+      );
+      await editor.fill("A persisted rich-text description");
+      await title.focus();
+      expect((await descriptionSaved).status()).toBe(200);
+      await page.reload();
+      await expect(title).toHaveValue("Inline edited work item");
+      await expect(
+        page.getByRole("region", { name: "Description", exact: true }),
+      ).toContainText("A persisted rich-text description");
+    });
+
     const mentionRecipient = await seedReachableMentionRecipient(
       databaseUrl,
       item.workspaceId,
       item.projectId,
       email,
     );
-    const itemUrl = new URL(
-      `/agent/work-items/${encodeURIComponent(item.key)}`,
-      origin,
-    ).toString();
-    await page.goto(itemUrl);
+    await page.reload();
+    await expect(
+      page.getByRole("textbox", { name: "Title", exact: true }),
+    ).toHaveAttribute("readonly", "");
+    await expect(
+      page
+        .getByRole("region", { name: "Description", exact: true })
+        .locator('[contenteditable="true"]'),
+    ).toHaveCount(0);
 
     const activity = page.getByTestId("work-item-activity");
     await expect(activity).toBeVisible();

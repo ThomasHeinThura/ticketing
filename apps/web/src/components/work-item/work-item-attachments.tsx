@@ -84,7 +84,7 @@ export default function WorkItemAttachments({
       data-testid="work-item-attachments"
     >
       <div className="flex items-center justify-between gap-2">
-        <h2 id="work-item-attachments-heading" className="font-medium text-lg">
+        <h2 id="work-item-attachments-heading" className="font-medium text-sm">
           {t("workItems:detail.attachments.heading")}
         </h2>
         <Button

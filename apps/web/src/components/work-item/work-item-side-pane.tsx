@@ -63,10 +63,12 @@ export default function WorkItemSidePane({
         key: itemKey,
       })}
       data-testid="work-item-side-pane"
-      className="flex h-full w-full max-w-xl shrink-0 flex-col overflow-y-auto rounded-md border p-4"
+      className="flex h-full w-full max-w-2xl shrink-0 flex-col overflow-hidden border-border border-l bg-background"
     >
-      <div className="mb-3 flex items-center justify-between gap-2 border-b pb-2">
-        <span className="font-mono font-semibold text-sm">{itemKey}</span>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-border border-b bg-background px-4 py-2.5">
+        <span className="font-medium text-muted-foreground text-sm">
+          {itemKey}
+        </span>
         <div className="flex items-center gap-2">
           <Link
             to={routes.workItemDetail.path}
@@ -90,34 +92,37 @@ export default function WorkItemSidePane({
           </Button>
         </div>
       </div>
-      <Suspense fallback={<WorkItemDetailLoading />}>
-        {item ? (
-          <SidePaneDetailWithProject
-            item={item}
-            workItemKey={itemKey}
-            activityFilter={activityFilter}
-            onActivityFilterChange={setActivityFilter}
-            isError={isError}
-            onRetry={refetch}
-            onAccessLost={onAccessLost}
-          />
-        ) : !isNotFound && !isError ? (
-          <WorkItemDetailLoading />
-        ) : (
-          <WorkItemDetail
-            item={undefined}
-            workItemKey={itemKey}
-            activityFilter={activityFilter}
-            onActivityFilterChange={setActivityFilter}
-            project={undefined}
-            isLoading={isLoading}
-            isNotFound={isNotFound}
-            isError={isError && !isNotFound}
-            onRetry={refetch}
-            onAccessLost={onAccessLost}
-          />
-        )}
-      </Suspense>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <Suspense fallback={<WorkItemDetailLoading />}>
+          {item ? (
+            <SidePaneDetailWithProject
+              item={item}
+              workItemKey={itemKey}
+              activityFilter={activityFilter}
+              onActivityFilterChange={setActivityFilter}
+              isError={isError}
+              onRetry={refetch}
+              onAccessLost={onAccessLost}
+            />
+          ) : !isNotFound && !isError ? (
+            <WorkItemDetailLoading />
+          ) : (
+            <WorkItemDetail
+              variant="pane"
+              item={undefined}
+              workItemKey={itemKey}
+              activityFilter={activityFilter}
+              onActivityFilterChange={setActivityFilter}
+              project={undefined}
+              isLoading={isLoading}
+              isNotFound={isNotFound}
+              isError={isError && !isNotFound}
+              onRetry={refetch}
+              onAccessLost={onAccessLost}
+            />
+          )}
+        </Suspense>
+      </div>
     </aside>
   );
 }
@@ -146,6 +151,7 @@ function SidePaneDetailWithProject({
 
   return (
     <WorkItemDetail
+      variant="pane"
       item={item}
       workItemKey={workItemKey}
       activityFilter={activityFilter}

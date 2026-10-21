@@ -431,3 +431,27 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canManageWorkspaceSettings()).toBe(false);
   });
 });
+
+it("keeps work-item permissions scoped to the requested project across navigation", async () => {
+  capabilitiesGet.mockImplementation(
+    ({ query }: { query: { projectId?: string } }) =>
+      Promise.resolve({
+        ok: true,
+        json: async () =>
+          fullCapabilityMap({ updateTasks: query.projectId === "editable" }),
+      }),
+  );
+  const { result, rerender } = renderHook(
+    ({ projectId }) => useWorkspacePermission("workspace-1", projectId),
+    { initialProps: { projectId: "editable" }, wrapper: createWrapper() },
+  );
+  await waitFor(() => expect(result.current.canUpdateTasks()).toBe(true));
+  rerender({ projectId: "read-only" });
+  expect(result.current.canUpdateTasks()).toBe(false);
+  await waitFor(() =>
+    expect(capabilitiesGet).toHaveBeenCalledWith({
+      query: { workspaceId: "workspace-1", projectId: "read-only" },
+    }),
+  );
+  expect(result.current.canUpdateTasks()).toBe(false);
+});

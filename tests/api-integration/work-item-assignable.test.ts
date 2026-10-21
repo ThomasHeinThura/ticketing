@@ -107,7 +107,13 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     await db.insert(schema.workspaceRoleTable).values({
       workspaceId,
       role,
-      permission: JSON.stringify({}),
+      permission: JSON.stringify(
+        role === "lead"
+          ? { work_item: ["read", "update", "assign"] }
+          : role === "member"
+            ? { work_item: ["read", "update"] }
+            : { work_item: ["read"] },
+      ),
       isSystem: true,
       createdAt: now,
       updatedAt: now,
@@ -131,7 +137,15 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
         key: `assignable-reader-${randomUUID()}`,
         name: "Assignable project reader",
         rank: 1,
-        capabilities: ["project:read", "work_item:read"],
+        capabilities: [
+          "project:read",
+          "work_item:read",
+          ...(role === "lead" || role === "owner"
+            ? ["work_item:assign", "work_item:update"]
+            : role === "member"
+              ? ["work_item:update"]
+              : []),
+        ],
       })
       .returning(),
     "addWorkspaceMember: canonical authority role",
@@ -200,14 +214,23 @@ async function addNamedPersonOnRoster({
       "addNamedPersonOnRoster: person",
     );
   }
+  const project = requireRow(
+    await db
+      .select({ workspaceId: schema.projectTable.workspaceId })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, projectId)),
+    "roster project",
+  );
   const role = requireRow(
     await db
       .insert(schema.roleTable)
       .values({
         scope: "project",
+        workspaceId: project.workspaceId,
         key: `role-${randomUUID()}`,
         name: roleName,
         rank: roleRank,
+        capabilities: ["project:read", "work_item:read", "work_item:update"],
         createdAt: now,
         updatedAt: now,
       })
@@ -388,6 +411,54 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     expect(people).toHaveLength(1);
     expect(people[0]?.personId).toBe(memberPerson.person.id);
   });
+
+  it.each(["owner", "lead"])(
+    "a workspace %s with a project update-only override sees only self",
+    async (role) => {
+      const { workspace, project, type, backlog } = await setup();
+      const actor = await addWorkspaceMember(workspace.id, role);
+      const self = await addNamedPersonOnRoster({
+        name: "Self",
+        projectId: project.id,
+        linkedUserId: actor.id,
+      });
+      const other = await addNamedPersonOnRoster({
+        name: "Other",
+        projectId: project.id,
+      });
+      // Both holder states use the same scoped feed: only self is ever a candidate.
+      await assignItemTo(
+        workspace.id,
+        project.id,
+        type.id,
+        backlog.id,
+        self.person.id,
+      );
+      await assignItemTo(
+        workspace.id,
+        project.id,
+        type.id,
+        backlog.id,
+        other.person.id,
+      );
+      mockAuthenticatedSession(actor);
+      const { app } = createApp();
+      const response = await assignableRequest(app, project.id);
+      expect(response.status).toBe(200);
+      expect(
+        (await response.json()).map(
+          (entry: { personId: string }) => entry.personId,
+        ),
+      ).toEqual([self.person.id]);
+      const capabilities = await app.request(
+        `/api/capabilities?workspaceId=${workspace.id}&projectId=${project.id}`,
+      );
+      expect(await capabilities.json()).toMatchObject({
+        updateTasks: true,
+        assignTasks: false,
+      });
+    },
+  );
 
   it("a viewer sees an EMPTY list, not a list of people it cannot use", async () => {
     const { workspace, project } = await setup();

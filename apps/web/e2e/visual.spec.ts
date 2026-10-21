@@ -701,7 +701,9 @@ test("work-item detail screen @visual", async ({ page }) => {
     page.getByRole("button", { name: "Help Desk", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Customer cannot reset their password", { exact: true }),
+    page.locator(
+      'input[aria-label="Title"][value="Customer cannot reset their password"]',
+    ),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("work-item-detail.png", {
     animations: "disabled",

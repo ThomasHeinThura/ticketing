@@ -60,7 +60,10 @@ const EMPTY_CAPABILITIES = {
   manageWorkspaceSettings: false,
 } as const satisfies Record<string, boolean>;
 
-export function useWorkspacePermission(targetWorkspaceId?: string) {
+export function useWorkspacePermission(
+  targetWorkspaceId?: string,
+  targetProjectId?: string,
+) {
   const { data: activeWorkspace } = useActiveWorkspace();
   const { data: activeMember } = useGetActiveWorkspaceUser();
   const isTargetScoped = targetWorkspaceId !== undefined;
@@ -83,13 +86,21 @@ export function useWorkspacePermission(targetWorkspaceId?: string) {
     isFetching,
   } = useQuery({
     queryKey: isTargetScoped
-      ? ["workspace-capabilities", workspaceId, "work-item-target"]
+      ? [
+          "workspace-capabilities",
+          workspaceId,
+          "work-item-target",
+          ...(targetProjectId ? [targetProjectId] : []),
+        ]
       : ["workspace-capabilities", workspaceId, role],
     enabled: Boolean(workspaceId && (isTargetScoped || role)),
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<CapabilityMap> => {
       const response = await client.capabilities.$get({
-        query: { workspaceId: workspaceId as string },
+        query: {
+          workspaceId: workspaceId as string,
+          ...(targetProjectId ? { projectId: targetProjectId } : {}),
+        },
       });
 
       if (!response.ok) {
