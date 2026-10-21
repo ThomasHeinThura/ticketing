@@ -154,6 +154,8 @@ const CLOCK_MARKS = new Set([
   "state-paint",
   "assignment-start",
   "assignment-paint",
+  "palette-start",
+  "palette-paint",
   "board-paint",
 ]);
 
@@ -762,6 +764,7 @@ async function withDiagnosticProfile(
   const timelineEvents: BrowserTimelineEvent[] = [];
   const traceCpuProfilesByIdentity = new Map<string, TraceCpuProfile>();
   const traceProfileState = createTraceProfileState();
+  const profileIngestionCounts = new Map<string, number>();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
   let timelineOverflow = false;
   cdp.on("Tracing.dataCollected", ({ value }) => {
@@ -783,6 +786,34 @@ async function withDiagnosticProfile(
           samples: cpuProfile?.samples,
           timeDeltas: data?.timeDeltas,
         });
+        const ingestionShape = JSON.stringify({
+          name: event.name,
+          phase: event.ph,
+          idType: typeof event.id,
+          keys: Object.keys(event).sort(),
+          sourceType: typeof data?.source,
+          sampleType: Array.isArray(cpuProfile?.samples)
+            ? "array"
+            : typeof cpuProfile?.samples,
+          deltaType: Array.isArray(data?.timeDeltas)
+            ? "array"
+            : typeof data?.timeDeltas,
+          matchingLengths:
+            Array.isArray(cpuProfile?.samples) &&
+            Array.isArray(data?.timeDeltas) &&
+            cpuProfile.samples.length === data.timeDeltas.length,
+          hasNegativeDeltas:
+            Array.isArray(data?.timeDeltas) &&
+            data.timeDeltas.some(
+              (value) => typeof value === "number" && value < 0,
+            ),
+          dataKeys: Object.keys(data ?? {}).sort(),
+          status: profileEvent.status,
+        });
+        profileIngestionCounts.set(
+          ingestionShape,
+          (profileIngestionCounts.get(ingestionShape) ?? 0) + 1,
+        );
         if (profileEvent.status === "invalid") {
           if (profileEvent.key)
             traceCpuProfilesByIdentity.delete(profileEvent.key);
@@ -826,6 +857,8 @@ async function withDiagnosticProfile(
       "state-paint",
       "assignment-start",
       "assignment-paint",
+      "palette-start",
+      "palette-paint",
       "board-paint",
     ]);
     const marks: Array<{
@@ -867,6 +900,8 @@ async function withDiagnosticProfile(
         ["statePaint", "stateStart", "state-paint"],
         ["assignmentStart", "", "assignment-start"],
         ["assignmentPaint", "assignmentStart", "assignment-paint"],
+        ["paletteStart", "", "palette-start"],
+        ["palettePaint", "paletteStart", "palette-paint"],
         ["boardPaint", "documentStart", "board-paint"],
       ] as const) {
         const descriptor = Object.getOwnPropertyDescriptor(metrics, key);
@@ -937,7 +972,9 @@ async function withDiagnosticProfile(
       });
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
     }
+    console.info(`G11 diagnostic preparation started: ${name}`);
     await prepare(page);
+    console.info(`G11 diagnostic preparation completed: ${name}`);
     await cdp.send("Performance.enable");
     const beforeMetrics = await performanceMetricSnapshot(cdp);
     await cdp.send("Tracing.start", {
@@ -961,6 +998,9 @@ async function withDiagnosticProfile(
     );
     await cdp.send("Tracing.end");
     await tracingComplete;
+    console.info(`G11 profile ingestion shapes: ${name}`, [
+      ...profileIngestionCounts,
+    ]);
     if (timelineOverflow)
       throw new Error(`The ${name} browser timeline exceeded its event bound.`);
     browserPerformance = {
@@ -1416,4 +1456,100 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     ),
     "The diagnostic must retain all observed requests without truncation.",
   ).toBe(true);
+});
+
+// Keep this independent of the initial-page captures: a failure in another
+// diagnostic window must not discard the profile of the failing palette path.
+test("diagnostic: source-bound command-palette open profile", async ({
+  browser,
+}) => {
+  const capture = await withDiagnosticProfile(
+    browser,
+    "command-palette shortcut click-to-paint",
+    true,
+    async (page) => {
+      await page.goto(WORK_LIST_PATH, {
+        waitUntil: "domcontentloaded",
+        timeout: 45_000,
+      });
+      await expect(
+        page.locator("[data-testid=work-item-list-populated] tbody tr"),
+      ).toHaveCount(500);
+      const popup = page.locator('[data-slot="command-dialog-popup"]');
+      await expect(popup).toHaveCount(1);
+      await expect(popup).toBeHidden();
+    },
+    async (page) => {
+      await page.keyboard.press(
+        process.platform === "darwin" ? "Meta+k" : "Control+k",
+      );
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByPlaceholder(/search/i)).toBeFocused();
+      await page.waitForFunction(
+        () =>
+          (window as Window & { __g11Metrics?: { palettePaint: number } })
+            .__g11Metrics?.palettePaint,
+        undefined,
+        { timeout: 15_000 },
+      );
+      return page.evaluate(() => {
+        const metrics = (
+          window as Window & {
+            __g11Metrics?: { paletteStart: number; palettePaint: number };
+          }
+        ).__g11Metrics;
+        if (!metrics || metrics.paletteStart <= 0 || metrics.palettePaint <= 0)
+          throw new Error(
+            "The canonical palette paint boundary is incomplete.",
+          );
+        return {
+          startMark: "palette-start",
+          endMark: "palette-paint",
+          startPerformanceNowMs: metrics.paletteStart,
+          endPerformanceNowMs: metrics.paletteStart + metrics.palettePaint,
+          source:
+            "canonical paletteStart and palettePaint recorder fields (ms)",
+        };
+      });
+    },
+  );
+  const assetNames = new Set(
+    capture.traceCpuProfiles.flatMap((profile) =>
+      [...profile.nodes.values()]
+        .map((node) => node.callFrame?.url)
+        .filter(
+          (url): url is string =>
+            typeof url === "string" && url.startsWith(`${ORIGIN}/assets/`),
+        )
+        .map(safeAssetName),
+    ),
+  );
+  const build = await getBuildIdentity(assetNames);
+  const artifact = createRawCaptureArtifact(capture, 1, build);
+  await mkdir(RESULT_DIR, { recursive: true });
+  // Persist the sanitized capture before clock/coverage validation, so invalid
+  // attribution remains inspectable without being reported as complete evidence.
+  await writeFile(
+    path.join(RESULT_DIR, "command-palette-profile.json"),
+    `${JSON.stringify(artifact, null, 2)}\n`,
+    { mode: 0o600 },
+  );
+  const alignment = alignBoundaryToTrace(capture);
+  if (!alignment) throw new Error("The palette clock alignment is missing.");
+  const frames = inclusiveTraceFrames(
+    capture.traceCpuProfiles
+      .map((profile) =>
+        sanitizeTraceCpuProfile(
+          profile,
+          alignment.startTraceMicroseconds,
+          alignment.endTraceMicroseconds,
+        ),
+      )
+      .filter((value) => value !== undefined),
+  );
+  expect(
+    frames.length,
+    "The palette interval must contain sampled app JavaScript frames.",
+  ).toBeGreaterThan(0);
 });

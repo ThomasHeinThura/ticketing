@@ -1,3 +1,24 @@
+### 2026-10-21 · Preserve hosted SIT instructions for agent handover
+
+**Source:** Thomas's direct follow-up: “add and make note on decision or something md
+and update md to handover for other agent.” He reaffirmed these deployment instructions:
+
+- Kaneo remains the UI foundation; extend its existing components and surfaces.
+- OrbStack stays stopped. Do not restart it for builds, tests or persistent SIT.
+- Final SIT origins are `https://tickting.technexus.info` and
+  `https://portal.technexus.info`; preserve the exact agent hostname spelling.
+- Both DNS names resolve through Cloudflare; keep Cloudflare proxy enabled.
+- Deploy to SSH alias `proxy` using Docker Compose and digest-pinned prebuilt images.
+  The VM receives configuration/secrets, not application source, builds or CI workers.
+- TaskDesk has **not yet been deployed to that VM**. This is the current deployment
+  state, not a completed acceptance milestone.
+
+These are additional constraints on the active P0–P4 mission, not a replacement task.
+Continue implementation and independent review; deploy the completed integrated artifact
+and prepare Thomas's walkthrough. No stage closes without his actual SIT sign-off.
+The continuation snapshot is [handover.md](handover.md); refresh live GitHub before acting.
+This entry supersedes any suggestion that restarting OrbStack is a prerequisite.
+
 ### 2026-10-21 · Assess proxy VM and technexus.info for SIT
 
 **Source:** Thomas's direct chat, 2026-10-21, with the `ssh proxy` transcript:

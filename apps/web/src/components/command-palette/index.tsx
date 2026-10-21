@@ -62,8 +62,6 @@ type PaletteGroup = {
 };
 
 export type CommandPaletteIntent =
-  | "open"
-  | "close"
   | "search"
   | "projects"
   | "create-project"
@@ -114,12 +112,6 @@ export function CommandPalette({
     if (request.intent === "projects" && !workspace?.id) return;
     handledRequest.current = request.id;
     switch (request.intent) {
-      case "open":
-        onOpenChange(true);
-        break;
-      case "close":
-        onOpenChange(false);
-        break;
       case "search":
         setIsSearchOpen(true);
         break;
@@ -149,7 +141,6 @@ export function CommandPalette({
     isAdmin,
     workspace?.id,
     navigate,
-    onOpenChange,
     onRequestHandled,
   ]);
 

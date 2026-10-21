@@ -73,6 +73,7 @@ import updateWorkItem, {
   WorkItemVersionConflictError,
 } from "./controllers/update-work-item";
 import { unwatchWorkItem, watchWorkItem } from "./controllers/watch-work-item";
+import { listWorkItemLabels } from "./labels-repository";
 import {
   classifyWorkItemMentionPeople,
   findWorkItemMentionContext,
@@ -502,6 +503,34 @@ const getWorkItemRoute = createRoute({
   },
 });
 
+const getWorkItemLabelsRoute = createRoute({
+  method: "get",
+  operationId: "getWorkItemLabels",
+  path: "/work-items/{key}/labels",
+  tags: ["Work items"],
+  summary: "List available labels and work-item assignments",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse(
+      "Workspace catalogue with assignment state",
+      z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          color: z.string(),
+          assigned: z.boolean(),
+        }),
+      ),
+    ),
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Work item not found"),
+  },
+});
+
 const getWorkItemSlaRoute = createRoute({
   method: "get",
   operationId: "getWorkItemSla",
@@ -562,9 +591,9 @@ const updateWorkItemRoute = createRoute({
   tags: ["Work items"],
   summary: "Update work item",
   description:
-    "Partially update a work item's title, description, priority, startDate or dueDate " +
+    "Partially update a work item's title, description, priority, startDate, dueDate or labelIds " +
     "(`WI-8`). Requires `If-Match` with the work item's current version (`WI-7`); a " +
-    "mismatch returns 409 with both versions. Label/custom-field editing, state " +
+    "mismatch returns 409 with both versions. Custom-field editing, state " +
     "transitions and assignment are not part of this route -- see their own mechanisms. " +
     "Changing `priority` additionally requires `work_item:set_priority` " +
     "(`docs/01-architecture/rbac.md`) -- `work_item:update` alone is not enough.",
@@ -581,6 +610,7 @@ const updateWorkItemRoute = createRoute({
     },
   },
   responses: {
+    422: errorResponse("Labels must belong to this workspace catalogue"),
     200: jsonResponse("The updated work item", workItemSchema),
     400: errorResponse("Invalid body, or a malformed If-Match header"),
     403: errorResponse(
@@ -1366,6 +1396,12 @@ const workItem = apiRouter<
     const item = await getWorkItemByKey(key, workspaceId);
     return c.json(item, 200);
   })
+  .openapi(getWorkItemLabelsRoute, async (c) =>
+    c.json(
+      await listWorkItemLabels(c.req.valid("param").key, c.get("workspaceId")),
+      200,
+    ),
+  )
   .openapi(getWorkItemSlaRoute, async (c) => {
     const { key } = c.req.valid("param");
     const item = await getWorkItemSla(key, c.get("workspaceId"));
@@ -1381,7 +1417,7 @@ const workItem = apiRouter<
     const workspaceId = c.get("workspaceId");
     const { "if-match": ifMatch } = c.req.valid("header");
     const assertedVersion = Number(ifMatch.replaceAll('"', ""));
-    const { title, description, priority, startDate, dueDate } =
+    const { title, description, priority, startDate, dueDate, labelIds } =
       c.req.valid("json");
 
     // Field-level authority, on top of the route's `work_item:update` gate above: rbac.md
@@ -1417,6 +1453,7 @@ const workItem = apiRouter<
           priority,
           startDate,
           dueDate,
+          labelIds,
         },
       );
       return c.json(updated, 200);

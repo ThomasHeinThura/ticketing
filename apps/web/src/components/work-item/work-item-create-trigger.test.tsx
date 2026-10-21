@@ -3,13 +3,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   permission: { canCreate: false, checking: false },
+  scopes: [] as Array<[string, string]>,
 }));
 
 vi.mock("@/hooks/use-workspace-permission", () => ({
-  useWorkspacePermission: () => ({
-    canCreateTasks: () => mocks.permission.canCreate,
-    isCheckingPermissions: mocks.permission.checking,
-  }),
+  useWorkspacePermission: (workspaceId: string, projectId: string) => {
+    mocks.scopes.push([workspaceId, projectId]);
+    return {
+      canCreateTasks: () => mocks.permission.canCreate,
+      isCheckingPermissions: mocks.permission.checking,
+    };
+  },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -22,34 +26,61 @@ describe("WorkItemCreateTrigger", () => {
   afterEach(() => {
     cleanup();
     mocks.permission = { canCreate: false, checking: false };
+    mocks.scopes = [];
   });
 
   it("keeps the action hidden while permission is pending or denied", () => {
     mocks.permission = { canCreate: true, checking: true };
-    const { rerender } = render(<WorkItemCreateTrigger onClick={vi.fn()} />);
+    const { rerender } = render(
+      <WorkItemCreateTrigger
+        workspaceId="workspace-target"
+        projectId="project-target"
+        onClick={vi.fn()}
+      />,
+    );
     expect(screen.queryByTestId("create-work-item-trigger")).toBeNull();
 
     mocks.permission = { canCreate: false, checking: false };
-    rerender(<WorkItemCreateTrigger onClick={vi.fn()} />);
+    rerender(
+      <WorkItemCreateTrigger
+        workspaceId="workspace-target"
+        projectId="project-target"
+        onClick={vi.fn()}
+      />,
+    );
     expect(screen.queryByTestId("create-work-item-trigger")).toBeNull();
   });
 
   it("preserves the permitted create action", () => {
     mocks.permission = { canCreate: true, checking: false };
     const onClick = vi.fn();
-    render(<WorkItemCreateTrigger onClick={onClick} />);
+    render(
+      <WorkItemCreateTrigger
+        workspaceId="workspace-target"
+        projectId="project-target"
+        onClick={onClick}
+      />,
+    );
 
     const trigger = screen.getByTestId("create-work-item-trigger");
     expect(trigger).toHaveTextContent("workItems:create.trigger");
     fireEvent.click(trigger);
 
     expect(onClick).toHaveBeenCalledOnce();
+    expect(mocks.scopes).toContainEqual(["workspace-target", "project-target"]);
   });
 
   it("shows pending feedback while the dialog code loads", () => {
     mocks.permission = { canCreate: true, checking: false };
     const onClick = vi.fn();
-    render(<WorkItemCreateTrigger onClick={onClick} pending />);
+    render(
+      <WorkItemCreateTrigger
+        workspaceId="workspace-target"
+        projectId="project-target"
+        onClick={onClick}
+        pending
+      />,
+    );
 
     const trigger = screen.getByTestId("create-work-item-trigger");
     expect(trigger).toHaveAttribute("aria-busy", "true");

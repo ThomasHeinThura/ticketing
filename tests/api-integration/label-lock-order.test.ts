@@ -41,13 +41,15 @@ describe("label repository lock order (#580)", () => {
 
     await lockWorkspaceLabelNames(recorder, "ws-1", ["b", "a", "b", "c"]);
 
-    expect(taken).toHaveLength(3);
+    expect(taken).toHaveLength(4);
     expect(taken.map((params) => params[0])).toEqual([
+      WORKSPACE_LABEL_NAME_LOCK_NAMESPACE,
       WORKSPACE_LABEL_NAME_LOCK_NAMESPACE,
       WORKSPACE_LABEL_NAME_LOCK_NAMESPACE,
       WORKSPACE_LABEL_NAME_LOCK_NAMESPACE,
     ]);
     expect(taken.map((params) => params[1])).toEqual([
+      "ws-1:",
       "ws-1:a",
       "ws-1:b",
       "ws-1:c",

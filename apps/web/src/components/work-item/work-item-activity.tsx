@@ -184,6 +184,12 @@ function WorkItemActivity({
   const editTriggers = useRef(new Map<string, HTMLButtonElement | null>());
   const [submitInProgress, setSubmitInProgress] = useState(false);
   const submitInProgressRef = useRef(false);
+  const [insertingSnippet, setInsertingSnippet] = useState(false);
+  const [snippetInsertFailed, setSnippetInsertFailed] = useState(false);
+  const snippetInsertPending = useRef(false);
+  const currentItemKey = useRef(workItemKey);
+  currentItemKey.current = workItemKey;
+  const composerBusy = submitInProgress || insertingSnippet;
   const [editDraft, setEditDraft] = useState<CommentContentSnapshot>({
     text: "",
     document: undefined,
@@ -327,7 +333,12 @@ function WorkItemActivity({
   }, [editing, restoreFocusId]);
 
   const submit = async () => {
-    if (submitInProgressRef.current || !draftText.trim() || !draftDocument)
+    if (
+      submitInProgressRef.current ||
+      snippetInsertPending.current ||
+      !draftText.trim() ||
+      !draftDocument
+    )
       return;
     submitInProgressRef.current = true;
     setSubmitInProgress(true);
@@ -660,7 +671,7 @@ function WorkItemActivity({
             label: t(`activity:timeline.${value}`),
           }))}
           value={selectedCommentVisibility}
-          disabled={submitInProgress}
+          disabled={composerBusy}
           onValueChange={(value) => {
             const next = value as "public" | "internal";
             updateVisibility(next);
@@ -670,7 +681,9 @@ function WorkItemActivity({
             id="comment-visibility"
             aria-label={t("activity:timeline.visibilityLabel")}
           >
-            <SelectValue />
+            <SelectValue>
+              {t(`activity:timeline.${selectedCommentVisibility}`)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {allowedCommentVisibilities.map((value) => (
@@ -708,23 +721,49 @@ function WorkItemActivity({
         {cannedResponses.data && cannedResponses.data.length > 0 && (
           <Select
             value=""
-            disabled={submitInProgress}
+            disabled={composerBusy}
             onValueChange={(id) => {
-              const response = cannedResponses.data?.find(
-                (entry) => entry.id === id,
-              );
-              if (!response || !isTiptapDocument(response.body)) return;
-              setDraft((current) => ({
-                ...current,
-                document: response.body,
-              }));
               if (
-                (response.visibilityDefault === "public" ||
-                  response.visibilityDefault === "internal") &&
-                allowedCommentVisibilities.includes(response.visibilityDefault)
-              ) {
-                updateVisibility(response.visibilityDefault);
-              }
+                !id ||
+                snippetInsertPending.current ||
+                submitInProgressRef.current
+              )
+                return;
+              const key = workItemKey;
+              snippetInsertPending.current = true;
+              setInsertingSnippet(true);
+              setSnippetInsertFailed(false);
+              // Cached rows populate the menu only. Resolve current context and
+              // revalidate item reach at the moment the agent chooses a template.
+              void listCannedResponses(key)
+                .then((responses) => {
+                  if (currentItemKey.current !== key) return;
+                  const response = responses.find((entry) => entry.id === id);
+                  if (!response || !isTiptapDocument(response.body)) {
+                    setSnippetInsertFailed(true);
+                    return;
+                  }
+                  setDraft((current) => ({
+                    ...current,
+                    document: response.body,
+                  }));
+                  if (
+                    (response.visibilityDefault === "public" ||
+                      response.visibilityDefault === "internal") &&
+                    allowedCommentVisibilities.includes(
+                      response.visibilityDefault,
+                    )
+                  )
+                    updateVisibility(response.visibilityDefault);
+                })
+                .catch(() => {
+                  if (currentItemKey.current === key)
+                    setSnippetInsertFailed(true);
+                })
+                .finally(() => {
+                  snippetInsertPending.current = false;
+                  setInsertingSnippet(false);
+                });
             }}
           >
             <SelectTrigger
@@ -744,6 +783,13 @@ function WorkItemActivity({
             </SelectContent>
           </Select>
         )}
+        {snippetInsertFailed ? (
+          <Alert variant="error" role="alert">
+            <AlertDescription>
+              {t("activity:timeline.cannedResponseInsertFailed")}
+            </AlertDescription>
+          </Alert>
+        ) : null}
         <CommentEditor
           value={draftText}
           documentValue={draftDocument}
@@ -754,7 +800,7 @@ function WorkItemActivity({
           uploadSurface="comment"
           showQuickAttachButton={false}
           enableMentions
-          disabled={submitInProgress}
+          disabled={composerBusy}
           mentionMembers={(mentionCandidates.data ?? []).map((candidate) => ({
             id: candidate.personId,
             label: candidate.name,
@@ -765,7 +811,7 @@ function WorkItemActivity({
         <div className="mt-2 flex justify-end">
           <Button
             disabled={
-              !draftText.trim() || createComment.isPending || submitInProgress
+              !draftText.trim() || createComment.isPending || composerBusy
             }
             onClick={() => void submit()}
           >

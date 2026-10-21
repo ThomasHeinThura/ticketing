@@ -21,6 +21,12 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * project reach in the same query; workspace membership alone cannot list the library.
  */
 export const cannedResponsePolicies = {
+  "GET /api/canned-responses/manage": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
   "GET /api/canned-responses": {
     capability: "work_item:read",
     scope: "work_item",

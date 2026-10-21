@@ -20,6 +20,7 @@ export * from "./audit/types.js";
 export * from "./calendar/calendar.js";
 export * from "./calendar/holiday-import.js";
 export * from "./calendar/types.js";
+export * from "./canned-response.js";
 export * from "./hierarchy/hierarchy.js";
 export * from "./hierarchy/types.js";
 export * from "./identity/claim-mapping.js";

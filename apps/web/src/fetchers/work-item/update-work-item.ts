@@ -7,6 +7,7 @@ export type UpdateWorkItemInput = {
   version: number;
   // PATCH is partial: send only the fields that changed. An omitted field is left alone
   // by the server; an explicit null clears it.
+  labelIds?: string[];
   title?: string;
   description?: unknown;
   priority?: "low" | "medium" | "high" | "urgent" | null;

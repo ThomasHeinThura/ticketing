@@ -423,6 +423,41 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       ).toContainText("A persisted rich-text description");
     });
 
+    await test.step("persist catalogue labels through the Kaneo properties picker", async () => {
+      const response = await page.request.post(
+        new URL("/api/label", origin).toString(),
+        {
+          headers: await csrfHeaders(page, origin),
+          data: {
+            workspaceId: item.workspaceId,
+            name: "SIT label",
+            color: "teal",
+          },
+        },
+      );
+      expect(response.status(), await response.text()).toBe(200);
+      await page.reload();
+      const trigger = page.getByRole("button", { name: "Labels", exact: true });
+      await expect(trigger).toBeEnabled();
+      await trigger.click();
+      const saved = page.waitForResponse(
+        (answer) =>
+          new URL(answer.url()).pathname === `/api/work-items/${item.key}` &&
+          answer.request().method() === "PATCH",
+      );
+      await page
+        .getByRole("checkbox", { name: "SIT label", exact: true })
+        .click();
+      expect((await saved).status()).toBe(200);
+      await page.keyboard.press("Escape");
+      await page.reload();
+      await expect(trigger).toContainText("SIT label");
+      await page.screenshot({
+        path: testInfo.outputPath("kaneo-canonical-labels.png"),
+        fullPage: true,
+      });
+    });
+
     const mentionRecipient = await seedReachableMentionRecipient(
       databaseUrl,
       item.workspaceId,
@@ -438,6 +473,13 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         .getByRole("region", { name: "Description", exact: true })
         .locator('[contenteditable="true"]'),
     ).toHaveCount(0);
+
+    await expect(
+      page.getByRole("button", { name: "Labels", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Labels", exact: true }),
+    ).toContainText("SIT label");
 
     const activity = page.getByTestId("work-item-activity");
     await expect(activity).toBeVisible();
@@ -783,41 +825,56 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
     });
 
     const responseName = "CA-19 composer response";
-    const originalText = `Thanks for reporting this. ${item.key} is under review.`;
+    const templateText =
+      "Thanks for reporting this. {{work_item.key}} is under review. Due {{work_item.due_date}}.";
+    const originalText = `Thanks for reporting this. ${item.key} is under review. Due 2026-10-25.`;
     const editedText = `${originalText} We will follow up shortly.`;
     const created =
-      await test.step("CA19 phase: canned-response API create", async () => {
-        console.info("CA19 phase begin: canned-response API create");
-        const response = await page.request.post(
-          new URL("/api/canned-responses", origin).toString(),
-          {
-            headers: await csrfHeaders(page, origin),
-            data: {
-              workspaceId: item.workspaceId,
-              name: responseName,
-              body: {
-                type: "doc",
-                content: [
-                  {
-                    type: "paragraph",
-                    content: [{ type: "text", text: originalText }],
-                  },
-                ],
-              },
-              visibilityDefault: "internal",
-            },
-          },
+      await test.step("CA19 phase: create a canned response through workspace settings", async () => {
+        await page.goto(
+          new URL("/agent/settings/canned-responses", origin).toString(),
         );
-        console.info("CA19 phase completed: canned-response API create");
-        return response;
+        await page
+          .getByRole("button", { name: "New response", exact: true })
+          .click();
+        const dialog = page.getByRole("dialog");
+        await dialog.getByLabel("Name", { exact: true }).fill(responseName);
+        await dialog
+          .locator(".ProseMirror[contenteditable=true]")
+          .fill(templateText);
+        const saved = page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname === "/api/canned-responses" &&
+            response.request().method() === "POST",
+        );
+        await dialog.getByRole("button", { name: "Save", exact: true }).click();
+        const response = await saved;
+        const captured = {
+          status: response.status(),
+          text: await response.text(),
+        };
+        expect(captured.status, captured.text).toBe(200);
+        await expect(dialog).not.toBeVisible();
+        await page.reload();
+        await expect(
+          page.getByRole("button", {
+            name: `Edit ${responseName}`,
+            exact: true,
+          }),
+        ).toBeVisible();
+        await page.screenshot({
+          path: "test-results/kaneo-canned-response-real-library.png",
+        });
+        return captured;
       });
     const cannedResponse =
       await test.step("CA19 phase: validate canned-response API create", async () => {
         console.info("CA19 phase begin: validate canned-response API create");
-        const createdText = await created.text();
-        expect(created.status(), createdText).toBe(200);
-        const result = JSON.parse(createdText) as { id: string };
+        const createdText = created.text;
+        expect(created.status, createdText).toBe(200);
+        const result = JSON.parse(createdText) as { id: string; body: unknown };
         expect(result.id).toBeTruthy();
+        expect(JSON.stringify(result.body)).toContain("{{work_item.key}}");
         console.info(
           "CA19 phase completed: validate canned-response API create",
         );
@@ -885,6 +942,24 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
         console.info(
           "CA19 phase begin: insert, edit, and verify no automatic send",
         );
+        // Keep this composer mounted and its initial snippet list cached. A change
+        // by another actor must be reflected when the agent selects a template.
+        const detailResponse = await page.request.get(
+          new URL(`/api/work-items/${item.key}`, origin).toString(),
+        );
+        expect(detailResponse.status()).toBe(200);
+        const detail = (await detailResponse.json()) as { version: number };
+        const changedDueDate = await page.request.patch(
+          new URL(`/api/work-items/${item.key}`, origin).toString(),
+          {
+            headers: {
+              ...(await csrfHeaders(page, origin)),
+              "if-match": `"${detail.version}"`,
+            },
+            data: { dueDate: "2026-10-25T00:00:00.000Z" },
+          },
+        );
+        expect(changedDueDate.status(), await changedDueDate.text()).toBe(200);
         const responseSelect = page.getByRole("combobox", {
           name: "Canned response",
         });

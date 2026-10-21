@@ -324,7 +324,7 @@ no cycles; projects have dates and a backlog.
 | `work_item_relation` | `source_id`, `target_id`, `type` (`relates`\|`blocks`\|`duplicates`\|`precedes`\|`requires`) |
 | `watcher` | `work_item_id`, `person_id`, `source` (`explicit`\|`implicit`), `muted` |
 | `label` | `workspace_id`, `project_id` null (null = workspace label), `name`, `colour` |
-| `work_item_label` | join |
+| `work_item_label` | `work_item_id`, `label_id` — composite primary key, cascading foreign keys to `work_item` and `label`; assignment is limited to the work item’s own workspace catalogue |
 | `comment` | `work_item_id`, `author_id`, `actor_type`, `body jsonb`, `visibility` (`public`\|`internal`), `activity_id` null (links a transition note to its transition), `edited_at`, `deleted_at` null, `deleted_by` null — the tombstone `CA-18` renders ("Comment deleted by Jane, 2 March"): the row, its author and its position survive, the body is not rendered, and the row is purged with the 30-day soft-delete sweep. **v** |
 | `comment_version` | `comment_id`, `number`, `body jsonb`, `edited_by`, `created_at` — the edit history `CA-17` renders |
 | `canned_response` | `workspace_id`, `name`, `body jsonb`, `visibility_default`, `created_by` |

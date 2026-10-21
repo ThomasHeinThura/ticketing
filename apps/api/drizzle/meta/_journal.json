@@ -876,6 +876,13 @@
 			"when": 1791988639038,
 			"tag": "0124_project_created_by_and_creator_grant",
 			"breakpoints": true
+		},
+		{
+			"idx": 125,
+			"version": "7",
+			"when": 1792559895938,
+			"tag": "0125_canonical_work_item_labels",
+			"breakpoints": true
 		}
 	]
 }

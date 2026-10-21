@@ -1276,6 +1276,22 @@ export const labelTable = pgTable(
   ],
 );
 
+export const workItemLabelTable = pgTable(
+  "work_item_label",
+  {
+    workItemId: text("work_item_id")
+      .notNull()
+      .references(() => workItemTable.id, { onDelete: "cascade" }),
+    labelId: text("label_id")
+      .notNull()
+      .references(() => labelTable.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workItemId, table.labelId] }),
+    index("work_item_label_label_id_idx").on(table.labelId),
+  ],
+);
+
 export const notificationTable = pgTable(
   "notification",
   {

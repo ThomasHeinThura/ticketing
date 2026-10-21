@@ -41,7 +41,12 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
-import CreateProjectModal from "./shared/modals/create-project-modal";
+
+// The closed creation form pulls in the icon catalogue and editor controls.
+// Load it on creation intent instead of competing with sidebar/palette startup.
+const CreateProjectModal = lazy(
+  () => import("./shared/modals/create-project-modal"),
+);
 
 const SortableProjectList = lazy(() => import("./nav-projects-sortable"));
 type ProjectRecord = NonNullable<
@@ -235,10 +240,14 @@ export function NavProjects() {
         </SidebarGroup>
       </Collapsible>
 
-      <CreateProjectModal
-        open={isCreateProjectModalOpen}
-        onClose={() => setIsCreateProjectModalOpen(false)}
-      />
+      {isCreateProjectModalOpen ? (
+        <Suspense fallback={null}>
+          <CreateProjectModal
+            open
+            onClose={() => setIsCreateProjectModalOpen(false)}
+          />
+        </Suspense>
+      ) : null}
 
       <AlertDialog
         open={isDeleteProjectModalOpen}

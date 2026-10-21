@@ -112,6 +112,9 @@ export function useRefreshWorkItem(item: WorkItemDetailRow) {
       queryClient.invalidateQueries({
         queryKey: ["work-items", item.projectId],
       }),
+      queryClient.invalidateQueries({
+        queryKey: ["labels", item.workspaceId, "work-items", item.key],
+      }),
       queryClient.invalidateQueries({ queryKey: ["work-items", "sla"] }),
     ]);
 }

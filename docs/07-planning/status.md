@@ -1,16 +1,16 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `9bbff929`; primary checkout refreshed to that source.
+Current inspected GitHub main: `2f366cd4`; primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
 
 | Stage | State | Remaining work |
 | --- | --- | --- |
-| P0 Foundation | Implemented; verification incomplete | Container seeding/recovery candidates verified locally; finish backup encryption/offsite/runtime recording, integrated recovery and owner walkthrough. |
-| P1 Core work | Partial implementation | Finish task-page stack, labels/hierarchy/relations/uploads and legacy-work redirects. Board/list/table, bulk, backlog, saved views, inbox and My work have real implementations; full acceptance remains. |
-| P2 Service desk | Partial implementation | Approval requests/candidates, authoring/configuration UI, canned responses, audit, milestones/stakeholders and integrated service-desk journeys. |
+| P0 Foundation | Partial implementation; verification incomplete | Container seeding and isolated recovery merged and verified; finish backup encryption/offsite/runtime recording, integrated recovery and owner walkthrough. |
+| P1 Core work | Partial implementation | Finish project label catalogues, hierarchy/relations/uploads and legacy-work redirects. Board/list/table, bulk, backlog, saved views, inbox and My work have real implementations; full acceptance remains. |
+| P2 Service desk | Partial implementation | Approval requests/candidates, authoring/configuration UI, audit, milestones/stakeholders and integrated service-desk journeys. |
 | P3 Portal and identity | Partial implementation | Full portal, invitation/admission/discovery contracts and implementation, identity administration and real Entra verification. |
 | P4 Governance | Partial implementation | Missing APIs/UI, notification runtime, automations, God Mode, MCP and #580 query ownership. |
 | P5–P7 | Not started | Outside the approved scope. |
@@ -27,20 +27,47 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
 - #870 approvals decide is merged after all 18 required checks passed on its reviewed
   final source. Prior G11 calibration, warm-up and slow-runner budget failures remain
   adverse evidence; #876/#711 track them. Passive phase timing now accompanies failures.
-- #871's stack is reconciled without rewriting remote history. Independent review found
-  three editor/assignment defects; fixes and delta review passed, plus 327 work-item tests.
-  Final-head hosted checks, real-data use and protected merge remain outstanding.
+- #871 is merged after all 18 required checks passed on reviewed head `bf3c6b95`.
+  Canonical Kaneo full-page/side-pane editing preserves project-scoped controls and queued
+  edits. Sidebar download overlap and parent-route preloading repaired the observed G11
+  candidate failures without changing budgets. Full P1 feature completion remains outstanding.
+- #881 canonical workspace-label assignment is merged after all 18 required checks passed
+  on reviewed head `a871a853`. The Kaneo properties picker persists through versioned writes;
+  catalogue deletion advances affected item versions and records internal activity/events.
+  Project-scoped label catalogues remain separate unfinished work.
 - #877 container seeding is merged with all 18 required checks green: real intake
   submissions repeat under the restricted credential; local image build/boot passed.
 - Recovery targeting now resolves the selected mounted volume. An isolated internal-network
   drill restored an actual database row and non-empty file, denied egress and passed health.
   #878 is merged with all 18 required checks green; full application acceptance remains pending.
+- #882 is merged after all 18 required checks passed on independently reviewed
+  `ff85f0bc`: Kaneo canned-response management, literal placeholders and fresh authorized
+  insertion. Hosted PostgreSQL and 138 browser tests passed, including settings persistence,
+  due-date changes without reload, editable insertion and durable send. G8, G11 budgets
+  (22/22) and Linux amd64 image build/migrate/boot/health passed. This closes this change,
+  not P2 or its integrated owner acceptance.
+- #883 remains a candidate: prior `e1209855` passed G11/G8/PostgreSQL but failed two create
+  control visibility cases. Reviewed `0fc458a6` scopes work/backlog creation to the displayed
+  project; 28 native tests and 20 browser journeys passed. Accepted main is imported without
+  changing the authored source delta. On final head `2c4a1102`, 17/18 required checks passed;
+  G11 failed command-palette click-to-paint (209.7 ms against 200 ms). Palette readiness
+  and the 500-row render budget passed. Profile this interaction before another repair;
+  no gate, budget or retry was relaxed. The next candidate removes duplicate palette-toggle
+  renders and adds cold/warm focus journeys plus independent diagnostic capture. Native
+  browser journeys pass; native sampled-frame attribution fails closed on negative V8
+  deltas. Hosted `fde5bcbc` passed the palette timing budget (108.7 ms) but failed a G13
+  cold-palette readiness sample; 17/18 required checks passed. The next reviewed change
+  defers the closed project-creation form until intent; 13 native unit tests and eight
+  browser journeys passed. Hosted final-head checks remain required. Do not merge yet.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
+- Continue from [handover.md](handover.md) for active branches, checks and deployment
+  constraints. It is a dated snapshot, not policy or proof that pending checks passed.
 
 ## SIT
 
-The existing Compose application is healthy, but its image revision is `unknown` and it
-has not been verified against current main. It cannot prove current feature acceptance.
+The earlier local Compose installation reported revision `unknown`; OrbStack is now
+stopped, so that installation is not current runtime evidence. TaskDesk has **not yet
+been deployed to the proxy VM**. No current hosted SIT acceptance is claimed.
 Before handoff: deploy the reviewed SHA/digest, verify both HTTPS origins, seed accounts and
 realistic submissions, exercise all journeys, and verify backup/restore. Supply credentials
 privately. Thomas performs the final integrated stage walkthrough.
