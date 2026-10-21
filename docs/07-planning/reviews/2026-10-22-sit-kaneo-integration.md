@@ -77,3 +77,26 @@ performance measurements are not superseded by native calibration failure. Live 
 attribution, forgery/direct-origin rejection, application-IP-change recovery, uploads,
 WebSockets and CSRF remain required before topology acceptance. No new application code
 or ingress topology is accepted as deployed by this review; no P0–P4 stage is complete.
+
+## Calendar accessibility and remaining baselines — 2026-10-22
+
+Reviewed `f6989aac85c511b414a339f254bfdc5dba4cd65e` against `3a863039`.
+**Standard source review: APPROVE. Security source review: APPROVE.** The calendar
+uses the existing UI ScrollArea with a localized month region name. Its browser regression
+focuses the actual viewport, presses ArrowDown and requires increased scrollTop before
+the unchanged accessibility assertion. No lint suppression or gate relaxation was added.
+Only contrast occurrence bindings in groups 2, 3, 16 and 17 changed for the wrapper;
+independent comparison confirms all 428 pair semantics, thresholds and themes are unchanged.
+The implementing session reports all seven project accessibility browser cases and final
+build/type/lint/contrast checks passed; these reports do not replace hosted acceptance.
+
+The reviewer viewed and approved these seven fresh Linux candidates: portal approvals,
+instance audit, work-item list, work-item table, work-item board, project backlog and project
+overview. Each committed PNG was independently verified byte-identical to its inspected
+artifact in `/tmp/taskdesk-889-linux-candidates2`. These supersede the earlier withheld
+candidate-image approval for the corrected approval, audit and backlog captures.
+
+Prior-head PostgreSQL shard passes are not exact-head completion evidence. Final G8
+comparison, valid G11 measurements, exact-image verification and live topology tests remain
+pending. Unstable calibration with 21 unrun tests is not a performance pass. Source and
+baseline approval do not establish deployment, full feature completion or stage sign-off.
