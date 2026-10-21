@@ -1,0 +1,49 @@
+import { readFileSync } from "node:fs";
+import { expect, test } from "@playwright/test";
+import {
+  installPerformanceApiFixture,
+  WORK_LIST_PATH,
+} from "./helpers/g11-performance-fixture";
+
+test("direct work-list visit downloads its parent outlet before the session resolves", async ({
+  page,
+}) => {
+  const manifest = JSON.parse(
+    readFileSync(
+      new URL("../dist/agent/.vite/manifest.json", import.meta.url),
+      "utf8",
+    ),
+  ) as Record<string, { file: string }>;
+  const parent = Object.entries(manifest).find(([key]) =>
+    key.endsWith("/projects/$projectKey.tsx?tsr-split=component"),
+  )?.[1];
+  expect(
+    parent,
+    "built project outlet must be represented in the manifest",
+  ).toBeDefined();
+  await installPerformanceApiFixture(page);
+  let releaseSession: () => void = () => {};
+  const heldSession = new Promise<void>((resolve) => {
+    releaseSession = resolve;
+  });
+  await page.route("**/api/auth/get-session**", async (route) => {
+    await heldSession;
+    await route.fallback();
+  });
+  const downloaded = page.waitForResponse(
+    (response) => response.url().endsWith(`/${parent?.file}`) && response.ok(),
+  );
+  try {
+    await page.goto(WORK_LIST_PATH, { waitUntil: "domcontentloaded" });
+    await downloaded;
+    await expect(
+      page.locator(`link[rel="modulepreload"][href="/${parent?.file}"]`),
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole("heading", { name: "WLP · Work items" }),
+    ).not.toBeVisible();
+  } finally {
+    releaseSession();
+  }
+  await expect(page.getByTestId("work-item-list-populated")).toBeVisible();
+});

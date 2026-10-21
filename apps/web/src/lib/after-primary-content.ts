@@ -21,14 +21,28 @@ export function waitsForPrimaryContent(pathname: string): boolean {
 export function afterPrimaryContent({
   timeoutMs = 3_000,
   signal,
+  onPrimaryContentReady,
 }: {
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** Start downloads at the real heavy-screen marker; mounting still waits for paint/idle. */
+  onPrimaryContentReady?: () => void;
 } = {}): Promise<void> {
   const ready = () =>
     !waitsForPrimaryContent(window.location.pathname) ||
     document.querySelector(MARKER) !== null;
-  if (typeof document === "undefined" || ready()) return afterFirstPaint();
+  const afterReady = () => {
+    if (
+      !signal?.aborted &&
+      waitsForPrimaryContent(window.location.pathname) &&
+      document.querySelector(MARKER) !== null
+    )
+      onPrimaryContentReady?.();
+    return afterFirstPaint();
+  };
+  if (typeof document === "undefined") return afterFirstPaint();
+  if (signal?.aborted) return Promise.reject(signal.reason);
+  if (ready()) return afterReady();
   return new Promise<void>((resolve, reject) => {
     let settled = false;
     const finish = (aborted: boolean) => {
@@ -54,5 +68,5 @@ export function afterPrimaryContent({
     const timer = setTimeout(() => finish(false), timeoutMs);
     if (signal?.aborted) onAbort();
     else signal?.addEventListener("abort", onAbort);
-  }).then(() => afterFirstPaint());
+  }).then(afterReady);
 }
