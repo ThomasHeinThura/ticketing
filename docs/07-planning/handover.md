@@ -25,7 +25,8 @@ The full goal and Thomas's no-AIDLC, Kaneo-preservation directive remain in forc
 - Draft PR #889 latest pushed head `3a863039` contains the source/evidence batch. Hosted results
   and local fixes are recorded in status.md; do not blindly rerun old failing jobs. All four
   PostgreSQL shards pass in the second run; approved Linux captures and the calendar
-  ScrollArea/keyboard fix are the next batch. G11 failed calibration before measurements.
+  ScrollArea/keyboard fix are the next batch. G11 failed calibration before measurements. Browser158passed/1calendar accessibility
+  failure is repaired locally and reviewed; shipping-image build was skipped, not passed.
 - Next: finish source/baseline fixes and hosted G11 measurement, bind delta review, then
   verified-image deployment and developer walkthrough. Repair the separate proxy-IP defect
   before claiming login rate-limit or API-key IP acceptance. The candidate normalizer

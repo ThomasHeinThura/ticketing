@@ -159,3 +159,9 @@ All four hosted PostgreSQL shards pass on this second run. Native final calendar
 include actual ArrowDown scrolling, axe, typecheck and lint. All 428 contrast pairs pass
 with their original semantics/thresholds; only four occurrence bindings follow the new
 ScrollArea wrapper. Hosted browser/deployment evidence is still pending final disposition.
+
+Second-run browser result: 158 passed and one failed, the same calendar accessibility
+finding now fixed and locally verified above. Real-Docker deployment-helper checks pass;
+the shipping-image step was skipped after browser failure, so no candidate image acceptance
+is claimed. Fast CI's unit/component step and other required fast jobs pass. The next
+batched push contains the reviewed baselines/calendar repair, not a blind retry.
