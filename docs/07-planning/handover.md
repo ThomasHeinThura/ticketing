@@ -43,13 +43,15 @@ Do not discard other worktrees or have two sessions edit the same file.
 | #871 Kaneo work-item full page/side pane | Merged on reviewed `bf3c6b95`, all 18 required checks green. | Hierarchy/relations and remaining P1 acceptance still outstanding. |
 | #881 canonical labels | Merged on reviewed `a871a853`, all 18 required checks green. | Project-scoped label catalogues remain unfinished. |
 | [#880](https://github.com/ThomasHeinThura/ticketing/pull/880) native artifact image build | Head `f7f140c7`; G11 failed. Separate build fix independently reviewed; candidate amd64 boot passed. Multiarch release fix is not proven. | Worktree `~/.codex/worktrees/taskdesk-native-artifact-image-build`, branch `codex/native-artifact-image-build`. Import accepted performance repair later, review delta, require exact-head checks, then verify actual multiarch release/scan/sign. |
-| [#883](https://github.com/ThomasHeinThura/ticketing/pull/883) sidebar idle scheduling | Head `5c0e5410`, independent review approved. Latest run `39559280947`: G11 **failed**, G8 and other listed checks passed. Do not merge or blindly rerun. | Worktree `~/.codex/worktrees/taskdesk-sidebar-paint-scheduling`, branch `codex/sidebar-paint-scheduling`. Diagnose `/tmp/taskdesk-883-5c-g11.log`, job `119086380484`: 21/22 tests passed, but G13 setup could not find the palette popup within 5 seconds. Preserve budgets/calibration/assertions. |
-| [#882](https://github.com/ThomasHeinThura/ticketing/pull/882) canned-response management | Management and placeholder implementation are on this branch. Prior `06f0332b` full run `39559618827` failed G8 on the obsolete General Settings baseline; independently reviewed image update is `80c87ad0`. Placeholder repair `23e96dac` has hosted checks running; independent review found a retry-test synchronization failure, now repaired pending re-review. Refresh the current head before using CI evidence. | Worktree `~/.codex/worktrees/taskdesk-canned-response-management`, branch `codex/canned-response-management`. Prior job `119087861180` passed scope validation, then the obsolete screenshot differed by 248,094 pixels (27%). Actual Linux artifact was inspected and baseline updated without tolerance changes; log `/tmp/taskdesk-canned-06f-g8.log`. Require final-head G8. |
+| [#883](https://github.com/ThomasHeinThura/ticketing/pull/883) sidebar idle scheduling | Reviewed candidate `e1209855` now overlaps project-navigation downloads with the sidebar after primary content; 25 native tests and 11 browser journeys passed. Hosted runs `39569215028`/`39569479207` are pending verification. Prior `5c0e5410` run `39559280947` failed G11; preserve that evidence. Do not merge or blindly rerun. | Worktree `~/.codex/worktrees/taskdesk-sidebar-paint-scheduling`, branch `codex/sidebar-paint-scheduling`. Diagnose `/tmp/taskdesk-883-5c-g11.log`, job `119086380484`: 21/22 tests passed, but G13 setup could not find the palette popup within 5 seconds. Preserve budgets/calibration/assertions. |
+| [#882](https://github.com/ThomasHeinThura/ticketing/pull/882) canned-response management | Management and placeholder implementation are on this branch. Prior `06f0332b` full run `39559618827` failed G8 on the obsolete General Settings baseline; independently reviewed image update is `80c87ad0`. Source/retry repair `ce238f4e` was independently approved. Its hosted run `39563587447` passed G8 but failed integration shard 1, real API browser and G11; tests are being repaired without changing product policy or budgets. The manager fixture lacked its genuine system role row; browser POST body was read after reload discarded it. CA-19a interpolation integration itself passed. G11 list render was 506.3ms against <500ms. Refresh the current head before using CI evidence. | Worktree `~/.codex/worktrees/taskdesk-canned-response-management`, branch `codex/canned-response-management`. Prior job `119087861180` passed scope validation, then the obsolete screenshot differed by 248,094 pixels (27%). Actual Linux artifact was inspected and baseline updated without tolerance changes; log `/tmp/taskdesk-canned-06f-g8.log`. Require final-head G8. |
 
 ## Immediate implementation continuation
 
-1. #882 CA19 placeholder interpolation is now authored after `80c87ad0`, pending
-   independent repair review and hosted verification. The retry unit regression also now
+1. #882 CA19 placeholder interpolation is authored after `80c87ad0`, pending
+   hosted repair verification. Independent source/security and retry reviews passed through
+   `ce238f4e`; integration/browser test repairs after its hosted failures need delta review.
+   The retry unit regression also now
    waits for hydrated/persisted draft state and an enabled selector before retry, retaining
    its successful-insertion assertion; both isolated and combined verification are required. The initial review found stale cached
    due-date expansion on an open item; insertion now fetches fresh authorized context, locks
@@ -57,7 +59,8 @@ Do not discard other worktrees or have two sessions edit the same file.
    templates; item composer listing expands only authorized live-item context. Native checks
    passed: domain 676 tests (eight new resolver cases), API unit 884, permissions 107,
    API/web typechecks, three mock browser journeys, 16 activity editor tests and 418 contrast pairs.
-   PostgreSQL, real API browser, G8 and final-head CI remain required.
+   Final-head PostgreSQL, real API browser, G8 and required CI remain required; earlier-head
+   partial passes do not establish full acceptance.
 2. The CA-19a contract now specifies `{{requester.name}}`, `{{work_item.key}}` and
    `{{work_item.due_date}}`; UTC calendar date, empty missing values, unknown tokens
    retained and no expression execution. Adjacent formatted text nodes are supported;

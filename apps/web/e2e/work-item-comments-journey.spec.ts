@@ -849,7 +849,11 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
         );
         await dialog.getByRole("button", { name: "Save", exact: true }).click();
         const response = await saved;
-        expect(response.status()).toBe(200);
+        const captured = {
+          status: response.status(),
+          text: await response.text(),
+        };
+        expect(captured.status, captured.text).toBe(200);
         await expect(dialog).not.toBeVisible();
         await page.reload();
         await expect(
@@ -861,13 +865,13 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
         await page.screenshot({
           path: "test-results/kaneo-canned-response-real-library.png",
         });
-        return response;
+        return captured;
       });
     const cannedResponse =
       await test.step("CA19 phase: validate canned-response API create", async () => {
         console.info("CA19 phase begin: validate canned-response API create");
-        const createdText = await created.text();
-        expect(created.status(), createdText).toBe(200);
+        const createdText = created.text;
+        expect(created.status, createdText).toBe(200);
         const result = JSON.parse(createdText) as { id: string; body: unknown };
         expect(result.id).toBeTruthy();
         expect(JSON.stringify(result.body)).toContain("{{work_item.key}}");

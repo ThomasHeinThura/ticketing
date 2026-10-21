@@ -170,6 +170,17 @@ describe("API integration: canned responses (#27)", () => {
     "management listing enforces %s authority without needing a work item",
     async (role, expected) => {
       const member = await createWorkspaceMember({ role });
+      // The shared fixture seeds only the legacy default role rows. Reserved
+      // TaskDesk roles need a genuine system row before canonical authority is
+      // honored (rbac.md); a bare membership alias intentionally fails closed.
+      if (role === "manager" || role === "lead" || role === "customer") {
+        await db.insert(schema.workspaceRoleTable).values({
+          workspaceId: member.workspace.id,
+          role,
+          permission: JSON.stringify({}),
+          isSystem: true,
+        });
+      }
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
       await db.insert(schema.cannedResponseTable).values({
@@ -189,6 +200,16 @@ describe("API integration: canned responses (#27)", () => {
       else expect(text).not.toContain("Workspace-only reply");
     },
   );
+
+  it("management listing refuses an unbacked reserved manager alias", async () => {
+    const member = await createWorkspaceMember({ role: "manager" });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const response = await app.request(
+      `/api/canned-responses/manage?workspaceId=${member.workspace.id}`,
+    );
+    expect(response.status).toBe(403);
+  });
 
   it("management listing refuses a customer-side person even with a legacy admin membership", async () => {
     const customer = await createWorkspaceMember({ role: "admin" });
