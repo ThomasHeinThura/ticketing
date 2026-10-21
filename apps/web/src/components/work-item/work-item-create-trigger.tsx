@@ -4,17 +4,24 @@ import { useTranslation } from "react-i18next";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 
 export default function WorkItemCreateTrigger({
+  workspaceId,
+  projectId,
   onClick,
   buttonRef,
   pending = false,
 }: {
+  workspaceId: string;
+  projectId: string;
   onClick: () => void;
   /** The dialog code is still loading after a click. */
   pending?: boolean;
   buttonRef?: Ref<HTMLButtonElement>;
 }) {
   const { t } = useTranslation();
-  const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission();
+  const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission(
+    workspaceId,
+    projectId,
+  );
   const canCreate = !isCheckingPermissions && canCreateTasks();
 
   if (!canCreate) return null;
