@@ -1282,6 +1282,9 @@ test("agent my work screen @visual", async ({ page }) => {
 test("agent global search screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/search");
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(
     page.getByRole("heading", { name: "Start Searching" }),

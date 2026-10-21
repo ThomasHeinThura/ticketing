@@ -29,46 +29,82 @@ env:
   DO_NOT_TRACK: "1"
 
 jobs:
-  integration:
-    name: integration - Postgres 18
-    # RUNS ON EVERY PULL REQUEST. No label gate (F5). On a policy-only change its steps after
-    # the change-scope step are skipped and the job succeeds (ci-cd.md § Applicability).
-    #
-    # This job used to be conditional on the `ready-for-review` label. GitHub treats a
-    # SKIPPED required check as satisfied, so making it required — which `## Needs Thomas`
-    # asks for — produced a green required gate on precisely the pull requests where it
-    # never ran. That is the trap this file's own header warns about: "a skipped job is not
-    # a passing gate, and treating it as one is how a suite goes green over nothing."
-    #
-    # It costs one Testcontainers-managed Postgres container and ~90s. If a future expensive
-    # matrix needs label-gating, gate THAT matrix and leave this job unconditional.
-    #
-    # ci-cd.md and testing-strategy.md say Testcontainers, and now this job actually does:
-    # tests/api-integration/global-setup.ts starts a Postgres 18 Testcontainer and points
-    # TASKDESK_DATABASE_URL at it when CI=true (issue #10). No `services:` block and no
-    # fixed 5432 port mapping are needed -- Testcontainers picks an ephemeral host port
-    # itself and manages the container's full lifecycle from inside the test run.
-    #
-    # No extra runner permissions are needed for this. ubuntu-latest GitHub-hosted runners
-    # ship Docker Engine with the invoking user already in the `docker` group, so the
-    # Testcontainers Node client talks to /var/run/docker.sock the same way it would on a
-    # developer machine -- no `--privileged`, no Docker-in-Docker, no additional `permissions:`
-    # block. (Verified against Testcontainers' own CI documentation, not guessed; unverified
-    # by an actual GitHub Actions run from this change -- see the PR for that confirmation.)
+  integration-1:
+    name: integration shard 1/4
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
-          # The change-scope step reads landed commits from the merge base.
           fetch-depth: 0
       - id: scope
         uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
         if: ${{ steps.scope.outputs.full != 'false' }}
-      - name: pnpm test:integration
+      - name: Run integration shard 1/4
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: pnpm test:integration
+        run: pnpm test:integration -- --shard=1/4
+
+  integration-2:
+    name: integration shard 2/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Run integration shard 2/4
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:integration -- --shard=2/4
+
+  integration-3:
+    name: integration shard 3/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Run integration shard 3/4
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:integration -- --shard=3/4
+
+  integration-4:
+    name: integration shard 4/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Run integration shard 4/4
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:integration -- --shard=4/4
+
+  integration:
+    name: integration - Postgres 18
+    needs: [integration-1, integration-2, integration-3, integration-4]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Require every integration shard to succeed
+        run: node scripts/ci/assert-integration-shards.mjs
+        env:
+          INTEGRATION_SHARD_RESULTS: ${{ toJSON(needs) }}
 
   e2e:
     name: e2e - protected-route redirect
