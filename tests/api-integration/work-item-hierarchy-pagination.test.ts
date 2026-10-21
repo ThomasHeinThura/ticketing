@@ -207,7 +207,14 @@ describe("hierarchy child pagination and complete SQL roll-up", () => {
       "/api/work-items/no-such-parent/children",
     );
     expect(hidden.status).toBe(404);
-    expect(await hidden.json()).toEqual(await missing.json());
+    expect(missing.status).toBe(404);
+    expect(hidden.headers.get("content-type")).toBe(
+      missing.headers.get("content-type"),
+    );
+    const hiddenBody = await hidden.text();
+    expect(hiddenBody).toBe(await missing.text());
+    expect(hiddenBody).not.toContain(parent.key);
+    expect(hiddenBody).not.toContain("Wide hierarchy parent");
   });
 
   it("keeps page and aggregate totals in the same snapshot during a concurrent insertion", async () => {
