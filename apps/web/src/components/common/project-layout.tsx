@@ -7,6 +7,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  useIsMobile,
 } from "@taskdesk/ui";
 import {
   CalendarDays,
@@ -16,7 +17,6 @@ import {
 } from "lucide-react";
 import { lazy, type ReactNode, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
-import MobileProjectNav from "@/components/common/header/mobile-project-nav";
 import ProjectCrumbSelect from "@/components/common/header/project-crumb-select";
 import WorkspaceCrumbSelect from "@/components/common/header/workspace-crumb-select";
 import Layout from "@/components/common/layout";
@@ -24,6 +24,9 @@ import RealtimeUnavailableNotice from "@/components/common/realtime-unavailable-
 
 const CreateProjectModal = lazy(
   () => import("@/components/shared/modals/create-project-modal"),
+);
+const MobileProjectNav = lazy(
+  () => import("@/components/common/header/mobile-project-nav"),
 );
 
 import { shortcuts } from "@/constants/shortcuts";
@@ -57,6 +60,7 @@ export default function ProjectLayout({
 }: ProjectLayoutProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const location = useLocation();
   const { data: project } = useGetProject({ id: projectId, workspaceId });
   const permissions = useWorkspacePermission(workspaceId);
@@ -187,23 +191,25 @@ export default function ProjectLayout({
               />
             </div>
 
-            {projectId && workspaceId ? (
+            {isMobile && projectId && workspaceId ? (
               <div className="md:hidden">
-                <MobileProjectNav
-                  workspaceId={workspaceId}
-                  projectId={projectId}
-                  activeView={resolvedView}
-                  onSelectBacklog={handleNavigateToBacklog}
-                  onSelectBoard={handleNavigateToBoard}
-                  onSelectCalendar={handleNavigateToCalendar}
-                  onSelectGantt={handleNavigateToGantt}
-                  onSelectProject={handleProjectSwitch}
-                  onAddProject={
-                    canCreateProject
-                      ? () => setIsCreateProjectModalOpen(true)
-                      : undefined
-                  }
-                />
+                <Suspense fallback={null}>
+                  <MobileProjectNav
+                    workspaceId={workspaceId}
+                    projectId={projectId}
+                    activeView={resolvedView}
+                    onSelectBacklog={handleNavigateToBacklog}
+                    onSelectBoard={handleNavigateToBoard}
+                    onSelectCalendar={handleNavigateToCalendar}
+                    onSelectGantt={handleNavigateToGantt}
+                    onSelectProject={handleProjectSwitch}
+                    onAddProject={
+                      canCreateProject
+                        ? () => setIsCreateProjectModalOpen(true)
+                        : undefined
+                    }
+                  />
+                </Suspense>
               </div>
             ) : null}
 

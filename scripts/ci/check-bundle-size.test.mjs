@@ -39,7 +39,7 @@ test("G11: single legacy entry is measured as agent and portal budget is registe
   assert.equal(isWithinBudget("portal", 200_000), false);
 });
 
-test("G11: direct work-list budget includes its early-preloaded static graph", async () => {
+test("G11: direct work-list budget includes preloaded frames and its actual first-paint locale", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "g11-work-list-bundle-"));
   try {
     const manifestPath = path.join(dir, ".vite", "manifest.json");
@@ -59,7 +59,16 @@ test("G11: direct work-list budget includes its early-preloaded static graph", a
       },
       "../../i18n/en-US.json": { file: "assets/en-US.js" },
       "../../i18n/el-GR.json": { file: "assets/el-GR.js" },
+      "virtual:taskdesk-i18n/slim-en-US": { file: "assets/slim-en-US.js" },
+      "virtual:taskdesk-i18n/slim-el-GR": { file: "assets/slim-el-GR.js" },
       "chunks/route-only.js": { file: "assets/route-only.js" },
+      "chunks/frame.js": {
+        file: "assets/frame.js",
+        name: "project-layout",
+        imports: ["chunks/frame-dependency.js", "chunks/shared.js"],
+        css: ["assets/frame.css"],
+      },
+      "chunks/frame-dependency.js": { file: "assets/frame-dependency.js" },
       "chunks/later.js": { file: "assets/later.js" },
       "src/components/work-item/create-work-item-dialog-form.tsx": {
         file: "assets/create-work-item-dialog-form.js",
@@ -83,9 +92,14 @@ test("G11: direct work-list budget includes its early-preloaded static graph", a
         "assets/shared.js",
         "assets/work.js",
         "assets/route-only.js",
+        "assets/frame.js",
+        "assets/frame-dependency.js",
+        "assets/frame.css",
         "assets/later.js",
         "assets/en-US.js",
         "assets/el-GR.js",
+        "assets/slim-en-US.js",
+        "assets/slim-el-GR.js",
       ].map((file) => writeFile(path.join(dir, file), file)),
     );
     await writeFile(
@@ -93,6 +107,14 @@ test("G11: direct work-list budget includes its early-preloaded static graph", a
       Buffer.from(Array.from({ length: 256 }, (_, index) => index)),
     );
     await writeFile(path.join(dir, "assets/el-GR.js"), "x");
+    await writeFile(
+      path.join(dir, "assets/slim-en-US.js"),
+      Buffer.from(Array.from({ length: 128 }, (_, index) => index)),
+    );
+    await writeFile(
+      path.join(dir, "assets/slim-el-GR.js"),
+      Buffer.from(Array.from({ length: 200 }, (_, index) => index)),
+    );
 
     const results = await checkBundleSizes({ manifestPath, outputDir: dir });
     const workList = results.find(
@@ -104,7 +126,11 @@ test("G11: direct work-list budget includes its early-preloaded static graph", a
       "assets/shared.js",
       "assets/work.js",
       "assets/route-only.js",
-      "assets/en-US.js",
+      "assets/frame.js",
+      "assets/frame.css",
+      "assets/frame-dependency.js",
+      "assets/slim-el-GR.js",
+      "assets/slim-en-US.js",
     ]);
   } finally {
     await rm(dir, { recursive: true, force: true });

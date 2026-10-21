@@ -149,6 +149,32 @@ for (const [name, path] of [
   });
 }
 
+test("mobile project navigation retains keyboard calendar and Gantt journeys @a11y", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountProjectAdminApp(page);
+  await page.goto(`${PROJECT_VIEW}/calendar`);
+  await page.getByRole("button", { name: "Project navigation" }).press("Enter");
+  await page.getByRole("button", { name: "Gantt", exact: true }).press("Enter");
+  await expect(page).toHaveURL(new RegExp(`${PROJECT_VIEW}/gantt`));
+  await expect(
+    page.getByRole("heading", { name: "Gantt Timeline" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Project navigation" }).press("Enter");
+  await page
+    .getByRole("button", { name: "Calendar", exact: true })
+    .press("Enter");
+  await expect(page).toHaveURL(new RegExp(`${PROJECT_VIEW}/calendar`));
+  await expect(
+    page
+      .getByRole("main")
+      .getByRole("region")
+      .locator('[data-slot="scroll-area-viewport"]'),
+  ).toBeVisible();
+  expect(await seriousOrCriticalViolations(page)).toEqual([]);
+});
+
 test("board at 200% zoom has no serious or critical axe violations @a11y", async ({
   page,
 }) => {

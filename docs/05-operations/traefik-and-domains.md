@@ -313,7 +313,8 @@ upgrades and streamed request bodies are passed through; API upload limits still
 
 Before applying this overlay, privately preserve the current runtime Compose/configuration,
 verify the application signature/digest, install the tracked template under `deploy/`,
-validate the merged configuration and bring up `taskdesk` and `sit-proxy` with `--wait`.
+keep the non-secret template readable by container UID 101 (0644 inside the private
+runtime directory; keep secrets 0600), validate the merged configuration and bring up `taskdesk` and `sit-proxy` with `--wait`.
 Verify both HTTPS origins, browser/session client-IP equality, forged-header/direct-origin
 rejection, WebSockets, CSRF and upload behavior, plus application-IP-change recovery.
 Do not restart shared Traefik or unrelated stacks. To roll back the topology, restore the
@@ -322,4 +323,7 @@ remove only the owned `sit-proxy` service; retain the digest pin and all named d
 
 On 22 October an isolated unlabeled candidate passed syntax, real readiness, trusted
 IPv4/IPv6 and missing/malformed/untrusted-header checks. It was removed after testing.
-The live overlay has not changed; these results do not establish live topology acceptance.
+The reviewed overlay was subsequently applied to the existing image. Browser/session IP
+matched Cloudflare, direct-origin/shared-network spoofing was rejected, an actual changed
+application IP recovered within six seconds with the normalizer unchanged, and authenticated
+WebSocket upgrade passed. Upload behavior and full application acceptance remain pending.

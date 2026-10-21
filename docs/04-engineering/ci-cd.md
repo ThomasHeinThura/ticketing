@@ -112,7 +112,8 @@ The Build job runs `pnpm build`, `pnpm check:bundle-purity` and `pnpm check:bund
 The purity gate walks static and dynamic chunks from the portal entry using bundler-emitted
 module graph metadata and rejects agent or God Mode modules. The size checker reads the
 separate agent and portal manifests, measures the agent entry and direct work-list route
-graph (including its early-preloaded component chunk), and applies the strict 350 KB agent/
+graph (including HTML-preloaded frame/panel/parent static closures and the worst selected
+first-paint locale plus English fallback, deduplicated), and applies the strict 350 KB agent/
 work-list and 200 KB portal gzip limits.
 
 The fast workflow installs the web workspace's pinned Playwright Chromium browser as a

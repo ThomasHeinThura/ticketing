@@ -165,3 +165,52 @@ finding now fixed and locally verified above. Real-Docker deployment-helper chec
 the shipping-image step was skipped after browser failure, so no candidate image acceptance
 is claimed. Fast CI's unit/component step and other required fast jobs pass. The next
 batched push contains the reviewed baselines/calendar repair, not a blind retry.
+
+## Live ingress repair — 22 October
+
+The reviewed normalization overlay is now applied to the existing digest-pinned SIT image.
+Application source/UI is unchanged and its revision remains unknown. Runtime rollback
+Compose/env copies are private under `ingress-rollback-20261022`. The first startup failed
+because the implementing session set the non-secret template to 0600; it was corrected
+to 0644 inside the private runtime directory so UID 101 can read its mounted template.
+Application/secrets/data volumes remain intact. Both origins and readiness return 200.
+
+The staff browser signed in again: its new session IP exactly matches that browser's
+Cloudflare trace (addresses kept private). A forged direct-origin request is denied 403;
+an untrusted shared-network socket with a forged CF header is denied 400. The app now
+has only its private network; neither app nor normalizer publishes ports. An actual app
+address change recovered through Docker DNS within six seconds without recreating the
+normalizer; the temporary IP reservation container was removed. Authenticated WebSocket
+upgrade returns 101 with a valid handshake. An initial scripted login lacking browser
+context headers returned 403; the request with expected headers succeeded 200. No security
+checks were disabled. Full upload/client-IP ceiling and all portal journeys remain open.
+
+Latest repair head `1db85887`, full run `39665053960`, fast run `39665053950`: all fast
+jobs, G8, accessibility and PostgreSQL integration pass. Browser/image and G11 are still
+running at this snapshot. No reviewed UI deployment, merge or stage acceptance is claimed.
+These live-operation notes are local until the next coherent commit; do not push a
+document-only edit while the source batch's expensive checks are running.
+
+## Third hosted run and cold-load repair
+
+On `1db85887`, all fast jobs, G8, accessibility and PostgreSQL integration pass. All 159
+browser tests and real-Docker deployment helper checks pass; the shipping image built,
+migrated, booted and passed its smoke check (local CI image
+`sha256:55907686edc3a56942d5d610a91b5c3c823cb602eca47c483ef2bfe1cb7ac0d2`).
+It is not a signed published release or a new VM deployment.
+
+G11 passes 21/22, including list rendering, but LCP is 3838.3 ms against 2500 ms. Its
+network trace shows the restored project frame's dependency closure downloading after entry
+evaluation. HTML now preloads that closure, with a browser regression holding entry JS and
+authentication and proving frame download precedes entry execution. Desktop skips the hidden
+mobile menu's code; mobile retains the same component and its calendar/Gantt keyboard
+journey. All nine focused browser cases, web types and 428 contrast pairs pass.
+
+The size gate previously undercounted these lazy/preloaded dependencies. It now includes
+all relevant closures and the actual selected slim locale plus English fallback. The
+independent reviewer found the initially omitted fallback and verified its correction.
+Total is 346917 bytes under the unchanged 350000 limit; agent/portal are 243.7/189.3 KB.
+All 11 bundle regressions pass. A local non-gating CPU diagnostic completed initial load,
+state, assignment and board rendering, then hit the existing browser timeline event bound
+on board selection. It is not a diagnostic pass or a G11 timing pass. Final hosted
+measurement and reviewed image delivery remain required; no merge or UI deployment yet.

@@ -75,6 +75,23 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve its parent outlet chunk.",
           );
         addChunkAndImports(projectRootChunk.fileName);
+        // The restored Kaneo frame wraps the outlet. Its lazy import otherwise starts
+        // after entry evaluation, serializing the frame's dependency downloads with
+        // authentication and delaying the work heading's first paint.
+        const projectLayoutChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith("/components/common/project-layout.tsx"),
+            ),
+        );
+        if (projectLayoutChunk?.type !== "chunk")
+          throw new Error(
+            "G11 work-route preload could not resolve the Kaneo project frame.",
+          );
+        addChunkAndImports(projectLayoutChunk.fileName);
         // The panel supplies the route's first content and heading readiness
         // boundary, but is dynamically imported by beforeLoad only after the
         // route code executes. Fetch its static closure alongside the route so

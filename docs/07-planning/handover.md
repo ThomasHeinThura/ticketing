@@ -36,6 +36,19 @@ The full goal and Thomas's no-AIDLC, Kaneo-preservation directive remain in forc
   section in [traefik-and-domains.md](../05-operations/traefik-and-domains.md).
   Continue the remaining requirement-level P0–P4 work; do not hand unfinished stages to Thomas.
 
+Live ingress update: the reviewed TaskDesk-only normalizer is now applied. Both origins
+are healthy; staff browser/session IP matches its Cloudflare trace; direct-origin spoofing
+returns 403, shared-network spoofing returns 400, changed-IP DNS recovery takes six
+seconds, and authenticated WebSocket upgrade returns 101. Runtime template mode is 0644
+so UID 101 can read it; secrets remain 0600. Runtime rollback is private. Source/UI image is still the old unknown revision.
+Current pushed source is `1db85887`; fast, G8, a11y and PG pass in runs
+`39665053950`/`39665053960`,
+All 159 E2E tests and image smoke passed; G11 is 21/22 with LCP 3838.3 ms > 2500 ms. These operation notes join the coherent cold-load fix. HTML preloads the restored frame
+closure; desktop lazily excludes the hidden mobile menu; the size gate honestly counts
+preloads plus selected/English slim locales (346917/350000 bytes). Nine browser cases,
+11 bundle regressions, types and 428 contrast pairs pass locally. Hosted timing remains
+required; do not rerun unchanged failures or claim the old image contains these repairs.
+
 ---
 
 ## Historical snapshot — 21 October 2026

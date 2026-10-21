@@ -13,7 +13,12 @@ test("direct work-list visit downloads its parent outlet before the session reso
       new URL("../dist/agent/.vite/manifest.json", import.meta.url),
       "utf8",
     ),
-  ) as Record<string, { file: string; name?: string }>;
+  ) as Record<string, { file: string; name?: string; isEntry?: boolean }>;
+  const entry = Object.values(manifest).find((chunk) => chunk.isEntry);
+  expect(
+    entry,
+    "built agent entry must be represented in the manifest",
+  ).toBeDefined();
   const parent = Object.entries(manifest).find(([key]) =>
     key.endsWith("/projects/$projectKey.tsx?tsr-split=component"),
   )?.[1];
@@ -35,6 +40,14 @@ test("direct work-list visit downloads its parent outlet before the session reso
   const heldSession = new Promise<void>((resolve) => {
     releaseSession = resolve;
   });
+  let releaseEntry: () => void = () => {};
+  const heldEntry = new Promise<void>((resolve) => {
+    releaseEntry = resolve;
+  });
+  await page.route(`**/${entry?.file}`, async (route) => {
+    await heldEntry;
+    await route.continue();
+  });
   await page.route("**/api/auth/get-session**", async (route) => {
     await heldSession;
     await route.fallback();
@@ -46,8 +59,13 @@ test("direct work-list visit downloads its parent outlet before the session reso
     (response) => response.url().endsWith(`/${header?.file}`) && response.ok(),
   );
   try {
-    await page.goto(WORK_LIST_PATH, { waitUntil: "domcontentloaded" });
+    // HTML must start the entire frame closure without executing the application.
+    // A lazy import during entry evaluation is too late on a cold network.
+    await page.goto(WORK_LIST_PATH, { waitUntil: "commit" });
     await Promise.all([downloaded, headerDownloaded]);
+    await expect(
+      page.locator(`link[rel="modulepreload"][href="/${header?.file}"]`),
+    ).toHaveCount(1);
     await expect(
       page.locator(`link[rel="modulepreload"][href="/${parent?.file}"]`),
     ).toHaveCount(1);
@@ -55,6 +73,7 @@ test("direct work-list visit downloads its parent outlet before the session reso
       page.getByRole("heading", { name: "WLP · Work items" }),
     ).not.toBeVisible();
   } finally {
+    releaseEntry();
     releaseSession();
   }
   await expect(page.getByTestId("work-item-list-populated")).toBeVisible();
