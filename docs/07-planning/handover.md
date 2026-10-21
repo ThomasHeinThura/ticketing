@@ -1,4 +1,34 @@
-# Agent handover
+# Active handover — 22 October 2026 integration repair
+
+Read [status.md](status.md) first. No P0–P4 stage is complete or awaiting only human review.
+The full goal and Thomas's no-AIDLC, Kaneo-preservation directive remain in force.
+
+- Repair worktree: `/Users/heinthura/.codex/worktrees/taskdesk-sit-alignment`,
+  branch `fix/sit-kaneo-integration`, based on Antigravity `90973b7e`. Preserve unrelated
+  dirty files in the primary checkout; do not merge duplicate hierarchy branches blindly.
+- VM runtime directory: `/home/bimdevops/taskdesk-sit`, Compose project `taskdesk`.
+  Old VM source checkout was privately archived, checksum verified, then removed. Named
+  volumes remain intact. OrbStack stays stopped; Cloudflare stays enabled. No VM builds.
+- Current image digest: `sha256:8ba4fdc714c7161e0e70c3732e0ab316f7e978a2514712a13ec3ed8911acaf1f`.
+  Its source revision remains unknown. UI repair is not deployed; do not rerun old seeds
+  or publish the rotated credentials. Private account/recovery files are outside Git.
+- Source repairs restore the project header/calendar/timeline on canonical work data,
+  missing Tailwind application utilities, portal shell/home/approvals/paging/draft and
+  cache isolation, audit URL/filter state, private seeds and SIT image verification.
+- Web 1,486/API 902 unit tests pass; independent standard/security source review approves
+  after actual findings were fixed. Browser/visual/performance/exact-image acceptance open.
+  G8 must stay failed until pinned Linux candidates are reviewed and committed. CI captures
+  candidates only after failure and preserves original evidence separately.
+- Isolated PostgreSQL: 87/89 broad tests passed, two WAN timeouts remain unpassed; three
+  focused seed/label checks passed. Keep these adverse results visible; hosted co-located
+  PostgreSQL checks must resolve them. Never run database resets against live SIT.
+- Next: bind review to commit, one batch push for Linux evidence and hosted checks, review
+  actual screenshots/fix findings, then verified-image deployment and developer walkthrough.
+  Continue the remaining requirement-level P0–P4 work; do not hand unfinished stages to Thomas.
+
+---
+
+## Historical snapshot — 21 October 2026
 
 **Snapshot: 2026-10-21.** Read `AGENTS.md` and [status.md](status.md) first.
 This is a continuation snapshot, not policy, passed-test evidence or stage acceptance.

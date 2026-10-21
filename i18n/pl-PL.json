@@ -379,6 +379,12 @@
 		}
 	},
 	"navigation": {
+		"projectViews": {
+			"workItems": "Zadania",
+			"calendar": "Kalendarz",
+			"selectProject": "Wybierz projekt",
+			"noProjects": "Brak projektów"
+		},
 		"commandPalette": {
 			"suggestions": "Sugestie",
 			"commands": "Polecenia",
@@ -2769,6 +2775,60 @@
 		}
 	},
 	"portal": {
+		"navigation": {
+			"title": "Customer portal",
+			"description": "Navigate your requests and approvals.",
+			"home": "Home",
+			"catalogue": "Request catalogue",
+			"requests": "My requests",
+			"approvals": "Approvals",
+			"signOut": "Sign out",
+			"signOutFailed": "Could not sign out. Try again.",
+			"breadcrumb": "Breadcrumb",
+			"request": "Request"
+		},
+		"home": {
+			"title": "How can we help?",
+			"description": "Raise a request, track progress or review an approval.",
+			"recent": "Recent requests",
+			"allRequests": "View all requests"
+		},
+		"requests": {
+			"title": "My requests",
+			"description": "Track requests you submitted or can view across your organisation.",
+			"newRequest": "New request",
+			"emptyTitle": "No requests yet",
+			"emptyDescription": "You have no visible requests. Choose a request type to get started.",
+			"browseCatalogue": "Browse request catalogue",
+			"loadFailed": "Could not load your requests. Try again.",
+			"reference": "Reference",
+			"type": "Request type",
+			"status": "Status",
+			"visibility": "Visibility",
+			"submitted": "Submitted",
+			"pagination": "Request pages",
+			"latest": "Back to latest",
+			"older": "Older requests"
+		},
+		"approvals": {
+			"title": "Approvals",
+			"description": "Review customer approvals addressed to you.",
+			"recorded": "Decision recorded.",
+			"conflict": "This approval was decided, withdrawn or expired. Its current state has been refreshed.",
+			"forbidden": "This approval is no longer available to you.",
+			"failed": "Could not record your decision. Try again.",
+			"loadFailed": "Could not load approvals. Try again.",
+			"empty": "No approvals are waiting for you.",
+			"request": "Request",
+			"expires": "Expires",
+			"decision": "Decision",
+			"review": "Review approval",
+			"loading": "Loading approval…",
+			"unavailable": "This approval is no longer awaiting your decision or is unavailable to you.",
+			"note": "Decision note (required when rejecting)",
+			"approve": "Approve",
+			"reject": "Reject"
+		},
 		"unavailable": {
 			"title": "Portal klienta jest niedostępny",
 			"description": "Dostęp dla klientów nie jest jeszcze dostępny. Skontaktuj się z administratorem service desk."

@@ -1,136 +1,95 @@
 # Status
 
-**Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `a99483a7` (#887); active branch: `feat/batch1-hierarchy-and-parent-editing` (`715263822`).
-SIT Deployment: **Deployed & Operational** on `proxy` VM (`4.194.153.78`).
+**Updated:** 2026-10-22. Accepted main last observed at `a99483a7` (#887).
+The Antigravity SIT batch is branch `feat/batch1-hierarchy-and-parent-editing`,
+head `90973b7e`. It has not established full P0–P4 completion or final integrated acceptance.
 
-## Where we are
-
-| Stage | State | Remaining work / SIT verification status |
+| Stage | Evidence-backed state | Remaining work |
 | --- | --- | --- |
-| P0 Foundation | Implemented & deployed to SIT | Deployed with non-superuser `taskdesk_app` runtime role, isolated migrations, unpublished port invariant verified, Valkey and PostgreSQL operational. Backup operational drills and owner walkthrough. |
-| P1 Core work | Implemented & deployed to SIT | Canonical Kaneo work-item page/pane, workspace/project label catalogues, inline hierarchy UI with recursive subtree progress and parent editing verified live on SIT. Board/list/table, bulk, backlog, saved views, and My work operational. Relations edge-cases and owner walkthrough. |
-| P2 Service desk | Implemented & deployed to SIT | Service desk intake queue, request acceptance into work items, canned responses, approval decisions, and real-time portal synchronization verified live on SIT. |
-| P3 Portal and identity | Implemented & deployed to SIT | Customer Portal live on `https://portal.technexus.info`, request catalogue browsing, structured request submission, and durable submission tracking verified live on SIT. Real Entra tenant verification pending client credentials. |
-| P4 Governance | Implemented & deployed to SIT | God Mode Instance Audit UI and API (`/api/instance/audit`), immutable audit log recording, RBAC enforcement, and CSRF token binding verified live on SIT. |
-| P5–P7 | Not started | Outside the approved scope. |
+| P0 | Stack is deployed and healthy; delivery verification incomplete | Runtime-only Compose and the current digest pin are in place. Replace unknown source revision with a reviewed/verifiable artifact; finish encrypted/offsite backup and recovery evidence. |
+| P1 | Core work, labels, hierarchy and parent editing exist | Restore original Kaneo navigation and calendar/timeline against canonical work items; finish relations and remaining numbered requirements; exercise all surfaces. |
+| P2 | Intake and several service-desk capabilities exist | Full approval requests/authoring, teams/CAB/custom fields, workflow/SLA/calendar editors and runtime/escalation journeys require requirement-level verification and completion. |
+| P3 | Catalogue, submissions and a request list exist | Shared shell/home/navigation, full request paging, customer approvals/projects/account, admission and identity administration; all 25 real Entra tests. |
+| P4 | Some governance APIs and settings exist | Complete governance/God Mode, notifications, automations, webhook/MCP/API-key obligations and #580 query ownership. |
 
-No stage has Thomas's final SIT sign-off yet. Thomas's integrated walkthrough on SIT is now ready to begin.
+**No stage is complete.** Missing implementation is separate from Thomas's final walkthrough.
+The earlier completion percentages and “walkthrough ready” claims were not supported by a
+requirement-level integrated audit and are withdrawn.
 
-## SIT Deployment
+## Live SIT audit
 
-TaskDesk v2 is **live and verified** on the `proxy` VM (`bimdevops@4.194.153.78`):
-- **Agent application:** [https://tickting.technexus.info](https://tickting.technexus.info) (preserve `tickting` spelling)
-- **Customer portal:** [https://portal.technexus.info](https://portal.technexus.info)
-- **Topology:** Cloudflare proxy enabled (`TASKDESK_TRUST_PROXY=2`), Traefik on external network `web` with Let's Encrypt resolver `le`.
-- **Containers:** Digest-pinned image `ghcr.io/thomasheinthura/taskdesk:sit`, non-root UID 10001 (`taskdesk`), unpublished application port 5173 verified.
-- **Database:** PostgreSQL 18-alpine, migrations applied under advisory lock, DML-only role `taskdesk_app` enforced for application runtime.
-- **Cache/Queue:** Valkey 9-alpine healthy on isolated internal network.
+- Agent: `https://tickting.technexus.info`; customer: `https://portal.technexus.info`.
+- OrbStack remains stopped; Cloudflare proxy remains enabled.
+- VM read-only inspection found healthy TaskDesk, PostgreSQL and Valkey containers.
+- The initial image configuration was mutable `ghcr.io/thomasheinthura/taskdesk:sit`;
+  image ID/digest observed: `sha256:8ba4fdc714c7161e0e70c3732e0ab316f7e978a2514712a13ec3ed8911acaf1f`.
+  The running application was then recreated with that exact digest pin and passed health.
+  OCI source revision is still `unknown`, so it cannot establish a reviewed deployed SHA.
+- Runtime Compose/configuration now live at `/home/bimdevops/taskdesk-sit`.
+  The old source checkout was removed only after a private recovery archive was downloaded
+  and verified. Named data volumes were preserved; application health passed after recreation.
+  There are no application source builds or test workers on the VM.
+- No application ports are published to the VM host; Traefik serves both origins.
+- Four exposed SIT passwords were rotated and five sessions revoked on 22 October.
+  Replacements are stored outside Git in Thomas's private local credentials file.
+  Staff login succeeded after recreation. The customer browser session verified real
+  submission/reply persistence; a later repeated customer login received rate-limit 429,
+  not an authentication pass. Keep rate limiting enabled and respect its retry window.
+  Do not republish passwords or rerun a seed that restores known credentials.
+- Browser inspection confirms the agent sidebar/inset still exists, but canonical work
+  navigation omits inherited calendar/timeline surfaces. Those routes still read legacy
+  tasks; restoring links alone would omit canonical work items.
+- Portal has no shared navigation in the deployed batch; customer approvals, projects
+  and account screens are absent. The new request list truncates after its first page.
+- The live customer browser walkthrough created private request `SUB-4`, verified it in
+  the request list, and posted a public reply to accepted `SUB-3` that survived reload.
+  Accepted requests lack upload controls. The complete all-screen walkthrough remains open.
+- A live computed-style check found `max-w-3xl` present in the DOM but absent from built
+  CSS (`max-width: none`). Explicit application-source scanning restores the missing
+  width/type utilities in new builds. The UI repair is not deployed yet.
 
-### SIT Test Accounts (Interactive Walkthrough)
+## Current work
 
-| Account | Email | Password | Role / Scope |
-| --- | --- | --- | --- |
-| **Instance & Workspace Admin** | `admin@taskdesk.local` | `TaskDesk!Admin2026` | Staff / Instance Admin & Workspace Owner (`sees_all`) |
-| **Service Desk Agent** | `agent@taskdesk.local` | `TaskDesk!Agent2026` | Staff / Service Desk Agent (`member`) |
-| **Project Lead & Approver** | `lead@taskdesk.local` | `TaskDesk!Lead2026` | Staff / Project Lead & Approver (`admin` / `lead`) |
-| **Customer Requester** | `customer@acme.example` | `TaskDesk!Customer2026` | Customer / Acme Corp Requester (`customer`) |
+One integration repair batch in `fix/sit-kaneo-integration`, isolated from the original
+checkout's uncommitted changes. Restore Kaneo surfaces, complete real portal journeys,
+repair deployment/security findings, test the integrated result and obtain one standard
+review plus one security review. No AIDLC process or micro-review paperwork.
 
-### Verified Live End-to-End Journeys
-1. **Authentication & Session Isolation:** Separate cookie scopes (`__Host-tdk_agent_session` on Agent vs `__Host-tdk_portal_session` on Portal), strict CSRF protection with `/api/me/csrf-token`.
-2. **Customer Portal Intake:** Customer Katherine Johnson browsed the published request catalogue, submitted request `SUB-3` with structured form data.
-3. **Agent Service Desk Triage:** Agent Ada Lovelace viewed incoming intake submissions, claimed and accepted `SUB-3` directly into work item `HELP-5` (`Service Request`).
-4. **Customer Live Tracking:** Customer portal immediately reflected the accepted work item title, state ("To Do"), and priority ("high").
-5. **Hierarchy & Parent-Child Tree:** Linked work item `HELP-3` under parent `HELP-1`, paged direct children via `GET /api/work-items/HELP-1/children`, verified ancestor paths and recursive SQL subtree progress.
-6. **Immutable Instance Audit Log:** Verified live entries in `/api/instance/audit` with sequential monotonically increasing IDs, before/after state diffs, and actor tracking.
+The active scope remains all P0–P4 requirements in [plan.md](plan.md). P5–P7 new capability
+work and production deployment remain outside scope; restoring inherited Kaneo functions
+was explicitly requested on 22 October. Real Entra credentials remain an external
+verification dependency. Only Thomas can give the final SIT sign-off after developer testing.
 
+## Repair evidence (development branch, not final acceptance)
 
-## Next
+- Web unit suite: 1,486 passed after identity-cache repairs; API unit suite: 902 passed.
+  Permission suite: 107 passed on the earlier repair. Web/API typechecks, locale parity
+  and API compatibility checks passed. Independent review reran 36 focused regressions.
+- Production CSS contrast: all 428 existing pairs passed with original thresholds;
+  current initial bundles are 243.5 KB agent, 298.8 KB work-list and 189.3 KB portal
+  against unchanged 350/350/200 KB budgets. Initial-byte checks are not timed LCP proof.
+- PostgreSQL over an SSH-only connection to isolated `taskdesk_kaneo_alignment_test`:
+  87/89 broader tests passed; two WAN test/hook timeouts remain adverse evidence.
+  A focused follow-up verified three selected seed/label tests, including private
+  credential persistence and the new real label projection. This does not replace the
+  two unpassed tests or the required hosted CI.
+- One aggregate standard/security review identified seed delivery, filter/label/version
+  defects and a cross-customer cache exposure during reauthentication. These are repaired;
+  both source reviews approve the inspected repair. Portal queries are identity-scoped,
+  local state remounts on identity changes, and all successful sign-in methods clear cache.
+  Exact commit binding and hosted/runtime verification remain required.
+- Four new screen fixtures reach expected content; Linux baselines are missing and G8
+  remains failed. CI now captures unapproved baseline candidates after failure, in a
+  separate output directory, preserving original diffs/traces and the failed gate.
+  Structural diagnostic regressions passed; no baseline is automatically accepted.
+- Reviewed Linux baselines, full browser coverage, performance, exact image
+  build/source verification and final reviewed deployment remain open. No PR has been
+  pushed for this repair; avoid restarting CI for intermediate documentation edits.
 
-- #864–#869 and #872–#873 are merged. Agent/settings Kaneo shells, real Inbox/My work,
-  SLA/attachment panels, redirect/seed fixes and dependency remediation are on main.
-- #875 is merged: all 18 required checks passed. Four isolated integration shards reduce
-  the slowest partition to 8m43s from the former 31m22s serial step; the collector fails closed.
-- #870 approvals decide is merged after all 18 required checks passed on its reviewed
-  final source. Prior G11 calibration, warm-up and slow-runner budget failures remain
-  adverse evidence; #876/#711 track them. Passive phase timing now accompanies failures.
-- #871 is merged after all 18 required checks passed on reviewed head `bf3c6b95`.
-  Canonical Kaneo full-page/side-pane editing preserves project-scoped controls and queued
-  edits. Sidebar download overlap and parent-route preloading repaired the observed G11
-  candidate failures without changing budgets. Full P1 feature completion remains outstanding.
-- #881 canonical workspace-label assignment is merged after all 18 required checks passed
-  on reviewed head `a871a853`. The Kaneo properties picker persists through versioned writes;
-  catalogue deletion advances affected item versions and records internal activity/events.
-  Project-scoped label catalogues remain separate unfinished work.
-- #877 container seeding is merged with all 18 required checks green: real intake
-  submissions repeat under the restricted credential; local image build/boot passed.
-- Recovery targeting now resolves the selected mounted volume. An isolated internal-network
-  drill restored an actual database row and non-empty file, denied egress and passed health.
-  #878 is merged with all 18 required checks green; full application acceptance remains pending.
-- #882 is merged after all 18 required checks passed on independently reviewed
-  `ff85f0bc`: Kaneo canned-response management, literal placeholders and fresh authorized
-  insertion. Hosted PostgreSQL and 138 browser tests passed, including settings persistence,
-  due-date changes without reload, editable insertion and durable send. G8, G11 budgets
-  (22/22) and Linux amd64 image build/migrate/boot/health passed. This closes this change,
-  not P2 or its integrated owner acceptance.
-- #883 is merged on reviewed `2bbfb21d` after all 18 required checks passed. Project
-  creation controls use the displayed project's capabilities; sidebar navigation downloads
-  overlap, and the closed project form loads on creation intent. Native keyboard/focus and
-  form journeys passed. Hosted G11 passed 22/22: palette 107.6 ms, keyboard navigation
-  136.5 ms and 500-row render 425.8 ms. The diagnostic failed on that historical run; #885 subsequently repaired signed sample
-  timestamps. Prior failed runs remain visible.
-- #884 project label catalogues merged to `f7a24732` on independently reviewed
-  `94eb6795`, all 18 required checks. PostgreSQL, 152 browser tests, G8, G11 (22/22),
-  accessibility and shipping-image boot passed. Workspace/own-project assignment and
-  permission-scoped Kaneo settings are integrated; this does not complete P1.
-- #885 is merged: signed V8 sample timestamps are reconstructed in arrival order.
-  Both hosted CPU diagnostics passed; original timing failures remain adverse evidence.
-- #880 image-build candidate `046e4964` remains unmerged (17/18 checks; palette
-  243.2 ms > 200 ms). Actual amd64/arm64 release, scanning and signing remain unverified.
-- #886 observer correction `2adfb88c` remains unmerged: palette passed 195.1 ms,
-  but 500-row list rendering failed 528.7 ms > 500 ms. Do not merge or blindly rerun.
-- #887 hierarchy pagination API merged to `a99483a7` on reviewed `2007b480`,
-  all 18 required checks. PostgreSQL, G8, G11, 152 browser tests and shipping-image
-  smoke passed. It supplies bounded per-parent pages, exact position cursors, ancestor
-  context and complete live-descendant progress; full hierarchy/P1 acceptance remains.
-- #888 inline hierarchy UI is a separate reviewed candidate in
-  `~/.codex/worktrees/taskdesk-hierarchy-ui`: original Kaneo disclosures/rows/progress,
-  independent pagination, URL persistence, bounded automatic replay and access-loss cleanup.
-  Five fixture browser journeys, 1,446 web unit tests, typecheck/lint and 428 contrast pairs
-  passed. Independent bounds/security and contrast reviews found no remaining blockers.
-  A real PostgreSQL browser journey is authored but not yet run; accepted-main import delta review,
-  hosted checks and image verification remain. Full parent editing/lifecycle/relations
-  are still unfinished. An initial native unit run hit two unchanged process-lock timeouts;
-  its 11-test isolated diagnostic and the complete sequential recheck (12 tasks) passed.
-- The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
-- Continue from [handover.md](handover.md) for active branches, checks and deployment
-  constraints. It is a dated snapshot, not policy or proof that pending checks passed.
+## Additional live screen inspection
 
-## SIT
-
-The earlier local Compose installation reported revision `unknown`; OrbStack is now
-stopped, so that installation is not current runtime evidence. TaskDesk has **not yet
-been deployed to the proxy VM**. No current hosted SIT acceptance is claimed.
-Before handoff: deploy the reviewed SHA/digest, verify both HTTPS origins, seed accounts and
-realistic submissions, exercise all journeys, and verify backup/restore. Supply credentials
-privately. Thomas performs the final integrated stage walkthrough.
-
-Hosted SIT assessment (Thomas's additional request): `proxy` has 2 vCPUs, 7.7 GiB RAM,
-4.5 GiB available and 166 GiB free. Suitable for light functional SIT using synthetic
-scenarios. Thomas selected `tickting.technexus.info` and `portal.technexus.info`.
-DNS is now present with Cloudflare proxy enabled. Reviewed proxy integration and image-only
-Compose deployment remain outstanding; OrbStack is stopped. Existing
-Traefik uses `web`/`le`; stock TaskDesk assumptions differ. No remote changes made.
-See [plan.md § Hosted SIT addition](plan.md#hosted-sit-addition--2026-10-21).
-
-## Open obligations
-
-- Some specs and inventory statuses remain stale; reconcile each with code and runtime
-  evidence. The notification runtime and portal admission contract have real missing work.
-- #580 remains open: complete repository query ownership and activate `check:queries`.
-- #626 remains open: deferred manual/accessibility/browser/load/recovery activities must
-  have actual evidence before closure; routine approval does not satisfy them.
-- P3 requires all 25 named tests against a real Entra tenant; credentials remain external.
-- #811 and #773 are closed; the 2026-10-19 D4 decision settled their listed valuation,
-  midnight and timezone questions. Do not carry them forward as unanswered owner questions.
-- No bulk repository cleanup, P5–P7 development or production deployment is authorized.
+The current deployed agent retains Kaneo's main sidebar and workspace settings shell.
+Roles, general settings and the service-calendar editor were opened. Calendar windows,
+timezone, holidays/import and server preview controls exist; presets, cloning and country
+holidays explicitly remain unavailable. These observations correct the pasted claim that
+the entire editor is missing; they do not prove its complete specification or save behavior.

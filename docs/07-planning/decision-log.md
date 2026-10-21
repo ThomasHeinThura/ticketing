@@ -1,5 +1,15 @@
 ### 2026-10-21 · Preserve hosted SIT instructions for agent handover
 
+## 2026-10-22 — Restore Kaneo and audit the deployed integration
+
+Thomas rejected the deployed UI regression and renewed the instruction to finish and test
+all P0–P4 behavior before his SIT walkthrough. Restore inherited Kaneo functions, including
+calendar and Gantt/timeline, using canonical persisted data. No AIDLC/SDLC paperwork or
+micro-reviews: use a coherent implementation batch, developer browser testing, one standard
+review and one security review. Keep the Cloudflare proxy enabled, OrbStack stopped and
+hosted SIT image-only through Docker Compose. A healthy deployment is not stage completion.
+
+
 **Source:** Thomas's direct follow-up: “add and make note on decision or something md
 and update md to handover for other agent.” He reaffirmed these deployment instructions:
 

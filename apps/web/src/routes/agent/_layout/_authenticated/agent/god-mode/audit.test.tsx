@@ -39,7 +39,10 @@ vi.mock("@/hooks/use-instance-admin-signal", () => ({
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (config: { component: React.ComponentType }) =>
-    config.component,
+    Object.assign(config.component, {
+      useSearch: () => ({ action: "", limit: 50 }),
+      fullPath: "/agent/god-mode/audit",
+    }),
   useLocation: () => ({ pathname: "/agent/god-mode/audit", searchStr: "" }),
   useNavigate: () => vi.fn(),
   Link: ({ children }: React.PropsWithChildren) => <span>{children}</span>,

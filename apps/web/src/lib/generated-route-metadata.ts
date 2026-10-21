@@ -84,6 +84,7 @@ export const generatedRouteMetadata = {
   portal: [
     // Canonical full paths for this surface.
     "/",
+    "/approvals",
     "/catalogue",
     "/portal/requests",
     "/portal/sign-in",

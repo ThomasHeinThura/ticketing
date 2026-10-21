@@ -89,6 +89,21 @@ beforeEach(() => {
   fake.refetch.mockResolvedValue({});
 });
 describe("Kaneo parent control", () => {
+  it("looks up a real mixed-case hyphenated key without rewriting it", async () => {
+    fake.candidate.mockResolvedValue({
+      key: "service-Team-2",
+      title: "Candidate",
+      projectId: "project",
+    });
+    setup();
+    open();
+    typeKey("service-Team-2");
+    await screen.findByText("service-Team-2 · Candidate");
+    expect(fake.candidate).toHaveBeenCalledWith(
+      "service-Team-2",
+      expect.any(AbortSignal),
+    );
+  });
   it("uses project-scoped authority and keeps read-only viewers out of editing", () => {
     fake.canUpdate = false;
     setup();
@@ -101,7 +116,7 @@ describe("Kaneo parent control", () => {
   it("asserts the current queued version rather than an older render", async () => {
     const { client } = setup();
     open();
-    typeKey("ops-2");
+    typeKey("OPS-2");
     await screen.findByText("OPS-2 · Candidate");
     client.setQueryData(["work-items", "detail", item.key], {
       ...item,

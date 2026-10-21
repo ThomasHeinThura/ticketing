@@ -20,15 +20,16 @@ export const Route = createFileRoute("/submissions/$ref")({
 
 function PortalSubmissionPage() {
   const { t } = useTranslation();
+  const { portalUserId } = Route.useRouteContext();
   const { ref } = Route.useParams();
   const queryClient = useQueryClient();
   const [body, setBody] = useState("");
   const page = useQuery({
-    queryKey: ["portal", "submission", ref],
+    queryKey: ["portal", portalUserId, "submission", ref],
     queryFn: () => getPortalSubmission(ref),
   });
   const attachments = useQuery({
-    queryKey: ["portal", "submission", ref, "attachments"],
+    queryKey: ["portal", portalUserId, "submission", ref, "attachments"],
     queryFn: () => getPortalSubmissionAttachments(ref),
   });
   const reply = useMutation({
@@ -36,7 +37,7 @@ function PortalSubmissionPage() {
     onSuccess: async () => {
       setBody("");
       await queryClient.invalidateQueries({
-        queryKey: ["portal", "submission", ref],
+        queryKey: ["portal", portalUserId, "submission", ref],
       });
     },
   });
@@ -44,7 +45,7 @@ function PortalSubmissionPage() {
     mutationFn: () => withdrawPortalSubmission(ref),
     onSuccess: async () =>
       queryClient.invalidateQueries({
-        queryKey: ["portal", "submission", ref],
+        queryKey: ["portal", portalUserId, "submission", ref],
       }),
   });
   const upload = useMutation({
@@ -70,7 +71,7 @@ function PortalSubmissionPage() {
     },
     onSuccess: async () =>
       queryClient.invalidateQueries({
-        queryKey: ["portal", "submission", ref, "attachments"],
+        queryKey: ["portal", portalUserId, "submission", ref, "attachments"],
       }),
   });
   const download = useMutation({
@@ -85,7 +86,7 @@ function PortalSubmissionPage() {
     mutationFn: (id: string) => completePortalSubmissionAttachment({ ref, id }),
     onSuccess: async () =>
       queryClient.invalidateQueries({
-        queryKey: ["portal", "submission", ref, "attachments"],
+        queryKey: ["portal", portalUserId, "submission", ref, "attachments"],
       }),
   });
   const record = page.data as unknown as
@@ -132,7 +133,7 @@ function PortalSubmissionPage() {
     .filter(Boolean)
     .join(" · ");
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-6">
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <header>
         <h1 className="font-semibold text-2xl">
           {t("portal:intake.submissionTitle", {

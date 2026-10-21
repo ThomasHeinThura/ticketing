@@ -643,7 +643,7 @@ export const routes = {
       return `/agent/triage?${query.toString()}`;
     },
   },
-  /** Customer portal's P0 disabled landing page, rooted on its separate origin. */
+  /** Customer portal home, rooted on its separate origin. */
   portalHome: {
     path: "/" as const,
     build: () => "/",
@@ -668,6 +668,24 @@ export const routes = {
       if (resolved.key) query.set("key", resolved.key);
       const suffix = query.toString();
       return suffix ? `/catalogue?${suffix}` : "/catalogue";
+    },
+  },
+  portalRequests: {
+    path: "/requests" as const,
+    build: (search: { cursor?: string } = {}) => {
+      const { cursor } = parsePortalRequestsSearch(search);
+      return cursor
+        ? `/requests?${new URLSearchParams({ cursor })}`
+        : "/requests";
+    },
+  },
+  portalApprovals: {
+    path: "/approvals" as const,
+    build: (search: { approval?: string } = {}) => {
+      const { approval } = parsePortalApprovalsSearch(search);
+      return approval
+        ? `/approvals?${new URLSearchParams({ approval })}`
+        : "/approvals";
     },
   },
   portalSubmission: {
@@ -770,6 +788,15 @@ export const routes = {
     },
   },
   /** God Mode Users directory and its query-string-backed selection/filters. */
+  godModeAudit: {
+    path: "/agent/god-mode/audit" as const,
+    build: (search: { action?: string; limit?: number } = {}) => {
+      const resolved = parseInstanceAuditSearch(search);
+      const params = new URLSearchParams({ limit: String(resolved.limit) });
+      if (resolved.action) params.set("action", resolved.action);
+      return `/agent/god-mode/audit?${params}`;
+    },
+  },
   godModeUsers: {
     path: "/agent/god-mode/users" as const,
     build: (search: Partial<GodModeUsersSearch> = {}) => {
@@ -966,4 +993,42 @@ export function parseWorkItemListSearchFromQueryString(
     item: params.get("item") ?? undefined,
     hierarchy: params.get("hierarchy") ?? undefined,
   });
+}
+
+/** Opaque portal request cursors remain URL state; malformed values are discarded. */
+export function parsePortalRequestsSearch(raw: unknown): { cursor?: string } {
+  if (!raw || typeof raw !== "object") return {};
+  const cursor = (raw as Record<string, unknown>).cursor;
+  return typeof cursor === "string" &&
+    cursor.length > 0 &&
+    cursor.length <= 2048 &&
+    /^[A-Za-z0-9_-]+$/u.test(cursor)
+    ? { cursor }
+    : {};
+}
+
+export function parsePortalApprovalsSearch(raw: unknown): {
+  approval?: string;
+} {
+  if (!raw || typeof raw !== "object") return {};
+  const approval = (raw as Record<string, unknown>).approval;
+  return typeof approval === "string" &&
+    approval.length > 0 &&
+    approval.length <= 256 &&
+    /^[A-Za-z0-9_-]+$/u.test(approval)
+    ? { approval }
+    : {};
+}
+
+export function parseInstanceAuditSearch(raw: unknown): {
+  action: string;
+  limit: number;
+} {
+  const value =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const limit = Number(value.limit);
+  return {
+    action: typeof value.action === "string" ? value.action.slice(0, 256) : "",
+    limit: [25, 50, 100, 200].includes(limit) ? limit : 50,
+  };
 }

@@ -8,6 +8,12 @@ How a change gets from an idea to `main`. This is the only process document. It 
 Why it is short: the previous process cost more tokens and round trips than the work itself,
 and produced documents that contradicted each other. Keep this file under 150 lines.
 
+Thomas's 22 October directive: no AIDLC/SDLC paperwork or micro-review cycle. Implement
+coherent complete feature batches, test the product and changed screens, then use one
+aggregate standard review and one security review. Batch routine documentation/evidence
+updates; do not restart expensive CI for intermediate prose. Required checks and truthful
+completion evidence still apply.
+
 ## The loop
 
 1. **Pick** the next item from [status.md § Next](../07-planning/status.md#next) or a GitHub

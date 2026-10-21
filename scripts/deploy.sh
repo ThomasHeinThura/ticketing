@@ -425,9 +425,28 @@ print_setup_token() {
 
 seed_if_permitted() {
   [ "$MODE" = "local" ] || [ "$MODE" = "sit" ] || return 0
+  local credentials_file="$REPO_ROOT/../.taskdesk-sit-credentials.json"
+  local container_credentials="/tmp/taskdesk-sit-credentials.json"
+  if [ -f "$credentials_file" ]; then
+    local credentials_mode
+    [ ! -L "$credentials_file" ] || die "SIT credentials must not be a symbolic link."
+    credentials_mode="$(stat -c '%a' "$credentials_file" 2>/dev/null)" || credentials_mode="$(stat -f '%Lp' "$credentials_file")"
+    [ "$credentials_mode" = "600" ] || die "SIT credentials file must have mode 0600: $credentials_file"
+    dc exec -T taskdesk sh -c 'umask 077; cat > /tmp/taskdesk-sit-credentials.json' < "$credentials_file" \
+      || die "Could not supply the private SIT credentials file to the container."
+  fi
   say "seeding SIT accounts, catalogue and submissions inside the application container"
-  dc exec -T taskdesk node apps/api/dist/seed-sit-users.js --sit \
+  dc exec -T taskdesk node apps/api/dist/seed-sit-users.js --sit --credentials-file "$container_credentials" \
     || die "SIT seeding failed. The stack is up; fix the error above and rerun scripts/deploy.sh."
+  local saved_credentials
+  saved_credentials="$(mktemp "$REPO_ROOT/../.taskdesk-sit-credentials.XXXXXX")"
+  if ! dc exec -T taskdesk cat "$container_credentials" > "$saved_credentials"; then
+    rm -f "$saved_credentials"
+    die "Could not save the private SIT credentials file."
+  fi
+  chmod 600 "$saved_credentials"
+  mv "$saved_credentials" "$credentials_file"
+  say "SIT credentials saved privately outside the checkout: $credentials_file"
 }
 
 print_urls() {
@@ -477,6 +496,9 @@ case "$MODE" in
     ;;
 
   sit)
+    resolve_and_verify_image
+    say "pulling the verified digest for migration and runtime"
+    dc pull
     wait_for_deps
     say "running migrations under the advisory lock"
     dc run --rm migrate

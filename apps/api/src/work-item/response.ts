@@ -100,6 +100,9 @@ export const workItemDetailSchema = workItemShape
 // finding, even though nothing about its runtime behaviour would change.
 export const workItemListItemSchema = workItemSchema
   .extend({
+    labels: z
+      .array(z.object({ id: z.string(), name: z.string(), color: z.string() }))
+      .optional(),
     stateName: z.string(),
     stateCategory: z.string().openapi({
       description:

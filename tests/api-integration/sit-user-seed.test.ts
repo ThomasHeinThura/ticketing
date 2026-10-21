@@ -1,10 +1,16 @@
 import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { resetTestDatabase } from "./helpers/database";
+
+let credentialsDirectory: string;
+let credentialsFile: string;
 
 const execute = promisify(execFile);
 const apiRoot = fileURLToPath(new URL("../../apps/api/", import.meta.url));
@@ -31,9 +37,14 @@ async function submissions() {
 describe("local SIT seed uses real intake and preserves walkthrough progress", () => {
   beforeAll(async () => {
     await resetTestDatabase();
+    credentialsDirectory = await mkdtemp(
+      path.join(os.tmpdir(), "taskdesk-seed-credentials-"),
+    );
+    credentialsFile = path.join(credentialsDirectory, "accounts.json");
   });
   afterAll(async () => {
     await resetTestDatabase();
+    await rm(credentialsDirectory, { recursive: true, force: true });
   });
 
   it("requires explicit SIT opt-in before writing accounts or submissions", async () => {
@@ -46,7 +57,10 @@ describe("local SIT seed uses real intake and preserves walkthrough progress", (
   });
 
   it("seeds two published forms and real submissions, then preserves their identity and state", async () => {
-    await runSeed(["--sit"]);
+    await runSeed(["--sit", "--credentials-file", credentialsFile]);
+    expect((await stat(credentialsFile)).mode & 0o077).toBe(0);
+    const firstCredentials = await readFile(credentialsFile, "utf8");
+    expect(JSON.parse(firstCredentials).accounts).toHaveLength(4);
     const first = await submissions();
     expect(first).toHaveLength(2);
     const firstSubmission = first[0];
@@ -76,7 +90,8 @@ describe("local SIT seed uses real intake and preserves walkthrough progress", (
       .update(schema.submissionTable)
       .set({ state: "clarifying" })
       .where(eq(schema.submissionTable.id, firstSubmission.id));
-    await runSeed(["--sit"]);
+    await runSeed(["--sit", "--credentials-file", credentialsFile]);
+    expect(await readFile(credentialsFile, "utf8")).toBe(firstCredentials);
     const second = await submissions();
     expect(second.map((row) => row.id)).toEqual(first.map((row) => row.id));
     expect(second[0]?.state).toBe("clarifying");

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/portal/__root'
 import { Route as IndexRouteImport } from './routes/portal/index'
+import { Route as ApprovalsRouteImport } from './routes/portal/approvals'
 import { Route as CatalogueRouteImport } from './routes/portal/catalogue'
 import { Route as RequestsRouteImport } from './routes/portal/requests'
 import { Route as SignInRouteImport } from './routes/portal/sign-in'
@@ -20,6 +21,11 @@ import { Route as SubmissionsRefRouteImport } from './routes/portal/submissions/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApprovalsRoute = ApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogueRoute = CatalogueRouteImport.update({
@@ -55,6 +61,7 @@ const SubmissionsRefRoute = SubmissionsRefRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/approvals'
     | '/catalogue'
     | '/requests'
     | '/sign-in'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/approvals'
     | '/catalogue'
     | '/requests'
     | '/sign-in'
@@ -103,6 +114,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/approvals'
     | '/catalogue'
     | '/requests'
     | '/sign-in'
@@ -113,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApprovalsRoute: typeof ApprovalsRoute
   CatalogueRoute: typeof CatalogueRoute
   RequestsRoute: typeof RequestsRoute
   SignInRoute: typeof SignInRoute
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/approvals': {
+      id: '/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof ApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalogue': {
@@ -177,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApprovalsRoute: ApprovalsRoute,
   CatalogueRoute: CatalogueRoute,
   RequestsRoute: RequestsRoute,
   SignInRoute: SignInRoute,

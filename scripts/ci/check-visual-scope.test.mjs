@@ -2721,3 +2721,30 @@ test("G8 rejects a baseline manifest entry for a not-started route", async () =>
     /future-inbox references an inventory route that is not marked in progress or complete/,
   );
 });
+
+test("G8 rejects candidate capture running before a failed comparison", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(
+    "if: ${{ failure() && steps.scope.outputs.full != 'false' }}",
+    "if: ${{ steps.scope.outputs.full != 'false' }}",
+  );
+  assert.notEqual(ciWorkflow, original);
+  const result = await runVisualScope({ ciWorkflow });
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /failure-propagating visual regression/);
+});
+
+test("G8 rejects diagnostic capture that overwrites comparison evidence", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(" --output=candidate-visual-results", "");
+  assert.notEqual(ciWorkflow, original);
+  const result = await runVisualScope({ ciWorkflow });
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /failure-propagating visual regression/);
+});

@@ -50,13 +50,14 @@ function raiseVersionFloor(
  * never from the render that scheduled the save. */
 export function currentWorkItemVersion(
   queryClient: QueryClient,
-  item: WorkItemDetailRow,
+  item: Pick<WorkItemDetailRow, "key" | "version">,
 ) {
   const cached = queryClient.getQueryData<WorkItemDetailRow>(
     workItemDetailKey(item.key),
   );
   return Math.max(
-    cached?.version ?? item.version,
+    cached?.version ?? 0,
+    item.version,
     versionFloor(queryClient, item.key) ?? 0,
   );
 }

@@ -1389,6 +1389,12 @@
 		}
 	},
 	"navigation": {
+		"projectViews": {
+			"workItems": "작업",
+			"calendar": "캘린더",
+			"selectProject": "프로젝트 선택",
+			"noProjects": "프로젝트 없음"
+		},
 		"commandPalette": {
 			"suggestions": "추천",
 			"commands": "명령",
@@ -2745,6 +2751,60 @@
 		}
 	},
 	"portal": {
+		"navigation": {
+			"title": "Customer portal",
+			"description": "Navigate your requests and approvals.",
+			"home": "Home",
+			"catalogue": "Request catalogue",
+			"requests": "My requests",
+			"approvals": "Approvals",
+			"signOut": "Sign out",
+			"signOutFailed": "Could not sign out. Try again.",
+			"breadcrumb": "Breadcrumb",
+			"request": "Request"
+		},
+		"home": {
+			"title": "How can we help?",
+			"description": "Raise a request, track progress or review an approval.",
+			"recent": "Recent requests",
+			"allRequests": "View all requests"
+		},
+		"requests": {
+			"title": "My requests",
+			"description": "Track requests you submitted or can view across your organisation.",
+			"newRequest": "New request",
+			"emptyTitle": "No requests yet",
+			"emptyDescription": "You have no visible requests. Choose a request type to get started.",
+			"browseCatalogue": "Browse request catalogue",
+			"loadFailed": "Could not load your requests. Try again.",
+			"reference": "Reference",
+			"type": "Request type",
+			"status": "Status",
+			"visibility": "Visibility",
+			"submitted": "Submitted",
+			"pagination": "Request pages",
+			"latest": "Back to latest",
+			"older": "Older requests"
+		},
+		"approvals": {
+			"title": "Approvals",
+			"description": "Review customer approvals addressed to you.",
+			"recorded": "Decision recorded.",
+			"conflict": "This approval was decided, withdrawn or expired. Its current state has been refreshed.",
+			"forbidden": "This approval is no longer available to you.",
+			"failed": "Could not record your decision. Try again.",
+			"loadFailed": "Could not load approvals. Try again.",
+			"empty": "No approvals are waiting for you.",
+			"request": "Request",
+			"expires": "Expires",
+			"decision": "Decision",
+			"review": "Review approval",
+			"loading": "Loading approval…",
+			"unavailable": "This approval is no longer awaiting your decision or is unavailable to you.",
+			"note": "Decision note (required when rejecting)",
+			"approve": "Approve",
+			"reject": "Reject"
+		},
 		"unavailable": {
 			"title": "고객 포털을 사용할 수 없습니다",
 			"description": "고객 액세스는 아직 사용할 수 없습니다. 도움이 필요하면 서비스 데스크 관리자에게 문의하세요."

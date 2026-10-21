@@ -29,6 +29,7 @@ export const DUE_DATE_FILTER_VALUES = {
 } as const;
 
 export type ProjectViewSearch = ProjectViewFilters & {
+  filter?: string;
   taskId?: string;
   layout?: ProjectBoardLayout;
   month?: string;
@@ -57,7 +58,7 @@ const FILTER_KEYS = [
   "dueDate",
   "labels",
 ] as const;
-const SCALAR_KEYS = ["taskId", "month", "q", "sort", "dir"] as const;
+const SCALAR_KEYS = ["filter", "taskId", "month", "q", "sort", "dir"] as const;
 
 // A value the router's default codec typed as a number or boolean is read back as its
 // string form, so a project view never drops `q=123` when the search was parsed for

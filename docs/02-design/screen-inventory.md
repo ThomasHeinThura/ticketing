@@ -184,7 +184,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Plugins | `/agent/god-mode/plugins` | route | P4 | ⬜ |
 | Observability and instance MFA policy | `/god-mode/observability` | route | P0 | 🟡 |
 | MCP usage | `/agent/god-mode/mcp` | route | P4 | ⬜ |
-| Audit log | `/agent/god-mode/audit` | route | P2 | ⬜ |
+| Audit log | `/agent/god-mode/audit` | route | P2 | 🟡 |
 | Import runs | `/agent/god-mode/import` | route | P6 | ⬜ |
 | Users | `/agent/god-mode/users` | route | P4 | 🟡 |
 
@@ -194,15 +194,15 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | --- | --- | --- | --- | :-: |
 | Sign in | `/sign-in` | route | P3 | 🟡 |
 | Accept invitation | `/portal/invite` | route | P3 | ⬜ |
-| Home | `/portal` | route | P3 | ⬜ |
-| My requests | `/portal/requests` | route | P3 | ⬜ |
+| Home | `/` | route | P3 | 🟡 |
+| My requests | `/requests` | route | P3 | 🟡 |
 | Request detail (work item) | `/portal/requests/{ref}` | route | P3 | ⬜ |
 | Submission page (pre-acceptance, same URL) | `/portal/requests/{ref}` | section | P3 | ⬜ |
 | Catalogue | `/portal/new` | route | P3 | ⬜ |
 | Request form | `/portal/new/{typeKey}` | route | P3 | ⬜ |
 | Customer portal — request catalogue and selected form | `/catalogue?q=no-match&key=access` | route | P3 | 🟡 |
 | Customer portal — submission detail | `/submissions/{ref}` | route | P3 | 🟡 |
-| Approvals | `/portal/approvals` | route | P3 | ⬜ |
+| Approvals | `/approvals?approval={id}` | route | P3 | 🟡 |
 | Projects list | `/portal/projects` | route | P3 | ⬜ |
 | Project detail | `/portal/projects/{key}` | route | P3 | ⬜ |
 | Knowledge base | `/portal/kb` | route | P5 | ⬜ |

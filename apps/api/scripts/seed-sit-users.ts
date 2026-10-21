@@ -1,3 +1,7 @@
+import { randomBytes } from "node:crypto";
+import { lstatSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createId } from "@paralleldrive/cuid2";
 import { BUILT_IN_ROLES, type BuiltInRoleKey } from "@taskdesk/permissions";
 import bcrypt from "bcryptjs";
@@ -34,7 +38,7 @@ const SIT_ACCOUNTS: readonly SitAccount[] = [
     id: "sit-user-admin",
     personId: "sit-person-admin",
     email: "admin@taskdesk.local",
-    password: "TaskDesk!Admin2026",
+    password: randomBytes(24).toString("base64url"),
     name: "Ada Lovelace (Instance & Workspace Admin)",
     userRole: "admin",
     side: "staff",
@@ -45,7 +49,7 @@ const SIT_ACCOUNTS: readonly SitAccount[] = [
     id: "sit-user-agent",
     personId: "sit-person-agent",
     email: "agent@taskdesk.local",
-    password: "TaskDesk!Agent2026",
+    password: randomBytes(24).toString("base64url"),
     name: "Grace Hopper (Service Desk Agent)",
     userRole: "user",
     side: "staff",
@@ -56,7 +60,7 @@ const SIT_ACCOUNTS: readonly SitAccount[] = [
     id: "sit-user-lead",
     personId: "sit-person-lead",
     email: "lead@taskdesk.local",
-    password: "TaskDesk!Lead2026",
+    password: randomBytes(24).toString("base64url"),
     name: "Alan Turing (Project Lead & Approver)",
     userRole: "user",
     side: "staff",
@@ -67,7 +71,7 @@ const SIT_ACCOUNTS: readonly SitAccount[] = [
     id: "sit-user-customer",
     personId: "sit-person-customer",
     email: "customer@acme.example",
-    password: "TaskDesk!Customer2026",
+    password: randomBytes(24).toString("base64url"),
     name: "Katherine Johnson (Acme Customer Requester)",
     userRole: "user",
     side: "customer",
@@ -81,7 +85,7 @@ async function upsertUserAndPassword(
   account: SitAccount,
   now: Date,
 ): Promise<string> {
-  const passwordHash = await bcrypt.hash(account.password, 10);
+  const passwordHash = await bcrypt.hash(account.password, 12);
 
   const [existingByEmail] = await tx
     .select()
@@ -164,6 +168,9 @@ async function upsertUserAndPassword(
     });
   }
 
+  await tx
+    .delete(schema.sessionTable)
+    .where(eq(schema.sessionTable.userId, userId));
   return userId;
 }
 
@@ -534,7 +541,66 @@ async function seedSitRequestTypes(input: {
 export async function runSitUserSeed(argv: readonly string[] = process.argv) {
   if (!argv.includes("--sit")) {
     throw new Error(
-      "seed-sit-users refuses to run without --sit: it publishes test passwords and completes instance setup. Use it only on a local SIT database.",
+      "seed-sit-users requires --sit and a private --credentials-file destination. Use it only on a dedicated SIT database.",
+    );
+  }
+  const credentialsIndex = argv.indexOf("--credentials-file");
+  const credentialsFile =
+    credentialsIndex >= 0 ? argv[credentialsIndex + 1] : undefined;
+  if (!credentialsFile || credentialsFile.startsWith("--"))
+    throw new Error(
+      "Supply --credentials-file with a new private file outside the source checkout.",
+    );
+  const destination = path.join(
+    realpathSync(path.dirname(path.resolve(credentialsFile))),
+    path.basename(credentialsFile),
+  );
+  const repository = realpathSync(
+    fileURLToPath(new URL("../../../", import.meta.url)),
+  );
+  const relative = path.relative(repository, destination);
+  if (
+    relative === "" ||
+    (!relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  )
+    throw new Error(
+      "SIT credentials must be written outside the source checkout.",
+    );
+  let existingCredentials: unknown;
+  try {
+    const info = lstatSync(destination);
+    if (!info.isFile() || info.isSymbolicLink() || (info.mode & 0o077) !== 0)
+      throw new Error(
+        "The credentials file must be a private regular file (mode 0600).",
+      );
+    existingCredentials = JSON.parse(readFileSync(destination, "utf8"));
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
+      throw error;
+  }
+  if (existingCredentials) {
+    const rows = (existingCredentials as { accounts?: unknown }).accounts;
+    if (!Array.isArray(rows) || rows.length !== SIT_ACCOUNTS.length)
+      throw new Error(
+        "The private credentials file must contain exactly the four SIT accounts.",
+      );
+    for (const account of SIT_ACCOUNTS) {
+      const matching = rows.filter((row) => row && row.email === account.email);
+      if (
+        matching.length !== 1 ||
+        typeof matching[0].password !== "string" ||
+        matching[0].password.length < 24
+      )
+        throw new Error(
+          "The private credentials file has missing, duplicate or weak account credentials.",
+        );
+      account.password = matching[0].password;
+    }
+  } else {
+    writeFileSync(
+      destination,
+      `${JSON.stringify({ accounts: SIT_ACCOUNTS.map(({ email, password }) => ({ email, password })) }, null, 2)}\n`,
+      { mode: 0o600, flag: "wx" },
     );
   }
   config();

@@ -303,5 +303,36 @@
 		"applicationRoute": "/agent/projects/$projectKey/settings/danger",
 		"test": "project settings danger screen @visual",
 		"screenshot": "project-settings-danger.png"
+	},
+	{
+		"name": "portal-home",
+		"inventoryRoute": "/",
+		"applicationRoute": "/",
+		"test": "portal home screen @visual",
+		"screenshot": "portal-home.png",
+		"origin": "portal"
+	},
+	{
+		"name": "portal-requests",
+		"inventoryRoute": "/requests",
+		"applicationRoute": "/requests",
+		"test": "portal requests screen @visual",
+		"screenshot": "portal-requests.png",
+		"origin": "portal"
+	},
+	{
+		"name": "portal-approvals",
+		"inventoryRoute": "/approvals?approval={id}",
+		"applicationRoute": "/approvals",
+		"test": "portal approval decision screen @visual",
+		"screenshot": "portal-approvals.png",
+		"origin": "portal"
+	},
+	{
+		"name": "instance-audit",
+		"inventoryRoute": "/agent/god-mode/audit",
+		"applicationRoute": "/agent/god-mode/audit",
+		"test": "instance audit screen @visual",
+		"screenshot": "instance-audit.png"
 	}
 ]

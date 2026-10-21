@@ -17,7 +17,7 @@ const PROJECT_VIEW_SHORTCUTS = [
 ] as const satisfies readonly ProjectView[];
 
 export function createProjectViewShortcutHandlers(
-  params: ProjectRouteParams,
+  params: ProjectRouteParams & { projectKey?: string },
   currentSearch: string,
   navigate: (href: string) => void,
   onLayoutChange?: (layout: "board" | "list") => void,
@@ -35,10 +35,16 @@ export function createProjectViewShortcutHandlers(
 
 export function buildProjectViewSwitchUrl(
   view: ProjectView,
-  params: ProjectRouteParams,
+  params: ProjectRouteParams & { projectKey?: string },
   currentSearch: string,
 ) {
   const query = new URLSearchParams(currentSearch);
+  if (params.projectKey && ["board", "list", "backlog"].includes(view)) {
+    if (view !== "backlog") query.set("layout", view);
+    const suffix = query.toString();
+    const path = `/agent/projects/${encodeURIComponent(params.projectKey)}/${view === "backlog" ? "backlog" : "work"}`;
+    return suffix ? `${path}?${suffix}` : path;
+  }
   let path: string;
   switch (view) {
     case "backlog":

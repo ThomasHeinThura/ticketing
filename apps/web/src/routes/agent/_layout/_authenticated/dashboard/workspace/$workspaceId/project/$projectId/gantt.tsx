@@ -24,10 +24,10 @@ import {
 import { useTranslation } from "react-i18next";
 import ProjectLayout from "@/components/common/project-layout";
 import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
-import { GanttTaskBar } from "@/components/gantt/gantt-task-bar";
+import { CanonicalGanttTaskBar } from "@/components/gantt/canonical-gantt-task-bar";
 import PageTitle from "@/components/page-title";
-import TaskDetailsSheet from "@/components/task/task-details-sheet";
-import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
+import WorkItemSidePane from "@/components/work-item/work-item-side-pane";
+import { useScheduleProject } from "@/hooks/queries/work-item/use-schedule-project";
 import { cn } from "@/lib/cn";
 import { filterProjectTasks } from "@/lib/filter-project-tasks";
 import { getStatusLabel } from "@/lib/i18n/domain";
@@ -59,7 +59,11 @@ function RouteComponent() {
   const search = Route.useSearch();
   const { taskId } = search;
   const navigate = useNavigate();
-  const { data: project } = useGetTasks(projectId);
+  const { data: project } = useScheduleProject(
+    projectId,
+    workspaceId,
+    search.filter,
+  );
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const searchQuery = search.q ?? "";
   const filters = projectViewFiltersFromSearch(search);
@@ -486,7 +490,8 @@ function RouteComponent() {
                             minWidth: `${timeline.timelineMinWidthRem}rem`,
                           }}
                         >
-                          <GanttTaskBar
+                          <CanonicalGanttTaskBar
+                            workspaceId={workspaceId}
                             task={task}
                             timeline={timeline}
                             pixelsPerDay={pixelsPerDay}
@@ -503,12 +508,12 @@ function RouteComponent() {
           </div>
         )}
 
-        <TaskDetailsSheet
-          taskId={taskId}
-          projectId={projectId}
-          workspaceId={workspaceId}
-          onClose={() => handleOpenTask(undefined)}
-        />
+        {taskId ? (
+          <WorkItemSidePane
+            itemKey={taskId}
+            onClose={() => handleOpenTask(undefined)}
+          />
+        ) : null}
       </div>
     </ProjectLayout>
   );

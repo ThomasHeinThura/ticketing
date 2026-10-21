@@ -7,6 +7,18 @@ import {
 import { projectViewRoutes } from "./project-view-routes";
 
 describe("project layout navigation", () => {
+  it("keeps canonical filter meaning when shortcuts return from calendar to work", () => {
+    const filter = "AND(priority:high,label:Customer)";
+    const url = buildProjectViewSwitchUrl(
+      "board",
+      { workspaceId: "ws", projectId: "project", projectKey: "service-team" },
+      `?filter=${encodeURIComponent(filter)}&month=2026-10`,
+    );
+    expect(
+      new URL(url, "https://agent.invalid").searchParams.get("filter"),
+    ).toBe(filter);
+    expect(url).toMatch(/^\/agent\/projects\/service-team\/work\?/);
+  });
   const params = { workspaceId: "workspace-1", projectId: "project-1" };
 
   it.each([

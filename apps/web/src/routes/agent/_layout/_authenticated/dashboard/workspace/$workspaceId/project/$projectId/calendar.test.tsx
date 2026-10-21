@@ -27,8 +27,8 @@ vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ searchStr: "?month=2026-10&q=urgent" }),
 }));
 
-vi.mock("@/hooks/queries/task/use-get-tasks", () => ({
-  useGetTasks: () => ({
+vi.mock("@/hooks/queries/work-item/use-schedule-project", () => ({
+  useScheduleProject: () => ({
     data: {
       id: "project-1",
       name: "Roadmap",
@@ -80,7 +80,7 @@ vi.mock("@/components/calendar/month-grid", () => ({
     </button>
   ),
 }));
-vi.mock("@/components/task/task-details-sheet", () => ({
+vi.mock("@/components/work-item/work-item-side-pane", () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     // ui-exempt: this test double stands in for the task details sheet's close control.
     <button type="button" onClick={onClose}>

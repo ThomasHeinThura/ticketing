@@ -5618,6 +5618,25 @@
 			"type": "object",
 			"additionalProperties": false,
 			"properties": {
+				"projectViews": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"workItems": {
+							"type": "string"
+						},
+						"calendar": {
+							"type": "string"
+						},
+						"selectProject": {
+							"type": "string"
+						},
+						"noProjects": {
+							"type": "string"
+						}
+					},
+					"required": ["workItems", "calendar", "selectProject", "noProjects"]
+				},
 				"commandPalette": {
 					"type": "object",
 					"additionalProperties": false,
@@ -6193,6 +6212,7 @@
 				}
 			},
 			"required": [
+				"projectViews",
 				"commandPalette",
 				"notifications",
 				"sidebar",
@@ -11358,6 +11378,217 @@
 			"type": "object",
 			"additionalProperties": false,
 			"properties": {
+				"navigation": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"home": {
+							"type": "string"
+						},
+						"catalogue": {
+							"type": "string"
+						},
+						"requests": {
+							"type": "string"
+						},
+						"approvals": {
+							"type": "string"
+						},
+						"signOut": {
+							"type": "string"
+						},
+						"signOutFailed": {
+							"type": "string"
+						},
+						"breadcrumb": {
+							"type": "string"
+						},
+						"request": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"home",
+						"catalogue",
+						"requests",
+						"approvals",
+						"signOut",
+						"signOutFailed",
+						"breadcrumb",
+						"request"
+					]
+				},
+				"home": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"recent": {
+							"type": "string"
+						},
+						"allRequests": {
+							"type": "string"
+						}
+					},
+					"required": ["title", "description", "recent", "allRequests"]
+				},
+				"requests": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"newRequest": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"browseCatalogue": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"reference": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						},
+						"status": {
+							"type": "string"
+						},
+						"visibility": {
+							"type": "string"
+						},
+						"submitted": {
+							"type": "string"
+						},
+						"pagination": {
+							"type": "string"
+						},
+						"latest": {
+							"type": "string"
+						},
+						"older": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"newRequest",
+						"emptyTitle",
+						"emptyDescription",
+						"browseCatalogue",
+						"loadFailed",
+						"reference",
+						"type",
+						"status",
+						"visibility",
+						"submitted",
+						"pagination",
+						"latest",
+						"older"
+					]
+				},
+				"approvals": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"recorded": {
+							"type": "string"
+						},
+						"conflict": {
+							"type": "string"
+						},
+						"forbidden": {
+							"type": "string"
+						},
+						"failed": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						},
+						"request": {
+							"type": "string"
+						},
+						"expires": {
+							"type": "string"
+						},
+						"decision": {
+							"type": "string"
+						},
+						"review": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"note": {
+							"type": "string"
+						},
+						"approve": {
+							"type": "string"
+						},
+						"reject": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"recorded",
+						"conflict",
+						"forbidden",
+						"failed",
+						"loadFailed",
+						"empty",
+						"request",
+						"expires",
+						"decision",
+						"review",
+						"loading",
+						"unavailable",
+						"note",
+						"approve",
+						"reject"
+					]
+				},
 				"unavailable": {
 					"type": "object",
 					"additionalProperties": false,
@@ -11522,7 +11753,16 @@
 					]
 				}
 			},
-			"required": ["unavailable", "notFound", "error", "intake"]
+			"required": [
+				"navigation",
+				"home",
+				"requests",
+				"approvals",
+				"unavailable",
+				"notFound",
+				"error",
+				"intake"
+			]
 		},
 		"instanceUsers": {
 			"type": "object",

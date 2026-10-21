@@ -116,6 +116,15 @@ describe("canonical work-item labels", () => {
         assigned: true,
       },
     ]);
+    const schedulePage = await app.request(
+      `/api/projects/${item.projectId}/work-items`,
+    );
+    expect(schedulePage.status).toBe(200);
+    expect(
+      (await schedulePage.json()).data.find(
+        (row: { key: string }) => row.key === item.key,
+      ).labels,
+    ).toEqual([{ id: label.id, name: label.name, color: label.color }]);
     const activity = await db
       .select()
       .from(schema.activityTable)

@@ -19,6 +19,16 @@ const hierarchy = {
   collapsed: true as const,
 };
 describe("hierarchy URL state", () => {
+  it("preserves case and hyphens in real project prefixes across reload", () => {
+    const hierarchy = {
+      itemKey: "service-team-1",
+      expanded: ["service-team-1"],
+      pages: { "service-team-1": 2 },
+    };
+    expect(
+      parseWorkItemHierarchySearch({ hierarchy: JSON.stringify(hierarchy) }),
+    ).toEqual({ hierarchy });
+  });
   it("round-trips detail activity and hierarchy disclosures/pages together", () => {
     const url = new URL(
       routes.workItemDetail.build(

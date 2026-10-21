@@ -18,6 +18,7 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { HttpError } from "@/lib/http-error";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
+import { isWorkItemHierarchyKey } from "@/lib/work-item-hierarchy-search";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import { useWorkItemFeedback } from "./work-item-feedback";
 import {
@@ -50,11 +51,8 @@ export default function WorkItemParentControl({
   const [error, setError] = useState("");
   const { reportConflict, clearConflict, announce } = useWorkItemFeedback();
   const refresh = useRefreshWorkItem(item);
-  const key = draft.trim().toUpperCase();
-  const validKey =
-    key.length <= 64 &&
-    /^[A-Z][A-Z0-9]*-[1-9]\d*$/u.test(key) &&
-    key !== item.key;
+  const key = draft.trim();
+  const validKey = isWorkItemHierarchyKey(key) && key !== item.key;
   const candidate = useQuery({
     queryKey: [
       "work-items",

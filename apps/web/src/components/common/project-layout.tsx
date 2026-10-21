@@ -14,24 +14,26 @@ import {
   SquareKanban,
   SquircleDashed,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { lazy, type ReactNode, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import MobileProjectNav from "@/components/common/header/mobile-project-nav";
 import ProjectCrumbSelect from "@/components/common/header/project-crumb-select";
 import WorkspaceCrumbSelect from "@/components/common/header/workspace-crumb-select";
 import Layout from "@/components/common/layout";
 import RealtimeUnavailableNotice from "@/components/common/realtime-unavailable-notice";
-import CreateProjectModal from "@/components/shared/modals/create-project-modal";
+
+const CreateProjectModal = lazy(
+  () => import("@/components/shared/modals/create-project-modal"),
+);
+
 import { shortcuts } from "@/constants/shortcuts";
 import useGetProject from "@/hooks/queries/project/use-get-project";
+import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useProjectWebSocket } from "@/hooks/use-project-websocket";
-import { authClient } from "@/lib/auth-client";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { buildProjectViewSwitchUrl } from "@/lib/project-layout-navigation";
-import {
-  getProjectLayoutStorage,
-  writeProjectLayoutPreference,
-} from "@/lib/project-layout-preference";
+import { routes } from "@/lib/routes";
 
 type ProjectLayoutProps = {
   projectId: string;
@@ -53,8 +55,11 @@ export default function ProjectLayout({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: session } = authClient.useSession();
   const { data: project } = useGetProject({ id: projectId, workspaceId });
+  const permissions = useWorkspacePermission(workspaceId);
+  const canCreateProject =
+    !permissions.isCheckingPermissions && permissions.canCreateProjects();
+  const { data: workspaceProjects } = useGetProjects({ workspaceId });
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
 
@@ -70,29 +75,20 @@ export default function ProjectLayout({
           ? "gantt"
           : "board");
   const handleNavigateToBacklog = () => {
-    navigate({
-      to: buildProjectViewSwitchUrl(
-        "backlog",
-        { workspaceId, projectId },
-        location.searchStr,
-      ),
-    });
+    if (project)
+      void navigate({
+        href: `${routes.projectBacklog.build({ projectKey: project.slug })}${location.searchStr}`,
+      });
   };
-
   const handleNavigateToBoard = () => {
-    writeProjectLayoutPreference(
-      getProjectLayoutStorage(),
-      session?.user.id,
-      projectId,
-      "board",
-    );
-    navigate({
-      to: buildProjectViewSwitchUrl(
-        "board",
-        { workspaceId, projectId },
-        location.searchStr,
-      ),
-    });
+    if (project)
+      void navigate({
+        href: (() => {
+          const search = new URLSearchParams(location.searchStr);
+          search.set("layout", "board");
+          return `/agent/projects/${encodeURIComponent(project.slug)}/work?${search}`;
+        })(),
+      });
   };
 
   const handleNavigateToCalendar = () => {
@@ -116,19 +112,28 @@ export default function ProjectLayout({
   };
 
   const handleProjectSwitch = (nextProjectId: string) => {
-    navigate({
+    const nextProject = workspaceProjects?.find(
+      (candidate) => candidate.id === nextProjectId,
+    );
+    if (!nextProject) return;
+    if (resolvedView === "board" || resolvedView === "backlog") {
+      void navigate({
+        href:
+          resolvedView === "backlog"
+            ? routes.projectBacklog.build({ projectKey: nextProject.slug })
+            : routes.workItemList.build(
+                { projectKey: nextProject.slug },
+                { layout: "board" },
+              ),
+      });
+      return;
+    }
+    void navigate({
       to:
-        resolvedView === "backlog"
-          ? "/dashboard/workspace/$workspaceId/project/$projectId/backlog"
-          : resolvedView === "calendar"
-            ? "/dashboard/workspace/$workspaceId/project/$projectId/calendar"
-            : resolvedView === "gantt"
-              ? "/dashboard/workspace/$workspaceId/project/$projectId/gantt"
-              : "/dashboard/workspace/$workspaceId/project/$projectId/board",
-      params: {
-        workspaceId,
-        projectId: nextProjectId,
-      },
+        resolvedView === "calendar"
+          ? "/dashboard/workspace/$workspaceId/project/$projectId/calendar"
+          : "/dashboard/workspace/$workspaceId/project/$projectId/gantt",
+      params: { workspaceId, projectId: nextProjectId },
     });
   };
 
@@ -169,7 +174,11 @@ export default function ProjectLayout({
                 projectId={projectId}
                 projectName={project?.name}
                 onSelectProject={handleProjectSwitch}
-                onAddProject={() => setIsCreateProjectModalOpen(true)}
+                onAddProject={
+                  canCreateProject
+                    ? () => setIsCreateProjectModalOpen(true)
+                    : undefined
+                }
               />
             </div>
 
@@ -183,7 +192,11 @@ export default function ProjectLayout({
                 onSelectCalendar={handleNavigateToCalendar}
                 onSelectGantt={handleNavigateToGantt}
                 onSelectProject={handleProjectSwitch}
-                onAddProject={() => setIsCreateProjectModalOpen(true)}
+                onAddProject={
+                  canCreateProject
+                    ? () => setIsCreateProjectModalOpen(true)
+                    : undefined
+                }
               />
             </div>
 
@@ -211,7 +224,7 @@ export default function ProjectLayout({
                   )}
                 >
                   <SquareKanban className="size-3.5" />
-                  {t("tasks:title")}
+                  {t("navigation:projectViews.workItems")}
                 </Button>
                 <Button
                   variant={resolvedView === "calendar" ? "secondary" : "ghost"}
@@ -223,7 +236,7 @@ export default function ProjectLayout({
                   )}
                 >
                   <CalendarRange className="size-3.5" />
-                  {t("tasks:calendar.title")}
+                  {t("navigation:projectViews.calendar")}
                 </Button>
                 <Button
                   variant={resolvedView === "gantt" ? "secondary" : "ghost"}
@@ -250,10 +263,14 @@ export default function ProjectLayout({
       <RealtimeUnavailableNotice status={socketStatus} />
       <Layout.Content>{children}</Layout.Content>
 
-      <CreateProjectModal
-        open={isCreateProjectModalOpen}
-        onClose={() => setIsCreateProjectModalOpen(false)}
-      />
+      {isCreateProjectModalOpen ? (
+        <Suspense fallback={null}>
+          <CreateProjectModal
+            open={isCreateProjectModalOpen}
+            onClose={() => setIsCreateProjectModalOpen(false)}
+          />
+        </Suspense>
+      ) : null}
     </Layout>
   );
 }
