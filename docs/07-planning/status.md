@@ -1,7 +1,7 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `db7054b6`; primary checkout refreshed to that source.
+Current inspected GitHub main: `f8f51c77`; primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
@@ -24,9 +24,9 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   SLA/attachment panels, redirect/seed fixes and dependency remediation are on main.
 - #875 is merged: all 18 required checks passed. Four isolated integration shards reduce
   the slowest partition to 8m43s from the former 31m22s serial step; the collector fails closed.
-- #870 approvals decide is refreshed to `38a5d21c`, with independent delta review. 17/18
-  checks passed; G11 first failed calibration stability, then its palette warm-up setup.
-  #876 records the failure evidence. No red gate is bypassed or called a product-budget pass.
+- #870 approvals decide is merged after all 18 required checks passed on its reviewed
+  final source. Prior G11 calibration, warm-up and slow-runner budget failures remain
+  adverse evidence; #876/#711 track them. Passive phase timing now accompanies failures.
 - #871's stack is reconciled without rewriting remote history. Independent review found
   three editor/assignment defects; fixes and delta review passed, plus 327 work-item tests.
   Final-head hosted checks, real-data use and protected merge remain outstanding.

@@ -38,6 +38,14 @@ vi.mock("@/hooks/queries/approval/use-get-work-item-approvals", () => ({
   }),
 }));
 
+vi.mock("@/hooks/queries/approval/use-get-my-approvals", () => ({
+  default: () => ({ data: { approvals: [] } }),
+}));
+
+vi.mock("@/hooks/mutations/approval/use-decide-approval", () => ({
+  default: () => ({ mutate: () => {}, isPending: false, isError: false }),
+}));
+
 vi.mock("@/hooks/mutations/approval/use-withdraw-approval", () => ({
   default: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
 }));
