@@ -18,7 +18,7 @@ This is a dated snapshot; refresh live GitHub before acting.
 No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdrawn by the
 2026-10-20 lean reset; its mock UI was reverted and SIT seed accounts preserved.
 
-## Current implementation
+## Next
 
 - #864–#869 and #872–#873 are merged. Agent/settings Kaneo shells, real Inbox/My work,
   SLA/attachment panels, redirect/seed fixes and dependency remediation are on main.
