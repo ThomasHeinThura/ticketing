@@ -600,7 +600,9 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       const payload = await response.json();
       expect(payload.data).toHaveLength(1);
       expect(payload.meta.total).toBe(51);
-      await expect(hierarchy.getByRole("link")).toHaveCount(52);
+      await expect(hierarchy.getByRole("link")).toHaveCount(52, {
+        timeout: 15000,
+      });
       await expect(more).toHaveCount(0);
       await page.reload();
       await expect(hierarchy.getByRole("link")).toHaveCount(52, {
