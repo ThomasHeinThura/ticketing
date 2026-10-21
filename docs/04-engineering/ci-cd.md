@@ -848,3 +848,11 @@ v1's deploy script probed the API before declaring success, and it caught a whol
 
 - [Deployment](../05-operations/deployment.md) · [Environments](../05-operations/environments.md)
 - [Testing strategy](testing-strategy.md)
+
+### Palette warm-up failure evidence
+
+The launcher emits passive `taskdesk.palette.*` Performance marks for import, primary
+content, sidebar completion/timeout, paint frames, idle execution and warm commit. G11
+records popup insertion and prints these phases plus bounded static-script timings if
+its existing five-second warm-up assertion fails. This is diagnostic evidence, not a
+retry or a change to calibration, sample counts, budgets or failure handling.

@@ -10089,6 +10089,27 @@
 								},
 								"withdrawFor": {
 									"type": "string"
+								},
+								"approve": {
+									"type": "string"
+								},
+								"reject": {
+									"type": "string"
+								},
+								"rejectNote": {
+									"type": "string"
+								},
+								"confirmReject": {
+									"type": "string"
+								},
+								"decideErrorTitle": {
+									"type": "string"
+								},
+								"decideFailed": {
+									"type": "string"
+								},
+								"decideConflict": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -10113,7 +10134,14 @@
 								"withdrawForbidden",
 								"withdrawFailed",
 								"withdrawn",
-								"withdrawFor"
+								"withdrawFor",
+								"approve",
+								"reject",
+								"rejectNote",
+								"confirmReject",
+								"decideErrorTitle",
+								"decideFailed",
+								"decideConflict"
 							]
 						},
 						"sla": {

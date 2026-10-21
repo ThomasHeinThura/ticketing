@@ -7306,6 +7306,7 @@
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[2]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[3]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#2",
@@ -9323,6 +9324,17 @@
       },
       {
         "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -10533,6 +10545,7 @@
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[2]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[3]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-muted-foreground#2",
@@ -12550,6 +12563,17 @@
       },
       {
         "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/WorkItemApprovals[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-approvals.tsx::WorkItemApprovals::section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-approvals.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
