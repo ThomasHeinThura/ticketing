@@ -9,16 +9,13 @@ import {
 import { shortcuts } from "@/constants/shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { waitsForPrimaryContent } from "@/lib/after-primary-content";
-import { markPaletteWarm } from "@/lib/palette-warm";
+import { whenSidebarShown } from "@/lib/sidebar-shown";
 import type { CommandPaletteIntent, CommandPaletteRequest } from "./index";
 
 let paletteModule: Promise<typeof import("./index")> | undefined;
 /** One download of the palette module, shared by the warm-up prefetch and the lazy mount. */
 function loadPaletteModule() {
-  paletteModule ??= import("./index").then((module) => {
-    markPaletteWarm();
-    return module;
-  });
+  paletteModule ??= import("./index");
   return paletteModule;
 }
 
@@ -105,16 +102,22 @@ export default function CommandPaletteLauncher() {
     let observer: MutationObserver | undefined;
     let cancelled = false;
     const idleWindow = window as IdleWindow;
+    let started = false;
     const mountAfterCommit = () => {
-      if (
-        cancelled ||
-        requestedRef.current ||
-        firstFrame !== undefined ||
-        secondFrame !== undefined
-      )
-        return;
-      // Start the download now; only the mount waits for frames and idle time.
+      if (cancelled || requestedRef.current || started) return;
+      started = true;
+      // Start the download now; only the mount waits (for the sidebar on the heavy screens,
+      // then for paint frames and idle time).
       void loadPaletteModule().catch(() => {});
+      // On those screens the sidebar has already taken its turn, so idle time is only
+      // waited for briefly: the popup must be up well inside G11's 5 s.
+      if (waitsForPrimary)
+        void whenSidebarShown().then(() => {
+          if (!cancelled && !requestedRef.current) mountWhenIdle(300);
+        });
+      else mountWhenIdle(1_000);
+    };
+    const mountWhenIdle = (idleTimeoutMs: number) => {
       firstFrame = requestAnimationFrame(() => {
         if (cancelled || requestedRef.current) return;
         secondFrame = requestAnimationFrame(() => {
@@ -123,14 +126,13 @@ export default function CommandPaletteLauncher() {
             setKeepMounted(true);
             return;
           }
-          // Bounded: the sidebar mounts in the same idle window and can keep the main thread
-          // busy on a slow machine, which must not leave the palette cold.
+          // Bounded, so a busy main thread on a slow machine cannot leave the palette cold.
           idleMountRef.current = idleWindow.requestIdleCallback(
             () => {
               idleMountRef.current = undefined;
               if (!cancelled) setKeepMounted(true);
             },
-            { timeout: 1_000 },
+            { timeout: idleTimeoutMs },
           );
         });
       });

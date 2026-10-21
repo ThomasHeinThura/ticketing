@@ -83,10 +83,9 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
   test("Journey 2: Project Overview (/agent/projects/$projectKey) and Work Layout Switcher (board, list, table)", async ({
     page,
   }) => {
+    // A project opens on its work view.
     await page.goto("/agent/projects/WLP");
-    await expect(
-      page.getByRole("heading", { name: "Project overview" }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/agent\/projects\/WLP\/work/);
 
     await page.goto("/agent/projects/WLP/work?layout=list");
     await expect(page.getByTestId("work-item-list-populated")).toBeVisible();

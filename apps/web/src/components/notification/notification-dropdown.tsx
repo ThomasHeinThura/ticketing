@@ -192,45 +192,52 @@ export function getNotificationContent(
   return notification.content ?? "";
 }
 
+/**
+ * Marks a notification read and opens what it is about. Shared by the dropdown and the
+ * full-page inbox (`/agent/inbox`).
+ */
+export function useNotificationClick() {
+  const navigate = useNavigate();
+  const { mutate: markAsRead } = useMarkNotificationAsRead();
+  return useCallback(
+    (notification: Notification) => {
+      if (!notification.isRead) {
+        markAsRead(notification.id);
+      }
+
+      const ed = getEventDataRecord(notification.eventData);
+      const workspaceId =
+        typeof ed?.workspaceId === "string" ? ed.workspaceId : null;
+      const projectId = typeof ed?.projectId === "string" ? ed.projectId : null;
+      const taskId = notification.resourceId ?? null;
+
+      if (
+        notification.resourceType === "task" &&
+        workspaceId &&
+        projectId &&
+        taskId
+      ) {
+        navigate({
+          to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
+          params: { workspaceId, projectId, taskId },
+        });
+      }
+    },
+    [markAsRead, navigate],
+  );
+}
+
 const NotificationDropdown = forwardRef<NotificationDropdownRef>(
   (_props, ref) => {
     const { t } = useTranslation();
-    const navigate = useNavigate();
     const { data: notifications } = useGetNotifications();
     const [isOpen, setIsOpen] = useState(false);
     const [showClearDialog, setShowClearDialog] = useState(false);
 
     const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead();
     const { mutate: clearAll } = useClearNotifications();
-    const { mutate: markAsRead } = useMarkNotificationAsRead();
 
-    const handleNotificationClick = useCallback(
-      (notification: Notification) => {
-        if (!notification.isRead) {
-          markAsRead(notification.id);
-        }
-
-        const ed = getEventDataRecord(notification.eventData);
-        const workspaceId =
-          typeof ed?.workspaceId === "string" ? ed.workspaceId : null;
-        const projectId =
-          typeof ed?.projectId === "string" ? ed.projectId : null;
-        const taskId = notification.resourceId ?? null;
-
-        if (
-          notification.resourceType === "task" &&
-          workspaceId &&
-          projectId &&
-          taskId
-        ) {
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
-            params: { workspaceId, projectId, taskId },
-          });
-        }
-      },
-      [markAsRead, navigate],
-    );
+    const handleNotificationClick = useNotificationClick();
 
     const unreadNotifications = notifications?.filter((n) => !n.isRead) || [];
     const hasNotifications = notifications && notifications.length > 0;

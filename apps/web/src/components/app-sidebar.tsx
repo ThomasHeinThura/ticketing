@@ -10,7 +10,7 @@ import {
   useSidebar,
 } from "@taskdesk/ui";
 import type * as React from "react";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { NavMain } from "@/components/nav-main";
 import { ThemeToggleDropdown } from "@/components/theme-toggle-dropdown";
@@ -18,6 +18,7 @@ import { VersionDisplay } from "@/components/version-display";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { shortcuts } from "@/constants/shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { markSidebarShown } from "@/lib/sidebar-shown";
 import Search from "./search";
 
 const NavProjects = lazy(() =>
@@ -25,6 +26,15 @@ const NavProjects = lazy(() =>
     default: module.NavProjects,
   })),
 );
+
+/**
+ * Rendered with the lazy project list, the sidebar's last piece: once it commits, the sidebar
+ * has rendered and the command palette may mount (lib/sidebar-shown.ts).
+ */
+function SidebarShown() {
+  useEffect(() => markSidebarShown(), []);
+  return null;
+}
 
 type AppSidebarProps = Omit<
   React.ComponentProps<typeof Sidebar>,
@@ -74,6 +84,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
           }
         >
           <NavProjects />
+          <SidebarShown />
         </Suspense>
       </SidebarContent>
       <SidebarFooter>
