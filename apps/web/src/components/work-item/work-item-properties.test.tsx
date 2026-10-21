@@ -8,6 +8,7 @@ import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemProperties from "./work-item-properties";
 
 const mocks = vi.hoisted(() => ({
+  labels: vi.fn(),
   update: vi.fn(),
   transition: vi.fn(),
   assign: vi.fn(),
@@ -26,6 +27,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
   initReactI18next: { type: "3rdParty", init: () => {} },
+}));
+vi.mock("@/fetchers/work-item/get-work-item-labels", () => ({
+  getWorkItemLabels: mocks.labels,
 }));
 vi.mock("@/fetchers/work-item/update-work-item", () => ({
   default: mocks.update,
@@ -99,6 +103,7 @@ function renderProps(node: ReactNode, seed?: WorkItemDetailRow) {
 }
 
 beforeEach(() => {
+  mocks.labels.mockReset().mockResolvedValue([]);
   for (const fn of [
     mocks.update,
     mocks.transition,
@@ -119,6 +124,79 @@ beforeEach(() => {
 });
 
 describe("WorkItemProperties", () => {
+  it("adds and removes a catalogue label with versioned writes", async () => {
+    mocks.labels.mockResolvedValue([
+      { id: "label-1", name: "Support", color: "teal", assigned: false },
+    ]);
+    mocks.update.mockImplementation(async (input) => {
+      mocks.labels.mockResolvedValue([
+        {
+          id: "label-1",
+          name: "Support",
+          color: "teal",
+          assigned: input.labelIds.length > 0,
+        },
+      ]);
+      return { key: "HELP-7", version: input.version + 1 };
+    });
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    const trigger = screen.getByRole("button", {
+      name: "tasks:properties.labels",
+    });
+    await waitFor(() => expect(trigger).toBeEnabled());
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Support" }));
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        key: "HELP-7",
+        version: 4,
+        labelIds: ["label-1"],
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: "Support" })).toBeChecked(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: "Support" })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "Support" }));
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenLastCalledWith({
+        key: "HELP-7",
+        version: 5,
+        labelIds: [],
+      }),
+    );
+  });
+
+  it("shows existing labels without offering edits to a read-only actor", async () => {
+    mocks.canUpdate = false;
+    mocks.labels.mockResolvedValue([
+      { id: "label-1", name: "Support", color: "teal", assigned: true },
+    ]);
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    expect(await screen.findByText("Support")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "tasks:properties.labels" }),
+    ).toBeDisabled();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("uses the existing conflict notice for concurrent label edits", async () => {
+    mocks.labels.mockResolvedValue([
+      { id: "label-1", name: "Support", color: "teal", assigned: false },
+    ]);
+    mocks.update.mockRejectedValue(new WorkItemVersionConflictError(4, 5));
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    const trigger = screen.getByRole("button", {
+      name: "tasks:properties.labels",
+    });
+    await waitFor(() => expect(trigger).toBeEnabled());
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Support" }));
+    expect(await screen.findByTestId("work-item-conflict")).toBeVisible();
+  });
+
   it("saves a priority with the item's version", async () => {
     mocks.update.mockResolvedValue({});
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);

@@ -1017,3 +1017,25 @@ keep their workspace meaning. This response grants no authority: write routes re
 current reach and capability. The client keys the map by both workspace and project and
 fails closed while changing projects; an allowed map from one project is never reused
 for another. Work-item editors and property controls use this scoped map.
+
+### Canonical work-item labels
+
+`GET /api/work-items/{key}/labels` requires `work_item:read` and item reach. It returns
+workspace-catalogue labels as `{ id, name, color, assigned }` rows; legacy task-bound copies
+are excluded. An absent, deleted, archived or unreachable item returns the normal opaque
+404. Agent-only restrictions and API-key scope apply as on work-item detail.
+
+`PATCH /api/work-items/{key}` accepts optional `labelIds` (at most 100 unique nonempty IDs).
+Omission preserves assignments; `[]` clears them. Existing `If-Match`, project/workspace
+`work_item:update` and API-key ceilings apply. Every ID must reference a workspace-catalogue
+label in the item's own workspace; missing, foreign and legacy task-bound IDs all return
+422 without partial writes. Replace assignments, advance version, record internal `label`
+activity with sorted old/new IDs and enqueue `work_item.updated` in one transaction. Same
+set in a different order does not publish change activity. No new event or permission.
+
+Deleting a workspace catalogue label also removes canonical work-item assignments in the
+same transaction, increments affected versions and records internal label activity/outbox
+events before publishing realtime hints. Catalogue mutation and canonical label editing
+acquire the shared workspace catalogue lock before item locks so deletion cannot silently
+cascade a concurrent assignment without its version/activity change. Responses reveal no
+keys or titles of affected items outside the manager's reach.

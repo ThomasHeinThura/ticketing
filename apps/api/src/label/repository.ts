@@ -87,7 +87,8 @@ export async function lockWorkspaceLabelNames(
 ) {
   if (!workspaceId) return;
 
-  for (const name of [...new Set(names)].sort()) {
+  // Lock the workspace family before individual names and canonical item rows.
+  for (const name of [...new Set(["", ...names])].sort()) {
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(${WORKSPACE_LABEL_NAME_LOCK_NAMESPACE}, hashtext(${`${workspaceId}:${name}`}))`,
     );

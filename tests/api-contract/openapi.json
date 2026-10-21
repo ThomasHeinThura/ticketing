@@ -20780,7 +20780,7 @@
           "Work items"
         ],
         "summary": "Update work item",
-        "description": "Partially update a work item's title, description, priority, startDate or dueDate (`WI-8`). Requires `If-Match` with the work item's current version (`WI-7`); a mismatch returns 409 with both versions. Label/custom-field editing, state transitions and assignment are not part of this route -- see their own mechanisms. Changing `priority` additionally requires `work_item:set_priority` (`docs/01-architecture/rbac.md`) -- `work_item:update` alone is not enough.",
+        "description": "Partially update a work item's title, description, priority, startDate, dueDate or labelIds (`WI-8`). Requires `If-Match` with the work item's current version (`WI-7`); a mismatch returns 409 with both versions. Custom-field editing, state transitions and assignment are not part of this route -- see their own mechanisms. Changing `priority` additionally requires `work_item:set_priority` (`docs/01-architecture/rbac.md`) -- `work_item:update` alone is not enough.",
         "parameters": [
           {
             "schema": {
@@ -20839,6 +20839,14 @@
                       "null"
                     ],
                     "pattern": "^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(\\.\\d{1,9})?(Z|[+-]\\d{2}:\\d{2})$"
+                  },
+                  "labelIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "maxItems": 100
                   }
                 }
               }
@@ -20898,6 +20906,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Labels must belong to this workspace catalogue",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -20944,6 +20962,83 @@
           },
           "404": {
             "description": "Work item not found, or already deleted",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/labels": {
+      "get": {
+        "operationId": "getWorkItemLabels",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "List available labels and work-item assignments",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workspace catalogue with assignment state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "color": {
+                        "type": "string"
+                      },
+                      "assigned": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "color",
+                      "assigned"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
             "content": {
               "text/plain": {
                 "schema": {

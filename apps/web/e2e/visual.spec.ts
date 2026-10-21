@@ -471,6 +471,8 @@ async function installAuthenticatedFixture(page: Page) {
       // The native activity timeline reads a paged envelope; the generic `[]`
       // default has no `data` array and crashes the detail route.
       body = { data: [], page: { nextCursor: null, hasMore: false } };
+    } else if (path.endsWith("/api/work-items/HELP-7/labels")) {
+      body = [];
     } else if (path.endsWith("/api/work-items/HELP-7/sla")) {
       body = {
         key: "HELP-7",

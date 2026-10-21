@@ -101,13 +101,7 @@ export const workspaceIdParam = z.object({
 // field. `work-item/index.ts` is itself already a "canonical, non-legacy" mount (see that
 // file's own comment), so this follows its own family's convention.
 //
-// WI-8 also names labels and custom fields as editable here -- DELIBERATELY NOT INCLUDED.
-// Labels have no assignment endpoint or supporting join-table wiring anywhere in this
-// codebase yet (grepped; `label`/`work_item_label` exist only as bare tables in
-// data-model.md, no route touches them), and custom fields are a separate, not-yet-built
-// spec (`custom-fields.md`). Both are out of scope for this slice -- flagged in the PR
-// body, not guessed at. State (`WI-9`, workflow-only) and assignment (`WI-10`,
-// `assignment.md`) are separate mechanisms entirely and are also not here.
+// Custom fields, workflow state and assignment have their own contracts.
 // S3 (independent Opus security review of PR #271): `z.coerce.date()` accepts ANY value
 // `new Date(...)` accepts -- a number (`8.64e15`, `true` as `1`, `0` as the epoch), or an
 // ISO string past what Postgres's `timestamp` column can store. A JS `Date` beyond year
@@ -227,6 +221,16 @@ export const updateWorkItemBody = z
     priority: z.enum(["low", "medium", "high", "urgent"]).nullable().optional(),
     startDate: workItemDateTime.nullable().optional(),
     dueDate: workItemDateTime.nullable().optional(),
+    labelIds: z
+      .array(
+        z
+          .string()
+          .min(1)
+          .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+      )
+      .max(100)
+      .refine((ids) => new Set(ids).size === ids.length, "Duplicate labels")
+      .optional(),
   })
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field must be supplied",

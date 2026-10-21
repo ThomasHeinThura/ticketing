@@ -1,4 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import {
   afterEach,
   beforeEach,
@@ -27,6 +29,20 @@ const mockTransaction = vi.fn(async (cb: (tx: unknown) => unknown) =>
   cb(createMockTxContext()),
 );
 
+// Catalogue assignment/deletion serializes across the whole workspace before taking
+// the name lock. Check the bound lock keys, not merely the number of SQL statements.
+function expectLabelFamilyLocks() {
+  const dialect = new PgDialect();
+  expect(
+    mockTxExecute.mock.calls.map(
+      ([query]) => dialect.sqlToQuery(query as SQL).params,
+    ),
+  ).toEqual([
+    [4007, "ws-1:"],
+    [4007, "ws-1:bug"],
+  ]);
+}
+
 function createMockTxContext() {
   return {
     execute: (...args: unknown[]) => mockTxExecute(...args),
@@ -44,6 +60,13 @@ vi.mock("../../../apps/api/src/database", () => ({
 
 vi.mock("../../../apps/api/src/events", () => ({
   publishEvent: (...args: unknown[]) => mockPublishEvent(...args),
+}));
+
+// Legacy catalogue unit fixtures contain no canonical work items. Keep the native
+// publisher boundary isolated; real activity/outbox/deletion races run in integration.
+vi.mock("../../../apps/api/src/work-item/native-event", () => ({
+  recordWorkItemEvent: vi.fn(),
+  publishWorkItemHint: vi.fn(),
 }));
 
 import deleteLabel from "../../../apps/api/src/label/controllers/delete-label";
@@ -194,7 +217,7 @@ describe("deleteLabel", () => {
 
       await deleteLabel(IDENTITY, "label-ws-1", "user-1");
 
-      expect(mockTxExecute).toHaveBeenCalledTimes(1);
+      expectLabelFamilyLocks();
       expect(mockPublishEvent).toHaveBeenCalledTimes(2);
       expect(mockPublishEvent).toHaveBeenCalledWith("task.label_deleted", {
         task: { id: "task-1", projectId: "proj-1" },
@@ -218,7 +241,7 @@ describe("deleteLabel", () => {
 
       await deleteLabel(IDENTITY, "label-ws-1", "user-1");
 
-      expect(mockTxExecute).toHaveBeenCalledTimes(1);
+      expectLabelFamilyLocks();
       expect(mockPublishEvent).not.toHaveBeenCalled();
     });
   });

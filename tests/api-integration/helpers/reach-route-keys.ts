@@ -51,6 +51,7 @@ export const LEGACY_WRITE_ROUTE_KEYS = [
 ] as const;
 
 export const READ_ROUTE_KEYS = [
+  "GET /api/work-items/{key}/labels",
   "GET /api/work-items/{key}",
   "GET /api/work-items/{key}/sla",
   "GET /api/work-items/{key}/activity",
