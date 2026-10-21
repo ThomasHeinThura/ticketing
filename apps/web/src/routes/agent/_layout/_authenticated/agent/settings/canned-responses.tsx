@@ -105,7 +105,10 @@ function CannedResponseEditor({
             )}
           </DialogTitle>
           <DialogDescription>
-            {t("settings:cannedResponses.description")}
+            {t("settings:cannedResponses.templateHelp", {
+              tokens:
+                "{{requester.name}}, {{work_item.key}}, {{work_item.due_date}}",
+            })}
           </DialogDescription>
         </DialogHeader>
         <form

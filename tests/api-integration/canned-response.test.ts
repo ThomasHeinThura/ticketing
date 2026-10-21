@@ -311,6 +311,126 @@ describe("API integration: canned responses (#27)", () => {
     expect(row).toBeUndefined();
   });
 
+  it("CA-19a resolves authorized item context without modifying reusable templates", async () => {
+    const creator = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const key = await createWorkItem(creator, app);
+    // External customer contacts need no login or workspace-user membership.
+    const [customerOrganisation] = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `canned-customer-${randomUUID()}`,
+        name: "External requester organisation",
+      })
+      .returning();
+    if (!customerOrganisation)
+      throw new Error("Expected customer organisation");
+    const [requester] = await db
+      .insert(schema.personTable)
+      .values({
+        organisationId: customerOrganisation.id,
+        side: "customer",
+        displayName: "Customer <Name> {{work_item.key}}",
+      })
+      .returning();
+    if (!requester) throw new Error("Expected requester fixture");
+    await db
+      .update(schema.workItemTable)
+      .set({
+        requesterId: requester.id,
+        dueDate: new Date("2026-10-25T15:30:00.000Z"),
+      })
+      .where(eq(schema.workItemTable.key, key));
+    const body = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "{{requester.name}}: {{work_item.key}} due {{work_item.due_date}} {{unknown}}",
+            },
+          ],
+        },
+      ],
+    };
+    const [template] = await db
+      .insert(schema.cannedResponseTable)
+      .values({
+        workspaceId: creator.workspace.id,
+        name: "Context template",
+        body,
+      })
+      .returning();
+    const listed = await app.request(
+      `/api/canned-responses?workItemKey=${key}`,
+    );
+    expect(listed.status).toBe(200);
+    expect(await listed.json()).toEqual([
+      expect.objectContaining({
+        id: template?.id,
+        body: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: `Customer <Name> {{work_item.key}}: ${key} due 2026-10-25 {{unknown}}`,
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    ]);
+    const [staffRequester] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, creator.user.id))
+      .limit(1);
+    if (!staffRequester) throw new Error("Expected linked staff requester");
+    await db
+      .update(schema.personTable)
+      .set({ displayName: null })
+      .where(eq(schema.personTable.id, staffRequester.id));
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: staffRequester.id })
+      .where(eq(schema.workItemTable.key, key));
+    const fallback = await app.request(
+      `/api/canned-responses?workItemKey=${key}`,
+    );
+    expect(fallback.status).toBe(200);
+    expect(JSON.stringify(await fallback.json())).toContain(
+      `${creator.user.name}: ${key} due 2026-10-25`,
+    );
+    const managed = await app.request(
+      `/api/canned-responses/manage?workspaceId=${creator.workspace.id}`,
+    );
+    expect(managed.status).toBe(200);
+    expect(await managed.json()).toEqual([expect.objectContaining({ body })]);
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: null, dueDate: null })
+      .where(eq(schema.workItemTable.key, key));
+    const missing = await app.request(
+      `/api/canned-responses?workItemKey=${key}`,
+    );
+    expect(missing.status).toBe(200);
+    expect(JSON.stringify(await missing.json())).toContain(
+      `: ${key} due  {{unknown}}`,
+    );
+    const [stored] = await db
+      .select()
+      .from(schema.cannedResponseTable)
+      .where(eq(schema.cannedResponseTable.id, template?.id ?? ""));
+    expect(stored?.body).toEqual(body);
+  });
+
   it("403s a member without workspace:manage_settings", async () => {
     const creator = await createWorkspaceMember({ role: "member" });
     mockAuthenticatedSession(creator.user);

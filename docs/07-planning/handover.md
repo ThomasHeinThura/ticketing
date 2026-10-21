@@ -48,19 +48,20 @@ Do not discard other worktrees or have two sessions edit the same file.
 
 ## Immediate implementation continuation
 
-1. Finish #882 CA19 placeholder interpolation, still **not implemented** at this snapshot.
-   Settings currently persists reusable rich-text templates; management listing is separately
-   settings-permission scoped, and item composer reads retain item reach/API-key restrictions.
-   Current native evidence: API unit 884/884, permissions 107/107, URL roundtrips 50/50,
-   two mock browser management journeys, typechecks and 418 contrast pairs. These do not
-   replace hosted PostgreSQL, actual API browser, G8 or integrated acceptance.
-2. Specify and implement the missing template contract before enabling it. Recommended
-   technical proposal: `{{requester.name}}`, `{{work_item.key}}`,
-   `{{work_item.due_date}}`; ISO calendar date, empty missing values, unknown tokens retained,
-   no expression execution. Resolve from the authorized live item, rewrite rich-text text
-   only, leave attributes/URLs and stored templates intact, preserve editable-before-send
-   behavior. Consider tokens split over adjacent formatted text nodes and literal inserted
-   values. This proposal is **not an implemented feature or a new owner decision**.
+1. #882 CA19 placeholder interpolation is now authored after `80c87ad0`, pending
+   independent delta review and hosted verification. Settings persists reusable rich-text
+   templates; item composer listing expands only authorized live-item context. Native checks
+   passed: domain 676 tests (eight new resolver cases), API unit 884, permissions 107,
+   API/web typechecks, two mock management browser journeys and 418 contrast pairs.
+   PostgreSQL, real API browser, G8 and final-head CI remain required.
+2. The CA-19a contract now specifies `{{requester.name}}`, `{{work_item.key}}` and
+   `{{work_item.due_date}}`; UTC calendar date, empty missing values, unknown tokens
+   retained and no expression execution. Adjacent formatted text nodes are supported;
+   attributes/URLs and stored templates remain unchanged. Integration tests cover an
+   external contact without workspace membership, linked-user name fallback, missing
+   values and template immutability. The real API browser journey now authors a key token
+   through settings and expects a resolved editable draft; this new path is not yet
+   runtime-verified. No full CA19/P2 completion claim until that evidence passes.
 3. Existing relevant paths: `apps/api/src/canned-response/repository.ts`,
    `apps/api/src/canned-response/controllers/list-canned-responses.ts`,
    `packages/domain/src/`, feature spec CA19, and
@@ -70,9 +71,10 @@ Do not discard other worktrees or have two sessions edit the same file.
 4. Diagnose #883 G11 from the actual failure before another scheduling change. Earlier #880
    failure was palette readiness near the 5-second setup limit even though numeric budgets
    passed. Do not assume #883 failed for the same reason. Track adverse evidence in #876/#711.
-5. For #882 G8, inspect the actual hosted diff. The earlier strict fixture-scope error was
-   fixed at `06f0332b`; do not claim that fix passed the later visual check. Only update the
-   intended Linux screenshot after inspecting old/new images and obtaining delta review.
+5. For #882 G8, the actual hosted diff was inspected: expected was the superseded General
+   Settings redirect; actual is the correct library in Kaneo settings. The one Linux image
+   was updated at `80c87ad0` with independent image-only approval. No tolerances changed;
+   final-head G8 must still pass. Artifacts: `/tmp/taskdesk-canned-06f-visual/`.
 6. For every changed head: affected native checks, hosted required checks, independent
    review and protected merge. No timeout/budget relaxation, skipped tests or manual statuses.
 
@@ -89,7 +91,7 @@ existing Watchtower's unattended replacement. No remote application changes have
 P0 backup encryption/offsite/retention/runtime records and full restore walkthrough remain.
 P1 needs complete hierarchy/relations, project labels and remaining work/view acceptance.
 P2 needs teams/CAB/custom fields, approval requests, configuration/editor journeys,
-SLA/workflow completeness, canned interpolation, audit and delivery planning.
+SLA/workflow completeness, canned runtime verification, audit and delivery planning.
 P3 needs the full host-root portal, admission contracts and implementation, identity admin,
 and all 25 real-Entra acceptance tests; credentials are an external verification dependency.
 P4 needs governance APIs/UI, full notification runtime, automations, God Mode, MCP/API-key

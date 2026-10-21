@@ -825,6 +825,8 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
     });
 
     const responseName = "CA-19 composer response";
+    const templateText =
+      "Thanks for reporting this. {{work_item.key}} is under review.";
     const originalText = `Thanks for reporting this. ${item.key} is under review.`;
     const editedText = `${originalText} We will follow up shortly.`;
     const created =
@@ -839,7 +841,7 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
         await dialog.getByLabel("Name", { exact: true }).fill(responseName);
         await dialog
           .locator(".ProseMirror[contenteditable=true]")
-          .fill(originalText);
+          .fill(templateText);
         const saved = page.waitForResponse(
           (response) =>
             new URL(response.url()).pathname === "/api/canned-responses" &&
@@ -866,8 +868,9 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
         console.info("CA19 phase begin: validate canned-response API create");
         const createdText = await created.text();
         expect(created.status(), createdText).toBe(200);
-        const result = JSON.parse(createdText) as { id: string };
+        const result = JSON.parse(createdText) as { id: string; body: unknown };
         expect(result.id).toBeTruthy();
+        expect(JSON.stringify(result.body)).toContain("{{work_item.key}}");
         console.info(
           "CA19 phase completed: validate canned-response API create",
         );

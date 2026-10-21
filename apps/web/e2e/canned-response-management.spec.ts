@@ -37,6 +37,9 @@ test("workspace settings creates, edits and deletes reusable replies with URL-ad
   await page.getByRole("button", { name: "New response" }).click();
   await expect(page).toHaveURL(/id=new/);
   const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("{{requester.name}}");
+  await expect(dialog).toContainText("{{work_item.key}}");
+  await expect(dialog).toContainText("{{work_item.due_date}}");
   await dialog
     .getByLabel("Name", { exact: true })
     .fill("Thanks for your request");

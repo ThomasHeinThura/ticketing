@@ -1377,7 +1377,8 @@
 			"editNamed": "Edit {{name}}",
 			"deleteNamed": "Delete {{name}}",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
-			"save": "Save"
+			"save": "Save",
+			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		}
 	},
 	"navigation": {

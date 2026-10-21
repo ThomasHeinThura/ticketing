@@ -5519,6 +5519,9 @@
 						},
 						"save": {
 							"type": "string"
+						},
+						"templateHelp": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -5539,7 +5542,8 @@
 						"editNamed",
 						"deleteNamed",
 						"deleteDescription",
-						"save"
+						"save",
+						"templateHelp"
 					]
 				}
 			},

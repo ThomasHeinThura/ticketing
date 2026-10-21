@@ -1387,7 +1387,8 @@
 			"search": "Search responses",
 			"title": "Canned responses",
 			"visibility": "Default visibility",
-			"save": "Save"
+			"save": "Save",
+			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		}
 	},
 	"navigation": {
