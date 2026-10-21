@@ -1,0 +1,10 @@
+# Scratch recovery only: no proxy discovery and no host ports.
+# Use an explicit, non-default -p/--project-name and matching isolated restore mode.
+services:
+  taskdesk:
+    labels:
+      traefik.enable: "false"
+networks:
+  taskdesk:
+    name: ${COMPOSE_PROJECT_NAME:?an explicit Compose project is required}-restore
+    internal: true
