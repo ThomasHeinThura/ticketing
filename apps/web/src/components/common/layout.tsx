@@ -12,7 +12,14 @@ let sidebarModule:
   | Promise<typeof import("@/components/app-sidebar")>
   | undefined;
 function loadSidebarModule() {
-  sidebarModule ??= import("@/components/app-sidebar");
+  if (!sidebarModule) {
+    sidebarModule = import("@/components/app-sidebar");
+    // The sidebar's last readiness boundary is its lazy project navigation.
+    // Download it alongside the sidebar after primary content, rather than
+    // starting a second network wave only once the sidebar has rendered.
+    // The sidebar still owns rendering and its existing Suspense fallback.
+    void import("@/components/nav-projects").catch(() => {});
+  }
   return sidebarModule;
 }
 const AppSidebar = lazy(() =>

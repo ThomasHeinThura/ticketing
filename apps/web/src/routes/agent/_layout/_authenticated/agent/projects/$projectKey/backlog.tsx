@@ -333,6 +333,8 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
             {project ? (
               <Suspense fallback={null}>
                 <WorkItemCreateTrigger
+                  workspaceId={project.workspaceId}
+                  projectId={project.id}
                   buttonRef={createTriggerRef}
                   pending={createDialogLoad === "loading"}
                   onClick={openCreateDialog}

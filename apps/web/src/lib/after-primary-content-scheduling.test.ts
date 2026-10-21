@@ -61,6 +61,24 @@ describe("primary content downloads and deferred rendering", () => {
     await ready;
   });
 
+  it("keeps secondary UI responsive after real primary readiness even without spare idle time", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    // A busy browser dispatches idle callbacks at their production deadline.
+    vi.stubGlobal(
+      "requestIdleCallback",
+      (callback: () => void, options: { timeout: number }) =>
+        setTimeout(callback, options.timeout),
+    );
+    document.body.innerHTML = '<div data-primary-content-ready="true"></div>';
+    let rendered = false;
+    const ready = afterPrimaryContent().then(() => {
+      rendered = true;
+    });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(rendered).toBe(true);
+    await ready;
+  });
+
   it("does not prefetch on timeout without primary content", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const download = vi.fn();
