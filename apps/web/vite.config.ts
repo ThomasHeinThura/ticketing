@@ -57,6 +57,24 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             for (const imported of chunk.imports) addChunkAndImports(imported);
         };
         addChunkAndImports(routeChunk.fileName);
+        // The parent outlet must also load before this child can paint. Fetching it only
+        // after session resolution adds a network round trip to the heading's LCP path.
+        const projectRootChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith(
+                  "/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx?tsr-split=component",
+                ),
+            ),
+        );
+        if (projectRootChunk?.type !== "chunk")
+          throw new Error(
+            "G11 work-route preload could not resolve its parent outlet chunk.",
+          );
+        addChunkAndImports(projectRootChunk.fileName);
         // The panel supplies the route's first content and heading readiness
         // boundary, but is dynamically imported by beforeLoad only after the
         // route code executes. Fetch its static closure alongside the route so
