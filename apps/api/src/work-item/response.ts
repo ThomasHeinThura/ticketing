@@ -515,3 +515,29 @@ export const commentVersionPageResponseSchema = z
     }),
   })
   .openapi("CommentVersionPage");
+
+const hierarchyPageNodeSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  title: z.string(),
+  stateName: z.string(),
+  stateCategory: z.string(),
+});
+const hierarchyContextNodeSchema = hierarchyPageNodeSchema.extend({
+  parentId: z.string().nullable(),
+});
+export const hierarchyChildrenResponseSchema = z
+  .object({
+    parent: hierarchyContextNodeSchema,
+    ancestors: z.array(hierarchyContextNodeSchema).max(4),
+    data: z
+      .array(hierarchyPageNodeSchema.extend({ hasChildren: z.boolean() }))
+      .max(200),
+    page: z.object({ hasMore: z.boolean(), nextCursor: z.string().nullable() }),
+    meta: z.object({ total: z.number().int().nonnegative() }),
+    progress: z.object({
+      total: z.number().int().nonnegative(),
+      completed: z.number().int().nonnegative(),
+    }),
+  })
+  .openapi("WorkItemHierarchyChildren");

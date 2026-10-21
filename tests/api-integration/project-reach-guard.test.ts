@@ -120,6 +120,8 @@ function shadowRouteKey(path: string): string | undefined {
     }
     if (prefix === "/api/task/") return "GET /api/task/{id}";
     if (prefix === "/api/work-items/") {
+      if (path.endsWith("/children"))
+        return "GET /api/work-items/{key}/children";
       if (path.endsWith("/tree")) return "GET /api/work-items/{key}/tree";
       if (path.endsWith("/activity"))
         return "GET /api/work-items/{key}/activity";
@@ -166,6 +168,7 @@ const TASK_READ_ROUTES = [
 const WORK_ITEM_READ_ROUTES = [
   (key: string) => `/api/work-items/${key}`,
   (key: string) => `/api/work-items/${key}/tree`,
+  (key: string) => `/api/work-items/${key}/children`,
   (key: string) => `/api/work-items/${key}/activity`,
   (key: string) => `/api/work-items/${key}/transitions`,
   (key: string) => `/api/work-items/${key}/attachments`,
@@ -183,6 +186,7 @@ const WORK_ITEM_READ_ROUTE_KEYS = new Set([
   "GET /api/external-link/task/{taskId}",
   "GET /api/work-items/{key}",
   "GET /api/work-items/{key}/tree",
+  "GET /api/work-items/{key}/children",
   "GET /api/work-items/{key}/activity",
   "GET /api/work-items/{key}/transitions",
   "GET /api/work-items/{key}/attachments",

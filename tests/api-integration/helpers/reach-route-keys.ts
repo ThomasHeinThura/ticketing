@@ -56,6 +56,7 @@ export const READ_ROUTE_KEYS = [
   "GET /api/work-items/{key}/sla",
   "GET /api/work-items/{key}/activity",
   "GET /api/work-items/{key}/tree",
+  "GET /api/work-items/{key}/children",
   "GET /api/work-items/{key}/transitions",
   "GET /api/work-items/{key}/attachments",
   "GET /api/work-items/{key}/comments/mention-candidates",

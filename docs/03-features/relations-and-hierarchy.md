@@ -106,7 +106,28 @@ DELETE /api/work-items/{key}/relations/{id}    work_item:update (both ends)
 POST   /api/work-items/{key}/parent            work_item:update (both ends)
 DELETE /api/work-items/{key}/parent            work_item:update (both ends) — detaching mutates the former parent's roll-up too
 GET    /api/work-items/{key}/tree               work_item:read
+GET    /api/work-items/{key}/children           work_item:read
 ```
+
+### Paginated hierarchy contract
+
+`GET /api/work-items/{key}/children` independently pages the requested parent's direct
+children, ordered by numeric `position ASC, id ASC`. `limit` defaults to 50 and accepts
+1–200. The opaque keyset `cursor` binds version, workspace, project, parent id, limit and
+last exact decimal position/id; malformed or differently scoped cursors return 400.
+A cursor is a continuation, not authority: every request rechecks current project reach,
+read permission and API-key ceilings. Missing, archived, deleted and unreachable parents
+return the same 404. Children and ancestors exclude archived/deleted rows.
+
+The response contains `parent`, bounded `ancestors` (root to immediate parent), `data`
+(direct children with id, key, title, mapped state name/group and `hasChildren`),
+`page: { nextCursor, hasMore }`, `meta: { total }` (direct children), and
+`progress: { completed, total }` across all live descendants, excluding the parent itself.
+Progress is computed in SQL over the complete subtree using WI-19's mapped state groups,
+independently of the current page or the legacy tree's 500-node cap. One read snapshot
+keeps context, page and totals consistent. No progress percentage is invented for a leaf.
+The legacy `/tree` response remains bounded and retains its explicit `truncated` flag;
+new inline hierarchy controls use child pages to navigate every branch (#434).
 
 ## Edge cases
 

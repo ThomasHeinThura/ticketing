@@ -55,6 +55,7 @@ import getWorkItemByKey from "./controllers/get-work-item";
 import { getWorkItemSla } from "./controllers/get-work-item-sla";
 import getWorkItemTree from "./controllers/get-work-item-tree";
 import listAssignablePeople from "./controllers/list-assignable-people";
+import { listHierarchyChildren } from "./controllers/list-hierarchy-children";
 import listWorkItemActivity from "./controllers/list-work-item-activity";
 import listWorkItemTransitions from "./controllers/list-work-item-transitions";
 import listWorkItemTypes from "./controllers/list-work-item-types";
@@ -87,6 +88,7 @@ import {
   commentMentionCandidatesSchema,
   commentMentionPreflightResponseSchema,
   deletedWorkItemSchema,
+  hierarchyChildrenResponseSchema,
   rankWorkItemResponseSchema,
   transitionedWorkItemSchema,
   unassignWorkItemResponseSchema,
@@ -108,6 +110,7 @@ import {
   commentMentionCandidatesQuery,
   commentMentionPreflightBody,
   createWorkItemBody,
+  hierarchyChildrenQuery,
   ifMatchHeader,
   listWorkItemActivityQuery,
   listWorkItemsQuery,
@@ -820,6 +823,26 @@ const detachWorkItemParentRoute = createRoute({
       "No workspace access, or missing work_item:update permission",
     ),
     404: errorResponse("Work item not found"),
+  },
+});
+
+const hierarchyChildrenRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemHierarchyChildren",
+  path: "/work-items/{key}/children",
+  tags: ["Work items"],
+  summary: "Page direct children and whole-subtree progress",
+  middleware: [requireWorkItemReach()] as const,
+  request: { params: workItemKeyParam, query: hierarchyChildrenQuery },
+  responses: {
+    200: jsonResponse(
+      "Direct children, ancestor context and SQL subtree progress",
+      hierarchyChildrenResponseSchema,
+    ),
+    400: errorResponse("Invalid limit or cursor scope"),
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Work item not found"),
+    409: errorResponse("Invalid stored hierarchy"),
   },
 });
 
@@ -1635,6 +1658,28 @@ const workItem = apiRouter<
       actorType,
     );
     return c.json(updated, 200);
+  })
+  .openapi(hierarchyChildrenRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const userId = c.get("userId");
+    if (!userId) throw new HTTPException(401, { message: "Unauthorized" });
+    const session = c.get("session") as {
+      impersonatedBy?: string | null;
+    } | null;
+    const identity = await resolveRequestIdentity({
+      userId,
+      apiKey: c.get("apiKey"),
+      impersonatedBy: session?.impersonatedBy,
+    });
+    if (!identity)
+      throw new HTTPException(403, { message: "Insufficient permissions" });
+    const result = await listHierarchyChildren(
+      identity,
+      key,
+      c.get("workspaceId"),
+      c.req.valid("query"),
+    );
+    return c.json(result, 200);
   })
   .openapi(getWorkItemTreeRoute, async (c) => {
     const { key } = c.req.valid("param");

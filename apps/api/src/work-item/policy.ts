@@ -196,6 +196,12 @@ export const workItemPolicies = {
   // hierarchy.md` § API/Screens). Read-only, same reach shape as `GET
   // /api/work-items/{key}` above -- see `get-work-item-tree.ts`'s own doc comment for why
   // the whole returned tree is covered by this one row's reach check.
+  "GET /api/work-items/{key}/children": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
   "GET /api/work-items/{key}/tree": {
     capability: "work_item:read",
     scope: "work_item",
