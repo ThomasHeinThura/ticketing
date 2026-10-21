@@ -33,7 +33,7 @@
 		"tailwind-merge": "^3.6.0"
 	},
 	"devDependencies": {
-		"@storybook/react-vite": "10.6.0",
+		"@storybook/react-vite": "10.6.2",
 		"@tailwindcss/vite": "4.3.3",
 		"@taskdesk/typescript-config": "workspace:*",
 		"@testing-library/jest-dom": "^7.0.0",
@@ -45,7 +45,7 @@
 		"jsdom": "^30.0.1",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
-		"storybook": "10.6.0",
+		"storybook": "10.6.2",
 		"typescript": "^7.0.2",
 		"vite": "^8.2.0",
 		"vitest": "^4.1.10",

@@ -59,7 +59,8 @@ acceptance evidence. No remote services were changed.
 
 Thomas selected the agent/portal origins: `https://tickting.technexus.info` and
 `https://portal.technexus.info`. Thomas has created both DNS records for VM public IP `4.194.153.78`, with Cloudflare
-proxy enabled. TaskDesk has not yet been deployed to the VM. Reuse existing Traefik on ports
+proxy enabled. TaskDesk was subsequently deployed; the current artifact
+remains unreviewed/untraceable and its forwarding behavior requires repair; see status.md. Reuse existing Traefik on ports
 80/443, its `web` network and `le` ACME resolver. The stock overlay assumes network
 `proxy`, resolver `letsencrypt` and file-provider middleware absent on this host, so it
 cannot be deployed unchanged. Prepare and review a dedicated SIT overlay, isolated

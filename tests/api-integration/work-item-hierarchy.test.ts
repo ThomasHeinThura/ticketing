@@ -283,7 +283,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
       version: number;
     };
     expect(attachedBody.version).toBe(2);
-    const before = JSON.stringify(await db.select().from(schema.activityTable));
+    const before = await db.select().from(schema.activityTable);
     for (const method of ["POST", "DELETE"] as const) {
       const stale = await write(method, '"1"');
       expect(stale.status).toBe(409);
@@ -292,9 +292,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
         currentVersion: 2,
       });
     }
-    expect(JSON.stringify(await db.select().from(schema.activityTable))).toBe(
-      before,
-    );
+    expect(await db.select().from(schema.activityTable)).toEqual(before);
     const [row] = await db
       .select()
       .from(schema.workItemTable)

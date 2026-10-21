@@ -16,7 +16,7 @@ completion evidence still apply.
 
 ## The loop
 
-1. **Pick** the next item from [status.md § Next](../07-planning/status.md#next) or a GitHub
+1. **Pick** the next item from [status.md § Current work](../07-planning/status.md#current-work) or a GitHub
    issue. If the behaviour isn't specified, ask Thomas and write the answer into the feature
    spec in [`docs/03-features/`](../03-features/README.md).
 2. **Branch** in your own worktree. Keep a PR to one coherent change, ideally under about

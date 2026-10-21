@@ -22,8 +22,15 @@ The full goal and Thomas's no-AIDLC, Kaneo-preservation directive remain in forc
 - Isolated PostgreSQL: 87/89 broad tests passed, two WAN timeouts remain unpassed; three
   focused seed/label checks passed. Keep these adverse results visible; hosted co-located
   PostgreSQL checks must resolve them. Never run database resets against live SIT.
-- Next: bind review to commit, one batch push for Linux evidence and hosted checks, review
-  actual screenshots/fix findings, then verified-image deployment and developer walkthrough.
+- Draft PR #889 head `f335fdfa` contains the source/evidence batch. First hosted results
+  and local fixes are recorded in status.md; do not blindly rerun old failing jobs.
+- Next: finish source/baseline fixes and hosted G11 measurement, bind delta review, then
+  verified-image deployment and developer walkthrough. Repair the separate proxy-IP defect
+  before claiming login rate-limit or API-key IP acceptance. The candidate normalizer
+  passed nginx syntax/readiness and trusted IPv4/IPv6 versus invalid/untrusted header
+  tests; it was removed after testing and live routing is unchanged. App-IP-change,
+  live attribution/forgery, upload and WebSocket checks remain. See the hosted SIT
+  section in [traefik-and-domains.md](../05-operations/traefik-and-domains.md).
   Continue the remaining requirement-level P0–P4 work; do not hand unfinished stages to Thomas.
 
 ---
@@ -54,11 +61,9 @@ are authorized. No P5–P7, production deployment or bulk branch/worktree deleti
 - **Docker Compose and digest-pinned prebuilt images only** on the VM. No application
   source checkout, builds or CI workers. Record source SHA and image digest at deployment.
 - **TaskDesk is deployed and operational on the proxy VM.** Both HTTPS origins (`https://tickting.technexus.info` and `https://portal.technexus.info`) are responding healthy with Cloudflare proxy and Traefik Let's Encrypt TLS.
-- Seeded interactive test accounts are ready for Thomas's walkthrough:
-  - `admin@taskdesk.local` / `TaskDesk!Admin2026`
-  - `agent@taskdesk.local` / `TaskDesk!Agent2026`
-  - `lead@taskdesk.local` / `TaskDesk!Lead2026`
-  - `customer@acme.example` / `TaskDesk!Customer2026`
+- Historical account passwords were exposed and rotated on 22 October. Use the private
+  credentials file outside Git; these old walkthrough claims are superseded by the active
+  audit above.
 - OrbStack remains stopped locally as required. All remote containers run non-root (UID 10001) with unpublished application port 5173.
 - No stage is complete or signed off. Only Thomas's actual SIT walkthrough closes stages.
 

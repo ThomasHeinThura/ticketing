@@ -506,7 +506,7 @@ case "$MODE" in
     dc up --no-start
     assert_port_unpublished
     say "starting the application"
-    dc up -d --wait taskdesk
+    dc up -d --wait taskdesk sit-proxy
     assert_port_unpublished
     probe_api
     seed_if_permitted

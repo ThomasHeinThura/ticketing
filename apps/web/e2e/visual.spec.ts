@@ -378,6 +378,7 @@ async function installAuthenticatedFixture(page: Page) {
       };
     } else if (path.endsWith("/api/workspace")) body = [workspace];
     else if (path.endsWith("/api/project")) body = [project];
+    else if (path.endsWith("/api/project/visual-project")) body = project;
     else if (path.endsWith("/api/workspace/visual-workspace/members")) {
       body = [
         {
@@ -1536,6 +1537,7 @@ test("workspace settings canned responses screen @visual", async ({ page }) => {
     if (path.endsWith("/api/auth/get-session")) body = session;
     else if (path.endsWith("/api/workspace")) body = [workspace];
     else if (path.endsWith("/api/project")) body = [project];
+    else if (path.endsWith("/api/project/visual-project")) body = project;
     else if (path.endsWith("/api/workspace/visual-workspace/members"))
       body = [
         {
@@ -1765,6 +1767,9 @@ test("portal approval decision screen @visual", async ({ page }) => {
 test("instance audit screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/god-mode/audit");
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Audit log", exact: true }),
   ).toBeVisible();

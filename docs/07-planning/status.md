@@ -83,8 +83,8 @@ verification dependency. Only Thomas can give the final SIT sign-off after devel
   separate output directory, preserving original diffs/traces and the failed gate.
   Structural diagnostic regressions passed; no baseline is automatically accepted.
 - Reviewed Linux baselines, full browser coverage, performance, exact image
-  build/source verification and final reviewed deployment remain open. No PR has been
-  pushed for this repair; avoid restarting CI for intermediate documentation edits.
+  build/source verification and final reviewed deployment remain open. Draft PR #889
+  holds the repair; batch further fixes and evidence before another push.
 
 ## Additional live screen inspection
 
@@ -93,3 +93,50 @@ Roles, general settings and the service-calendar editor were opened. Calendar wi
 timezone, holidays/import and server preview controls exist; presets, cloning and country
 holidays explicitly remain unavailable. These observations correct the pasted claim that
 the entire editor is missing; they do not prove its complete specification or save behavior.
+
+## First hosted repair run — PR #889
+
+Head `f335fdfa`, source review bound to `109e3a73`. Fast CI passed build, unit/component,
+static, route policies, contract, secret scan, gates and PR/security metadata. It failed
+a stale documentation anchor (fixed locally) and a newly published critical Storybook
+advisory (matched 10.6.2 patch applied locally; high/critical audit now zero; Storybook build
+passes). Remaining low advisory is still reported.
+
+Full run `39658149244`: PostgreSQL shards 1/2/4 and accessibility passed. Shard 3 had
+777 passes and one test-harness BigInt serialization failure; the comparison now uses
+actual row equality and its real isolated-PostgreSQL regression passes. Browser suite had
+157 passes and two ambiguous header/sidebar button-name failures; seven affected sidebar
+cases now pass. G8 first captured 28/32 screens, exposing duplicate realtime banners;
+source now assigns exactly one native owner per canonical page. Five Linux candidates
+were independently viewed and approved; approvals/audit/backlog and corrected project
+headers still require fresh capture and review.
+
+G11 measured 590.8 ms render and 4108.2 ms LCP, exceeding unchanged 500/2500 ms limits.
+The project frame was remounting content as its context arrived; it now stays mounted
+and its UI chunk preloads during the session check (browser regression passed). This
+is a repair hypothesis requiring hosted measurement. Native G11 calibration failed
+closed because this laptop's 0.532 speed factor is outside the accepted range; it is
+not a performance pass and no budget/calibration change is authorized or applied.
+
+A separate live proxy defect is confirmed: new session IPs contain a private Docker
+address, not the same browser's Cloudflare trace address. Shared Traefik has no trusted
+forwarding configuration; its established TLS sockets do see Cloudflare peers. The
+SIT overlay's two-hop assumption is unverified and incorrect for attribution. Keep
+Cloudflare enabled; repair TaskDesk-specific normalization without changing unrelated
+shared proxy routes. Do not claim rate-limit/API-key IP behavior verified yet.
+
+The TaskDesk-only normalization candidate has independent standard/security source approval.
+Pinned Nginx 1.30.6 runs as UID 101 with read-only filesystem, dropped capabilities and no
+published ports. On the VM, syntax and real application readiness passed; valid IPv4/IPv6
+headers from the actual Traefik socket were accepted, absent/malformed headers and an
+untrusted socket's forged header were rejected with 400. Merged Compose isolates the
+application to its private network. The unlabeled candidate was removed; live routing is
+unchanged. Runtime DNS recovery, actual browser/session attribution, Cloudflare/origin
+forgery, uploads and WebSockets remain unverified.
+
+Post-CI native preflight: production build, web typecheck, lint, environment/policy
+checks and all 428 unchanged contrast thresholds pass. All 47 screen fixtures reached
+their screenshot assertions; each stops only on the intentionally absent macOS baseline.
+This is a functional fixture check, not a G8 pass. The two new Linux approval/audit
+baselines are still missing; all other affected captures need independent visual review.
+Initial gzip graphs remain 243.6/299.0/189.3 KB under 350/350/200 KB.

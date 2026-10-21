@@ -287,3 +287,39 @@ TaskDesk attaches to the existing network and contributes only its labels. The
 - [Deployment](deployment.md) · [Environments](environments.md)
 - [Proxy topology evidence](proxy-topology-evidence.md) — how the trusted-hop count is measured, and what it measured here
 - [Security model](../01-architecture/security-model.md) · [Runbook](runbook.md)
+
+## Hosted SIT behind Cloudflare
+
+The `proxy` VM serves `tickting.technexus.info` and `portal.technexus.info` with
+Cloudflare proxy enabled. Its shared Traefik does not preserve a trusted forwarded chain;
+setting a two-hop count produced private Docker session addresses. Do not carry the
+standalone hop assumption into this topology or change shared Traefik for TaskDesk.
+
+The candidate `deploy/compose.sit.yml` routes only TaskDesk through a digest-pinned,
+unprivileged Nginx sidecar. Both TaskDesk Traefik routers allow Cloudflare TCP peer ranges,
+without forwarded-header depth. Nginx trusts only the resolved Traefik container address,
+reads `CF-Connecting-IP`, rejects missing/invalid/untrusted attribution, replaces
+`X-Forwarded-For` with that one address and strips alternative client-IP headers. The
+application trusts that one normalized entry and attaches only to its private network.
+Neither service publishes host ports. Cloudflare ranges must track the official list
+when they change. This is a hosted-SIT overlay, not a global application default.
+
+The sidecar resolves the application through Docker DNS on a ten-second validity interval,
+so application recreation does not require reloading its configuration. Its exact trusted
+Traefik address is resolved at startup: after shared Traefik changes address, recreate
+**only `sit-proxy`**. Until then ordinary traffic fails closed rather than attributing
+clients to a proxy address. Health checks proxy actual application readiness. WebSocket
+upgrades and streamed request bodies are passed through; API upload limits still apply.
+
+Before applying this overlay, privately preserve the current runtime Compose/configuration,
+verify the application signature/digest, install the tracked template under `deploy/`,
+validate the merged configuration and bring up `taskdesk` and `sit-proxy` with `--wait`.
+Verify both HTTPS origins, browser/session client-IP equality, forged-header/direct-origin
+rejection, WebSockets, CSRF and upload behavior, plus application-IP-change recovery.
+Do not restart shared Traefik or unrelated stacks. To roll back the topology, restore the
+privately preserved previous overlay and recreate TaskDesk through that overlay, then
+remove only the owned `sit-proxy` service; retain the digest pin and all named data volumes.
+
+On 22 October an isolated unlabeled candidate passed syntax, real readiness, trusted
+IPv4/IPv6 and missing/malformed/untrusted-header checks. It was removed after testing.
+The live overlay has not changed; these results do not establish live topology acceptance.

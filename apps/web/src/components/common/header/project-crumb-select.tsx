@@ -33,6 +33,11 @@ export default function ProjectCrumbSelect({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
+        aria-label={
+          projectName
+            ? `${t("navigation:projectViews.selectProject")}: ${projectName}`
+            : t("navigation:projectViews.selectProject")
+        }
         render={
           <Button
             variant="ghost"

@@ -10,6 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogPanel,
   DialogTitle,
   Label,
   Skeleton,
@@ -148,30 +149,34 @@ function PortalApprovals() {
                   )}
             </DialogDescription>
           </DialogHeader>
-          {mutation.isError && mutation.variables?.id === selectedId ? (
-            <Alert variant="error">
-              <AlertDescription>{t(errorKey)}</AlertDescription>
-            </Alert>
-          ) : null}
-          {selected && !canDecide ? (
-            <Alert variant="info">
-              <AlertDescription>{t("approvals.unavailable")}</AlertDescription>
-            </Alert>
-          ) : null}
-          {canDecide ? (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="approval-note">{t("approvals.note")}</Label>
-              <Textarea
-                id="approval-note"
-                value={note}
-                maxLength={4000}
-                disabled={mutation.isPending}
-                onChange={(event) =>
-                  setNoteDraft({ id: selectedId, value: event.target.value })
-                }
-              />
-            </div>
-          ) : null}
+          <DialogPanel>
+            {mutation.isError && mutation.variables?.id === selectedId ? (
+              <Alert variant="error">
+                <AlertDescription>{t(errorKey)}</AlertDescription>
+              </Alert>
+            ) : null}
+            {selected && !canDecide ? (
+              <Alert variant="info">
+                <AlertDescription>
+                  {t("approvals.unavailable")}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {canDecide ? (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="approval-note">{t("approvals.note")}</Label>
+                <Textarea
+                  id="approval-note"
+                  value={note}
+                  maxLength={4000}
+                  disabled={mutation.isPending}
+                  onChange={(event) =>
+                    setNoteDraft({ id: selectedId, value: event.target.value })
+                  }
+                />
+              </div>
+            ) : null}
+          </DialogPanel>
           <DialogFooter>
             <Button
               variant="outline"

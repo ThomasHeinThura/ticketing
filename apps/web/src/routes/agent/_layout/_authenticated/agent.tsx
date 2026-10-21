@@ -17,7 +17,19 @@ import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 // `/dashboard/*` — docs/02-design/design-principles.md § Integrate, don't add.
 // Project controls are needed only after the project resolves. Keep them out of
 // unrelated agent pages; the inherited frame loads alongside project data.
-const ProjectLayout = lazy(() => import("@/components/common/project-layout"));
+const loadProjectLayout = () => import("@/components/common/project-layout");
+const ProjectLayout = lazy(loadProjectLayout);
+// UI chunks may download during the session check; data access still waits for it.
+if (
+  typeof window !== "undefined" &&
+  /^\/agent\/projects\/[^/]+\/(work|backlog)\/?$/u.test(
+    window.location.pathname,
+  )
+) {
+  void loadProjectLayout().catch(() => {
+    // Rendering the lazy component surfaces a failed chunk through the route boundary.
+  });
+}
 
 const ProjectsPage = lazy(
   () => import("@/components/project-list/projects-page"),
@@ -91,7 +103,7 @@ function CanonicalProjectFrame({
     workspaceId: workspace?.id ?? "",
   });
   const project = projects?.find((candidate) => candidate.slug === projectKey);
-  return project ? (
+  return (
     <Suspense
       fallback={
         <WorkspaceLayout title={projectKey}>
@@ -100,17 +112,15 @@ function CanonicalProjectFrame({
       }
     >
       <ProjectLayout
-        projectId={project.id}
-        workspaceId={project.workspaceId}
+        projectId={project?.id ?? ""}
+        workspaceId={project?.workspaceId ?? workspace?.id ?? ""}
+        showViewSwitcher={Boolean(project)}
         activeView={backlog ? "backlog" : "board"}
+        realtimeMode={backlog ? "canonical" : "page"}
       >
         <Outlet />
       </ProjectLayout>
     </Suspense>
-  ) : (
-    <WorkspaceLayout title={projectKey}>
-      <Outlet />
-    </WorkspaceLayout>
   );
 }
 

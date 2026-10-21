@@ -279,6 +279,7 @@ function RouteComponent() {
 
   return (
     <ProjectLayout
+      realtimeMode="canonical"
       projectId={projectId}
       workspaceId={workspaceId}
       activeView="gantt"

@@ -29,6 +29,7 @@ const CreateProjectModal = lazy(
 import { shortcuts } from "@/constants/shortcuts";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
+import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
 import { useProjectWebSocket } from "@/hooks/use-project-websocket";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
@@ -42,6 +43,7 @@ type ProjectLayoutProps = {
   children: ReactNode;
   showViewSwitcher?: boolean;
   activeView?: "backlog" | "board" | "calendar" | "gantt";
+  realtimeMode?: "legacy" | "canonical" | "page";
 };
 
 export default function ProjectLayout({
@@ -51,6 +53,7 @@ export default function ProjectLayout({
   children,
   showViewSwitcher = true,
   activeView,
+  realtimeMode = "legacy",
 }: ProjectLayoutProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -63,7 +66,9 @@ export default function ProjectLayout({
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
 
-  const { status: socketStatus } = useProjectWebSocket(projectId);
+  const { status: socketStatus } = useProjectWebSocket(
+    realtimeMode === "legacy" ? projectId : "",
+  );
 
   const resolvedView =
     activeView ??
@@ -182,23 +187,25 @@ export default function ProjectLayout({
               />
             </div>
 
-            <div className="md:hidden">
-              <MobileProjectNav
-                workspaceId={workspaceId}
-                projectId={projectId}
-                activeView={resolvedView}
-                onSelectBacklog={handleNavigateToBacklog}
-                onSelectBoard={handleNavigateToBoard}
-                onSelectCalendar={handleNavigateToCalendar}
-                onSelectGantt={handleNavigateToGantt}
-                onSelectProject={handleProjectSwitch}
-                onAddProject={
-                  canCreateProject
-                    ? () => setIsCreateProjectModalOpen(true)
-                    : undefined
-                }
-              />
-            </div>
+            {projectId && workspaceId ? (
+              <div className="md:hidden">
+                <MobileProjectNav
+                  workspaceId={workspaceId}
+                  projectId={projectId}
+                  activeView={resolvedView}
+                  onSelectBacklog={handleNavigateToBacklog}
+                  onSelectBoard={handleNavigateToBoard}
+                  onSelectCalendar={handleNavigateToCalendar}
+                  onSelectGantt={handleNavigateToGantt}
+                  onSelectProject={handleProjectSwitch}
+                  onAddProject={
+                    canCreateProject
+                      ? () => setIsCreateProjectModalOpen(true)
+                      : undefined
+                  }
+                />
+              </div>
+            ) : null}
 
             {showViewSwitcher && (
               <div className="hidden h-8 items-center gap-0.5 rounded-lg border border-border/80 bg-background p-0.5 sm:inline-flex">
@@ -260,7 +267,11 @@ export default function ProjectLayout({
         </div>
       </Layout.Header>
 
-      <RealtimeUnavailableNotice status={socketStatus} />
+      {realtimeMode === "canonical" ? (
+        <CanonicalProjectRealtime projectId={projectId} />
+      ) : realtimeMode === "legacy" ? (
+        <RealtimeUnavailableNotice status={socketStatus} />
+      ) : null}
       <Layout.Content>{children}</Layout.Content>
 
       {isCreateProjectModalOpen ? (
@@ -272,5 +283,22 @@ export default function ProjectLayout({
         </Suspense>
       ) : null}
     </Layout>
+  );
+}
+
+function CanonicalProjectRealtime({ projectId }: { projectId: string }) {
+  const { status } = useNativeWorkItemRealtime(
+    projectId ? [`project:${projectId}`] : [],
+  );
+  return (
+    <RealtimeUnavailableNotice
+      status={
+        status === "available"
+          ? "live"
+          : status === "unavailable"
+            ? "unavailable"
+            : "connecting"
+      }
+    />
   );
 }

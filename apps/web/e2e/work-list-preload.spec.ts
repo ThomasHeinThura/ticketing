@@ -13,13 +13,22 @@ test("direct work-list visit downloads its parent outlet before the session reso
       new URL("../dist/agent/.vite/manifest.json", import.meta.url),
       "utf8",
     ),
-  ) as Record<string, { file: string }>;
+  ) as Record<string, { file: string; name?: string }>;
   const parent = Object.entries(manifest).find(([key]) =>
     key.endsWith("/projects/$projectKey.tsx?tsr-split=component"),
   )?.[1];
   expect(
     parent,
     "built project outlet must be represented in the manifest",
+  ).toBeDefined();
+  const header = Object.entries(manifest).find(
+    ([key, entry]) =>
+      entry.name === "project-layout" ||
+      key.endsWith("src/components/common/project-layout.tsx"),
+  )?.[1];
+  expect(
+    header,
+    "Kaneo project frame must be represented in the manifest",
   ).toBeDefined();
   await installPerformanceApiFixture(page);
   let releaseSession: () => void = () => {};
@@ -33,9 +42,12 @@ test("direct work-list visit downloads its parent outlet before the session reso
   const downloaded = page.waitForResponse(
     (response) => response.url().endsWith(`/${parent?.file}`) && response.ok(),
   );
+  const headerDownloaded = page.waitForResponse(
+    (response) => response.url().endsWith(`/${header?.file}`) && response.ok(),
+  );
   try {
     await page.goto(WORK_LIST_PATH, { waitUntil: "domcontentloaded" });
-    await downloaded;
+    await Promise.all([downloaded, headerDownloaded]);
     await expect(
       page.locator(`link[rel="modulepreload"][href="/${parent?.file}"]`),
     ).toHaveCount(1);
