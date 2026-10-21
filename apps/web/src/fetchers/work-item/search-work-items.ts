@@ -1,5 +1,5 @@
 import { client } from "@taskdesk/libs";
-import { HttpError } from "@/lib/http-error";
+import { HttpError, readErrorDetail } from "@/lib/http-error";
 import {
   isWorkItemSearchSortField,
   type WorkItemSearchColumn,
@@ -20,39 +20,6 @@ export type StructuredWorkItemsResult = {
   /** `meta.total`: the exact count of reachable matches, not just this page. */
   total?: number;
 };
-
-const MAX_ERROR_DETAIL_LENGTH = 512;
-
-/**
- * The API reports a refused filter (`400`, `422` naming the field, `403`) as a short message.
- * Hono's `HTTPException` answers with plain text and other routes with a JSON body, so both
- * are read; anything long or non-printable is dropped for the generic message.
- */
-async function readErrorDetail(response: Response): Promise<string> {
-  const fallback = "Failed to search work items";
-  let text: string;
-  try {
-    text = await response.text();
-  } catch {
-    return fallback;
-  }
-  let detail: unknown = text;
-  try {
-    const body = JSON.parse(text) as { message?: unknown; detail?: unknown };
-    detail = body.message ?? body.detail;
-  } catch {
-    // Not JSON: the text itself is the message.
-  }
-  if (typeof detail !== "string") return fallback;
-  const trimmed = detail.trim();
-  if (
-    trimmed.length === 0 ||
-    trimmed.length > MAX_ERROR_DETAIL_LENGTH ||
-    [...trimmed].some((character) => character.charCodeAt(0) < 32)
-  )
-    return fallback;
-  return trimmed;
-}
 
 /**
  * The sort the search endpoint accepts for the list's current sort. `position` is the list
@@ -100,7 +67,10 @@ export async function postWorkItemSearch(input: {
     },
   });
   if (!response.ok) {
-    throw new HttpError(response.status, await readErrorDetail(response));
+    throw new HttpError(
+      response.status,
+      await readErrorDetail(response, "Failed to search work items"),
+    );
   }
   const { data, page, meta } = await response.json();
   const items = data.map(parseWorkItemRow);

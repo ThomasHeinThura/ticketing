@@ -24,3 +24,38 @@ export function handleUnauthorized(): void {
     : "/auth/sign-in";
   window.location.replace(target);
 }
+
+const MAX_ERROR_DETAIL_LENGTH = 512;
+
+/**
+ * The API reports a refusal (`400`, `409`, `422` naming the field, `403`) as a short message.
+ * Hono's `HTTPException` answers with plain text and other routes with a JSON body, so both
+ * are read; anything long or non-printable is dropped for the generic message.
+ */
+export async function readErrorDetail(
+  response: Response,
+  fallback = "The request failed",
+): Promise<string> {
+  let text: string;
+  try {
+    text = await response.text();
+  } catch {
+    return fallback;
+  }
+  let detail: unknown = text;
+  try {
+    const body = JSON.parse(text) as { message?: unknown; detail?: unknown };
+    detail = body.message ?? body.detail;
+  } catch {
+    // Not JSON: the text itself is the message.
+  }
+  if (typeof detail !== "string") return fallback;
+  const trimmed = detail.trim();
+  if (
+    trimmed.length === 0 ||
+    trimmed.length > MAX_ERROR_DETAIL_LENGTH ||
+    [...trimmed].some((character) => character.charCodeAt(0) < 32)
+  )
+    return fallback;
+  return trimmed;
+}
