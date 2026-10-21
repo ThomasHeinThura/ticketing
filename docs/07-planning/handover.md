@@ -44,7 +44,7 @@ Primary checkout is clean at that source. Refresh live GitHub before acting.
 | #880 image build | Open046e4964;17/18 checks, palette243.2ms>200. | Worktree taskdesk-native-artifact-image-build; import accepted fixes only, review, allchecks then actual multiarch release. |
 | #886 observer correction | Open2adfb88c;17/18 checks; palette195.1ms passes, list528.7ms>500 fails. | Worktree taskdesk-palette-measurement; diagnose actual list boundary, no blind rerun/merge. |
 | #887 hierarchy API | Open2007b480;17/18 checks passed, final browser/image job still finalizing. | Worktree taskdesk-hierarchy-pagination; refresh checks, protected squash only after all18 green. Independent source/security and test-only delta reviews clean. |
-| Hierarchy inline UI | Uncommitted codex/hierarchy-ui in ~/.codex/worktrees/taskdesk-hierarchy-ui, based on887 initial8d3d1cad. | Import accepted887 after merge. Five fixture browser journeys,1446 web unit,lint/typecheck,428 contrast pass. Final review/hosted actual API evidence pending. |
+| Hierarchy inline UI | Candidate codex/hierarchy-ui in ~/.codex/worktrees/taskdesk-hierarchy-ui, includes reviewed887 head2007b480. | Import accepted main after887 merges. Five fixture browser journeys,1446 web unit,lint/typecheck,428 contrast pass. Final review/hosted actual API evidence pending. |
 
 ## Immediate next work
 

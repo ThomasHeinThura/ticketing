@@ -66,7 +66,7 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   required checks are green while the final browser/image job is still finalizing.
   It provides bounded per-parent pages, exact position cursors, ancestor context and
   complete live-descendant progress. Refresh GitHub before merging.
-- Inline hierarchy UI is a separate uncommitted candidate in
+- Inline hierarchy UI is a separate candidate in
   `~/.codex/worktrees/taskdesk-hierarchy-ui`: original Kaneo disclosures/rows/progress,
   independent pagination, URL persistence, bounded automatic replay and access-loss cleanup.
   Five fixture browser journeys, 1,446 web unit tests, typecheck/lint and 428 contrast pairs
