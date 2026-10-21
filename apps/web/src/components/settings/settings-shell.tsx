@@ -149,7 +149,8 @@ export function SettingsShell({ children }: { children: ReactNode }) {
             </Tabs>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          {/* The page's one main landmark; settings pages render plain sections inside it. */}
+          <main className="min-h-0 flex-1 overflow-y-auto">
             <SettingsSidebarProvider
               workspaceId={workspace?.id}
               menuOpen={settingsMenuOpen}
@@ -157,7 +158,7 @@ export function SettingsShell({ children }: { children: ReactNode }) {
             >
               {children}
             </SettingsSidebarProvider>
-          </div>
+          </main>
         </div>
       </div>
     </>

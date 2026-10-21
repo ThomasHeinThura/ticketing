@@ -92,41 +92,41 @@ export default function NotificationInbox({
         <ul className="divide-y divide-border rounded-lg border border-border">
           {visible.map((notification) => {
             const content = getNotificationContent(notification, t);
-            return (
-              <li key={notification.id}>
-                <button
-                  type="button"
-                  onClick={() => openNotification(notification)}
-                  className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-accent/50"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "truncate text-sm",
-                          notification.isRead
-                            ? "text-muted-foreground"
-                            : "font-medium text-foreground",
-                        )}
-                      >
-                        {getNotificationTitle(notification, t)}
-                      </span>
-                      <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
-                        {formatRelativeTime(notification.createdAt)}
-                      </span>
-                      {!notification.isRead && (
-                        <span className="size-1.5 shrink-0 rounded-full bg-info" />
+            const row = (
+              // ui-exempt: a full-width list row, as in kaneo's notification dropdown.
+              <button
+                type="button"
+                onClick={() => openNotification(notification)}
+                className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-accent/50"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "truncate text-sm",
+                        notification.isRead
+                          ? "text-muted-foreground"
+                          : "font-medium text-foreground",
                       )}
-                    </div>
-                    {content ? (
-                      <p className="mt-0.5 line-clamp-2 text-muted-foreground text-xs">
-                        {content}
-                      </p>
-                    ) : null}
+                    >
+                      {getNotificationTitle(notification, t)}
+                    </span>
+                    <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                      {formatRelativeTime(notification.createdAt)}
+                    </span>
+                    {!notification.isRead && (
+                      <span className="size-1.5 shrink-0 rounded-full bg-info" />
+                    )}
                   </div>
-                </button>
-              </li>
+                  {content ? (
+                    <p className="mt-0.5 line-clamp-2 text-muted-foreground text-xs">
+                      {content}
+                    </p>
+                  ) : null}
+                </div>
+              </button>
             );
+            return <li key={notification.id}>{row}</li>;
           })}
         </ul>
       )}

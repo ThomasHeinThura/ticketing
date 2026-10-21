@@ -18,8 +18,11 @@ const ProjectsPage = lazy(
   () => import("@/components/project-list/projects-page"),
 );
 
+// Not split: every /agent page renders inside this shell, so on a direct visit its code
+// must arrive with the entry rather than after the router resolves it (G11 work-list LCP).
 export const Route = createFileRoute("/_layout/_authenticated/agent")({
   component: AgentRootRoute,
+  codeSplitGroupings: [],
 });
 
 const SECTION_TITLE_KEYS: Record<string, string> = {
@@ -34,7 +37,7 @@ const SECTION_TITLE_KEYS: Record<string, string> = {
   "work-items": "navigation:sidebar.workItem",
 };
 
-export function agentSectionTitleKey(pathname: string): string {
+function agentSectionTitleKey(pathname: string): string {
   const section = pathname.replace(/^\/agent\/?/, "").split("/")[0] ?? "";
   return SECTION_TITLE_KEYS[section] ?? "navigation:sidebar.overview";
 }
@@ -66,8 +69,14 @@ function AgentHome() {
   );
 }
 
-function AgentRootRoute() {
+function AgentSectionTitle({ pathname }: { pathname: string }) {
   const { t } = useTranslation();
+  return t(agentSectionTitleKey(pathname));
+}
+
+// No `useTranslation` here: a translation load would re-render this route and with it the
+// whole page under `<Outlet />` (500 work-list rows, G11 LCP). Only the title subscribes.
+function AgentRootRoute() {
   const location = useLocation();
   if (location.pathname === "/agent" || location.pathname === "/agent/") {
     return <AgentHome />;
@@ -77,7 +86,7 @@ function AgentRootRoute() {
     return <Outlet />;
   }
   return (
-    <WorkspaceLayout title={t(agentSectionTitleKey(location.pathname))}>
+    <WorkspaceLayout title={<AgentSectionTitle pathname={location.pathname} />}>
       <div className="h-full overflow-y-auto">
         <Outlet />
       </div>

@@ -8,17 +8,29 @@ import {
 } from "react";
 import { shortcuts } from "@/constants/shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { waitsForPrimaryContent } from "@/lib/after-primary-content";
+import { whenSidebarShown } from "@/lib/sidebar-shown";
 import type { CommandPaletteIntent, CommandPaletteRequest } from "./index";
 
+let paletteModule: Promise<typeof import("./index")> | undefined;
+/** One download of the palette module, shared by the warm-up prefetch and the lazy mount. */
+function loadPaletteModule() {
+  paletteModule ??= import("./index");
+  return paletteModule;
+}
+
 const CommandPalette = lazy(async () => {
-  const module = await import("./index");
+  const module = await loadPaletteModule();
   return { default: module.CommandPalette };
 });
 
 let nextRequestId = 0;
 
 type IdleWindow = Window & {
-  requestIdleCallback?: (callback: () => void) => number;
+  requestIdleCallback?: (
+    callback: () => void,
+    options?: { timeout?: number },
+  ) => number;
   cancelIdleCallback?: (handle: number) => void;
 };
 
@@ -84,23 +96,28 @@ export default function CommandPaletteLauncher() {
     // On the heavy work and board screens, wait for their real primary content
     // paint before warming the closed palette. Explicit shortcut intent still
     // loads immediately through `requested`.
-    const path = window.location.pathname;
-    const waitsForPrimaryContent =
-      (path.includes("/agent/projects/") && path.endsWith("/work")) ||
-      path.endsWith("/board");
+    const waitsForPrimary = waitsForPrimaryContent(window.location.pathname);
     let firstFrame: number | undefined;
     let secondFrame: number | undefined;
     let observer: MutationObserver | undefined;
     let cancelled = false;
     const idleWindow = window as IdleWindow;
+    let started = false;
     const mountAfterCommit = () => {
-      if (
-        cancelled ||
-        requestedRef.current ||
-        firstFrame !== undefined ||
-        secondFrame !== undefined
-      )
-        return;
+      if (cancelled || requestedRef.current || started) return;
+      started = true;
+      // Start the download now; only the mount waits (for the sidebar on the heavy screens,
+      // then for paint frames and idle time).
+      void loadPaletteModule().catch(() => {});
+      // On those screens the sidebar has already taken its turn, so idle time is only
+      // waited for briefly: the popup must be up well inside G11's 5 s.
+      if (waitsForPrimary)
+        void whenSidebarShown().then(() => {
+          if (!cancelled && !requestedRef.current) mountWhenIdle(300);
+        });
+      else mountWhenIdle(1_000);
+    };
+    const mountWhenIdle = (idleTimeoutMs: number) => {
       firstFrame = requestAnimationFrame(() => {
         if (cancelled || requestedRef.current) return;
         secondFrame = requestAnimationFrame(() => {
@@ -109,14 +126,18 @@ export default function CommandPaletteLauncher() {
             setKeepMounted(true);
             return;
           }
-          idleMountRef.current = idleWindow.requestIdleCallback(() => {
-            idleMountRef.current = undefined;
-            if (!cancelled) setKeepMounted(true);
-          });
+          // Bounded, so a busy main thread on a slow machine cannot leave the palette cold.
+          idleMountRef.current = idleWindow.requestIdleCallback(
+            () => {
+              idleMountRef.current = undefined;
+              if (!cancelled) setKeepMounted(true);
+            },
+            { timeout: idleTimeoutMs },
+          );
         });
       });
     };
-    if (waitsForPrimaryContent) {
+    if (waitsForPrimary) {
       if (document.querySelector("[data-primary-content-ready='true']")) {
         mountAfterCommit();
       } else {

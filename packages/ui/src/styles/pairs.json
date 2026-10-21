@@ -852,10 +852,10 @@
       "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::dl[0]/dd[0]::text-foreground#0",
       "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::dl[0]/dd[1]::text-foreground#0",
       "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::div[0]/div[0]/p[0]::text-foreground#0",
-      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
-      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
       "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::text-foreground#0",
-      "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0"
+      "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0",
+      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0"
     ],
     "occurrences": [
       {
@@ -1736,6 +1736,28 @@
         "backdropLayers": []
       },
       {
+        "id": "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-title.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+          "jsx:div[0]/Suspense[0]/WorkItemDetail[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-title.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+          "jsx:div[0]/Suspense[0]/WorkItemDetail[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
         "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
         "usage": "packages/ui/src/components/field.tsx",
         "surfaceContext": "caller-chain",
@@ -2231,17 +2253,6 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::text-foreground#0",
-        "usage": "apps/web/src/components/work-item/work-item-title.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-          "jsx:div[0]/Suspense[0]/WorkItemDetail[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-title.tsx",
         "surfaceContext": "caller-chain",
@@ -2260,17 +2271,6 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
           "jsx:aside[0]/div[1]/Suspense[0]/SidePaneDetailWithProject[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0",
-        "usage": "apps/web/src/components/work-item/work-item-title.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-          "jsx:div[0]/Suspense[0]/WorkItemDetail[0]"
         ],
         "backdropLayers": []
       }
@@ -2369,10 +2369,10 @@
       "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::dl[0]/dd[0]::text-foreground#0",
       "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::dl[0]/dd[1]::text-foreground#0",
       "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::div[0]/div[0]/p[0]::text-foreground#0",
-      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
-      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
       "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::text-foreground#0",
-      "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0"
+      "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0",
+      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0"
     ],
     "occurrences": [
       {
@@ -3253,6 +3253,28 @@
         "backdropLayers": []
       },
       {
+        "id": "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-title.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+          "jsx:div[0]/Suspense[0]/WorkItemDetail[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-title.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+          "jsx:div[0]/Suspense[0]/WorkItemDetail[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
         "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
         "usage": "packages/ui/src/components/field.tsx",
         "surfaceContext": "caller-chain",
@@ -3748,17 +3770,6 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::text-foreground#0",
-        "usage": "apps/web/src/components/work-item/work-item-title.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-          "jsx:div[0]/Suspense[0]/WorkItemDetail[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0",
         "usage": "apps/web/src/components/work-item/work-item-title.tsx",
         "surfaceContext": "caller-chain",
@@ -3777,17 +3788,6 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
           "jsx:aside[0]/div[1]/Suspense[0]/SidePaneDetailWithProject[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0",
-        "usage": "apps/web/src/components/work-item/work-item-title.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-          "jsx:div[0]/Suspense[0]/WorkItemDetail[0]"
         ],
         "backdropLayers": []
       }
@@ -7792,11 +7792,6 @@
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[2]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/header[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#1",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#2",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -7871,6 +7866,11 @@
       "packages/ui/src/components/select.tsx::SelectButton::span[0]::in-data-placeholder:text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
       "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#1",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#2",
       "apps/web/src/components/work-item/work-item-side-pane.tsx::WorkItemSidePane::aside[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-description.tsx::WorkItemDescription::div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::div[0]/p[0]::text-muted-foreground#0"
@@ -9020,86 +9020,6 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx:/_layout/_authenticated/dashboard/settings/account/preferences",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/header[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#2",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
@@ -10686,6 +10606,86 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx:InvitationsPage",
           "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#2",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
       },
@@ -11317,11 +11317,6 @@
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[2]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/header[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#1",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#2",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -11396,6 +11391,11 @@
       "packages/ui/src/components/select.tsx::SelectButton::span[0]::in-data-placeholder:text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
       "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#1",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#2",
       "apps/web/src/components/work-item/work-item-side-pane.tsx::WorkItemSidePane::aside[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-description.tsx::WorkItemDescription::div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::div[0]/p[0]::text-muted-foreground#0"
@@ -12545,86 +12545,6 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx:/_layout/_authenticated/dashboard/settings/account/preferences",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/header[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/p[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-          "apps/web/src/routes/agent/_layout.tsx:/_layout",
-          "apps/web/src/index.css:body>@apply bg-background"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::main[0]/section[0]/p[0]::text-muted-foreground#2",
-        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
-        "surfaceContext": "route-layout-body",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
@@ -14211,6 +14131,86 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx:InvitationsPage",
           "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/section[0]/p[0]::text-muted-foreground#2",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
       },
@@ -25306,17 +25306,6 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/common/workspace-layout.tsx:WorkspaceLayout",
-          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/kbd.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
           "apps/web/src/components/notification/notification-dropdown.tsx:<module>",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
@@ -25539,6 +25528,17 @@
         "chain": [
           "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
           "SheetContent->packages/ui/src/components/sheet.tsx:SheetPopup"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/kbd.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/sidebar-toggle-tooltip.tsx:SidebarToggleTooltip",
+          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
         "backdropLayers": []
       },
@@ -28543,17 +28543,6 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/common/workspace-layout.tsx:WorkspaceLayout",
-          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/kbd.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
           "apps/web/src/components/notification/notification-dropdown.tsx:<module>",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
@@ -28776,6 +28765,17 @@
         "chain": [
           "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
           "SheetContent->packages/ui/src/components/sheet.tsx:SheetPopup"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/kbd.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/common/sidebar-toggle-tooltip.tsx:SidebarToggleTooltip",
+          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
         "backdropLayers": []
       },
@@ -30299,21 +30299,6 @@
         "chain": [
           "packages/ui/src/components/kbd.tsx:Kbd",
           "jsx:kbd[0]>bg-muted",
-          "apps/web/src/components/common/workspace-layout.tsx:WorkspaceLayout",
-          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
-        ],
-        "backdropLayers": [
-          "bg-popover"
-        ]
-      },
-      {
-        "id": "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/kbd.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/kbd.tsx:Kbd",
-          "jsx:kbd[0]>bg-muted",
           "apps/web/src/components/notification/notification-dropdown.tsx:<module>",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
@@ -30345,6 +30330,21 @@
           "packages/ui/src/components/kbd.tsx:Kbd",
           "jsx:kbd[0]>bg-muted",
           "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
+          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/kbd.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/kbd.tsx:Kbd",
+          "jsx:kbd[0]>bg-muted",
+          "apps/web/src/components/common/sidebar-toggle-tooltip.tsx:SidebarToggleTooltip",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
         "backdropLayers": [
@@ -30485,21 +30485,6 @@
         "chain": [
           "packages/ui/src/components/kbd.tsx:Kbd",
           "jsx:kbd[0]>bg-muted",
-          "apps/web/src/components/common/workspace-layout.tsx:WorkspaceLayout",
-          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
-        ],
-        "backdropLayers": [
-          "bg-popover"
-        ]
-      },
-      {
-        "id": "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/kbd.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/kbd.tsx:Kbd",
-          "jsx:kbd[0]>bg-muted",
           "apps/web/src/components/notification/notification-dropdown.tsx:<module>",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
@@ -30531,6 +30516,21 @@
           "packages/ui/src/components/kbd.tsx:Kbd",
           "jsx:kbd[0]>bg-muted",
           "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
+          "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/kbd.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/kbd.tsx:Kbd",
+          "jsx:kbd[0]>bg-muted",
+          "apps/web/src/components/common/sidebar-toggle-tooltip.tsx:SidebarToggleTooltip",
           "TooltipContent->packages/ui/src/components/tooltip.tsx:TooltipPopup"
         ],
         "backdropLayers": [

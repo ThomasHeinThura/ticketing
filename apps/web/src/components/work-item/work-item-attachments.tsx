@@ -62,6 +62,21 @@ export default function WorkItemAttachments({
     (attachment) => attachment.state === "ready",
   );
 
+  const filePicker = (
+    // ui-exempt: the native file picker, hidden behind the Add button.
+    <input
+      ref={inputRef}
+      type="file"
+      className="sr-only"
+      aria-label={t("workItems:detail.attachments.add")}
+      onChange={(event) => {
+        const file = event.target.files?.[0];
+        if (file) upload.mutate(file);
+        event.target.value = "";
+      }}
+    />
+  );
+
   return (
     <section
       className="flex flex-col gap-2"
@@ -83,17 +98,7 @@ export default function WorkItemAttachments({
             ? t("workItems:detail.attachments.uploading")
             : t("workItems:detail.attachments.add")}
         </Button>
-        <input
-          ref={inputRef}
-          type="file"
-          className="sr-only"
-          aria-label={t("workItems:detail.attachments.add")}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) upload.mutate(file);
-            event.target.value = "";
-          }}
-        />
+        {filePicker}
       </div>
       {error ? (
         <p className="text-destructive-foreground text-sm" role="alert">

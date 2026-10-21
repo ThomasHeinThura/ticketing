@@ -19,7 +19,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -861,7 +861,9 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
       const commentAudits = await db
         .select({ action: schema.auditLogTable.action })
         .from(schema.auditLogTable)
-        .where(eq(schema.auditLogTable.entityId, commentRow.id));
+        .where(eq(schema.auditLogTable.entityId, commentRow.id))
+        // Two requests, two rows: without an order Postgres may return them either way.
+        .orderBy(asc(schema.auditLogTable.createdAt));
       expect(commentAudits.map((r) => r.action)).toEqual([
         "work_item.commented",
         "comment.updated",
