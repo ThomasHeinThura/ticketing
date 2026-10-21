@@ -41,11 +41,14 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   drill restored an actual database row and non-empty file, denied egress and passed health.
   #878 is merged with all 18 required checks green; full application acceptance remains pending.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
+- Continue from [handover.md](handover.md) for active branches, checks and deployment
+  constraints. It is a dated snapshot, not policy or proof that pending checks passed.
 
 ## SIT
 
-The existing Compose application is healthy, but its image revision is `unknown` and it
-has not been verified against current main. It cannot prove current feature acceptance.
+The earlier local Compose installation reported revision `unknown`; OrbStack is now
+stopped, so that installation is not current runtime evidence. TaskDesk has **not yet
+been deployed to the proxy VM**. No current hosted SIT acceptance is claimed.
 Before handoff: deploy the reviewed SHA/digest, verify both HTTPS origins, seed accounts and
 realistic submissions, exercise all journeys, and verify backup/restore. Supply credentials
 privately. Thomas performs the final integrated stage walkthrough.
