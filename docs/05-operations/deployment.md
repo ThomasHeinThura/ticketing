@@ -82,6 +82,13 @@ scripts/deploy.sh local
 The script is **idempotent** — safe to re-run, and it never regenerates a secret that
 already exists. Carried from v1, where this was one of the better decisions.
 
+Local deployment runs the bundled SIT seed inside the healthy application container with
+`node apps/api/dist/seed-sit-users.js --sit`. No host Node/pnpm installation or published
+database port is required. A seed failure fails deployment. The seed creates the four
+interactive test accounts, two published customer request forms and two real submissions
+(one private, one organisation-visible). Re-running preserves existing submissions and
+their triage progress. Production, upgrade and rollback never run this seed.
+
 It:
 
 1. Generates any missing secrets.
