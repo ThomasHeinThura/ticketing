@@ -49,7 +49,10 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
 - #883 remains a candidate: prior `e1209855` passed G11/G8/PostgreSQL but failed two create
   control visibility cases. Reviewed `0fc458a6` scopes work/backlog creation to the displayed
   project; 28 native tests and 20 browser journeys passed. Accepted main is imported without
-  changing the authored source delta; final-head integrated checks remain required.
+  changing the authored source delta. On final head `2c4a1102`, 17/18 required checks passed;
+  G11 failed command-palette click-to-paint (209.7 ms against 200 ms). Palette readiness
+  and the 500-row render budget passed. Profile this interaction before another repair;
+  no gate, budget or retry was relaxed. Do not merge this candidate yet.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
   constraints. It is a dated snapshot, not policy or proof that pending checks passed.

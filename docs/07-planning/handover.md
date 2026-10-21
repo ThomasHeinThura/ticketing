@@ -43,12 +43,20 @@ worktrees or have two sessions edit the same file. Inspect live GitHub before co
 | #871 canonical Kaneo work-item page/pane | Merged on reviewed bf3c6b95, all 18 checks. | Remaining P1 hierarchy/relations/project labels and integrated acceptance. |
 | #881 canonical workspace labels | Merged on reviewed a871a853, all 18 checks. | Project label catalogues remain separate unfinished work. |
 | [#882 canned responses](https://github.com/ThomasHeinThura/ticketing/pull/882) | **Merged** to main 2f366cd4 on reviewed ff85f0bc after all 18 checks. Hosted PostgreSQL, 138 browser tests, G8, G11 budgets 22/22 and amd64 image boot passed. | Do not reimplement its placeholders/management or repeat resolved fixture defects. Full P2/SIT acceptance remains open. |
-| [#883 sidebar/project controls](https://github.com/ThomasHeinThura/ticketing/pull/883) | Candidate. Reviewed 0fc458a6 repairs displayed-project creation permissions after e1209855 passed G11/G8/PG but failed two browser controls. Native 28 tests and 20 browser journeys passed. Accepted main 2f366cd4 imported with byte-identical authored source diff. | Worktree ~/.codex/worktrees/taskdesk-sidebar-paint-scheduling, branch codex/sidebar-paint-scheduling. Obtain import/docs delta review and all 18 final-head checks before protected merge. |
+| [#883 sidebar/project controls](https://github.com/ThomasHeinThura/ticketing/pull/883) | Candidate. Reviewed 0fc458a6 repairs displayed-project creation permissions after e1209855 passed G11/G8/PG but failed two browser controls. Native 28 tests and 20 browser journeys passed. Accepted main 2f366cd4 imported with byte-identical authored source diff. | Worktree ~/.codex/worktrees/taskdesk-sidebar-paint-scheduling, branch codex/sidebar-paint-scheduling. Import/docs delta review approved. Final head 2c4a1102 passed 17/18 checks; G11 palette click-to-paint failed (209.7 ms > 200 ms). Diagnose and repair before protected merge. |
 | [#880 image build](https://github.com/ThomasHeinThura/ticketing/pull/880) | Candidate f7f140c7, source independently approved but prior G11 failed. Native shared-artifact compilation replaces the known 35-minute arm64 emulation path; actual multiarch release success is still unproven. | Worktree ~/.codex/worktrees/taskdesk-native-artifact-image-build, branch codex/native-artifact-image-build. Import accepted performance repair once merged, review delta, validate/merge, then verify actual release build, both architectures, scan and signing. |
 
 ## Immediate next work
 
-1. Complete #883 on current main. It retains primary-content/paint/idle protection, prefetches
+1. Complete #883 on current main. Final-head workflows 39576068339 / 39576068126
+   passed all required checks except G11. The 500-row render measured 487.0 ms (<500);
+   palette readiness passed, but click-to-paint measured 209.7 ms (>200) after the
+   existing retry. Log: /tmp/taskdesk-sidebar-2c4-g11.log; downloaded performance
+   artifacts: /tmp/taskdesk-sidebar-2c4-perf. Profile the open interaction before patching;
+   do not blindly rerun, relax budgets or treat 17/18 as merge clearance.
+   Native integrated checks passed 48 unit tests and 23 browser journeys.
+
+   Current implementation: It retains primary-content/paint/idle protection, prefetches
    project navigation alongside the sidebar, and scopes work/backlog create controls to
    the displayed project through the existing capability API. Tests withhold roster data
    and check project denial despite workspace permission. No budgets, assertion timeouts,
