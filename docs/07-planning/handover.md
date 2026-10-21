@@ -31,81 +31,83 @@ are authorized. No P5–P7, production deployment or bulk branch/worktree deleti
 
 ## Accepted code and current branches
 
-Live GitHub main inspected for this update: `a13edc671f5644dddd629b44134131455932eec9`.
-The primary checkout is clean at that revision; these documentation edits are on #882.
-Do not discard other worktrees or have two sessions edit the same file.
+Live accepted main: `2f366cd47a9124be2d995416d5eaf0878f5918b7` (#882).
+The primary checkout has been refreshed to it without discarding work. Do not delete other
+worktrees or have two sessions edit the same file. Inspect live GitHub before continuing.
 
-| Change | Evidence/state at this snapshot | Continue here |
+| Change | Evidence/state | Continuation |
 | --- | --- | --- |
-| #875 integration sharding | Merged, 18 required checks passed; slowest measured partition 8m43s versus former 31m22s serial step. This is not total pipeline duration. | Preserve all gates. |
-| #877 container seeding; #878 isolated recovery | Merged with 18 required checks each. Restricted credential/idempotent submissions and isolated row/nonempty-file restore evidence exist. Full operational acceptance remains. | Finish P0 backup/runtime/recovery obligations. |
-| #870 approval decisions | Merged after required checks/review; approval request/candidates still missing. | Continue P2 prerequisites and request flow. |
-| #871 Kaneo work-item full page/side pane | Merged on reviewed `bf3c6b95`, all 18 required checks green. | Hierarchy/relations and remaining P1 acceptance still outstanding. |
-| #881 canonical labels | Merged on reviewed `a871a853`, all 18 required checks green. | Project-scoped label catalogues remain unfinished. |
-| [#880](https://github.com/ThomasHeinThura/ticketing/pull/880) native artifact image build | Head `f7f140c7`; G11 failed. Separate build fix independently reviewed; candidate amd64 boot passed. Multiarch release fix is not proven. | Worktree `~/.codex/worktrees/taskdesk-native-artifact-image-build`, branch `codex/native-artifact-image-build`. Import accepted performance repair later, review delta, require exact-head checks, then verify actual multiarch release/scan/sign. |
-| [#883](https://github.com/ThomasHeinThura/ticketing/pull/883) sidebar idle scheduling | Reviewed candidate `e1209855` now overlaps project-navigation downloads with the sidebar after primary content; 25 native tests and 11 browser journeys passed. Hosted runs `39569215028`/`39569479207` are pending verification. Prior `5c0e5410` run `39559280947` failed G11; preserve that evidence. Do not merge or blindly rerun. | Worktree `~/.codex/worktrees/taskdesk-sidebar-paint-scheduling`, branch `codex/sidebar-paint-scheduling`. Diagnose `/tmp/taskdesk-883-5c-g11.log`, job `119086380484`: 21/22 tests passed, but G13 setup could not find the palette popup within 5 seconds. Preserve budgets/calibration/assertions. |
-| [#882](https://github.com/ThomasHeinThura/ticketing/pull/882) canned-response management | Management and placeholder implementation are on this branch. Prior `06f0332b` full run `39559618827` failed G8 on the obsolete General Settings baseline; independently reviewed image update is `80c87ad0`. Source/retry repair `ce238f4e` was independently approved. Its hosted run `39563587447` passed G8 but failed integration shard 1, real API browser and G11; tests are being repaired without changing product policy or budgets. The manager fixture lacked its genuine system role row; browser POST body was read after reload discarded it. CA-19a interpolation integration itself passed. G11 list render was 506.3ms against <500ms. Refresh the current head before using CI evidence. | Worktree `~/.codex/worktrees/taskdesk-canned-response-management`, branch `codex/canned-response-management`. Prior job `119087861180` passed scope validation, then the obsolete screenshot differed by 248,094 pixels (27%). Actual Linux artifact was inspected and baseline updated without tolerance changes; log `/tmp/taskdesk-canned-06f-g8.log`. Require final-head G8. |
+| #875 integration shards | Merged, all 18 checks. Slowest measured partition 8m43s versus former 31m22s serial step, not total pipeline time. | Preserve the fail-closed collector and required checks. |
+| #877 seed; #878 recovery | Merged, all 18 checks each. Restricted-credential repeated real submissions, isolated database-row/nonempty-file restore, health and denied egress verified. | Complete remaining P0 backup/runtime/recovery acceptance. |
+| #870 approval decisions | Merged after required checks/review. | Approval requests/candidates and prerequisites remain. |
+| #871 canonical Kaneo work-item page/pane | Merged on reviewed bf3c6b95, all 18 checks. | Remaining P1 hierarchy/relations/project labels and integrated acceptance. |
+| #881 canonical workspace labels | Merged on reviewed a871a853, all 18 checks. | Project label catalogues remain separate unfinished work. |
+| [#882 canned responses](https://github.com/ThomasHeinThura/ticketing/pull/882) | **Merged** to main 2f366cd4 on reviewed ff85f0bc after all 18 checks. Hosted PostgreSQL, 138 browser tests, G8, G11 budgets 22/22 and amd64 image boot passed. | Do not reimplement its placeholders/management or repeat resolved fixture defects. Full P2/SIT acceptance remains open. |
+| [#883 sidebar/project controls](https://github.com/ThomasHeinThura/ticketing/pull/883) | Candidate. Reviewed 0fc458a6 repairs displayed-project creation permissions after e1209855 passed G11/G8/PG but failed two browser controls. Native 28 tests and 20 browser journeys passed. Accepted main 2f366cd4 imported with byte-identical authored source diff. | Worktree ~/.codex/worktrees/taskdesk-sidebar-paint-scheduling, branch codex/sidebar-paint-scheduling. Obtain import/docs delta review and all 18 final-head checks before protected merge. |
+| [#880 image build](https://github.com/ThomasHeinThura/ticketing/pull/880) | Candidate f7f140c7, source independently approved but prior G11 failed. Native shared-artifact compilation replaces the known 35-minute arm64 emulation path; actual multiarch release success is still unproven. | Worktree ~/.codex/worktrees/taskdesk-native-artifact-image-build, branch codex/native-artifact-image-build. Import accepted performance repair once merged, review delta, validate/merge, then verify actual release build, both architectures, scan and signing. |
 
-## Immediate implementation continuation
+## Immediate next work
 
-1. #882 CA19 placeholder interpolation is authored after `80c87ad0`, pending
-   hosted repair verification. Independent source/security and retry reviews passed through
-   `ce238f4e`; integration/browser test repairs after its hosted failures need delta review.
-   The retry unit regression also now
-   waits for hydrated/persisted draft state and an enabled selector before retry, retaining
-   its successful-insertion assertion; both isolated and combined verification are required. The initial review found stale cached
-   due-date expansion on an open item; insertion now fetches fresh authorized context, locks
-   editing/sending while pending and preserves drafts on failure/removal. Settings persists reusable rich-text
-   templates; item composer listing expands only authorized live-item context. Native checks
-   passed: domain 676 tests (eight new resolver cases), API unit 884, permissions 107,
-   API/web typechecks, three mock browser journeys, 16 activity editor tests and 418 contrast pairs.
-   Final-head PostgreSQL, real API browser, G8 and required CI remain required; earlier-head
-   partial passes do not establish full acceptance.
-2. The CA-19a contract now specifies `{{requester.name}}`, `{{work_item.key}}` and
-   `{{work_item.due_date}}`; UTC calendar date, empty missing values, unknown tokens
-   retained and no expression execution. Adjacent formatted text nodes are supported;
-   attributes/URLs and stored templates remain unchanged. Integration tests cover an
-   external contact without workspace membership, linked-user name fallback, missing
-   values and template immutability. The real API browser journey now authors a key token
-   through settings and expects a resolved editable draft; this new path is not yet
-   runtime-verified. No full CA19/P2 completion claim until that evidence passes.
-3. Existing relevant paths: `apps/api/src/canned-response/repository.ts`,
-   `apps/api/src/canned-response/controllers/list-canned-responses.ts`,
-   `packages/domain/src/`, feature spec CA19, and
-   `apps/web/e2e/work-item-comments-journey.spec.ts`. `person.displayName` exists; requester
-   contacts legitimately need not be workspace users. Keep query ownership in repositories
-   and get independent security review for requester context and isolation.
-4. Diagnose #883 G11 from the actual failure before another scheduling change. Earlier #880
-   failure was palette readiness near the 5-second setup limit even though numeric budgets
-   passed. Do not assume #883 failed for the same reason. Track adverse evidence in #876/#711.
-5. For #882 G8, the actual hosted diff was inspected: expected was the superseded General
-   Settings redirect; actual is the correct library in Kaneo settings. The one Linux image
-   was updated at `80c87ad0` with independent image-only approval. No tolerances changed;
-   final-head G8 must still pass. Artifacts: `/tmp/taskdesk-canned-06f-visual/`.
-6. For every changed head: affected native checks, hosted required checks, independent
-   review and protected merge. No timeout/budget relaxation, skipped tests or manual statuses.
+1. Complete #883 on current main. It retains primary-content/paint/idle protection, prefetches
+   project navigation alongside the sidebar, and scopes work/backlog create controls to
+   the displayed project through the existing capability API. Tests withhold roster data
+   and check project denial despite workspace permission. No budgets, assertion timeouts,
+   calibration ranges, retries or fallbacks were relaxed. Prior G11 failures stay adverse
+   evidence in #876/#711; a later green candidate does not erase them.
+2. Complete #880 and verify its real multiarch release. Earlier release 39548649101's
+   arm64 QEMU build hung after Vite transformed 7,397 modules and reached the 35-minute
+   timeout. Do not increase the timeout or narrow supported architectures. CI amd64 image
+   proof is not proof of a successful arm64 release.
+3. Continue P1 requirements, then the approved P2–P4 sequence in the living plan. Hierarchy
+   has parent/tree backend code, but the tree is capped at 500 nodes with a truncated flag;
+   per-parent pagination (#434), canonical inline hierarchy UI and full lifecycle behavior
+   need completion. Canonical work-item relations still need implementation; legacy task relations do not
+   satisfy them.
+   Audit before assuming existing code satisfies a rule. Do not replace missing functionality
+   with a hidden feature or mark a whole feature/stage complete from a narrow test.
+
+## Accepted canned-response evidence
+
+CA19/20 management uses the existing Kaneo settings shell and rich-text editor. Manager
+listing is settings-permission scoped; composer listing remains item-reach/API-key scoped.
+Tokens requester.name, work_item.key and work_item.due_date are expanded as literal text
+only, including split formatting; attributes/URLs and stored templates stay unchanged.
+Insertion fetches fresh authorized item context and locks editing/sending while pending.
+Failed/removed templates preserve drafts for retry. Requester contacts need no workspace
+user membership; only the item-linked display name (linked-user fallback), never email,
+is exposed. The real browser journey edits due date while the composer remains mounted,
+inserts the new value, edits and sends a durable comment without automatic submission.
+
+Review chain: source/security, intended Linux baseline, interpolation/cache repair, retry
+synchronization and genuine-role/response-evidence fixtures approved through ff85f0bc.
+Final proof comment: [#882 completion evidence](https://github.com/ThomasHeinThura/ticketing/pull/882#issuecomment-6311935923).
+Image proof is /tmp/taskdesk-canned-ff-image-proof/taskdesk-image-proof-39570330868-1.json:
+amd64 image ID sha256:5c69cf827efed939b8018d3a1d01407e7f7e3928feeb19e27adf7386151e247e,
+all 126 migrations, live/ready 200, runtime UID 10001, isolated owned network and cleanup.
+This candidate image is not a released multiarch artifact or final SIT deployment.
+The non-gating CPU diagnostic still lacks complete sampled-frame evidence; do not call
+that diagnostic passed merely because G11 budgets passed.
 
 ## Hosted integration and remaining scope
 
 The read-only VM assessment found 2 vCPUs, 7.7 GiB RAM and 166 GiB free: suitable for light
-functional SIT, not reference performance acceptance. Existing Traefik uses Docker network
-`web` and ACME resolver `le`, while the stock overlay assumes `proxy`/`letsencrypt` and an
-absent file-provider middleware. Prepare/review a compatible isolated Compose overlay.
-Validate Cloudflare/origin TLS and trusted forwarded-client-IP handling; do not guess a
-proxy hop count. Keep database/cache/application ports unpublished. Do not opt into the
-existing Watchtower's unattended replacement. No remote application changes have been made.
+functional SIT, not reference performance acceptance. Traefik uses network web and resolver
+le; the stock overlay assumes proxy/letsencrypt and an absent file middleware. Prepare and
+review a compatible isolated Compose overlay. Validate Cloudflare/origin TLS and trusted
+forwarded-client-IP handling; do not guess a hop count. Keep database/cache/application
+ports unpublished. Do not opt into Watchtower replacement. No remote application changes
+have been made. OrbStack remains stopped and its local data is retained.
 
-P0 backup encryption/offsite/retention/runtime records and full restore walkthrough remain.
+P0 still needs backup encryption/offsite/retention/runtime records and full restore walkthrough.
 P1 needs complete hierarchy/relations, project labels and remaining work/view acceptance.
-P2 needs teams/CAB/custom fields, approval requests, configuration/editor journeys,
-SLA/workflow completeness, canned runtime verification, audit and delivery planning.
-P3 needs the full host-root portal, admission contracts and implementation, identity admin,
-and all 25 real-Entra acceptance tests; credentials are an external verification dependency.
-P4 needs governance APIs/UI, full notification runtime, automations, God Mode, MCP/API-key
-completion and #580 repository query ownership with a genuine structural gate.
+P2 needs teams/CAB/custom fields, approval requests, complete authoring/SLA/workflow journeys,
+audit and delivery planning. P3 needs the full host-root portal, admission contracts and
+implementation, identity administration and all 25 real-Entra tests (tenant access must be
+established for that verification). P4 needs governance APIs/UI, full notification runtime,
+automations, God Mode, MCP/API keys and #580 repository query ownership with a genuine gate.
 The approved evaluator failure policy is 24 hours, then stop automatic evaluation, expose
-failure administratively and permit explicit retry. #626 manual obligations remain visible.
-The full numbered-requirement map is still incomplete; do not invent completion percentages.
+the failure administratively and support explicit retry. #626 manual obligations remain.
+The full numbered-requirement map is still incomplete; do not invent percentages.
 
 After features: comprehensive integrated/security/Kaneo review, real agent/portal journeys,
 installation/upgrade/image health, isolated backup/restore, exact SHA/digest deployment,
