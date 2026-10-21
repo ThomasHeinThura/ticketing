@@ -250,6 +250,7 @@ export async function recordWorkItemActivity(
  * diffed here rather than silently mis-classified.
  */
 export type WorkItemFieldSnapshot = {
+  labelIds?: string[];
   title?: string;
   description?: unknown;
   priority?: string | null;
@@ -270,6 +271,7 @@ const DIFFABLE_FIELDS: ReadonlyArray<{
   key: keyof WorkItemFieldSnapshot;
   field: string;
 }> = [
+  { key: "labelIds", field: "label" },
   { key: "title", field: "title" },
   { key: "description", field: "description" },
   { key: "priority", field: "priority" },

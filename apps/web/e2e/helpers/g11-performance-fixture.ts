@@ -490,6 +490,12 @@ export async function installPerformanceApiFixture(
     )
       return json(makeDetailItem());
 
+    if (
+      path === `/api/work-items/${WORK_ITEM_KEY}/labels` &&
+      request.method() === "GET"
+    )
+      return json([]);
+
     return json({ message: "Not found in the G11 browser fixture" }, 404);
   });
 

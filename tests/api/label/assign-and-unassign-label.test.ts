@@ -1,4 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const IDENTITY = {
@@ -15,6 +17,20 @@ const mockTxExecute = vi.fn(async (..._args: unknown[]) => ({ rows: [] }));
 const mockDelete = vi.fn();
 const mockInsert = vi.fn();
 const mockPublishEvent = vi.fn();
+
+// Catalogue assignment/deletion serializes across the whole workspace before taking
+// the name lock. Check the bound lock keys, not merely the number of SQL statements.
+function expectLabelFamilyLocks() {
+  const dialect = new PgDialect();
+  expect(
+    mockTxExecute.mock.calls.map(
+      ([query]) => dialect.sqlToQuery(query as SQL).params,
+    ),
+  ).toEqual([
+    [4007, "ws-1:"],
+    [4007, "ws-1:bug"],
+  ]);
+}
 
 function createMockTxContext() {
   return {
@@ -157,7 +173,7 @@ describe("unassignLabelFromTask", () => {
     await unassignLabelFromTask(IDENTITY, "label-task-1", "user-1");
 
     expect(mockDelete).toHaveBeenCalledTimes(1);
-    expect(mockTxExecute).toHaveBeenCalledTimes(1);
+    expectLabelFamilyLocks();
     expect(mockPublishEvent).toHaveBeenCalledWith("task.label_unassigned", {
       label: TASK_LABEL,
       task: { id: TASK.id, projectId: TASK.projectId },
@@ -218,7 +234,7 @@ describe("assignLabelToTask", () => {
     );
 
     expect(result).toEqual(insertedCopy);
-    expect(mockTxExecute).toHaveBeenCalledTimes(1);
+    expectLabelFamilyLocks();
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockDelete).not.toHaveBeenCalled();
     expect(insertChain.onConflict).toHaveBeenCalledWith({
@@ -252,7 +268,7 @@ describe("assignLabelToTask", () => {
     );
 
     expect(result).toEqual({ ...TASK_LABEL, taskId: "task-1" });
-    expect(mockTxExecute).toHaveBeenCalledTimes(1);
+    expectLabelFamilyLocks();
     expect(mockInsert).not.toHaveBeenCalled();
     expect(mockDelete).not.toHaveBeenCalled();
     expect(mockPublishEvent).not.toHaveBeenCalled();
@@ -278,7 +294,7 @@ describe("assignLabelToTask", () => {
     mockInsert.mockReturnValue(insertChain);
 
     await assignLabelToTask(IDENTITY, "label-task-1", "task-1", "user-1");
-    expect(mockTxExecute).toHaveBeenCalledTimes(1);
+    expectLabelFamilyLocks();
     expect(mockPublishEvent).toHaveBeenCalledWith(
       "task.label_assigned",
       expect.objectContaining({
@@ -307,7 +323,7 @@ describe("assignLabelToTask", () => {
     );
 
     expect(result).toEqual(TASK_LABEL);
-    expect(mockTxExecute).toHaveBeenCalledTimes(1);
+    expectLabelFamilyLocks();
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockPublishEvent).not.toHaveBeenCalled();
   });
@@ -333,7 +349,7 @@ describe("assignLabelToTask", () => {
 
     expect(result).toEqual(TASK_LABEL);
     expect(mockTransaction).toHaveBeenCalledTimes(1);
-    expect(mockTxExecute).toHaveBeenCalledTimes(1);
+    expectLabelFamilyLocks();
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockPublishEvent).not.toHaveBeenCalled();
   });
@@ -355,7 +371,7 @@ describe("assignLabelToTask", () => {
     ).rejects.toMatchObject({
       status: 500,
     });
-    expect(mockTxExecute).toHaveBeenCalledTimes(1);
+    expectLabelFamilyLocks();
     expect(mockPublishEvent).not.toHaveBeenCalled();
   });
 
@@ -369,7 +385,7 @@ describe("assignLabelToTask", () => {
       status: 404,
     });
 
-    expect(mockTxExecute).toHaveBeenCalledTimes(1);
+    expectLabelFamilyLocks();
     expect(mockDelete).not.toHaveBeenCalled();
     expect(mockInsert).not.toHaveBeenCalled();
   });

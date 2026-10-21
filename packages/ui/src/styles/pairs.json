@@ -22659,7 +22659,8 @@
       "apps/web/src/components/work-item/work-item-properties.tsx::StateControl::Popover[0]/PopoverContent[0]/p[0]::text-muted-foreground#2",
       "apps/web/src/components/work-item/work-item-properties.tsx::AssigneeControl::Popover[0]/PopoverContent[0]/div[0]/p[1]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-properties.tsx::AssigneeControl::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-muted-foreground#1",
-      "apps/web/src/components/work-item/work-item-properties.tsx::InlineMessage::p[0]::text-muted-foreground#0"
+      "apps/web/src/components/work-item/work-item-properties.tsx::InlineMessage::p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-properties.tsx::LabelsControl::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -25695,6 +25696,18 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-properties.tsx:AssigneeControl",
           "PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-properties.tsx::LabelsControl::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-properties.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-properties.tsx:LabelsControl",
+          "jsx:Popover[0]/PopoverContent[0]/div[0]/p[0]",
+          "PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
         ],
         "backdropLayers": []
       },
@@ -25940,7 +25953,8 @@
       "apps/web/src/components/work-item/work-item-properties.tsx::StateControl::Popover[0]/PopoverContent[0]/p[0]::text-muted-foreground#2",
       "apps/web/src/components/work-item/work-item-properties.tsx::AssigneeControl::Popover[0]/PopoverContent[0]/div[0]/p[1]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-properties.tsx::AssigneeControl::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-muted-foreground#1",
-      "apps/web/src/components/work-item/work-item-properties.tsx::InlineMessage::p[0]::text-muted-foreground#0"
+      "apps/web/src/components/work-item/work-item-properties.tsx::InlineMessage::p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-properties.tsx::LabelsControl::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -28976,6 +28990,18 @@
         "chain": [
           "apps/web/src/components/work-item/work-item-properties.tsx:AssigneeControl",
           "PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-properties.tsx::LabelsControl::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-properties.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-properties.tsx:LabelsControl",
+          "jsx:Popover[0]/PopoverContent[0]/div[0]/p[0]",
+          "PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
         ],
         "backdropLayers": []
       },

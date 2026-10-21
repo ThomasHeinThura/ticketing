@@ -9,6 +9,10 @@ import {
   lockTaskAndAssertProjectLive,
 } from "../../task/assert-task-project-live";
 import {
+  clearCatalogueLabel,
+  publishCatalogueLabelChanges,
+} from "../../work-item/clear-catalogue-label";
+import {
   deleteLabelById,
   deleteLabelsByIds,
   findLabelById,
@@ -61,6 +65,7 @@ async function deleteLabel(
       }
       return {
         deletedLabel,
+        canonicalChanges: [],
         affectedLabels: [
           {
             label: deletedLabel,
@@ -101,6 +106,14 @@ async function deleteLabel(
           )
         : [];
 
+    const canonicalChanges = await clearCatalogueLabel(
+      tx,
+      label.workspaceId,
+      label.id,
+      userId,
+      identity,
+    );
+
     const deletedLabel = await deleteLabelById(tx, identity, id);
     if (!deletedLabel) {
       throw new HTTPException(404, { message: "Label not found" });
@@ -121,10 +134,12 @@ async function deleteLabel(
     });
     return {
       deletedLabel,
+      canonicalChanges,
       affectedLabels: emittedRows,
     };
   });
 
+  await publishCatalogueLabelChanges(result.canonicalChanges);
   for (const { taskId, projectId } of result.affectedLabels) {
     await publishEvent("task.label_deleted", {
       task: { id: taskId, projectId },

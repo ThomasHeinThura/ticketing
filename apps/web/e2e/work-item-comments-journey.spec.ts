@@ -423,6 +423,41 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       ).toContainText("A persisted rich-text description");
     });
 
+    await test.step("persist catalogue labels through the Kaneo properties picker", async () => {
+      const response = await page.request.post(
+        new URL("/api/label", origin).toString(),
+        {
+          headers: await csrfHeaders(page, origin),
+          data: {
+            workspaceId: item.workspaceId,
+            name: "SIT label",
+            color: "teal",
+          },
+        },
+      );
+      expect(response.status(), await response.text()).toBe(200);
+      await page.reload();
+      const trigger = page.getByRole("button", { name: "Labels", exact: true });
+      await expect(trigger).toBeEnabled();
+      await trigger.click();
+      const saved = page.waitForResponse(
+        (answer) =>
+          new URL(answer.url()).pathname === `/api/work-items/${item.key}` &&
+          answer.request().method() === "PATCH",
+      );
+      await page
+        .getByRole("checkbox", { name: "SIT label", exact: true })
+        .click();
+      expect((await saved).status()).toBe(200);
+      await page.keyboard.press("Escape");
+      await page.reload();
+      await expect(trigger).toContainText("SIT label");
+      await page.screenshot({
+        path: testInfo.outputPath("kaneo-canonical-labels.png"),
+        fullPage: true,
+      });
+    });
+
     const mentionRecipient = await seedReachableMentionRecipient(
       databaseUrl,
       item.workspaceId,
@@ -438,6 +473,13 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         .getByRole("region", { name: "Description", exact: true })
         .locator('[contenteditable="true"]'),
     ).toHaveCount(0);
+
+    await expect(
+      page.getByRole("button", { name: "Labels", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Labels", exact: true }),
+    ).toContainText("SIT label");
 
     const activity = page.getByTestId("work-item-activity");
     await expect(activity).toBeVisible();
