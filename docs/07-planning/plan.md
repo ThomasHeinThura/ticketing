@@ -47,6 +47,38 @@ external blockers truthfully. Close stages only after Thomas signs off.
    and usable isolated restore. Provide seeded admin/lead/agent/customer credentials
    privately and a concise walkthrough. Thomas reviews last; record actual stage outcomes.
 
+## Hosted SIT addition — 2026-10-21
+
+Thomas requested assessment of SSH alias `proxy` and `technexus.info` to reduce laptop
+power use. Live read-only inspection confirmed x86-64 Ubuntu, 2 vCPUs, 7.7 GiB RAM
+(4.5 GiB available), 166 GiB free disk, Docker 29.8.1 and Compose 5.5.1. Low sampled load
+supports light functional SIT; this shared 2-vCPU host is not reference load/performance
+acceptance evidence. No remote services were changed.
+
+Thomas selected the agent/portal origins: `https://tickting.technexus.info` and
+`https://portal.technexus.info`. Thomas will add both DNS records to the VM public IP `4.194.153.78`; the checked authoritative
+Cloudflare zone initially had no address records at those names; Thomas subsequently
+created them with Cloudflare proxy enabled. Reuse existing Traefik on ports
+80/443, its `web` network and `le` ACME resolver. The stock overlay assumes network
+`proxy`, resolver `letsencrypt` and file-provider middleware absent on this host, so it
+cannot be deployed unchanged. Prepare and review a dedicated SIT overlay, isolated
+Compose project/database/volumes and bounded runtime memory. Keep PostgreSQL/Valkey and
+application ports unpublished. Keep Cloudflare proxy enabled as Thomas directed. DNS now resolves through Cloudflare;
+validate origin TLS and forwarded-client-IP handling without assuming a hop count or
+changing unrelated applications. OrbStack is stopped; local Docker checks are unavailable.
+Build immutable images on hosted CI, then pull on the VM;
+do not run builds or CI workers alongside its existing services. The VM receives only
+Compose/configuration/secrets and prebuilt digest-pinned images, never an application source
+checkout. Deploy the completed, integrated and reviewed P0–P4 artifact, not a partial feature
+candidate presented as final SIT.
+
+Before hosted handoff: establish DNS/certificate access, validate the new overlay, deploy
+the reviewed SHA/digest with seeded accounts, verify both origins/security/journeys and
+backup/restore, then move persistent SIT use off OrbStack. Retain local data until the
+VM's recovery path works. The VM reports pending kernel maintenance/reboot; coordinate
+that separately because unrelated applications share the host. Existing Watchtower is
+label/scope restricted; do not opt TaskDesk into unattended image replacement.
+
 ## Rules and evidence
 
 - Preserve Kaneo components, layout and tokens; extend before creating. Every reachable
