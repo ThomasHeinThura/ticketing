@@ -446,7 +446,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
           answer.request().method() === "PATCH",
       );
       await page
-        .getByRole("checkbox", { name: "SIT label", exact: true })
+        .getByRole("checkbox", { name: "SIT label Workspace", exact: true })
         .click();
       expect((await saved).status()).toBe(200);
       await page.keyboard.press("Escape");
@@ -456,6 +456,101 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         path: testInfo.outputPath("kaneo-canonical-labels.png"),
         fullPage: true,
       });
+    });
+
+    await test.step("manage and assign a project catalogue through real Kaneo settings", async () => {
+      const settingsUrl = new URL(
+        `/dashboard/settings/projects/${encodeURIComponent(item.projectId)}/labels`,
+        origin,
+      ).toString();
+      await page.goto(settingsUrl);
+      await expect(
+        page.getByRole("heading", { name: "Labels", exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Create Label", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog", {
+        name: /^(Create|Edit) Label$/,
+      });
+      await dialog.getByLabel("Label name").fill("SIT project label");
+      const created = page.waitForResponse(
+        (answer) =>
+          new URL(answer.url()).pathname ===
+            `/api/label/project/${item.projectId}` &&
+          answer.request().method() === "POST",
+      );
+      await dialog
+        .getByRole("button", { name: "Create Label", exact: true })
+        .click();
+      const response = await created;
+      expect(response.status(), await response.text()).toBe(200);
+      await expect(dialog).not.toBeVisible();
+      await page.reload();
+      await expect(
+        page.getByText("SIT project label", { exact: true }),
+      ).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath("kaneo-project-label-settings.png"),
+        fullPage: true,
+      });
+      await page.goto(itemUrl);
+      const trigger = page.getByRole("button", { name: "Labels", exact: true });
+      await trigger.click();
+      const assigned = page.waitForResponse(
+        (answer) =>
+          new URL(answer.url()).pathname === `/api/work-items/${item.key}` &&
+          answer.request().method() === "PATCH",
+      );
+      await page
+        .getByRole("checkbox", {
+          name: "SIT project label Project",
+          exact: true,
+        })
+        .click();
+      expect((await assigned).status()).toBe(200);
+      await page.keyboard.press("Escape");
+      await page.reload();
+      await expect(trigger).toContainText("SIT project label");
+      await expect(trigger).toContainText("SIT label");
+      await page.goto(settingsUrl);
+      await page
+        .getByRole("button", { name: "Edit Label", exact: true })
+        .click();
+      await dialog.getByLabel("Label name").fill("Renamed project label");
+      const renamed = page.waitForResponse(
+        (answer) =>
+          new URL(answer.url()).pathname.startsWith(
+            `/api/label/project/${item.projectId}/`,
+          ) && answer.request().method() === "PATCH",
+      );
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      expect((await renamed).status()).toBe(200);
+      await expect(dialog).not.toBeVisible();
+      await page.getByRole("button", { name: "Delete", exact: true }).click();
+      const deleted = page.waitForResponse(
+        (answer) =>
+          new URL(answer.url()).pathname.startsWith(
+            `/api/label/project/${item.projectId}/`,
+          ) && answer.request().method() === "DELETE",
+      );
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Delete", exact: true })
+        .click();
+      expect((await deleted).status()).toBe(200);
+      await expect(page.getByRole("alertdialog")).not.toBeVisible();
+      await page.goto(itemUrl);
+      await expect(trigger).toContainText("SIT label");
+      await expect(trigger).not.toContainText("project label");
+      await trigger.click();
+      await expect(
+        page.getByRole("checkbox", {
+          name: "Renamed project label Project",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await page.keyboard.press("Escape");
     });
 
     const mentionRecipient = await seedReachableMentionRecipient(

@@ -13,6 +13,7 @@ import {
   parseIdentityConnectionEditorSearch,
   parseIdentityConnectionEditorSearchFromQueryString,
   parseIntakeSearch,
+  parseLabelCatalogueSearch,
   parsePendingActionsSearch,
   parsePendingActionsSearchFromQueryString,
   parsePortalCatalogueSearch,
@@ -937,5 +938,40 @@ describe("P1 agent core, project overview, and settings routes", () => {
     expect(routes.projectDangerZone.build({ projectKey: "HELP" })).toBe(
       "/agent/projects/HELP/settings/danger",
     );
+  });
+});
+
+describe("label catalogue dialog URLs", () => {
+  it("round-trips each action and opaque label identifiers", () => {
+    for (const action of ["create", "edit", "delete"] as const) {
+      const search =
+        action === "create" ? { action } : { action, label: "label /?#é" };
+      for (const url of [
+        routes.workspaceLabels.build(search),
+        routes.projectLabels.build({ projectKey: "HELP" }, search),
+      ]) {
+        expect(
+          parseLabelCatalogueSearch(
+            Object.fromEntries(new URLSearchParams(url.split("?")[1])),
+          ),
+        ).toEqual(search);
+      }
+    }
+  });
+  it("drops invalid actions and identifiers instead of binding a stale dialog", () => {
+    for (const raw of [
+      null,
+      { action: "unknown" },
+      { action: "edit" },
+      { action: "delete", label: "" },
+      { action: "edit", label: "a".repeat(257) },
+      { action: "edit", label: "a\0b" },
+      { action: "edit", label: 42 },
+    ]) {
+      expect(parseLabelCatalogueSearch(raw)).toEqual({});
+    }
+    expect(
+      parseLabelCatalogueSearch({ action: "create", label: "stale" }),
+    ).toEqual({ action: "create" });
   });
 });

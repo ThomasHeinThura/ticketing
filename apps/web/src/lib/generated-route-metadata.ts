@@ -56,6 +56,7 @@ export const generatedRouteMetadata = {
     "/dashboard/settings/account/security",
     "/dashboard/settings/projects",
     "/dashboard/settings/projects/$projectId/general",
+    "/dashboard/settings/projects/$projectId/labels",
     "/dashboard/settings/projects/$projectId/workflow",
     "/dashboard/settings/workspace",
     "/dashboard/settings/workspace/general",

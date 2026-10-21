@@ -561,6 +561,112 @@ describe("project label catalogues", () => {
     }
   });
 
+  it("hides a same-workspace project without explicit project reach", async () => {
+    const { app, workspace } = await fixture("member");
+    const { project } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    for (const routeKey of PROJECT_LABEL_ROUTE_KEYS) {
+      const [method, template] = routeKey.split(" ");
+      if (!method || !template) throw new Error("Invalid route");
+      const path = template
+        .replace("{projectId}", project.id)
+        .replace("{id}", "hidden-label");
+      const init = {
+        method,
+        ...(method === "POST" || method === "PATCH"
+          ? {
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ name: "Hidden", color: "teal" }),
+            }
+          : {}),
+      };
+      const denied = await app.request(path, init);
+      const absent = await app.request(
+        path.replace(project.id, "missing"),
+        init,
+      );
+      expect(denied.status, routeKey).toBe(404);
+      expect(absent.status, routeKey).toBe(404);
+      expect(await denied.text(), routeKey).toBe(await absent.text());
+    }
+  });
+
+  it("serializes project catalogue deletion against a concurrent assignment", async () => {
+    const { app, item, project } = await fixture();
+    const label = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          workspaceId: project.workspaceId,
+          projectId: project.id,
+          name: "Concurrent",
+          color: "teal",
+        })
+        .returning(),
+      "project label",
+    );
+    const [write, deleted] = await Promise.all([
+      patch(app, item.key, item.version, [label.id]),
+      app.request(`/api/label/project/${project.id}/${label.id}`, {
+        method: "DELETE",
+      }),
+    ]);
+    expect([200, 422]).toContain(write.status);
+    expect(deleted.status).toBe(200);
+    expect(await db.select().from(schema.workItemLabelTable)).toHaveLength(0);
+    const [current] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, item.id));
+    const activity = await db
+      .select()
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, item.id));
+    expect(current?.version).toBe(
+      item.version + (write.status === 200 ? 2 : 0),
+    );
+    expect(activity.filter((row) => row.field === "label")).toHaveLength(
+      write.status === 200 ? 2 : 0,
+    );
+  });
+
+  it("rejects a conflicting rename without changing the original catalogue entry", async () => {
+    const { app, project } = await fixture();
+    const rows = await db
+      .insert(schema.labelTable)
+      .values([
+        {
+          workspaceId: project.workspaceId,
+          projectId: project.id,
+          name: "First",
+          color: "teal",
+        },
+        {
+          workspaceId: project.workspaceId,
+          projectId: project.id,
+          name: "Second",
+          color: "blue",
+        },
+      ])
+      .returning();
+    const first = requireRow(rows, "first label");
+    const response = await app.request(
+      `/api/label/project/${project.id}/${first.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Second", color: "blue" }),
+      },
+    );
+    expect(response.status).toBe(409);
+    const [persisted] = await db
+      .select()
+      .from(schema.labelTable)
+      .where(eq(schema.labelTable.id, first.id));
+    expect(persisted).toMatchObject({ name: "First", color: "teal" });
+  });
+
   it("scopes API-key catalogue writes and rejects a read-only key", async () => {
     const { app, project, user } = await fixture();
     const key = await makeApiKey(user.id, {
