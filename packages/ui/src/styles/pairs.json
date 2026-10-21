@@ -855,7 +855,9 @@
       "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::text-foreground#0",
       "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0",
       "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
-      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0"
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::hover:text-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0"
     ],
     "occurrences": [
       {
@@ -2282,6 +2284,28 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx:CannedResponseEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::hover:text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>bg-background"
         ],
         "backdropLayers": []
       }
@@ -2383,7 +2407,9 @@
       "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::text-foreground#0",
       "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::input[0]::placeholder:text-foreground#0",
       "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
-      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0"
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::hover:text-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0"
     ],
     "occurrences": [
       {
@@ -3810,6 +3836,28 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx:CannedResponseEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::hover:text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>bg-background"
         ],
         "backdropLayers": []
       }
@@ -7895,7 +7943,17 @@
       "apps/web/src/components/work-item/work-item-side-pane.tsx::WorkItemSidePane::aside[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-description.tsx::WorkItemDescription::div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx::CannedResponsesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx::CannedResponsesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/span[0]/span[1]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/CollapsibleContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyError::div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#1",
+      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -11235,6 +11293,116 @@
         "chain": [
           "apps/web/src/routes/portal/catalogue.tsx:PortalCatalogue",
           "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/span[0]/span[1]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/span[0]/span[1]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/CollapsibleContent[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/CollapsibleContent[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyError::div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyError",
+          "jsx:div[0]/span[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/span[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/circular-progress.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/span[0]/CircularProgress[0]"
         ],
         "backdropLayers": []
       }
@@ -11430,7 +11598,17 @@
       "apps/web/src/components/work-item/work-item-side-pane.tsx::WorkItemSidePane::aside[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-description.tsx::WorkItemDescription::div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-title.tsx::WorkItemTitle::div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx::CannedResponsesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx::CannedResponsesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/span[0]/span[1]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/CollapsibleContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyError::div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#1",
+      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -14772,6 +14950,116 @@
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/div[0]/div[0]/span[0]/span[1]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/span[0]/span[1]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::WorkItemHierarchy::Collapsible[0]/CollapsibleContent[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/CollapsibleContent[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyError::div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyError",
+          "jsx:div[0]/span[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/span[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/p[0]>bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/circular-progress.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/span[0]/CircularProgress[0]"
+        ],
+        "backdropLayers": []
       }
     ]
   },
@@ -14794,7 +15082,8 @@
       "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/DialogFooter[0]/div[0]/label[0]/Checkbox[0]::text-primary#0",
       "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::div[0]/Table[0]/TableBody[0]/div[0]/a[0]::text-primary#0",
       "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/Loader2[0]::text-primary#0",
-      "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]/Link[0]::hover:text-primary#0"
+      "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]/Link[0]::hover:text-primary#0",
+      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0"
     ],
     "occurrences": [
       {
@@ -14850,6 +15139,17 @@
         "chain": [
           "apps/web/src/routes/agent/auth/sign-up.tsx:SignUp",
           "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0",
+        "usage": "packages/ui/src/components/circular-progress.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/span[0]/CircularProgress[0]"
         ],
         "backdropLayers": []
       }
@@ -14874,7 +15174,8 @@
       "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/DialogFooter[0]/div[0]/label[0]/Checkbox[0]::text-primary#0",
       "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::div[0]/Table[0]/TableBody[0]/div[0]/a[0]::text-primary#0",
       "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/Loader2[0]::text-primary#0",
-      "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]/Link[0]::hover:text-primary#0"
+      "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]/Link[0]::hover:text-primary#0",
+      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0"
     ],
     "occurrences": [
       {
@@ -14930,6 +15231,17 @@
         "chain": [
           "apps/web/src/routes/agent/auth/sign-up.tsx:SignUp",
           "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0",
+        "usage": "packages/ui/src/components/circular-progress.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/span[0]/CircularProgress[0]"
         ],
         "backdropLayers": []
       }
@@ -56968,6 +57280,626 @@
         "backdropLayers": [
           "bg-popover"
         ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-muted-foreground",
+    "bg": "--color-primary",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-muted-foreground",
+    "backgroundClass": {
+      "light": "bg-primary/10"
+    },
+    "surfaceContext": "nearest-opaque-ancestor",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>bg-primary/10"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/span[0]>bg-primary/10"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-muted-foreground",
+    "bg": "--color-primary",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-muted-foreground",
+    "backgroundClass": {
+      "dark": "bg-primary/10"
+    },
+    "surfaceContext": "nearest-opaque-ancestor",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>bg-primary/10"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/span[0]>bg-primary/10"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-muted-foreground",
+    "bg": "--color-accent",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-muted-foreground",
+    "backgroundClass": {
+      "light": "hover:bg-accent/50"
+    },
+    "surfaceContext": "nearest-opaque-ancestor",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>hover:bg-accent/50"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/span[0]>hover:bg-accent/50"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-muted-foreground",
+    "bg": "--color-accent",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-muted-foreground",
+    "backgroundClass": {
+      "dark": "hover:bg-accent/50"
+    },
+    "surfaceContext": "nearest-opaque-ancestor",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>hover:bg-accent/50"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/span[0]>hover:bg-accent/50"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-primary",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "light": "bg-primary/10"
+    },
+    "surfaceContext": "nearest-opaque-ancestor",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>bg-primary/10"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-primary",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "dark": "bg-primary/10"
+    },
+    "surfaceContext": "nearest-opaque-ancestor",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>bg-primary/10"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-accent",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "light": "hover:bg-accent/50"
+    },
+    "surfaceContext": "nearest-opaque-ancestor",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>hover:bg-accent/50"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-accent",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "dark": "hover:bg-accent/50"
+    },
+    "surfaceContext": "nearest-opaque-ancestor",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/work-item-hierarchy.tsx::HierarchyNode::div[0]/div[0]/Button[1]/span[0]::text-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-hierarchy.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:HierarchyNode",
+          "jsx:div[0]/div[0]/Button[1]/span[0]>hover:bg-accent/50"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-success-foreground",
+    "bg": "--color-background",
+    "category": "non-text",
+    "minRatio": 3,
+    "themes": [
+      "light"
+    ],
+    "usage": "packages/ui/src/components/circular-progress.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-success-foreground",
+    "backgroundClass": {
+      "light": "bg-background"
+    },
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-success-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-success-foreground#0",
+        "usage": "packages/ui/src/components/circular-progress.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/span[0]/CircularProgress[0]"
+        ],
+        "backdropLayers": []
+      }
+    ]
+  },
+  {
+    "fg": "--color-success-foreground",
+    "bg": "--color-background",
+    "category": "non-text",
+    "minRatio": 3,
+    "themes": [
+      "dark"
+    ],
+    "usage": "packages/ui/src/components/circular-progress.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-success-foreground",
+    "backgroundClass": {
+      "dark": "bg-background"
+    },
+    "surfaceContext": "caller-chain",
+    "occurrenceIds": [
+      "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-success-foreground#0"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-success-foreground#0",
+        "usage": "packages/ui/src/components/circular-progress.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-hierarchy.tsx:WorkItemHierarchy",
+          "jsx:Collapsible[0]/div[0]/div[0]/span[0]/CircularProgress[0]"
+        ],
+        "backdropLayers": []
       }
     ]
   }

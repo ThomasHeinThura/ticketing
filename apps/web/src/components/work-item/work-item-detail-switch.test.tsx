@@ -19,6 +19,9 @@ vi.mock("@/fetchers/work-item/update-work-item", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({ canUpdateTasks: () => true }),
 }));
+vi.mock("./work-item-hierarchy", () => ({
+  default: () => <div data-testid="work-item-hierarchy" />,
+}));
 vi.mock("./work-item-sla", () => ({ default: () => null }));
 vi.mock("./work-item-approvals", () => ({ default: () => null }));
 vi.mock("./work-item-attachments", () => ({ default: () => null }));

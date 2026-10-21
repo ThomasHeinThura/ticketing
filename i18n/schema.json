@@ -9719,6 +9719,79 @@
 			"type": "object",
 			"additionalProperties": false,
 			"properties": {
+				"hierarchy": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"progress": {
+							"type": "string"
+						},
+						"error": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"expand": {
+							"type": "string"
+						},
+						"collapse": {
+							"type": "string"
+						},
+						"currentBranch": {
+							"type": "string"
+						},
+						"more": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						},
+						"restoreLimit": {
+							"type": "string"
+						},
+						"restoreLimit_zero": {
+							"type": "string"
+						},
+						"restoreLimit_one": {
+							"type": "string"
+						},
+						"restoreLimit_two": {
+							"type": "string"
+						},
+						"restoreLimit_few": {
+							"type": "string"
+						},
+						"restoreLimit_many": {
+							"type": "string"
+						},
+						"restoreLimit_other": {
+							"type": "string"
+						},
+						"disclosureLimit": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"progress",
+						"error",
+						"retry",
+						"expand",
+						"collapse",
+						"currentBranch",
+						"more",
+						"loading",
+						"empty",
+						"disclosureLimit"
+					]
+				},
 				"list": {
 					"type": "object",
 					"additionalProperties": false,
@@ -11221,6 +11294,7 @@
 				}
 			},
 			"required": [
+				"hierarchy",
 				"list",
 				"create",
 				"detail",

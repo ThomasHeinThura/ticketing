@@ -60,7 +60,7 @@ function WorkItemDetailRouteComponent() {
     setAccessLostKey(key);
     // Drop everything cached for this item: returning to the same key must not show the
     // old row while the refetch is in flight.
-    for (const scope of ["detail", "transitions", "activity"]) {
+    for (const scope of ["detail", "transitions", "activity", "hierarchy"]) {
       queryClient.removeQueries({ queryKey: ["work-items", scope, key] });
     }
   }, [key, queryClient]);

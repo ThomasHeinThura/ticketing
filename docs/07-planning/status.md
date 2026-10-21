@@ -1,7 +1,7 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `0f121c4e`; primary checkout refreshed to that source.
+Current inspected GitHub main: `f7a24732` (#884); primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
@@ -9,7 +9,7 @@ This is a dated snapshot; refresh live GitHub before acting.
 | Stage | State | Remaining work |
 | --- | --- | --- |
 | P0 Foundation | Partial implementation; verification incomplete | Container seeding and isolated recovery merged and verified; finish backup encryption/offsite/runtime recording, integrated recovery and owner walkthrough. |
-| P1 Core work | Partial implementation | Finish project label catalogues, hierarchy/relations/uploads and legacy-work redirects. Board/list/table, bulk, backlog, saved views, inbox and My work have real implementations; full acceptance remains. |
+| P1 Core work | Partial implementation | Project label catalogues merged; finish hierarchy/relations/uploads and legacy-work redirects. Board/list/table, bulk, backlog, saved views, inbox and My work have real implementations; full acceptance remains. |
 | P2 Service desk | Partial implementation | Approval requests/candidates, authoring/configuration UI, audit, milestones/stakeholders and integrated service-desk journeys. |
 | P3 Portal and identity | Partial implementation | Full portal, invitation/admission/discovery contracts and implementation, identity administration and real Entra verification. |
 | P4 Governance | Partial implementation | Missing APIs/UI, notification runtime, automations, God Mode, MCP and #580 query ownership. |
@@ -50,30 +50,31 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   creation controls use the displayed project's capabilities; sidebar navigation downloads
   overlap, and the closed project form loads on creation intent. Native keyboard/focus and
   form journeys passed. Hosted G11 passed 22/22: palette 107.6 ms, keyboard navigation
-  136.5 ms and 500-row render 425.8 ms. The non-gating CPU diagnostic still fails on clock
-  alignment/negative deltas and is not complete attribution. Prior failed runs remain visible.
-- #880 imported accepted main without changing its three authored files. Native
-  Dockerfile structural verification passed. On `c3ca7047`, PostgreSQL, G8 and accessibility
-  passed, but G11 palette timing failed (209.3 ms against 200 ms); do not merge or blindly
-  rerun. Actual multiarch release verification remains required before claiming the
-  35-minute image-build defect fixed.
-- Project label catalogues are in #884, in a separate worktree. Migration,
-  scoped CRUD/assignment and Kaneo settings reuse exist on the candidate; 884 API unit
-  tests, 107 permission checks and typechecks passed. Independent backend review is clean;
-  UI/security review is clean. Six native browser journeys and 53 URL/navigation tests
-  passed, including workspace regression and mobile/dark presentation. PostgreSQL,
-  concurrency/migration, real-API browser and required CI evidence remain open. First hosted
-  run found an API-path ambiguity and two legacy task-label insert projections needing the
-  new nullable column; repairs are prepared, including a reviewed legacy-bulk catalogue
-  isolation finding and regression. Five intended Linux baselines were inspected.
-- #885 is merged on reviewed `5e201dbe` after all 18 required checks passed. Both hosted
-  CPU diagnostics passed with sampled profiles retained; G11 passed 22/22. #880 still
-  requires a performance repair: reviewed `046e4964` passed 17/18 checks but palette timing
-  failed at 243.2 ms against 200 ms. No blind rerun or release-fix claim.
-- #884 reviewed `329cfe36` passed 17/18 checks, including PostgreSQL, real browser, G8 and
-  G11. Static failed stale contrast occurrence bindings. The source-grounded repair and
-  explicit existing `bg-card` surface passed all 418 native contrast pairs and independent
-  review; final-head hosted checks remain required.
+  136.5 ms and 500-row render 425.8 ms. The diagnostic failed on that historical run; #885 subsequently repaired signed sample
+  timestamps. Prior failed runs remain visible.
+- #884 project label catalogues merged to `f7a24732` on independently reviewed
+  `94eb6795`, all 18 required checks. PostgreSQL, 152 browser tests, G8, G11 (22/22),
+  accessibility and shipping-image boot passed. Workspace/own-project assignment and
+  permission-scoped Kaneo settings are integrated; this does not complete P1.
+- #885 is merged: signed V8 sample timestamps are reconstructed in arrival order.
+  Both hosted CPU diagnostics passed; original timing failures remain adverse evidence.
+- #880 image-build candidate `046e4964` remains unmerged (17/18 checks; palette
+  243.2 ms > 200 ms). Actual amd64/arm64 release, scanning and signing remain unverified.
+- #886 observer correction `2adfb88c` remains unmerged: palette passed 195.1 ms,
+  but 500-row list rendering failed 528.7 ms > 500 ms. Do not merge or blindly rerun.
+- #887 hierarchy pagination API `2007b480` passed PostgreSQL, G8 and G11; 17/18
+  required checks are green while the final browser/image job is still finalizing.
+  It provides bounded per-parent pages, exact position cursors, ancestor context and
+  complete live-descendant progress. Refresh GitHub before merging.
+- Inline hierarchy UI is a separate uncommitted candidate in
+  `~/.codex/worktrees/taskdesk-hierarchy-ui`: original Kaneo disclosures/rows/progress,
+  independent pagination, URL persistence, bounded automatic replay and access-loss cleanup.
+  Five fixture browser journeys, 1,446 web unit tests, typecheck/lint and 428 contrast pairs
+  passed. Independent bounds/security and contrast reviews found no remaining blockers.
+  A real PostgreSQL browser journey is authored but not yet run; final-head review,
+  hosted checks and image verification remain. Full parent editing/lifecycle/relations
+  are still unfinished. An initial native unit run hit two unchanged process-lock timeouts;
+  its 11-test isolated diagnostic and the complete sequential recheck (12 tasks) passed.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
   constraints. It is a dated snapshot, not policy or proof that pending checks passed.

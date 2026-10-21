@@ -1,3 +1,8 @@
+import {
+  parseWorkItemHierarchySearch,
+  type WorkItemHierarchySearch,
+} from "./work-item-hierarchy-search";
+
 // Canonical route helpers (AGENTS.md rule 4): every screen has a URL, and
 // any filter/sort state it carries lives in the query string so a reload reproduces it
 // exactly. `generatedRouteMetadata` is produced from both TanStack trees and checked
@@ -96,7 +101,7 @@ export function parseGeneratedRouteUrl(
 }
 
 export type WorkItemActivityFilter = "everything" | "comments" | "public";
-export type WorkItemDetailSearch = {
+export type WorkItemDetailSearch = WorkItemHierarchySearch & {
   activity?: Exclude<WorkItemActivityFilter, "everything">;
 };
 export type ProjectRouteParams = { workspaceId: string; projectId: string };
@@ -112,9 +117,12 @@ export const PROJECT_GANTT_PATH =
 
 export function parseWorkItemDetailSearch(raw: unknown): WorkItemDetailSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
-  return candidate.activity === "comments" || candidate.activity === "public"
-    ? { activity: candidate.activity }
-    : {};
+  return {
+    ...parseWorkItemHierarchySearch(candidate),
+    ...(candidate.activity === "comments" || candidate.activity === "public"
+      ? { activity: candidate.activity }
+      : {}),
+  };
 }
 
 export type GodModeUsersSearch = {
@@ -285,21 +293,23 @@ export function parseSavedViewUrlSearchFromQueryString(queryString: string) {
     dir: params.get("dir") ?? undefined,
     columns: params.get("columns") ?? undefined,
     item: params.get("item") ?? undefined,
+    hierarchy: params.get("hierarchy") ?? undefined,
   });
 }
 
-export type ProjectBacklogSearch = {
+export type ProjectBacklogSearch = WorkItemHierarchySearch & {
   filter?: string;
   filterMode?: "visual" | "text";
   item?: string;
 };
 
 export function parseProjectBacklogSearch(raw: unknown): ProjectBacklogSearch {
-  const { filter, filterMode, item } = parseWorkItemQueryState(raw);
+  const { filter, filterMode, item, hierarchy } = parseWorkItemQueryState(raw);
   return {
     ...(filter ? { filter } : {}),
     ...(filterMode ? { filterMode } : {}),
     ...(item ? { item } : {}),
+    ...(hierarchy ? { hierarchy } : {}),
   };
 }
 
@@ -311,6 +321,7 @@ export function parseProjectBacklogSearchFromQueryString(
     filter: params.get("filter") ?? undefined,
     filterMode: params.get("filterMode") ?? undefined,
     item: params.get("item") ?? undefined,
+    hierarchy: params.get("hierarchy") ?? undefined,
   });
 }
 
@@ -332,7 +343,7 @@ export function parseAgentInboxSearchFromQueryString(
 }
 
 export type AgentMyWorkLens = "assigned" | "watching" | "approvals";
-export type AgentMyWorkSearch = {
+export type AgentMyWorkSearch = WorkItemHierarchySearch & {
   lens?: Exclude<AgentMyWorkLens, "assigned">;
   q?: string;
   item?: string;
@@ -340,7 +351,7 @@ export type AgentMyWorkSearch = {
 
 export function parseAgentMyWorkSearch(raw: unknown): AgentMyWorkSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
-  const { item } = parseWorkItemQueryState(raw);
+  const { item, hierarchy } = parseWorkItemQueryState(raw);
   const q =
     typeof value.q === "string" && value.q.trim()
       ? value.q.trim().slice(0, 200)
@@ -351,6 +362,7 @@ export function parseAgentMyWorkSearch(raw: unknown): AgentMyWorkSearch {
       : {}),
     ...(q ? { q } : {}),
     ...(item ? { item } : {}),
+    ...(hierarchy ? { hierarchy } : {}),
   };
 }
 
@@ -362,6 +374,7 @@ export function parseAgentMyWorkSearchFromQueryString(
     lens: params.get("lens") ?? undefined,
     q: params.get("q") ?? undefined,
     item: params.get("item") ?? undefined,
+    hierarchy: params.get("hierarchy") ?? undefined,
   });
 }
 
@@ -680,6 +693,7 @@ export const routes = {
         filterMode: resolved.filterMode,
         columns: resolved.columns,
         item: resolved.item,
+        hierarchy: resolved.hierarchy,
       });
       return `/agent/projects/${encodeURIComponent(params.projectKey)}/work?${query.toString()}`;
     },
@@ -696,6 +710,8 @@ export const routes = {
       if (resolved.filter) query.set("filter", resolved.filter);
       if (resolved.filterMode) query.set("filterMode", resolved.filterMode);
       if (resolved.item) query.set("item", resolved.item);
+      if (resolved.hierarchy)
+        query.set("hierarchy", JSON.stringify(resolved.hierarchy));
       const suffix = query.toString();
       const base = `/agent/projects/${encodeURIComponent(params.projectKey)}/backlog`;
       return suffix ? `${base}?${suffix}` : base;
@@ -717,6 +733,8 @@ export const routes = {
       const resolved = parseWorkItemDetailSearch(search);
       const query = new URLSearchParams();
       if (resolved.activity) query.set("activity", resolved.activity);
+      if (resolved.hierarchy)
+        query.set("hierarchy", JSON.stringify(resolved.hierarchy));
       const suffix = query.toString();
       return `/agent/work-items/${encodeURIComponent(params.key)}${suffix ? `?${suffix}` : ""}`;
     },
@@ -834,6 +852,8 @@ export const routes = {
       if (resolved.lens) query.set("lens", resolved.lens);
       if (resolved.q) query.set("q", resolved.q);
       if (resolved.item) query.set("item", resolved.item);
+      if (resolved.hierarchy)
+        query.set("hierarchy", JSON.stringify(resolved.hierarchy));
       const suffix = query.toString();
       return suffix ? `/agent/my-work?${suffix}` : "/agent/my-work";
     },
@@ -944,5 +964,6 @@ export function parseWorkItemListSearchFromQueryString(
     filterMode: params.get("filterMode") ?? undefined,
     columns: params.get("columns") ?? undefined,
     item: params.get("item") ?? undefined,
+    hierarchy: params.get("hierarchy") ?? undefined,
   });
 }
