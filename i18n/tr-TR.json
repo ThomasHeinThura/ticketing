@@ -1732,7 +1732,8 @@
 			"visibilityLabel": "Who can see this comment?",
 			"mentionWarning": "{{people}} bu iş öğesine erişemiyor ve bildirim almayacak.",
 			"mentionUnavailable": "Seçilen kişi",
-			"mentionCheckFailed": "Bahsetme erişimi denetlenemedi. Sunucu gönderim sırasında yeniden denetleyecek."
+			"mentionCheckFailed": "Bahsetme erişimi denetlenemedi. Sunucu gönderim sırasında yeniden denetleyecek.",
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
 		}
 	},
 	"tasks": {

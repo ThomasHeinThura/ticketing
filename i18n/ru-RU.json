@@ -1750,7 +1750,8 @@
 			"visibilityLabel": "Who can see this comment?",
 			"mentionWarning": "У {{people}} нет доступа к этой задаче, поэтому они не получат уведомление.",
 			"mentionUnavailable": "Выбранный пользователь",
-			"mentionCheckFailed": "Не удалось проверить доступ для упоминаний. Сервер проверит его повторно при отправке."
+			"mentionCheckFailed": "Не удалось проверить доступ для упоминаний. Сервер проверит его повторно при отправке.",
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
 		}
 	},
 	"tasks": {

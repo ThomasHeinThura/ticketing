@@ -826,8 +826,8 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
 
     const responseName = "CA-19 composer response";
     const templateText =
-      "Thanks for reporting this. {{work_item.key}} is under review.";
-    const originalText = `Thanks for reporting this. ${item.key} is under review.`;
+      "Thanks for reporting this. {{work_item.key}} is under review. Due {{work_item.due_date}}.";
+    const originalText = `Thanks for reporting this. ${item.key} is under review. Due 2026-10-25.`;
     const editedText = `${originalText} We will follow up shortly.`;
     const created =
       await test.step("CA19 phase: create a canned response through workspace settings", async () => {
@@ -938,6 +938,24 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
         console.info(
           "CA19 phase begin: insert, edit, and verify no automatic send",
         );
+        // Keep this composer mounted and its initial snippet list cached. A change
+        // by another actor must be reflected when the agent selects a template.
+        const detailResponse = await page.request.get(
+          new URL(`/api/work-items/${item.key}`, origin).toString(),
+        );
+        expect(detailResponse.status()).toBe(200);
+        const detail = (await detailResponse.json()) as { version: number };
+        const changedDueDate = await page.request.patch(
+          new URL(`/api/work-items/${item.key}`, origin).toString(),
+          {
+            headers: {
+              ...(await csrfHeaders(page, origin)),
+              "if-match": `"${detail.version}"`,
+            },
+            data: { dueDate: "2026-10-25T00:00:00.000Z" },
+          },
+        );
+        expect(changedDueDate.status(), await changedDueDate.text()).toBe(200);
         const responseSelect = page.getByRole("combobox", {
           name: "Canned response",
         });

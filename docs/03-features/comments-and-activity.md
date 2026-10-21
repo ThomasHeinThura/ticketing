@@ -158,7 +158,10 @@ security-sensitive field in the product.
   HTML generation or recursive expansion. Only rich-text text content is expanded, including
   tokens spanning adjacent formatted text nodes; attributes, links and embedded-node data
   remain unchanged. Replacement text inherits the token's first text node's formatting.
-  Stored templates and manager listings remain unexpanded. A requester is the person linked
+  Stored templates and manager listings remain unexpanded. The menu may cache template
+  names, but insertion fetches fresh authorized context; failed or removed templates preserve
+  the existing draft and show a retryable error. Editing/sending is blocked while insertion
+  is pending so a late response cannot overwrite new draft edits. A requester is the person linked
   by that work item, including a customer contact without workspace-user membership;
   expansion never performs arbitrary directory lookup or exposes their email.
 - `CA-20` Inserted from the composer, then editable before sending. Never sent

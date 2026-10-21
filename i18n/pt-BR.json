@@ -1737,7 +1737,8 @@
 			"visibilityLabel": "Who can see this comment?",
 			"mentionWarning": "{{people}} não têm acesso a este item de trabalho e não receberão uma notificação.",
 			"mentionUnavailable": "Uma pessoa selecionada",
-			"mentionCheckFailed": "Não foi possível verificar o acesso às menções. O servidor verificará novamente ao enviar."
+			"mentionCheckFailed": "Não foi possível verificar o acesso às menções. O servidor verificará novamente ao enviar.",
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
 		}
 	},
 	"tasks": {

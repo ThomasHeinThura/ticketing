@@ -1727,7 +1727,8 @@
 			"visibilityLabel": "Who can see this comment?",
 			"mentionWarning": "{{people}} không có quyền truy cập mục công việc này và sẽ không được thông báo.",
 			"mentionUnavailable": "Người được chọn",
-			"mentionCheckFailed": "Không thể kiểm tra quyền truy cập của lượt nhắc. Máy chủ sẽ kiểm tra lại khi bạn gửi."
+			"mentionCheckFailed": "Không thể kiểm tra quyền truy cập của lượt nhắc. Máy chủ sẽ kiểm tra lại khi bạn gửi.",
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
 		}
 	},
 	"tasks": {

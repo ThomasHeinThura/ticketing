@@ -1732,7 +1732,8 @@
 			"visibilityLabel": "Who can see this comment?",
 			"mentionWarning": "{{people}} δεν έχουν πρόσβαση σε αυτό το στοιχείο εργασίας και δεν θα ειδοποιηθούν.",
 			"mentionUnavailable": "Ένα επιλεγμένο άτομο",
-			"mentionCheckFailed": "Δεν ήταν δυνατός ο έλεγχος πρόσβασης για τις αναφορές. Ο διακομιστής θα τον ελέγξει ξανά κατά την αποστολή."
+			"mentionCheckFailed": "Δεν ήταν δυνατός ο έλεγχος πρόσβασης για τις αναφορές. Ο διακομιστής θα τον ελέγξει ξανά κατά την αποστολή.",
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
 		}
 	},
 	"tasks": {

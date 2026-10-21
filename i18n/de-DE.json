@@ -1732,7 +1732,8 @@
 			"visibilityLabel": "Who can see this comment?",
 			"mentionWarning": "{{people}} haben keinen Zugriff auf diesen Vorgang und werden nicht benachrichtigt.",
 			"mentionUnavailable": "Eine ausgewählte Person",
-			"mentionCheckFailed": "Der Zugriff für Erwähnungen konnte nicht geprüft werden. Der Server prüft ihn erneut beim Senden."
+			"mentionCheckFailed": "Der Zugriff für Erwähnungen konnte nicht geprüft werden. Der Server prüft ihn erneut beim Senden.",
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
 		}
 	},
 	"tasks": {

@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { mocks, translate } = vi.hoisted(() => ({
   mocks: {
     createComment: vi.fn(),
+    fetchCanned: vi.fn(),
     updateComment: vi.fn(),
     preflightRefetch: vi.fn(),
     mentionCandidates: [] as Array<Record<string, unknown>>,
@@ -93,8 +94,10 @@ vi.mock("@taskdesk/ui", async (importOriginal) => {
     onValueChange,
     children,
     items,
+    disabled,
   }: {
     value?: string;
+    disabled?: boolean;
     onValueChange?: (value: string) => void;
     children: ReactNode;
     items?: Array<{ value: string; label: string }>;
@@ -103,6 +106,7 @@ vi.mock("@taskdesk/ui", async (importOriginal) => {
     return (
       // ui-exempt: test double for the shared Select value/change contract.
       <select
+        disabled={disabled}
         aria-label={value === "" ? "Canned response" : "Comment visibility"}
         value={value}
         data-selected-label={selectedLabel ?? value}
@@ -160,6 +164,9 @@ vi.mock("@tanstack/react-query", () => ({
     return { data: mocks.cannedResponses, isLoading: false, isError: false };
   },
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+}));
+vi.mock("@/fetchers/canned-response/list-canned-responses", () => ({
+  default: mocks.fetchCanned,
 }));
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
   useAuth: () => ({ user: { id: "user-1" } }),
@@ -262,6 +269,9 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     });
     mocks.rows = [];
     mocks.cannedResponses = [];
+    mocks.fetchCanned
+      .mockReset()
+      .mockImplementation(async () => mocks.cannedResponses);
     mocks.mentionCandidates = [];
     mocks.permissions = { public: true, internal: true, checking: false };
     mocks.permissionWorkspaces = [];
@@ -447,6 +457,121 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       ),
     ).toBe(true);
     view.unmount();
+  });
+
+  it("resolves fresh insertion context instead of using the cached body", async () => {
+    const body = (value: string) => ({
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: value }] },
+      ],
+    });
+    mocks.cannedResponses = [
+      {
+        id: "canned-1",
+        body: body("Due 2026-10-21"),
+        visibilityDefault: "internal",
+      },
+    ];
+    mocks.fetchCanned.mockResolvedValue([
+      {
+        id: "canned-1",
+        body: body("Due 2026-10-25"),
+        visibilityDefault: "internal",
+      },
+    ]);
+    const view = renderActivity();
+    fireEvent.change(
+      within(view.container).getByRole("combobox", { name: "Canned response" }),
+      { target: { value: "canned-1" } },
+    );
+    await waitFor(() =>
+      expect(editable(view.container)?.textContent).toContain("Due 2026-10-25"),
+    );
+    expect(editable(view.container)?.textContent).not.toContain("2026-10-21");
+    expect(mocks.fetchCanned).toHaveBeenCalledWith("OPS-17");
+    expect(mocks.createComment).not.toHaveBeenCalled();
+  });
+
+  it("preserves the draft on insertion failure and allows a fresh retry", async () => {
+    mocks.cannedResponses = [
+      {
+        id: "canned-1",
+        body: { type: "doc", content: [] },
+        visibilityDefault: "internal",
+      },
+    ];
+    mocks.fetchCanned.mockRejectedValueOnce(new Error("Access changed"));
+    const view = renderActivity();
+    const editor = editable(view.container);
+    if (!editor) throw new Error("Expected editor");
+    fireEvent.input(editor, { target: { textContent: "Keep my draft" } });
+    const select = within(view.container).getByRole("combobox", {
+      name: "Canned response",
+    });
+    fireEvent.change(select, { target: { value: "canned-1" } });
+    await waitFor(() =>
+      expect(within(view.container).getByRole("alert")).toBeTruthy(),
+    );
+    expect(editor.textContent).toContain("Keep my draft");
+    mocks.fetchCanned.mockResolvedValueOnce([
+      {
+        id: "canned-1",
+        body: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Current retry" }],
+            },
+          ],
+        },
+        visibilityDefault: "internal",
+      },
+    ]);
+    fireEvent.change(select, { target: { value: "canned-1" } });
+    await waitFor(() => expect(editor.textContent).toContain("Current retry"));
+    expect(within(view.container).queryByRole("alert")).toBeNull();
+  });
+
+  it("locks editing and sending while resolving and preserves a draft when the template was removed", async () => {
+    let finish: (rows: unknown[]) => void = () => undefined;
+    mocks.cannedResponses = [
+      {
+        id: "canned-1",
+        body: { type: "doc", content: [] },
+        visibilityDefault: "internal",
+      },
+    ];
+    mocks.fetchCanned.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const view = renderActivity();
+    const editor = editable(view.container);
+    if (!editor) throw new Error("Expected editor");
+    fireEvent.input(editor, { target: { textContent: "Keep pending draft" } });
+    const select = within(view.container).getByRole("combobox", {
+      name: "Canned response",
+    });
+    const send = within(view.container).getByRole("button", {
+      name: "Send comment",
+    });
+    fireEvent.change(select, { target: { value: "canned-1" } });
+    await waitFor(() => expect(select).toBeDisabled());
+    expect(editor).toHaveAttribute("contenteditable", "false");
+    expect(send).toBeDisabled();
+    fireEvent.click(send);
+    expect(mocks.createComment).not.toHaveBeenCalled();
+    finish([]);
+    await waitFor(() =>
+      expect(within(view.container).getByRole("alert")).toBeTruthy(),
+    );
+    expect(editor.textContent).toContain("Keep pending draft");
+    expect(editor).toHaveAttribute("contenteditable", "true");
+    expect(select).toBeEnabled();
   });
 
   it("locks the mentioned draft from preflight through comment save", async () => {

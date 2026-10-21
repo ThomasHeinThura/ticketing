@@ -1727,7 +1727,8 @@
 			"visibilityLabel": "Who can see this comment?",
 			"mentionWarning": "{{people}}はこの作業項目にアクセスできないため、通知されません。",
 			"mentionUnavailable": "選択したユーザー",
-			"mentionCheckFailed": "メンションのアクセス権を確認できませんでした。送信時にサーバーが再確認します。"
+			"mentionCheckFailed": "メンションのアクセス権を確認できませんでした。送信時にサーバーが再確認します。",
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
 		}
 	},
 	"tasks": {

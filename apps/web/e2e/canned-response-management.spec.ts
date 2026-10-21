@@ -115,3 +115,89 @@ test("a non-manager direct visit never fetches the management library", async ({
   ).not.toBeVisible();
   expect(requests).toBe(0);
 });
+
+test("insertion resolves current context and preserves drafts on failure", async ({
+  page,
+}) => {
+  await installPerformanceApiFixture(page);
+  await page.route("**/api/capabilities**", (route) =>
+    route.fulfill({
+      json: { createPublicComments: true, createInternalComments: true },
+    }),
+  );
+  await page.route("**/api/work-items/WLP-1/activity**", (route) =>
+    route.fulfill({
+      json: { data: [], page: { nextCursor: null, hasMore: false } },
+    }),
+  );
+  await page.route(
+    "**/api/work-items/WLP-1/comments/mention-candidates?*",
+    (route) => route.fulfill({ json: [] }),
+  );
+  let dueDate = "2026-10-21";
+  let fail = false;
+  let reads = 0;
+  await page.route("**/api/canned-responses?*", (route) => {
+    reads++;
+    if (fail)
+      return route.fulfill({
+        status: 403,
+        json: { message: "Access changed" },
+      });
+    return route.fulfill({
+      json: [
+        {
+          id: "current",
+          name: "Current due date",
+          visibilityDefault: "internal",
+          body: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: `Due ${dueDate}` }],
+              },
+            ],
+          },
+        },
+      ],
+    });
+  });
+  await page.goto("/agent/work-items/WLP-1");
+  const select = page.getByRole("combobox", { name: "Canned response" });
+  const editor = page
+    .getByTestId("work-item-activity")
+    .locator(".ProseMirror[contenteditable=true]");
+  await expect(select).toBeVisible();
+  expect(reads).toBeGreaterThan(0);
+  dueDate = "2026-10-25";
+  await select.click();
+  await page
+    .getByRole("option", { name: "Current due date", exact: true })
+    .click();
+  await expect(editor).toContainText("Due 2026-10-25");
+  await expect(page.locator("#comment-visibility")).toContainText("Internal");
+  await editor.fill("Keep my edited draft");
+  fail = true;
+  await select.click();
+  await page
+    .getByRole("option", { name: "Current due date", exact: true })
+    .click();
+  await expect(
+    page.getByTestId("work-item-activity").getByRole("alert"),
+  ).toContainText("Your draft is preserved");
+  await expect(editor).toContainText("Keep my edited draft");
+  await page.getByTestId("work-item-activity").screenshot({
+    path: "test-results/kaneo-canned-response-insert-error.png",
+  });
+  fail = false;
+  dueDate = "2026-10-26";
+  await select.click();
+  await page
+    .getByRole("option", { name: "Current due date", exact: true })
+    .click();
+  await expect(editor).toContainText("Due 2026-10-26");
+  await expect(
+    page.getByTestId("work-item-activity").getByRole("alert"),
+  ).toHaveCount(0);
+});

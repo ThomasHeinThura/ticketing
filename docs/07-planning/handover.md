@@ -49,10 +49,12 @@ Do not discard other worktrees or have two sessions edit the same file.
 ## Immediate implementation continuation
 
 1. #882 CA19 placeholder interpolation is now authored after `80c87ad0`, pending
-   independent delta review and hosted verification. Settings persists reusable rich-text
+   independent repair review and hosted verification. The initial review found stale cached
+   due-date expansion on an open item; insertion now fetches fresh authorized context, locks
+   editing/sending while pending and preserves drafts on failure/removal. Settings persists reusable rich-text
    templates; item composer listing expands only authorized live-item context. Native checks
    passed: domain 676 tests (eight new resolver cases), API unit 884, permissions 107,
-   API/web typechecks, two mock management browser journeys and 418 contrast pairs.
+   API/web typechecks, three mock browser journeys, 16 activity editor tests and 418 contrast pairs.
    PostgreSQL, real API browser, G8 and final-head CI remain required.
 2. The CA-19a contract now specifies `{{requester.name}}`, `{{work_item.key}}` and
    `{{work_item.due_date}}`; UTC calendar date, empty missing values, unknown tokens

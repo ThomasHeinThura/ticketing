@@ -1732,7 +1732,8 @@
 			"visibilityLabel": "Who can see this comment?",
 			"mentionWarning": "{{people}} немаат пристап до оваа работна ставка и нема да добијат известување.",
 			"mentionUnavailable": "Избрано лице",
-			"mentionCheckFailed": "Пристапот за спомнувањата не можеше да се провери. Серверот ќе го провери повторно при испраќањето."
+			"mentionCheckFailed": "Пристапот за спомнувањата не можеше да се провери. Серверот ќе го провери повторно при испраќањето.",
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
 		}
 	},
 	"tasks": {

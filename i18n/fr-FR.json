@@ -1737,7 +1737,8 @@
 			"visibilityLabel": "Who can see this comment?",
 			"mentionWarning": "{{people}} n’ont pas accès à cet élément de travail et ne seront pas avertis.",
 			"mentionUnavailable": "Une personne sélectionnée",
-			"mentionCheckFailed": "L’accès des mentions n’a pas pu être vérifié. Le serveur le vérifiera à nouveau lors de l’envoi."
+			"mentionCheckFailed": "L’accès des mentions n’a pas pu être vérifié. Le serveur le vérifiera à nouveau lors de l’envoi.",
+			"cannedResponseInsertFailed": "Could not insert the current response. Your draft is preserved. Choose the response again to retry."
 		}
 	},
 	"tasks": {
