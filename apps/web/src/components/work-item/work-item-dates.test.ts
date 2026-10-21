@@ -1,10 +1,10 @@
-// A UTC−x zone, where a UTC-midnight instant is still the previous local day. Set before
-// any date formatter is created (formatters are built lazily and cached per module).
-process.env.TZ = "America/Los_Angeles";
-
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { formatDateMedium } from "@/lib/format";
 import { dayToIso, formatWorkItemDay, isoToDay } from "./work-item-properties";
+
+// Formatters are lazy; set the test zone before first use and restore it afterwards.
+vi.stubEnv("TZ", "America/Los_Angeles");
+afterAll(() => vi.unstubAllEnvs());
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
