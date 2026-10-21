@@ -35,6 +35,10 @@ const get = (app: App, url: string) => json(app, "GET", url);
 
 const ROUTES: ReadRoute[] = [
   {
+    matrixKey: "GET /api/work-items/{key}/children",
+    call: (a, c) => get(a, `/api/work-items/${c.key}/children`),
+  },
+  {
     matrixKey: "GET /api/work-items/{key}/labels",
     call: (a, c) => get(a, `/api/work-items/${c.key}/labels`),
   },
