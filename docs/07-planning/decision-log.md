@@ -1,3 +1,29 @@
+### 2026-10-21 · Assess proxy VM and technexus.info for SIT
+
+**Source:** Thomas's direct chat, 2026-10-21, with the `ssh proxy` transcript:
+“check this vm and it is okie to use that vm as SIT with technexus.info domain as SIT”;
+“because orb take alot of power draw and laptop battery drain alot”; “This is additional
+tasks to existing tasks.”
+
+**Follow-up, same direct chat:** Thomas selected `tickting.technexus.info` for agents
+and `portal.technexus.info` for customers and stated “I will add the dns.” Preserve the
+agent hostname's exact spelling; DNS ownership remains with Thomas.
+
+**Further direct instructions, same chat:** keep Cloudflare proxy enabled. Thomas then
+stopped OrbStack and directed: “you can deploy P0-P4 100% finished integrated code SIT
+deploy in the proxy vm and continue all tasks.” Deployment must use Docker Compose with
+prebuilt images, not a source checkout. Continue feature work and hosted verification;
+deploy the reviewed integrated result after completing P0–P4. This is authorization and
+scope, not a claim those stages are already complete.
+
+Add VM readiness assessment and a hosted SIT path under `technexus.info` to the approved
+P0–P4 mission. Preserve ongoing feature implementation and the Kaneo requirement. The
+purpose is to move persistent SIT runtime off the laptop. This request does not authorize
+changes to the VM's unrelated applications, rebooting their shared host, production
+publishing, or reactivating retired model/reviewer routing services found on that host.
+The original local SIT path remains a fallback until the hosted environment is verified.
+Stage closure still requires Thomas's actual integrated walkthrough and sign-off.
+
 ### 2026-10-21 · Complete P0–P4 on Kaneo, lean execution and faster CI
 
 **Source:** Thomas directly approved the chat plan “Finish P0–P4, preserve Kaneo, then
