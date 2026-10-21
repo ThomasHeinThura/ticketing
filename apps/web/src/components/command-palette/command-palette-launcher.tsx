@@ -151,7 +151,12 @@ export default function CommandPaletteLauncher() {
             mountAfterCommit();
           }
         });
-        observer.observe(document.body, { childList: true, subtree: true });
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ["data-primary-content-ready"],
+        });
       }
     } else {
       mountAfterCommit();

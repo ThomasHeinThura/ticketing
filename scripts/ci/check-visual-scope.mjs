@@ -392,6 +392,7 @@ function hasExpectedUse(config, storybook) {
     "trace",
   ];
   if (!storybook) keys.unshift("baseURL");
+  else keys.push("launchOptions");
   if (
     !hasExactObjectKeys(
       use,
@@ -409,14 +410,17 @@ function hasExpectedUse(config, storybook) {
   ) {
     return false;
   }
-  return [
-    ["locale", "en-GB"],
-    ["timezoneId", "UTC"],
-    ["colorScheme", "light"],
-    ["reducedMotion", "reduce"],
-    ["trace", "retain-on-failure"],
-  ].every(([name, value]) =>
-    hasLiteralProperty(use, name, value, ts.isStringLiteral),
+  return (
+    (!storybook || hasFullRasterLaunchOptions(use)) &&
+    [
+      ["locale", "en-GB"],
+      ["timezoneId", "UTC"],
+      ["colorScheme", "light"],
+      ["reducedMotion", "reduce"],
+      ["trace", "retain-on-failure"],
+    ].every(([name, value]) =>
+      hasLiteralProperty(use, name, value, ts.isStringLiteral),
+    )
   );
 }
 
@@ -440,6 +444,10 @@ function hasExpectedVisualLaunchOptions(config) {
   ) {
     return false;
   }
+  return hasFullRasterLaunchOptions(use);
+}
+
+function hasFullRasterLaunchOptions(use) {
   const launchOptions = objectProperty(use, "launchOptions");
   if (!hasExactObjectKeys(launchOptions, ["args"])) return false;
   const args = stringArrayProperty(launchOptions, "args");

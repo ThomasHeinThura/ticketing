@@ -77,6 +77,30 @@ function runNextFrame(frames: FrameRequestCallback[]) {
 }
 
 describe("CommandPaletteLauncher warm mount", () => {
+  it("warms when existing primary content becomes ready without inserting nodes", async () => {
+    window.history.replaceState({}, "", "/agent/projects/OPS/work");
+    const frames = mockFrames();
+    const content = document.createElement("div");
+    content.dataset.primaryContentReady = "false";
+    document.body.append(content);
+    render(<CommandPaletteLauncher />);
+    await act(async () => {});
+    expect(mocks.sidebarShown).not.toHaveBeenCalled();
+
+    await act(async () => {
+      content.dataset.primaryContentReady = "true";
+    });
+    await waitFor(() => expect(mocks.sidebarShown).toHaveBeenCalledOnce());
+    runNextFrame(frames);
+    runNextFrame(frames);
+    await waitFor(() =>
+      expect(screen.getByTestId("palette-instance")).toHaveAttribute(
+        "data-warmed",
+        "true",
+      ),
+    );
+  });
+
   it("downloads at primary content and mounts after paint frames and browser idle", async () => {
     window.history.replaceState({}, "", "/agent/projects/OPS/work");
     const frames = mockFrames();
