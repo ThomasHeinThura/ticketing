@@ -343,7 +343,23 @@ async function installAuthenticatedFixture(page: Page) {
         },
       ];
     } else if (path.endsWith("/api/capabilities")) {
-      body = { createTasks: true, manageServiceCalendars: true };
+      body = {
+        createTasks: true,
+        manageServiceCalendars: true,
+        manageLabels: true,
+      };
+    } else if (path.endsWith("/api/label/project/visual-project/catalogue")) {
+      body = [
+        {
+          id: "visual-project-label",
+          name: "Project priority",
+          color: "teal",
+          projectId: "visual-project",
+          workspaceId: "visual-workspace",
+          taskId: null,
+          createdAt: "2026-10-21T00:00:00.000Z",
+        },
+      ];
     } else if (path.endsWith("/api/service-calendars")) {
       body = {
         data: [visualCalendar],
@@ -1579,9 +1595,11 @@ test("project settings states screen @visual", async ({ page }) => {
 test("project settings labels screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/settings/labels");
-  // This URL opens kaneo's real page; assert that page's own content.
   await expect(
-    page.getByRole("heading", { level: 1, name: "General Settings" }),
+    page.getByRole("heading", { name: "Labels", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Project priority", { exact: true }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("project-settings-labels.png", {
     animations: "disabled",

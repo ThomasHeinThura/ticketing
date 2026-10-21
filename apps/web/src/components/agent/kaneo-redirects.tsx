@@ -1,6 +1,7 @@
 import { Navigate } from "@tanstack/react-router";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import type { LabelCatalogueSearch } from "@/lib/routes";
 
 /**
  * `/agent/*` URLs whose screen already exists in kaneo send the user to that kaneo page
@@ -36,9 +37,11 @@ export function WorkspaceSearchRedirect() {
 export function ProjectSettingsRedirect({
   projectKey,
   section,
+  search,
 }: {
   projectKey: string;
-  section: "general" | "workflow";
+  section: "general" | "workflow" | "labels";
+  search?: LabelCatalogueSearch;
 }) {
   const { data: workspace, isLoading: isWorkspaceLoading } =
     useActiveWorkspace();
@@ -53,6 +56,15 @@ export function ProjectSettingsRedirect({
     if (isLoading) return null;
     return <Navigate to="/agent" replace />;
   }
+  if (section === "labels")
+    return (
+      <Navigate
+        to="/dashboard/settings/projects/$projectId/labels"
+        params={{ projectId: project.id }}
+        search={search ?? {}}
+        replace
+      />
+    );
   return section === "workflow" ? (
     <Navigate
       to="/dashboard/settings/projects/$projectId/workflow"

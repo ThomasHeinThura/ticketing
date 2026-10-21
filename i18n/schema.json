@@ -5545,6 +5545,38 @@
 						"save",
 						"templateHelp"
 					]
+				},
+				"projectLabels": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"subtitle": {
+							"type": "string"
+						},
+						"createDescription": {
+							"type": "string"
+						},
+						"deleteConfirmDescription": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"projectScope": {
+							"type": "string"
+						},
+						"workspaceScope": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"subtitle",
+						"createDescription",
+						"deleteConfirmDescription",
+						"loading",
+						"projectScope",
+						"workspaceScope"
+					]
 				}
 			},
 			"required": [
@@ -5578,7 +5610,8 @@
 				"tasksImportExport",
 				"workflowEditor",
 				"externalLinks",
-				"cannedResponses"
+				"cannedResponses",
+				"projectLabels"
 			]
 		},
 		"navigation": {

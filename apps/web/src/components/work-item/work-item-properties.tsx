@@ -899,6 +899,13 @@ function LabelsControl({
                   style={{ backgroundColor: resolveLabelColor(label.color) }}
                 />
                 <span className="truncate">{label.name}</span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {t(
+                    label.projectId
+                      ? "settings:projectLabels.projectScope"
+                      : "settings:projectLabels.workspaceScope",
+                  )}
+                </span>
                 {label.assigned ? <Check className="ml-auto size-3" /> : null}
               </Button>
             ))}

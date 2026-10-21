@@ -1,4 +1,5 @@
 import type { PolicyMap } from "@taskdesk/permissions";
+import { projectLabelPolicies } from "./project-policy";
 
 /**
  * Label route policies.
@@ -59,6 +60,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * addressed by a `userId` or invitation id in the path yet still declare `scope: "workspace"`.
  */
 export const labelPolicies = {
+  ...projectLabelPolicies,
   // Labels attached to one task. `workspaceAccess.fromTaskId()` derives the workspace id by
   // looking up the TASK's own row (joined to its project) -- not a label row, since this route
   // addresses no single label -- so `scopeSource: "row"`, the same "row id read from a

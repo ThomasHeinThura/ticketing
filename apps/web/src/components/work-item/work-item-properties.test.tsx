@@ -145,7 +145,11 @@ describe("WorkItemProperties", () => {
     });
     await waitFor(() => expect(trigger).toBeEnabled());
     fireEvent.click(trigger);
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Support" }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", {
+        name: /^Support\s*settings:projectLabels\.workspaceScope$/,
+      }),
+    );
     await waitFor(() =>
       expect(mocks.update).toHaveBeenCalledWith({
         key: "HELP-7",
@@ -154,17 +158,72 @@ describe("WorkItemProperties", () => {
       }),
     );
     await waitFor(() =>
-      expect(screen.getByRole("checkbox", { name: "Support" })).toBeChecked(),
+      expect(
+        screen.getByRole("checkbox", {
+          name: /^Support\s*settings:projectLabels\.workspaceScope$/,
+        }),
+      ).toBeChecked(),
     );
     await waitFor(() =>
-      expect(screen.getByRole("checkbox", { name: "Support" })).toBeEnabled(),
+      expect(
+        screen.getByRole("checkbox", {
+          name: /^Support\s*settings:projectLabels\.workspaceScope$/,
+        }),
+      ).toBeEnabled(),
     );
-    fireEvent.click(screen.getByRole("checkbox", { name: "Support" }));
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: /^Support\s*settings:projectLabels\.workspaceScope$/,
+      }),
+    );
     await waitFor(() =>
       expect(mocks.update).toHaveBeenLastCalledWith({
         key: "HELP-7",
         version: 5,
         labelIds: [],
+      }),
+    );
+  });
+
+  it("distinguishes equal names in workspace and project catalogues", async () => {
+    mocks.labels.mockResolvedValue([
+      {
+        id: "workspace-label",
+        name: "Support",
+        color: "teal",
+        assigned: false,
+        projectId: null,
+      },
+      {
+        id: "project-label",
+        name: "Support",
+        color: "teal",
+        assigned: false,
+        projectId: "project-1",
+      },
+    ]);
+    mocks.update.mockResolvedValue({ key: "HELP-7", version: 5 });
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    const trigger = screen.getByRole("button", {
+      name: "tasks:properties.labels",
+    });
+    await waitFor(() => expect(trigger).toBeEnabled());
+    fireEvent.click(trigger);
+    expect(
+      await screen.findByRole("checkbox", {
+        name: /^Support\s*settings:projectLabels\.workspaceScope$/,
+      }),
+    ).toBeVisible();
+    fireEvent.click(
+      await screen.findByRole("checkbox", {
+        name: /^Support\s*settings:projectLabels\.projectScope$/,
+      }),
+    );
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        key: "HELP-7",
+        version: 4,
+        labelIds: ["project-label"],
       }),
     );
   });
@@ -193,7 +252,11 @@ describe("WorkItemProperties", () => {
     });
     await waitFor(() => expect(trigger).toBeEnabled());
     fireEvent.click(trigger);
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Support" }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", {
+        name: /^Support\s*settings:projectLabels\.workspaceScope$/,
+      }),
+    );
     expect(await screen.findByTestId("work-item-conflict")).toBeVisible();
   });
 

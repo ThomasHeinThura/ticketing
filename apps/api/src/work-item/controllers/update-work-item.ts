@@ -181,6 +181,7 @@ export async function updateWorkItem(
               tx,
               locked.id,
               workspaceId,
+              locked.projectId,
               input.labelIds,
             );
 

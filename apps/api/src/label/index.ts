@@ -39,6 +39,7 @@ import getLabelsByTaskId from "./controllers/get-labels-by-task-id";
 import getLabelsByWorkspaceId from "./controllers/get-labels-by-workspace-id";
 import unassignLabelFromTask from "./controllers/unassign-label-from-task";
 import updateLabel from "./controllers/update-label";
+import { projectLabelRoutes } from "./project-routes";
 import { labelListSchema, labelSchema } from "./response";
 import {
   attachLabelBody,
@@ -248,6 +249,7 @@ const deleteLabelRoute = createRoute({
 });
 
 const label = apiRouter()
+  .route("/", projectLabelRoutes)
   .openapi(getTaskLabelsRoute, async (c) => {
     const { taskId } = c.req.valid("param");
     return c.json(

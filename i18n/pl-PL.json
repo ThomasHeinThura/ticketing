@@ -1926,6 +1926,14 @@
 			"visibility": "Default visibility",
 			"save": "Save",
 			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
+		},
+		"projectLabels": {
+			"subtitle": "Create, edit, and delete labels for this project.",
+			"createDescription": "Create a label that can be assigned to work items in this project.",
+			"deleteConfirmDescription": "This removes the label from all work items in this project. The work items are kept.",
+			"loading": "Loading labels…",
+			"projectScope": "Project",
+			"workspaceScope": "Workspace"
 		}
 	},
 	"tasks": {

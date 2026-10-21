@@ -26,7 +26,13 @@ export async function clearCatalogueLabel(
   for (const { item } of await lockLabelWorkItems(tx, workspaceId, labelId)) {
     const before = await listAssignedLabelIds(tx, item.id);
     const after = before.filter((id) => id !== labelId);
-    await replaceWorkItemLabels(tx, item.id, workspaceId, after);
+    await replaceWorkItemLabels(
+      tx,
+      item.id,
+      workspaceId,
+      item.projectId,
+      after,
+    );
     await advanceLabelWorkItemVersion(tx, item.id);
     await recordWorkItemActivity(tx, [
       {

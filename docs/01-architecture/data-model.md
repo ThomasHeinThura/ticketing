@@ -323,8 +323,8 @@ no cycles; projects have dates and a backlog.
 | `checklist_template` / `checklist_item` | `checklist_template (workspace_id, name)`; `checklist_item (work_item_id \| release_id \| template_id, position, text, done_at, done_by)` — one checklist model shared by work items (`WI-5`) and releases (`REL-3`) |
 | `work_item_relation` | `source_id`, `target_id`, `type` (`relates`\|`blocks`\|`duplicates`\|`precedes`\|`requires`) |
 | `watcher` | `work_item_id`, `person_id`, `source` (`explicit`\|`implicit`), `muted` |
-| `label` | `workspace_id`, `project_id` null (null = workspace label), `name`, `colour` |
-| `work_item_label` | `work_item_id`, `label_id` — composite primary key, cascading foreign keys to `work_item` and `label`; assignment is limited to the work item’s own workspace catalogue |
+| `label` | `workspace_id`, `project_id` null (null = workspace label), `name`, `colour`; `project_id` is composite-FK'd with `workspace_id` to its project. Workspace catalogue names are unique where `task_id` and `project_id` are null; project catalogue names are unique within their project. Inherited task-bound copies keep `project_id` null and cannot also be project catalogue entries |
+| `work_item_label` | `work_item_id`, `label_id` — composite primary key, cascading foreign keys to `work_item` and `label`; assignment is limited to the workspace catalogue or the work item’s own project catalogue |
 | `comment` | `work_item_id`, `author_id`, `actor_type`, `body jsonb`, `visibility` (`public`\|`internal`), `activity_id` null (links a transition note to its transition), `edited_at`, `deleted_at` null, `deleted_by` null — the tombstone `CA-18` renders ("Comment deleted by Jane, 2 March"): the row, its author and its position survive, the body is not rendered, and the row is purged with the 30-day soft-delete sweep. **v** |
 | `comment_version` | `comment_id`, `number`, `body jsonb`, `edited_by`, `created_at` — the edit history `CA-17` renders |
 | `canned_response` | `workspace_id`, `name`, `body jsonb`, `visibility_default`, `created_by` |
