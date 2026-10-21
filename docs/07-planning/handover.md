@@ -31,7 +31,7 @@ are authorized. No P5–P7, production deployment or bulk branch/worktree deleti
 
 ## Accepted code and current branches
 
-Live accepted main: `f7a247325844b865050917f11cfaf637e0ad58a1` (#884).
+Live accepted main: `a99483a7befd97d91dce5853b428dc6994d74aca` (#887).
 Primary checkout is clean at that source. Refresh live GitHub before acting.
 
 | Change | Verified state | Continuation |
@@ -43,8 +43,8 @@ Primary checkout is clean at that source. Refresh live GitHub before acting.
 | #885 CPU samples | Merged after all18 checks; both hosted CPU diagnostics passed. | Signed V8 deltas are valid timestamp differences. Do not carry old parser defect forward. |
 | #880 image build | Open046e4964;17/18 checks, palette243.2ms>200. | Worktree taskdesk-native-artifact-image-build; import accepted fixes only, review, allchecks then actual multiarch release. |
 | #886 observer correction | Open2adfb88c;17/18 checks; palette195.1ms passes, list528.7ms>500 fails. | Worktree taskdesk-palette-measurement; diagnose actual list boundary, no blind rerun/merge. |
-| #887 hierarchy API | Open2007b480;17/18 checks passed, final browser/image job still finalizing. | Worktree taskdesk-hierarchy-pagination; refresh checks, protected squash only after all18 green. Independent source/security and test-only delta reviews clean. |
-| Hierarchy inline UI | Candidate codex/hierarchy-ui in ~/.codex/worktrees/taskdesk-hierarchy-ui, includes reviewed887 head2007b480. | Import accepted main after887 merges. Five fixture browser journeys,1446 web unit,lint/typecheck,428 contrast pass. Final review/hosted actual API evidence pending. |
+| #887 hierarchy API | Merged to a99483a7 on reviewed2007b480; all18 checks,152 browser tests,image smoke passed. | Complete inline UI and remaining hierarchy lifecycle; not #434/P1 acceptance. |
+| #888 hierarchy inline UI | Candidate codex/hierarchy-ui in ~/.codex/worktrees/taskdesk-hierarchy-ui, imports accepted main a99483a7. | Confirm main target after import. Five fixture browser journeys,1446 web unit,lint/typecheck,428 contrast pass. Source/security approval a9db0121; import/doc delta review and hosted actual API evidence pending. |
 
 ## Immediate next work
 

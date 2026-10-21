@@ -1,7 +1,7 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `f7a24732` (#884); primary checkout refreshed to that source.
+Current inspected GitHub main: `a99483a7` (#887); primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
@@ -62,16 +62,16 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   243.2 ms > 200 ms). Actual amd64/arm64 release, scanning and signing remain unverified.
 - #886 observer correction `2adfb88c` remains unmerged: palette passed 195.1 ms,
   but 500-row list rendering failed 528.7 ms > 500 ms. Do not merge or blindly rerun.
-- #887 hierarchy pagination API `2007b480` passed PostgreSQL, G8 and G11; 17/18
-  required checks are green while the final browser/image job is still finalizing.
-  It provides bounded per-parent pages, exact position cursors, ancestor context and
-  complete live-descendant progress. Refresh GitHub before merging.
-- Inline hierarchy UI is a separate candidate in
+- #887 hierarchy pagination API merged to `a99483a7` on reviewed `2007b480`,
+  all 18 required checks. PostgreSQL, G8, G11, 152 browser tests and shipping-image
+  smoke passed. It supplies bounded per-parent pages, exact position cursors, ancestor
+  context and complete live-descendant progress; full hierarchy/P1 acceptance remains.
+- #888 inline hierarchy UI is a separate reviewed candidate in
   `~/.codex/worktrees/taskdesk-hierarchy-ui`: original Kaneo disclosures/rows/progress,
   independent pagination, URL persistence, bounded automatic replay and access-loss cleanup.
   Five fixture browser journeys, 1,446 web unit tests, typecheck/lint and 428 contrast pairs
   passed. Independent bounds/security and contrast reviews found no remaining blockers.
-  A real PostgreSQL browser journey is authored but not yet run; final-head review,
+  A real PostgreSQL browser journey is authored but not yet run; accepted-main import delta review,
   hosted checks and image verification remain. Full parent editing/lifecycle/relations
   are still unfinished. An initial native unit run hit two unchanged process-lock timeouts;
   its 11-test isolated diagnostic and the complete sequential recheck (12 tasks) passed.
