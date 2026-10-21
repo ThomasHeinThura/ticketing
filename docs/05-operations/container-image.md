@@ -9,45 +9,32 @@ and using the installed production dependencies. `scripts/deploy.sh local` invok
 inside the application container; the explicit `--sit` argument is required. It is never
 invoked by normal application startup or production deployment.
 
+## Build and target platforms
+
+The toolchain/dependency/build stages run on Docker's `BUILDPLATFORM`. TypeScript,
+esbuild and Vite produce CPU-independent JavaScript/static assets once, avoiding a
+second Vite/Rolldown build under QEMU for arm64. The production dependency install and
+runtime use the requested target platform. Production `node_modules` are installed
+separately on that platform; never copy the build host's dependency tree into the runtime.
+Both linux/amd64 and linux/arm64 remain published, scanned and signed. The existing
+release timeout, provenance and SBOM requirements remain unchanged.
+
 ## Stages
 
-```dockerfile
-FROM node:24-bookworm-slim AS base          # glibc: pg, sharp and native addons build cleanly; alpine is an option later
-RUN corepack enable && corepack prepare pnpm@10 --activate
+The executable definition is [Dockerfile](../../Dockerfile).
 
-FROM base AS deps
-WORKDIR /repo
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY apps/api/package.json apps/api/
-COPY apps/web/package.json apps/web/
-COPY packages/*/package.json packages/          # one line per package in practice
-RUN pnpm install --frozen-lockfile
+| Stage | Platform | Responsibility |
+| --- | --- | --- |
+| `base` | Build host | Pinned Node/pnpm toolchain |
+| `deps` | Build host | Frozen workspace dependency install |
+| `build` | Build host | API/seed JavaScript and both static web entries |
+| `proddeps` | Target CPU | Separate production API/workspace dependency install |
+| `runtime` | Target CPU | Non-root Node, target dependencies, built JavaScript/static assets and migrations |
 
-FROM deps AS build
-COPY . .
-RUN pnpm turbo build --filter=@taskdesk/api --filter=@taskdesk/web
-#   api: esbuild --bundle --platform=node --packages=external → apps/api/dist/{index,cli}.js
-#   web: vite build ×2 → apps/web/dist/agent, apps/web/dist/portal
-RUN pnpm deploy --filter=@taskdesk/api --prod /out/api   # pruned production node_modules
+Only production dependencies from `proddeps` reach the runtime. Build-stage copies into
+runtime are generated JavaScript, static assets, manifests and migrations; native build
+host binaries or `node_modules` do not cross that boundary.
 
-FROM node:24-bookworm-slim AS runtime
-RUN groupadd -r taskdesk && useradd -r -g taskdesk -d /app taskdesk
-WORKDIR /app
-COPY --from=build --chown=taskdesk:taskdesk /out/api ./
-COPY --from=build --chown=taskdesk:taskdesk /repo/apps/api/dist ./dist
-COPY --from=build --chown=taskdesk:taskdesk /repo/apps/api/drizzle ./drizzle
-COPY --from=build --chown=taskdesk:taskdesk /repo/apps/web/dist ./public
-COPY --chown=taskdesk:taskdesk deploy/entrypoint.sh NOTICE ./
-USER taskdesk
-ENV NODE_ENV=production TASKDESK_PORT=5173
-EXPOSE 5173
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s \
-  CMD wget --spider -q http://127.0.0.1:5173/api/public/health/live || exit 1
-ENTRYPOINT ["./entrypoint.sh"]
-LABEL org.opencontainers.image.version=$VERSION org.opencontainers.image.revision=$GIT_SHA \
-      org.opencontainers.image.created=$BUILD_TIME org.opencontainers.image.source=https://github.com/<org>/taskdesk \
-      org.opencontainers.image.licenses=AGPL-3.0
-```
 
 ## Entrypoint
 
@@ -96,7 +83,7 @@ dist/cli.js …`), never against the database from elsewhere.
 ## Native dependencies
 
 `esbuild --packages=external` leaves `pg` and any native addon to `node_modules`, which
-`pnpm deploy --prod` prunes correctly. If `sharp` (image thumbnails) is adopted, it is the
+the target-platform production install prunes correctly. If `sharp` (image thumbnails) is adopted, it is the
 one package that needs the glibc base — which is why the base is `bookworm-slim`, not
 alpine, until measured otherwise.
 

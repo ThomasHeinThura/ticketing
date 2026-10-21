@@ -25,9 +25,9 @@
 ARG NODE_IMAGE=node:24.20.0-bookworm-slim
 
 # ---------------------------------------------------------------------------
-# base — toolchain only
+# base — native build toolchain; generated JS/static assets are CPU-independent
 # ---------------------------------------------------------------------------
-FROM ${NODE_IMAGE} AS base
+FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS base
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     HUSKY=0 \
@@ -78,7 +78,16 @@ RUN pnpm --filter @taskdesk/api exec esbuild ../../scripts/seed-sit-users.mjs --
 # ---------------------------------------------------------------------------
 # proddeps — pruned production node_modules for the API only
 # ---------------------------------------------------------------------------
-FROM base AS proddeps
+# Production dependencies must match the target CPU even though JS builds run natively.
+FROM ${NODE_IMAGE} AS proddeps
+ENV PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH \
+    HUSKY=0 \
+    CI=true \
+    TURBO_TELEMETRY_DISABLED=1 \
+    DO_NOT_TRACK=1
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+WORKDIR /repo
 COPY --from=build /repo/.npmrc /repo/pnpm-lock.yaml /repo/pnpm-workspace.yaml /repo/package.json ./
 COPY --from=build /repo/apps/api/package.json apps/api/
 COPY --from=build /repo/packages/domain/package.json packages/domain/
