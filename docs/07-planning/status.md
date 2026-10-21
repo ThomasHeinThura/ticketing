@@ -1,7 +1,7 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `948cc5c0`; primary checkout refreshed to that source.
+Current inspected GitHub main: `0f121c4e`; primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
@@ -52,13 +52,24 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   form journeys passed. Hosted G11 passed 22/22: palette 107.6 ms, keyboard navigation
   136.5 ms and 500-row render 425.8 ms. The non-gating CPU diagnostic still fails on clock
   alignment/negative deltas and is not complete attribution. Prior failed runs remain visible.
-- #880 has imported accepted main without changing its three authored files. Native
-  Dockerfile structural verification passed; final checks and actual multiarch release
-  verification remain required before claiming the 35-minute image-build defect fixed.
-- Project label catalogues are being implemented in a separate worktree. Migration,
+- #880 has imported accepted main `0f121c4e` without changing its three authored files. Native
+  Dockerfile structural verification passed. On `c3ca7047`, PostgreSQL, G8 and accessibility
+  passed, but G11 palette timing failed (209.3 ms against 200 ms); do not merge or blindly
+  rerun. Actual multiarch release verification remains required before claiming the
+  35-minute image-build defect fixed.
+- Project label catalogues are in #884, in a separate worktree. Migration,
   scoped CRUD/assignment and Kaneo settings reuse exist on the candidate; 884 API unit
   tests, 107 permission checks and typechecks passed. Independent backend review is clean;
-  UI review, browser journeys, PostgreSQL/concurrency/migration evidence and CI remain open.
+  UI/security review is clean. Six native browser journeys and 53 URL/navigation tests
+  passed, including workspace regression and mobile/dark presentation. PostgreSQL,
+  concurrency/migration, real-API browser and required CI evidence remain open. First hosted
+  run found an API-path ambiguity and two legacy task-label insert projections needing the
+  new nullable column; repairs are prepared, including a reviewed legacy-bulk catalogue
+  isolation finding and regression. Five intended Linux baselines were inspected.
+- #885 is merged on reviewed `5e201dbe` after all 18 required checks passed. Both hosted
+  source-bound CPU diagnostics passed with sampled profiles retained; G11 passed 22/22
+  (palette 107.5 ms, keyboard 146.3 ms). This repairs diagnostic evidence, not a causal
+  product-speed claim or a fix claim for #880's release build.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
   constraints. It is a dated snapshot, not policy or proof that pending checks passed.
