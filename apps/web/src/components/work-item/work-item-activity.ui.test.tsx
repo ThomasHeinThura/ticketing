@@ -503,9 +503,18 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     ];
     mocks.fetchCanned.mockRejectedValueOnce(new Error("Access changed"));
     const view = renderActivity();
-    const editor = editable(view.container);
-    if (!editor) throw new Error("Expected editor");
+    // Match an actual user: hydration must settle before typing into Tiptap.
+    const editor = await waitFor(() => {
+      const node = editable(view.container);
+      expect(node).not.toBeNull();
+      return node as HTMLElement;
+    });
     fireEvent.input(editor, { target: { textContent: "Keep my draft" } });
+    await waitFor(() =>
+      expect(
+        window.localStorage.getItem("taskdesk:comment-draft:user-1:OPS-17"),
+      ).toContain("Keep my draft"),
+    );
     const select = within(view.container).getByRole("combobox", {
       name: "Canned response",
     });
@@ -514,6 +523,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       expect(within(view.container).getByRole("alert")).toBeTruthy(),
     );
     expect(editor.textContent).toContain("Keep my draft");
+    await waitFor(() => expect(select).toBeEnabled());
     mocks.fetchCanned.mockResolvedValueOnce([
       {
         id: "canned-1",
@@ -530,7 +540,9 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       },
     ]);
     fireEvent.change(select, { target: { value: "canned-1" } });
-    await waitFor(() => expect(editor.textContent).toContain("Current retry"));
+    await waitFor(() =>
+      expect(editable(view.container)?.textContent).toContain("Current retry"),
+    );
     expect(within(view.container).queryByRole("alert")).toBeNull();
   });
 
@@ -550,9 +562,18 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
         }),
     );
     const view = renderActivity();
-    const editor = editable(view.container);
-    if (!editor) throw new Error("Expected editor");
+    // Match an actual user: hydration must settle before typing into Tiptap.
+    const editor = await waitFor(() => {
+      const node = editable(view.container);
+      expect(node).not.toBeNull();
+      return node as HTMLElement;
+    });
     fireEvent.input(editor, { target: { textContent: "Keep pending draft" } });
+    await waitFor(() =>
+      expect(
+        window.localStorage.getItem("taskdesk:comment-draft:user-1:OPS-17"),
+      ).toContain("Keep pending draft"),
+    );
     const select = within(view.container).getByRole("combobox", {
       name: "Canned response",
     });
