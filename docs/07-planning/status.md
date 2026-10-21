@@ -1,14 +1,14 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `892385ff`; primary checkout refreshed to that source.
+Current inspected GitHub main: `02d99466`; primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
 
 | Stage | State | Remaining work |
 | --- | --- | --- |
-| P0 Foundation | Implemented; verification incomplete | Reproducible container seeding/host config, integrated recovery and owner walkthrough. |
+| P0 Foundation | Implemented; verification incomplete | Container seeding/recovery candidates verified locally; finish backup encryption/offsite/runtime recording, integrated recovery and owner walkthrough. |
 | P1 Core work | Partial implementation | Finish task-page stack, labels/hierarchy/relations/uploads and legacy-work redirects. Board/list/table, bulk, backlog, saved views, inbox and My work have real implementations; full acceptance remains. |
 | P2 Service desk | Partial implementation | Approval requests/candidates, authoring/configuration UI, canned responses, audit, milestones/stakeholders and integrated service-desk journeys. |
 | P3 Portal and identity | Partial implementation | Full portal, invitation/admission/discovery contracts and implementation, identity administration and real Entra verification. |
@@ -22,11 +22,19 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
 
 - #864–#869 and #872–#873 are merged. Agent/settings Kaneo shells, real Inbox/My work,
   SLA/attachment panels, redirect/seed fixes and dependency remediation are on main.
-- #870 approvals decide is open at `e12bc1b7`: PostgreSQL integration passed; G8 failed on
-  search-sidebar rendering, and G11 failed its runner calibration stability check.
-- #871 Kaneo task-page integration is open at `be06bb92` and conflicts with its base.
-- CI run 39528122579 spent 31m22s in serial integration (233 files); browser jobs took
-  roughly 2–8 minutes. Four isolated integration shards are under implementation.
+- #875 is merged: all 18 required checks passed. Four isolated integration shards reduce
+  the slowest partition to 8m43s from the former 31m22s serial step; the collector fails closed.
+- #870 approvals decide is refreshed to `38a5d21c`, with independent delta review. 17/18
+  checks passed; G11 first failed calibration stability, then its palette warm-up setup.
+  #876 records the failure evidence. No red gate is bypassed or called a product-budget pass.
+- #871's stack is reconciled without rewriting remote history. Independent review found
+  three editor/assignment defects; fixes and delta review passed, plus 327 work-item tests.
+  Final-head hosted checks, real-data use and protected merge remain outstanding.
+- #877 container seeding is open: real intake submissions are repeatable under the
+  restricted application credential; local image build/boot passed. Hosted checks pending.
+- Recovery targeting now resolves the selected mounted volume. An isolated internal-network
+  drill restored an actual database row and non-empty file, denied egress and passed health.
+  Candidate review cleared; protected merge and full application acceptance remain pending.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 
 ## SIT
