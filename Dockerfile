@@ -68,6 +68,7 @@ COPY . .
 ARG VITE_API_URL=""
 ENV VITE_API_URL=${VITE_API_URL}
 RUN pnpm turbo build --ui=stream --filter=@taskdesk/api --filter=@taskdesk/web
+RUN pnpm --filter @taskdesk/api exec esbuild ../../scripts/seed-sit-users.mjs --bundle --platform=node --format=esm --packages=external --outfile=dist/seed-sit-users.js
 #   api: esbuild --bundle --platform=node --packages=external -> apps/api/dist/index.js
 #   web: vite build                                           -> apps/web/dist
 # When #9 splits the web app into two entries the output becomes
