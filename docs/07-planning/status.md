@@ -81,7 +81,7 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   assertion are prepared; generate, inspect and independently review its Linux baseline
   before committing it. Candidate `fcd1abee` stopped at visual-scope validation because
   its chained locator is unsupported there; a direct equivalent assertion now passes
-  all 43 local screenshot cases. The earlier `a9db0121` G11 failed closed on calibration 0.739
+  visual-scope validation for 43 cases. The earlier `a9db0121` G11 failed closed on calibration 0.739
   below 0.75 before budgets. No thresholds or retries changed.
 - Parent editing is being prepared separately in `~/.codex/worktrees/taskdesk-parent-editing`,
   branch `codex/parent-editing`: required If-Match for attach/detach, locked version checks

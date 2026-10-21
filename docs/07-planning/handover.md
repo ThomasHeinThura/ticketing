@@ -53,7 +53,7 @@ returns one real-shaped child and waits for its link before capture. Native read
 assertion passed; Mac snapshot is absent (expected), so no Mac baseline is committed.
 Generate/inspect the correct Linux image and obtain independent delta/baseline review.
 Candidate fcd1abee then stopped before screenshots: chained locator rejected by scope
-validator. Direct equivalent now passes all43 local screenshot cases; no checker change.
+validator. Direct equivalent now passes visual-scope validation for43 cases; no checker change.
 Earlier a9 G11 stopped before budgets: calibration0.739<0.75; no limits changed.
 
 Separate unfinished draft: ~/.codex/worktrees/taskdesk-parent-editing, codex/parent-editing
