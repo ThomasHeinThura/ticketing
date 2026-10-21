@@ -1,7 +1,7 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `2f366cd4`; primary checkout refreshed to that source.
+Current inspected GitHub main: `948cc5c0`; primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
@@ -46,19 +46,19 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   due-date changes without reload, editable insertion and durable send. G8, G11 budgets
   (22/22) and Linux amd64 image build/migrate/boot/health passed. This closes this change,
   not P2 or its integrated owner acceptance.
-- #883 remains a candidate: prior `e1209855` passed G11/G8/PostgreSQL but failed two create
-  control visibility cases. Reviewed `0fc458a6` scopes work/backlog creation to the displayed
-  project; 28 native tests and 20 browser journeys passed. Accepted main is imported without
-  changing the authored source delta. On final head `2c4a1102`, 17/18 required checks passed;
-  G11 failed command-palette click-to-paint (209.7 ms against 200 ms). Palette readiness
-  and the 500-row render budget passed. Profile this interaction before another repair;
-  no gate, budget or retry was relaxed. The next candidate removes duplicate palette-toggle
-  renders and adds cold/warm focus journeys plus independent diagnostic capture. Native
-  browser journeys pass; native sampled-frame attribution fails closed on negative V8
-  deltas. Hosted `fde5bcbc` passed the palette timing budget (108.7 ms) but failed a G13
-  cold-palette readiness sample; 17/18 required checks passed. The next reviewed change
-  defers the closed project-creation form until intent; 13 native unit tests and eight
-  browser journeys passed. Hosted final-head checks remain required. Do not merge yet.
+- #883 is merged on reviewed `2bbfb21d` after all 18 required checks passed. Project
+  creation controls use the displayed project's capabilities; sidebar navigation downloads
+  overlap, and the closed project form loads on creation intent. Native keyboard/focus and
+  form journeys passed. Hosted G11 passed 22/22: palette 107.6 ms, keyboard navigation
+  136.5 ms and 500-row render 425.8 ms. The non-gating CPU diagnostic still fails on clock
+  alignment/negative deltas and is not complete attribution. Prior failed runs remain visible.
+- #880 has imported accepted main without changing its three authored files. Native
+  Dockerfile structural verification passed; final checks and actual multiarch release
+  verification remain required before claiming the 35-minute image-build defect fixed.
+- Project label catalogues are being implemented in a separate worktree. Migration,
+  scoped CRUD/assignment and Kaneo settings reuse exist on the candidate; 884 API unit
+  tests, 107 permission checks and typechecks passed. Independent backend review is clean;
+  UI review, browser journeys, PostgreSQL/concurrency/migration evidence and CI remain open.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
   constraints. It is a dated snapshot, not policy or proof that pending checks passed.
