@@ -148,8 +148,9 @@ nullable project_id; both now explicitly select NULL, with original scope predic
 Independent review also found a legacy bulk lookup treating project catalogues as workspace
 labels; it now excludes project_id and a positive-control/hidden-source negative bulk-route
 regression is authored. Affected actual bulk/repository/race tests must pass before merge. Logs:
-/tmp/taskdesk-project-labels-34-pg1.log and -pg2.log. Static job failed Chromium download
-DNS resolution, not source lint. Record new-head results; never manufacture clearance.
+/tmp/taskdesk-project-labels-34-pg1.log and -pg2.log. Static failed the contrast occurrence manifest after the label-screen extraction;
+Playwright download DNS warnings recovered and were not the failing step. Update source
+occurrence bindings and rerun the actual contrast gate; do not waive it. Record new-head results; never manufacture clearance.
 
 [#885 sampled CPU timestamp repair](https://github.com/ThomasHeinThura/ticketing/pull/885)
 is separate, worktree ~/.codex/worktrees/taskdesk-profile-sample-timestamps, branch
