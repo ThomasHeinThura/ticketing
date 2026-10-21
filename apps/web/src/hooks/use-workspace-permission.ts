@@ -30,6 +30,7 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   // as CA-2's default comment visibility. Never inferred from `manageProjects`/`updateProjects`,
   // which follow the broader legacy statement (#708).
   manageProjectSettings?: boolean;
+  manageLabels?: boolean;
 };
 
 // Mirrors apps/api/src/capabilities/response.ts's capabilitiesResponseSchema
@@ -123,6 +124,7 @@ export function useWorkspacePermission(
       canCreateTasks: () => can.createTasks,
       canDeleteTasks: () => can.deleteTasks,
       canAssignTasks: () => can.assignTasks,
+      canManageLabels: () => can.manageLabels === true,
       canCreateLabels: () => can.createLabels,
       canUpdateLabels: () => can.updateLabels,
       canDeleteLabels: () => can.deleteLabels,

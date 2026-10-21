@@ -42,7 +42,9 @@ external blockers truthfully. Close stages only after Thomas signs off.
    with actual behavior, tests and independently dispositioned historical findings. Review
    security, integration seams and Kaneo consistency. Fix defects and rerun affected checks.
 7. **SIT:** build/boot the reviewed artifact, record source SHA and image digest, deploy
-   agent `https://ticketing.localhost:8443` and portal `https://portal.localhost:8443`.
+   agent `https://tickting.technexus.info` and portal `https://portal.technexus.info`
+   on the proxy VM using image-only Compose, as the hosted SIT instruction below supersedes
+   the original local-host targets. OrbStack stays stopped.
    Verify clean install/upgrade, realistic data, all journeys, nonempty attachment backup
    and usable isolated restore. Provide seeded admin/lead/agent/customer credentials
    privately and a concise walkthrough. Thomas reviews last; record actual stage outcomes.

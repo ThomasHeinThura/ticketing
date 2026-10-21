@@ -79,6 +79,7 @@ import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRoute
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsStatesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/states'
 import { Route as LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id'
 import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general'
+import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/labels'
 import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow'
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdIndexRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/index'
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog'
@@ -502,6 +503,14 @@ const LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute =
       getParentRoute: () => LayoutAuthenticatedDashboardSettingsProjectsRoute,
     } as any,
   )
+const LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute =
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRouteImport.update(
+    {
+      id: '/$projectId/labels',
+      path: '/$projectId/labels',
+      getParentRoute: () => LayoutAuthenticatedDashboardSettingsProjectsRoute,
+    } as any,
+  )
 const LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute =
   LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRouteImport.update(
     {
@@ -634,6 +643,7 @@ export interface FileRoutesByFullPath {
   '/agent/projects/$projectKey/settings/states': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsStatesRoute
   '/agent/settings/profile/pending-actions/$id': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute
   '/dashboard/settings/projects/$projectId/general': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
+  '/dashboard/settings/projects/$projectId/labels': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
   '/dashboard/settings/projects/$projectId/workflow': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/backlog': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/board': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBoardRoute
@@ -709,6 +719,7 @@ export interface FileRoutesByTo {
   '/agent/projects/$projectKey/settings/states': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsStatesRoute
   '/agent/settings/profile/pending-actions/$id': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute
   '/dashboard/settings/projects/$projectId/general': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
+  '/dashboard/settings/projects/$projectId/labels': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
   '/dashboard/settings/projects/$projectId/workflow': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/backlog': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/board': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBoardRoute
@@ -789,6 +800,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/agent/projects/$projectKey/settings/states': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsStatesRoute
   '/_layout/_authenticated/agent/settings/profile/pending-actions/$id': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute
   '/_layout/_authenticated/dashboard/settings/projects/$projectId/general': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
+  '/_layout/_authenticated/dashboard/settings/projects/$projectId/labels': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
   '/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRoute
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBoardRoute
@@ -868,6 +880,7 @@ export interface FileRouteTypes {
     | '/agent/projects/$projectKey/settings/states'
     | '/agent/settings/profile/pending-actions/$id'
     | '/dashboard/settings/projects/$projectId/general'
+    | '/dashboard/settings/projects/$projectId/labels'
     | '/dashboard/settings/projects/$projectId/workflow'
     | '/dashboard/workspace/$workspaceId/project/$projectId/backlog'
     | '/dashboard/workspace/$workspaceId/project/$projectId/board'
@@ -943,6 +956,7 @@ export interface FileRouteTypes {
     | '/agent/projects/$projectKey/settings/states'
     | '/agent/settings/profile/pending-actions/$id'
     | '/dashboard/settings/projects/$projectId/general'
+    | '/dashboard/settings/projects/$projectId/labels'
     | '/dashboard/settings/projects/$projectId/workflow'
     | '/dashboard/workspace/$workspaceId/project/$projectId/backlog'
     | '/dashboard/workspace/$workspaceId/project/$projectId/board'
@@ -1022,6 +1036,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/agent/projects/$projectKey/settings/states'
     | '/_layout/_authenticated/agent/settings/profile/pending-actions/$id'
     | '/_layout/_authenticated/dashboard/settings/projects/$projectId/general'
+    | '/_layout/_authenticated/dashboard/settings/projects/$projectId/labels'
     | '/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board'
@@ -1531,6 +1546,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRouteImport
       parentRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsRoute
     }
+    '/_layout/_authenticated/dashboard/settings/projects/$projectId/labels': {
+      id: '/_layout/_authenticated/dashboard/settings/projects/$projectId/labels'
+      path: '/$projectId/labels'
+      fullPath: '/dashboard/settings/projects/$projectId/labels'
+      preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRouteImport
+      parentRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsRoute
+    }
     '/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow': {
       id: '/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow'
       path: '/$projectId/workflow'
@@ -1826,6 +1848,7 @@ const LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren =
 
 interface LayoutAuthenticatedDashboardSettingsProjectsRouteChildren {
   LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
   LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
 }
 
@@ -1833,6 +1856,8 @@ const LayoutAuthenticatedDashboardSettingsProjectsRouteChildren: LayoutAuthentic
   {
     LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute:
       LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute,
+    LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute:
+      LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute,
     LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute:
       LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute,
   }

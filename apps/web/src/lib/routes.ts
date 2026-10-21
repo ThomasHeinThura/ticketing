@@ -18,6 +18,32 @@ import {
 
 export * from "./work-item-list-search";
 
+export type LabelCatalogueSearch = {
+  action?: "create" | "edit" | "delete";
+  label?: string;
+};
+
+export function parseLabelCatalogueSearch(raw: unknown): LabelCatalogueSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  if (value.action === "create") return { action: "create" };
+  if (
+    (value.action === "edit" || value.action === "delete") &&
+    typeof value.label === "string" &&
+    value.label.length > 0 &&
+    value.label.length <= 256 &&
+    !value.label.includes("\0")
+  )
+    return { action: value.action, label: value.label };
+  return {};
+}
+
+function labelCatalogueQuery(search: LabelCatalogueSearch) {
+  const query = new URLSearchParams(
+    parseLabelCatalogueSearch(search),
+  ).toString();
+  return query ? `?${query}` : "";
+}
+
 export type RouteSurface = keyof typeof generatedRouteMetadata;
 
 function assertGeneratedRoute(surface: RouteSurface, template: string) {
@@ -855,7 +881,8 @@ export const routes = {
   },
   workspaceLabels: {
     path: "/agent/settings/labels" as const,
-    build: () => "/agent/settings/labels",
+    build: (search: LabelCatalogueSearch = {}) =>
+      `/agent/settings/labels${labelCatalogueQuery(search)}`,
   },
   workspaceCannedResponses: {
     path: "/agent/settings/canned-responses" as const,
@@ -886,8 +913,11 @@ export const routes = {
   },
   projectLabels: {
     path: "/agent/projects/$projectKey/settings/labels" as const,
-    build: (params: { projectKey: string }) =>
-      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/labels`,
+    build: (
+      params: { projectKey: string },
+      search: LabelCatalogueSearch = {},
+    ) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/labels${labelCatalogueQuery(search)}`,
   },
   projectDangerZone: {
     path: "/agent/projects/$projectKey/settings/danger" as const,

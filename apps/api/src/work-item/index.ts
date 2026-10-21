@@ -516,12 +516,13 @@ const getWorkItemLabelsRoute = createRoute({
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse(
-      "Workspace catalogue with assignment state",
+      "Workspace and project catalogues with assignment state",
       z.array(
         z.object({
           id: z.string(),
           name: z.string(),
           color: z.string(),
+          projectId: z.string().nullable(),
           assigned: z.boolean(),
         }),
       ),

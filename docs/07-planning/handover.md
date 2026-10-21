@@ -31,7 +31,7 @@ are authorized. No P5–P7, production deployment or bulk branch/worktree deleti
 
 ## Accepted code and current branches
 
-Live accepted main: `2f366cd47a9124be2d995416d5eaf0878f5918b7` (#882).
+Live accepted main: `0f121c4e3c46898a840bf70e962be76a6ac5e2c3` (#885).
 The primary checkout has been refreshed to it without discarding work. Do not delete other
 worktrees or have two sessions edit the same file. Inspect live GitHub before continuing.
 
@@ -43,58 +43,45 @@ worktrees or have two sessions edit the same file. Inspect live GitHub before co
 | #871 canonical Kaneo work-item page/pane | Merged on reviewed bf3c6b95, all 18 checks. | Remaining P1 hierarchy/relations/project labels and integrated acceptance. |
 | #881 canonical workspace labels | Merged on reviewed a871a853, all 18 checks. | Project label catalogues remain separate unfinished work. |
 | [#882 canned responses](https://github.com/ThomasHeinThura/ticketing/pull/882) | **Merged** to main 2f366cd4 on reviewed ff85f0bc after all 18 checks. Hosted PostgreSQL, 138 browser tests, G8, G11 budgets 22/22 and amd64 image boot passed. | Do not reimplement its placeholders/management or repeat resolved fixture defects. Full P2/SIT acceptance remains open. |
-| [#883 sidebar/project controls](https://github.com/ThomasHeinThura/ticketing/pull/883) | Candidate. Reviewed 0fc458a6 repairs displayed-project creation permissions after e1209855 passed G11/G8/PG but failed two browser controls. Native 28 tests and 20 browser journeys passed. Accepted main 2f366cd4 imported with byte-identical authored source diff. | Worktree ~/.codex/worktrees/taskdesk-sidebar-paint-scheduling, branch codex/sidebar-paint-scheduling. Import/docs delta review approved. Final head 2c4a1102 passed 17/18 checks; G11 palette click-to-paint failed (209.7 ms > 200 ms). Diagnose and repair before protected merge. |
-| [#880 image build](https://github.com/ThomasHeinThura/ticketing/pull/880) | Candidate f7f140c7, source independently approved but prior G11 failed. Native shared-artifact compilation replaces the known 35-minute arm64 emulation path; actual multiarch release success is still unproven. | Worktree ~/.codex/worktrees/taskdesk-native-artifact-image-build, branch codex/native-artifact-image-build. Import accepted performance repair once merged, review delta, validate/merge, then verify actual release build, both architectures, scan and signing. |
+| [#883 sidebar/project controls](https://github.com/ThomasHeinThura/ticketing/pull/883) | **Merged** to 948cc5c0 on independently reviewed 2bbfb21d after all 18 required checks. G11 22/22; G8, PostgreSQL and browser checks passed. | Preserve scoped create controls, parallel sidebar/navigation downloads and creation-form loading on intent. P1 acceptance remains open. |
+| [#880 image build](https://github.com/ThomasHeinThura/ticketing/pull/880) | Candidate c3ca7047 imports accepted 948cc5c0. Authored source diff unchanged; native structural check passed. Hosted PostgreSQL/G8 passed but G11 palette timing failed at 209.3 ms > 200 ms. | Worktree ~/.codex/worktrees/taskdesk-native-artifact-image-build. Import/docs reviewed (5599889913). Diagnose retained G11 failure before another candidate; no blind rerun/merge. Actual multiarch release, scanning and signing remain unverified. |
 
 ## Immediate next work
 
-1. Complete #883 on current main. Final-head workflows 39576068339 / 39576068126
-   passed all required checks except G11. The 500-row render measured 487.0 ms (<500);
-   palette readiness passed, but click-to-paint measured 209.7 ms (>200) after the
-   existing retry. Log: /tmp/taskdesk-sidebar-2c4-g11.log; downloaded performance
-   artifacts: /tmp/taskdesk-sidebar-2c4-perf. Profile the open interaction before patching;
-   do not blindly rerun, relax budgets or treat 17/18 as merge clearance.
-   Native integrated checks passed 48 unit tests and 23 browser journeys.
-   The next repair removes duplicate toggle request/acknowledgement renders; two new
-   cold/warm browser journeys passed search, focus containment, toggle/Escape and focus
-   return. Source review is clean, but no hosted performance improvement is established.
-   An independent palette diagnostic now retains its sanitized capture even if another
-   diagnostic window fails. Native capture has valid canonical clock marks/timeline but
-   rejects all CPU profiles: the first chunk contains signed negative time deltas, which
-   the existing strict parser rejects. Do not label it complete CPU attribution or relax
-   validation without tracing the actual V8 timestamp contract. Native logs:
-   /tmp/taskdesk-palette-toggle-browser.log and /tmp/taskdesk-palette-native-diagnostic-4.log.
-   Hosted fde5bcbc then passed 17/18 required checks: palette click-to-paint 108.7 ms,
-   keyboard navigation 149.0 ms and 500-row render 475.8 ms all passed. Its remaining G11
-   failure was G13 Projects preparation: a cold popup missed the unchanged 5 s readiness
-   assertion. Phase evidence shows sidebar timeout plus closed project-form imports
-   competing with palette warm-up. The next reviewed delta loads that form only on Add
-   project intent. Thirteen unit tests and eight browser journeys passed, including actual
-   form open/edit/cancel/reopen. Exact-head hosted validation remains required.
-   fde hosted diagnostic also failed: assignment clock alignment and negative-delta CPU
-   rejection. The independent sanitized palette artifact was retained; neither diagnostic
-   is passed CPU attribution. Logs: /tmp/taskdesk-sidebar-fde-g11.log; artifact directory
-   /tmp/taskdesk-sidebar-fde-diagnostic. Continue project catalogues separately in
-   ~/.codex/worktrees/taskdesk-project-label-catalogues (codex/project-label-catalogues):
-   uncommitted migration/API/assignment work is incomplete and has no browser/PG acceptance.
-
-   Current implementation: It retains primary-content/paint/idle protection, prefetches
-   project navigation alongside the sidebar, and scopes work/backlog create controls to
-   the displayed project through the existing capability API. Tests withhold roster data
-   and check project denial despite workspace permission. No budgets, assertion timeouts,
-   calibration ranges, retries or fallbacks were relaxed. Prior G11 failures stay adverse
-   evidence in #876/#711; a later green candidate does not erase them.
-2. Complete #880 and verify its real multiarch release. Earlier release 39548649101's
+1. Complete #880 and verify its real multiarch release. Earlier release 39548649101's
    arm64 QEMU build hung after Vite transformed 7,397 modules and reached the 35-minute
-   timeout. Do not increase the timeout or narrow supported architectures. CI amd64 image
-   proof is not proof of a successful arm64 release.
-3. Continue P1 requirements, then the approved P2–P4 sequence in the living plan. Hierarchy
-   has parent/tree backend code, but the tree is capped at 500 nodes with a truncated flag;
-   per-parent pagination (#434), canonical inline hierarchy UI and full lifecycle behavior
-   need completion. Canonical work-item relations still need implementation; legacy task relations do not
-   satisfy them.
-   Audit before assuming existing code satisfies a rule. Do not replace missing functionality
-   with a hidden feature or mark a whole feature/stage complete from a narrow test.
+   timeout. The candidate compiles CPU-independent artifacts on the native build platform,
+   with target-native production dependencies/runtime. Do not increase the timeout or
+   narrow supported architectures. An amd64 image proof does not establish arm64 success.
+2. Continue [#884 project catalogues](https://github.com/ThomasHeinThura/ticketing/pull/884)
+   in ~/.codex/worktrees/taskdesk-project-label-catalogues, branch codex/project-label-catalogues. Candidate migration 0126 adds label.project_id
+   with a composite workspace/project FK and per-catalogue uniqueness. Dedicated typed
+   routes enforce current project reach and strict label:manage; legacy label routes
+   exclude project entries. Assignments accept workspace/own-project labels only; deletion
+   journals removals and advances affected item versions. Backend security review is clean;
+   884 API unit tests, 107 permission checks and API/web typechecks passed. UI reuses the
+   Kaneo label catalogue with URL-addressed dialogs and a strict manageLabels flag.
+   UI/security review is clean. Six native browser journeys and 53 URL/navigation tests
+   passed, including reload CRUD, strict management grants, late-response draft preservation,
+   retry, mobile/dark/reduced-motion and workspace regression. Logs are
+   /tmp/taskdesk-project-labels-browser-4.log and /tmp/taskdesk-project-labels-url-nav-unit.log.
+   Finish real PostgreSQL migration/concurrency/permission and actual API browser journeys,
+   Linux visual baseline inspection and all required CI. New PG tests are authored, not run.
+   It is not merged, deployed or accepted. Preserve its local work when refreshing main.
+3. Continue the full P1 then P2–P4 sequence in the living plan. Hierarchy has parent/tree
+   backend code but a 500-node cap with truncation; per-parent pagination (#434), inline
+   hierarchy UI and full lifecycle behavior remain. Canonical relations remain unbuilt;
+   legacy task relations do not satisfy them. Audit actual code before marking rules done.
+
+Final #883 evidence: fast 39599615279 / full 39599615196, independent review
+5599615060, completion comment 6316212513. G11 22/22: 500-row render 425.8 ms,
+palette open 107.6 ms, keyboard navigation 136.5 ms. Native delta: 13 unit and eight
+browser journeys. Earlier 2c4a1102/fde5bcbc G11 failures remain adverse evidence in
+#876/#711. The final non-gating CPU diagnostic still fails: signed negative V8 deltas
+are rejected and assignment clock alignment is incomplete. Do not claim complete CPU
+attribution. Logs: /tmp/taskdesk-sidebar-2bb-g11.log; older raw palette capture:
+/tmp/taskdesk-sidebar-fde-diagnostic. No budgets, calibration, retries or required checks
+were relaxed. These are change-level results, not stage/SIT acceptance.
 
 ## Accepted canned-response evidence
 
@@ -143,3 +130,46 @@ After features: comprehensive integrated/security/Kaneo review, real agent/porta
 installation/upgrade/image health, isolated backup/restore, exact SHA/digest deployment,
 developer walkthrough and private test accounts. Report implemented/verified/blocked/awaiting
 Thomas's sign-off separately. Missing external evidence never manufactures completion.
+
+Latest #880 failure: fast 39602448809 / full 39602448792, G11 job 119230093551.
+Palette normalised retry median 209.3 ms (budget <200); keyboard navigation 163.6 ms
+passed. Log /tmp/taskdesk-image-c3ca-g11.log; sanitized diagnostic retained in
+/tmp/taskdesk-image-c3ca-diagnostic. CPU profiles remain empty due parser rejection.
+Do not turn this failure into a merge clearance, budget increase or blind workflow rerun.
+
+#884 first hosted candidate 34bea894: contract caught ambiguous legacy/new paths; use
+/api/label/project/{projectId}/catalogue[/{id}] consistently in route/client/policy/spec.
+Local contract, 107 permission checks, six browser journeys and API/web typechecks pass
+for that repair. Five Linux baselines (project labels/general/states/danger/members) are
+from actual run39605343376; reviewer inspected the new catalogue and navigation-only
+changes. Native all-unit tasks passed (API884, web1434), all nine typecheck tasks passed.
+Hosted PostgreSQL exposed two old task-label insert-select projections lacking the new
+nullable project_id; both now explicitly select NULL, with original scope predicates.
+Independent review also found a legacy bulk lookup treating project catalogues as workspace
+labels; it now excludes project_id and a positive-control/hidden-source negative bulk-route
+regression is authored. Affected actual bulk/repository/race tests must pass before merge. Logs:
+/tmp/taskdesk-project-labels-34-pg1.log and -pg2.log. Static failed the contrast occurrence manifest after the label-screen extraction;
+Playwright download DNS warnings recovered and were not the failing step. Update source
+occurrence bindings and rerun the actual contrast gate; do not waive it. Record new-head results; never manufacture clearance.
+
+[#885 sampled CPU timestamp repair](https://github.com/ThomasHeinThura/ticketing/pull/885)
+is separate, worktree ~/.codex/worktrees/taskdesk-profile-sample-timestamps, branch
+codex/profile-sample-timestamps, reviewed head5e201dbe. Reconstruct signed deltas across
+chunks, globally sort observed points after capture, omit ambiguous intervals/tails.
+Twenty native unit checks, web typecheck/build and both native source-bound captures
+passed; palette retained one profile with 2,137 intervals. Exact-head review5600302361.
+Hosted CPU attribution, alignment and G11 remain required. This is diagnostic evidence,
+not a fix claim for #880's timing or multiarch release. Logs:
+/tmp/taskdesk-profile-clock-full-diagnostic.log and -native-diagnostic-2.log.
+
+Latest update: #885 is merged to main0f121c4e after all18 required checks, review5600302361,
+G11 22/22 and both hosted CPU diagnostics2/2. #880 imported it at reviewed046e4964;
+17/18 checks passed but palette timing243.2ms failed. Log /tmp/taskdesk-image-046-g11.log;
+retained sampled palette profile /tmp/taskdesk-image-046-diagnostic. Assignment diagnostic
+clock alignment failed separately. Diagnose sampled interval before further app changes.
+#884 head329cfe36 passed17/18 (PG,realbrowser,G8,G11), with contrast manifest the only failure.
+Refreshed12 source occurrence groups, all418 pairs/thresholds intact. Declared the catalogue's
+already-computed bg-card backdrop explicitly, restoring subtitle coverage; independent full
+contrast check passed. Workspace controlled light/dark paint was identical; project had
+one RGB-rounding pixel outside the catalogue on the Projects tab. Hosted G8 stays strict.
+Final repair/import review and exact-head CI remain required; no stage/SIT acceptance.
