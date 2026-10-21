@@ -158,7 +158,8 @@ describe("CommandPaletteLauncher warm mount", () => {
     expect(cancelIdleCallback).toHaveBeenCalledWith(7);
     expect(idleCallback).toBeTypeOf("function");
     // The warm-up is bounded, so a busy main thread cannot leave the palette cold.
-    expect(idleOptions).toEqual({ timeout: 1_000 });
+    // On the work list the sidebar has already rendered, so idle time is waited for briefly.
+    expect(idleOptions).toEqual({ timeout: 300 });
     await waitFor(() =>
       expect(screen.getByTestId("palette-instance")).toHaveAttribute(
         "data-open",

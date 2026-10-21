@@ -109,13 +109,15 @@ export default function CommandPaletteLauncher() {
       // Start the download now; only the mount waits (for the sidebar on the heavy screens,
       // then for paint frames and idle time).
       void loadPaletteModule().catch(() => {});
+      // On those screens the sidebar has already taken its turn, so idle time is only
+      // waited for briefly: the popup must be up well inside G11's 5 s.
       if (waitsForPrimary)
         void whenSidebarShown().then(() => {
-          if (!cancelled && !requestedRef.current) mountWhenIdle();
+          if (!cancelled && !requestedRef.current) mountWhenIdle(300);
         });
-      else mountWhenIdle();
+      else mountWhenIdle(1_000);
     };
-    const mountWhenIdle = () => {
+    const mountWhenIdle = (idleTimeoutMs: number) => {
       firstFrame = requestAnimationFrame(() => {
         if (cancelled || requestedRef.current) return;
         secondFrame = requestAnimationFrame(() => {
@@ -130,7 +132,7 @@ export default function CommandPaletteLauncher() {
               idleMountRef.current = undefined;
               if (!cancelled) setKeepMounted(true);
             },
-            { timeout: 1_000 },
+            { timeout: idleTimeoutMs },
           );
         });
       });
