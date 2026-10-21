@@ -10,6 +10,7 @@ import {
 import {
   CalendarDays,
   Inbox,
+  MessageSquareText,
   Settings,
   Shield,
   Tag,
@@ -25,7 +26,8 @@ import { getInitials } from "@/lib/get-initials";
 
 export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
-  const { workspace, role } = useWorkspacePermission();
+  const { workspace, role, canManageWorkspaceSettings } =
+    useWorkspacePermission();
   const location = useLocation();
   const menuItems = [
     {
@@ -43,6 +45,15 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       url: "/dashboard/settings/workspace/labels",
       icon: Tag,
     },
+    ...(canManageWorkspaceSettings()
+      ? [
+          {
+            title: t("settings:cannedResponses.title"),
+            url: "/agent/settings/canned-responses",
+            icon: MessageSquareText,
+          },
+        ]
+      : []),
     {
       title: t("serviceCalendars:list.title"),
       url: "/agent/settings/calendars",

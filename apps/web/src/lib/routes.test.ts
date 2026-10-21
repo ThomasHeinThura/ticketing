@@ -7,6 +7,7 @@ import {
   parseAgentGlobalSearch,
   parseAgentInboxSearch,
   parseAgentMyWorkSearch,
+  parseCannedResponseSearch,
   parseGeneratedRouteUrl,
   parseGodModeUsersSearch,
   parseIdentityConnectionEditorSearch,
@@ -893,6 +894,28 @@ describe("P1 agent core, project overview, and settings routes", () => {
       "/agent/settings/canned-responses?q=reset",
     );
     expect(parseSettingsTextFilterSearch({ q: "ada" })).toEqual({ q: "ada" });
+  });
+
+  it("round-trips canned-response search, editor and deletion confirmation", () => {
+    for (const search of [
+      { q: "reset reply", id: "snippet/1" },
+      { id: "new" },
+      { q: "reset", id: "snippet-1", action: "delete" as const },
+    ]) {
+      const url = new URL(
+        routes.workspaceCannedResponses.build(search),
+        "https://example.test",
+      );
+      expect(
+        parseCannedResponseSearch(Object.fromEntries(url.searchParams)),
+      ).toEqual(search);
+    }
+    expect(
+      parseCannedResponseSearch({ id: "bad\u0000id", action: "delete" }),
+    ).toEqual({});
+    expect(
+      parseCannedResponseSearch({ action: "delete", q: "  reset  " }),
+    ).toEqual({ q: "reset" });
   });
 
   it("builds project overview and project settings URLs with encoded projectKey", () => {

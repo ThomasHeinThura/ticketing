@@ -147,7 +147,23 @@ security-sensitive field in the product.
   ([data-model.md](../01-architecture/data-model.md) §4). Creating, editing and deleting a
   canned response requires `workspace:manage_settings`
   ([rbac.md](../01-architecture/rbac.md)); reading the list to insert one only requires
-  `work_item:read` on the work item being commented on.
+  `work_item:read` on the work item being commented on. Workspace settings lists the
+  library through a separate manager-only route requiring `workspace:manage_settings`,
+  so managing snippets does not require creating a work item or broadening composer reads.
+- `CA-19a` Template tokens are `{{requester.name}}`, `{{work_item.key}}` and
+  `{{work_item.due_date}}` (optional whitespace inside braces). Composer listing resolves
+  them against the authorized live work item, using the requester's person display name
+  with linked user name as fallback and the due date's UTC `YYYY-MM-DD` calendar value.
+  Missing names/dates become empty text; unknown tokens remain literal. No expressions,
+  HTML generation or recursive expansion. Only rich-text text content is expanded, including
+  tokens spanning adjacent formatted text nodes; attributes, links and embedded-node data
+  remain unchanged. Replacement text inherits the token's first text node's formatting.
+  Stored templates and manager listings remain unexpanded. The menu may cache template
+  names, but insertion fetches fresh authorized context; failed or removed templates preserve
+  the existing draft and show a retryable error. Editing/sending is blocked while insertion
+  is pending so a late response cannot overwrite new draft edits. A requester is the person linked
+  by that work item, including a customer contact without workspace-user membership;
+  expansion never performs arbitrary directory lookup or exposes their email.
 - `CA-20` Inserted from the composer, then editable before sending. Never sent
   automatically.
 
@@ -191,6 +207,7 @@ PATCH  /api/comments/{id}                      comment:update_any, or comment:up
 DELETE /api/comments/{id}                      comment:delete_any, or comment:delete_own
                                                 (owner)
 GET    /api/portal/requests/{ref}/activity     (portal router — public only)
+GET    /api/canned-responses/manage            workspace:manage_settings (workspaceId query)
 GET    /api/canned-responses                   work_item:read
 POST   /api/canned-responses                   workspace:manage_settings
 PATCH  /api/canned-responses/{id}              workspace:manage_settings

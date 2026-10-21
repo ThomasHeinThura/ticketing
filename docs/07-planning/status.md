@@ -1,15 +1,15 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `9bbff929`; primary checkout refreshed to that source.
+Current inspected GitHub main: `a13edc67`; primary checkout refreshed to that source.
 This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
 
 | Stage | State | Remaining work |
 | --- | --- | --- |
-| P0 Foundation | Implemented; verification incomplete | Container seeding/recovery candidates verified locally; finish backup encryption/offsite/runtime recording, integrated recovery and owner walkthrough. |
-| P1 Core work | Partial implementation | Finish task-page stack, labels/hierarchy/relations/uploads and legacy-work redirects. Board/list/table, bulk, backlog, saved views, inbox and My work have real implementations; full acceptance remains. |
+| P0 Foundation | Partial implementation; verification incomplete | Container seeding/recovery candidates verified locally; finish backup encryption/offsite/runtime recording, integrated recovery and owner walkthrough. |
+| P1 Core work | Partial implementation | Finish project label catalogues, hierarchy/relations/uploads and legacy-work redirects. Board/list/table, bulk, backlog, saved views, inbox and My work have real implementations; full acceptance remains. |
 | P2 Service desk | Partial implementation | Approval requests/candidates, authoring/configuration UI, canned responses, audit, milestones/stakeholders and integrated service-desk journeys. |
 | P3 Portal and identity | Partial implementation | Full portal, invitation/admission/discovery contracts and implementation, identity administration and real Entra verification. |
 | P4 Governance | Partial implementation | Missing APIs/UI, notification runtime, automations, God Mode, MCP and #580 query ownership. |
@@ -27,20 +27,28 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
 - #870 approvals decide is merged after all 18 required checks passed on its reviewed
   final source. Prior G11 calibration, warm-up and slow-runner budget failures remain
   adverse evidence; #876/#711 track them. Passive phase timing now accompanies failures.
-- #871's stack is reconciled without rewriting remote history. Independent review found
-  three editor/assignment defects; fixes and delta review passed, plus 327 work-item tests.
-  Final-head hosted checks, real-data use and protected merge remain outstanding.
+- #871 is merged after all 18 required checks passed on reviewed head `bf3c6b95`.
+  Canonical Kaneo full-page/side-pane editing preserves project-scoped controls and queued
+  edits. Sidebar download overlap and parent-route preloading repaired the observed G11
+  candidate failures without changing budgets. Full P1 feature completion remains outstanding.
+- #881 canonical workspace-label assignment is merged after all 18 required checks passed
+  on reviewed head `a871a853`. The Kaneo properties picker persists through versioned writes;
+  catalogue deletion advances affected item versions and records internal activity/events.
+  Project-scoped label catalogues remain separate unfinished work.
 - #877 container seeding is merged with all 18 required checks green: real intake
   submissions repeat under the restricted credential; local image build/boot passed.
 - Recovery targeting now resolves the selected mounted volume. An isolated internal-network
   drill restored an actual database row and non-empty file, denied egress and passed health.
   #878 is merged with all 18 required checks green; full application acceptance remains pending.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
+- Continue from [handover.md](handover.md) for active branches, checks and deployment
+  constraints. It is a dated snapshot, not policy or proof that pending checks passed.
 
 ## SIT
 
-The existing Compose application is healthy, but its image revision is `unknown` and it
-has not been verified against current main. It cannot prove current feature acceptance.
+The earlier local Compose installation reported revision `unknown`; OrbStack is now
+stopped, so that installation is not current runtime evidence. TaskDesk has **not yet
+been deployed to the proxy VM**. No current hosted SIT acceptance is claimed.
 Before handoff: deploy the reviewed SHA/digest, verify both HTTPS origins, seed accounts and
 realistic submissions, exercise all journeys, and verify backup/restore. Supply credentials
 privately. Thomas performs the final integrated stage walkthrough.
