@@ -1439,12 +1439,28 @@ test("workspace settings labels screen @visual", async ({ page }) => {
 
 test("workspace settings canned responses screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.route("**/api/capabilities**", (route) =>
-    route.fulfill({ json: { manageWorkspaceSettings: true } }),
-  );
-  await page.route("**/api/canned-responses/manage?*", (route) =>
-    route.fulfill({
-      json: [
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    let body: unknown = [];
+    if (path.endsWith("/api/auth/get-session")) body = session;
+    else if (path.endsWith("/api/workspace")) body = [workspace];
+    else if (path.endsWith("/api/project")) body = [project];
+    else if (path.endsWith("/api/workspace/visual-workspace/members"))
+      body = [
+        {
+          id: "visual-user",
+          name: "Ada Example",
+          email: "ada@example.test",
+          image: null,
+          role: "owner",
+        },
+      ];
+    else if (path.endsWith("/api/capabilities"))
+      body = { manageWorkspaceSettings: true };
+    else if (path.endsWith("/api/config"))
+      body = { disableWorkspaceCreation: true, disableRegistration: true };
+    else if (path.endsWith("/api/canned-responses/manage"))
+      body = [
         {
           id: "visual-snippet",
           workspaceId: "visual-workspace",
@@ -1463,9 +1479,13 @@ test("workspace settings canned responses screen @visual", async ({ page }) => {
           createdAt: "2026-09-15T00:00:00.000Z",
           updatedAt: "2026-09-15T00:00:00.000Z",
         },
-      ],
-    }),
-  );
+      ];
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+  });
   await page.goto("/agent/settings/canned-responses");
   await expect(
     page.getByRole("heading", { level: 1, name: "Canned responses" }),
