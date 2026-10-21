@@ -44,7 +44,7 @@ worktrees or have two sessions edit the same file. Inspect live GitHub before co
 | #881 canonical workspace labels | Merged on reviewed a871a853, all 18 checks. | Project label catalogues remain separate unfinished work. |
 | [#882 canned responses](https://github.com/ThomasHeinThura/ticketing/pull/882) | **Merged** to main 2f366cd4 on reviewed ff85f0bc after all 18 checks. Hosted PostgreSQL, 138 browser tests, G8, G11 budgets 22/22 and amd64 image boot passed. | Do not reimplement its placeholders/management or repeat resolved fixture defects. Full P2/SIT acceptance remains open. |
 | [#883 sidebar/project controls](https://github.com/ThomasHeinThura/ticketing/pull/883) | **Merged** to 948cc5c0 on independently reviewed 2bbfb21d after all 18 required checks. G11 22/22; G8, PostgreSQL and browser checks passed. | Preserve scoped create controls, parallel sidebar/navigation downloads and creation-form loading on intent. P1 acceptance remains open. |
-| [#880 image build](https://github.com/ThomasHeinThura/ticketing/pull/880) | Candidate 6e772512 imports accepted 948cc5c0. Authored Dockerfile, container-image guide and native-image-build.test.mjs diff is byte-identical to the already-reviewed candidate. Native structural check passed. | Worktree ~/.codex/worktrees/taskdesk-native-artifact-image-build. Review import/docs, pass all 18 final-head checks and merge, then verify actual multiarch release, scanning and signing. |
+| [#880 image build](https://github.com/ThomasHeinThura/ticketing/pull/880) | Candidate c3ca7047 imports accepted 948cc5c0. Authored source diff unchanged; native structural check passed. Hosted PostgreSQL/G8 passed but G11 palette timing failed at 209.3 ms > 200 ms. | Worktree ~/.codex/worktrees/taskdesk-native-artifact-image-build. Import/docs reviewed (5599889913). Diagnose retained G11 failure before another candidate; no blind rerun/merge. Actual multiarch release, scanning and signing remain unverified. |
 
 ## Immediate next work
 
@@ -61,8 +61,12 @@ worktrees or have two sessions edit the same file. Inspect live GitHub before co
    journals removals and advances affected item versions. Backend security review is clean;
    884 API unit tests, 107 permission checks and API/web typechecks passed. UI reuses the
    Kaneo label catalogue with URL-addressed dialogs and a strict manageLabels flag.
-   Finish browser/URL/scope-race checks, real PostgreSQL migration/concurrency/permission
-   journeys, visual baseline review, independent UI/delta review and all required CI.
+   UI/security review is clean. Six native browser journeys and 53 URL/navigation tests
+   passed, including reload CRUD, strict management grants, late-response draft preservation,
+   retry, mobile/dark/reduced-motion and workspace regression. Logs are
+   /tmp/taskdesk-project-labels-browser-4.log and /tmp/taskdesk-project-labels-url-nav-unit.log.
+   Finish real PostgreSQL migration/concurrency/permission and actual API browser journeys,
+   Linux visual baseline inspection and all required CI. New PG tests are authored, not run.
    It is not merged, deployed or accepted. Preserve its local work when refreshing main.
 3. Continue the full P1 then P2–P4 sequence in the living plan. Hierarchy has parent/tree
    backend code but a 500-node cap with truncation; per-parent pagination (#434), inline
@@ -126,3 +130,9 @@ After features: comprehensive integrated/security/Kaneo review, real agent/porta
 installation/upgrade/image health, isolated backup/restore, exact SHA/digest deployment,
 developer walkthrough and private test accounts. Report implemented/verified/blocked/awaiting
 Thomas's sign-off separately. Missing external evidence never manufactures completion.
+
+Latest #880 failure: fast 39602448809 / full 39602448792, G11 job 119230093551.
+Palette normalised retry median 209.3 ms (budget <200); keyboard navigation 163.6 ms
+passed. Log /tmp/taskdesk-image-c3ca-g11.log; sanitized diagnostic retained in
+/tmp/taskdesk-image-c3ca-diagnostic. CPU profiles remain empty due parser rejection.
+Do not turn this failure into a merge clearance, budget increase or blind workflow rerun.

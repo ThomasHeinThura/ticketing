@@ -52,13 +52,17 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   form journeys passed. Hosted G11 passed 22/22: palette 107.6 ms, keyboard navigation
   136.5 ms and 500-row render 425.8 ms. The non-gating CPU diagnostic still fails on clock
   alignment/negative deltas and is not complete attribution. Prior failed runs remain visible.
-- #880 has imported accepted main without changing its three authored files. Native
-  Dockerfile structural verification passed; final checks and actual multiarch release
-  verification remain required before claiming the 35-minute image-build defect fixed.
+- #880 imported accepted main without changing its three authored files. Native
+  Dockerfile structural verification passed. On `c3ca7047`, PostgreSQL, G8 and accessibility
+  passed, but G11 palette timing failed (209.3 ms against 200 ms); do not merge or blindly
+  rerun. Actual multiarch release verification remains required before claiming the
+  35-minute image-build defect fixed.
 - Project label catalogues are being implemented in a separate worktree. Migration,
   scoped CRUD/assignment and Kaneo settings reuse exist on the candidate; 884 API unit
   tests, 107 permission checks and typechecks passed. Independent backend review is clean;
-  UI review, browser journeys, PostgreSQL/concurrency/migration evidence and CI remain open.
+  UI/security review is clean. Six native browser journeys and 53 URL/navigation tests
+  passed, including workspace regression and mobile/dark presentation. PostgreSQL,
+  concurrency/migration, real-API browser, Linux baseline and required CI evidence remain open.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment
   constraints. It is a dated snapshot, not policy or proof that pending checks passed.
