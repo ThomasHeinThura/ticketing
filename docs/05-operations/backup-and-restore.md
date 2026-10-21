@@ -45,8 +45,23 @@ else.
 **Postgres** — `pg_dump -Fc`, compressed, checksummed, encrypted at rest.
 
 ```bash
-scripts/backup.sh              # dump, verify, upload, prune
+scripts/backup.sh              # local dump, verification, attachment archive and checksums
 ```
+
+For an isolated restore drill, use `--project-name <name>` on both backup and restore.
+Both scripts resolve the named volume actually mounted at `/app/data` on that project's
+existing application container. They refuse a missing/ambiguous container or a bind mount;
+they never fall back to the default SIT volume. Restore resolves its target before stopping
+anything. A scratch stack must already exist before restore. Start it with base Compose plus
+`deploy/compose.restore-drill.yml` and an explicit non-default `-p <name>`; it has its own
+internal network with no outbound route, no host ports and no proxy discovery. Restored
+notification and webhook settings therefore cannot contact external destinations. Restore it with
+`scripts/restore.sh --backup <dir> --confirm --mode isolated --project-name <name>`.
+Do not use the local or production proxy overlays for a scratch drill.
+
+The script currently produces local archives and checksums. Encryption, offsite upload,
+retention and the `backup_run` record remain outstanding; the command does not establish
+those obligations. Keep encryption keys separately as described below.
 
 The script verifies the dump is restorable — `pg_restore --list` at minimum — before
 uploading. A dump that cannot be listed will not restore, and finding that out during an

@@ -59,7 +59,13 @@ describe("Entra ID-token validation", () => {
 
   it("refuses a bad signature, unsupported algorithm, and unknown key", () => {
     const valid = signedToken();
-    const corrupted = `${valid.token.slice(0, -2)}aa`;
+    const [header, claims, encodedSignature] = valid.token.split(".");
+    const signature = Buffer.from(encodedSignature ?? "", "base64url");
+    expect(signature.length).toBe(256);
+    const changed = Buffer.from(signature);
+    changed[0] = (changed[0] ?? 0) ^ 1;
+    expect(changed.equals(signature)).toBe(false);
+    const corrupted = `${header}.${claims}.${changed.toString("base64url")}`;
     expect(validateEntraIdToken(corrupted, valid.jwks, expectation)).toEqual({
       ok: false,
       reason: "invalid_signature",
