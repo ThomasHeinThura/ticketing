@@ -79,7 +79,9 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   work-item-detail change but its new hierarchy endpoint lacked a visual fixture, leaving
   a loading skeleton in the capture. A valid parent/child fixture and explicit readiness
   assertion are prepared; generate, inspect and independently review its Linux baseline
-  before committing it. Candidate `fcd1abee` stopped at visual-scope validation because
+  before committing it. The ready Linux artifact from `3d7328c3` (run39630007589,
+  artifact12358867513) was inspected and independently approved; its single detail
+  baseline is now prepared for final-head checks. Candidate `fcd1abee` stopped at visual-scope validation because
   its chained locator is unsupported there; a direct equivalent assertion now passes
   visual-scope validation for 43 cases. The earlier `a9db0121` G11 failed closed on calibration 0.739
   below 0.75 before budgets. No thresholds or retries changed.
@@ -87,7 +89,11 @@ No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdraw
   branch `codex/parent-editing`: required If-Match for attach/detach, locked version checks
   and stale/concurrent-write integration regressions. The Kaneo parent property control
   and typed client are drafted; API/web typechecks and nine fetcher unit tests passed.
-  PostgreSQL, OpenAPI regeneration, component/browser/contrast checks and review remain.
+  Two fixture browser journeys and 107 permission tests passed; contract generation
+  exposed the expected breaking-header change. Follow the reviewed migration approach:
+  retain optional validated versions on old routes and add strict `/api/v2` parent
+  routes for the UI. That compatibility repair, real PostgreSQL, full checks and review
+  remain; no contract waiver or new allowlist entry is authorized.
   This uncommitted draft is not a completed feature or accepted code.
 - The approved goal is active. Full sequence and acceptance checklist: [plan.md](plan.md).
 - Continue from [handover.md](handover.md) for active branches, checks and deployment

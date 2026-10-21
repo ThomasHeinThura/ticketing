@@ -51,7 +51,10 @@ Only work-item-detail Linux baseline changed. Artifact12356943262 initially show
 a hierarchy skeleton because the visual fixture omitted children. Prepared fixture now
 returns one real-shaped child and waits for its link before capture. Native readiness
 assertion passed; Mac snapshot is absent (expected), so no Mac baseline is committed.
-Generate/inspect the correct Linux image and obtain independent delta/baseline review.
+Ready Linux artifact12358867513 on3d7328c3 (run39630007589) was generated,
+viewed against expected and independently approved:0/1,highlighted parent,onechild,
+original Kaneo shell/properties, intended attachment/activity shift. Its single PNG
+is prepared for final-head checks; no threshold changed.
 Candidate fcd1abee then stopped before screenshots: chained locator rejected by scope
 validator. Direct equivalent now passes visual-scope validation for43 cases; no checker change.
 Earlier a9 G11 stopped before budgets: calibration0.739<0.75; no limits changed.
@@ -60,7 +63,12 @@ Separate unfinished draft: ~/.codex/worktrees/taskdesk-parent-editing, codex/par
 from b4958b59. Uncommitted work adds required parent attach/detach If-Match, locked
 version checks and stale/concurrent/no-op regressions, a Kaneo parent property control,
 typed client and locale/schema keys. API/web typecheck and9 fetcher tests passed. No PG
-run, contract regeneration, component/browser/contrast verification or review yet.
+run or final source review yet.42 targeted tests,2fixture browser journeys,107permissions
+and generated OpenAPI pass their respective checks, but test:contract rejects2 newly
+required headers. Independently reviewed approach: keep old routes optional-and-strict
+when supplied; add strict /api/v2 parent routes and point UI there. Implement this
+compatibility repair before PR; no breaking-change allowlist/waiver. Full native checks,
+contrast and real API/browser evidence remain.
 Do not lose this draft or claim it done.
 
 ## Immediate next work
