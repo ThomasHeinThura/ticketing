@@ -22,8 +22,10 @@ The full goal and Thomas's no-AIDLC, Kaneo-preservation directive remain in forc
 - Isolated PostgreSQL: 87/89 broad tests passed, two WAN timeouts remain unpassed; three
   focused seed/label checks passed. Keep these adverse results visible; hosted co-located
   PostgreSQL checks must resolve them. Never run database resets against live SIT.
-- Draft PR #889 head `f335fdfa` contains the source/evidence batch. First hosted results
-  and local fixes are recorded in status.md; do not blindly rerun old failing jobs.
+- Draft PR #889 latest pushed head `3a863039` contains the source/evidence batch. Hosted results
+  and local fixes are recorded in status.md; do not blindly rerun old failing jobs. All four
+  PostgreSQL shards pass in the second run; approved Linux captures and the calendar
+  ScrollArea/keyboard fix are the next batch. G11 failed calibration before measurements.
 - Next: finish source/baseline fixes and hosted G11 measurement, bind delta review, then
   verified-image deployment and developer walkthrough. Repair the separate proxy-IP defect
   before claiming login rate-limit or API-key IP acceptance. The candidate normalizer

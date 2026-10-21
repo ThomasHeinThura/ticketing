@@ -433,10 +433,10 @@
     "occurrenceIds": [
       "apps/web/src/components/activity/comment-input.tsx::CommentInput::div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-primary-foreground#0",
       "apps/web/src/components/board/board-toolbar.tsx::CheckSlot::span[0]::text-primary-foreground#0",
-      "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::div[0]/div[1]/div[0]/div[0]/span[0]::text-primary-foreground#0",
       "apps/web/src/components/common/sort-control.tsx::CheckSlot::span[0]::text-primary-foreground#0",
       "apps/web/src/main.tsx::RootCrashFallback::div[0]/div[0]/Button[0]::text-primary-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[1]::text-primary-foreground#0"
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[1]::text-primary-foreground#0",
+      "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::ScrollArea[0]/div[0]/div[1]/div[0]/div[0]/span[0]::text-primary-foreground#0"
     ],
     "occurrences": [
       {
@@ -458,17 +458,6 @@
         "chain": [
           "apps/web/src/components/board/board-toolbar.tsx:CheckSlot",
           "jsx:span[0]>bg-primary"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::div[0]/div[1]/div[0]/div[0]/span[0]::text-primary-foreground#0",
-        "usage": "apps/web/src/components/calendar/month-grid.tsx",
-        "surfaceContext": "same-element",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/calendar/month-grid.tsx:MonthGrid",
-          "jsx:div[0]/div[1]/div[0]/div[0]/span[0]>bg-primary"
         ],
         "backdropLayers": []
       },
@@ -502,6 +491,17 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[1]>bg-primary"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::ScrollArea[0]/div[0]/div[1]/div[0]/div[0]/span[0]::text-primary-foreground#0",
+        "usage": "apps/web/src/components/calendar/month-grid.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/calendar/month-grid.tsx:MonthGrid",
+          "jsx:ScrollArea[0]/div[0]/div[1]/div[0]/div[0]/span[0]>bg-primary"
         ],
         "backdropLayers": []
       }
@@ -525,10 +525,10 @@
     "occurrenceIds": [
       "apps/web/src/components/activity/comment-input.tsx::CommentInput::div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-primary-foreground#0",
       "apps/web/src/components/board/board-toolbar.tsx::CheckSlot::span[0]::text-primary-foreground#0",
-      "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::div[0]/div[1]/div[0]/div[0]/span[0]::text-primary-foreground#0",
       "apps/web/src/components/common/sort-control.tsx::CheckSlot::span[0]::text-primary-foreground#0",
       "apps/web/src/main.tsx::RootCrashFallback::div[0]/div[0]/Button[0]::text-primary-foreground#0",
-      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[1]::text-primary-foreground#0"
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[1]::text-primary-foreground#0",
+      "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::ScrollArea[0]/div[0]/div[1]/div[0]/div[0]/span[0]::text-primary-foreground#0"
     ],
     "occurrences": [
       {
@@ -550,17 +550,6 @@
         "chain": [
           "apps/web/src/components/board/board-toolbar.tsx:CheckSlot",
           "jsx:span[0]>bg-primary"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::div[0]/div[1]/div[0]/div[0]/span[0]::text-primary-foreground#0",
-        "usage": "apps/web/src/components/calendar/month-grid.tsx",
-        "surfaceContext": "same-element",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/calendar/month-grid.tsx:MonthGrid",
-          "jsx:div[0]/div[1]/div[0]/div[0]/span[0]>bg-primary"
         ],
         "backdropLayers": []
       },
@@ -594,6 +583,17 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[1]>bg-primary"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::ScrollArea[0]/div[0]/div[1]/div[0]/div[0]/span[0]::text-primary-foreground#0",
+        "usage": "apps/web/src/components/calendar/month-grid.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/calendar/month-grid.tsx:MonthGrid",
+          "jsx:ScrollArea[0]/div[0]/div[1]/div[0]/div[0]/span[0]>bg-primary"
         ],
         "backdropLayers": []
       }
@@ -7939,7 +7939,6 @@
       "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Archive[0]::text-muted-foreground#0",
       "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
-      "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::div[0]/div[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/common/header/task-crumb-select.tsx::TaskCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-muted-foreground#0",
       "apps/web/src/components/common/project-task-search-input.tsx::ProjectTaskSearchInput::div[0]/Search[0]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
@@ -8009,7 +8008,8 @@
       "apps/web/src/routes/portal/approvals.tsx::PortalApprovals::main[0]/header[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/approvals.tsx::PortalApprovals::main[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::ScrollArea[0]/div[0]/div[0]/div[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -9632,17 +9632,6 @@
       {
         "id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/calendar/day-overflow-popover.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::div[0]/div[0]/div[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/calendar/month-grid.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
@@ -11617,6 +11606,17 @@
         "chain": [
           "apps/web/src/routes/portal/index.tsx:/",
           "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::ScrollArea[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/calendar/month-grid.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
         ],
         "backdropLayers": []
       }
@@ -11764,7 +11764,6 @@
       "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Archive[0]::text-muted-foreground#0",
       "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
-      "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::div[0]/div[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/common/header/task-crumb-select.tsx::TaskCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-muted-foreground#0",
       "apps/web/src/components/common/project-task-search-input.tsx::ProjectTaskSearchInput::div[0]/Search[0]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
@@ -11834,7 +11833,8 @@
       "apps/web/src/routes/portal/approvals.tsx::PortalApprovals::main[0]/header[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/approvals.tsx::PortalApprovals::main[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[0]/p[0]::text-muted-foreground#0"
+      "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::ScrollArea[0]/div[0]/div[0]/div[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -13457,17 +13457,6 @@
       {
         "id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/calendar/day-overflow-popover.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::div[0]/div[0]/div[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/calendar/month-grid.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
@@ -15442,6 +15431,17 @@
         "chain": [
           "apps/web/src/routes/portal/index.tsx:/",
           "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::ScrollArea[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/calendar/month-grid.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
         ],
         "backdropLayers": []
       }

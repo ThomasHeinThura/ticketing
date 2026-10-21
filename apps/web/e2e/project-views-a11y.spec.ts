@@ -134,6 +134,17 @@ for (const [name, path] of [
       await expect(
         page.locator('ul > li [data-slot="input"]').first(),
       ).toBeVisible();
+    if (name === "calendar") {
+      const viewport = page
+        .getByRole("region")
+        .locator('[data-slot="scroll-area-viewport"]');
+      await viewport.focus();
+      await expect(viewport).toBeFocused();
+      await viewport.press("ArrowDown");
+      await expect
+        .poll(() => viewport.evaluate((element) => element.scrollTop))
+        .toBeGreaterThan(0);
+    }
     expect(await seriousOrCriticalViolations(page)).toEqual([]);
   });
 }

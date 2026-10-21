@@ -140,3 +140,22 @@ their screenshot assertions; each stops only on the intentionally absent macOS b
 This is a functional fixture check, not a G8 pass. The two new Linux approval/audit
 baselines are still missing; all other affected captures need independent visual review.
 Initial gzip graphs remain 243.6/299.0/189.3 KB under 350/350/200 KB.
+
+## Second hosted repair run — PR #889
+
+Head `3a863039`, source review bound to `a3bc0cc5`. Full run `39663444383`:
+all 47 pinned-Linux screen captures passed in the diagnostic; seven changed/new images
+were independently viewed and approved, then committed for a real G8 comparison. This
+capture is not a G8 pass. Accessibility found the calendar scroll region was not keyboard
+focusable. The existing `packages/ui` ScrollArea fixes it; all seven project accessibility browser cases
+pass locally and the source delta has independent standard/security approval.
+
+G11 failed before product measurements: throttled calibration spread 0.765 exceeded the
+unchanged 0.55 bound, leaving 21 tests unrun. This is neither a timed performance pass nor
+evidence that earlier render/LCP failures are resolved. Preserve the failure and require
+valid hosted measurements on the final source; do not blindly rerun or weaken calibration.
+
+All four hosted PostgreSQL shards pass on this second run. Native final calendar checks
+include actual ArrowDown scrolling, axe, typecheck and lint. All 428 contrast pairs pass
+with their original semantics/thresholds; only four occurrence bindings follow the new
+ScrollArea wrapper. Hosted browser/deployment evidence is still pending final disposition.
