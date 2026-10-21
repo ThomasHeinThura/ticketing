@@ -6,6 +6,7 @@ import { and, eq, sql } from "drizzle-orm";
 import db, { getDatabasePool, schema } from "../src/database";
 import {
   createRequestType,
+  createSubmission,
   publishRequestType,
 } from "../src/intake/repository";
 import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-project";
@@ -438,6 +439,17 @@ async function seedSitRequestTypes(input: {
     .where(eq(schema.personTable.userId, "sit-user-admin"))
     .limit(1);
   if (!admin) throw new Error("SIT admin person is missing; seed users first.");
+  const [customer] = await db
+    .select({ userId: schema.userTable.id, personId: schema.personTable.id })
+    .from(schema.userTable)
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.userId, schema.userTable.id),
+    )
+    .where(eq(schema.userTable.email, "customer@acme.example"))
+    .limit(1);
+  if (!customer)
+    throw new Error("SIT customer person is missing; seed users first.");
   for (const [position, def] of SIT_REQUEST_TYPES.entries()) {
     const [existing] = await db
       .select({
@@ -477,6 +489,40 @@ async function seedSitRequestTypes(input: {
       .values({ organisationId: input.acmeOrgId, requestTypeId: id })
       .onConflictDoNothing();
     if (!existing?.published) await publishRequestType(id, admin.id);
+    const summary =
+      position === 0
+        ? "SIT: access to the shared support folder"
+        : "SIT: unable to connect to the office printer";
+    const [submission] = await db
+      .select({ id: schema.submissionTable.id })
+      .from(schema.submissionTable)
+      .where(
+        and(
+          eq(schema.submissionTable.requesterId, customer.personId),
+          eq(schema.submissionTable.requestTypeId, id),
+          sql`${schema.submissionTable.formData}->>'summary' = ${summary}`,
+        ),
+      )
+      .limit(1);
+    if (!submission) {
+      const [requestType] = await db
+        .select({ key: schema.requestTypeTable.key })
+        .from(schema.requestTypeTable)
+        .where(eq(schema.requestTypeTable.id, id));
+      if (!requestType)
+        throw new Error("Published SIT request type is missing.");
+      await createSubmission({
+        userId: customer.userId,
+        key: requestType.key,
+        formData: {
+          summary,
+          details:
+            "Seeded for the customer portal and agent triage walkthrough.",
+          ...(position === 1 ? { impact: "Slowed down" } : {}),
+        },
+        customerVisibility: position === 0 ? "private" : "organisation",
+      });
+    }
   }
 }
 
