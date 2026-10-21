@@ -1,3 +1,34 @@
+### 2026-10-21 · Complete P0–P4 on Kaneo, lean execution and faster CI
+
+**Source:** Thomas directly approved the chat plan “Finish P0–P4, preserve Kaneo, then
+ deliver SIT” on 2026-10-21 and added: “also fix 35 min Run CI fix. if not fix in the
+ github, run only in the local. only big run in the Github?”
+
+- Complete the P0–P4 feature specs, backend and UI on canonical `work_item` data. Preserve
+  Kaneo's existing shell, settings, task, board and list components. No mock screens.
+- This implementing session is delegated routine recommended technical choices, contract
+  updates, commits, pushes, protected merges after green required checks and independent
+  review, and local SIT deployment. P5–P7, production and bulk repository cleanup are excluded.
+- Adopt the organisation-bound, single-use customer invitation proposal, with its remaining
+  API, policy and audit contracts specified before activation. Notifications use the approved
+  recommended default: stop automatic evaluation after 24 hours of continuous evaluator
+  failure, expose the failure to administrators and permit explicit retry.
+- Finish features, then conduct a comprehensive integrated review and remediate findings.
+  Retain the accepted lean workflow's independent PR review and security coverage. No return
+  to retired review paperwork, conductor queues or phase finalizers.
+- Diagnose the 35-minute CI path and shorten feedback; prefer local preflight and efficient
+  hosted integration. A local-only replacement needs a reviewed workflow change; existing
+  required GitHub checks remain enforced until replaced, with no fabricated statuses or bypass.
+- Deploy source-identified images to local agent and portal SIT, seed working accounts,
+  verify journeys and recovery, then hand the integrated product to Thomas. Stages become
+  ✅ only after his actual walkthrough and sign-off. Missing real Entra credentials block
+  that verification, not unrelated work; mocks do not satisfy the live-tenant criterion.
+
+**Supersedes:** the remaining implementation sequence in the 2026-10-20 living plan,
+including the five-screen owner selection as a prerequisite to further implementation.
+The approved complete feature plan proceeds autonomously to the integrated SIT review.
+The 2026-10-20 lean reset, CI integrity and truthful sign-off rules remain in force.
+
 ### 2026-10-20 · Lean process reset and stage truth
 
 **Decided by Thomas, 2026-10-20, in a Claude Code session after reviewing SIT.** He judged the
