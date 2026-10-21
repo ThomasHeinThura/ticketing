@@ -7,7 +7,10 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+} from "./helpers/fixtures";
 
 // Pinned literally against the existing client permission keys and the two
 // optional comment-choice response names. This prevents either side from
@@ -450,5 +453,143 @@ describe("GET /api/capabilities", () => {
       `/api/capabilities?workspaceId=${randomUUID()}`,
     );
     expect(response.status).toBe(403);
+  });
+});
+
+describe("project-scoped work capability introspection", () => {
+  it("uses the project override and never reuses another project's flags", async () => {
+    const actor = await createWorkspaceMember({ role: "owner" });
+    const first = await createProjectFixture({
+      workspaceId: actor.workspace.id,
+    });
+    const second = await createProjectFixture({
+      workspaceId: actor.workspace.id,
+    });
+    const person = await db.query.personTable.findFirst({
+      where: eq(schema.personTable.userId, actor.user.id),
+    });
+    expect(person).toBeDefined();
+    for (const [project, caps] of [
+      [first.project, ["project:read", "work_item:read", "comment:create"]],
+      [second.project, ["project:read", "work_item:read", "work_item:update"]],
+    ] as const) {
+      const roleId = randomUUID();
+      await db.insert(schema.roleTable).values({
+        id: roleId,
+        key: roleId,
+        name: "Scoped test",
+        rank: 1,
+        scope: "project",
+        workspaceId: actor.workspace.id,
+        capabilities: [...caps],
+      });
+      await db.insert(schema.membershipTable).values({
+        id: randomUUID(),
+        personId: person?.id ?? "missing-person",
+        scope: "project",
+        scopeId: project.id,
+        roleId,
+      });
+    }
+    mockAuthenticatedSession(actor.user);
+    const { app } = createApp();
+    const workspace = await app.request(
+      `/api/capabilities?workspaceId=${actor.workspace.id}`,
+    );
+    expect(workspace.status).toBe(200);
+    expect((await workspace.json()).updateTasks).toBe(true);
+    const readOnly = await app.request(
+      `/api/capabilities?workspaceId=${actor.workspace.id}&projectId=${first.project.id}`,
+    );
+    expect(readOnly.status).toBe(200);
+    expect(await readOnly.json()).toMatchObject({
+      updateTasks: false,
+      assignTasks: false,
+      setPriorityTasks: false,
+      createPublicComments: true,
+    });
+    const editable = await app.request(
+      `/api/capabilities?workspaceId=${actor.workspace.id}&projectId=${second.project.id}`,
+    );
+    expect(editable.status).toBe(200);
+    expect(await editable.json()).toMatchObject({
+      updateTasks: true,
+      assignTasks: false,
+      setPriorityTasks: false,
+    });
+  });
+
+  it("does not turn legacy custom workspace statements into strict write authority", async () => {
+    const actor = await createWorkspaceMember({ role: "custom-editor" });
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: actor.workspace.id,
+      role: "custom-editor",
+      permission: JSON.stringify({ work_item: ["read", "update"] }),
+      isSystem: false,
+      createdAt: new Date(),
+    });
+    const { project } = await createProjectFixture({
+      workspaceId: actor.workspace.id,
+    });
+    const person = await db.query.personTable.findFirst({
+      where: eq(schema.personTable.userId, actor.user.id),
+    });
+    expect(person).toBeDefined();
+    const roleId = randomUUID();
+    await db.insert(schema.roleTable).values({
+      id: roleId,
+      key: roleId,
+      name: "Project editor",
+      rank: 1,
+      scope: "project",
+      workspaceId: actor.workspace.id,
+      capabilities: ["project:read", "work_item:read", "work_item:update"],
+    });
+    await db.insert(schema.membershipTable).values({
+      id: randomUUID(),
+      personId: person?.id ?? "missing-person",
+      scope: "project",
+      scopeId: project.id,
+      roleId,
+    });
+    mockAuthenticatedSession(actor.user);
+    const { app } = createApp();
+    const legacy = await app.request(
+      `/api/capabilities?workspaceId=${actor.workspace.id}`,
+    );
+    expect((await legacy.json()).updateTasks).toBe(true);
+    const scoped = await app.request(
+      `/api/capabilities?workspaceId=${actor.workspace.id}&projectId=${project.id}`,
+    );
+    expect(scoped.status).toBe(200);
+    expect((await scoped.json()).updateTasks).toBe(false);
+  });
+
+  it("makes missing, deleted and other-workspace projects indistinguishable", async () => {
+    const actor = await createWorkspaceMember({ role: "owner" });
+    const other = await createWorkspaceMember({ role: "owner" });
+    const cross = await createProjectFixture({
+      workspaceId: other.workspace.id,
+    });
+    const deleted = await createProjectFixture({
+      workspaceId: actor.workspace.id,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.projectTable.id, deleted.project.id));
+    mockAuthenticatedSession(actor.user);
+    const { app } = createApp();
+    for (const id of [
+      "missing-project",
+      cross.project.id,
+      deleted.project.id,
+    ]) {
+      const response = await app.request(
+        `/api/capabilities?workspaceId=${actor.workspace.id}&projectId=${id}`,
+      );
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe("Project not found");
+    }
   });
 });

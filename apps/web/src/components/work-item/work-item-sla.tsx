@@ -31,7 +31,14 @@ function formatMinutes(minutes: number): string {
  * The work item's first-response and resolution clocks (`GET /work-items/{key}/sla`,
  * `sla.md`). An item with no matching policy shows "no SLA" for both clocks.
  */
-export default function WorkItemSla({ workItemKey }: { workItemKey: string }) {
+export default function WorkItemSla({
+  workItemKey,
+  compact = false,
+}: {
+  workItemKey: string;
+  /** Inside kaneo's Properties column: a small heading and one column. */
+  compact?: boolean;
+}) {
   const { t } = useTranslation();
   const query = useGetWorkItemSla(workItemKey);
   return (
@@ -40,7 +47,10 @@ export default function WorkItemSla({ workItemKey }: { workItemKey: string }) {
       aria-labelledby="work-item-sla-heading"
       data-testid="work-item-sla"
     >
-      <h2 id="work-item-sla-heading" className="font-medium text-lg">
+      <h2
+        id="work-item-sla-heading"
+        className={compact ? "font-medium text-sm" : "font-medium text-lg"}
+      >
         {t("workItems:detail.sla.heading")}
       </h2>
       {query.isLoading ? (
@@ -52,7 +62,7 @@ export default function WorkItemSla({ workItemKey }: { workItemKey: string }) {
           {t("workItems:detail.sla.unavailable")}
         </p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className={compact ? "grid gap-2" : "grid gap-3 sm:grid-cols-2"}>
           {(query.data?.metrics ?? []).map((metric) => (
             <li
               key={metric.metric}

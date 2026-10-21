@@ -98,6 +98,12 @@ operational switches. Everything else is a setting inside the app.*
 | --- | --- |
 | `POSTGRES_DB` · `POSTGRES_USER` · `POSTGRES_PASSWORD` | Standard image variables |
 
+### Test process variables
+
+| Variable | Use |
+| --- | --- |
+| `TZ` | Node's process timezone. The work-item calendar regression temporarily sets `America/Los_Angeles` and restores it afterwards to test UTC-date handling west of UTC. Test harness only; no customer configuration or application read. |
+
 ### That is the complete list of what the application reads.
 
 If you find yourself wanting to add one, the answer is almost certainly a plugin or a

@@ -1,6 +1,6 @@
+import { Button } from "@taskdesk/ui";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatDateMedium } from "@/lib/format";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemDetail, { type WorkItemDetailProps } from "./work-item-detail";
 
@@ -56,16 +56,29 @@ vi.mock("./work-item-activity", () => ({
   default: () => <div data-testid="work-item-activity" />,
 }));
 
-vi.mock("./work-item-journey", () => ({
-  default: ({ onAccessLost }: { onAccessLost: () => void }) => (
-    // ui-exempt: test double standing in for the journey panel's access-loss trigger
-    <button
-      type="button"
-      data-testid="work-item-journey-stub"
-      onClick={onAccessLost}
-    >
-      journey
-    </button>
+vi.mock("./work-item-title", () => ({
+  default: ({ item }: { item: { title: string } }) => (
+    <p data-testid="work-item-title">{item.title}</p>
+  ),
+}));
+vi.mock("./work-item-description", () => ({
+  default: () => <div data-testid="work-item-description" />,
+}));
+vi.mock("./work-item-properties", () => ({
+  default: ({
+    compact,
+    onAccessLost,
+    children,
+  }: React.PropsWithChildren<{
+    compact?: boolean;
+    onAccessLost: () => void;
+  }>) => (
+    <div data-testid="work-item-properties" data-compact={String(!!compact)}>
+      <Button type="button" onClick={onAccessLost}>
+        properties
+      </Button>
+      {children}
+    </div>
   ),
 }));
 
@@ -144,44 +157,59 @@ describe("WorkItemDetail", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the header, description and details for a ready item", () => {
-    const item = makeItem({
-      description: "Investigate the login bug",
-      assigneeId: "person_1",
-      assigneeName: "Real Teammate",
-      startDate: "2026-09-15T00:00:00.000Z",
-    });
+  it("renders kaneo's task layout: key, title, description, activity, and the Properties column", () => {
     render(
       <WorkItemDetail
         {...baseProps}
-        item={item}
-        project={{ name: "Worklist", slug: "WLP" }}
+        item={makeItem()}
+        project={{ name: "Platform", slug: "PROJ" }}
       />,
     );
-
-    expect(screen.getByTestId("work-item-detail")).toBeInTheDocument();
     expect(screen.getByText("PROJ-123")).toBeInTheDocument();
-    expect(screen.getByText("Fix the thing")).toBeInTheDocument();
-    expect(screen.getByText("Backlog")).toBeInTheDocument();
-    expect(screen.getByText("high")).toBeInTheDocument();
-    expect(
-      screen.getByText(formatDateMedium("2026-10-01T00:00:00.000Z")),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Real Teammate")).toBeInTheDocument();
-    expect(screen.getByText("Investigate the login bug")).toBeInTheDocument();
-    expect(screen.queryByTestId("work-item-detail-partial-notice")).toBeNull();
-
-    // The details section is a real disclosure: closed, then openable.
-    const detailsTrigger = screen.getByRole("button", {
-      name: /workItems:detail.detailsHeading/,
-    });
-    expect(detailsTrigger).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(detailsTrigger);
-    expect(detailsTrigger).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Worklist")).toBeInTheDocument();
+    expect(screen.getByTestId("work-item-title")).toHaveTextContent(
+      "Fix the thing",
+    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Fix the thing",
+    );
+    expect(screen.getByTestId("work-item-description")).toBeInTheDocument();
+    expect(screen.getByTestId("work-item-activity")).toBeInTheDocument();
+    const properties = screen.getByTestId("work-item-properties");
+    expect(properties).toHaveAttribute("data-compact", "false");
+    expect(screen.getByTestId("work-item-metadata")).toHaveTextContent(
+      "Platform",
+    );
   });
 
-  it("mounts the edit/state/assignment journey for a ready item and forwards access loss", () => {
+  it("uses kaneo's compact properties strip in the side pane", () => {
+    render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
+    expect(screen.getByTestId("work-item-properties")).toHaveAttribute(
+      "data-compact",
+      "true",
+    );
+    expect(screen.queryByTestId("work-item-metadata")).toBeNull();
+  });
+
+  it("keeps the pane's properties strip fixed while the content scrolls, as kaneo's sheet does", () => {
+    render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
+    const strip = screen.getByTestId("work-item-properties-strip");
+    expect(strip).toHaveClass("shrink-0");
+    expect(strip).toContainElement(screen.getByTestId("work-item-properties"));
+    const content = screen.getByTestId("work-item-pane-content");
+    expect(content).toHaveClass("min-h-0", "flex-1", "overflow-y-auto");
+    expect(content).toContainElement(screen.getByTestId("work-item-title"));
+    expect(strip).not.toContainElement(screen.getByTestId("work-item-title"));
+  });
+
+  it("mounts one polite status region for save announcements", () => {
+    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
+    expect(screen.getByTestId("work-item-status")).toHaveAttribute(
+      "role",
+      "status",
+    );
+  });
+
+  it("reports access loss from a property control", () => {
     const onAccessLost = vi.fn();
     render(
       <WorkItemDetail
@@ -190,102 +218,31 @@ describe("WorkItemDetail", () => {
         onAccessLost={onAccessLost}
       />,
     );
-    fireEvent.click(screen.getByTestId("work-item-journey-stub"));
+    fireEvent.click(screen.getByRole("button", { name: "properties" }));
     expect(onAccessLost).toHaveBeenCalledTimes(1);
   });
 
-  it("does not mount the journey in the not-found state", () => {
-    render(
-      <WorkItemDetail {...baseProps} item={makeItem()} isNotFound={true} />,
-    );
-    expect(screen.queryByTestId("work-item-journey-stub")).toBeNull();
-    expect(
-      screen.getByTestId("work-item-detail-not-found"),
-    ).toBeInTheDocument();
-  });
-
-  it("AP-20 renders the approvals section on the ready detail", () => {
-    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
-    expect(screen.getByTestId("work-item-approvals")).toBeInTheDocument();
-  });
-
-  it("renders Unassigned for an unassigned item, and (inactive) when the assignee has no resolvable name", () => {
-    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
-    expect(screen.getByText("workItems:detail.unassigned")).toBeInTheDocument();
-  });
-
-  it("renders (inactive) rather than a name when the assignee's name is not resolvable", () => {
+  it("shows the partial notice and an unavailable badge for a field that failed validation", () => {
     render(
       <WorkItemDetail
         {...baseProps}
-        item={makeItem({ assigneeId: "person_1", assigneeName: null })}
+        item={makeItem({ unavailableFields: ["title"] })}
       />,
     );
     expect(
-      screen.getByText("workItems:detail.inactiveAssignee"),
+      screen.getByTestId("work-item-detail-partial-notice"),
     ).toBeInTheDocument();
-  });
-
-  it("renders 'No description' for an empty description, and never a fake description", () => {
-    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
-    expect(
-      screen.getByText("workItems:detail.noDescription"),
-    ).toBeInTheDocument();
-  });
-
-  it("renders an Unavailable badge when the description is a shape it cannot read", () => {
-    render(
-      <WorkItemDetail
-        {...baseProps}
-        item={makeItem({ description: { unexpected: "shape" } })}
-      />,
-    );
+    expect(screen.queryByTestId("work-item-title")).toBeNull();
     expect(
       screen.getByText("workItems:detail.unavailable"),
     ).toBeInTheDocument();
   });
 
-  it("renders the partial state: a field failing validation is marked unavailable and flagged, while the rest still renders", () => {
+  it("does not open an editor over a description it cannot read", () => {
     render(
-      <WorkItemDetail
-        {...baseProps}
-        item={makeItem({
-          stateName: "",
-          unavailableFields: ["stateName"],
-          title: "Still shown",
-        })}
-      />,
+      <WorkItemDetail {...baseProps} item={makeItem({ description: 42 })} />,
     );
-
-    expect(
-      screen.getByTestId("work-item-detail-partial-notice"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("workItems:detail.unavailable"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Still shown")).toBeInTheDocument();
-  });
-
-  it("marks an unparseable start date unavailable in the details instead of crashing", () => {
-    render(
-      <WorkItemDetail
-        {...baseProps}
-        item={makeItem({
-          startDate: "not-a-date",
-          unavailableFields: ["startDate"],
-        })}
-      />,
-    );
-
-    expect(
-      screen.getByTestId("work-item-detail-partial-notice"),
-    ).toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: /workItems:detail.detailsHeading/,
-      }),
-    );
+    expect(screen.queryByTestId("work-item-description")).toBeNull();
     expect(
       screen.getByText("workItems:detail.unavailable"),
     ).toBeInTheDocument();

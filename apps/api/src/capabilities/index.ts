@@ -11,6 +11,7 @@ import { requireSessionOnly } from "../utils/require-session-only";
 import { callerMembershipResolution } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import getCapabilitiesCtrl from "./controllers/get-capabilities";
+import { scopeWorkCapabilitiesToProject } from "./project-scope";
 import { capabilitiesResponseSchema } from "./response";
 import { workspaceIdQuery } from "./schema";
 
@@ -31,6 +32,7 @@ const getCapabilitiesRoute = createRoute({
     ),
     400: errorResponse("Workspace ID could not be determined"),
     403: errorResponse("No access to the workspace"),
+    404: errorResponse("Project not found or outside reach"),
   },
 });
 
@@ -49,7 +51,14 @@ const capabilities = apiRouter<
     throw new HTTPException(403, { message: "No access to the workspace" });
   }
   setShadowLegacyAuthorization(c, "allowed");
-  return c.json(await getCapabilitiesCtrl(c), 200);
+  const flags = await getCapabilitiesCtrl(c);
+  const { projectId } = c.req.valid("query");
+  return c.json(
+    projectId
+      ? await scopeWorkCapabilitiesToProject(c, flags, projectId)
+      : flags,
+    200,
+  );
 });
 
 export default capabilities;

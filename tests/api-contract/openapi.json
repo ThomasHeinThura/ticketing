@@ -5377,6 +5377,15 @@
             "required": true,
             "name": "workspaceId",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "projectId",
+            "in": "query"
           }
         ],
         "responses": {
@@ -5405,6 +5414,16 @@
           },
           "403": {
             "description": "No access to the workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or outside reach",
             "content": {
               "text/plain": {
                 "schema": {

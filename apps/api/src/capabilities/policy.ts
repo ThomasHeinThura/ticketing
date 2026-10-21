@@ -2,7 +2,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
 
 /**
  * Capability-map self-introspection is membership-gated rather than capability-gated. A
- * member can learn that each capability is false when their role is unknown or malformed;
+ * Optional projectId narrows work flags only after same-workspace live reach is checked.
+ * A member can learn that each capability is false when their role is unknown or malformed;
  * that response grants no permission. `transitionTasks`, `rankTasks` and
  * `manageProjectSettings` are computed from the strict canonical capabilities
  * (`work_item:transition`, `work_item:rank`, `project:manage_settings`) intersected with API-key

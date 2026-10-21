@@ -9,6 +9,7 @@ export type UpdateWorkItemInput = {
   // by the server; an explicit null clears it.
   title?: string;
   description?: unknown;
+  priority?: "low" | "medium" | "high" | "urgent" | null;
   startDate?: string | null;
   dueDate?: string | null;
 };

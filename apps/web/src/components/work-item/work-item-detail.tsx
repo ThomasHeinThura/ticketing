@@ -5,31 +5,26 @@ import {
   AlertTitle,
   Badge,
   Button,
-  Collapsible,
-  CollapsiblePanel,
-  CollapsibleTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Separator,
 } from "@taskdesk/ui";
-import { ChevronDown, Info, TriangleAlert } from "lucide-react";
+import { Info, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { formatDateMedium, formatDateTime } from "@/lib/format";
-import { getPriorityIcon } from "@/lib/priority";
+import { formatDateTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
-import {
-  extractDescription,
-  type WorkItemDetailField,
-  type WorkItemDetailRow,
-} from "@/types/work-item";
+import { extractDescription, type WorkItemDetailRow } from "@/types/work-item";
 import WorkItemActivity, { type ActivityFilter } from "./work-item-activity";
 import WorkItemApprovals from "./work-item-approvals";
 import WorkItemAttachments from "./work-item-attachments";
+import WorkItemDescription from "./work-item-description";
 import WorkItemDetailLoading from "./work-item-detail-loading";
-import WorkItemJourney from "./work-item-journey";
+import { WorkItemFeedbackProvider } from "./work-item-feedback";
+import WorkItemProperties from "./work-item-properties";
 import WorkItemSla from "./work-item-sla";
+import WorkItemTitle from "./work-item-title";
+import UnavailableField from "./work-item-unavailable-field";
 
 export type WorkItemDetailProps = {
   item: WorkItemDetailRow | undefined;
@@ -48,39 +43,9 @@ export type WorkItemDetailProps = {
   /** A mutation (edit, state change, assignment) answered 404: the item is gone or no
    * longer reachable. The owner of the data shows the not-found state. */
   onAccessLost: () => void;
+  /** `page`: kaneo's task page (content + Properties column); `pane`: kaneo's task sheet. */
+  variant?: "page" | "pane";
 };
-
-const FIELD_LABEL_KEYS: Record<WorkItemDetailField, string> = {
-  key: "workItems:detail.keyLabel",
-  title: "workItems:detail.titleLabel",
-  priority: "workItems:detail.priorityLabel",
-  dueDate: "workItems:detail.dueDateLabel",
-  startDate: "workItems:detail.startDateLabel",
-  stateName: "workItems:detail.stateLabel",
-  createdAt: "workItems:detail.createdLabel",
-  updatedAt: "workItems:detail.updatedLabel",
-};
-
-/** Renders a field marked unavailable by `parseWorkItemDetailRow` -- a visible
- * "Unavailable" badge plus a field-specific accessible label, e.g. "State unavailable". */
-function UnavailableField({
-  field,
-  t,
-}: {
-  field: WorkItemDetailField;
-  t: ReturnType<typeof useTranslation>["t"];
-}) {
-  return (
-    <Badge
-      variant="outline"
-      aria-label={t("workItems:detail.unavailableFieldLabel", {
-        field: t(FIELD_LABEL_KEYS[field]),
-      })}
-    >
-      {t("workItems:detail.unavailable")}
-    </Badge>
-  );
-}
 
 /**
  * The work-item detail page (`docs/02-design/screen-inventory.md` "Work item — full
@@ -89,9 +54,10 @@ function UnavailableField({
  * assignee, priority and due date in the header; the description in the body; everything
  * else in a collapsible section. The spec's remaining sections (activity and comments,
  * relations, attachments, SLA, time entries) are separate
- * `screen-inventory.md` rows and separate slices. Edit, state change and assignment
- * (`WorkItemJourney`) sit under the description, each gated on the server's strict
- * capability for the item's workspace.
+ * `screen-inventory.md` rows and separate slices. The title and description edit in
+ * place; state, priority, assignee and dates are kaneo's Properties rows
+ * (`WorkItemProperties`), each gated on the server's strict capability for the item's
+ * workspace.
  *
  * Four states, matching G6 with a record view's own shape of them: loading (skeleton),
  * error (retryable alert), not-found (the 404 the route deliberately distinguishes --
@@ -117,6 +83,7 @@ function WorkItemDetail({
   isError,
   onRetry,
   onAccessLost,
+  variant = "page",
 }: WorkItemDetailProps) {
   const { t } = useTranslation();
 
@@ -157,20 +124,58 @@ function WorkItemDetail({
   const description = extractDescription(item.description);
   const hasPartialFailure = item.unavailableFields.length > 0;
 
-  // `assigneeId` set with no resolved name means one of: a placeholder person with no
-  // linked login, or a user outside this workspace (whose name the API deliberately
-  // never resolves -- `get-work-item.ts`'s own note). `work-items.md`'s edge cases
-  // render an unresolvable assignee as "(inactive)"; both cases share that rendering,
-  // and neither leaks a name that shouldn't be shown.
-  const assigneeLabel =
-    item.assigneeId === null
-      ? t("workItems:detail.unassigned")
-      : (item.assigneeName ?? t("workItems:detail.inactiveAssignee"));
+  const metadata = (
+    <dl
+      className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-muted-foreground text-xs"
+      data-testid="work-item-metadata"
+    >
+      {project && (
+        <>
+          <dt>{t("workItems:detail.projectLabel")}</dt>
+          <dd>
+            <Link
+              to={routes.workItemList.path}
+              params={{ projectKey: project.slug }}
+              className="text-foreground underline-offset-2 hover:underline"
+            >
+              {project.name}
+            </Link>
+          </dd>
+        </>
+      )}
+      <dt>{t("workItems:detail.createdLabel")}</dt>
+      <dd className="text-foreground">
+        {item.unavailableFields.includes("createdAt") ? (
+          <UnavailableField field="createdAt" />
+        ) : (
+          formatDateTime(item.createdAt)
+        )}
+      </dd>
+      <dt>{t("workItems:detail.updatedLabel")}</dt>
+      <dd className="text-foreground">
+        {item.unavailableFields.includes("updatedAt") ? (
+          <UnavailableField field="updatedAt" />
+        ) : (
+          formatDateTime(item.updatedAt)
+        )}
+      </dd>
+    </dl>
+  );
 
-  return (
+  // Everything editable sits under a provider keyed by the item: switching items (the side
+  // pane's ?item=, or the page's {key}) remounts the title, description and properties, so
+  // a pending edit flushes against the item it was typed on and no draft, debounce or
+  // conflict notice carries over to the next one.
+
+  // Kaneo's task page main column (`task-details-content.tsx`): key, borderless title,
+  // description editor, then supporting sections and the activity feed.
+  const main = (
     <div
-      className="flex flex-col gap-6 bg-background"
-      data-testid="work-item-detail"
+      className={
+        variant === "page"
+          ? "mx-auto flex w-full max-w-3xl flex-col gap-4 px-3 pt-3 pb-16 sm:px-4 xl:pt-8"
+          : "flex w-full flex-col gap-4 px-4 py-3"
+      }
     >
       {hasPartialFailure && (
         <Alert variant="warning" data-testid="work-item-detail-partial-notice">
@@ -181,100 +186,34 @@ function WorkItemDetail({
           </AlertDescription>
         </Alert>
       )}
-
-      <header className="flex flex-col gap-2">
-        <p className="font-mono text-muted-foreground text-sm">
+      <div className="flex flex-col gap-2.5">
+        <p className="font-semibold text-foreground text-xs">
           {item.unavailableFields.includes("key") ? (
-            <UnavailableField field="key" t={t} />
+            <UnavailableField field="key" />
           ) : (
             item.key
           )}
         </p>
-        <h1 className="font-semibold text-2xl">
-          {item.unavailableFields.includes("title") ? (
-            <UnavailableField field="title" t={t} />
-          ) : (
-            item.title
-          )}
-        </h1>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="text-muted-foreground">
-              {t("workItems:detail.stateLabel")}
-            </span>
-            {item.unavailableFields.includes("stateName") ? (
-              <UnavailableField field="stateName" t={t} />
-            ) : (
-              <Badge variant="outline">{item.stateName}</Badge>
-            )}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="text-muted-foreground">
-              {t("workItems:detail.priorityLabel")}
-            </span>
-            {item.unavailableFields.includes("priority") ? (
-              <UnavailableField field="priority" t={t} />
-            ) : (
-              <span className="inline-flex items-center gap-1.5">
-                {getPriorityIcon(item.priority ?? "no-priority")}
-                {item.priority
-                  ? t(`workItems:list.priority.${item.priority}`, item.priority)
-                  : t("workItems:detail.noPriority")}
-              </span>
-            )}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="text-muted-foreground">
-              {t("workItems:detail.dueDateLabel")}
-            </span>
-            {item.unavailableFields.includes("dueDate") ? (
-              <UnavailableField field="dueDate" t={t} />
-            ) : item.dueDate ? (
-              formatDateMedium(item.dueDate)
-            ) : (
-              t("workItems:detail.noDueDate")
-            )}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="text-muted-foreground">
-              {t("workItems:detail.assigneeLabel")}
-            </span>
-            {assigneeLabel}
-          </span>
-        </div>
-      </header>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="font-medium text-lg">
-          {t("workItems:detail.descriptionHeading")}
-        </h2>
-        {description.kind === "text" ? (
-          <p className="whitespace-pre-wrap text-sm">{description.text}</p>
-        ) : description.kind === "unsupported" ? (
+        <h1 className="sr-only">{item.title}</h1>
+        {item.unavailableFields.includes("title") ? (
+          <UnavailableField field="title" />
+        ) : (
+          <WorkItemTitle item={item} onAccessLost={onAccessLost} />
+        )}
+        {description.kind === "unsupported" ? (
           <Badge variant="outline">{t("workItems:detail.unavailable")}</Badge>
         ) : (
-          <p className="text-muted-foreground text-sm">
-            {t("workItems:detail.noDescription")}
-          </p>
+          <WorkItemDescription item={item} onAccessLost={onAccessLost} />
         )}
-      </section>
-
-      <WorkItemJourney item={item} onAccessLost={onAccessLost} />
-
-      <Separator />
-
-      <WorkItemApprovals workItemKey={workItemKey} />
-
-      <Separator />
-
-      <WorkItemSla workItemKey={workItemKey} />
-
-      <Separator />
-
+      </div>
       <WorkItemAttachments workItemKey={workItemKey} />
-
-      <Separator />
-
+      {variant === "pane" ? (
+        <>
+          <WorkItemSla workItemKey={workItemKey} compact />
+          <WorkItemApprovals workItemKey={workItemKey} compact />
+        </>
+      ) : null}
+      <span className="block h-px w-full shrink-0 bg-border" />
       <WorkItemActivity
         workItemKey={workItemKey}
         workspaceId={item.workspaceId}
@@ -282,73 +221,59 @@ function WorkItemDetail({
         filter={activityFilter}
         onFilterChange={onActivityFilterChange}
       />
-
-      <Separator />
-
-      <Collapsible>
-        <CollapsibleTrigger
-          asChild
-          className="-ml-2 h-auto gap-1 px-2 py-1 font-medium text-sm"
-        >
-          <Button variant="ghost" size="sm">
-            {t("workItems:detail.detailsHeading")}
-            <ChevronDown className="h-4 w-4" aria-hidden="true" />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsiblePanel>
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 pt-3 text-sm">
-            {project && (
-              <>
-                <dt className="text-muted-foreground">
-                  {t("workItems:detail.projectLabel")}
-                </dt>
-                <dd>
-                  <Link
-                    to={routes.workItemList.path}
-                    params={{ projectKey: project.slug }}
-                    className="text-primary underline-offset-2 hover:underline"
-                  >
-                    {project.name}
-                  </Link>
-                </dd>
-              </>
-            )}
-            <dt className="text-muted-foreground">
-              {t("workItems:detail.startDateLabel")}
-            </dt>
-            <dd>
-              {item.unavailableFields.includes("startDate") ? (
-                <UnavailableField field="startDate" t={t} />
-              ) : item.startDate ? (
-                formatDateMedium(item.startDate)
-              ) : (
-                t("workItems:detail.noStartDate")
-              )}
-            </dd>
-            <dt className="text-muted-foreground">
-              {t("workItems:detail.createdLabel")}
-            </dt>
-            <dd>
-              {item.unavailableFields.includes("createdAt") ? (
-                <UnavailableField field="createdAt" t={t} />
-              ) : (
-                formatDateTime(item.createdAt)
-              )}
-            </dd>
-            <dt className="text-muted-foreground">
-              {t("workItems:detail.updatedLabel")}
-            </dt>
-            <dd>
-              {item.unavailableFields.includes("updatedAt") ? (
-                <UnavailableField field="updatedAt" t={t} />
-              ) : (
-                formatDateTime(item.updatedAt)
-              )}
-            </dd>
-          </dl>
-        </CollapsiblePanel>
-      </Collapsible>
     </div>
+  );
+
+  if (variant === "pane") {
+    // Kaneo's task sheet (`task-details-sheet-body.tsx`): a compact properties strip that
+    // stays put over the content, which scrolls on its own.
+    return (
+      <WorkItemFeedbackProvider key={item.key}>
+        <div
+          className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
+          data-testid="work-item-detail"
+        >
+          <div
+            className="flex w-full shrink-0 flex-col gap-0 overflow-y-auto border-border border-b bg-sidebar"
+            data-testid="work-item-properties-strip"
+          >
+            <WorkItemProperties
+              item={item}
+              compact
+              onAccessLost={onAccessLost}
+            />
+          </div>
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            data-testid="work-item-pane-content"
+          >
+            {main}
+          </div>
+        </div>
+      </WorkItemFeedbackProvider>
+    );
+  }
+
+  // Kaneo's task page (`task-layout.tsx`): content on the left, the Properties panel on
+  // the right (above the content below `lg`).
+  return (
+    <WorkItemFeedbackProvider key={item.key}>
+      <div
+        className="flex h-full min-h-0 flex-col bg-background lg:flex-row"
+        data-testid="work-item-detail"
+      >
+        <div className="order-2 min-h-0 flex-1 overflow-y-auto overscroll-contain lg:order-1">
+          {main}
+        </div>
+        <aside className="order-1 border-border/80 border-b bg-card lg:order-2 lg:h-full lg:overflow-y-auto lg:border-b-0 lg:border-l">
+          <WorkItemProperties item={item} onAccessLost={onAccessLost}>
+            <WorkItemSla workItemKey={workItemKey} compact />
+            <WorkItemApprovals workItemKey={workItemKey} compact />
+            {metadata}
+          </WorkItemProperties>
+        </aside>
+      </div>
+    </WorkItemFeedbackProvider>
   );
 }
 

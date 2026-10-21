@@ -1003,3 +1003,17 @@ reference, and it is what MCP tool schemas and third-party integrators consume.
 
 - [RBAC](rbac.md) · [Security model](security-model.md) · [Realtime](realtime.md) · [Events](events.md)
 - [Coding standards](../04-engineering/coding-standards.md)
+
+
+### Work capability introspection within a project
+
+`GET /api/capabilities?workspaceId={id}&projectId={id}` optionally narrows the caller's
+work-item and comment flags to a reachable, live project in the requested workspace.
+It retains the existing session-only, exact workspace-membership self-introspection
+policy. Unknown, deleted, cross-workspace and unreachable projects all return the same
+404. Work flags are the intersection of existing workspace flags, the write routes’ strict
+workspace capability checks and the canonical project-role override for the current credential. Workspace/settings flags
+keep their workspace meaning. This response grants no authority: write routes revalidate
+current reach and capability. The client keys the map by both workspace and project and
+fails closed while changing projects; an allowed map from one project is never reused
+for another. Work-item editors and property controls use this scoped map.
