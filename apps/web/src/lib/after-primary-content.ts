@@ -32,13 +32,15 @@ export function afterPrimaryContent({
     !waitsForPrimaryContent(window.location.pathname) ||
     document.querySelector(MARKER) !== null;
   const afterReady = () => {
-    if (
-      !signal?.aborted &&
+    const primaryRendered =
       waitsForPrimaryContent(window.location.pathname) &&
-      document.querySelector(MARKER) !== null
-    )
-      onPrimaryContentReady?.();
-    return afterFirstPaint();
+      document.querySelector(MARKER) !== null;
+    if (!signal?.aborted && primaryRendered) onPrimaryContentReady?.();
+    // A real heavy-screen marker already waits for its rows/empty/error content.
+    // Still yield to paint/idle, but do not add the full startup idle allowance
+    // again: on a busy CPU that delayed sidebar readiness, then palette warm-up,
+    // by multiple seconds after the primary content was usable (#876).
+    return afterFirstPaint(primaryRendered ? { idleTimeoutMs: 300 } : {});
   };
   if (typeof document === "undefined") return afterFirstPaint();
   if (signal?.aborted) return Promise.reject(signal.reason);
