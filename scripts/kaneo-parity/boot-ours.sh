@@ -31,7 +31,12 @@ dc() { docker compose --env-file "$work/env" -f compose.yml -f "$work/override.y
 dc up -d --wait postgres valkey
 dc run --rm migrate
 dc up -d --wait taskdesk
-dc exec -T taskdesk node apps/api/dist/seed-sit-users.js --sit
+dc exec -T taskdesk node apps/api/dist/seed-sit-users.js --sit --credentials-file /tmp/parity-credentials.json
+# The seed now generates private passwords; hand the admin one to the capture step only.
+admin_password="$(dc exec -T taskdesk cat /tmp/parity-credentials.json \
+  | node -e 'const c=JSON.parse(require("fs").readFileSync(0,"utf8"));process.stdout.write(c.accounts.find(a=>a.email==="admin@taskdesk.local").password)')"
+echo "::add-mask::$admin_password"
+echo "OURS_PASSWORD=$admin_password" >> "${GITHUB_ENV:?GITHUB_ENV is required}"
 for i in $(seq 1 30); do
   curl -fsS http://agent.localhost:5173/api/public/health/ready >/dev/null && exit 0
   sleep 2
