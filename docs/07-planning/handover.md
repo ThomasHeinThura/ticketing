@@ -23,13 +23,10 @@ are authorized. No P5–P7, production deployment or bulk branch/worktree deleti
   never copy private keys or put credentials in repository documents.
 - **Docker Compose and digest-pinned prebuilt images only** on the VM. No application
   source checkout, builds or CI workers. Record source SHA and image digest at deployment.
-- **TaskDesk is deployed and operational on the proxy VM.** Both HTTPS origins (`https://tickting.technexus.info` and `https://portal.technexus.info`) are responding healthy with Cloudflare proxy and Traefik Let's Encrypt TLS.
-- Seeded interactive test accounts are ready for Thomas's walkthrough:
-  - `admin@taskdesk.local` / `TaskDesk!Admin2026`
-  - `agent@taskdesk.local` / `TaskDesk!Agent2026`
-  - `lead@taskdesk.local` / `TaskDesk!Lead2026`
-  - `customer@acme.example` / `TaskDesk!Customer2026`
-- OrbStack remains stopped locally as required. All remote containers run non-root (UID 10001) with unpublished application port 5173.
+- **TaskDesk has not yet been deployed to that VM.** The previous local installation
+  used revision `unknown`, and OrbStack is stopped. Neither proves current acceptance.
+- Preserve unrelated VM services. No shared-host reboot or broad proxy changes without
+  coordination. No retired PAL/9Router services. Supply seeded account secrets privately.
 - No stage is complete or signed off. Only Thomas's actual SIT walkthrough closes stages.
 
 ## Accepted code and current branches

@@ -1,49 +1,22 @@
 # Status
 
 **Updated:** 2026-10-21 · **Latest pre-release:** `v2.0.0-alpha.4`
-Current inspected GitHub main: `a99483a7` (#887); active branch: `feat/batch1-hierarchy-and-parent-editing` (`715263822`).
-SIT Deployment: **Deployed & Operational** on `proxy` VM (`4.194.153.78`).
+Current inspected GitHub main: `a99483a7` (#887); primary checkout refreshed to that source.
+This is a dated snapshot; refresh live GitHub before acting.
 
 ## Where we are
 
-| Stage | State | Remaining work / SIT verification status |
+| Stage | State | Remaining work |
 | --- | --- | --- |
-| P0 Foundation | Implemented & deployed to SIT | Deployed with non-superuser `taskdesk_app` runtime role, isolated migrations, unpublished port invariant verified, Valkey and PostgreSQL operational. Backup operational drills and owner walkthrough. |
-| P1 Core work | Implemented & deployed to SIT | Canonical Kaneo work-item page/pane, workspace/project label catalogues, inline hierarchy UI with recursive subtree progress and parent editing verified live on SIT. Board/list/table, bulk, backlog, saved views, and My work operational. Relations edge-cases and owner walkthrough. |
-| P2 Service desk | Implemented & deployed to SIT | Service desk intake queue, request acceptance into work items, canned responses, approval decisions, and real-time portal synchronization verified live on SIT. |
-| P3 Portal and identity | Implemented & deployed to SIT | Customer Portal live on `https://portal.technexus.info`, request catalogue browsing, structured request submission, and durable submission tracking verified live on SIT. Real Entra tenant verification pending client credentials. |
-| P4 Governance | Implemented & deployed to SIT | God Mode Instance Audit UI and API (`/api/instance/audit`), immutable audit log recording, RBAC enforcement, and CSRF token binding verified live on SIT. |
+| P0 Foundation | Partial implementation; verification incomplete | Container seeding and isolated recovery merged and verified; finish backup encryption/offsite/runtime recording, integrated recovery and owner walkthrough. |
+| P1 Core work | Partial implementation | Project label catalogues merged; finish hierarchy/relations/uploads and legacy-work redirects. Board/list/table, bulk, backlog, saved views, inbox and My work have real implementations; full acceptance remains. |
+| P2 Service desk | Partial implementation | Approval requests/candidates, authoring/configuration UI, audit, milestones/stakeholders and integrated service-desk journeys. |
+| P3 Portal and identity | Partial implementation | Full portal, invitation/admission/discovery contracts and implementation, identity administration and real Entra verification. |
+| P4 Governance | Partial implementation | Missing APIs/UI, notification runtime, automations, God Mode, MCP and #580 query ownership. |
 | P5–P7 | Not started | Outside the approved scope. |
 
-No stage has Thomas's final SIT sign-off yet. Thomas's integrated walkthrough on SIT is now ready to begin.
-
-## SIT Deployment
-
-TaskDesk v2 is **live and verified** on the `proxy` VM (`bimdevops@4.194.153.78`):
-- **Agent application:** [https://tickting.technexus.info](https://tickting.technexus.info) (preserve `tickting` spelling)
-- **Customer portal:** [https://portal.technexus.info](https://portal.technexus.info)
-- **Topology:** Cloudflare proxy enabled (`TASKDESK_TRUST_PROXY=2`), Traefik on external network `web` with Let's Encrypt resolver `le`.
-- **Containers:** Digest-pinned image `ghcr.io/thomasheinthura/taskdesk:sit`, non-root UID 10001 (`taskdesk`), unpublished application port 5173 verified.
-- **Database:** PostgreSQL 18-alpine, migrations applied under advisory lock, DML-only role `taskdesk_app` enforced for application runtime.
-- **Cache/Queue:** Valkey 9-alpine healthy on isolated internal network.
-
-### SIT Test Accounts (Interactive Walkthrough)
-
-| Account | Email | Password | Role / Scope |
-| --- | --- | --- | --- |
-| **Instance & Workspace Admin** | `admin@taskdesk.local` | `TaskDesk!Admin2026` | Staff / Instance Admin & Workspace Owner (`sees_all`) |
-| **Service Desk Agent** | `agent@taskdesk.local` | `TaskDesk!Agent2026` | Staff / Service Desk Agent (`member`) |
-| **Project Lead & Approver** | `lead@taskdesk.local` | `TaskDesk!Lead2026` | Staff / Project Lead & Approver (`admin` / `lead`) |
-| **Customer Requester** | `customer@acme.example` | `TaskDesk!Customer2026` | Customer / Acme Corp Requester (`customer`) |
-
-### Verified Live End-to-End Journeys
-1. **Authentication & Session Isolation:** Separate cookie scopes (`__Host-tdk_agent_session` on Agent vs `__Host-tdk_portal_session` on Portal), strict CSRF protection with `/api/me/csrf-token`.
-2. **Customer Portal Intake:** Customer Katherine Johnson browsed the published request catalogue, submitted request `SUB-3` with structured form data.
-3. **Agent Service Desk Triage:** Agent Ada Lovelace viewed incoming intake submissions, claimed and accepted `SUB-3` directly into work item `HELP-5` (`Service Request`).
-4. **Customer Live Tracking:** Customer portal immediately reflected the accepted work item title, state ("To Do"), and priority ("high").
-5. **Hierarchy & Parent-Child Tree:** Linked work item `HELP-3` under parent `HELP-1`, paged direct children via `GET /api/work-items/HELP-1/children`, verified ancestor paths and recursive SQL subtree progress.
-6. **Immutable Instance Audit Log:** Verified live entries in `/api/instance/audit` with sequential monotonically increasing IDs, before/after state diffs, and actor tracking.
-
+No stage has Thomas's SIT sign-off. Earlier #863 completion claims were withdrawn by the
+2026-10-20 lean reset; its mock UI was reverted and SIT seed accounts preserved.
 
 ## Next
 
