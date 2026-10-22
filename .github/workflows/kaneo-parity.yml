@@ -24,7 +24,7 @@ jobs:
   reference:
     name: capture upstream kaneo
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -40,6 +40,8 @@ jobs:
         run: |
           cat > .env.local <<EOF
           KANEO_CLIENT_URL=http://localhost:5173
+          KANEO_API_URL=http://localhost:1337
+          CORS_ORIGINS=http://localhost:5173
           POSTGRES_DB=kaneo
           POSTGRES_USER=kaneo
           POSTGRES_PASSWORD=parity-postgres-password
@@ -56,6 +58,7 @@ jobs:
       - name: Capture
         env:
           BASE_URL: http://localhost:5173
+          API_URL: http://localhost:1337
           FLAVOR: upstream
           OUT: ${{ runner.temp }}/out/upstream
         run: node scripts/kaneo-parity/capture.mjs

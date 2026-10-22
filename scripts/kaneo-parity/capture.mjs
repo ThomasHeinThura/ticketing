@@ -15,6 +15,7 @@ const { chromium } = createRequire(
 )("@playwright/test");
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:5173";
+const API_URL = process.env.API_URL ?? BASE_URL;
 const FLAVOR = process.env.FLAVOR ?? "upstream";
 const OUT = process.env.OUT ?? `out/${FLAVOR}`;
 const EMAIL = process.env.PARITY_EMAIL ?? "parity@example.com";
@@ -30,7 +31,7 @@ const SCHEMES = ["light", "dark"];
 const log = (...a) => console.log(`[parity:${FLAVOR}]`, ...a);
 
 async function api(ctx, method, path, body) {
-  const res = await ctx.fetch(`${BASE_URL}/api${path}`, {
+  const res = await ctx.fetch(`${API_URL}/api${path}`, {
     method,
     headers: { "content-type": "application/json", origin: BASE_URL },
     data: body === undefined ? undefined : JSON.stringify(body),
