@@ -72,3 +72,29 @@ jobs:
           name: kaneo-reference
           path: ${{ runner.temp }}/out/upstream
           if-no-files-found: warn
+
+  ours:
+    name: capture TaskDesk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Build and boot TaskDesk from this checkout
+        run: scripts/kaneo-parity/boot-ours.sh
+      - name: Install Playwright browser
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Capture
+        env:
+          BASE_URL: http://agent.localhost:5173
+          FLAVOR: ours
+          OUT: ${{ runner.temp }}/out/ours
+        run: node scripts/kaneo-parity/capture.mjs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: taskdesk-capture
+          path: ${{ runner.temp }}/out/ours
+          if-no-files-found: warn

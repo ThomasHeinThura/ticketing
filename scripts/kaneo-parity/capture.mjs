@@ -46,6 +46,22 @@ async function api(ctx, method, path, body) {
   return { ok: res.ok(), status: res.status(), json, text };
 }
 
+async function seedOurs(ctx) {
+  const r = await api(ctx, "POST", "/auth/sign-in/email", {
+    email: process.env.OURS_EMAIL ?? "admin@taskdesk.local",
+    password: process.env.OURS_PASSWORD ?? "TaskDesk!Admin2026",
+  });
+  if (!r.ok) throw new Error("cannot sign in to TaskDesk");
+  // Deterministic ids written by apps/api/scripts/seed-sit-users.ts.
+  return {
+    workspaceId: "ws-taskdesk-sit",
+    projectId: "proj-help-sit",
+    taskId: "sit-wi-help-1",
+    projectKey: "HELP",
+    workItemKey: "HELP-1",
+  };
+}
+
 async function seed(ctx) {
   let r = await api(ctx, "POST", "/auth/sign-up/email", {
     name: "Parity User",
@@ -99,10 +115,30 @@ async function seed(ctx) {
   return { workspaceId, projectId, taskId: taskIds[0] };
 }
 
-function screens({ workspaceId, projectId, taskId }) {
+function oursOnly({ projectKey, workItemKey }) {
+  return [
+    ["td-agent-home", "/agent"],
+    ["td-inbox", "/agent/inbox"],
+    ["td-my-work", "/agent/my-work"],
+    ["td-triage", "/agent/triage"],
+    ["td-saved-views", "/agent/views"],
+    ["td-project-work", `/agent/projects/${projectKey}/work`],
+    ["td-project-backlog", `/agent/projects/${projectKey}/backlog`],
+    ["td-work-item", `/agent/work-items/${workItemKey}`],
+    ["td-settings-sla", "/agent/settings/sla-policies"],
+    ["td-settings-calendars", "/agent/settings/calendars"],
+    ["td-settings-request-types", "/agent/settings/request-types"],
+    ["td-god-mode-audit", "/agent/god-mode/audit"],
+    ["td-god-mode-users", "/agent/god-mode/users"],
+  ];
+}
+
+function screens({ workspaceId, projectId, taskId, ...rest }) {
   const ws = `/dashboard/workspace/${workspaceId}`;
   const pr = `${ws}/project/${projectId}`;
+  const extra = FLAVOR === "ours" ? oursOnly(rest) : [];
   return [
+    ...extra,
     ["workspace-home", ws],
     ["project-board", `${pr}/board`],
     ["project-backlog", `${pr}/backlog`],
@@ -130,7 +166,7 @@ async function main() {
   await mkdir(OUT, { recursive: true });
   const browser = await chromium.launch();
   const apiCtx = (await browser.newContext()).request;
-  const seeded = await seed(apiCtx);
+  const seeded = FLAVOR === "ours" ? await seedOurs(apiCtx) : await seed(apiCtx);
   const state = await apiCtx.storageState();
   await writeFile(`${OUT}/seed.json`, JSON.stringify(seeded, null, 2));
 
@@ -145,6 +181,13 @@ async function main() {
         locale: "en-GB",
         timezoneId: "UTC",
       });
+      // Both apps keep the theme in the zustand store, not in prefers-color-scheme.
+      await context.addInitScript((theme) => {
+        localStorage.setItem(
+          "user-preferences",
+          JSON.stringify({ state: { theme }, version: 0 }),
+        );
+      }, scheme);
       const page = await context.newPage();
       for (const [name, path] of screens(seeded)) {
         try {
