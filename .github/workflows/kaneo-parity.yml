@@ -1,0 +1,66 @@
+# Kaneo reference capture (docs/02-design/design-principles.md).
+#
+# Builds upstream kaneo at the snapshot recorded in THIRD-PARTY-NOTICES.md, seeds it, and
+# screenshots every kaneo screen so TaskDesk screens can be compared with the real thing.
+# Manual only: it adds no time to the pull-request pipeline.
+
+name: Kaneo parity - reference capture
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  KANEO_SHA: 42bb801114aa1ae499228a53180f0cdbc5607964
+
+jobs:
+  reference:
+    name: capture upstream kaneo
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Clone upstream kaneo at the recorded snapshot
+        run: |
+          git clone --filter=blob:none https://github.com/usekaneo/kaneo.git "$RUNNER_TEMP/kaneo"
+          git -C "$RUNNER_TEMP/kaneo" checkout --detach "$KANEO_SHA"
+          test "$(git -C "$RUNNER_TEMP/kaneo" rev-parse HEAD)" = "$KANEO_SHA"
+      - name: Start upstream kaneo
+        working-directory: ${{ runner.temp }}/kaneo
+        run: |
+          cat > .env.local <<EOF
+          KANEO_CLIENT_URL=http://localhost:5173
+          POSTGRES_DB=kaneo
+          POSTGRES_USER=kaneo
+          POSTGRES_PASSWORD=parity-postgres-password
+          AUTH_SECRET=$(openssl rand -hex 32)
+          EOF
+          docker compose -f compose.local.yml up -d --build postgres api web
+          for i in $(seq 1 90); do
+            curl -fsS http://localhost:5173/ >/dev/null 2>&1 && break
+            sleep 5
+          done
+          docker compose -f compose.local.yml ps
+      - name: Install Playwright browser
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Capture
+        env:
+          BASE_URL: http://localhost:5173
+          FLAVOR: upstream
+          OUT: ${{ runner.temp }}/out/upstream
+        run: node scripts/kaneo-parity/capture.mjs
+      - name: Upstream logs on failure
+        if: failure()
+        working-directory: ${{ runner.temp }}/kaneo
+        run: docker compose -f compose.local.yml logs --tail 200
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: kaneo-reference
+          path: ${{ runner.temp }}/out/upstream
+          if-no-files-found: warn
