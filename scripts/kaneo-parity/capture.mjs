@@ -7,7 +7,12 @@
 //
 // Usage: BASE_URL=http://localhost:5173 FLAVOR=upstream OUT=out/upstream node capture.mjs
 import { mkdir, writeFile } from "node:fs/promises";
-import { chromium } from "@playwright/test";
+import { createRequire } from "node:module";
+
+// Playwright is a dependency of apps/web, not of the repository root.
+const { chromium } = createRequire(
+  new URL("../../apps/web/package.json", import.meta.url),
+)("@playwright/test");
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:5173";
 const FLAVOR = process.env.FLAVOR ?? "upstream";
