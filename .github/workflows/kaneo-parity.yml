@@ -8,6 +8,11 @@ name: Kaneo parity - reference capture
 
 on:
   workflow_dispatch:
+  push:
+    branches: [feat/kaneo-parity-harness]
+    paths:
+      - scripts/kaneo-parity/**
+      - .github/workflows/kaneo-parity.yml
 
 permissions:
   contents: read
