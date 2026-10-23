@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-23T10:42:26.298915Z",
+	"generated": "2026-10-23T12:15:21.558778+00:00",
 	"source": "docs/requirements-index.json + Opus source audit (no browser verification implied)",
 	"phases": [
 		{
@@ -142,11 +142,11 @@
 			"name": "Portal & identity",
 			"total": 53,
 			"states": {
-				"implemented_tested": 26,
-				"implemented_untested": 1,
-				"partial": 11,
-				"missing": 10,
-				"external_blocked": 5
+				"implemented_tested": 34,
+				"implemented_untested": 0,
+				"partial": 9,
+				"missing": 0,
+				"external_blocked": 10
 			},
 			"unaudited": 0,
 			"gaps": [],
@@ -161,17 +161,23 @@
 				"Add plugin-health job pinging enabled connections' discovery docs and surfacing in God Mode (IP-25)"
 			],
 			"review": {
-				"verdict": "not started",
-				"findings": 0,
-				"note": "Starts after P2 is committed"
+				"verdict": "pass_with_conditions",
+				"findings": 14,
+				"note": "1 round: 0 high, 8 medium (conditions fixed and re-tested). AI reviewed, not accepted. Real Entra cases stay externally blocked"
 			},
 			"gates": {
-				"pass": 0,
-				"fail": 0,
-				"not_run": 0,
-				"note": "no gates run yet"
+				"pass": 10,
+				"fail": 1,
+				"not_run": 2,
+				"note": "contrast G3 pre-existing; bundle budget and Trivy not run"
 			},
-			"carry": []
+			"carry": [
+				"Customer invitations (CP-11/12/13) and typed-domain SSO routing (CP-17/18, IP-9/29): contract missing",
+				"Portal notification surface for customers (host guard denies notification routes)",
+				"Real Entra acceptance (IP-13/27/28/31/32): needs a tenant",
+				"P4: webhooks on escalation, organisation pages, add-participant route"
+			],
+			"states_locked": true
 		},
 		{
 			"id": "P4",
@@ -219,9 +225,10 @@
 		}
 	],
 	"decisions": [
+		"Customer invitations and typed-domain SSO routing have no contract. Write the contract (who can invite, how a customer signs in) or leave for later?",
 		"Holiday dataset for calendar presets (CAL-10/11): which countries and which source?",
-		"P1 carry-over: add the virtualisation dependency and WIP-limit schema, or defer to P7?",
-		"Restart your native Postgres on 62870 (stopped externally at 00:44). All verification used a scratch Postgres on 62871."
+		"P1 carry-over: add the virtualisation dependency and WIP-limit schema now or defer to P7?",
+		"Restart your native Postgres on 62870 (stopped externally at 00:44). All checks used a scratch Postgres on 62871."
 	],
-	"next": "P2 committed and pushed; P3 (portal and identity) is starting."
+	"next": "P3 committed and pushed; P4 (governance) is starting."
 }

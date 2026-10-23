@@ -5239,6 +5239,57 @@ export const requestParticipantTable = pgTable(
   ],
 );
 
+// CP-9 (`data-model.md`: `satisfaction_rating`): a customer's rating of a resolution, one per
+// `(work_item_id, person_id)`; the portal lets only the requester rate, so it is one per request.
+// The rating can be changed (an upsert that advances `updated_at`) within
+// `instance_setting.reopen_window_days` of the resolution. The 1..5 scale is the CSAT standard;
+// the contract names only "a simple scale", so it is the single decision point for a later change.
+export const satisfactionRatingTable = pgTable(
+  "satisfaction_rating",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workItemId: text("work_item_id")
+      .notNull()
+      .references(() => workItemTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    score: integer("score").notNull(),
+    comment: text("comment"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("satisfaction_rating_work_item_person_unique").on(
+      table.workItemId,
+      table.personId,
+    ),
+    index("satisfaction_rating_person_idx").on(table.personId),
+    check(
+      "satisfaction_rating_score_range",
+      sql.raw("score >= 1 AND score <= 5"),
+    ),
+    check(
+      "satisfaction_rating_comment_length",
+      sql.raw(
+        "(comment IS NULL) OR ((char_length(comment) >= 1) AND (char_length(comment) <= 2000))",
+      ),
+    ),
+  ],
+);
+
 // Issue #28 (attachments) -- `attachments.md`/`data-model.md` §4. Additive: no existing
 // table is altered, so this table carries no data before this migration.
 //

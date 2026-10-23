@@ -10,6 +10,7 @@ const fakeSubmissionsQuery = vi.hoisted(() => ({
         ref: "REQ-101",
         requestTypeName: "Laptop Request",
         state: "submitted",
+        customerStatus: "resolved",
         customerVisibility: "organisation",
         createdAt: "2026-10-21T12:00:00.000Z",
       },
@@ -60,7 +61,8 @@ describe("PortalRequestsPage", () => {
     expect(screen.getByRole("heading", { name: "My requests" })).toBeTruthy();
     expect(screen.getByText("REQ-101")).toBeTruthy();
     expect(screen.getByText("Laptop Request")).toBeTruthy();
-    expect(screen.getByText("submitted")).toBeTruthy();
+    expect(screen.getByText("request.status.resolved")).toBeTruthy();
+    expect(screen.queryByText("submitted")).toBeNull();
   });
   it("follows the server cursor for requests beyond the first page", () => {
     const Component = Route as unknown as React.ComponentType;

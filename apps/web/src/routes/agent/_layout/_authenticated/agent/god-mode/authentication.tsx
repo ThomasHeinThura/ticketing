@@ -154,6 +154,10 @@ function IdentityConnectionsRoute() {
                           <Badge variant="error">
                             {t("list.healthInvalid")}
                           </Badge>
+                        ) : connection.healthState === "degraded" ? (
+                          <Badge variant="warning">
+                            {t("list.healthDegraded")}
+                          </Badge>
                         ) : null}
                       </div>
                       {staff ? null : (
@@ -164,10 +168,17 @@ function IdentityConnectionsRoute() {
                     </div>
                     <Button
                       render={
-                        <Link
-                          params={{ id: connection.id }}
-                          to="/agent/god-mode/authentication/$id"
-                        />
+                        staff || !connection.organisationId ? (
+                          <Link
+                            params={{ id: connection.id }}
+                            to="/agent/god-mode/authentication/$id"
+                          />
+                        ) : (
+                          <Link
+                            params={{ id: connection.organisationId }}
+                            to="/agent/god-mode/organisations/$id/identity"
+                          />
+                        )
                       }
                       variant="outline"
                     >

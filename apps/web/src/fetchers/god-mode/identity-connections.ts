@@ -225,6 +225,17 @@ export async function getIdentityConnections(): Promise<IdentityConnection[]> {
   return body.data;
 }
 
+/** The identity connection bound to one customer organisation, or null when it has none (404 when the organisation is unknown). */
+export async function getOrganisationIdentityConnection(
+  organisationId: string,
+): Promise<IdentityConnection | null> {
+  const body = await request<{ data: IdentityConnection | null }>(
+    `instance/organisations/${encodeURIComponent(organisationId)}/identity`,
+    "Unable to load the organisation identity connection",
+  );
+  return body.data;
+}
+
 export function getIdentityConnectionEvents(
   id: string,
   cursor: string | undefined,

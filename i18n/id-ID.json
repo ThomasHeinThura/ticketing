@@ -3367,7 +3367,8 @@
 			"submitted": "Submitted",
 			"pagination": "Request pages",
 			"latest": "Back to latest",
-			"older": "Older requests"
+			"older": "Older requests",
+			"due": "Due"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3401,7 +3402,6 @@
 			"description": "Halaman tidak dapat dimuat. Coba lagi."
 		},
 		"intake": {
-			"accepted": "This request is now a work item. You can keep replying here and your message will be added to its conversation.",
 			"answers": "Your answers",
 			"attachments": "Attachments",
 			"backToCatalogue": "Back to catalogue",
@@ -3431,15 +3431,118 @@
 			"downloadError": "The file could not be downloaded. Try again.",
 			"fieldRequired": "This field is required.",
 			"sla": {
-				"due": "Due {{when}}",
-				"label": "Service target",
-				"state": {
-					"at_risk": "At risk",
-					"breached": "Overdue",
-					"met": "Met",
-					"missed": "Missed",
-					"on_track": "On track"
+				"label": "Service target"
+			}
+		},
+		"orientation": {
+			"body": "Raise a new request from the request catalogue. You can follow its progress, reply to our team and see what is due under My requests.",
+			"dismiss": "Got it",
+			"raise": "Raise a request",
+			"title": "Welcome to your portal",
+			"track": "See my requests"
+		},
+		"request": {
+			"author": {
+				"team": "Our team",
+				"you": "You",
+				"colleague": "A colleague"
+			},
+			"details": "Request details",
+			"errors": {
+				"conflict": "This request changed while you were looking at it. It has been refreshed; try again.",
+				"forbidden": "You cannot do that on this request.",
+				"generic": "That could not be done. Try again.",
+				"not_reopenable": "This request cannot be reopened.",
+				"notFound": "This request is no longer available.",
+				"cannot_deescalate": "You can only raise the priority, not lower it.",
+				"no_change": "The request already has that priority.",
+				"not_escalatable": "The priority can no longer be changed on this request.",
+				"not_rateable": "This request can be rated once it has been resolved.",
+				"rating_locked": "The time to change your rating has passed.",
+				"reopen_pending_review": "This request was already reopened and is waiting for our team to review it."
+			},
+			"priority": {
+				"label": "Priority",
+				"raise": "Raise priority",
+				"value": {
+					"high": "High",
+					"low": "Low",
+					"medium": "Medium",
+					"no-priority": "No priority",
+					"urgent": "Urgent"
 				}
+			},
+			"reopen": {
+				"action": "Reopen request"
+			},
+			"satisfaction": {
+				"comment": "Add a comment (optional)",
+				"description": "Rate how this request was handled. You can change your rating for a while after it is resolved.",
+				"rating": {
+					"1": "1 of 5, very dissatisfied",
+					"2": "2 of 5, dissatisfied",
+					"3": "3 of 5, neutral",
+					"4": "4 of 5, satisfied",
+					"5": "5 of 5, very satisfied"
+				},
+				"scale": "Rating from 1 to 5",
+				"submit": "Send rating",
+				"thanks": "Thank you for your feedback.",
+				"title": "How did we do?",
+				"update": "Update rating"
+			},
+			"sla": {
+				"due": {
+					"first_response": {
+						"date": "First response due by {{time}} on {{date}}",
+						"today": "First response due by {{time}} today",
+						"tomorrow": "First response due by {{time}} tomorrow"
+					},
+					"resolution": {
+						"date": "Resolution due by {{time}} on {{date}}",
+						"today": "Resolution due by {{time}} today",
+						"tomorrow": "Resolution due by {{time}} tomorrow"
+					}
+				},
+				"state": {
+					"at_risk": "Due soon",
+					"breached": "Overdue",
+					"met": "Target met",
+					"missed": "Target missed",
+					"on_track": "On track"
+				},
+				"wasDue": {
+					"first_response": {
+						"date": "First response was due by {{time}} on {{date}}",
+						"today": "First response was due by {{time}} today",
+						"tomorrow": "First response was due by {{time}} tomorrow"
+					},
+					"resolution": {
+						"date": "Resolution was due by {{time}} on {{date}}",
+						"today": "Resolution was due by {{time}} today",
+						"tomorrow": "Resolution was due by {{time}} tomorrow"
+					}
+				}
+			},
+			"state": {
+				"accepted": "In progress",
+				"clarifying": "We need more from you",
+				"declined": "Declined",
+				"duplicate": "Closed",
+				"new": "Received",
+				"withdrawn": "Withdrawn"
+			},
+			"readOnly": "You can view this request but only the person who raised it can change it.",
+			"attachmentsEmpty": "No attachments",
+			"conversationEmpty": "No messages yet",
+			"status": {
+				"closed": "Closed",
+				"declined": "Declined",
+				"in_progress": "In progress",
+				"need_more_info": "We need more from you",
+				"received": "Received",
+				"resolved": "Resolved",
+				"withdrawn": "Withdrawn"
 			}
 		}
 	},
@@ -4154,7 +4257,8 @@
 				"scim": "SCIM provisioning"
 			},
 			"title": "Authentication provider",
-			"unavailable": "Authentication provider unavailable"
+			"unavailable": "Authentication provider unavailable",
+			"openOrganisationIdentity": "Open organisation Identity"
 		},
 		"editor": {
 			"addTitle": "Add Entra connection",
@@ -4225,7 +4329,8 @@
 			"secretHelp": "Stored encrypted and never displayed again. Leave blank to keep the current secret.",
 			"tenantId": "Entra tenant ID",
 			"unchanged": "Nothing changed, so nothing was saved.",
-			"workspaceId": "Default workspace ID"
+			"workspaceId": "Default workspace ID",
+			"introCreateCustomer": "The connection is created disabled and bound to this customer organisation and the customer portal only. Enable it from its settings once configuration is ready."
 		},
 		"errors": {
 			"conflict": "This configuration changed in another session. Your edits are kept here; reload the latest settings before trying again.",
@@ -4299,7 +4404,8 @@
 			"storedInvalid": "A stored identity configuration is invalid, so the list is unavailable. No settings were changed.",
 			"title": "Authentication providers",
 			"unavailable": "Authentication providers unavailable",
-			"view": "View"
+			"view": "View",
+			"healthDegraded": "Provider check degraded"
 		},
 		"scim": {
 			"description": "Provision staff accounts and groups from your identity provider. SCIM never grants instance administrator access or full visibility, and it never changes how accounts are linked.",
@@ -4421,6 +4527,15 @@
 			"method": "Verification method",
 			"password": "Password",
 			"title": "Fresh verification"
+		},
+		"organisation": {
+			"back": "Back to authentication providers",
+			"description": "This customer organisation's own Microsoft Entra sign-in and SCIM provisioning. People who sign in through it reach only this organisation on the customer portal.",
+			"loadFailed": "The organisation's identity connection could not be loaded. Try again.",
+			"loading": "Loading organisation identity",
+			"notFoundTitle": "Organisation not found",
+			"title": "Organisation identity",
+			"unavailable": "Organisation identity unavailable"
 		}
 	},
 	"notificationProvider": {

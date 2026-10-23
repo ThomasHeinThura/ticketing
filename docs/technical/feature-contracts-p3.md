@@ -146,7 +146,7 @@ misconfigured away through the role editor.
   submission time. A **request type may force `private`**; sensitive types — HR, finance,
   legal, personal data, access requests, security-sensitive workflows — should. A colleague
   outside the allowed scope receives the **same constant-shape 404** as a user from another
-  organisation ([rbac.md](permissions.md#reach)).
+  organisation ([rbac.md](permissions.md#reach)). Attachments stay requester-only: an organisation colleague or participant reads the request, its public messages and status but not its files, and the portal projection carries `canViewAttachments`/`canUpload` (true only for the requester) so the UI hides them instead of erroring.
 - `CP-17` **Organisation SSO.** A customer organisation may have its own identity
   connection — Microsoft Entra first — bound to that organisation and to the customer
   portal only ([identity-provisioning.md](feature-contracts-p3.md#identity-provisioning) `IP-1`, `IP-2`). Its
@@ -261,9 +261,9 @@ One row per portal action, each a [RBAC](permissions.md) policy kind 3
 | View one request | `own_request` | `GET /api/portal/requests/{ref}` |
 | Comment on a request | `own_request` | `POST /api/portal/requests/{ref}/comments` |
 | Presign an attachment upload | `own_request` | `POST /api/portal/requests/{ref}/attachments/presign` |
-| Escalate priority (`CP-7`) | `own_request` | `POST /api/portal/requests/{ref}/escalate` |
-| Reopen a resolved request (`CP-8`, `WF-21`) | `own_request` | `POST /api/portal/requests/{ref}/reopen` |
-| Rate a resolution (`CP-9`) | `own_request` | `POST /api/portal/requests/{ref}/rate` |
+| Escalate priority (`CP-7`) | `own_request` | `POST /api/portal/requests/{ref}/escalate` *(served as `POST /api/portal/submissions/{ref}/escalate-priority`, predicate `own_submission`, requester only, body `{ priority }`)* |
+| Reopen a resolved request (`CP-8`, `WF-21`) | `own_request` | `POST /api/portal/requests/{ref}/reopen` *(served as `POST /api/portal/submissions/{ref}/reopen`; also reopens an auto-declined submission, `IQ-15`)* |
+| Rate a resolution (`CP-9`) | `own_request` | `POST /api/portal/requests/{ref}/rate` *(served as `POST /api/portal/submissions/{ref}/satisfaction`, body `{ rating 1..5, comment? }`)* |
 | Add a participant — requester only | `own_request` | `POST /api/portal/requests/{ref}/participants` |
 | Re-rank own backlog | `own_organisation` | `POST /api/portal/requests/rank` |
 | Browse the catalogue | `own_organisation` | `GET /api/portal/catalogue` |

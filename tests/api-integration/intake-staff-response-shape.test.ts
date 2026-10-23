@@ -87,6 +87,7 @@ describe("staff intake responses expose only declared fields", () => {
       "messages",
       "ref",
       "requestType",
+      "satisfaction",
       "submission",
       "version",
     ]);

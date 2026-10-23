@@ -79,6 +79,7 @@ import { Route as LayoutAuthenticatedDashboardSettingsWorkspaceRolesRouteImport 
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdIndexRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/index'
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdMembersRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/members'
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search'
+import { Route as LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/organisations/$id/identity'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/danger'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/labels'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/members'
@@ -503,6 +504,12 @@ const LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRoute =
     path: '/search',
     getParentRoute: () => LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRoute,
   } as any)
+const LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute =
+  LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRouteImport.update({
+    id: '/organisations/$id/identity',
+    path: '/organisations/$id/identity',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute =
   LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRouteImport.update({
     id: '/danger',
@@ -694,6 +701,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/workspace/$workspaceId/members': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdMembersRoute
   '/dashboard/workspace/$workspaceId/search': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRoute
   '/dashboard/workspace/$workspaceId/': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdIndexRoute
+  '/agent/god-mode/organisations/$id/identity': typeof LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute
   '/agent/projects/$projectKey/settings/danger': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute
   '/agent/projects/$projectKey/settings/labels': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRoute
   '/agent/projects/$projectKey/settings/members': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRoute
@@ -777,6 +785,7 @@ export interface FileRoutesByTo {
   '/dashboard/workspace/$workspaceId/members': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdMembersRoute
   '/dashboard/workspace/$workspaceId/search': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRoute
   '/dashboard/workspace/$workspaceId': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdIndexRoute
+  '/agent/god-mode/organisations/$id/identity': typeof LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute
   '/agent/projects/$projectKey/settings/danger': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute
   '/agent/projects/$projectKey/settings/labels': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRoute
   '/agent/projects/$projectKey/settings/members': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRoute
@@ -865,6 +874,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/members': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdMembersRoute
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/search': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRoute
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdIndexRoute
+  '/_layout/_authenticated/agent/god-mode/organisations/$id/identity': typeof LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute
   '/_layout/_authenticated/agent/projects/$projectKey/settings/danger': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute
   '/_layout/_authenticated/agent/projects/$projectKey/settings/labels': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRoute
   '/_layout/_authenticated/agent/projects/$projectKey/settings/members': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRoute
@@ -952,6 +962,7 @@ export interface FileRouteTypes {
     | '/dashboard/workspace/$workspaceId/members'
     | '/dashboard/workspace/$workspaceId/search'
     | '/dashboard/workspace/$workspaceId/'
+    | '/agent/god-mode/organisations/$id/identity'
     | '/agent/projects/$projectKey/settings/danger'
     | '/agent/projects/$projectKey/settings/labels'
     | '/agent/projects/$projectKey/settings/members'
@@ -1035,6 +1046,7 @@ export interface FileRouteTypes {
     | '/dashboard/workspace/$workspaceId/members'
     | '/dashboard/workspace/$workspaceId/search'
     | '/dashboard/workspace/$workspaceId'
+    | '/agent/god-mode/organisations/$id/identity'
     | '/agent/projects/$projectKey/settings/danger'
     | '/agent/projects/$projectKey/settings/labels'
     | '/agent/projects/$projectKey/settings/members'
@@ -1122,6 +1134,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/members'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/search'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/'
+    | '/_layout/_authenticated/agent/god-mode/organisations/$id/identity'
     | '/_layout/_authenticated/agent/projects/$projectKey/settings/danger'
     | '/_layout/_authenticated/agent/projects/$projectKey/settings/labels'
     | '/_layout/_authenticated/agent/projects/$projectKey/settings/members'
@@ -1639,6 +1652,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRouteImport
       parentRoute: typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRoute
     }
+    '/_layout/_authenticated/agent/god-mode/organisations/$id/identity': {
+      id: '/_layout/_authenticated/agent/god-mode/organisations/$id/identity'
+      path: '/organisations/$id/identity'
+      fullPath: '/agent/god-mode/organisations/$id/identity'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
     '/_layout/_authenticated/agent/projects/$projectKey/settings/danger': {
       id: '/_layout/_authenticated/agent/projects/$projectKey/settings/danger'
       path: '/danger'
@@ -1767,6 +1787,7 @@ interface LayoutAuthenticatedAgentGodModeRouteChildren {
   LayoutAuthenticatedAgentGodModeAuthenticationRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
   LayoutAuthenticatedAgentGodModeNotificationsRoute: typeof LayoutAuthenticatedAgentGodModeNotificationsRoute
   LayoutAuthenticatedAgentGodModeUsersRoute: typeof LayoutAuthenticatedAgentGodModeUsersRoute
+  LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute: typeof LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute
 }
 
 const LayoutAuthenticatedAgentGodModeRouteChildren: LayoutAuthenticatedAgentGodModeRouteChildren =
@@ -1779,6 +1800,8 @@ const LayoutAuthenticatedAgentGodModeRouteChildren: LayoutAuthenticatedAgentGodM
       LayoutAuthenticatedAgentGodModeNotificationsRoute,
     LayoutAuthenticatedAgentGodModeUsersRoute:
       LayoutAuthenticatedAgentGodModeUsersRoute,
+    LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute:
+      LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute,
   }
 
 const LayoutAuthenticatedAgentGodModeRouteWithChildren =

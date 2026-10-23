@@ -167,7 +167,22 @@ function IdentityConnectionEditorRoute() {
             <h1 className="text-2xl font-semibold">{connection.displayName}</h1>
             <Alert variant="info">
               <AlertTitle>{t("detail.customerTitle")}</AlertTitle>
-              <AlertDescription>{t("detail.customerManaged")}</AlertDescription>
+              <AlertDescription>
+                <p>{t("detail.customerManaged")}</p>
+                {connection.organisationId ? (
+                  <Button
+                    render={
+                      <Link
+                        params={{ id: connection.organisationId }}
+                        to="/agent/god-mode/organisations/$id/identity"
+                      />
+                    }
+                    variant="outline"
+                  >
+                    {t("detail.openOrganisationIdentity")}
+                  </Button>
+                ) : null}
+              </AlertDescription>
             </Alert>
           </>
         ) : null}

@@ -5,8 +5,10 @@ import { slaPauseTable } from "../database/migration-schema";
 import { evaluatePinnedWorkItemSla } from "../sla-policy/evaluation";
 
 /**
- * SLA-21: the customer-safe SLA projection on a requester's own work item. Exactly two
- * fields, a coarse state and the due instant of the resolution target. Policy identity,
+ * SLA-21: the customer-safe SLA projection on a requester's own work item. Exactly three
+ * fields, a coarse state, the due instant and which target they describe: `first_response`
+ * while no staff response has happened yet, `resolution` afterwards (so the customer is never
+ * told a response is due when the instant shown is the resolution target). Policy identity,
  * thresholds, minutes, percentages, the calendar, pause intervals and pause reasons are
  * never part of it: pauses still shape the evaluated state and due instant, but nothing
  * about them is exposed.
@@ -14,6 +16,7 @@ import { evaluatePinnedWorkItemSla } from "../sla-policy/evaluation";
 export type PortalSla = {
   state: "on_track" | "at_risk" | "breached" | "met" | "missed";
   dueAt: string | null;
+  metric: "first_response" | "resolution";
 };
 
 const STATE_LABEL = {
@@ -83,10 +86,20 @@ export async function loadPortalSla(
       now,
     });
     const resolution = metrics.find((metric) => metric.metric === "resolution");
-    if (!resolution || resolution.state === "none") return null;
+    const firstResponse = metrics.find(
+      (metric) => metric.metric === "first_response",
+    );
+    const awaitingResponse =
+      !item.firstResponseAt &&
+      !item.resolvedAt &&
+      firstResponse !== undefined &&
+      firstResponse.state !== "none";
+    const chosen = awaitingResponse ? firstResponse : resolution;
+    if (!chosen || chosen.state === "none") return null;
     return {
-      state: STATE_LABEL[resolution.state],
-      dueAt: resolution.dueAt ? resolution.dueAt.toISOString() : null,
+      state: STATE_LABEL[chosen.state],
+      dueAt: chosen.dueAt ? chosen.dueAt.toISOString() : null,
+      metric: awaitingResponse ? "first_response" : "resolution",
     };
   } catch {
     return null;

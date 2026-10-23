@@ -7,6 +7,22 @@ import {
   lockScimIdentityConnection,
 } from "./repository";
 
+/** IP-24: what an attributable bearer failure carries on `HTTPException.cause`. */
+export type ScimAuthFailureCause = {
+  connectionId: string;
+  reason: "connection_disabled" | "scim_disabled" | "scope_invalid";
+};
+
+export function scimAuthFailureCause(
+  error: unknown,
+): ScimAuthFailureCause | null {
+  const cause = (error as { cause?: Partial<ScimAuthFailureCause> } | null)
+    ?.cause;
+  return cause && typeof cause.connectionId === "string" && cause.reason
+    ? (cause as ScimAuthFailureCause)
+    : null;
+}
+
 export type ScimRequestAuthority = {
   connectionId: string;
   /** Internal credential binding for mutation-time revalidation; never serialized. */
@@ -64,13 +80,24 @@ export async function resolveScimBearer(
   const digest = createHash("sha256").update(token, "utf8").digest();
   const [row] = await getScimIdentityByTokenDigest(digest);
 
+  if (!row) throw new HTTPException(401, { message: "Unauthorized" });
   if (
-    !row?.enabled ||
+    !row.enabled ||
     !row.connectionEnabled ||
     (row.portalScope !== "agent" && row.portalScope !== "customer") ||
     (row.portalScope === "customer" && !row.organisationId)
   ) {
-    throw new HTTPException(401, { message: "Unauthorized" });
+    // IP-24: the credential matched a stored connection, so the failure is attributable. The
+    // cause carries only the connection id and a bounded reason, never the token or its digest.
+    const cause: ScimAuthFailureCause = {
+      connectionId: row.connectionId,
+      reason: !row.connectionEnabled
+        ? "connection_disabled"
+        : !row.enabled
+          ? "scim_disabled"
+          : "scope_invalid",
+    };
+    throw new HTTPException(401, { message: "Unauthorized", cause });
   }
 
   const allowedResources: unknown = row.allowedResources;

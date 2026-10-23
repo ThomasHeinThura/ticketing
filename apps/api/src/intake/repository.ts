@@ -54,6 +54,8 @@ import {
   findWorkspaceOwnedSlaPolicyQuery,
 } from "../work-item/repository";
 import {
+  findReopenWindowDays,
+  isWithinReopenWindow,
   recordReopenRequested,
   requestCustomerReopen,
 } from "../workflow/customer-reopen";
@@ -63,7 +65,13 @@ import {
   type SubmissionListFilters,
   UNCLAIMED,
 } from "./list-filters";
+import { raisablePriorities } from "./portal-priority";
 import { loadPortalSla, type PortalSla } from "./portal-sla";
+import {
+  type PortalCustomerStatus,
+  type PortalStatusWorkItem,
+  portalCustomerStatus,
+} from "./portal-status";
 
 type RequestTypeInput = {
   workspaceId: string;
@@ -1443,6 +1451,59 @@ export async function markSubmissionDuplicate(
   });
 }
 
+/** A signed-in portal customer, as far as read visibility (`CP-16`) is concerned. */
+export type PortalViewer = { personId: string; organisationId: string };
+
+export async function loadPortalViewer(
+  personId: string,
+): Promise<PortalViewer> {
+  const [row] = await db
+    .select({ organisationId: schema.personTable.organisationId })
+    .from(schema.personTable)
+    .where(
+      and(
+        eq(schema.personTable.id, personId),
+        eq(schema.personTable.side, "customer"),
+        eq(schema.personTable.active, true),
+      ),
+    )
+    .limit(1);
+  if (!row)
+    throw new HTTPException(404, { message: "Portal account not found" });
+  return { personId, organisationId: row.organisationId };
+}
+
+/**
+ * `CP-16` read visibility, always inside the viewer's own organisation: the requester, a
+ * participant explicitly added to the submission (`request_participant`), or any customer of the
+ * same organisation when the submission's `customer_visibility` is `organisation`. A `private`
+ * submission is invisible to every other colleague, and another organisation's customer never
+ * matches (the organisation equality is part of every branch). A miss is the constant 404.
+ */
+export function portalReadablePredicate(viewer: PortalViewer) {
+  return and(
+    eq(schema.submissionTable.organisationId, viewer.organisationId),
+    or(
+      eq(schema.submissionTable.requesterId, viewer.personId),
+      eq(schema.submissionTable.customerVisibility, "organisation"),
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(schema.requestParticipantTable)
+          .where(
+            and(
+              eq(
+                schema.requestParticipantTable.submissionId,
+                schema.submissionTable.id,
+              ),
+              eq(schema.requestParticipantTable.personId, viewer.personId),
+            ),
+          ),
+      ),
+    ),
+  );
+}
+
 export async function findSubmission(
   ref: string,
   workspaceId?: string,
@@ -1453,6 +1514,8 @@ export async function findSubmission(
    * requester's own view passes nothing and keeps its existing behaviour.
    */
   staffIdentity?: ResolvedIdentity,
+  /** Portal read path (`CP-16`): requester, participant or organisation colleague. */
+  portalViewer?: PortalViewer,
 ) {
   const number = /^SUB-([1-9]\d{0,9})$/u.exec(ref)?.[1];
   if (!number)
@@ -1485,6 +1548,7 @@ export async function findSubmission(
         ...(requesterId
           ? [eq(schema.submissionTable.requesterId, requesterId)]
           : []),
+        ...(portalViewer ? [portalReadablePredicate(portalViewer)] : []),
         ...(staffIdentity
           ? [
               currentWorkspaceReachPredicate(
@@ -1642,9 +1706,70 @@ type PortalSubmissionSource = Omit<
   version: typeof schema.requestTypeVersionTable.$inferSelect;
 };
 
-export async function findPortalSubmission(ref: string, requesterId: string) {
-  const row = await findSubmission(ref, undefined, requesterId);
+/**
+ * `CP-4`: how a message author appears to a customer. Staff who act publicly are named (the
+ * author of a public comment or clarification); a customer is never named, only marked as the
+ * viewer's own. Nothing else about the author (id, role, assignment) is exposed.
+ */
+export type PortalMessageAuthor = {
+  actorType: "customer" | "triager";
+  authorName: string | null;
+  mine: boolean;
+};
+
+export async function portalMessageAuthors(
+  messages: ReadonlyArray<{ authorId: string; actorType: string }>,
+  viewerPersonId: string,
+): Promise<(authorId: string, actorType: string) => PortalMessageAuthor> {
+  const ids = [
+    ...new Set(messages.map((message) => message.authorId).filter(Boolean)),
+  ];
+  const people = ids.length
+    ? await db
+        .select({
+          id: schema.personTable.id,
+          side: schema.personTable.side,
+          displayName: schema.personTable.displayName,
+        })
+        .from(schema.personTable)
+        .where(inArray(schema.personTable.id, ids))
+    : [];
+  const byId = new Map(people.map((person) => [person.id, person]));
+  return (authorId, actorType) => {
+    const person = byId.get(authorId);
+    // A stored `triager` message or a comment by a non-customer person is staff; an author that
+    // cannot be resolved falls back to the stored actor type, and anything but `customer` is staff.
+    const staff = person
+      ? person.side !== "customer"
+      : actorType !== "customer";
+    return staff
+      ? {
+          actorType: "triager",
+          authorName: person?.displayName?.trim() || null,
+          mine: false,
+        }
+      : {
+          actorType: "customer",
+          authorName: null,
+          mine: authorId === viewerPersonId,
+        };
+  };
+}
+
+export async function findPortalSubmission(
+  ref: string,
+  viewerPersonId: string,
+) {
+  const viewer = await loadPortalViewer(viewerPersonId);
+  const row = await findSubmission(
+    ref,
+    undefined,
+    undefined,
+    undefined,
+    viewer,
+  );
   const portalRow: PortalSubmissionSource = row;
+  const isRequester = portalRow.submission.requesterId === viewer.personId;
   const formSchema = portalRow.version.formSchema as FormSchema;
   const fields = visibleFields(
     formSchema,
@@ -1658,18 +1783,25 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
   let workItem: {
     title: string;
     description: string;
-    state: string;
     priority: string | null;
+    resolvedAt: string | null;
     sla: PortalSla | null;
   } | null = null;
+  let statusFacts: PortalStatusWorkItem | null = null;
+  let resolvedAt: Date | null = null;
+  let linkedWorkItemId: string | null = null;
   if (portalRow.submission.workItemId) {
+    // The submission itself was authorised for this viewer above; its linked work item belongs
+    // to the submission's requester, so the lookup is keyed on that person (CP-16).
+    const ownerId = portalRow.submission.requesterId;
     const [item] = await db
       .select({
         id: schema.workItemTable.id,
         title: schema.workItemTable.title,
         description: schema.workItemTable.description,
-        state: schema.stateTemplateTable.name,
+        stateGroup: schema.stateTemplateTable.group,
         priority: schema.workItemTable.priority,
+        resolvedAt: schema.workItemTable.resolvedAt,
       })
       .from(schema.workItemTable)
       .innerJoin(
@@ -1683,20 +1815,57 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
       .where(
         and(
           eq(schema.workItemTable.id, portalRow.submission.workItemId),
-          eq(schema.workItemTable.requesterId, requesterId),
+          eq(schema.workItemTable.requesterId, ownerId),
           isNull(schema.workItemTable.deletedAt),
         ),
       )
       .limit(1);
     if (item) {
-      const { id: itemId, ...visible } = item;
+      const {
+        id: itemId,
+        resolvedAt: itemResolvedAt,
+        stateGroup,
+        ...visible
+      } = item;
+      linkedWorkItemId = itemId;
+      resolvedAt = itemResolvedAt;
+      statusFacts = { resolvedAt: itemResolvedAt, stateGroup };
       workItem = {
         ...visible,
         description: extractDocumentText(item.description),
-        sla: await loadPortalSla(itemId, requesterId),
+        resolvedAt: itemResolvedAt ? itemResolvedAt.toISOString() : null,
+        sla: await loadPortalSla(itemId, ownerId),
       };
     }
   }
+  const windowDays = await findReopenWindowDays();
+  const now = new Date();
+  const withinWindow = resolvedAt
+    ? isWithinReopenWindow(resolvedAt, now, windowDays)
+    : false;
+  const [rating] = linkedWorkItemId
+    ? await db
+        .select({
+          score: schema.satisfactionRatingTable.score,
+          comment: schema.satisfactionRatingTable.comment,
+          updatedAt: schema.satisfactionRatingTable.updatedAt,
+        })
+        .from(schema.satisfactionRatingTable)
+        .where(
+          and(
+            eq(schema.satisfactionRatingTable.workItemId, linkedWorkItemId),
+            eq(
+              schema.satisfactionRatingTable.personId,
+              portalRow.submission.requesterId,
+            ),
+          ),
+        )
+        .limit(1)
+    : [];
+  const authorOf = await portalMessageAuthors(
+    portalRow.messages,
+    viewer.personId,
+  );
   return {
     ref: portalRow.ref,
     submission: {
@@ -1705,10 +1874,44 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
       customerVisibility: portalRow.submission.customerVisibility,
       createdAt: portalRow.submission.createdAt.toISOString(),
     },
+    customerStatus: portalCustomerStatus(
+      portalRow.submission.state,
+      statusFacts,
+    ),
+    isRequester,
+    // CP-16: attachments are requester-only, so a colleague's view hides them.
+    canViewAttachments: isRequester,
+    canUpload: isRequester,
     canWithdraw:
+      isRequester &&
       (portalRow.submission.state === "new" ||
         portalRow.submission.state === "clarifying") &&
       portalRow.submission.claimedBy === null,
+    // CP-7: accepted, open, requester only, and a higher priority still exists.
+    canEscalate:
+      isRequester &&
+      workItem !== null &&
+      resolvedAt === null &&
+      raisablePriorities(workItem.priority).length > 0,
+    // CP-8 / IQ-15: an auto-declined submission, or a resolved request inside the window.
+    canReopen:
+      isRequester &&
+      ((portalRow.submission.state === "declined" &&
+        portalRow.submission.autoDeclinedAt !== null) ||
+        (workItem !== null && resolvedAt !== null && withinWindow)),
+    // CP-9: a resolved request can be rated; an existing rating can be changed in the window.
+    canRate:
+      isRequester &&
+      workItem !== null &&
+      resolvedAt !== null &&
+      (rating === undefined || withinWindow),
+    satisfaction: rating
+      ? {
+          rating: rating.score,
+          comment: rating.comment,
+          ratedAt: rating.updatedAt.toISOString(),
+        }
+      : null,
     requestType: {
       name: portalRow.requestType.name,
       description: portalRow.requestType.description,
@@ -1719,11 +1922,33 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
     workItem,
     messages: portalRow.messages.map((message) => ({
       id: message.id,
-      actorType: message.actorType,
+      ...authorOf(message.authorId, message.actorType),
       body: message.body,
       createdAt: message.createdAt,
     })),
   };
+}
+
+/** CP-9: the requester's rating on a work item, for the staff submission detail. */
+export async function findSubmissionSatisfaction(workItemId: string | null) {
+  if (!workItemId) return null;
+  const [row] = await db
+    .select({
+      score: schema.satisfactionRatingTable.score,
+      comment: schema.satisfactionRatingTable.comment,
+      updatedAt: schema.satisfactionRatingTable.updatedAt,
+    })
+    .from(schema.satisfactionRatingTable)
+    .where(eq(schema.satisfactionRatingTable.workItemId, workItemId))
+    .orderBy(asc(schema.satisfactionRatingTable.createdAt))
+    .limit(1);
+  return row
+    ? {
+        rating: row.score,
+        comment: row.comment,
+        ratedAt: row.updatedAt.toISOString(),
+      }
+    : null;
 }
 
 function extractDocumentText(value: unknown): string {
@@ -1891,6 +2116,12 @@ export async function listOwnSubmissions(
   limit = 50,
 ) {
   const identity = await portalIdentity(userId);
+  // CP-16: the caller's own requests plus the organisation-visible and participant requests of
+  // their organisation, never another organisation's and never a colleague's `private` request.
+  const readable = portalReadablePredicate({
+    personId: identity.personId,
+    organisationId: identity.organisationId,
+  });
   const scope = `portal:${identity.personId}:limit:${limit}`;
   const decoded = decodeSubmissionCursor(cursor, scope);
   const workspaceRows = await db
@@ -1900,7 +2131,7 @@ export async function listOwnSubmissions(
       schema.requestTypeTable,
       eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
     )
-    .where(eq(schema.submissionTable.requesterId, identity.personId));
+    .where(readable);
   const workspaceIds = workspaceRows.map((row) => row.workspaceId);
   if (workspaceIds.length === 0)
     return {
@@ -1949,7 +2180,7 @@ export async function listOwnSubmissions(
   // `created_at` has microseconds; the cursor round-trips through a JS Date (milliseconds).
   const ownCreatedAtMs = sql`date_trunc('milliseconds', ${schema.submissionTable.createdAt})`;
   const conditions = [
-    eq(schema.submissionTable.requesterId, identity.personId),
+    readable,
     inArray(schema.requestTypeTable.workspaceId, enabledWorkspaceIds),
     ...(decoded
       ? [
@@ -1996,16 +2227,66 @@ export async function listOwnSubmissions(
     )
     .where(
       and(
-        eq(schema.submissionTable.requesterId, identity.personId),
+        readable,
         inArray(schema.requestTypeTable.workspaceId, enabledWorkspaceIds),
       ),
     );
+  // CP-6: the customer-safe `{state, dueAt}` on each row that has a linked work item, in small
+  // concurrent batches (one evaluation per such row, at most `limit` rows).
+  const slas = new Map<string, PortalSla | null>();
+  const withItem = pageRows.filter((row) => row.submission.workItemId);
+  for (let index = 0; index < withItem.length; index += 10) {
+    await Promise.all(
+      withItem.slice(index, index + 10).map(async (row) => {
+        slas.set(
+          row.submission.id,
+          await loadPortalSla(
+            row.submission.workItemId as string,
+            row.submission.requesterId,
+          ),
+        );
+      }),
+    );
+  }
+  const statusFacts = new Map<string, PortalStatusWorkItem>();
+  const itemIds = withItem.map((row) => row.submission.workItemId as string);
+  if (itemIds.length > 0) {
+    const facts = await db
+      .select({
+        id: schema.workItemTable.id,
+        resolvedAt: schema.workItemTable.resolvedAt,
+        stateGroup: schema.stateTemplateTable.group,
+      })
+      .from(schema.workItemTable)
+      .innerJoin(
+        schema.stateTable,
+        eq(schema.stateTable.id, schema.workItemTable.stateId),
+      )
+      .innerJoin(
+        schema.stateTemplateTable,
+        eq(schema.stateTemplateTable.id, schema.stateTable.stateTemplateId),
+      )
+      .where(inArray(schema.workItemTable.id, itemIds));
+    for (const fact of facts)
+      statusFacts.set(fact.id, {
+        resolvedAt: fact.resolvedAt,
+        stateGroup: fact.stateGroup,
+      });
+  }
   return {
     submissions: pageRows.map((row) => ({
       ...row,
       submission: materializeSubmission(row.submission),
       requestType: materializeRequestType(row.requestType),
       ref: formatSubmissionReference(row.submission.number),
+      isRequester: row.submission.requesterId === identity.personId,
+      customerStatus: portalCustomerStatus(
+        row.submission.state,
+        row.submission.workItemId
+          ? (statusFacts.get(row.submission.workItemId) ?? null)
+          : null,
+      ) satisfies PortalCustomerStatus,
+      sla: slas.get(row.submission.id) ?? null,
     })),
     page: { nextCursor, hasMore },
     meta: { total: totalRow?.value ?? 0 },
@@ -2271,7 +2552,7 @@ async function postSubmissionMessageInTransaction(
     if (row.submission.state === "accepted" && input.actorType === "customer") {
       if (!row.workItem)
         throw new HTTPException(409, {
-          message: "Accepted work item is unavailable",
+          message: "This request is temporarily unavailable",
         });
       const now = new Date();
       const [comment] = await tx

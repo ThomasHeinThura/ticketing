@@ -113,4 +113,18 @@ export const intakePolicies = {
     portal: "customer",
     predicate: "own_submission",
   },
+  // CP-7 / CP-8 / CP-9. The contract table lists these as `own_request` on /requests/{ref}/...;
+  // they are served on the submission's durable URL (CP-10), so the submission predicate applies.
+  "POST /api/portal/submissions/{ref}/escalate-priority": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
+  "POST /api/portal/submissions/{ref}/reopen": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
+  "POST /api/portal/submissions/{ref}/satisfaction": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
 } as const satisfies PolicyMap;

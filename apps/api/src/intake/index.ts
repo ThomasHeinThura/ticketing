@@ -23,6 +23,12 @@ import { requireWorkspaceCapability } from "../utils/require-workspace-capabilit
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { parseSubmissionListFilters } from "./list-filters";
 import {
+  escalatePortalPriority,
+  ratePortalSubmission,
+  reopenPortalSubmission,
+} from "./portal-actions";
+import { PORTAL_CUSTOMER_STATUSES } from "./portal-status";
+import {
   acceptSubmission,
   claimSubmission,
   createRequestType,
@@ -30,6 +36,7 @@ import {
   declineSubmission,
   findPortalSubmission,
   findSubmission,
+  findSubmissionSatisfaction,
   getRequestType,
   listOwnSubmissions,
   listRequestTypes,
@@ -63,9 +70,11 @@ import {
   createRequestTypeBody,
   declineBody,
   duplicateBody,
+  escalatePriorityBody,
   messageBody,
   requestTypeIdParam,
   requestTypeKeyParam,
+  satisfactionBody,
   submissionBody,
   submissionRefParam,
   updateRequestTypeBody,
@@ -110,7 +119,22 @@ const submissionResponseSchema = z.object({
   version: requestTypeVersionSchema,
   messages: z.array(submissionMessageSchema),
   ref: z.string(),
+  /** CP-9: the requester's rating of the resolution, for staff; null until rated. */
+  satisfaction: z
+    .object({
+      rating: z.number().int(),
+      comment: z.string().nullable(),
+      ratedAt: z.string().datetime(),
+    })
+    .nullable(),
 });
+const portalSlaSchema = z.object({
+  state: z.enum(["on_track", "at_risk", "breached", "met", "missed"]),
+  dueAt: z.string().datetime().nullable(),
+  /** Which target `dueAt` describes: a first staff response, or the resolution. */
+  metric: z.enum(["first_response", "resolution"]),
+});
+const portalCustomerStatusSchema = z.enum(PORTAL_CUSTOMER_STATUSES);
 const portalSubmissionResponseSchema = z.object({
   ref: z.string(),
   submission: z.object({
@@ -119,7 +143,27 @@ const portalSubmissionResponseSchema = z.object({
     customerVisibility: z.string(),
     createdAt: z.string().datetime(),
   }),
+  /** CP-5: the customer-safe status; the only status the portal renders. */
+  customerStatus: portalCustomerStatusSchema,
+  /** CP-16: true for the requester; a colleague or participant has a read-only view. */
+  isRequester: z.boolean(),
+  /** CP-16: attachments stay requester-only (list, download, upload); other readers get false so the UI hides them. */
+  canViewAttachments: z.boolean(),
+  canUpload: z.boolean(),
   canWithdraw: z.boolean(),
+  /** CP-7: the requester may still raise the priority (open request, a higher priority exists). */
+  canEscalate: z.boolean(),
+  /** CP-8 / IQ-15: reopen is available (auto-declined submission, or resolved inside the window). */
+  canReopen: z.boolean(),
+  /** CP-9: a rating can be given (resolved) or changed (inside the window). */
+  canRate: z.boolean(),
+  satisfaction: z
+    .object({
+      rating: z.number().int().min(1).max(5),
+      comment: z.string().nullable(),
+      ratedAt: z.string().datetime(),
+    })
+    .nullable(),
   requestType: z.object({
     name: z.string(),
     description: z.string().nullable(),
@@ -143,21 +187,21 @@ const portalSubmissionResponseSchema = z.object({
     .object({
       title: z.string(),
       description: z.string(),
-      state: z.string(),
       priority: z.string().nullable(),
+      resolvedAt: z.string().datetime().nullable(),
       /** SLA-21: customer-safe projection; null when no SLA applies. */
-      sla: z
-        .object({
-          state: z.enum(["on_track", "at_risk", "breached", "met", "missed"]),
-          dueAt: z.string().datetime().nullable(),
-        })
-        .nullable(),
+      sla: portalSlaSchema.nullable(),
     })
     .nullable(),
   messages: z.array(
     z.object({
       id: z.string(),
-      actorType: z.string(),
+      /** `customer` or `triager` (staff); never a person id. */
+      actorType: z.enum(["customer", "triager"]),
+      /** CP-4: only staff who act publicly are named; always null for a customer. */
+      authorName: z.string().nullable(),
+      /** True for the viewer's own message. */
+      mine: z.boolean(),
       body: z.string(),
       createdAt: z.string().datetime(),
     }),
@@ -172,6 +216,12 @@ const portalSubmissionListResponseSchema = z.object({
       createdAt: z.string().datetime(),
       customerVisibility: z.string(),
       requestTypeName: z.string(),
+      /** CP-16: false for an organisation colleague's request. */
+      isRequester: z.boolean(),
+      /** CP-5: the customer-safe status. */
+      customerStatus: portalCustomerStatusSchema,
+      /** CP-6: customer-safe due time and plain state; null with no work item or no SLA. */
+      sla: portalSlaSchema.nullable(),
     }),
   ),
   page: z.object({ nextCursor: z.string().nullable(), hasMore: z.boolean() }),
@@ -354,6 +404,26 @@ async function portalOwnSubmission(c: IntakeContext, next: Next) {
   c.set("policyOrganisationIdSource", "row");
   // The query above constrains this request to its requester; the reference is never a credential.
   void row;
+  await next();
+}
+
+/**
+ * `CP-16`: read access. The requester, a participant, or (for an organisation-visible request)
+ * a customer of the same organisation; every other caller gets the constant 404. Write actions
+ * keep `portalOwnSubmission` (requester only).
+ */
+async function portalReadableSubmission(c: IntakeContext, next: Next) {
+  const identity = await portalIdentity(c.get("userId"));
+  const ref = c.req.param("ref");
+  if (!ref) return notFound("Submission not found");
+  const row = await findSubmission(ref, undefined, undefined, undefined, {
+    personId: identity.personId,
+    organisationId: identity.organisationId,
+  });
+  await requireIntakeEnabled(row.workspaceId);
+  c.set("portalPredicateSatisfied", true);
+  c.set("policyOrganisationId", identity.organisationId);
+  c.set("policyOrganisationIdSource", "row");
   await next();
 }
 
@@ -807,7 +877,7 @@ const portalDetailRoute = createRoute({
   path: "/portal/submissions/{ref}",
   tags: ["Portal submissions"],
   summary: "Get the caller's durable submission page",
-  middleware: [portalOwnSubmission] as const,
+  middleware: [portalReadableSubmission] as const,
   request: { params: submissionRefParam },
   responses: {
     200: jsonResponse("Submission page", portalSubmissionResponseSchema),
@@ -855,6 +925,77 @@ const withdrawRoute = createRoute({
       z.object({ ref: z.string(), state: z.string(), version: z.number() }),
     ),
     409: errorResponse("Triage has already started"),
+  },
+});
+
+const portalEscalateRoute = createRoute({
+  method: "post",
+  operationId: "escalatePortalSubmissionPriority",
+  path: "/portal/submissions/{ref}/escalate-priority",
+  tags: ["Portal submissions"],
+  summary: "Raise the priority of the caller's request (never lower it)",
+  middleware: [portalOwnSubmission] as const,
+  request: {
+    params: submissionRefParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: escalatePriorityBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "Updated submission page",
+      portalSubmissionResponseSchema,
+    ),
+    403: errorResponse("cannot_deescalate: a decrease is refused"),
+    404: errorResponse("Submission not found"),
+    409: errorResponse(
+      "not_escalatable, no_change or conflict: the request cannot be escalated now",
+    ),
+  },
+});
+const portalReopenRoute = createRoute({
+  method: "post",
+  operationId: "reopenPortalSubmission",
+  path: "/portal/submissions/{ref}/reopen",
+  tags: ["Portal submissions"],
+  summary: "Reopen the caller's resolved or auto-declined request",
+  middleware: [portalOwnSubmission] as const,
+  request: { params: submissionRefParam },
+  responses: {
+    200: jsonResponse(
+      "Updated submission page",
+      portalSubmissionResponseSchema,
+    ),
+    404: errorResponse("Submission not found"),
+    409: errorResponse(
+      "not_reopenable, reopen_pending_review or conflict: the request was not reopened",
+    ),
+  },
+});
+const portalSatisfactionRoute = createRoute({
+  method: "post",
+  operationId: "ratePortalSubmission",
+  path: "/portal/submissions/{ref}/satisfaction",
+  tags: ["Portal submissions"],
+  summary: "Rate (or change the rating of) a resolved request",
+  middleware: [portalOwnSubmission] as const,
+  request: {
+    params: submissionRefParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: satisfactionBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "Updated submission page",
+      portalSubmissionResponseSchema,
+    ),
+    404: errorResponse("Submission not found"),
+    409: errorResponse(
+      "not_rateable or rating_locked: the request cannot be rated now",
+    ),
   },
 });
 
@@ -1055,6 +1196,10 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
         requestType: toStaffRequestTypeRef(detail.requestType),
         version: toRequestTypeVersion(detail.version),
         messages: detail.messages.map(toSubmissionMessage),
+        // `workItemId` is already null when the caller cannot reach the linked work item.
+        satisfaction: await findSubmissionSatisfaction(
+          detail.submission.workItemId,
+        ),
       },
       200,
     );
@@ -1187,12 +1332,22 @@ const portalSubmissionRouter = apiRouter<IntakeVariables>().openapi(
       {
         ...result,
         submissions: result.submissions.map(
-          ({ submission, requestType, ref }) => ({
+          ({
+            submission,
+            requestType,
+            ref,
+            isRequester,
+            sla,
+            customerStatus,
+          }) => ({
             ref,
             state: submission.state,
             createdAt: submission.createdAt.toISOString(),
             customerVisibility: submission.customerVisibility,
             requestTypeName: requestType.name,
+            isRequester,
+            customerStatus,
+            sla,
           }),
         ),
       },
@@ -1201,23 +1356,28 @@ const portalSubmissionRouter = apiRouter<IntakeVariables>().openapi(
   },
 );
 
+async function portalProjection(
+  userId: string,
+  ref: string,
+): Promise<PortalSubmissionResponse> {
+  const identity = await portalIdentity(userId);
+  const detail = await findPortalSubmission(ref, identity.personId);
+  return {
+    ...detail,
+    submission: {
+      ...detail.submission,
+      formData: detail.submission.formData as Record<string, unknown>,
+    },
+  };
+}
+
 const portalDetailRouter = apiRouter<IntakeVariables>().openapi(
   portalDetailRoute,
-  async (c) => {
-    const identity = await portalIdentity(c.get("userId"));
-    const detail = await findPortalSubmission(
-      c.req.valid("param").ref,
-      identity.personId,
-    );
-    const response: PortalSubmissionResponse = {
-      ...detail,
-      submission: {
-        ...detail.submission,
-        formData: detail.submission.formData as Record<string, unknown>,
-      },
-    };
-    return c.json(response, 200);
-  },
+  async (c) =>
+    c.json(
+      await portalProjection(c.get("userId"), c.req.valid("param").ref),
+      200,
+    ),
 );
 
 const portalMessageRouter = apiRouter<IntakeVariables>().openapi(
@@ -1254,12 +1414,45 @@ const portalWithdrawRouter = apiRouter<IntakeVariables>().openapi(
   },
 );
 
+// CP-7 / CP-8 / CP-9: requester-only lifecycle actions; each answers with the updated projection.
+const portalLifecycleRouter = apiRouter<IntakeVariables>()
+  .openapi(portalEscalateRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    const { ref } = c.req.valid("param");
+    await escalatePortalPriority({
+      ref,
+      personId: identity.personId,
+      userId: c.get("userId"),
+      priority: c.req.valid("json").priority,
+    });
+    return c.json(await portalProjection(c.get("userId"), ref), 200);
+  })
+  .openapi(portalReopenRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    const { ref } = c.req.valid("param");
+    await reopenPortalSubmission({ ref, personId: identity.personId });
+    return c.json(await portalProjection(c.get("userId"), ref), 200);
+  })
+  .openapi(portalSatisfactionRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    const { ref } = c.req.valid("param");
+    const { rating, comment } = c.req.valid("json");
+    await ratePortalSubmission({
+      ref,
+      personId: identity.personId,
+      rating,
+      ...(comment === undefined ? {} : { comment }),
+    });
+    return c.json(await portalProjection(c.get("userId"), ref), 200);
+  });
+
 const router = requestTypeRouter
   .route("/", intakeSubmissionRouter)
   .route("/", triageActionRouter)
   .route("/", portalSubmissionRouter)
   .route("/", portalDetailRouter)
   .route("/", portalMessageRouter)
-  .route("/", portalWithdrawRouter);
+  .route("/", portalWithdrawRouter)
+  .route("/", portalLifecycleRouter);
 
 export default router;

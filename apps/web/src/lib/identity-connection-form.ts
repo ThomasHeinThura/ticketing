@@ -129,11 +129,22 @@ function validateCommon(draft: ConnectionDraft, agent: boolean) {
   return { errors, domains, rank: rank === "invalid" ? null : rank };
 }
 
-/** Creation is staff-portal only here: customer connections are configured from the organisation Identity tab. */
+/** Where a new connection is bound: the staff portal, or one customer organisation (God Mode, organisation Identity). */
+export type ConnectionTarget =
+  | { portalScope: "agent" }
+  | { portalScope: "customer"; organisationId: string };
+
+/**
+ * Creation validates the full draft. Staff connections need a role ceiling and, with JIT, a
+ * workspace; customer connections are bound to one organisation and carry neither (the API
+ * refuses a customer connection that names a workspace or a role ceiling).
+ */
 export function buildCreateBody(
   draft: ConnectionDraft,
+  target: ConnectionTarget = { portalScope: "agent" },
 ): Validation<IdentityConnectionCreateBody> {
-  const common = validateCommon(draft, true);
+  const agent = target.portalScope === "agent";
+  const common = validateCommon(draft, agent);
   const errors = [...common.errors];
   if (!UUID_PATTERN.test(draft.tenantId.trim())) errors.push("tenantId");
   if (!draft.clientSecret) errors.push("clientSecret");
@@ -141,9 +152,11 @@ export function buildCreateBody(
   return {
     ok: true,
     body: {
-      portalScope: "agent",
-      organisationId: null,
-      defaultWorkspaceId: draft.defaultWorkspaceId.trim() || null,
+      portalScope: target.portalScope,
+      organisationId: agent ? null : target.organisationId,
+      defaultWorkspaceId: agent
+        ? draft.defaultWorkspaceId.trim() || null
+        : null,
       displayName: draft.displayName.trim(),
       tenantId: draft.tenantId.trim(),
       clientId: draft.clientId.trim(),
@@ -155,7 +168,7 @@ export function buildCreateBody(
         default_role_id: draft.defaultRoleId.trim() || null,
         required_entra_app_role: draft.requiredAppRole.trim(),
       },
-      maxRoleRank: common.rank,
+      maxRoleRank: agent ? common.rank : null,
     },
   };
 }

@@ -59,6 +59,9 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "request_type.unpublished",
   "submission.claimed",
   "submission.duplicate",
+  "submission.reopened",
+  "submission.reopen_requested",
+  "satisfaction.rated",
   "comment.updated",
   "comment.deleted",
   // Invitations.

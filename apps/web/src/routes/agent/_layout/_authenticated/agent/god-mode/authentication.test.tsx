@@ -107,6 +107,14 @@ describe("Authentication providers list", () => {
     expect(screen.getByRole("link", { name: "View" })).toBeInTheDocument();
   });
 
+  it("shows a degraded provider check as a visible badge (IP-25)", async () => {
+    mocks.list.mockResolvedValue([
+      { ...staffConnection, healthState: "degraded" },
+    ]);
+    renderWithQuery(<Component />);
+    expect(await screen.findByText("Provider check degraded")).toBeVisible();
+  });
+
   it("shows an empty state with the add action", async () => {
     mocks.list.mockResolvedValue([]);
     renderWithQuery(<Component />);

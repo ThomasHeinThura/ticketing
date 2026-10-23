@@ -7,6 +7,7 @@ import { canReadNativeInboxCandidate } from "./native-inbox-reach";
 import {
   findCurrentNotificationResource,
   findNotificationPerson,
+  findWorkItemAssigneeId,
   listWorkItemWatchers,
 } from "./repository";
 
@@ -29,7 +30,8 @@ export type WorkItemRecipientPlanInput = {
   kind:
     | "work_item.assigned"
     | "work_item.unassigned"
-    | "work_item.transitioned";
+    | "work_item.transitioned"
+    | "work_item.escalated";
   assigneeId: string | null;
   previousAssigneeId: string | null;
   watchers: readonly { personId: string; muted: boolean }[];
@@ -53,7 +55,12 @@ export function planWorkItemRecipients(
   input: WorkItemRecipientPlanInput,
 ): PlannedWorkItemRecipient[] {
   const ordered: PlannedWorkItemRecipient[] = [];
-  if (input.kind === "work_item.assigned" && input.assigneeId) {
+  // `work_item.escalated` (CP-7): the current assignee and unmuted watchers are "the team".
+  if (
+    (input.kind === "work_item.assigned" ||
+      input.kind === "work_item.escalated") &&
+    input.assigneeId
+  ) {
     ordered.push({ personId: input.assigneeId, role: "assignee" });
   }
   if (
@@ -87,6 +94,11 @@ function projection(
   role: WorkItemRecipientRole,
   key: string,
 ): { title: string; body: string } {
+  if (kind === "work_item.escalated")
+    return {
+      title: "Customer raised the priority",
+      body: `The customer raised the priority of ${key}.`,
+    };
   if (role === "assignee") {
     return {
       title: "Assigned to you",
@@ -132,7 +144,8 @@ export async function resolveWorkItemEventRecipients(
   if (
     event.kind !== "work_item.assigned" &&
     event.kind !== "work_item.unassigned" &&
-    event.kind !== "work_item.transitioned"
+    event.kind !== "work_item.transitioned" &&
+    event.kind !== "work_item.escalated"
   )
     return [];
   const workItemId = nullableString(event.payload.workItemId);
@@ -143,7 +156,11 @@ export async function resolveWorkItemEventRecipients(
   const watchers = await listWorkItemWatchers(tx, workItemId);
   const planned = planWorkItemRecipients({
     kind,
-    assigneeId: nullableString(event.payload.assigneeId),
+    // An escalation payload carries priorities only; the audience is the stored assignee.
+    assigneeId:
+      kind === "work_item.escalated"
+        ? await findWorkItemAssigneeId(tx, workItemId)
+        : nullableString(event.payload.assigneeId),
     previousAssigneeId: nullableString(event.payload.previousAssigneeId),
     watchers,
     actorPersonId: null,

@@ -1,0 +1,483 @@
+{
+	"verdict": "pass_with_conditions",
+	"summary": "PASS WITH CONDITIONS (P3 round 1). No critical or high issues. Portal isolation holds: portalReadablePredicate ANDs organisation equality into every branch; private requests and other organisations get a constant 404; all writes are requester-only and tested.\nEscalate-only is enforced server-side (403/409, DB CHECK on priority). Reopen uses only the system-actor is_reopen path with the window checked first. Ratings are unique per request and person, with DB CHECKs, and only the requester can rate.\nSCIM: 2 MiB 413, a per-connection limit and an anonymous failure limit; events carry no secrets. The health job is SSRF-safe (Entra-pinned, UUID tenant, redirect:error, timeout). The Identity tab is instance-admin only on both server and UI.\nMediums: colleague view broken for attachments (T1); resolved requests shown as 'In progress' and raw workflow states (T2); escalation skips the work_item.updated bus event (T3); reopen flag spam, missing audit and wrong copy (T4); 'Response due' label on a resolution target (T5); no organisation navigation (T6); no browser evidence (T7); no participant-add route (T9).\nConditions: C1 browser-verify all new screens at desktop and 375 px (T7); C2 fix T1; C3 fix T2; C4 fix T4 (dedupe and copy); C5 fix T3 or accept it with a test.\nRequirements (53): 34 met, 9 partial, 10 blocked (5 external Entra, 5 contract hold: CP-11/12/13, IP-9, IP-29), 0 not_met. Remaining gaps are carried as listed.",
+	"findings": [
+		{
+			"id": "T1",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "CP-16",
+			"file": "apps/web/src/routes/portal/submissions/$ref.tsx:57-60,168,393-406,469; apps/api/src/attachment/repository.ts:250,308,344,357",
+			"problem": "The detail page now opens to organisation colleagues and participants (portalReadableSubmission, intake/index.ts:405), but the attachment list/download/presign APIs still filter on submission.requester_id. The page fetches attachments unconditionally and canUpload is not gated on isRequester.",
+			"impact": "A colleague viewing an organisation-visible request always sees the red 'Could not load attachments' alert with Retry, and on new/clarifying requests sees file upload controls that 404. Broken read-only UX on the core CP-16 surface; public files of an organisation-visible request are not readable by colleagues.",
+			"recommended_fix": "Either extend the portal attachment read path (list + download only) to portalReadablePredicate, or skip the attachments query for !isRequester and render an empty/read-only state; gate canUpload on requester. Add a web test for the colleague view and an API test for colleague attachment read."
+		},
+		{
+			"id": "T2",
+			"severity": "medium",
+			"category": "correctness",
+			"requirement": "CP-5",
+			"file": "apps/web/src/lib/portal-request.ts:26-40; apps/web/src/routes/portal/requests.tsx (PortalRequestState); apps/web/src/routes/portal/submissions/$ref.tsx:177-183,274; i18n/en-US.json:3463",
+			"problem": "List rows map submission.state, which stays 'accepted' for the life of the work item, to 'In progress'. The detail subtitle and card badge show record.workItem.state, the raw workflow state template name.",
+			"impact": "A resolved request appears as 'In progress' on Home and My requests, contradicting the Rate/Reopen actions on its detail page. Customers see internal workflow state names (e.g. 'Triage', 'Waiting for L2'), which CP-5 forbids.",
+			"recommended_fix": "Project a customer status server-side from the work item's state group/resolvedAt (e.g. Received / In progress / Waiting for you / Resolved / Closed) on both list rows and detail, and render only that. Add a test that a resolved request is not 'In progress'."
+		},
+		{
+			"id": "T3",
+			"severity": "medium",
+			"category": "correctness",
+			"requirement": "CP-7",
+			"file": "apps/api/src/intake/portal-actions.ts:114-176; apps/api/src/work-item/controllers/update-work-item.ts:262-327",
+			"problem": "Customer escalation updates work_item.priority directly and records only a work_item.escalated native event. The canonical priority-change path also records the work_item.updated native event and calls publishEvent('work_item.updated', changes).",
+			"impact": "Webhooks, automations and any staff realtime consumer keyed on work_item.updated miss a customer-driven priority change. Staff boards and lists may show the old priority until reload, and integrations diverge from activity history.",
+			"recommended_fix": "After commit, also publishEvent('work_item.updated', {changes:[{field:'priority',...,visibility}]}) and the matching realtime hint, or document and test that work_item.escalated is consumed everywhere work_item.updated is. Add an integration assertion."
+		},
+		{
+			"id": "T4",
+			"severity": "medium",
+			"category": "security",
+			"requirement": "CP-8 / WF-21",
+			"file": "apps/api/src/intake/portal-actions.ts:249-272; apps/api/src/workflow/customer-reopen.ts:124-136; apps/api/src/intake/repository.ts:1879-1884; i18n/en-US.json:3531",
+			"problem": "When the workflow cannot reopen (no is_reopen edge, blocked, or no executor), each press writes another internal reopen_requested activity row and returns reopen_pending_review. canReopen stays true, so the button remains, and nothing rate-limits or dedupes. The resolved-item reopen also writes no audit row naming the customer, because the transition actor is system. The en-US copy says the request 'was already reopened', the opposite of what happened.",
+			"impact": "A customer can flood the staff activity feed with 'Reopen needs review' flags. The audit trail cannot show who asked for a reopen, and the customer receives inaccurate copy.",
+			"recommended_fix": "Dedupe: skip writing a new flag while an unresolved reopen_requested row exists for the item, or hide canReopen after pending_review. Append an audit row (actor = customer person, action submission.reopen_requested) in the portal path. Fix the copy to 'We could not reopen this automatically; our team has been asked to review it.'"
+		},
+		{
+			"id": "T5",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "CP-6",
+			"file": "apps/api/src/intake/portal-sla.ts:7-10; apps/web/src/components/portal/portal-sla-status.tsx:35-41; i18n/en-US.json:3492-3501",
+			"problem": "PortalSla.dueAt is documented as 'the due instant of the resolution target', but every due string reads 'Response due by {{time}}'.",
+			"impact": "Customers are told a response is due when the time shown is the resolution target, which over-promises or misleads.",
+			"recommended_fix": "Label it as resolution ('Expected resolution by …'), or expose a metric discriminator ({metric:'response'|'resolution'}) and choose the copy accordingly."
+		},
+		{
+			"id": "T6",
+			"severity": "medium",
+			"category": "gap",
+			"requirement": "IP-5 / CP-17",
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/organisations/$id/identity.tsx:53-60; apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx (customer row link)",
+			"problem": "No God Mode organisation list or detail exists. The Identity tab is linked only from an existing customer connection's row. To create an organisation's first connection, an admin has to type /agent/god-mode/organisations/<id>/identity with an organisation id they cannot discover in the UI. The tab's Back button goes to Authentication.",
+			"impact": "An administrator cannot configure customer SSO for a new organisation through the product. The roadmap P3 row explicitly includes God Mode identity/organisation navigation.",
+			"recommended_fix": "Add the God Mode Organisations list and detail using Kaneo settings and table components, with an Identity tab. Until then, record the gap as carried to P4."
+		},
+		{
+			"id": "T7",
+			"severity": "medium",
+			"category": "test",
+			"requirement": "AGENTS.md:20,48",
+			"file": "docs/report/screens/p3-portal-my-requests.jpg; docs/report/screens/p3-portal-request-detail.jpg",
+			"problem": "Browser evidence covers only a 'Received' request with Withdraw, and the My requests list. The Identity tab, the orientation alert, Raise priority/Reopen/Rate, an accepted request with SLA, the colleague read-only view and the 375 px viewport (contract UX E2E) have never been rendered in a browser. The existing detail screenshot shows bare 'Conversation' and 'Attachments' headings with no empty state.",
+			"impact": "AGENTS.md makes Kaneo parity and 'nothing ugly' a phase gate. T1 and T2 would have been visible in a browser.",
+			"recommended_fix": "On persisted SIT data at desktop and 375 px, capture: an accepted request with SLA, the priority popover, a refused-action alert, rating before and after, reopen, the colleague read-only view, orientation shown and dismissed, and the Identity tab in create and edit modes. Add empty-state text for Conversation and Attachments."
+		},
+		{
+			"id": "T8",
+			"severity": "low",
+			"category": "security",
+			"requirement": "CP-16 / CP-9",
+			"file": "apps/api/src/intake/repository.ts:1890-1896",
+			"problem": "satisfaction (score and free-text comment) is returned to every reader of the projection, including organisation colleagues and participants.",
+			"impact": "A requester's private feedback about the service is disclosed to colleagues.",
+			"recommended_fix": "Return satisfaction only when isRequester; add the colleague case to the response-shape test."
+		},
+		{
+			"id": "T9",
+			"severity": "medium",
+			"category": "gap",
+			"requirement": "CP-16",
+			"file": "docs/technical/feature-contracts-p3.md:265 (POST /api/portal/requests/{ref}/participants); apps/api/src/intake/repository.ts:1478-1500",
+			"problem": "The read predicate honours request_participant, but no route or UI adds a participant. Participants are also refused when replying (messages remain own_submission).",
+			"impact": "'private — visible only to the requester and explicitly added participants' collapses to requester-only. The participant branch is reachable only through direct database inserts, as in the tests.",
+			"recommended_fix": "Add the requester-only participant add/remove route (same-organisation customers only, constant 404 otherwise, audited) and a small Kaneo member-picker UI, or carry it explicitly."
+		},
+		{
+			"id": "T10",
+			"severity": "low",
+			"category": "security",
+			"requirement": "IP-14",
+			"file": "apps/api/src/identity/scim-limits.ts:65-104,107-121; apps/api/src/identity/scim-protocol.ts:73-108",
+			"problem": "(a) Once 10k live failure buckets exist, hit() refuses to create new keys and isExhausted() returns false for unknown keys, so fresh client addresses (e.g. rotated IPv6) are never limited. (b) If no trusted IP can be resolved, every caller shares the 'no-trusted-ip' bucket, and 20 bad tokens per minute lock out valid provisioning, because the exhausted check runs before credential lookup. (c) Counters are per process, so N replicas give N times the limits.",
+			"impact": "The anonymous-class limit can be bypassed at scale or turned into a shared lockout when the proxy trust depth is misconfigured. This is a residual risk; the bearer tokens themselves are high-entropy.",
+			"recommended_fix": "When the table is full, treat new keys as limited (fail closed for failures). Log or alert on the no-trusted-ip fallback and do not pre-block authenticated attempts from that shared bucket. Move to a shared store before running multiple replicas (P7)."
+		},
+		{
+			"id": "T11",
+			"severity": "low",
+			"category": "security",
+			"requirement": "CP-16",
+			"file": "apps/api/src/intake/policy.ts:104-107; apps/api/src/intake/index.ts:405-418,870",
+			"problem": "GET /api/portal/submissions/{ref} still declares predicate own_submission, but it is now served by portalReadableSubmission with own_request semantics (requester, participant or organisation colleague). The generated permission matrix therefore misdescribes the route.",
+			"impact": "Security reviewers and the permission matrix understate who can read the page.",
+			"recommended_fix": "Declare own_request (or a dedicated readable_submission predicate) and regenerate the matrix and OpenAPI."
+		},
+		{
+			"id": "T12",
+			"severity": "low",
+			"category": "correctness",
+			"requirement": "IP-25",
+			"file": "apps/api/src/identity/connection-health.ts:58-65,86-94",
+			"problem": "The query is limited to 200 connections with no ordering or rotation. health_state is not reset when an admin changes the tenant, and the update does not compare the tenantId that was probed. There is no God Mode -> Health page; the flag appears only as a badge on the Authentication list. SSRF reviewed: the probe uses only a UUID-validated tenant on the pinned login.microsoftonline.com host with redirect:'error' and a timeout (oidc-provider.ts:53-66), so no SSRF was found.",
+			"impact": "With more than 200 connections, some are never checked. A just-edited connection can show the previous tenant's health for up to 10 minutes.",
+			"recommended_fix": "Order by health_checked_at NULLS FIRST, reset health_state to 'unknown' on tenant change, and include tenantId in the update predicate."
+		},
+		{
+			"id": "T13",
+			"severity": "low",
+			"category": "security",
+			"requirement": "CP-7 / CP-8 / CP-9",
+			"file": "apps/api/src/intake/portal-actions.ts:53-86; apps/api/src/intake/repository.ts:1810-1818",
+			"problem": "The write actions lock on submission.requester_id only. The read projection additionally requires same-organisation and work_item.requester_id = submission requester (and ignores work_item.customer_visibility). Write and read predicates differ.",
+			"impact": "No exploitable path exists today, because neither the work-item requester nor the person's organisation is mutable through the API. If either becomes editable, a customer could escalate, rate or reopen an item they can no longer see.",
+			"recommended_fix": "In lockOwnSubmission and lockLinkedWorkItem, also assert submission.organisation_id = person's organisation and work_item.requester_id = person."
+		},
+		{
+			"id": "T14",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "CP-9",
+			"file": "apps/api/src/intake/index.ts:1186-1192",
+			"problem": "The staff-visible satisfaction rating exists only in the staff submission API response; no agent UI shows it.",
+			"impact": "Staff cannot see ratings in the product.",
+			"recommended_fix": "Show the rating in the Kaneo work-item and submission detail (carry to P5 reports if deferred)."
+		}
+	],
+	"requirements": [
+		{
+			"id": "CP-1",
+			"state": "met",
+			"note": "portalReadablePredicate (repository.ts:1478) ANDs organisation equality into every branch; write actions requester-only (portal-actions.ts:53-74). Tested portal-p3-lifecycle CP-16 block."
+		},
+		{
+			"id": "CP-2",
+			"state": "met",
+			"note": "Constant 404 for other org/private/unknown; lifecycle test compares private vs unknown body text."
+		},
+		{
+			"id": "CP-3",
+			"state": "met",
+			"note": "findSubmission filters comment.visibility='public' and deletedAt server-side; now tested (portal-p3-lifecycle 'never shows an internal comment')."
+		},
+		{
+			"id": "CP-4",
+			"state": "met",
+			"note": "portalMessageAuthors names staff only on public messages; assignee absent; lifecycle test asserts assignee hidden and customer never named."
+		},
+		{
+			"id": "CP-5",
+			"state": "partial",
+			"note": "Submission states mapped to customer words, but accepted rows read 'In progress' even after resolution, and the detail subtitle/badge show the raw workflow state template name (finding T2)."
+		},
+		{
+			"id": "CP-6",
+			"state": "met",
+			"note": "Due time + plain state on list rows and detail, no percentage/policy; label says 'Response due' although dueAt is the resolution target (T5)."
+		},
+		{
+			"id": "CP-7",
+			"state": "met",
+			"note": "Decrease 403 cannot_deescalate, equal 409, activity+audit+work_item.escalated to assignee/watchers; UI offers only higher. Canonical work_item.updated bus event not published (T3). No Playwright portal-cannot-deescalate.spec.ts; integration test covers the 403."
+		},
+		{
+			"id": "CP-8",
+			"state": "met",
+			"note": "Window from instance_setting via findReopenWindowDays, system-actor is_reopen via requestCustomerReopen (SLA resume from P2 executor); eligibility checked before the flag. Repeat-press flag spam and missing customer attribution (T4)."
+		},
+		{
+			"id": "CP-9",
+			"state": "met",
+			"note": "1..5 + optional comment, unique (work_item_id, person_id), change locked after window, DB CHECKs (0137). Staff see it via API only (no staff UI)."
+		},
+		{
+			"id": "CP-10",
+			"state": "met",
+			"note": "Same /submissions/{ref} URL; conversion message now customer-safe ('temporarily unavailable')."
+		},
+		{
+			"id": "CP-11",
+			"state": "blocked",
+			"note": "Contract hold: CP-11/CP-12 adapter contract (feature-contracts-p3.md open questions). Owner decision needed."
+		},
+		{
+			"id": "CP-12",
+			"state": "blocked",
+			"note": "Contract hold, as CP-11."
+		},
+		{
+			"id": "CP-13",
+			"state": "blocked",
+			"note": "No invitation path exists; depends on CP-11 contract."
+		},
+		{
+			"id": "CP-14",
+			"state": "partial",
+			"note": "Dismissible info Alert on portal home (portal-orientation.tsx), not a modal; persisted per browser per user in localStorage, not per account; never seen in a browser."
+		},
+		{
+			"id": "CP-16",
+			"state": "partial",
+			"note": "Predicate (requester | participant | organisation-visible, always same org) correct and tested for list/detail/writes. Gaps: colleague attachments 404 + upload controls (T1); no participant-add route/UI so 'explicitly added participants' cannot be created (T9); detail policy metadata still own_submission (T11)."
+		},
+		{
+			"id": "CP-17",
+			"state": "partial",
+			"note": "Organisation Identity tab exists (instance-admin, GET /api/instance/organisations/{id}/identity) and creates customer-bound connections; no organisation navigation (T6); customers cannot start org SSO from portal sign-in (discovery-route contract hold)."
+		},
+		{
+			"id": "CP-18",
+			"state": "partial",
+			"note": "Frozen local email-first sign-in scope met (pre-existing); typed-domain SSO half blocked on discovery-route contract."
+		},
+		{
+			"id": "CP-15",
+			"state": "met",
+			"note": "Pre-existing withdraw; now gated to requester (canWithdraw && isRequester)."
+		},
+		{
+			"id": "CP-19",
+			"state": "met",
+			"note": "Pre-existing host/origin isolation; unchanged."
+		},
+		{
+			"id": "IP-1",
+			"state": "met",
+			"note": "Pre-existing; new UI binds customer connections to one organisation (identity-connection-form.ts buildCreateBody)."
+		},
+		{
+			"id": "IP-2",
+			"state": "met",
+			"note": "Pre-existing, tested."
+		},
+		{
+			"id": "IP-3",
+			"state": "met",
+			"note": "Pre-existing, tested."
+		},
+		{
+			"id": "IP-4",
+			"state": "met",
+			"note": "Pre-existing, tested."
+		},
+		{
+			"id": "IP-5",
+			"state": "partial",
+			"note": "Instance-admin only server-side (instance/policy.ts:123, requireCurrentInstanceAdmin) and UI denial; God Mode -> Organisations navigation absent, tab reachable only by link (T6)."
+		},
+		{
+			"id": "IP-6",
+			"state": "met",
+			"note": "Pre-existing step-up + audit."
+		},
+		{
+			"id": "IP-7",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-8",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-9",
+			"state": "blocked",
+			"note": "Typed-domain home-realm routing needs the discovery-route contract (feature-contracts-p3.md open questions)."
+		},
+		{
+			"id": "IP-10",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-26",
+			"state": "met",
+			"note": "Pre-existing tenant-specific issuer check."
+		},
+		{
+			"id": "IP-27",
+			"state": "blocked",
+			"note": "External: real Entra tenant acceptance."
+		},
+		{
+			"id": "IP-29",
+			"state": "blocked",
+			"note": "Limited SSO disclosure flow depends on the discovery-route contract."
+		},
+		{
+			"id": "IP-11",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-12",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-13",
+			"state": "blocked",
+			"note": "External: real Entra provisioning acceptance."
+		},
+		{
+			"id": "IP-14",
+			"state": "met",
+			"note": "Strict schemas (pre-existing) + 2 MiB SCIM 413 tooLarge + per-connection 600/min + anonymous-class failure limit (scim-limits.ts, scim-protocol.ts:73-108). Limits are in-memory per process; limiter edge cases (T10)."
+		},
+		{
+			"id": "IP-15",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-16",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-17",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-31",
+			"state": "blocked",
+			"note": "External: real Entra deviations."
+		},
+		{
+			"id": "IP-32",
+			"state": "blocked",
+			"note": "External: real Entra duplicate behaviour."
+		},
+		{
+			"id": "IP-18",
+			"state": "partial",
+			"note": "Refusal on cross-connection email exists; authenticated, audited link-confirmation flow not built (no contract)."
+		},
+		{
+			"id": "IP-19",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-30",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-20",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-21",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-22",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-23",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-28",
+			"state": "blocked",
+			"note": "External: real Entra group re-derivation acceptance."
+		},
+		{
+			"id": "IP-34",
+			"state": "met",
+			"note": "Pre-existing."
+		},
+		{
+			"id": "IP-24",
+			"state": "partial",
+			"note": "SCIM bearer failures attributable to a connection now write auth.failed with a bounded reason and no secret (scim-auth-events.ts), budgeted 10/min/connection; unknown/rotated-token failures write no row because provisioning_event.identity_connection_id is NOT NULL."
+		},
+		{
+			"id": "IP-25",
+			"state": "partial",
+			"note": "plugin-health job every 10 min (scheduler/index.ts), SSRF-safe Entra-pinned loader, degraded badge on God Mode Authentication list; no God Mode -> Health page, max 200 connections unordered (T12)."
+		},
+		{
+			"id": "IP-33",
+			"state": "met",
+			"note": "Pre-existing."
+		}
+	],
+	"carry_to_later_phases": [
+		{
+			"item": "CP-11/CP-12/CP-13 customer invitation and admission (needs the CP-11/12 adapter contract from Thomas)",
+			"phase": "P4 (after the contract decision)"
+		},
+		{
+			"item": "CP-17/CP-18 SSO half, IP-9 and IP-29: typed-domain customer SSO routing and limited disclosure (needs the discovery-route contract)",
+			"phase": "P4 (after the contract decision)"
+		},
+		{
+			"item": "IP-18 authenticated, audited cross-connection link confirmation",
+			"phase": "P4"
+		},
+		{
+			"item": "Real Entra acceptance IP-13/27/28/31/32 (all 25 cases)",
+			"phase": "external (when a tenant is available)"
+		},
+		{
+			"item": "T6 God Mode Organisations list and detail navigation, plus an identity test-connection endpoint",
+			"phase": "P4"
+		},
+		{
+			"item": "T9 requester-only participant add/remove route and UI; participants replying",
+			"phase": "P4"
+		},
+		{
+			"item": "Portal notification surface for customers, and the auto-decline thread message (IQ-12, carried from P2 R7)",
+			"phase": "P4"
+		},
+		{
+			"item": "WF-21 upload-to-resolved reopen call site (carried from P2; portal upload stays limited to new/clarifying)",
+			"phase": "P4"
+		},
+		{
+			"item": "IP-24 events for unknown or rotated SCIM tokens (needs a nullable connection id or a separate anonymous sink)",
+			"phase": "P4"
+		},
+		{
+			"item": "Portal projects/account screens and own-backlog rank (roadmap P3 row, not in the 53 indexed requirements)",
+			"phase": "P4"
+		},
+		{
+			"item": "P2 carries not re-verified in P3: SLA-18 triage-row SLA badge, IQ-5/IQ-19/IQ-20/IQ-21, RT-9",
+			"phase": "P4"
+		},
+		{
+			"item": "CP-14 per-account (not per-browser) orientation dismissal",
+			"phase": "P7"
+		},
+		{
+			"item": "T10 shared-store SCIM rate limiting for multi-replica deployments",
+			"phase": "P7"
+		},
+		{
+			"item": "T14 staff display of satisfaction ratings and CSAT reporting",
+			"phase": "P5"
+		},
+		{
+			"item": "T8, T11, T12, T13 low hardening items",
+			"phase": "P4"
+		}
+	],
+	"unverified": [
+		"No new P3 screen was observed in a browser: Identity tab, orientation alert, escalate/reopen/rate, accepted request with SLA, colleague read-only view, 375 px layout.",
+		"Test counts and green suites are the coordinator's claims; I did not rerun them (read-only review).",
+		"Whether the staff web reacts to the work_item.escalated realtime hint (T3) was not traced in apps/web.",
+		"Multi-replica limiter behaviour and real proxy trust-depth configuration on SIT were not checked.",
+		"End-to-end SLA clock resume after a portal reopen relies on the P2 system executor and was not re-traced.",
+		"Locale files carry English copies of the new keys in all 19 locales; that matches the repo's existing convention and was not treated as a finding."
+	]
+}

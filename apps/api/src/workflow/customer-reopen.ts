@@ -1,7 +1,11 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gte } from "drizzle-orm";
 import db from "../database";
 import type { Executor } from "../database/executor";
-import { instanceSettingTable, workItemTable } from "../database/schema";
+import {
+  activityTable,
+  instanceSettingTable,
+  workItemTable,
+} from "../database/schema";
 import { recordWorkItemActivity } from "../work-item/activity";
 import { getSystemTransitionExecutor } from "./system-transition";
 
@@ -22,7 +26,22 @@ export type CustomerReopenSource = "reply" | "upload" | "portal_reopen";
 export type CustomerReopenResult =
   | { kind: "reopened" }
   | { kind: "not_closed" }
-  | { kind: "flagged"; reason: string };
+  /**
+   * `duplicate` is true when an unresolved flag from an earlier refusal already exists for
+   * this resolution, so no further staff flag was written (one flag per pending refusal).
+   */
+  | { kind: "flagged"; reason: string; duplicate: boolean };
+
+/** `instance_setting.reopen_window_days` (CP-8/CP-9), defaulting when the instance row is absent. */
+export async function findReopenWindowDays(
+  executor: Executor = db,
+): Promise<number> {
+  const [setting] = await executor
+    .select({ days: instanceSettingTable.reopenWindowDays })
+    .from(instanceSettingTable)
+    .limit(1);
+  return setting?.days ?? DEFAULT_REOPEN_WINDOW_DAYS;
+}
 
 export function isWithinReopenWindow(
   resolvedAt: Date,
@@ -77,11 +96,7 @@ export async function requestCustomerReopen(input: {
     .where(eq(workItemTable.id, input.workItemId))
     .limit(1);
   if (!item?.resolvedAt) return { kind: "not_closed" };
-  const [setting] = await db
-    .select({ days: instanceSettingTable.reopenWindowDays })
-    .from(instanceSettingTable)
-    .limit(1);
-  const windowDays = setting?.days ?? DEFAULT_REOPEN_WINDOW_DAYS;
+  const windowDays = await findReopenWindowDays();
 
   let reason: string | null = null;
   if (!isWithinReopenWindow(item.resolvedAt, now, windowDays)) {
@@ -107,17 +122,41 @@ export async function requestCustomerReopen(input: {
       }
     }
   }
-  await recordWorkItemActivity(db, [
-    {
-      workspaceId: item.workspaceId,
-      workItemId: input.workItemId,
-      actorId: null,
-      actorType: "system",
-      verb: "reopen_requested",
-      payload: { source: input.source, reason },
-      // Internal by CA-7 (an unmapped verb): staff-facing flag only.
-      visibility: "internal",
-    },
-  ]);
-  return { kind: "flagged", reason };
+  // One flag per pending refusal: an earlier `reopen_requested` row written since this
+  // resolution (`created_at >= resolved_at`; a later re-resolution starts a new cycle) is
+  // still unresolved, so repeat presses add nothing. The item row lock serialises presses.
+  const duplicate = await db.transaction(async (tx) => {
+    await tx
+      .select({ id: workItemTable.id })
+      .from(workItemTable)
+      .where(eq(workItemTable.id, input.workItemId))
+      .for("update")
+      .limit(1);
+    const [existing] = await tx
+      .select({ id: activityTable.id })
+      .from(activityTable)
+      .where(
+        and(
+          eq(activityTable.workItemId, input.workItemId),
+          eq(activityTable.verb, "reopen_requested"),
+          gte(activityTable.createdAt, item.resolvedAt as Date),
+        ),
+      )
+      .limit(1);
+    if (existing) return true;
+    await recordWorkItemActivity(tx, [
+      {
+        workspaceId: item.workspaceId,
+        workItemId: input.workItemId,
+        actorId: null,
+        actorType: "system",
+        verb: "reopen_requested",
+        payload: { source: input.source, reason },
+        // Internal by CA-7 (an unmapped verb): staff-facing flag only.
+        visibility: "internal",
+      },
+    ]);
+    return false;
+  });
+  return { kind: "flagged", reason, duplicate };
 }

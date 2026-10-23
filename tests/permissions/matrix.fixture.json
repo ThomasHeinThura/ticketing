@@ -8520,7 +8520,109 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"POST /api/portal/submissions/{ref}/escalate-priority": {
+			"instance_admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"owner": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"manager": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"lead": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"member": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"viewer": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			}
+		},
 		"POST /api/portal/submissions/{ref}/messages": {
+			"instance_admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"owner": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"manager": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"lead": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"member": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"viewer": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"POST /api/portal/submissions/{ref}/reopen": {
+			"instance_admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"owner": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"manager": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"lead": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"member": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"viewer": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"POST /api/portal/submissions/{ref}/satisfaction": {
 			"instance_admin": {
 				"inReach": "403 portal_required",
 				"outOfReach": "403 portal_required"

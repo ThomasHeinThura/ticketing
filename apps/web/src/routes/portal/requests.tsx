@@ -4,7 +4,6 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Badge,
   Button,
   Card,
   CardContent,
@@ -21,7 +20,10 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import { PortalRequestState } from "@/components/portal/portal-request-state";
+import { PortalSlaStatus } from "@/components/portal/portal-sla-status";
 import { getPortalSubmissions } from "@/fetchers/intake";
+import { readPortalSla } from "@/lib/portal-request";
 import { parsePortalRequestsSearch, routes } from "@/lib/routes";
 
 export const Route = createFileRoute("/requests")({
@@ -124,6 +126,7 @@ function PortalRequestsPage() {
                 <TableHead>{t("requests.reference")}</TableHead>
                 <TableHead>{t("requests.type")}</TableHead>
                 <TableHead>{t("requests.status")}</TableHead>
+                <TableHead>{t("requests.due")}</TableHead>
                 <TableHead>{t("requests.visibility")}</TableHead>
                 <TableHead>{t("requests.submitted")}</TableHead>
               </TableRow>
@@ -142,7 +145,17 @@ function PortalRequestsPage() {
                   </TableCell>
                   <TableCell>{sub.requestTypeName}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{sub.state}</Badge>
+                    <PortalRequestState
+                      state={sub.state}
+                      customerStatus={
+                        (sub as { customerStatus?: string }).customerStatus
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <PortalSlaStatus
+                      sla={readPortalSla((sub as { sla?: unknown }).sla)}
+                    />
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {sub.customerVisibility === "organisation"

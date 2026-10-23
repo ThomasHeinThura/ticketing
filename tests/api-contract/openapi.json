@@ -32548,6 +32548,58 @@
                           },
                           "requestTypeName": {
                             "type": "string"
+                          },
+                          "isRequester": {
+                            "type": "boolean"
+                          },
+                          "customerStatus": {
+                            "type": "string",
+                            "enum": [
+                              "received",
+                              "need_more_info",
+                              "in_progress",
+                              "resolved",
+                              "declined",
+                              "closed",
+                              "withdrawn"
+                            ]
+                          },
+                          "sla": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "on_track",
+                                  "at_risk",
+                                  "breached",
+                                  "met",
+                                  "missed"
+                                ]
+                              },
+                              "dueAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              },
+                              "metric": {
+                                "type": "string",
+                                "enum": [
+                                  "first_response",
+                                  "resolution"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "state",
+                              "dueAt",
+                              "metric"
+                            ]
                           }
                         },
                         "required": [
@@ -32555,7 +32607,10 @@
                           "state",
                           "createdAt",
                           "customerVisibility",
-                          "requestTypeName"
+                          "requestTypeName",
+                          "isRequester",
+                          "customerStatus",
+                          "sla"
                         ]
                       }
                     },
@@ -33055,6 +33110,32 @@
                     },
                     "ref": {
                       "type": "string"
+                    },
+                    "satisfaction": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "rating": {
+                          "type": "integer"
+                        },
+                        "comment": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ratedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "rating",
+                        "comment",
+                        "ratedAt"
+                      ]
                     }
                   },
                   "required": [
@@ -33062,7 +33143,8 @@
                     "requestType",
                     "version",
                     "messages",
-                    "ref"
+                    "ref",
+                    "satisfaction"
                   ]
                 }
               }
@@ -33785,8 +33867,66 @@
                         "createdAt"
                       ]
                     },
+                    "customerStatus": {
+                      "type": "string",
+                      "enum": [
+                        "received",
+                        "need_more_info",
+                        "in_progress",
+                        "resolved",
+                        "declined",
+                        "closed",
+                        "withdrawn"
+                      ]
+                    },
+                    "isRequester": {
+                      "type": "boolean"
+                    },
+                    "canViewAttachments": {
+                      "type": "boolean"
+                    },
+                    "canUpload": {
+                      "type": "boolean"
+                    },
                     "canWithdraw": {
                       "type": "boolean"
+                    },
+                    "canEscalate": {
+                      "type": "boolean"
+                    },
+                    "canReopen": {
+                      "type": "boolean"
+                    },
+                    "canRate": {
+                      "type": "boolean"
+                    },
+                    "satisfaction": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "rating": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "comment": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ratedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "rating",
+                        "comment",
+                        "ratedAt"
+                      ]
                     },
                     "requestType": {
                       "type": "object",
@@ -33870,14 +34010,18 @@
                         "description": {
                           "type": "string"
                         },
-                        "state": {
-                          "type": "string"
-                        },
                         "priority": {
                           "type": [
                             "string",
                             "null"
                           ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
                         },
                         "sla": {
                           "type": [
@@ -33901,19 +34045,27 @@
                                 "null"
                               ],
                               "format": "date-time"
+                            },
+                            "metric": {
+                              "type": "string",
+                              "enum": [
+                                "first_response",
+                                "resolution"
+                              ]
                             }
                           },
                           "required": [
                             "state",
-                            "dueAt"
+                            "dueAt",
+                            "metric"
                           ]
                         }
                       },
                       "required": [
                         "title",
                         "description",
-                        "state",
                         "priority",
+                        "resolvedAt",
                         "sla"
                       ]
                     },
@@ -33926,7 +34078,20 @@
                             "type": "string"
                           },
                           "actorType": {
-                            "type": "string"
+                            "type": "string",
+                            "enum": [
+                              "customer",
+                              "triager"
+                            ]
+                          },
+                          "authorName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "mine": {
+                            "type": "boolean"
                           },
                           "body": {
                             "type": "string"
@@ -33939,6 +34104,8 @@
                         "required": [
                           "id",
                           "actorType",
+                          "authorName",
+                          "mine",
                           "body",
                           "createdAt"
                         ]
@@ -33948,7 +34115,15 @@
                   "required": [
                     "ref",
                     "submission",
+                    "customerStatus",
+                    "isRequester",
+                    "canViewAttachments",
+                    "canUpload",
                     "canWithdraw",
+                    "canEscalate",
+                    "canReopen",
+                    "canRate",
+                    "satisfaction",
                     "requestType",
                     "version",
                     "workItem",
@@ -34135,6 +34310,1105 @@
           },
           "409": {
             "description": "Triage has already started",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/submissions/{ref}/escalate-priority": {
+      "post": {
+        "operationId": "escalatePortalSubmissionPriority",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "Raise the priority of the caller's request (never lower it)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high",
+                      "urgent"
+                    ]
+                  }
+                },
+                "required": [
+                  "priority"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated submission page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string"
+                    },
+                    "submission": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string"
+                        },
+                        "formData": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "customerVisibility": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "formData",
+                        "customerVisibility",
+                        "createdAt"
+                      ]
+                    },
+                    "customerStatus": {
+                      "type": "string",
+                      "enum": [
+                        "received",
+                        "need_more_info",
+                        "in_progress",
+                        "resolved",
+                        "declined",
+                        "closed",
+                        "withdrawn"
+                      ]
+                    },
+                    "isRequester": {
+                      "type": "boolean"
+                    },
+                    "canViewAttachments": {
+                      "type": "boolean"
+                    },
+                    "canUpload": {
+                      "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
+                    },
+                    "canEscalate": {
+                      "type": "boolean"
+                    },
+                    "canReopen": {
+                      "type": "boolean"
+                    },
+                    "canRate": {
+                      "type": "boolean"
+                    },
+                    "satisfaction": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "rating": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "comment": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ratedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "rating",
+                        "comment",
+                        "ratedAt"
+                      ]
+                    },
+                    "requestType": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "icon": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "group": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "description",
+                        "icon",
+                        "group"
+                      ]
+                    },
+                    "version": {
+                      "type": "object",
+                      "properties": {
+                        "formSchema": {
+                          "type": "object",
+                          "properties": {
+                            "fields": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "multiple": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "type",
+                                  "label"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "fields"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "formSchema"
+                      ]
+                    },
+                    "workItem": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "priority": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        },
+                        "sla": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "on_track",
+                                "at_risk",
+                                "breached",
+                                "met",
+                                "missed"
+                              ]
+                            },
+                            "dueAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "metric": {
+                              "type": "string",
+                              "enum": [
+                                "first_response",
+                                "resolution"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "dueAt",
+                            "metric"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "description",
+                        "priority",
+                        "resolvedAt",
+                        "sla"
+                      ]
+                    },
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "actorType": {
+                            "type": "string",
+                            "enum": [
+                              "customer",
+                              "triager"
+                            ]
+                          },
+                          "authorName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "mine": {
+                            "type": "boolean"
+                          },
+                          "body": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "actorType",
+                          "authorName",
+                          "mine",
+                          "body",
+                          "createdAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "ref",
+                    "submission",
+                    "customerStatus",
+                    "isRequester",
+                    "canViewAttachments",
+                    "canUpload",
+                    "canWithdraw",
+                    "canEscalate",
+                    "canReopen",
+                    "canRate",
+                    "satisfaction",
+                    "requestType",
+                    "version",
+                    "workItem",
+                    "messages"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "cannot_deescalate: a decrease is refused",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Submission not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "not_escalatable, no_change or conflict: the request cannot be escalated now",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/submissions/{ref}/reopen": {
+      "post": {
+        "operationId": "reopenPortalSubmission",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "Reopen the caller's resolved or auto-declined request",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated submission page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string"
+                    },
+                    "submission": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string"
+                        },
+                        "formData": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "customerVisibility": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "formData",
+                        "customerVisibility",
+                        "createdAt"
+                      ]
+                    },
+                    "customerStatus": {
+                      "type": "string",
+                      "enum": [
+                        "received",
+                        "need_more_info",
+                        "in_progress",
+                        "resolved",
+                        "declined",
+                        "closed",
+                        "withdrawn"
+                      ]
+                    },
+                    "isRequester": {
+                      "type": "boolean"
+                    },
+                    "canViewAttachments": {
+                      "type": "boolean"
+                    },
+                    "canUpload": {
+                      "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
+                    },
+                    "canEscalate": {
+                      "type": "boolean"
+                    },
+                    "canReopen": {
+                      "type": "boolean"
+                    },
+                    "canRate": {
+                      "type": "boolean"
+                    },
+                    "satisfaction": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "rating": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "comment": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ratedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "rating",
+                        "comment",
+                        "ratedAt"
+                      ]
+                    },
+                    "requestType": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "icon": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "group": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "description",
+                        "icon",
+                        "group"
+                      ]
+                    },
+                    "version": {
+                      "type": "object",
+                      "properties": {
+                        "formSchema": {
+                          "type": "object",
+                          "properties": {
+                            "fields": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "multiple": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "type",
+                                  "label"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "fields"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "formSchema"
+                      ]
+                    },
+                    "workItem": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "priority": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        },
+                        "sla": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "on_track",
+                                "at_risk",
+                                "breached",
+                                "met",
+                                "missed"
+                              ]
+                            },
+                            "dueAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "metric": {
+                              "type": "string",
+                              "enum": [
+                                "first_response",
+                                "resolution"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "dueAt",
+                            "metric"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "description",
+                        "priority",
+                        "resolvedAt",
+                        "sla"
+                      ]
+                    },
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "actorType": {
+                            "type": "string",
+                            "enum": [
+                              "customer",
+                              "triager"
+                            ]
+                          },
+                          "authorName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "mine": {
+                            "type": "boolean"
+                          },
+                          "body": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "actorType",
+                          "authorName",
+                          "mine",
+                          "body",
+                          "createdAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "ref",
+                    "submission",
+                    "customerStatus",
+                    "isRequester",
+                    "canViewAttachments",
+                    "canUpload",
+                    "canWithdraw",
+                    "canEscalate",
+                    "canReopen",
+                    "canRate",
+                    "satisfaction",
+                    "requestType",
+                    "version",
+                    "workItem",
+                    "messages"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Submission not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "not_reopenable, reopen_pending_review or conflict: the request was not reopened",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/submissions/{ref}/satisfaction": {
+      "post": {
+        "operationId": "ratePortalSubmission",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "Rate (or change the rating of) a resolved request",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5
+                  },
+                  "comment": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "rating"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated submission page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string"
+                    },
+                    "submission": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string"
+                        },
+                        "formData": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "customerVisibility": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "formData",
+                        "customerVisibility",
+                        "createdAt"
+                      ]
+                    },
+                    "customerStatus": {
+                      "type": "string",
+                      "enum": [
+                        "received",
+                        "need_more_info",
+                        "in_progress",
+                        "resolved",
+                        "declined",
+                        "closed",
+                        "withdrawn"
+                      ]
+                    },
+                    "isRequester": {
+                      "type": "boolean"
+                    },
+                    "canViewAttachments": {
+                      "type": "boolean"
+                    },
+                    "canUpload": {
+                      "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
+                    },
+                    "canEscalate": {
+                      "type": "boolean"
+                    },
+                    "canReopen": {
+                      "type": "boolean"
+                    },
+                    "canRate": {
+                      "type": "boolean"
+                    },
+                    "satisfaction": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "rating": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "comment": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ratedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "rating",
+                        "comment",
+                        "ratedAt"
+                      ]
+                    },
+                    "requestType": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "icon": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "group": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "description",
+                        "icon",
+                        "group"
+                      ]
+                    },
+                    "version": {
+                      "type": "object",
+                      "properties": {
+                        "formSchema": {
+                          "type": "object",
+                          "properties": {
+                            "fields": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "multiple": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "type",
+                                  "label"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "fields"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "formSchema"
+                      ]
+                    },
+                    "workItem": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "priority": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "resolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        },
+                        "sla": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "on_track",
+                                "at_risk",
+                                "breached",
+                                "met",
+                                "missed"
+                              ]
+                            },
+                            "dueAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "metric": {
+                              "type": "string",
+                              "enum": [
+                                "first_response",
+                                "resolution"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "dueAt",
+                            "metric"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "description",
+                        "priority",
+                        "resolvedAt",
+                        "sla"
+                      ]
+                    },
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "actorType": {
+                            "type": "string",
+                            "enum": [
+                              "customer",
+                              "triager"
+                            ]
+                          },
+                          "authorName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "mine": {
+                            "type": "boolean"
+                          },
+                          "body": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "actorType",
+                          "authorName",
+                          "mine",
+                          "body",
+                          "createdAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "ref",
+                    "submission",
+                    "customerStatus",
+                    "isRequester",
+                    "canViewAttachments",
+                    "canUpload",
+                    "canWithdraw",
+                    "canEscalate",
+                    "canReopen",
+                    "canRate",
+                    "satisfaction",
+                    "requestType",
+                    "version",
+                    "workItem",
+                    "messages"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Submission not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "not_rateable or rating_locked: the request cannot be rated now",
             "content": {
               "text/plain": {
                 "schema": {

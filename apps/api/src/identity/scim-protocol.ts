@@ -43,6 +43,7 @@ import {
   lockScimProfileOrganisation,
   lockScimProfilePerson as lockScimProfilePersonRow,
 } from "./repository";
+import { recordScimAuthFailure } from "./scim-auth-events";
 import {
   lockAndVerifyScimMutation,
   resolveScimBearer,
@@ -53,29 +54,63 @@ import {
   announceScimDeactivation,
   setScimIdentityActiveInTransaction,
 } from "./scim-lifecycle";
+import {
+  SCIM_FAILURE_LIMIT,
+  SCIM_FAILURE_WINDOW_MS,
+  scimBodyLimit,
+  scimClientKey,
+  scimConnectionRateLimit,
+  scimErrorBody,
+  scimErrorResponse,
+  WindowCounter,
+} from "./scim-limits";
 
 type ScimVariables = BaseVariables & { scimAuthority: ScimRequestAuthority };
 const scim = apiRouter<ScimVariables>();
 
+// IP-14: failed authentication is counted against the anonymous class (per trusted client
+// address); a client over the limit is refused before any credential lookup.
+const authFailureCounter = new WindowCounter(
+  SCIM_FAILURE_LIMIT,
+  SCIM_FAILURE_WINDOW_MS,
+);
+
+// One registration on purpose (`DECLARED_ROUTER_MIDDLEWARE` pins `ALL /scim/v2/*` to a single
+// reviewed entry): authenticate, then apply the per-connection rate limit (IP-14), then the
+// body-size cap, in that order, as one chain.
+const connectionRateLimit = scimConnectionRateLimit(
+  (c) => c.get("scimAuthority")?.connectionId,
+);
+const bodySizeCap = scimBodyLimit();
 scim.use("*", async (c, next) => {
-  const authority = await resolveScimBearer(c.req.header("Authorization"));
+  const client = scimClientKey(c);
+  if (authFailureCounter.isExhausted(client))
+    return scimErrorResponse(c, 429, "Too many requests", undefined, {
+      "Retry-After": String(Math.ceil(SCIM_FAILURE_WINDOW_MS / 1000)),
+    });
+  let authority: ScimRequestAuthority;
+  try {
+    authority = await resolveScimBearer(c.req.header("Authorization"));
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 401) {
+      authFailureCounter.hit(client);
+      // IP-24: attributable failures write an `auth.failed` provisioning event (no secret).
+      await recordScimAuthFailure(error);
+    }
+    throw error;
+  }
   c.set("scimAuthority", authority);
-  await next();
+  let capped: Response | undefined;
+  const limited = await connectionRateLimit(c, async () => {
+    capped = (await bodySizeCap(c, next)) ?? undefined;
+  });
+  return limited ?? capped;
 });
 
 function scimResponse<T extends Response>(response: T): T {
   response.headers.set("Content-Type", "application/scim+json; charset=utf-8");
   response.headers.set("Cache-Control", "no-store");
   return response;
-}
-
-function scimErrorBody(status: number, detail: string, scimType?: string) {
-  return {
-    schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
-    status: String(status),
-    ...(scimType ? { scimType } : {}),
-    detail,
-  };
 }
 
 scim.onError((error, c) => {

@@ -112,3 +112,14 @@ export const declineBody = z
   .object({ reason: z.string().trim().min(1).max(4000) })
   .strict();
 export const duplicateBody = z.object({ workItemId: id }).strict();
+/** CP-7: every priority is accepted by the schema so that a decrease is refused with 403 (not 400). */
+export const escalatePriorityBody = z
+  .object({ priority: z.enum(["low", "medium", "high", "urgent"]) })
+  .strict();
+/** CP-9: a rating on a 1 to 5 scale and an optional comment. */
+export const satisfactionBody = z
+  .object({
+    rating: z.number().int().min(1).max(5),
+    comment: z.string().trim().min(1).max(2000).optional(),
+  })
+  .strict();

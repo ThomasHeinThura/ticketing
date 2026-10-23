@@ -5,11 +5,27 @@ import {
   AlertDescription,
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardDescription,
+  CardHeader,
+  CardPanel,
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
   Input,
   Textarea,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  PortalActionAlert,
+  PortalRaisePriority,
+  PortalReopenButton,
+  PortalSatisfaction,
+} from "@/components/portal/portal-request-actions";
+import { PortalSlaStatus } from "@/components/portal/portal-sla-status";
 import {
   completePortalSubmissionAttachment,
   downloadPortalSubmissionAttachment,
@@ -19,22 +35,14 @@ import {
   replyPortalSubmission,
   withdrawPortalSubmission,
 } from "@/fetchers/intake";
+import { usePortalRequestActions } from "@/hooks/mutations/portal/use-portal-request-actions";
 import { submissionAnswerRows } from "@/lib/intake-validation";
-
-const SLA_BADGE = {
-  on_track: "success",
-  at_risk: "warning",
-  breached: "error",
-  met: "success",
-  missed: "error",
-} as const;
-const SLA_DEFAULT = {
-  on_track: "On track",
-  at_risk: "At risk",
-  breached: "Overdue",
-  met: "Met",
-  missed: "Missed",
-} as const;
+import {
+  customerStatusKey,
+  messageAuthor,
+  PortalActionError,
+  readPortalSla,
+} from "@/lib/portal-request";
 
 export const Route = createFileRoute("/submissions/$ref")({
   component: PortalSubmissionPage,
@@ -49,10 +57,6 @@ function PortalSubmissionPage() {
   const page = useQuery({
     queryKey: ["portal", portalUserId, "submission", ref],
     queryFn: () => getPortalSubmission(ref),
-  });
-  const attachments = useQuery({
-    queryKey: ["portal", portalUserId, "submission", ref, "attachments"],
-    queryFn: () => getPortalSubmissionAttachments(ref),
   });
   const reply = useMutation({
     mutationFn: () => replyPortalSubmission({ ref, body: body.trim() }),
@@ -119,15 +123,28 @@ function PortalSubmissionPage() {
           workItemId?: string | null;
         };
         canWithdraw?: boolean;
+        /** Customer-language status decided by the server (CP-5); absent: mapped from the submission state. */
+        customerStatus?: string;
+        /** Attachment access for this viewer; absent: the requester only. */
+        canViewAttachments?: boolean;
+        canUpload?: boolean;
+        sla?: unknown;
+        /** Server-decided eligibility for the P3 customer actions (absent: not offered). */
+        isRequester?: boolean;
+        canEscalate?: boolean;
+        canReopen?: boolean;
+        canRate?: boolean;
+        satisfaction?: {
+          rating: number;
+          comment?: string | null;
+          ratedAt?: string;
+        } | null;
         workItem?: {
           title: string;
           description: string;
           state: string;
           priority: string | null;
-          sla?: {
-            state: "on_track" | "at_risk" | "breached" | "met" | "missed";
-            dueAt: string | null;
-          } | null;
+          sla?: unknown;
         } | null;
         requestType?: { name?: string };
         version?: {
@@ -143,31 +160,91 @@ function PortalSubmissionPage() {
         messages?: Array<{
           id: string;
           actorType: string;
+          authorName?: string | null;
+          mine?: boolean;
           body: string;
           createdAt: string;
         }>;
       }
     | undefined;
   const state = record?.submission?.state;
-  const canWithdraw = record?.canWithdraw === true;
-  const canUpload = state === "new" || state === "clarifying";
+  // CP-16: a colleague who can view the request cannot act on it.
+  const requester = record?.isRequester !== false;
+  const canWithdraw = requester && record?.canWithdraw === true;
+  // CP-16: a colleague never fetches or sees the attachment list and cannot upload.
+  const canViewAttachments =
+    !!record && (record.canViewAttachments ?? requester);
+  const canUpload =
+    (record?.canUpload ?? requester) &&
+    (state === "new" || state === "clarifying");
+  const attachments = useQuery({
+    queryKey: ["portal", portalUserId, "submission", ref, "attachments"],
+    queryFn: () => getPortalSubmissionAttachments(ref),
+    enabled: canViewAttachments,
+  });
+  const actions = usePortalRequestActions(portalUserId, ref);
+  const canRaisePriority =
+    requester &&
+    state === "accepted" &&
+    !!record?.workItem &&
+    record.canEscalate === true;
+  // CP-8: once the team has been asked to review, the button stays hidden for this visit.
+  const reopenPending =
+    actions.reopen.error instanceof PortalActionError &&
+    actions.reopen.error.code === "reopen_pending_review";
+  const canReopen = requester && record?.canReopen === true && !reopenPending;
+  const statusKey = customerStatusKey(record?.customerStatus, state);
+  const stateLabel = statusKey
+    ? t(`portal:${statusKey}`, { defaultValue: state })
+    : undefined;
   // Nothing to show until the record loads: no dangling separator while loading.
-  const subtitle = [
-    record?.requestType?.name,
-    state === "accepted" ? record?.workItem?.state : state,
-  ]
+  const subtitle = [record?.requestType?.name, stateLabel]
     .filter(Boolean)
     .join(" · ");
+  const sla = readPortalSla(record?.sla ?? record?.workItem?.sla);
+  const authorLabel = (message: {
+    actorType: string;
+    authorName?: string | null;
+    mine?: boolean;
+  }) => {
+    const author = messageAuthor(message);
+    return "name" in author ? author.name : t(`portal:${author.key}`);
+  };
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
-      <header>
-        <h1 className="font-semibold text-2xl">
-          {t("portal:intake.submissionTitle", {
-            defaultValue: "Request {{ref}}",
-            ref,
-          })}
-        </h1>
-        {subtitle ? <p className="text-muted-foreground">{subtitle}</p> : null}
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-semibold text-2xl">
+            {t("portal:intake.submissionTitle", {
+              defaultValue: "Request {{ref}}",
+              ref,
+            })}
+          </h1>
+          {subtitle ? <CardDescription>{subtitle}</CardDescription> : null}
+        </div>
+        {record && (canRaisePriority || canReopen || canWithdraw) ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {canRaisePriority ? (
+              <PortalRaisePriority
+                current={record.workItem?.priority ?? null}
+                escalate={actions.escalate}
+              />
+            ) : null}
+            {canReopen ? <PortalReopenButton reopen={actions.reopen} /> : null}
+            {canWithdraw ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => withdraw.mutate()}
+                disabled={withdraw.isPending}
+              >
+                {t("portal:intake.withdraw", {
+                  defaultValue: "Withdraw request",
+                })}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </header>
       {page.isLoading && (
         <p role="status">
@@ -195,84 +272,91 @@ function PortalSubmissionPage() {
           </AlertDescription>
         </Alert>
       )}
+      {record && !requester ? (
+        <Alert variant="info">
+          <AlertDescription>{t("portal:request.readOnly")}</AlertDescription>
+        </Alert>
+      ) : null}
+      <PortalActionAlert error={actions.escalate.error} />
+      <PortalActionAlert error={actions.reopen.error} />
       {record && (
         <>
           {state === "accepted" && record.workItem ? (
-            <section
-              className="rounded-md border p-4"
-              aria-label="Request details"
-            >
-              <header className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="font-semibold text-lg">
+            <Card aria-label={t("portal:request.details")}>
+              <CardHeader>
+                <CardTitle render={(props) => <h2 {...props} />}>
                   {record.workItem.title}
-                </h2>
-                <span className="text-muted-foreground">
-                  {record.workItem.state}
-                </span>
-              </header>
-              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-                {record.workItem.priority && (
-                  <div>
-                    <dt className="text-muted-foreground text-sm">Priority</dt>
-                    <dd className="capitalize">{record.workItem.priority}</dd>
-                  </div>
-                )}
-                {record.workItem.sla && (
-                  <div>
-                    <dt className="text-muted-foreground text-sm">
-                      {t("portal:intake.sla.label", {
-                        defaultValue: "Service target",
-                      })}
-                    </dt>
-                    <dd className="flex flex-wrap items-center gap-2">
-                      <Badge variant={SLA_BADGE[record.workItem.sla.state]}>
-                        {t(
-                          `portal:intake.sla.state.${record.workItem.sla.state}`,
-                          {
-                            defaultValue:
-                              SLA_DEFAULT[record.workItem.sla.state],
-                          },
-                        )}
-                      </Badge>
-                      {record.workItem.sla.dueAt && (
-                        <span className="text-sm">
-                          {t("portal:intake.sla.due", {
-                            defaultValue: "Due {{when}}",
-                            when: new Date(
-                              record.workItem.sla.dueAt,
-                            ).toLocaleString(),
-                          })}
-                        </span>
-                      )}
-                    </dd>
-                  </div>
-                )}
-              </dl>
-              {record.workItem.description && (
-                <p className="mt-3 whitespace-pre-wrap">
-                  {record.workItem.description}
-                </p>
-              )}
-            </section>
+                </CardTitle>
+                <CardAction>
+                  {stateLabel ? (
+                    <Badge variant="outline">{stateLabel}</Badge>
+                  ) : null}
+                </CardAction>
+              </CardHeader>
+              <CardPanel>
+                <div className="flex flex-col gap-3">
+                  <dl className="grid gap-3 sm:grid-cols-2">
+                    {record.workItem.priority && (
+                      <div>
+                        <dt>
+                          <CardDescription>
+                            {t("portal:request.priority.label")}
+                          </CardDescription>
+                        </dt>
+                        <dd>
+                          {t(
+                            `portal:request.priority.value.${record.workItem.priority}`,
+                            { defaultValue: record.workItem.priority },
+                          )}
+                        </dd>
+                      </div>
+                    )}
+                    {sla && (
+                      <div>
+                        <dt>
+                          <CardDescription>
+                            {t("portal:intake.sla.label", {
+                              defaultValue: "Service target",
+                            })}
+                          </CardDescription>
+                        </dt>
+                        <dd>
+                          <PortalSlaStatus sla={sla} />
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                  {record.workItem.description && (
+                    <p className="whitespace-pre-wrap">
+                      {record.workItem.description}
+                    </p>
+                  )}
+                </div>
+              </CardPanel>
+            </Card>
           ) : (
-            <section className="rounded-md border p-4">
-              <h2 className="font-medium">
-                {t("portal:intake.answers", { defaultValue: "Your answers" })}
-              </h2>
-              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-                {submissionAnswerRows(
-                  record.version?.formSchema?.fields,
-                  record.submission?.formData,
-                ).map((answer) => (
-                  <div key={answer.key}>
-                    <dt className="text-muted-foreground text-sm">
-                      {answer.label}
-                    </dt>
-                    <dd>{answer.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
+            <Card>
+              <CardHeader>
+                <CardTitle render={(props) => <h2 {...props} />}>
+                  {t("portal:intake.answers", { defaultValue: "Your answers" })}
+                </CardTitle>
+              </CardHeader>
+              <CardPanel>
+                <dl className="grid gap-3 sm:grid-cols-2">
+                  {submissionAnswerRows(
+                    record.version?.formSchema?.fields,
+                    record.submission?.formData,
+                  ).map((answer) => (
+                    <div key={answer.key}>
+                      <dt>
+                        <CardDescription>{answer.label}</CardDescription>
+                      </dt>
+                      <dd>{answer.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </CardPanel>
+            </Card>
           )}
           {state === "declined" && (
             <Alert variant="warning">
@@ -285,148 +369,197 @@ function PortalSubmissionPage() {
               </AlertDescription>
             </Alert>
           )}
-          <section>
+          {requester && record.canRate === true ? (
+            <PortalSatisfaction
+              key={record.satisfaction?.rating ?? "new"}
+              rate={actions.rate}
+              existing={record.satisfaction ?? null}
+            />
+          ) : null}
+          <section className="flex flex-col gap-3">
             <h2 className="font-medium">
               {t("portal:intake.conversation", {
                 defaultValue: "Conversation",
               })}
             </h2>
-            <ol className="mt-3 flex flex-col gap-3">
+            {record.messages?.length ? null : (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyDescription>
+                    {t("portal:request.conversationEmpty", {
+                      defaultValue: "No messages yet",
+                    })}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+            <ol className="flex flex-col gap-3">
               {record.messages?.map((message) => (
-                <li className="rounded-md border p-3" key={message.id}>
-                  <p className="text-muted-foreground text-sm">
-                    {message.actorType} ·{" "}
-                    {new Date(message.createdAt).toLocaleString()}
-                  </p>
-                  <p className="whitespace-pre-wrap">{message.body}</p>
+                <li key={message.id}>
+                  <Card>
+                    <CardHeader>
+                      <CardDescription>
+                        {authorLabel(message)} ·{" "}
+                        {new Date(message.createdAt).toLocaleString()}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardPanel>
+                      <p className="whitespace-pre-wrap">{message.body}</p>
+                    </CardPanel>
+                  </Card>
                 </li>
               ))}
             </ol>
           </section>
-          <section className="flex flex-col gap-3">
-            <h2 className="font-medium">
-              {t("portal:intake.attachments", { defaultValue: "Attachments" })}
-            </h2>
-            {attachments.isLoading && (
-              <p role="status">
-                {t("common:empty.loading", { defaultValue: "Loading…" })}
-              </p>
-            )}
-            {attachments.isError && (
-              <Alert variant="error">
-                <AlertDescription>
-                  {t("portal:intake.attachmentListError", {
-                    defaultValue: "Could not load attachments.",
-                  })}
-                </AlertDescription>
-                <Button
-                  variant="outline"
-                  onClick={() => void attachments.refetch()}
-                >
-                  {t("common:actions.retry", { defaultValue: "Retry" })}
-                </Button>
-              </Alert>
-            )}
-            {download.isError && (
-              <Alert variant="error">
-                <AlertDescription>
-                  {t("portal:intake.downloadError", {
-                    defaultValue:
-                      "The file could not be downloaded. Try again.",
-                  })}
-                </AlertDescription>
-              </Alert>
-            )}
-            {finishUpload.isError && (
-              <Alert variant="error">
-                <AlertDescription>
-                  {t("portal:intake.completeUploadError", {
-                    defaultValue: "Could not finish this upload.",
-                  })}
-                </AlertDescription>
-                {finishUpload.variables && (
+          {canViewAttachments || canUpload ? (
+            <section className="flex flex-col gap-3">
+              <h2 className="font-medium">
+                {t("portal:intake.attachments", {
+                  defaultValue: "Attachments",
+                })}
+              </h2>
+              {attachments.isLoading && (
+                <p role="status">
+                  {t("common:empty.loading", { defaultValue: "Loading…" })}
+                </p>
+              )}
+              {attachments.isError && (
+                <Alert variant="error">
+                  <AlertDescription>
+                    {t("portal:intake.attachmentListError", {
+                      defaultValue: "Could not load attachments.",
+                    })}
+                  </AlertDescription>
                   <Button
                     variant="outline"
-                    onClick={() => finishUpload.mutate(finishUpload.variables)}
-                    disabled={finishUpload.isPending}
+                    onClick={() => void attachments.refetch()}
                   >
                     {t("common:actions.retry", { defaultValue: "Retry" })}
                   </Button>
-                )}
-              </Alert>
-            )}
-            {attachments.data?.map((file) => (
-              <div
-                className="flex items-center justify-between gap-3 rounded border p-3"
-                key={file.id}
-              >
-                <span>
-                  {file.filename} · {Math.ceil(file.size / 1024)} KB ·{" "}
-                  {file.state}
-                </span>
-                {file.state === "pending" ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => finishUpload.mutate(file.id)}
-                    disabled={finishUpload.isPending}
-                  >
-                    {t("portal:intake.completeUpload", {
-                      defaultValue: "Finish upload",
+                </Alert>
+              )}
+              {download.isError && (
+                <Alert variant="error">
+                  <AlertDescription>
+                    {t("portal:intake.downloadError", {
+                      defaultValue:
+                        "The file could not be downloaded. Try again.",
                     })}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    disabled={download.isPending}
-                    onClick={() =>
-                      download.mutate({ id: file.id, filename: file.filename })
-                    }
+                  </AlertDescription>
+                </Alert>
+              )}
+              {finishUpload.isError && (
+                <Alert variant="error">
+                  <AlertDescription>
+                    {t("portal:intake.completeUploadError", {
+                      defaultValue: "Could not finish this upload.",
+                    })}
+                  </AlertDescription>
+                  {finishUpload.variables && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        finishUpload.mutate(finishUpload.variables)
+                      }
+                      disabled={finishUpload.isPending}
+                    >
+                      {t("common:actions.retry", { defaultValue: "Retry" })}
+                    </Button>
+                  )}
+                </Alert>
+              )}
+              {canViewAttachments &&
+              attachments.isSuccess &&
+              attachments.data.length === 0 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyDescription>
+                      {t("portal:request.attachmentsEmpty", {
+                        defaultValue: "No attachments",
+                      })}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : null}
+              {canViewAttachments &&
+                attachments.data?.map((file) => (
+                  <div
+                    className="flex items-center justify-between gap-3 rounded border p-3"
+                    key={file.id}
                   >
-                    {t("portal:intake.download", { defaultValue: "Download" })}
-                  </Button>
-                )}
-              </div>
-            ))}
-            {record.version?.formSchema?.fields
-              ?.filter((field) => field.type === "file" && canUpload)
-              .map((field) => (
-                <label
-                  className="flex flex-col gap-2"
-                  htmlFor={`submission-file-${field.key}`}
-                  key={field.key}
-                >
-                  <span>
-                    {field.label}
-                    {field.multiple ? "" : " (one file)"}
-                  </span>
-                  <Input
-                    id={`submission-file-${field.key}`}
-                    type="file"
-                    multiple={field.multiple}
-                    onChange={(event) => {
-                      const files = Array.from(event.target.files ?? []);
-                      const selected = field.multiple
-                        ? files
-                        : files.slice(0, 1);
-                      for (const file of selected)
-                        upload.mutate({ fieldKey: field.key, file });
-                      event.target.value = "";
-                    }}
-                  />
-                </label>
-              ))}
-            {upload.isError && (
-              <Alert variant="error">
-                <AlertDescription>
-                  {t("portal:intake.uploadError", {
-                    defaultValue:
-                      "The attachment could not be uploaded. Try again.",
-                  })}
-                </AlertDescription>
-              </Alert>
-            )}
-          </section>
-          {(state === "clarifying" || state === "accepted") && (
+                    <span>
+                      {file.filename} · {Math.ceil(file.size / 1024)} KB ·{" "}
+                      {file.state}
+                    </span>
+                    {file.state === "pending" ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => finishUpload.mutate(file.id)}
+                        disabled={finishUpload.isPending}
+                      >
+                        {t("portal:intake.completeUpload", {
+                          defaultValue: "Finish upload",
+                        })}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        disabled={download.isPending}
+                        onClick={() =>
+                          download.mutate({
+                            id: file.id,
+                            filename: file.filename,
+                          })
+                        }
+                      >
+                        {t("portal:intake.download", {
+                          defaultValue: "Download",
+                        })}
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              {record.version?.formSchema?.fields
+                ?.filter((field) => field.type === "file" && canUpload)
+                .map((field) => (
+                  <label
+                    className="flex flex-col gap-2"
+                    htmlFor={`submission-file-${field.key}`}
+                    key={field.key}
+                  >
+                    <span>
+                      {field.label}
+                      {field.multiple ? "" : " (one file)"}
+                    </span>
+                    <Input
+                      id={`submission-file-${field.key}`}
+                      type="file"
+                      multiple={field.multiple}
+                      onChange={(event) => {
+                        const files = Array.from(event.target.files ?? []);
+                        const selected = field.multiple
+                          ? files
+                          : files.slice(0, 1);
+                        for (const file of selected)
+                          upload.mutate({ fieldKey: field.key, file });
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                ))}
+              {upload.isError && (
+                <Alert variant="error">
+                  <AlertDescription>
+                    {t("portal:intake.uploadError", {
+                      defaultValue:
+                        "The attachment could not be uploaded. Try again.",
+                    })}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </section>
+          ) : null}
+          {requester && (state === "clarifying" || state === "accepted") && (
             <form
               className="flex flex-col gap-2"
               onSubmit={(event) => {
@@ -446,17 +579,6 @@ function PortalSubmissionPage() {
                 {t("portal:intake.sendReply", { defaultValue: "Send reply" })}
               </Button>
             </form>
-          )}
-          {canWithdraw && (
-            <Button
-              variant="outline"
-              onClick={() => withdraw.mutate()}
-              disabled={withdraw.isPending}
-            >
-              {t("portal:intake.withdraw", {
-                defaultValue: "Withdraw request",
-              })}
-            </Button>
           )}
         </>
       )}

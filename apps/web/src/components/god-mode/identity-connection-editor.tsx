@@ -65,16 +65,23 @@ const HEALTH_VARIANT = {
 
 export function IdentityConnectionEditor({
   connection,
+  customerOrganisationId,
   onCreated,
   onReload,
 }: {
-  /** The stored connection, or null to create a new (disabled) staff-portal connection. */
+  /** The stored connection, or null to create a new (disabled) connection. */
   connection: IdentityConnection | null;
+  /** With no stored connection: bind the new connection to this customer organisation instead of the staff portal. */
+  customerOrganisationId?: string;
   onCreated?: (id: string) => void;
   onReload: () => void;
 }) {
   const { t } = useTranslation("identityConnections");
   const creating = connection === null;
+  // Customer connections are bound to one organisation: no workspace and no role ceiling.
+  const customer = creating
+    ? customerOrganisationId !== undefined
+    : connection.portalScope === "customer";
   const server = useServerDraft<IdentityConnection | null, ConnectionDraft>(
     connection,
     (value) => (value ? draftFromConnection(value) : emptyConnectionDraft()),
@@ -111,7 +118,12 @@ export function IdentityConnectionEditor({
     setSaved(null);
     setUnchanged(false);
     if (base === null) {
-      const built = buildCreateBody(draft);
+      const built = buildCreateBody(
+        draft,
+        customerOrganisationId !== undefined
+          ? { portalScope: "customer", organisationId: customerOrganisationId }
+          : { portalScope: "agent" },
+      );
       if (!built.ok) {
         setErrors(built.errors);
         return;
@@ -163,7 +175,11 @@ export function IdentityConnectionEditor({
           {creating ? t("editor.addTitle") : t("editor.editTitle")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {creating ? t("editor.introCreate") : t("editor.intro")}
+          {creating
+            ? customer
+              ? t("editor.introCreateCustomer")
+              : t("editor.introCreate")
+            : t("editor.intro")}
         </p>
       </header>
 
@@ -386,21 +402,23 @@ export function IdentityConnectionEditor({
               value={draft.requiredAppRole}
             />
           </Field>
-          <Field
-            error={fieldError("defaultWorkspaceId")}
-            help={t("editor.idHelp")}
-            id="identity-workspace"
-            label={t("editor.workspaceId")}
-          >
-            <Input
-              disabled={step.busy}
+          {customer ? null : (
+            <Field
+              error={fieldError("defaultWorkspaceId")}
+              help={t("editor.idHelp")}
               id="identity-workspace"
-              onChange={(event) =>
-                patch({ defaultWorkspaceId: event.currentTarget.value })
-              }
-              value={draft.defaultWorkspaceId}
-            />
-          </Field>
+              label={t("editor.workspaceId")}
+            >
+              <Input
+                disabled={step.busy}
+                id="identity-workspace"
+                onChange={(event) =>
+                  patch({ defaultWorkspaceId: event.currentTarget.value })
+                }
+                value={draft.defaultWorkspaceId}
+              />
+            </Field>
+          )}
           <Field
             error={fieldError("defaultRoleId")}
             help={t("editor.idHelp")}
@@ -416,22 +434,24 @@ export function IdentityConnectionEditor({
               value={draft.defaultRoleId}
             />
           </Field>
-          <Field
-            error={fieldError("maxRoleRank")}
-            help={t("editor.maxRoleRankHelp")}
-            id="identity-rank"
-            label={t("editor.maxRoleRank")}
-          >
-            <Input
-              disabled={step.busy}
+          {customer ? null : (
+            <Field
+              error={fieldError("maxRoleRank")}
+              help={t("editor.maxRoleRankHelp")}
               id="identity-rank"
-              inputMode="numeric"
-              onChange={(event) =>
-                patch({ maxRoleRank: event.currentTarget.value })
-              }
-              value={draft.maxRoleRank}
-            />
-          </Field>
+              label={t("editor.maxRoleRank")}
+            >
+              <Input
+                disabled={step.busy}
+                id="identity-rank"
+                inputMode="numeric"
+                onChange={(event) =>
+                  patch({ maxRoleRank: event.currentTarget.value })
+                }
+                value={draft.maxRoleRank}
+              />
+            </Field>
+          )}
         </fieldset>
 
         {creating ? (

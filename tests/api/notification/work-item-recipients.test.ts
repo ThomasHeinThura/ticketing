@@ -45,6 +45,25 @@ describe("planWorkItemRecipients (AS-3/16/17/18, WI-28/29)", () => {
     ).toEqual([{ personId: "new", role: "assignee" }]);
   });
 
+  it("CP-7: an escalation notifies the assignee and unmuted watchers, never the actor", () => {
+    expect(
+      planWorkItemRecipients({
+        ...base,
+        kind: "work_item.escalated",
+        assigneeId: "assignee",
+        watchers: [
+          { personId: "w1", muted: false },
+          { personId: "w2", muted: true },
+          { personId: "actor", muted: false },
+        ],
+        actorPersonId: "actor",
+      }),
+    ).toEqual([
+      { personId: "assignee", role: "assignee" },
+      { personId: "w1", role: "watcher" },
+    ]);
+  });
+
   it("AS-3: a reassignment also notifies the previous holder", () => {
     expect(
       planWorkItemRecipients({

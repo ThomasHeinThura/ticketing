@@ -13,6 +13,8 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import { PortalOrientation } from "@/components/portal/portal-orientation";
+import { PortalRequestState } from "@/components/portal/portal-request-state";
 import { getPortalSubmissions } from "@/fetchers/intake";
 import { routes } from "@/lib/routes";
 
@@ -37,6 +39,7 @@ function PortalHome() {
           {t("requests.newRequest")}
         </Button>
       </header>
+      <PortalOrientation portalUserId={portalUserId} />
       <section
         className="flex flex-col gap-3"
         aria-labelledby="recent-requests"
@@ -87,7 +90,15 @@ function PortalHome() {
                     </Link>
                   </TableCell>
                   <TableCell>{submission.requestTypeName}</TableCell>
-                  <TableCell>{submission.state}</TableCell>
+                  <TableCell>
+                    <PortalRequestState
+                      state={submission.state}
+                      customerStatus={
+                        (submission as { customerStatus?: string })
+                          .customerStatus
+                      }
+                    />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

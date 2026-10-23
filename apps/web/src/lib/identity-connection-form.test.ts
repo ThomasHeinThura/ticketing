@@ -97,6 +97,49 @@ describe("identity connection create body", () => {
     );
   });
 
+  it("builds a customer body bound to one organisation with no workspace or role ceiling", () => {
+    const built = buildCreateBody(
+      {
+        ...emptyConnectionDraft(),
+        displayName: "Acme SSO",
+        tenantId: TENANT,
+        clientId: CLIENT,
+        clientSecret: "not-a-real-secret",
+        requiredAppRole: "TaskDesk.Customer",
+        defaultWorkspaceId: "must-be-ignored",
+        maxRoleRank: "10",
+        jitEnabled: true,
+        defaultRoleId: "role-1",
+      },
+      { portalScope: "customer", organisationId: "org-1" },
+    );
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.body).toMatchObject({
+      portalScope: "customer",
+      organisationId: "org-1",
+      defaultWorkspaceId: null,
+      maxRoleRank: null,
+    });
+  });
+
+  it("does not demand a role ceiling or workspace for a customer connection", () => {
+    const built = buildCreateBody(
+      {
+        ...emptyConnectionDraft(),
+        displayName: "Acme SSO",
+        tenantId: TENANT,
+        clientId: CLIENT,
+        clientSecret: "not-a-real-secret",
+        requiredAppRole: "TaskDesk.Customer",
+        jitEnabled: true,
+        defaultRoleId: "role-1",
+      },
+      { portalScope: "customer", organisationId: "org-1" },
+    );
+    expect(built.ok).toBe(true);
+  });
+
   it("reports every invalid field instead of sending a doomed request", () => {
     const built = buildCreateBody({
       ...emptyConnectionDraft(),

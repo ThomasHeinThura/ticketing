@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getIdentityConnectionEvents,
   getIdentityConnections,
+  getOrganisationIdentityConnection,
   getScimAdminSettings,
   getScimMappingOptions,
   type ScimMappingOptions,
@@ -34,6 +35,19 @@ export function useIdentityConnections(enabled = true) {
   return useQuery({
     queryKey: identityConnectionsKey,
     queryFn: getIdentityConnections,
+    enabled,
+    ...configurationQuery,
+  });
+}
+
+/** Under `identityConnectionsKey`, so every connection write also refreshes this read. */
+export function useOrganisationIdentityConnection(
+  organisationId: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [...identityConnectionsKey, "organisation", organisationId],
+    queryFn: () => getOrganisationIdentityConnection(organisationId),
     enabled,
     ...configurationQuery,
   });

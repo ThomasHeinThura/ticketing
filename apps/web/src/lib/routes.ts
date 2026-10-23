@@ -1010,6 +1010,24 @@ export const routes = {
       return suffix ? `${path}?${suffix}` : path;
     },
   },
+  /** God Mode organisation "Identity" tab (CP-17, IP-5): the customer organisation's own OIDC connection and SCIM. */
+  organisationIdentity: {
+    path: "/agent/god-mode/organisations/$id/identity" as const,
+    build: (
+      params: { id: string },
+      search: IdentityConnectionEditorSearch = {},
+    ) => {
+      const resolved = parseIdentityConnectionEditorSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.tab) query.set("tab", resolved.tab);
+      if (resolved.eventsCursor)
+        query.set("eventsCursor", resolved.eventsCursor);
+      if (resolved.mapping) query.set("mapping", resolved.mapping);
+      const suffix = query.toString();
+      const path = `/agent/god-mode/organisations/${encodeURIComponent(params.id)}/identity`;
+      return suffix ? `${path}?${suffix}` : path;
+    },
+  },
   /** PA-6 requester-owned browser approval list and item. */
   pendingActions: {
     path: "/agent/settings/profile/pending-actions" as const,

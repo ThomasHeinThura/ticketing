@@ -1,4 +1,5 @@
 import { Cron } from "croner";
+import { checkIdentityConnectionHealth } from "../identity/connection-health";
 import {
   cleanupPendingAttachments,
   collectDeletedAttachments,
@@ -111,6 +112,12 @@ export function initializeScheduler(): void {
       name: "position-rebalance",
       pattern: "*/5 * * * *",
       handler: () => runPositionRebalanceJob(),
+    },
+    {
+      // IP-25: pings each enabled identity connection's OIDC discovery document.
+      name: "plugin-health",
+      pattern: "*/10 * * * *",
+      handler: () => checkIdentityConnectionHealth(),
     },
   ];
 

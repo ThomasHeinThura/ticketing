@@ -1991,6 +1991,9 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `request_type.created` · `request_type.updated` · `request_type.published` · `request_type.unpublished` | Request-type lifecycle. Record safe request type/workspace identifiers and a closed changed-field list; never store the form schema, labels, customer answers, or raw request body. Audit-only; no outbox event. |
 | `submission.claimed` | A triager claims a submission; record submission reference and the actor id. Audit-only; no outbox event. |
 | `submission.duplicate` | A triager links a submission to a same-organisation work item; record submission reference and linked work-item id/key. Audit-only; no outbox event. |
+| `submission.reopened` | A customer reopens their auto-declined submission (`IQ-15`, `CP-8`); record submission reference and the actor id. Audit-only; no outbox event. |
+| `submission.reopen_requested` | A customer asks to reopen a resolved request from the portal (`CP-8`); record work-item id, submission number and the outcome (`reopened` or the refusal reason); the actor is the customer. One row per request that was reopened or newly flagged, none for a repeat press on an already-flagged refusal. Audit-only; no outbox event. |
+| `satisfaction.rated` | A customer rates or re-rates a resolution (`CP-9`); record the work-item id, score and whether it was a change; never the comment text. Audit-only; no outbox event. |
 | `comment.updated` · `comment.deleted` | Comment edit (`CA-17`) and soft-deletion/tombstone (`CA-18`); creation uses `work_item.commented` ([events.md](events.md)) |
 | `invitation.sent` · `invitation.redeemed` · `invitation.revoked` | Invitations |
 | `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |

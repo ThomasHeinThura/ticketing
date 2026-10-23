@@ -12,6 +12,7 @@ import { findPortalSubmission } from "../../apps/api/src/intake/repository";
 import {
   addCustomer,
   buildTenant,
+  grantCustomerOrganisationMembership,
   portalRequest,
 } from "./helpers/approval-fixtures";
 import { resetTestDatabase } from "./helpers/database";
@@ -20,6 +21,41 @@ import { requireRow } from "./helpers/fixtures";
 const PNG_BYTES = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
 ]);
+
+/** A portal customer of a DIFFERENT organisation than the tenant's customers. */
+async function addCustomerOfOtherOrganisation() {
+  const orgId = `other-cust-org-${randomUUID()}`;
+  await db.insert(schema.organisationTable).values({
+    id: orgId,
+    key: orgId,
+    name: "Other customer org",
+    isInternal: false,
+    portalAccess: true,
+  });
+  const id = `cust-${randomUUID()}`;
+  const user = requireRow(
+    await db
+      .insert(schema.userTable)
+      .values({ id, name: id, email: `${id}@example.test` })
+      .returning(),
+    "other-org user",
+  );
+  const person = requireRow(
+    await db
+      .insert(schema.personTable)
+      .values({
+        userId: id,
+        organisationId: orgId,
+        side: "customer",
+        active: true,
+        isPlaceholder: false,
+      })
+      .returning(),
+    "other-org person",
+  );
+  await grantCustomerOrganisationMembership(orgId, person.id);
+  return { user, person, orgId };
+}
 
 async function seed() {
   const t = await buildTenant("response-shape");
@@ -270,10 +306,18 @@ describe("customer-facing intake responses expose only declared fields", () => {
         messages: unknown[];
       };
       expect(Object.keys(body).sort()).toEqual([
+        "canEscalate",
+        "canRate",
+        "canReopen",
+        "canUpload",
+        "canViewAttachments",
         "canWithdraw",
+        "customerStatus",
+        "isRequester",
         "messages",
         "ref",
         "requestType",
+        "satisfaction",
         "submission",
         "version",
         "workItem",
@@ -294,14 +338,21 @@ describe("customer-facing intake responses expose only declared fields", () => {
 
   it("SLA-21: shows the owner only state and due time; nothing from the policy or pauses", async () => {
     const { t, customer, requestType } = await seed();
-    const other = await addCustomer(t);
+    // CP-16: a colleague of the SAME organisation may read an organisation-visible request;
+    // a customer of ANOTHER organisation never can.
+    const colleague = await addCustomer(t);
+    const other = await addCustomerOfOtherOrganisation();
     const created = await portalRequest(
       t,
       customer,
       "/api/portal/submissions",
       {
         method: "POST",
-        body: { key: requestType.key, formData: {} },
+        body: {
+          key: requestType.key,
+          formData: {},
+          customerVisibility: "organisation",
+        },
       },
     );
     expect(created.status).toBe(200);
@@ -392,8 +443,13 @@ describe("customer-facing intake responses expose only declared fields", () => {
     expect(body.workItem.sla).not.toBeNull();
     expect(Object.keys(body.workItem.sla ?? {}).sort()).toEqual([
       "dueAt",
+      "metric",
       "state",
     ]);
+    // No staff response yet: the customer is shown the first-response target.
+    expect((body.workItem.sla as { metric?: string } | null)?.metric).toBe(
+      "first_response",
+    );
     expect(body.workItem.sla?.state).toBe("at_risk");
     expect(Number.isNaN(Date.parse(body.workItem.sla?.dueAt ?? ""))).toBe(
       false,
@@ -409,11 +465,44 @@ describe("customer-facing intake responses expose only declared fields", () => {
       "INTERNAL-POLICY-NAME",
       "slaPolicy",
       "pause",
-      "first_response",
     ])
       expect(text, internal).not.toContain(internal);
 
-    // Another customer's request never carries this item's SLA, and cannot read the page.
+    // A same-organisation colleague sees the same SLA-only shape, never the internals.
+    const colleagueResponse = await portalRequest(
+      t,
+      colleague,
+      `/api/portal/submissions/${ref}`,
+    );
+    expect(colleagueResponse.status).toBe(200);
+    const colleagueText = await colleagueResponse.text();
+    const colleagueBody = JSON.parse(colleagueText) as {
+      workItem: { sla: { state: string; dueAt: string | null } | null };
+    };
+    expect(Object.keys(colleagueBody.workItem.sla ?? {}).sort()).toEqual([
+      "dueAt",
+      "metric",
+      "state",
+    ]);
+    // CP-16: attachments are requester-only, so the colleague's flags hide them; CP-5: the
+    // internal workflow state name is never part of the projection.
+    expect(colleagueBody).toMatchObject({
+      canViewAttachments: false,
+      canUpload: false,
+    });
+    expect(colleagueBody.workItem).not.toHaveProperty("state");
+    for (const internal of [
+      "targetMinutes",
+      "consumedMinutes",
+      "atRiskThresholdPct",
+      "INTERNAL-CALENDAR-NAME",
+      "INTERNAL-POLICY-NAME",
+      "slaPolicy",
+      "pause",
+    ])
+      expect(colleagueText, internal).not.toContain(internal);
+
+    // A customer of another organisation cannot read the page or see its SLA.
     const foreign = await portalRequest(
       t,
       other,
@@ -421,5 +510,18 @@ describe("customer-facing intake responses expose only declared fields", () => {
     );
     expect(foreign.status).toBe(404);
     expect(await foreign.text()).not.toContain("at_risk");
+
+    // Once the request is private, even the same-organisation colleague gets the 404.
+    await db
+      .update(schema.submissionTable)
+      .set({ customerVisibility: "private" })
+      .where(eq(schema.submissionTable.id, submissionId));
+    const hidden = await portalRequest(
+      t,
+      colleague,
+      `/api/portal/submissions/${ref}`,
+    );
+    expect(hidden.status).toBe(404);
+    expect(await hidden.text()).not.toContain("at_risk");
   });
 });

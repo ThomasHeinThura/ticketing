@@ -409,10 +409,25 @@ describe("WF-21 customer reopen through the real executor", () => {
       workItemId: item.id,
       source: "upload",
     });
-    expect(result).toEqual({ kind: "flagged", reason: "no_reopen_transition" });
+    expect(result).toEqual({
+      kind: "flagged",
+      reason: "no_reopen_transition",
+      duplicate: false,
+    });
     expect(await stateOf(item.id)).toBe(w.states.resolved);
     const [flag] = await activityOf(item.id, "reopen_requested");
     expect(flag).toMatchObject({ visibility: "internal", actorType: "system" });
+
+    // One flag per pending refusal: a second identical refusal is reported as a duplicate and
+    // writes no further staff flag.
+    expect(
+      await requestCustomerReopen({ workItemId: item.id, source: "upload" }),
+    ).toEqual({
+      kind: "flagged",
+      reason: "no_reopen_transition",
+      duplicate: true,
+    });
+    expect(await activityOf(item.id, "reopen_requested")).toHaveLength(1);
   });
 
   it("flags a reopen outside the window and a reopen edge that needs approval", async () => {
@@ -430,11 +445,15 @@ describe("WF-21 customer reopen through the real executor", () => {
     );
     expect(
       await requestCustomerReopen({ workItemId: old.id, source: "reply" }),
-    ).toEqual({ kind: "flagged", reason: "outside_reopen_window" });
+    ).toEqual({
+      kind: "flagged",
+      reason: "outside_reopen_window",
+      duplicate: false,
+    });
     const fresh = await w.makeItem("resolved", new Date());
     expect(
       await requestCustomerReopen({ workItemId: fresh.id, source: "reply" }),
-    ).toEqual({ kind: "flagged", reason: "reopen_blocked" });
+    ).toEqual({ kind: "flagged", reason: "reopen_blocked", duplicate: false });
     expect(await stateOf(fresh.id)).toBe(w.states.resolved);
   });
 });
